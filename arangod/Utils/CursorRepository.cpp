@@ -66,7 +66,7 @@ CursorRepository::~CursorRepository() {
     if (tries == 0) {
       LOG(INFO) << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG(WARNING) << "giving up waiting for unused cursors";
+      LOG(WARN) << "giving up waiting for unused cursors";
     }
 
     usleep(500000);

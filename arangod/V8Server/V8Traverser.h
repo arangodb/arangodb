@@ -203,7 +203,7 @@ class DepthFirstTraverser : public Traverser {
 
   class EdgeGetter {
    public:
-    explicit EdgeGetter(DepthFirstTraverser* traverser,
+    EdgeGetter(DepthFirstTraverser* traverser,
                         TraverserOptions const& opts,
                         CollectionNameResolver* resolver, Transaction* trx)
         : _traverser(traverser), _resolver(resolver), _opts(opts), _trx(trx) {}
@@ -213,7 +213,7 @@ class DepthFirstTraverser : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
 
     void operator()(VertexId const&, std::vector<EdgeInfo>&,
-                    TRI_doc_mptr_copy_t*&, size_t&, bool&);
+                    TRI_doc_mptr_t*&, size_t&, bool&);
 
    private:
 
@@ -262,7 +262,7 @@ class DepthFirstTraverser : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<arangodb::basics::PathEnumerator<
-      EdgeInfo, VertexId, TRI_doc_mptr_copy_t>> _enumerator;
+      EdgeInfo, VertexId, TRI_doc_mptr_t>> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge

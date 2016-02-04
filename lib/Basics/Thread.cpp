@@ -127,7 +127,7 @@ Thread::Thread(std::string const& name)
 Thread::~Thread() {
   if (_running) {
     if (!isSilent()) {
-      LOG(WARNING) << "forcefully shutting down thread '" << _name.c_str() << "'";
+      LOG(WARN) << "forcefully shutting down thread '" << _name.c_str() << "'";
     }
 
     int res = TRI_StopThread(&_thread);
@@ -136,7 +136,7 @@ Thread::~Thread() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG(WARNING) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
+      LOG(WARN) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 
@@ -148,7 +148,7 @@ Thread::~Thread() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG(WARNING) << "unable to detach thread '" << _name.c_str() << "': " << TRI_last_error();
+      LOG(WARN) << "unable to detach thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 }
@@ -200,7 +200,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
-    LOG(ERROR) << "could not start thread '" << _name.c_str() << "': " << strerror(errno);
+    LOG(ERR) << "could not start thread '" << _name.c_str() << "': " << strerror(errno);
   }
 
   if (0 <= _affinity) {
@@ -264,7 +264,7 @@ int Thread::shutdown() {
       errno = res;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-      LOG(WARNING) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
+      LOG(WARN) << "unable to stop thread '" << _name.c_str() << "': " << TRI_last_error();
     }
   }
 
@@ -321,10 +321,10 @@ void Thread::allowAsynchronousCancelation() {
         LOG(DEBUG) << "set asynchronous cancelation for thread '" << _name.c_str() << "'";
         TRI_AllowCancelation();
       } else {
-        LOG(ERROR) << "cannot change cancelation type of an already running thread from the outside";
+        LOG(ERR) << "cannot change cancelation type of an already running thread from the outside";
       }
     } else {
-      LOG(WARNING) << "thread has already stopped, it is useless to change the cancelation type";
+      LOG(WARN) << "thread has already stopped, it is useless to change the cancelation type";
     }
   } else {
     _asynchronousCancelation = true;
@@ -342,18 +342,18 @@ void Thread::runMe() {
   try {
     run();
   } catch (Exception const& ex) {
-    LOG(ERROR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
-    TRI_FlushLogging();
+    LOG(ERR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
+    Logger::flush();
     throw;
   } catch (std::exception const& ex) {
-    LOG(ERROR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
-    TRI_FlushLogging();
+    LOG(ERR) << "exception caught in thread '" << _name.c_str() << "': " << ex.what();
+    Logger::flush();
     throw;
   } catch (...) {
     _running = false;
     if (!isSilent()) {
-      LOG(ERROR) << "exception caught in thread '" << _name.c_str() << "'";
-      TRI_FlushLogging();
+      LOG(ERR) << "exception caught in thread '" << _name.c_str() << "'";
+      Logger::flush();
     }
     throw;
   }

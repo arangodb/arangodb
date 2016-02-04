@@ -96,6 +96,10 @@ TRI_document_collection_t::~TRI_document_collection_t() {
   delete _keyGenerator;
 }
 
+std::string TRI_document_collection_t::label() const {
+  return std::string(_vocbase->_name) + " / " + _info.name();
+}
+
 void TRI_document_collection_t::setNextCompactionStartIndex(size_t index) {
   MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _nextCompactionStartIndex = index;
@@ -862,7 +866,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
 
   if (number == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG(ERROR) << "out of memory when creating index number";
+    LOG(ERR) << "out of memory when creating index number";
     return false;
   }
 
@@ -872,7 +876,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    LOG(ERROR) << "out of memory when creating index name";
+    LOG(ERR) << "out of memory when creating index name";
     return false;
   }
 
@@ -883,7 +887,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-    LOG(ERROR) << "out of memory when creating index filename";
+    LOG(ERR) << "out of memory when creating index filename";
     return false;
   }
 
@@ -894,7 +898,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "cannot remove index definition: " << TRI_last_error();
+    LOG(ERR) << "cannot remove index definition: " << TRI_last_error();
     return false;
   }
 
@@ -1387,7 +1391,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
                            operation->_fid, key, hash, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "out of memory";
+      LOG(ERR) << "out of memory";
 
       return TRI_set_errno(res);
     }
@@ -1412,7 +1416,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "inserting document into indexes failed with error: " << TRI_errno_string(res);
+      LOG(ERR) << "inserting document into indexes failed with error: " << TRI_errno_string(res);
 
       return res;
     }
@@ -1565,7 +1569,7 @@ static int OpenIteratorApplyOperation(
     return OpenIteratorApplyInsert(state, operation);
   }
 
-  LOG(ERROR) << "logic error in " << __FUNCTION__;
+  LOG(ERR) << "logic error in " << __FUNCTION__;
   return TRI_ERROR_INTERNAL;
 }
 
@@ -1732,7 +1736,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing
-      LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
+      LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
       OpenIteratorAbortTransaction(state);
 
@@ -1758,7 +1762,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     // marker has a transaction id
     if (d->_tid != state->_tid) {
       // we have a different transaction ongoing
-      LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
+      LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
       OpenIteratorAbortTransaction(state);
 
@@ -1834,7 +1838,7 @@ static int OpenIteratorHandleBeginMarker(TRI_df_marker_t const* marker,
 
   if (m->_tid != state->_tid && state->_tid != 0) {
     // some incomplete transaction was going on before us...
-    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
+    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
 
     OpenIteratorAbortTransaction(state);
   }
@@ -1857,7 +1861,7 @@ static int OpenIteratorHandleCommitMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker
     // beforehand. strange
-    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
+    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
 
     OpenIteratorAbortTransaction(state);
   } else {
@@ -1883,7 +1887,7 @@ static int OpenIteratorHandlePrepareMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found a commit marker, but we did not find any begin marker
     // beforehand. strange
-    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
+    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
 
     OpenIteratorAbortTransaction(state);
   } else {
@@ -1906,7 +1910,7 @@ static int OpenIteratorHandleAbortMarker(TRI_df_marker_t const* marker,
   if (m->_tid != state->_tid) {
     // we found an abort marker, but we did not find any begin marker
     // beforehand. strange
-    LOG(WARNING) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
+    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
   }
 
   OpenIteratorAbortTransaction(state);
@@ -2005,14 +2009,14 @@ static bool OpenIndexIterator(char const* filename, void* data) {
     builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   } catch (...) {
     // Failed to parse file
-    LOG(ERROR) << "failed to parse index definition from '" << filename << "'";
+    LOG(ERR) << "failed to parse index definition from '" << filename << "'";
     return false;
   }
 
   VPackSlice description = builder->slice();
   // VelocyPack must be a index description
   if (!description.isObject()) {
-    LOG(ERROR) << "cannot read index definition from '" << filename << "'";
+    LOG(ERR) << "cannot read index definition from '" << filename << "'";
     return false;
   }
 
@@ -2245,7 +2249,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   if (document == nullptr) {
     delete keyGenerator;
-    LOG(WARNING) << "cannot create document collection";
+    LOG(WARN) << "cannot create document collection";
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return nullptr;
@@ -2260,7 +2264,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   if (collection == nullptr) {
     delete document;
-    LOG(ERROR) << "cannot create document collection";
+    LOG(ERR) << "cannot create document collection";
 
     return nullptr;
   }
@@ -2269,7 +2273,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
-    LOG(ERROR) << "cannot initialize document collection";
+    LOG(ERR) << "cannot initialize document collection";
 
     // TODO: shouldn't we free document->_headersPtr etc.?
     // Yes, do this in the context of the TRI_document_collection_t cleanup.
@@ -2288,7 +2292,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we free document->_headersPtr etc.?
     // Yes, do this in the context of the TRI_document_collection_t cleanup.
-    LOG(ERROR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
+    LOG(ERR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
 
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
@@ -2429,7 +2433,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG(ERROR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_errno_string(res);
+    LOG(ERR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_errno_string(res);
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2456,7 +2460,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG(ERROR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_last_error();
+    LOG(ERR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_last_error();
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2485,7 +2489,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
       bool ok = TRI_RenameDatafile(journal, filename);
 
       if (!ok) {
-        LOG(ERROR) << "failed to rename journal '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
+        LOG(ERR) << "failed to rename journal '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
         TRI_CloseDatafile(journal);
         TRI_UnlinkFile(journal->getName(journal));
@@ -2578,7 +2582,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
     std::string tmp = iis.copyString();
     iid = static_cast<TRI_idx_iid_t>(TRI_UInt64String(tmp.c_str()));
   } else {
-    LOG(ERROR) << "ignoring index, index identifier could not be located";
+    LOG(ERR) << "ignoring index, index identifier could not be located";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -2625,12 +2629,12 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   // ...........................................................................
   if (typeStr == "edge") {
     // we should never get here, as users cannot create their own edge indexes
-    LOG(ERROR) << "logic error. there should never be a JSON file describing an edges index";
+    LOG(ERR) << "logic error. there should never be a JSON file describing an edges index";
     return TRI_ERROR_INTERNAL;
   }
 
   // default:
-  LOG(WARNING) << "index type '" << typeStr.c_str() << "' is not supported in this version of ArangoDB and is ignored";
+  LOG(WARN) << "index type '" << typeStr.c_str() << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2674,7 +2678,7 @@ int TRI_RollbackOperationDocumentCollection(
       res = InsertSecondaryIndexes(trx, document, header, true);
       document->_numberDocuments++;
     } else {
-      LOG(ERROR) << "error rolling back remove operation";
+      LOG(ERR) << "error rolling back remove operation";
     }
     return res;
   }
@@ -2711,7 +2715,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
   int res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "failed to seal datafile '" << journal->getName(journal) << "': " << TRI_last_error();
+    LOG(ERR) << "failed to seal datafile '" << journal->getName(journal) << "': " << TRI_last_error();
 
     if (!isCompactor) {
       TRI_RemoveVectorPointer(vector, position);
@@ -2733,7 +2737,7 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
     bool ok = TRI_RenameDatafile(journal, filename);
 
     if (!ok) {
-      LOG(ERROR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
+      LOG(ERR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
       TRI_RemoveVectorPointer(vector, position);
       TRI_PushBackVectorPointer(&document->_datafiles, journal);
@@ -2930,7 +2934,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
 
   if (collection == nullptr) {
     delete document;
-    LOG(ERROR) << "cannot open document collection from path '" << path << "'";
+    LOG(ERR) << "cannot open document collection from path '" << path << "'";
 
     return nullptr;
   }
@@ -2941,7 +2945,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   if (false == InitDocumentCollection(document, shaper)) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    LOG(ERROR) << "cannot initialize document collection";
+    LOG(ERR) << "cannot initialize document collection";
 
     return nullptr;
   }
@@ -2990,7 +2994,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
       TRI_CloseCollection(collection);
       TRI_FreeCollection(collection);
 
-      LOG(ERROR) << "cannot iterate data of document collection";
+      LOG(ERR) << "cannot iterate data of document collection";
       TRI_set_errno(res);
 
       return nullptr;
@@ -3055,13 +3059,13 @@ typedef struct pid_name_s {
 static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
   VPackSlice fld = slice.get("fields");
   if (!fld.isArray()) {
-    LOG(ERROR) << "ignoring index " << iid << ", 'fields' must be an array";
+    LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
   for (auto const& sub : VPackArrayIterator(fld)) {
     if (!sub.isString()) {
-      LOG(ERROR) << "ignoring index " << iid << ", 'fields' must be an array of attribute paths";
+      LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array of attribute paths";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -3378,7 +3382,7 @@ static int PathBasedIndexFromVelocyPack(
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG(ERROR) << "ignoring index " << iid << ", need at least one attribute path";
+    LOG(ERR) << "ignoring index " << iid << ", need at least one attribute path";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3387,7 +3391,7 @@ static int PathBasedIndexFromVelocyPack(
   VPackSlice bv = definition.get("unique");
 
   if (!bv.isBoolean()) {
-    LOG(ERROR) << "ignoring index " << iid << ", could not determine if unique or non-unique";
+    LOG(ERR) << "ignoring index " << iid << ", could not determine if unique or non-unique";
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -3434,7 +3438,7 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   if (idx == nullptr) {
-    LOG(ERROR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
+    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
     return TRI_errno();
   }
 
@@ -3477,11 +3481,11 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
   try {
     builder = idx->toVelocyPack(false);
   } catch (...) {
-    LOG(ERROR) << "cannot save index definition.";
+    LOG(ERR) << "cannot save index definition.";
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
   if (builder == nullptr) {
-    LOG(ERROR) << "cannot save index definition.";
+    LOG(ERR) << "cannot save index definition.";
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -3503,7 +3507,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (!ok) {
-    LOG(ERROR) << "cannot save index definition: " << TRI_last_error();
+    LOG(ERR) << "cannot save index definition: " << TRI_last_error();
 
     return TRI_errno();
   }
@@ -3609,7 +3613,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
         res = TRI_ERROR_INTERNAL;
       }
 
-      LOG(WARNING) << "could not save index drop marker in log: " << TRI_errno_string(res);
+      LOG(WARN) << "could not save index drop marker in log: " << TRI_errno_string(res);
     }
 
     // TODO: what to do here?
@@ -3788,7 +3792,7 @@ static int CapConstraintFromVelocyPack(arangodb::Transaction* trx,
   VPackSlice val2 = definition.get("byteSize");
 
   if (!val1.isNumber() && !val2.isNumber()) {
-    LOG(ERROR) << "ignoring cap constraint " << iid << ", 'size' and 'byteSize' missing";
+    LOG(ERR) << "ignoring cap constraint " << iid << ", 'size' and 'byteSize' missing";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3821,7 +3825,7 @@ static int CapConstraintFromVelocyPack(arangodb::Transaction* trx,
   }
 
   if (count == 0 && size == 0) {
-    LOG(ERROR) << "ignoring cap constraint " << iid << ", 'size' must be at least 1, or 'byteSize' must be at least " << arangodb::CapConstraint::MinSize;
+    LOG(ERR) << "ignoring cap constraint " << iid << ", 'size' must be at least 1, or 'byteSize' must be at least " << arangodb::CapConstraint::MinSize;
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -4048,7 +4052,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERROR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 1 entries";
+      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 1 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4072,7 +4076,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERROR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 2 entries";
+      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 2 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4582,7 +4586,7 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
 
   // extract the list of fields
   if (fieldCount != 1) {
-    LOG(ERROR) << "ignoring index " << iid << ", has an invalid number of attributes";
+    LOG(ERR) << "ignoring index " << iid << ", has an invalid number of attributes";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -4617,7 +4621,7 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
   }
 
   if (idx == nullptr) {
-    LOG(ERROR) << "cannot create fulltext index " << iid;
+    LOG(ERR) << "cannot create fulltext index " << iid;
     return TRI_errno();
   }
 

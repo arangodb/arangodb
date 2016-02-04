@@ -91,7 +91,7 @@ void socketCallback(struct ev_loop*, ev_io* w, int revents) {
     // note: task may have been destroyed by here, so it's not safe to access it
     // anymore
   } else {
-    LOG(WARNING) << "socketCallback called for unknown task";
+    LOG(WARN) << "socketCallback called for unknown task";
     // TODO: given that the task is unknown, is it safe to stop to I/O here?
     // ev_io_stop(watcher->loop, w);
   }

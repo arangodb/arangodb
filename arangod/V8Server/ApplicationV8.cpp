@@ -203,7 +203,8 @@ void ApplicationV8::V8Context::handleGlobalContextMethods() {
     // all functions are hard-coded, static const char*s
     TRI_ASSERT(func != nullptr);
 
-    LOG(DEBUG) << "executing global context method '" << func << "' for context " << _id;
+    LOG(DEBUG) << "executing global context method '" << func
+               << "' for context " << _id;
 
     TRI_GET_GLOBALS();
     bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -508,10 +509,12 @@ void ApplicationV8::exitContext(V8Context* context) {
 
   // postpone garbage collection for standard contexts
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
-    LOG(TRACE) << "V8 context has reached GC timeout threshold and will be scheduled for GC";
+    LOG(TRACE) << "V8 context has reached GC timeout threshold and will be "
+                  "scheduled for GC";
     performGarbageCollection = true;
   } else if (context->_numExecutions >= _gcInterval) {
-    LOG(TRACE) << "V8 context has reached maximum number of requests and will be scheduled for GC";
+    LOG(TRACE) << "V8 context has reached maximum number of requests and will "
+                  "be scheduled for GC";
     performGarbageCollection = true;
   }
 
@@ -630,7 +633,10 @@ void ApplicationV8::collectGarbage() {
     if (context != nullptr) {
       arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->_id);
 
-      LOG(TRACE) << "collecting V8 garbage in context #" << context->_id << ", numExecutions: " << context->_numExecutions << ", hasActive: " << context->_hasActiveExternals << ", wasDirty: " << wasDirty;
+      LOG(TRACE) << "collecting V8 garbage in context #" << context->_id
+                 << ", numExecutions: " << context->_numExecutions
+                 << ", hasActive: " << context->_hasActiveExternals
+                 << ", wasDirty: " << wasDirty;
       bool hasActiveExternals = false;
       auto isolate = context->isolate;
       TRI_ASSERT(context->_locker == nullptr);
@@ -735,12 +741,19 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
                   TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
             localContext->Exit();
             if (perform) {
-              LOG(FATAL) << "Database '" << vocbase->_name << "' upgrade failed. Please inspect the logs from the upgrade procedure"; FATAL_ERROR_EXIT();
+              LOG(FATAL) << "Database '" << vocbase->_name
+                         << "' upgrade failed. Please inspect the logs from "
+                            "the upgrade procedure";
+              FATAL_ERROR_EXIT();
             } else {
-              LOG(FATAL) << "Database '" << vocbase->_name << "' needs upgrade. Please start the server with the --upgrade option"; FATAL_ERROR_EXIT();
+              LOG(FATAL) << "Database '" << vocbase->_name
+                         << "' needs upgrade. Please start the server with the "
+                            "--upgrade option";
+              FATAL_ERROR_EXIT();
             }
           } else {
-            LOG(FATAL) << "JavaScript error during server start"; FATAL_ERROR_EXIT();
+            LOG(FATAL) << "JavaScript error during server start";
+            FATAL_ERROR_EXIT();
           }
 
           LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
@@ -779,7 +792,7 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
       res |= TRI_JoinThread(&vocbase->_cleanup);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERROR) << "unable to join database threads for database '" << vocbase->_name << "'";
+        LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
       }
     }
 
@@ -829,7 +842,9 @@ void ApplicationV8::versionCheck() {
           TRI_CheckDatabaseVersion(vocbase, &_startupLoader, localContext);
 
       if (status < 0) {
-        LOG(FATAL) << "Database version check failed for '" << vocbase->_name << "'. Please inspect the logs from any errors"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "Database version check failed for '" << vocbase->_name
+                   << "'. Please inspect the logs from any errors";
+        FATAL_ERROR_EXIT();
       } else if (status == 3) {
         result = 3;
       } else if (status == 2 && result == 1) {
@@ -861,7 +876,7 @@ void ApplicationV8::versionCheck() {
     res |= TRI_JoinThread(&vocbase->_cleanup);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERROR) << "unable to join database threads for database '" << vocbase->_name << "'";
+      LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
     }
   }
 
@@ -891,8 +906,7 @@ void ApplicationV8::setupOptions(
       "JavaScript request-based garbage collection interval (each x requests)")(
       "javascript.gc-frequency", &_gcFrequency,
       "JavaScript time-based garbage collection frequency (each x seconds)")(
-      "javascript.app-path", &_appPath,
-      "directory for Foxx applications")(
+      "javascript.app-path", &_appPath, "directory for Foxx applications")(
       "javascript.startup-directory", &_startupPath,
       "path to the directory containing JavaScript startup scripts")(
       "javascript.v8-options", &_v8Options, "options to pass to v8");
@@ -916,7 +930,9 @@ void ApplicationV8::setupOptions(
 bool ApplicationV8::prepare() {
   // check the startup path
   if (_startupPath.empty()) {
-    LOG(FATAL) << "no 'javascript.startup-directory' has been supplied, giving up"; FATAL_ERROR_EXIT();
+    LOG(FATAL)
+        << "no 'javascript.startup-directory' has been supplied, giving up";
+    FATAL_ERROR_EXIT();
   }
 
   // remove trailing / from path
@@ -941,7 +957,8 @@ bool ApplicationV8::prepare() {
 
   // check whether app-path was specified
   if (_appPath.empty()) {
-    LOG(FATAL) << "no value has been specified for --javascript.app-path."; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "no value has been specified for --javascript.app-path.";
+    FATAL_ERROR_EXIT();
   }
 
   _startupLoader.setDirectory(_startupPath);
@@ -980,7 +997,7 @@ bool ApplicationV8::prepare2() {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context* [nrInstances];
+    _contexts = new V8Context*[nrInstances];
   }
 
   std::vector<std::thread> threads;
@@ -1023,7 +1040,8 @@ void ApplicationV8::close() {
       break;
     }
 
-    LOG(DEBUG) << "waiting for " << _busyContexts.size() << " busy V8 contexts to finish";
+    LOG(DEBUG) << "waiting for " << _busyContexts.size()
+               << " busy V8 contexts to finish";
 
     guard.wait(100000);
   }
@@ -1035,7 +1053,7 @@ void ApplicationV8::stop() {
     CONDITION_LOCKER(guard, _contextCondition);
 
     for (auto& it : _busyContexts) {
-      LOG(WARNING) << "sending termination signal to V8 context";
+      LOG(WARN) << "sending termination signal to V8 context";
       v8::V8::TerminateExecution(it->isolate);
     }
   }
@@ -1082,6 +1100,7 @@ void ApplicationV8::stop() {
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
 
+  TRI_ASSERT(_platform != nullptr);
   delete _platform;
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
@@ -1170,7 +1189,8 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   V8Context* context = _contexts[i] = new V8Context();
 
   if (context == nullptr) {
-    LOG(FATAL) << "cannot initialize V8 context #" << i; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "cannot initialize V8 context #" << i;
+    FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(context->_locker == nullptr);
@@ -1199,7 +1219,8 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     context->_context.Reset(context->isolate, localContext);
 
     if (context->_context.IsEmpty()) {
-      LOG(FATAL) << "cannot initialize V8 engine"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot initialize V8 engine";
+      FATAL_ERROR_EXIT();
     }
 
     v8::Handle<v8::Object> globalObj = localContext->Global();
@@ -1239,16 +1260,6 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     {
       v8::HandleScope scope(isolate);
 
-      char const* logfile = TRI_GetFilenameLogging();
-      if (logfile != nullptr) {
-        TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                     TRI_V8_ASCII_STRING("LOGFILE_PATH"),
-                                     TRI_V8_STRING(logfile));
-      } else {
-        TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                     TRI_V8_ASCII_STRING("LOGFILE_PATH"),
-                                     v8::Null(isolate));
-      }
       TRI_AddGlobalVariableVocbase(isolate, localContext,
                                    TRI_V8_ASCII_STRING("APP_PATH"),
                                    TRI_V8_STD_STRING(_appPath));
@@ -1276,13 +1287,17 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
     for (auto& file : files) {
       switch (_startupLoader.loadScript(isolate, localContext, file)) {
         case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << file.c_str() << "'";
+          LOG(TRACE) << "loaded JavaScript file '" << file << "'";
           break;
         case JSLoader::eFailLoad:
-          LOG(FATAL) << "cannot load JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "cannot load JavaScript file '" << file
+                     << "'";
+          FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
-          LOG(FATAL) << "error during execution of JavaScript file '" << file.c_str() << "'"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "error during execution of JavaScript file '"
+                     << file << "'";
+          FATAL_ERROR_EXIT();
           break;
       }
     }
@@ -1347,10 +1362,15 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
         LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str() << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG(FATAL) << "cannot load JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "cannot load JavaScript utilities from file '"
+                   << startupFile.c_str() << "'";
+        FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG(FATAL) << "error during execution of JavaScript utilities from file '" << startupFile.c_str() << "'"; FATAL_ERROR_EXIT();
+        LOG(FATAL)
+            << "error during execution of JavaScript utilities from file '"
+            << startupFile.c_str() << "'";
+        FATAL_ERROR_EXIT();
         break;
     }
 
@@ -1394,7 +1414,7 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
       while (tries++ < 10 &&
              TRI_RunGarbageCollectionV8(isolate, availableTime)) {
         if (tries > 3) {
-          LOG(WARNING) << "waiting for garbage v8 collection to end";
+          LOG(WARN) << "waiting for garbage v8 collection to end";
         }
       }
     } else {

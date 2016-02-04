@@ -111,7 +111,7 @@ struct ClusterCommResult {
       : dropped(false),
         invalid(false),
         single(false),
-        answer_code(rest::HttpResponse::OK) {}
+        answer_code(rest::HttpResponse::PROCESSING) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief routine to set the destination

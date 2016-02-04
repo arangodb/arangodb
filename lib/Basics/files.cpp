@@ -898,11 +898,11 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERROR) << "cannot read: " << TRI_LAST_ERROR_STR;
+      LOG(ERR) << "cannot read: " << TRI_LAST_ERROR_STR;
       return false;
     } else if (n == 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERROR) << "cannot read, end-of-file";
+      LOG(ERR) << "cannot read, end-of-file";
       return false;
     }
 
@@ -925,7 +925,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERROR) << "cannot write: " << TRI_LAST_ERROR_STR;
+      LOG(ERR) << "cannot write: " << TRI_LAST_ERROR_STR;
       return false;
     }
 
@@ -1071,7 +1071,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (fd == INVALID_HANDLE_VALUE) {
     TRI_SYSTEM_ERROR();
-    LOG(ERROR) << "cannot create Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot create Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -1082,7 +1082,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r || len != strlen(buf)) {
     TRI_SYSTEM_ERROR();
-    LOG(ERROR) << "cannot write Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot write Lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
@@ -1104,7 +1104,7 @@ int TRI_CreateLockFile(char const* filename) {
 
   if (!r) {
     TRI_SYSTEM_ERROR();
-    LOG(ERROR) << "cannot set Lockfile status '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot set Lockfile status '" << filename << "': " << TRI_GET_ERRORBUF;
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     CloseHandle(fd);
@@ -1286,7 +1286,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
   TRI_CLOSE(fd);
 
-  LOG(WARNING) << "flock on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
+  LOG(WARN) << "flock on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -2247,7 +2247,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
 /// temp path if none is specified
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_GetUserTempPath(void) {
+std::string TRI_GetUserTempPath() {
   if (TempPath.empty()) {
     return TRI_GetTempPath();
   }
@@ -2353,7 +2353,7 @@ size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
 /// @brief initialize the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeFiles(void) {
+void TRI_InitializeFiles() {
   memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 
@@ -2361,4 +2361,4 @@ void TRI_InitializeFiles(void) {
 /// @brief shutdown the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownFiles(void) {}
+void TRI_ShutdownFiles() {}

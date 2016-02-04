@@ -49,7 +49,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
   TRI_shape_t const* shape = shaper->lookupShapeId(accessor->_sid);
 
   if (shape == nullptr) {
-    LOG(ERROR) << "unknown shape id " << accessor->_sid;
+    LOG(ERR) << "unknown shape id " << accessor->_sid;
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
@@ -69,7 +69,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
       shaper->lookupAttributePathByPid(accessor->_pid);
 
   if (path == nullptr) {
-    LOG(ERROR) << "unknown attribute path " << accessor->_pid;
+    LOG(ERR) << "unknown attribute path " << accessor->_pid;
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
@@ -117,7 +117,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
-            LOG(ERROR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
+            LOG(ERR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
 
             TRI_DestroyVectorPointer(&ops);
             return false;
@@ -128,7 +128,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           int res = TRI_ReserveVectorPointer(&ops, 4);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG(ERROR) << "out of memory";
+            LOG(ERR) << "out of memory";
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
@@ -159,7 +159,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           shape = shaper->lookupShapeId(sid);
 
           if (shape == nullptr) {
-            LOG(ERROR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
+            LOG(ERR) << "unknown shape id '" << accessor->_sid << "' for attribute id '" << *paids << "'";
 
             TRI_DestroyVectorPointer(&ops);
             return false;
@@ -170,7 +170,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
           int res = TRI_ReserveVectorPointer(&ops, 3);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG(ERROR) << "out of memory";
+            LOG(ERR) << "out of memory";
             TRI_DestroyVectorPointer(&ops);
             return false;
           }

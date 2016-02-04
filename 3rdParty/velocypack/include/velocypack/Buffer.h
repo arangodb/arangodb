@@ -53,25 +53,35 @@ class Buffer {
     if (that._pos > 0) {
       if (that._pos > sizeof(_local)) {
         _buffer = new T[that._pos];
+        _alloc = that._pos;
+      }
+      else {
+        _alloc = sizeof(_local);
       }
       memcpy(_buffer, that._buffer, checkOverflow(that._pos));
-      _alloc = that._pos;
       _pos = that._pos;
     }
   }
 
   Buffer& operator=(Buffer const& that) {
     if (this != &that) {
-      reset();
-
-      if (that._pos > 0) {
-        if (that._pos > sizeof(_local)) {
-          _buffer = new T[that._pos];
-        }
+      if (that._pos <= _alloc) { 
+        // our own buffer is big enough to hold the data
         memcpy(_buffer, that._buffer, checkOverflow(that._pos));
-        _alloc = that._pos;
-        _pos = that._pos;
       }
+      else {
+        // our own buffer is not big enough to hold the data
+        auto buffer = new T[that._pos];
+        memcpy(buffer, that._buffer, checkOverflow(that._pos));
+
+        if (_buffer != _local) {
+          delete[] _buffer;
+        }
+        _buffer = buffer;
+        _alloc = that.pos;
+      }
+
+      _pos = that._pos;
     }
     return *this;
   }
@@ -79,27 +89,43 @@ class Buffer {
   Buffer(Buffer&& that) : Buffer() {
     if (that._buffer == that._local) {
       memcpy(_buffer, that._buffer, checkOverflow(that._pos));
-      _pos = that._pos;
-      that._pos = 0;
     } else {
       _buffer = that._buffer;
       _alloc = that._alloc;
-      _pos = that._pos;
       that._buffer = that._local;
       that._alloc = sizeof(that._local);
+    }
+    _pos = that._pos;
+    that._pos = 0;
+  }
+
+  Buffer& operator=(Buffer&& that) {
+    if (this != &that) {
+      if (that._buffer == that._local) {
+        memcpy(_buffer, that._buffer, checkOverflow(that._pos));
+      } else {
+        if (_buffer != _local) {
+          delete[] _buffer;
+        }
+        _buffer = that._buffer;
+        _alloc = that._alloc;
+        that._buffer = that._local;
+        that._alloc = sizeof(that._local);
+      }
+      _pos = that._pos;
       that._pos = 0;
     }
+    return *this;
   }
 
   ~Buffer() { clear(); }
 
   inline T* data() { return _buffer; }
-
   inline T const* data() const { return _buffer; }
 
   inline ValueLength size() const { return _pos; }
-
   inline ValueLength length() const { return _pos; }
+  inline ValueLength byteSize() const { return _pos; }
 
   std::string toString() const {
     return std::string(reinterpret_cast<char const*>(_buffer), _pos);

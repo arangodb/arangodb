@@ -22,26 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
 #include <iostream>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/terminal-utils.h"
+#include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1170,7 +1174,7 @@ int main(int argc, char* argv[]) {
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
 
   // .............................................................................
   // set defaults

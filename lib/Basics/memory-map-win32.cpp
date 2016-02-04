@@ -29,6 +29,8 @@
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
+using namespace arangodb;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,9 +54,6 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
   // now - this may change.
   // ...........................................................................
 
-  HANDLE fileHandle;
-  BOOL result;
-
   if (fileDescriptor <
       0) {  // an invalid file descriptor of course means an invalid handle
     return TRI_ERROR_NO_ERROR;
@@ -64,7 +63,7 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
   // Attempt to convert file descriptor into an operating system file handle
   // ...........................................................................
 
-  fileHandle = (HANDLE)_get_osfhandle(fileDescriptor);
+  HANDLE fileHandle = (HANDLE)_get_osfhandle(fileDescriptor);
 
   // ...........................................................................
   // An invalid file system handle was returned.
@@ -74,7 +73,8 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
     return TRI_ERROR_SYS_ERROR;
   }
 
-  result = FlushViewOfFile(startingAddress, numOfBytesToFlush);
+  BOOL result = FlushViewOfFile(startingAddress, numOfBytesToFlush);
+
   if (result && ((flags & MS_SYNC) == MS_SYNC)) {
     result = FlushFileBuffers(fileHandle);
   }
@@ -228,7 +228,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   // The map view of file has failed.
   // ........................................................................
 
-  if (*result == NULL) {
+  if (*result == nullptr) {
     DWORD errorCode = GetLastError();
     CloseHandle(*mmHandle);
     // we have failure for some reason
@@ -241,6 +241,8 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     LOG(DEBUG) << "MapViewOfFile failed with error code = " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
+  
+  LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -253,10 +255,15 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
                  int fileDescriptor, void** mmHandle) {
   // UnmapViewOfFile: If the function succeeds, the return value is nonzero.
   bool ok = (UnmapViewOfFile(memoryAddress) != 0);
+
   ok = (CloseHandle(*mmHandle) && ok);
+
   if (!ok) {
     return TRI_ERROR_SYS_ERROR;
   }
+
+  LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor " << fileDescriptor;
+
   return TRI_ERROR_NO_ERROR;
 }
 

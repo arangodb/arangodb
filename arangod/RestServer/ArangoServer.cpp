@@ -92,7 +92,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
@@ -216,7 +215,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now some handlers which are registered in both /_api and /_admin
   factory->addPrefixHandler(
       "/_api/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -227,7 +226,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
@@ -238,7 +237,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData,
       nullptr);
 
   factory->addHandler("/_admin/work-monitor",
@@ -254,7 +253,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::admin::RestShutdownHandler>::createData<
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createData<
           void*>,
       static_cast<void*>(_applicationServer));
 }
@@ -1168,6 +1167,13 @@ int ArangoServer::startupServer() {
     }
   }
 
+
+  // active deadlock detection in case we're not running in cluster mode
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    TRI_EnableDeadlockDetectionDatabasesServer(_server);
+  }
+
+
   // .............................................................................
   // start the work monitor
   // .............................................................................
@@ -1309,7 +1315,7 @@ void ArangoServer::runStartupChecks() {
     }
 
     if (!alignmentDetected) {
-      LOG(WARNING) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '" << filename.c_str() << "' to 2";
+      LOG(WARN) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '" << filename.c_str() << "' to 2";
     }
   }
 #endif
@@ -1514,13 +1520,13 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             ok = TRI_ObjectToDouble(result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERROR) << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
+          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG(ERROR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+          LOG(ERR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG(ERROR) << "caught unknown exception";
+          LOG(ERR) << "caught unknown exception";
           ok = false;
         }
       }

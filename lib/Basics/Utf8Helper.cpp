@@ -60,7 +60,7 @@ int Utf8Helper::compareUtf8(char const* left, char const* right) const {
   TRI_ASSERT(right != nullptr);
 
   if (!_coll) {
-    LOG(ERROR) << "no Collator in Utf8Helper::compareUtf8()!";
+    LOG(ERR) << "no Collator in Utf8Helper::compareUtf8()!";
     return (strcmp(left, right));
   }
 
@@ -68,7 +68,7 @@ int Utf8Helper::compareUtf8(char const* left, char const* right) const {
   int result =
       _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
     return (strcmp(left, right));
   }
 
@@ -81,7 +81,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   TRI_ASSERT(right != nullptr);
 
   if (!_coll) {
-    LOG(ERROR) << "no Collator in Utf8Helper::compareUtf8()!";
+    LOG(ERR) << "no Collator in Utf8Helper::compareUtf8()!";
     return (strcmp(left, right));
   }
 
@@ -90,7 +90,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
       _coll->compareUTF8(StringPiece(left, (int32_t)leftLength),
                          StringPiece(right, (int32_t)rightLength), status);
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::compareUTF8(...): " << u_errorName(status);
     return (strcmp(left, right));
   }
 
@@ -103,7 +103,7 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
   TRI_ASSERT(right != nullptr);
 
   if (!_coll) {
-    LOG(ERROR) << "no Collator in Utf8Helper::compareUtf16()!";
+    LOG(ERR) << "no Collator in Utf8Helper::compareUtf16()!";
 
     if (leftLength == rightLength) {
       return memcmp((const void*)left, (const void*)right, leftLength * 2);
@@ -143,7 +143,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang) {
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG(ERROR) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
     if (lang == locale.getName()) {
@@ -161,7 +161,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang) {
   }
 
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in Collator::createInstance(): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::createInstance(): " << u_errorName(status);
     if (coll) {
       delete coll;
     }
@@ -177,7 +177,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang) {
       status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in Collator::setAttribute(...): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::setAttribute(...): " << u_errorName(status);
     delete coll;
     return false;
   }
@@ -197,7 +197,7 @@ std::string Utf8Helper::getCollatorLanguage() {
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG(ERROR) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
     return locale.getLanguage();
@@ -212,7 +212,7 @@ std::string Utf8Helper::getCollatorCountry() {
     const Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
-      LOG(ERROR) << "error in Collator::getLocale(...): " << u_errorName(status);
+      LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
       return "";
     }
     return locale.getCountry();
@@ -262,7 +262,7 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in ucasemap_open(...): " << u_errorName(status);
+    LOG(ERR) << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest =
         (char*)TRI_Allocate(zone, (srcLength + 1) * sizeof(char), false);
@@ -287,7 +287,7 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
     }
 
     if (U_FAILURE(status)) {
-      LOG(ERROR) << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
+      LOG(ERR) << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
       TRI_Free(zone, utf8_dest);
     } else {
       return utf8_dest;
@@ -343,7 +343,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
-    LOG(ERROR) << "error in ucasemap_open(...): " << u_errorName(status);
+    LOG(ERR) << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest =
         (char*)TRI_Allocate(zone, (srcLength + 1) * sizeof(char), false);
@@ -368,7 +368,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
     }
 
     if (U_FAILURE(status)) {
-      LOG(ERROR) << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
+      LOG(ERR) << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
       TRI_Free(zone, utf8_dest);
     } else {
       return utf8_dest;
@@ -441,7 +441,7 @@ TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
 
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    LOG(ERROR) << "error in Collator::getLocale(...): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
     return nullptr;
   }
 
@@ -573,7 +573,7 @@ bool Utf8Helper::getWords(TRI_vector_string_t*& words, char const* text,
 
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    LOG(ERROR) << "error in Collator::getLocale(...): " << u_errorName(status);
+    LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
     return false;
   }
 

@@ -35,7 +35,7 @@ namespace basics {
 template <typename T>
 class DeadlockDetector {
  public:
-  DeadlockDetector() = default;
+  explicit DeadlockDetector(bool enabled) : _enabled(enabled) {};
   ~DeadlockDetector() = default;
 
   DeadlockDetector(DeadlockDetector const&) = delete;
@@ -105,12 +105,34 @@ class DeadlockDetector {
 
   void unsetWriter(T const* value) { unsetActive(value, true); }
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enable / disable
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void enabled(bool value) {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    _enabled = value;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the enabled status
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool enabled() {
+    MUTEX_LOCKER(mutexLocker, _lock);
+    return _enabled;
+  }
+
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add a thread to the list of blocked threads
   ////////////////////////////////////////////////////////////////////////////////
 
   int detectDeadlock(T const* value, TRI_tid_t tid, bool isWrite) const {
+    if (!_enabled) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
     struct StackValue {
       StackValue(T const* value, TRI_tid_t tid, bool isWrite)
           : value(value), tid(tid), isWrite(isWrite) {}
@@ -189,6 +211,10 @@ class DeadlockDetector {
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
+    if (!_enabled) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
     auto it = _blocked.find(tid);
 
     if (it != _blocked.end()) {
@@ -223,6 +249,10 @@ class DeadlockDetector {
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
+    if (!_enabled) {
+      return;
+    }
+
     _blocked.erase(tid);
   }
 
@@ -234,6 +264,11 @@ class DeadlockDetector {
     auto tid = TRI_CurrentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (!_enabled) {
+      return;
+    }
+
     auto it = _active.find(value);
 
     if (it == _active.end()) {
@@ -266,6 +301,11 @@ class DeadlockDetector {
     auto tid = TRI_CurrentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (!_enabled) {
+      return;
+    }
+
     auto it = _active.find(value);
 
     if (it == _active.end()) {
@@ -275,8 +315,13 @@ class DeadlockDetector {
       TRI_ASSERT(!(*it).second.first.empty());
       TRI_ASSERT(!(*it).second.second);
       TRI_ASSERT(!isWrite);
-      auto result = (*it).second.first.emplace(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      auto result =
+#endif
+        (*it).second.first.emplace(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(result.second);
+#endif
     }
 
     if (wasBlockedBefore) {
@@ -303,6 +348,12 @@ class DeadlockDetector {
 
   std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>>
       _active;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the detector is enabled
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _enabled;
 };
 
 }  // namespace arangodb::basics

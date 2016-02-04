@@ -157,9 +157,9 @@ void Ditches::destroy() {
         type == Ditch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == Ditch::TRI_DITCH_DOCUMENT) {
-      LOG(ERROR) << "logic error. shouldn't have document ditches on unload";
+      LOG(ERR) << "logic error. shouldn't have document ditches on unload";
     } else {
-      LOG(ERROR) << "unknown ditch type";
+      LOG(ERR) << "unknown ditch type";
     }
 
     ptr = next;

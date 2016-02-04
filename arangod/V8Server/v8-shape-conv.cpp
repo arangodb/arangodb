@@ -405,7 +405,10 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values; p < e; ++p) {
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
   }
@@ -490,7 +493,10 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
 
@@ -537,7 +543,10 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) { 
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
 
@@ -759,7 +768,10 @@ static int FillShapeValueArray(v8::Isolate* isolate, VocShaper* shaper,
     *aids++ = p->_aid;
     *sids++ = p->_sid;
 
-    memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+    TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+    if (p->_value != nullptr) {
+      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+    }
     ptr += p->_size;
 
     dst->_fixedSized &= p->_fixedSized;
@@ -1030,7 +1042,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1038,7 +1050,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1063,7 +1075,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1071,7 +1083,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1140,7 +1152,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1148,7 +1160,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1173,7 +1185,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1181,7 +1193,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray(v8::Isolate* isolate,
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG(WARNING) << "cannot find attribute #" << (unsigned int)aid;
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1240,7 +1252,7 @@ static v8::Handle<v8::Value> JsonShapeDataList(v8::Isolate* isolate,
     }
 
     if (subshape == nullptr) {
-      LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1282,7 +1294,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList(
   subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+    LOG(WARN) << "cannot find shape #" << sid;
     return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 
@@ -1331,7 +1343,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList(
   subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG(WARNING) << "cannot find shape #" << (unsigned int)sid;
+    LOG(WARN) << "cannot find shape #" << sid;
     return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 

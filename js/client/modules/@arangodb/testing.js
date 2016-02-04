@@ -717,8 +717,8 @@ function runStressTest(options, command, testname) {
   const concurrency = options.concurrency;
 
   let extra = {
-    "javascript.v8-contexts": concurrency + 1,
-    "server.threads": concurrency + 1
+    "javascript.v8-contexts": concurrency + 2,
+    "server.threads": concurrency + 2
   };
 
   let instanceInfo = startInstance("tcp", options, extra, testname);
@@ -757,7 +757,7 @@ function runStressTest(options, command, testname) {
   const id = reply.headers["x-arango-async-id"];
 
   const checkOpts = makeAuthorizationHeaders(options);
-  checkOpts.method = "GET";
+  checkOpts.method = "PUT";
   checkOpts.returnBodyOnError = true;
 
   while (true) {
@@ -778,12 +778,13 @@ function runStressTest(options, command, testname) {
       }
     }
 
-    print("cannot check job: (" + check.code + ") " + check.message);
+    print(yaml.safeDump(check));
+
     shutdownInstance(instanceInfo, options);
 
     return {
       status: false,
-      message: reply.hasOwnProperty('body') ? reply.body : yaml.safeDump(reply)
+      message: check.hasOwnProperty('body') ? check.body : yaml.safeDump(check)
     };
   }
 
@@ -1003,8 +1004,6 @@ function shutdownInstance(instanceInfo, options) {
   }
 
   if (options.cluster) {
-    killExternal(instanceInfo.dispatcherPid);
-
     let rc = instanceInfo.kickstarter.shutdown();
 
     if (!options.skipLogAnalysis) {
@@ -1024,17 +1023,20 @@ function shutdownInstance(instanceInfo, options) {
               if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
                 (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
                 print("Server " + serverState + " shut down with:\n" +
-                  yaml.safeDump(rc.results[i].serverStates[serverState]) +
-                  " marking run as crashy.");
-                print("marking crashy");
+                      yaml.safeDump(rc.results[i].serverStates[serverState]));
 
-                serverCrashed = true;
+                if (!serverCrashed) {
+                  print("marking run as crashy");
+                  serverCrashed = true;
+                }
               }
             }
           }
         }
       }
     }
+
+    killExternal(instanceInfo.dispatcherPid);
   }
 
   // single server
@@ -2330,7 +2332,7 @@ testFuncs.dump = function(options) {
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options)) {
-        print(Date() + ": Dump and Restore - dump 2");
+        print(Date() + ": Dump and Restore - dump after restore");
 
         results.test = runInArangosh(options, instanceInfo,
           makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
@@ -2889,18 +2891,14 @@ testFuncs.stress_crud = function(options) {
   const concurrency = options.concurrency;
 
   const command = `
-    try {
-      const stressCrud = require("./js/server/tests/stress/crud");
+    const stressCrud = require("./js/server/tests/stress/crud");
 
-      stressCrud.createDeleteUpdateParallel({
-        concurrency: ${concurrency},
-        duration: ${duration},
-        gnuplot: true,
-        pauseFor: 60
-      });
-    } catch (err) {
-      require("internal").print(err);
-    }
+    stressCrud.createDeleteUpdateParallel({
+      concurrency: ${concurrency},
+      duration: ${duration},
+      gnuplot: true,
+      pauseFor: 60
+    });
 `;
 
   return runStressTest(options, command, "stress_crud");
@@ -2916,17 +2914,13 @@ testFuncs.stress_locks = function(options) {
   const concurrency = options.concurrency;
 
   const command = `
-    try {
-      const deadlock = require("./js/server/tests/stress/deadlock");
+    const deadlock = require("./js/server/tests/stress/deadlock");
 
-      deadlock.lockCycleParallel({
-        concurrency: ${concurrency},
-        duration: ${duration},
-        gnuplot: true
-      });
-    } catch (err) {
-      require("internal").print(err);
-    }
+    deadlock.lockCycleParallel({
+      concurrency: ${concurrency},
+      duration: ${duration},
+      gnuplot: true
+    });
 `;
 
   return runStressTest(options, command, "stress_lock");

@@ -441,9 +441,9 @@ void CollectorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG(ERROR) << "got unexpected error in collectorThread::run: " << TRI_errno_string(res);
+      LOG(ERR) << "got unexpected error in collectorThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG(ERROR) << "got unspecific error in collectorThread::run";
+      LOG(ERR) << "got unspecific error in collectorThread::run";
     }
 
     uint64_t interval = Interval;
@@ -618,7 +618,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
         LOG(TRACE) << "removing queued operations for already deleted collection";
         res = TRI_ERROR_NO_ERROR;
       } else {
-        LOG(WARNING) << "got unexpected error code while applying queued operations: " << TRI_errno_string(res);
+        LOG(WARN) << "got unexpected error code while applying queued operations: " << TRI_errno_string(res);
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
@@ -997,7 +997,7 @@ int CollectorThread::collect(Logfile* logfile) {
           // prevents the log message from being shown over and over again in
           // case the
           // file system is full
-          LOG(WARNING) << "got unexpected error in CollectorThread::collect: " << TRI_errno_string(res);
+          LOG(WARN) << "got unexpected error in CollectorThread::collect: " << TRI_errno_string(res);
         }
         // abort early
         return res;
@@ -1348,7 +1348,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
       (_numPendingOperations + numOperations) >= maxNumPendingOperations) {
     // activate write-throttling!
     _logfileManager->activateWriteThrottling();
-    LOG(WARNING) << "queued more than " << maxNumPendingOperations << " pending WAL collector operations. now activating write-throttling";
+    LOG(WARN) << "queued more than " << maxNumPendingOperations << " pending WAL collector operations. now activating write-throttling";
   }
 
   _numPendingOperations += numOperations;
@@ -1425,7 +1425,7 @@ int CollectorThread::syncDatafileCollection(
           res = TRI_ERROR_INTERNAL;
         }
 
-        LOG(ERROR) << "msync failed with: " << TRI_last_error();
+        LOG(ERR) << "msync failed with: " << TRI_last_error();
         datafile->_state = TRI_DF_STATE_WRITE_ERROR;
         break;
       }
@@ -1483,7 +1483,7 @@ char* CollectorThread::nextFreeMarkerPosition(
 
       if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
         // some other error
-        LOG(ERROR) << "cannot select journal: '" << TRI_last_error() << "'";
+        LOG(ERR) << "cannot select journal: '" << TRI_last_error() << "'";
         goto leave;
       }
 

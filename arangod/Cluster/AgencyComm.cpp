@@ -1771,7 +1771,7 @@ bool AgencyComm::sendWithFailover(
           }
         }
 
-        LOG(ERROR) << "found redirection to unknown endpoint '" << endpoint.c_str() << "'. Will not follow!";
+        LOG(ERR) << "found redirection to unknown endpoint '" << endpoint.c_str() << "'. Will not follow!";
 
         // this is an error
         return false;

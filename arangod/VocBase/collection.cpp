@@ -170,7 +170,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
               "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*"
               ")\\.(db|json)(\\.dead)?$",
               REG_EXTENDED) != 0) {
-    LOG(ERROR) << "unable to compile regular expression";
+    LOG(ERR) << "unable to compile regular expression";
 
     return structure;
   }
@@ -256,7 +256,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
             // the datafile
             TRI_UnlinkFile(filename.c_str());
 
-            LOG(WARNING) << "removing left-over compaction file '" << filename.c_str() << "'";
+            LOG(WARN) << "removing left-over compaction file '" << filename.c_str() << "'";
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
             continue;
@@ -270,7 +270,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
             res = TRI_RenameFile(filename.c_str(), newName);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG(ERROR) << "unable to rename compaction file '" << filename.c_str() << "'";
+              LOG(ERR) << "unable to rename compaction file '" << filename.c_str() << "'";
 
               TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
 
@@ -283,16 +283,16 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
 
         // temporary file, we can delete it!
         else if (TRI_EqualString("temp", first, firstLen)) {
-          LOG(WARNING) << "found temporary file '" << filename.c_str() << "', which is probably a left-over. deleting it";
+          LOG(WARN) << "found temporary file '" << filename.c_str() << "', which is probably a left-over. deleting it";
           TRI_UnlinkFile(filename.c_str());
         }
 
         // ups, what kind of file is that
         else {
-          LOG(ERROR) << "unknown datafile type '" << file.c_str() << "'";
+          LOG(ERR) << "unknown datafile type '" << file.c_str() << "'";
         }
       } else {
-        LOG(ERROR) << "unknown datafile type '" << file.c_str() << "'";
+        LOG(ERR) << "unknown datafile type '" << file.c_str() << "'";
       }
     }
   }
@@ -327,7 +327,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
               "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*"
               ")\\.(db|json)(\\.dead)?$",
               REG_EXTENDED) != 0) {
-    LOG(ERROR) << "unable to compile regular expression";
+    LOG(ERR) << "unable to compile regular expression";
 
     return false;
   }
@@ -406,7 +406,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
           if (TRI_ExistsFile(newName)) {
             // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
             // the datafile
-            LOG(WARNING) << "removing unfinished compaction file '" << filename << "'";
+            LOG(WARN) << "removing unfinished compaction file '" << filename << "'";
             TRI_UnlinkFile(filename);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
@@ -418,7 +418,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
             res = TRI_RenameFile(filename, newName);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG(ERROR) << "unable to rename compaction file '" << filename << "' to '" << newName << "'";
+              LOG(ERR) << "unable to rename compaction file '" << filename << "' to '" << newName << "'";
               TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
               TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
               stop = true;
@@ -438,7 +438,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
 
         if (datafile == nullptr) {
           collection->_lastError = TRI_errno();
-          LOG(ERROR) << "cannot open datafile '" << filename << "': " << TRI_last_error();
+          LOG(ERR) << "cannot open datafile '" << filename << "': " << TRI_last_error();
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
@@ -454,7 +454,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         cm = (TRI_col_header_marker_t*)ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
-          LOG(ERROR) << "collection header mismatch in file '" << filename << "', expected TRI_COL_MARKER_HEADER, found " << cm->base._type;
+          LOG(ERR) << "collection header mismatch in file '" << filename << "', expected TRI_COL_MARKER_HEADER, found " << cm->base._type;
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
@@ -462,7 +462,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         if (cm->_cid != collection->_info.id()) {
-          LOG(ERROR) << "collection identifier mismatch, expected " << collection->_info.id() << ", found " << cm->_cid;
+          LOG(ERR) << "collection identifier mismatch, expected " << collection->_info.id() << ", found " << cm->_cid;
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           stop = true;
@@ -473,7 +473,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         if (TRI_EqualString("journal", first, firstLen)) {
           if (datafile->_isSealed) {
             if (datafile->_state != TRI_DF_STATE_READ) {
-              LOG(WARNING) << "strange, journal '" << filename << "' is already sealed; must be a left over; will use it as datafile";
+              LOG(WARN) << "strange, journal '" << filename << "' is already sealed; must be a left over; will use it as datafile";
             }
 
             TRI_PushBackVectorPointer(&sealed, datafile);
@@ -491,7 +491,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         else if (TRI_EqualString("datafile", first, firstLen) ||
                  TRI_EqualString("compaction", first, firstLen)) {
           if (!datafile->_isSealed) {
-            LOG(ERROR) << "datafile '" << filename << "' is not sealed, this should never happen";
+            LOG(ERR) << "datafile '" << filename << "' is not sealed, this should never happen";
 
             collection->_lastError =
                 TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
@@ -504,12 +504,12 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
         }
 
         else {
-          LOG(ERROR) << "unknown datafile '" << file.c_str() << "'";
+          LOG(ERR) << "unknown datafile '" << file.c_str() << "'";
         }
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       } else {
-        LOG(ERROR) << "unknown datafile '" << file.c_str() << "'";
+        LOG(ERR) << "unknown datafile '" << file.c_str() << "'";
       }
     }
   }
@@ -544,7 +544,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       } else {
         collection->_lastError = datafile->_lastError;
         stop = true;
-        LOG(ERROR) << "cannot rename sealed log-file to " << filename << ", this should not happen: " << TRI_last_error();
+        LOG(ERR) << "cannot rename sealed log-file to " << filename << ", this should not happen: " << TRI_last_error();
         break;
       }
 
@@ -718,7 +718,7 @@ TRI_collection_t* TRI_CreateCollection(
       parameters.maximalSize()) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
-    LOG(ERROR) << "cannot create datafile '" << parameters.namec_str() << "' in '" << path << "', maximal size '" << (unsigned int)parameters.maximalSize() << "' is too small";
+    LOG(ERR) << "cannot create datafile '" << parameters.namec_str() << "' in '" << path << "', maximal size '" << (unsigned int)parameters.maximalSize() << "' is too small";
 
     return nullptr;
   }
@@ -726,7 +726,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (!TRI_IsDirectory(path)) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG(ERROR) << "cannot create collection '" << path << "', path is not a directory";
+    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
 
     return nullptr;
   }
@@ -738,7 +738,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (TRI_ExistsFile(dirname.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG(ERROR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << dirname.c_str() << "': directory already exists";
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << dirname.c_str() << "': directory already exists";
 
     return nullptr;
   }
@@ -754,7 +754,7 @@ TRI_collection_t* TRI_CreateCollection(
   int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
 
     return nullptr;
   }
@@ -772,7 +772,7 @@ TRI_collection_t* TRI_CreateCollection(
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
     TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
@@ -785,7 +785,7 @@ TRI_collection_t* TRI_CreateCollection(
   res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERROR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str() << "' in directory '" << path << "': " << TRI_errno_string(res) << " - " << systemError << " - " << errorMessage.c_str();
     TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
@@ -805,7 +805,7 @@ TRI_collection_t* TRI_CreateCollection(
     }
 
     if (collection == nullptr) {
-      LOG(ERROR) << "cannot create collection '" << path << "': out of memory";
+      LOG(ERR) << "cannot create collection '" << path << "': out of memory";
 
       return nullptr;
     }
@@ -1080,7 +1080,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
   char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
 
   if (filename == nullptr) {
-    LOG(ERROR) << "cannot load parameter info for collection '" << path << "', out of memory";
+    LOG(ERR) << "cannot load parameter info for collection '" << path << "', out of memory";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -1094,7 +1094,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(filePath);
   VPackSlice slice = content->slice();
   if (!slice.isObject()) {
-    LOG(ERROR) << "cannot open '" << filename << "', collection parameters are not readable";
+    LOG(ERR) << "cannot open '" << filename << "', collection parameters are not readable";
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1124,7 +1124,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
-      LOG(WARNING) << "collection '" << info.namec_str() << "' has an old version and needs to be upgraded.";
+      LOG(WARN) << "collection '" << info.namec_str() << "' has an old version and needs to be upgraded.";
     }
   }
   return info;
@@ -1215,7 +1215,7 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
   if (json == nullptr) {
-    LOG(ERROR) << "cannot save collection properties file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+    LOG(ERR) << "cannot save collection properties file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1226,7 +1226,7 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   int res;
   if (!ok) {
     res = TRI_errno();
-    LOG(ERROR) << "cannot save collection properties file '" << filename << "': " << TRI_last_error();
+    LOG(ERR) << "cannot save collection properties file '" << filename << "': " << TRI_last_error();
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
@@ -1527,7 +1527,7 @@ void TRI_IterateIndexCollection(TRI_collection_t* collection,
     bool ok = iterator(filename, data);
 
     if (!ok) {
-      LOG(ERROR) << "cannot load index '" << filename << "' for collection '" << collection->_info.namec_str() << "'";
+      LOG(ERR) << "cannot load index '" << filename << "' for collection '" << collection->_info.namec_str() << "'";
     }
   }
 }
@@ -1544,7 +1544,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
   if (!TRI_IsDirectory(path)) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG(ERROR) << "cannot open '" << path << "', not a directory or not found";
+    LOG(ERR) << "cannot open '" << path << "', not a directory or not found";
 
     return nullptr;
   }
@@ -1580,7 +1580,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
 
     return collection;
   } catch (...) {
-    LOG(ERROR) << "cannot load collection parameter file '" << path << "': " << TRI_last_error();
+    LOG(ERR) << "cannot load collection parameter file '" << path << "': " << TRI_last_error();
     return nullptr;
   }
 }

@@ -996,7 +996,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               std::string msg("while trying to unregister query ");
               msg += queryId + std::string("from shard: ") + shardId +
                      std::string("communication failed: ") + res->errorMessage;
-              LOG(WARNING) << "" << msg.c_str();
+              LOG(WARN) << "" << msg.c_str();
             }
           } else {
             // Remove query from registry:

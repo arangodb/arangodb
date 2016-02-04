@@ -140,7 +140,7 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG(ERROR) << "unable to create new WAL reserve logfile for sized marker: " << TRI_errno_string(res);
+        LOG(ERR) << "unable to create new WAL reserve logfile for sized marker: " << TRI_errno_string(res);
       } else if (requestedSize > 0 &&
                  _logfileManager->logfileCreationAllowed(requestedSize)) {
         res = createReserveLogfile(requestedSize);
@@ -149,13 +149,13 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG(ERROR) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
+        LOG(ERR) << "unable to create new WAL reserve logfile: " << TRI_errno_string(res);
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG(ERROR) << "got unexpected error in allocatorThread: " << TRI_errno_string(res);
+      LOG(ERR) << "got unexpected error in allocatorThread: " << TRI_errno_string(res);
     } catch (...) {
-      LOG(ERROR) << "got unspecific error in allocatorThread";
+      LOG(ERR) << "got unspecific error in allocatorThread";
     }
 
     // reset allocator status

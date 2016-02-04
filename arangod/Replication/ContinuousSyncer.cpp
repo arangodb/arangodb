@@ -143,7 +143,7 @@ retry:
         (_masterInfo._majorVersion > 2 ||
          (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion >= 7));
     if (_requireFromPresent && !_masterIs27OrHigher) {
-      LOG(WARNING) << "requireFromPresent feature is not supported on master server < ArangoDB 2.7";
+      LOG(WARN) << "requireFromPresent feature is not supported on master server < ArangoDB 2.7";
     }
 
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
@@ -173,7 +173,7 @@ retry:
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
       if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-        LOG(WARNING) << "replication applier stopped for database '" << _vocbase->_name << "' because required tick is not present on master";
+        LOG(WARN) << "replication applier stopped for database '" << _vocbase->_name << "' because required tick is not present on master";
       }
 
       // remove previous applier state
@@ -212,10 +212,10 @@ retry:
       if (shortTermFailsInRow > _configuration._autoResyncRetries) {
         if (_configuration._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
-          LOG(WARNING) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' after " << _configuration._autoResyncRetries << " retries";
+          LOG(WARN) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' after " << _configuration._autoResyncRetries << " retries";
         }
         else {
-          LOG(WARNING) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' because autoResyncRetries is 0";
+          LOG(WARN) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -223,7 +223,7 @@ retry:
       }
 
       // do an automatic full resync
-      LOG(WARNING) << "restarting initial synchronization for database '" << _vocbase->_name << "' because autoResync option is set. retry #" << shortTermFailsInRow;
+      LOG(WARN) << "restarting initial synchronization for database '" << _vocbase->_name << "' because autoResync option is set. retry #" << shortTermFailsInRow;
 
       // start initial synchronization
       errorMsg = "";
@@ -307,7 +307,7 @@ int ContinuousSyncer::saveApplierState() {
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARNING) << "unable to save replication applier state: " << TRI_errno_string(res);
+    LOG(WARN) << "unable to save replication applier state: " << TRI_errno_string(res);
   }
 
   return res;
@@ -936,7 +936,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       ignoreCount--;
-      LOG(WARNING) << "ignoring replication error for database '" << _applier->databaseName() << "': " << errorMsg.c_str();
+      LOG(WARN) << "ignoring replication error for database '" << _applier->databaseName() << "': " << errorMsg.c_str();
       errorMsg = "";
     }
 

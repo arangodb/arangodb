@@ -21,12 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-#include <iostream>
-
 #include "ApplicationScheduler.h"
+
+#include <iostream>
 
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"
@@ -35,6 +32,7 @@
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -69,7 +67,7 @@ class ControlCTask : public SignalTask {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG(WARNING) << "unable to install control-c handler";
+      LOG(WARN) << "unable to install control-c handler";
     }
   }
 
@@ -102,7 +100,7 @@ class ControlCTask : public SignalTask {
       LOG(INFO) << "control-c received, beginning shut down sequence";
       _server->beginShutdown();
     } else {
-      LOG(ERROR) << "control-c received (again!), terminating";
+      LOG(ERR) << "control-c received (again!), terminating";
       _exit(1);
       // TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
@@ -132,7 +130,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
@@ -147,7 +145,7 @@ class HangupTask : public SignalTask {
  public:
   bool handleSignal() override {
     LOG(INFO) << "hangup received, about to reopen logfile";
-    TRI_ReopenLogging();
+    Logger::reopen();
     LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
@@ -259,7 +257,7 @@ bool CtrlHandler(DWORD eventType) {
   }  // end of switch statement
 
   if (shutdown == false) {
-    LOG(ERROR) << "Invalid CTRL HANDLER event received - ignoring event";
+    LOG(ERR) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 

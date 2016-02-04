@@ -130,7 +130,7 @@ static void InvalidParameterHandler(
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG(ERROR) << "Invalid handle parameter passed";
+  LOG(ERR) << "Invalid handle parameter passed";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,12 +215,12 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG(ERROR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -228,7 +228,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG(ERROR) << "Invalid windows initialization called";
+      LOG(ERR) << "Invalid windows initialization called";
       return -1;
     }
   }
@@ -316,7 +316,7 @@ void TRI_FixIcuDataEnv() {
     putenv(e.c_str());
   } else {
 #ifdef _SYSCONFDIR_
-    std::string e = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
+    std::string e = "ICU_DATA=" + std::string(_SYSCONFDIR_) + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
@@ -527,6 +527,26 @@ void TRI_CloseWindowsEventlog(void) {
 // No clue why there is no header for these...
 #define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
 #define UI_CATEGORY ((WORD)0x00000003L)
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const& message) {
+  char buf[1024];
+  char linebuf[32];
+  LPCSTR logBuffers[] = { buf, file, func, linebuf, NULL };
+
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
+
+  snprintf(linebuf, sizeof(linebuf), "%d", line);
+
+  DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
+  buf[sizeof(buf) - 1] = '\0';
+
+  // Try to get messages through to windows syslog...
+  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+    MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
+    NULL)) {
+    // well, fail then...
+  }
+}
+
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap) {
   char buf[1024];

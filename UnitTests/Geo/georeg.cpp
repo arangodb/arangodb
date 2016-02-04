@@ -613,7 +613,7 @@ icheck(86,-3,i);
 gcp.latitude  = 800.0;
 gcp.longitude = 80.0;
 i = GeoIndex_remove(gi,&gcp);
-icheck(87,-1,i);
+icheck(87,-3,i);
 
 gcp.latitude  = 1.0;
 gcp.longitude = 40.0;

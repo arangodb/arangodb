@@ -1526,7 +1526,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
         // prefix matching
         list = GetSubNodeHandles(node);
       } else {
-        LOG(WARNING) << "invalid matching option for fulltext index query";
+        LOG(WARN) << "invalid matching option for fulltext index query";
         list = TRI_CreateListFulltextIndex(0);
       }
     } else {

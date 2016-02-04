@@ -325,16 +325,26 @@ exports.createDeleteUpdateParallel = function(opts) {
     return a.count() === b.count();
   };
 
-  sleep(10);
+  let m = 0;
 
-  const m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
-    '@results': 'results'
-  }).count();
+  for (let i = 0; i < 10; ++i) {
+    m = db._query("FOR u IN @@results FILTER u.started RETURN 1", {
+      '@results': 'results'
+    }).count();
+
+    print(m + " workers are up and running");
+
+    if (m === n) {
+      break;
+    }
+
+    sleep(30);
+  }
 
   if (m < n) {
-    print("cannot start enough servers (want", n + ",", "got", m + "),",
+    print("cannot start enough workers (want", n + ",", "got", m + "),",
       "please check number V8 contexts");
-    return false;
+    throw new Error("cannot start workers");
   }
 
   if (opts.gnuplot) {
@@ -347,6 +357,7 @@ set output "out/documents.png"
 set multiplot layout 3, 1 title "CRUD Stress Test" font ",14"
 
 set autoscale
+set logscale y
 set key outside
 set xlabel "runtime in seconds"
 
@@ -375,6 +386,7 @@ set terminal png size 1024,1024
 set size ratio 0.8
 set output "out/datafiles.png"
 set autoscale
+set logscale y
 set xlabel "runtime in seconds"
 set ylabel "numbers"
 set key outside

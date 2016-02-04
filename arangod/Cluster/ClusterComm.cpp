@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterComm.h"
+
 #include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
@@ -66,7 +67,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
         serverID = "";
         status = CL_COMM_ERROR;
         if (logConnectionErrors) {
-          LOG(ERROR) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
+          LOG(ERR) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
         } else {
           LOG(INFO) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
         }
@@ -89,7 +90,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_ERROR;
     errorMessage = "did not understand destination'" + dest + "'";
     if (logConnectionErrors) {
-      LOG(ERROR) << "did not understand destination '" << dest.c_str() << "'";
+      LOG(ERR) << "did not understand destination '" << dest.c_str() << "'";
     } else {
       LOG(INFO) << "did not understand destination '" << dest.c_str() << "'";
     }
@@ -102,7 +103,7 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_ERROR;
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
-      LOG(ERROR) << "did not find endpoint of server '" << serverID.c_str() << "'";
+      LOG(ERR) << "did not find endpoint of server '" << serverID.c_str() << "'";
     } else {
       LOG(INFO) << "did not find endpoint of server '" << serverID.c_str() << "'";
     }
@@ -392,7 +393,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     res->errorMessage =
         "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
-      LOG(ERROR) << "cannot create connection to server '" << res->serverID.c_str() << "'";
+      LOG(ERR) << "cannot create connection to server '" << res->serverID.c_str() << "'";
     } else {
       LOG(INFO) << "cannot create connection to server '" << res->serverID.c_str() << "'";
     }
@@ -775,7 +776,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   LOG(DEBUG) << "In asyncAnswer, seeing " << coordinatorHeader.c_str();
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
-    LOG(ERROR) << "Could not find coordinator ID in X-Arango-Coordinator";
+    LOG(ERR) << "Could not find coordinator ID in X-Arango-Coordinator";
     return;
   }
   coordinatorID = coordinatorHeader.substr(start, pos - start);
@@ -786,7 +787,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
       ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
-      LOG(ERROR) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
+      LOG(ERR) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
     } else {
       LOG(INFO) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
     }
@@ -796,7 +797,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
   if (nullptr == connection) {
-    LOG(ERROR) << "asyncAnswer: cannot create connection to server '" << coordinatorID.c_str() << "'";
+    LOG(ERR) << "asyncAnswer: cannot create connection to server '" << coordinatorID.c_str() << "'";
     return;
   }
 
@@ -1048,7 +1049,7 @@ void ClusterCommThread::run() {
           op->result.errorMessage = "cannot create connection to server: ";
           op->result.errorMessage += op->result.serverID;
           if (cc->logConnectionErrors()) {
-            LOG(ERROR) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
+            LOG(ERR) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
           } else {
             LOG(INFO) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
           }

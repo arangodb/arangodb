@@ -345,7 +345,7 @@ class Json {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  explicit Json()
+  Json()
       : _json(nullptr),
         _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)),
         _autofree(AUTOFREE) {}
@@ -365,7 +365,7 @@ class Json {
   /// @brief generic constructor for a memzone and a type_e
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
+  Json(TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     make(t, 0);
   }
@@ -374,7 +374,7 @@ class Json {
   /// @brief generic constructor for a type_e with a size hint
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(type_e t, size_t sizeHint, autofree_e autofree = AUTOFREE)
+  Json(type_e t, size_t sizeHint, autofree_e autofree = AUTOFREE)
       : _json(nullptr),
         _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)),
         _autofree(autofree) {
@@ -385,7 +385,7 @@ class Json {
   /// @brief generic constructor for a memzone, a type_e and a size hint
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, type_e t, size_t sizeHint,
+  Json(TRI_memory_zone_t* z, type_e t, size_t sizeHint,
                 autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     make(t, sizeHint);
@@ -410,7 +410,7 @@ class Json {
   /// @brief constructor for a memzone and a bool
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE)
+  Json(TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateBooleanJson(z, x);
 
@@ -438,7 +438,7 @@ class Json {
   /// @brief constructor for a memzone and an int32_t
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE)
+  Json(TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateNumberJson(z, static_cast<double>(x));
 
@@ -466,7 +466,7 @@ class Json {
   /// @brief constructor for a memzone and a double
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE)
+  Json(TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateNumberJson(z, x);
 
@@ -494,7 +494,7 @@ class Json {
   /// @brief constructor for a char const*
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(char const* x, size_t length, autofree_e autofree = AUTOFREE)
+  Json(char const* x, size_t length, autofree_e autofree = AUTOFREE)
       : _json(nullptr),
         _zone(TRI_MemoryZoneId(TRI_UNKNOWN_MEM_ZONE)),
         _autofree(autofree) {
@@ -509,7 +509,7 @@ class Json {
   /// @brief constructor for a memzone and a char const*
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, char const* x,
+  Json(TRI_memory_zone_t* z, char const* x,
                 autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateStringCopyJson(z, x, strlen(x));
@@ -523,7 +523,7 @@ class Json {
   /// @brief constructor for a memzone and a char const*
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, char const* x, size_t length,
+  Json(TRI_memory_zone_t* z, char const* x, size_t length,
                 autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateStringCopyJson(z, x, length);
@@ -552,7 +552,7 @@ class Json {
   /// @brief constructor for a memzone and a string
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, std::string const& x,
+  Json(TRI_memory_zone_t* z, std::string const& x,
                 autofree_e autofree = AUTOFREE)
       : _json(nullptr), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {
     _json = TRI_CreateStringCopyJson(z, x.c_str(), x.size());
@@ -566,7 +566,7 @@ class Json {
   /// @brief constructor for a memzone and a TRI_json_t*
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, TRI_json_t* j,
+  Json(TRI_memory_zone_t* z, TRI_json_t* j,
                 autofree_e autofree = AUTOFREE)
       : _json(j), _zone(TRI_MemoryZoneId(z)), _autofree(autofree) {}
 
@@ -574,7 +574,7 @@ class Json {
   /// @brief constructor for a memzone and a const TRI_json_t*
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Json(TRI_memory_zone_t* z, TRI_json_t const* j,
+  Json(TRI_memory_zone_t* z, TRI_json_t const* j,
                 autofree_e autofree = NOFREE)
       : _json(const_cast<TRI_json_t*>(j)),
         _zone(TRI_MemoryZoneId(z)),

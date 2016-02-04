@@ -386,7 +386,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG(ERROR) << "unable to install signal handler";
+    LOG(ERR) << "unable to install signal handler";
   }
 
 #else
@@ -398,7 +398,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = sigaction(SIGINT, &sa, 0);
 
   if (res != 0) {
-    LOG(ERROR) << "unable to install signal handler";
+    LOG(ERR) << "unable to install signal handler";
   }
 #endif
 }

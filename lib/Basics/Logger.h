@@ -20,14 +20,47 @@
 ///
 /// @author Achim Brandt
 /// @author Dr. Frank Celler
+///
+/// Portions of the code are:
+///
+/// Copyright (c) 1999, Google Inc.
+/// All rights reserved.
+//
+/// Redistribution and use in source and binary forms, with or without
+/// modification, are permitted provided that the following conditions are
+/// met:
+//
+///     * Redistributions of source code must retain the above copyright
+///       notice, this list of conditions and the following disclaimer.
+///     * Redistributions in binary form must reproduce the above
+///       copyright notice, this list of conditions and the following
+///       disclaimer
+///       in the documentation and/or other materials provided with the
+///       distribution.
+///     * Neither the name of Google Inc. nor the names of its
+///       contributors may be used to endorse or promote products derived
+///       from this software without specific prior written permission.
+///
+/// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+/// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+/// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+/// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+/// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+/// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+/// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+/// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+/// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+/// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+/// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+///
+/// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASIC_LOGGER_H
 #define LIB_BASIC_LOGGER_H 1
 
-#include "Basics/logging.h"
+#include "Basics/Common.h"
 
-#include <bitset>
 #include <iosfwd>
 #include <sstream>
 
@@ -51,7 +84,7 @@
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message for a subject
+/// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
 
 #define LOG_TOPIC(a, b)                                               \
@@ -63,57 +96,137 @@
                                   << arangodb::Logger::FILE(__FILE__) \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message given that a condition is true
+////////////////////////////////////////////////////////////////////////////////
+
+#define LOG_IF(a, cond)                                               \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) && (cond))   \
+      ? (void)0                                                       \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
+                                  << (arangodb::LogLevel::a)          \
+                                  << arangodb::Logger::LINE(__LINE__) \
+                                  << arangodb::Logger::FILE(__FILE__) \
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for a topic given that a condition is true
+////////////////////////////////////////////////////////////////////////////////
+
+#define LOG_TOPIC_IF(a, b, cond)                                         \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a), (b)) && (cond)) \
+      ? (void)0                                                          \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()               \
+                                  << (arangodb::LogLevel::a) << (b)      \
+                                  << arangodb::Logger::LINE(__LINE__)    \
+                                  << arangodb::Logger::FILE(__FILE__)    \
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message every N.the time
+////////////////////////////////////////////////////////////////////////////////
+
+#define LOG_EVERY_N_VARNAME(base, line) LOG_EVERY_N_VARNAME_CONCAT(base, line)
+#define LOG_EVERY_N_VARNAME_CONCAT(base, line) base##line
+
+#define LOG_OCCURRENCES LOG_EVERY_N_VARNAME(occurrences_, __LINE__)
+#define LOG_OCCURRENCES_MOD_N LOG_EVERY_N_VARNAME(occurrences_mod_n_, __LINE__)
+
+#define LOG_EVERY_N(a, n)                                             \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;          \
+  ++LOG_OCCURRENCES;                                                  \
+  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n;        \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                     \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) &&           \
+    (LOG_OCCURRENCES_MOD_N == 1))                                     \
+      ? (void)0                                                       \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
+                                  << (arangodb::LogLevel::a)          \
+                                  << arangodb::Logger::LINE(__LINE__) \
+                                  << arangodb::Logger::FILE(__FILE__) \
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for a topic every N.the time
+////////////////////////////////////////////////////////////////////////////////
+
+#define LOG_TOPIC_EVERY_N(a, b, n)                                    \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;          \
+  ++LOG_OCCURRENCES;                                                  \
+  if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n;        \
+  if (LOG_OCCURRENCES_MOD_N == 1)                                     \
+  !(arangodb::Logger::isEnabled((arangodb::LogLevel::a), (b)) &&      \
+    (LOG_OCCURRENCES_MOD_N == 1))                                     \
+      ? (void)0                                                       \
+      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
+                                  << (arangodb::LogLevel::a) << (b)   \
+                                  << arangodb::Logger::LINE(__LINE__) \
+                                  << arangodb::Logger::FILE(__FILE__) \
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief available log levels
+/// @brief LogLevel
 ////////////////////////////////////////////////////////////////////////////////
 
 enum class LogLevel {
   DEFAULT = 0,
   FATAL = 1,
-  ERROR = 2,
-  WARNING = 3,
+  ERR = 2,
+  WARN = 3,
   INFO = 4,
   DEBUG = 5,
   TRACE = 6
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief LogTopic
+/// @brief LogBuffer
 ///
-/// Note that combining topics is possible, but expensive and should be
-/// avoided in DEBUG or TRACE.
+/// This class is used to store a number of log messages in the server
+/// for retrieval. This messages are truncated and overwritten without
+/// warning.
+////////////////////////////////////////////////////////////////////////////////
+
+struct LogBuffer {
+  uint64_t _id;
+  LogLevel _level;
+  time_t _timestamp;
+  char _message[256];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief LogTopic
 ////////////////////////////////////////////////////////////////////////////////
 
 class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
 
  public:
-  LogTopic(std::string const& name);
+  explicit LogTopic(std::string const& name);
 
   LogTopic(std::string const& name, LogLevel level);
 
-  LogTopic(LogTopic const& that) noexcept : _topicId(that._topicId),
-                                            _topics(that._topics) {
+  LogTopic(LogTopic const& that) noexcept : _id(that._id), _name(that._name) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
-  LogTopic(LogTopic&& that) noexcept : _topicId(that._topicId),
-                                       _topics(std::move(that._topics)) {
+  LogTopic(LogTopic&& that) noexcept : _id(that._id), _name(that._name) {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
  public:
+  size_t id() const { return _id; }
+  std::string const& name() const { return _name; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
-  void setLevel(LogLevel level) { _level.store(level, std::memory_order_relaxed); }
-  std::bitset<MAX_LOG_TOPICS> const& bits() const { return _topics; }
 
-  LogTopic operator|(LogTopic const&);
+  void setLogLevel(LogLevel level) {
+    _level.store(level, std::memory_order_relaxed);
+  }
 
  private:
-  size_t _topicId;
-  std::bitset<MAX_LOG_TOPICS> _topics;
+  size_t _id;
+  std::string _name;
   std::atomic<LogLevel> _level;
 };
 
@@ -127,7 +240,6 @@ class LogTopic {
 ///
 ///
 /// options:
-///
 ///    log.level info
 ///    log.level compactor=debug
 ///    log.level replication=trace
@@ -157,6 +269,7 @@ class Logger {
 
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
+  static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
   static LogTopic REQUESTS;
@@ -167,9 +280,21 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   struct DURATION {
-    explicit DURATION(double duration, int precision = 6) : _duration(duration), _precision(precision){};
+    explicit DURATION(double duration, int precision = 6)
+        : _duration(duration), _precision(precision){};
     double _duration;
     int _precision;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief range
+  //////////////////////////////////////////////////////////////////////////////
+
+  struct RANGE {
+    RANGE(void const* baseAddress, size_t size)
+        : baseAddress(baseAddress), size(size){};
+    void const* baseAddress;
+    size_t size;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -201,22 +326,73 @@ class Logger {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the global log level
+  /// @brief creates a new appender
   //////////////////////////////////////////////////////////////////////////////
 
-  static void setLevel(LogLevel);
+  static void addAppender(std::string const&, bool, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determines the global log level
   //////////////////////////////////////////////////////////////////////////////
 
   static LogLevel logLevel();
-  
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief determines the log levels of the topics
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the global log level
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setLogLevel(LogLevel);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the log level from a string
+  ///
+  /// set the global level: info
+  /// set a topic level:    performance=info
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setLogLevel(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the log level from a vector of string
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setLogLevel(std::vector<std::string> const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the output prefix
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setOutputPrefix(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the line number mode
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setShowLineNumber(bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the thread identifier mode
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setShowThreadIdentifier(bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the local time mode
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void setUseLocalTime(bool);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string description for the log level
   //////////////////////////////////////////////////////////////////////////////
 
-  static char const* translateLogLevel(LogLevel);
+  static std::string const& translateLogLevel(LogLevel);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if logging is enabled for log level
@@ -231,10 +407,41 @@ class Logger {
   //////////////////////////////////////////////////////////////////////////////
 
   static bool isEnabled(LogLevel level, LogTopic const& topic) {
-    return (int)level <=
-     (int)((topic.level() == LogLevel::DEFAULT) ? _level.load(std::memory_order_relaxed)
-     : topic.level());
+    return (int)level <= (int)((topic.level() == LogLevel::DEFAULT)
+                                   ? _level.load(std::memory_order_relaxed)
+                                   : topic.level());
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the last log entries
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::vector<LogBuffer> bufferedEntries(LogLevel level, uint64_t start,
+                                                bool upToLevel);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief initializes the logging component
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void initialize(bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief shuts down the logging components
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void shutdown(bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reopens all log appenders
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void reopen();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief tries to flush the logging
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void flush();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -256,15 +463,13 @@ class LoggerStream {
 
  public:
   LoggerStream()
-      : _level(LogLevel::DEFAULT),
+      : _topicId(MAX_LOG_TOPICS),
+        _level(LogLevel::DEFAULT),
         _line(0),
         _file(nullptr),
         _function(nullptr) {}
 
-  ~LoggerStream() {
-    TRI_Log(_function, _file, _line, (TRI_log_level_e)(int)_level,
-            TRI_LOG_SEVERITY_HUMAN, "%s", _out.str().c_str());
-  }
+  ~LoggerStream();
 
  public:
   LoggerStream& operator<<(LogLevel level) {
@@ -272,10 +477,13 @@ class LoggerStream {
     return *this;
   }
 
-  LoggerStream& operator<<(LogTopic topics) {
-    _topics = topics.bits();
+  LoggerStream& operator<<(LogTopic topic) {
+    _topicId = topic.id();
+    _out << "{" + topic.name() << "} ";
     return *this;
   }
+
+  LoggerStream& operator<<(Logger::RANGE range);
 
   LoggerStream& operator<<(Logger::DURATION duration);
 
@@ -302,7 +510,7 @@ class LoggerStream {
 
  private:
   std::stringstream _out;
-  std::bitset<MAX_LOG_TOPICS> _topics;
+  size_t _topicId;
   LogLevel _level;
   long int _line;
   char const* _file;
@@ -310,7 +518,7 @@ class LoggerStream {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief LoggerStream
+/// @brief helper class for macros
 ////////////////////////////////////////////////////////////////////////////////
 
 class LogVoidify {
