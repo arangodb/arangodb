@@ -28,6 +28,6 @@ using namespace arangodb::consensus;
 Log::Log() {}
 Log::~Log() {}
 
-Slice const& Log::log (Slice const& slice) {
-    return slice;
+Log::ret_t Log::log (std::shared_ptr<arangodb::velocypack::Builder> const builder) {
+    return OK;
 }

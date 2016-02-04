@@ -37,7 +37,9 @@ namespace consensus {
     T min_ping;
     T max_ping;
     std::vector<std::string> end_points;
-    Config (T min_p, T max_p) : min_ping(min_p), max_ping(max_p) {}
+    Config () : min_ping(.15), max_ping(.3) {};
+    Config (T min_p, T max_p, std::vector<std::string>& end_p) :
+      min_ping(min_p), max_ping(max_p), end_points(end_p) {}
   }; 
   
 }}

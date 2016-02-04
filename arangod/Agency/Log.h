@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cstdint>
-
+#include <velocypack/vpack.h>
 #include "AgencyCommon.h"
 
 //using namespace arangodb::velocypack;
@@ -39,6 +39,7 @@ class Log {
   
 public:
   typedef uint64_t index_t;
+  enum ret_t {OK, REDIRECT};
 
   /**
    * @brief Default constructor
@@ -54,7 +55,7 @@ public:
    * @brief Log
    */
 
-  Slice const& log (Slice const&);
+  ret_t log (std::shared_ptr<arangodb::velocypack::Builder> const);
   
 private:
   

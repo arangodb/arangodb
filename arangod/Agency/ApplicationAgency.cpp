@@ -37,9 +37,10 @@ using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
     : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
-	  _max_election_timeout(.3) , _agent(new consensus::Agent()){
+	  _max_election_timeout(.3) /*, _agent(new consensus::Agent())*/{
 	//arangodb::consensus::Config<double> config (5, .15, .9);
 	//_agent = std::uniqe_ptr<agent>(new config);
+
 }
 
 
@@ -57,7 +58,7 @@ void ApplicationAgency::setupOptions(
 		 "timeout before an agent calls for new election [s]")
 		("agency.election-timeout-max", &_max_election_timeout, "Minimum "
 		 "timeout before an agent calls for new election [s]")
-		("agency.host", &_agency_endpoints, "Agency endpoints");
+		("agency.endpoint", &_agency_endpoints, "Agency endpoints");
 }
 
 
@@ -67,6 +68,9 @@ bool ApplicationAgency::prepare() {
   if (_disabled) {
     return true;
   }
+  _agent = std::unique_ptr<consensus::Agent>(new consensus::Agent(
+      consensus::Config<double>(_min_election_timeout, _max_election_timeout,
+          _agency_endpoints)));
   return true;
 }
 
@@ -75,6 +79,7 @@ bool ApplicationAgency::start() {
   if (_disabled) {
     return true;
   }
+  _agent->start();
   return true;
 }
 

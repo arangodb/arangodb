@@ -94,9 +94,6 @@
 /* true if failure testing ins enabled */
 #undef TRI_ENABLE_FAILURE_TESTS
 
-/* true if logging is enabled */
-#undef TRI_ENABLE_LOGGER
-
 /* true if maintainer mode is enabled */
 #undef TRI_ENABLE_MAINTAINER_MODE
 

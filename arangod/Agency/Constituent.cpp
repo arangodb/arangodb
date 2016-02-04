@@ -25,23 +25,25 @@
 #include "Basics/Logger.h"
 
 #include "Constituent.h"
+#include "Agent.h"
 
 #include <chrono>
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace arangodb::rest;
 
-
-Constituent::Constituent (const uint32_t n) : Thread("Constituent"),
-	_term(0), _gen(std::random_device()()), _mode(FOLLOWER), _run(true),
-	_votes(std::vector<bool>(n)) {
-
+void Constituent::configure(Agent* agent) {
+  _agent = agent;
 }
+
+Constituent::Constituent() : Thread("Constituent"), _term(0),
+    _gen(std::random_device()()), _mode(LEADER), _run(true), _agent(0) {}
 
 Constituent::~Constituent() {}
 
 Constituent::duration_t Constituent::sleepFor () {
-  dist_t dis(.15, .99);
+  dist_t dis(_agent->config().min_ping, _agent->config().max_ping);
   return Constituent::duration_t(dis(_gen));
 }
 
@@ -90,32 +92,56 @@ bool Constituent::leader() const {
 
 void Constituent::callElection() {
   
+  LOG(WARN) << "Calling for election " << _agent->config().end_points.size();
+  std::string body;
+  arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields;
-  
-	std::vector<ClusterCommResult> results(_constituency.size());
-	for (auto& i : _constituency)
-		results[i.id] = arangodb::ClusterComm::instance()->asyncRequest(
-      0, 0, i.address, rest::HttpRequest::HTTP_REQUEST_GET,
-      "/_api/agency/vote?id=0&term=3", nullptr, headerFields, nullptr,
-      .75*.15);
-	std::this_thread::sleep_for(Constituent::duration_t(.9*.15));
-	for (auto& i : _constituency)
-	  arangodb::ClusterComm::instance()->enquire(results[i.id].operationID);
+	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
+
+	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
+	  LOG(WARN) << "+++ " << i << " +++ " << _agent->config().end_points[i] ;
+		results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+      "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
+      "/_api/agency/vote?id=0&term=3", std::make_shared<std::string>(body),
+      headerFields, nullptr, .75*_agent->config().min_ping, true);
+    LOG(WARN) << "+++ " << i << " +++ " << results[i].operationID ;
+	}
+
+/*
+	std::this_thread::sleep_for(Constituent::duration_t(
+	  .85*_agent->config().min_ping));
+
+/*	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
+	  ClusterCommResult res = arangodb::ClusterComm::instance()->
+	      enquire(results[i].operationID);
+
+	  //TRI_ASSERT(res.status == CL_COMM_SENT);
+	  if (res.status == CL_COMM_SENT) {
+	    res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
+	    //std::shared_ptr< arangodb::velocypack::Builder > answer = res.answer->toVelocyPack(&opts);
+	    //LOG(WARN) << answer->toString();
+	  }
+  }*/
+/*	for (auto& i : _agent->config().end_points) {
+	  ClusterCommResult res = arangodb::ClusterComm::instance()->
+	      enquire(results[i.id].operationID);
+	  //LOG(WARN) << res.answer_code << "\n";
+	}*/
+
 
 	// time out
 	//count votes
 }
 
 void Constituent::run() {
-  while (_run) {
+  //while (_run) {
     if (_state == FOLLOWER) {
       LOG(WARN) << "sleeping ... ";
       std::this_thread::sleep_for(sleepFor());
     } else {
       callElection();
     }
-    
-  }
+  //}
 };
 
 

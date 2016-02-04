@@ -59,14 +59,21 @@ namespace consensus {
     /**
      * @brief 
      */
-    Slice const& log (Slice const&);
+    Log::ret_t
+      log (std::shared_ptr<arangodb::velocypack::Builder> const);
+
     Slice const& redirect (Slice const&);
 
     bool vote(Constituent::id_t, Constituent::term_t);
+
+    Config<double> const& config () const;
+
+    void start ();
       
   private:
     Constituent _constituent; /**< @brief Leader election delegate */
     Log         _log;         /**< @brief Log replica              */
+    Config<double> _config;
     
   };
   

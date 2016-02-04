@@ -24,13 +24,22 @@
 #include "Agent.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 Agent::Agent () {
-	_constituent.start();
+}
+
+Agent::Agent (Config<double> const& config) : _config(config) {
+  _constituent.configure(this);
+
 }
 
 Agent::~Agent () {
 	_constituent.stop();
+}
+
+void Agent::start() {
+  _constituent.start();
 }
 
 Constituent::term_t Agent::term () const {
@@ -41,13 +50,10 @@ bool Agent::vote(Constituent::id_t id, Constituent::term_t term) {
 	return _constituent.vote(id, term);
 }
 
-Slice const& Agent::log (const Slice& slice) {
-  if (_constituent.leader())
-    return _log.log(slice);
-  else
-    return redirect(slice);
+Log::ret_t Agent::log (std::shared_ptr<Builder> const builder) {
+    return _log.log(builder);
 }
 
-Slice const& Agent::redirect (const Slice& slice) {
-  return slice; //TODO
+Config<double> const& Agent::config () const {
+  return _config;
 }

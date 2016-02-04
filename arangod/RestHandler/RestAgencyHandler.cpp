@@ -56,7 +56,7 @@ HttpHandler::status_t RestAgencyHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-
+    arangodb::velocypack::Options opts;
 
     // Empty request
     if (_request->suffix().size() == 0) {
@@ -73,28 +73,31 @@ HttpHandler::status_t RestAgencyHandler::execute() {
     		LOG(WARN) << "Vote request";
     		bool found;
     		char const* termStr = _request->value("term", found);
-    		if (!found) {							  // For now: don't like this
-    			LOG(WARN) << "No term specified";  // should be handled by
-				generateError(HttpResponse::BAD,400); // Agent rather than Rest
+    		if (!found) {							              // For now: don't like this
+    			LOG(WARN) << "No term specified";     // should be handled by
+    			generateError(HttpResponse::BAD,400); // Agent rather than Rest
     			return status_t(HANDLER_DONE);        // handler.
     		}
     		char const* idStr = _request->value("id", found);
     		if (!found) {
     			LOG(WARN) << "No id specified";
-				generateError(HttpResponse::BAD,400);
+    			generateError(HttpResponse::BAD,400);
     			return status_t(HANDLER_DONE);
     		}
-			if (_agent->vote(std::stoul(idStr), std::stoul(termStr))) {
-				result.add("vote", VPackValue("YES"));
-			} else {
-				result.add("vote", VPackValue("NO"));
-			}
-		} /*else {
-
-
+        if (_agent->vote(std::stoul(idStr), std::stoul(termStr))) {
+          result.add("vote", VPackValue("YES"));
+        } else {
+          result.add("vote", VPackValue("NO"));
+        }
 
     	} else if (_request->suffix()[0].compare("log") == 0) { // log replication
-    	} else if (_request->suffix()[0].compare("configure") == 0) {} // cluster conf*/
+    	  _agent->log(_request->toVelocyPack(&opts));
+    	} /*else if (_request->suffix()[0].compare("configure") == 0) { // cluster conf
+    	  _agent->configure(_request->toVelocyPack(&opts));
+    	}  */else {
+    	  generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
+    	  return status_t(HANDLER_DONE);
+    	}
     }
 
     result.close();
