@@ -1869,11 +1869,6 @@ if (global.APP_PATH) {
   delete global.APP_PATH;
 }
 
-if (global.DEV_APP_PATH) {
-  exports.devAppPath = global.APP_PATH;
-  delete global.DEV_APP_PATH;
-}
-
 return exports;
 
 }()));
