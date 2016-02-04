@@ -330,7 +330,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
 
     comm.setValue(planKey, plan, 0.0);
     if (!result.successful()) {
-      LOG(ERROR) << "Couldn't create plan " << result.errorMessage();
+      LOG(ERR) << "Couldn't create plan " << result.errorMessage();
       return false;
     }
   } else {
@@ -347,7 +347,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
       comm.setValue(currentKey, plan, 0.0);
   
   if (!result.successful()) {
-    LOG(ERROR) << "Could not talk to agency! " << result.errorMessage();
+    LOG(ERR) << "Could not talk to agency! " << result.errorMessage();
     return false;
   }
   

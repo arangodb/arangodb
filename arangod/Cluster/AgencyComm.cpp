@@ -647,7 +647,7 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
     }
   } catch (...) {
-    LOG(WARNING) << "Couldn't create initializing structure";
+    LOG(WARN) << "Couldn't create initializing structure";
     return false;
   }
 
