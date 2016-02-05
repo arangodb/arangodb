@@ -231,7 +231,6 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   }
 
   if (level == LogLevel::FATAL && _fatal2stderr) {
-    MUTEX_LOCKER(guard, AppendersLock);
 
     // a fatal error. always print this on stderr, too.
     WriteStderr(level, message);
