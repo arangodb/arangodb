@@ -272,6 +272,7 @@ class Logger {
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
+  static LogTopic REPLICATION;
   static LogTopic REQUESTS;
 
  public:

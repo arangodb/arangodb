@@ -111,7 +111,7 @@ class InitialSyncer : public Syncer {
     _progress = msg;
 
     if (_verbose) {
-      LOG(INFO) << "synchronization progress: " << msg.c_str();
+      LOG_TOPIC(INFO, Logger::REPLICATION) << "synchronization progress: " << msg;
     }
 
     if (_vocbase->_replicationApplier != nullptr) {
