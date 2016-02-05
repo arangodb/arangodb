@@ -205,7 +205,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
-                 std::string(_masterInfo._endpoint) + ": " +
+                 _masterInfo._endpoint + ": " +
                  _client->getErrorMessage();
 
       sendFinishBatch();
@@ -219,7 +219,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": HTTP " +
+                 _masterInfo._endpoint + ": HTTP " +
                  StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                  response->getHttpReturnMessage();
     } else {
@@ -232,7 +232,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) + ": invalid JSON";
+                   _masterInfo._endpoint + ": invalid JSON";
       }
     }
 
@@ -277,7 +277,7 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -289,7 +289,7 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
     int res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
 
@@ -319,7 +319,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -333,7 +333,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
   } else {
@@ -630,7 +630,7 @@ int InitialSyncer::handleCollectionDump(
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
-                 std::string(_masterInfo._endpoint) + ": " +
+                 _masterInfo._endpoint + ": " +
                  _client->getErrorMessage();
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -640,7 +640,7 @@ int InitialSyncer::handleCollectionDump(
 
     if (response->wasHttpError()) {
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": HTTP " +
+                 _masterInfo._endpoint + ": HTTP " +
                  StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                  response->getHttpReturnMessage();
 
@@ -657,7 +657,7 @@ int InitialSyncer::handleCollectionDump(
 
       if (!found) {
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) +
+                   _masterInfo._endpoint +
                    ": could not find 'X-Arango-Async' header";
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
@@ -677,6 +677,12 @@ int InitialSyncer::handleCollectionDump(
             // got the actual response
             break;
           }
+          if (response->getHttpReturnCode() == 404) {
+            // unknown job, we can abort
+            errorMsg = "no response received from master at " +
+                       _masterInfo._endpoint;
+            return TRI_ERROR_REPLICATION_NO_RESPONSE;
+          }
         }
 
         double waitTime = TRI_microtime() - startTime;
@@ -684,7 +690,7 @@ int InitialSyncer::handleCollectionDump(
         if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
             _configuration._initialSyncMaxWaitTime) {
           errorMsg = "timed out waiting for response from master at " +
-                     std::string(_masterInfo._endpoint);
+                     _masterInfo._endpoint;
           return TRI_ERROR_REPLICATION_NO_RESPONSE;
         }
 
@@ -740,7 +746,7 @@ int InitialSyncer::handleCollectionDump(
 
     if (!found) {
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) +
+                 _masterInfo._endpoint +
                  ": required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
@@ -804,7 +810,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -814,7 +820,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (response->wasHttpError()) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
 
@@ -829,7 +835,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (!found) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
+               _masterInfo._endpoint +
                ": could not find 'X-Arango-Async' header";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -845,8 +851,14 @@ int InitialSyncer::handleCollectionSync(
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
-        // got the actual response
+        // job is done, got the actual response
         break;
+      }
+      if (response->getHttpReturnCode() == 404) {
+        // unknown job, we can abort
+        errorMsg = "no response received from master at " +
+                   _masterInfo._endpoint;
+        return TRI_ERROR_REPLICATION_NO_RESPONSE;
       }
     }
 
@@ -855,7 +867,7 @@ int InitialSyncer::handleCollectionSync(
     if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
         _configuration._initialSyncMaxWaitTime) {
       errorMsg = "timed out waiting for response from master at " +
-                 std::string(_masterInfo._endpoint);
+                 _masterInfo._endpoint;
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
 
@@ -884,7 +896,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (!TRI_IsObjectJson(json.get())) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": response is no object";
+               _masterInfo._endpoint + ": response is no object";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -893,7 +905,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (!TRI_IsStringJson(idJson)) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
+               _masterInfo._endpoint +
                ": response does not contain valid 'id' attribute";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -920,7 +932,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (!TRI_IsNumberJson(countJson)) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
+               _masterInfo._endpoint +
                ": response does not contain valid 'count' attribute";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1033,7 +1045,7 @@ int InitialSyncer::handleSyncKeys(
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1043,7 +1055,7 @@ int InitialSyncer::handleSyncKeys(
 
   if (response->wasHttpError()) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
 
@@ -1058,7 +1070,7 @@ int InitialSyncer::handleSyncKeys(
 
   if (!TRI_IsArrayJson(json.get())) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": response is no array";
+               _masterInfo._endpoint + ": response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -1131,7 +1143,7 @@ int InitialSyncer::handleSyncKeys(
 
     if (!TRI_IsObjectJson(chunk)) {
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": chunk is no object";
+                 _masterInfo._endpoint + ": chunk is no object";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
@@ -1147,7 +1159,7 @@ int InitialSyncer::handleSyncKeys(
     if (!TRI_IsStringJson(lowJson) || !TRI_IsStringJson(highJson) ||
         !TRI_IsStringJson(hashJson)) {
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) +
+                 _masterInfo._endpoint +
                  ": chunks in response have an invalid format";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1200,7 +1212,7 @@ int InitialSyncer::handleSyncKeys(
 
       if (response == nullptr || !response->isComplete()) {
         errorMsg = "could not connect to master at " +
-                   std::string(_masterInfo._endpoint) + ": " +
+                   _masterInfo._endpoint + ": " +
                    _client->getErrorMessage();
 
         return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1210,7 +1222,7 @@ int InitialSyncer::handleSyncKeys(
 
       if (response->wasHttpError()) {
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) + ": HTTP " +
+                   _masterInfo._endpoint + ": HTTP " +
                    StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                    response->getHttpReturnMessage();
 
@@ -1225,7 +1237,7 @@ int InitialSyncer::handleSyncKeys(
 
       if (!TRI_IsArrayJson(rangeKeysJson.get())) {
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) +
+                   _masterInfo._endpoint +
                    ": response is no array";
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1259,7 +1271,7 @@ int InitialSyncer::handleSyncKeys(
 
         if (!TRI_IsArrayJson(pair) || TRI_LengthArrayJson(pair) != 2) {
           errorMsg = "got invalid response from master at " +
-                     std::string(_masterInfo._endpoint) +
+                     _masterInfo._endpoint +
                      ": response key pair is no valid array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1271,7 +1283,7 @@ int InitialSyncer::handleSyncKeys(
 
         if (!TRI_IsStringJson(keyJson)) {
           errorMsg = "got invalid response from master at " +
-                     std::string(_masterInfo._endpoint) +
+                     _masterInfo._endpoint +
                      ": response key is no string";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1370,7 +1382,7 @@ int InitialSyncer::handleSyncKeys(
 
         if (response == nullptr || !response->isComplete()) {
           errorMsg = "could not connect to master at " +
-                     std::string(_masterInfo._endpoint) + ": " +
+                     _masterInfo._endpoint + ": " +
                      _client->getErrorMessage();
 
           return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1380,7 +1392,7 @@ int InitialSyncer::handleSyncKeys(
 
         if (response->wasHttpError()) {
           errorMsg = "got invalid response from master at " +
-                     std::string(_masterInfo._endpoint) + ": HTTP " +
+                     _masterInfo._endpoint + ": HTTP " +
                      StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                      response->getHttpReturnMessage();
 
@@ -1395,7 +1407,7 @@ int InitialSyncer::handleSyncKeys(
 
         if (!TRI_IsArrayJson(documentsJson.get())) {
           errorMsg = "got invalid response from master at " +
-                     std::string(_masterInfo._endpoint) +
+                     _masterInfo._endpoint +
                      ": response is no array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1409,7 +1421,7 @@ int InitialSyncer::handleSyncKeys(
 
           if (!TRI_IsObjectJson(documentJson)) {
             errorMsg = "got invalid response from master at " +
-                       std::string(_masterInfo._endpoint) +
+                       _masterInfo._endpoint +
                        ": document is no object";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1419,7 +1431,7 @@ int InitialSyncer::handleSyncKeys(
 
           if (!TRI_IsStringJson(keyJson)) {
             errorMsg = "got invalid response from master at " +
-                       std::string(_masterInfo._endpoint) +
+                       _masterInfo._endpoint +
                        ": document key is invalid";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1429,7 +1441,7 @@ int InitialSyncer::handleSyncKeys(
 
           if (!TRI_IsStringJson(revJson)) {
             errorMsg = "got invalid response from master at " +
-                       std::string(_masterInfo._endpoint) +
+                       _masterInfo._endpoint +
                        ": document revision is invalid";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;

@@ -997,12 +997,14 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       saveApplierState();
     } else {
       // if we already transferred some data, we'll use the last applied tick
-      if (_applier->_state._lastAppliedContinuousTick > fromTick) {
+      if (_applier->_state._lastAppliedContinuousTick >= fromTick) {
         fromTick = _applier->_state._lastAppliedContinuousTick;
       }
       safeResumeTick = _applier->_state._safeResumeTick;
     }
   }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "requesting continuous synchronization, fromTick: " << fromTick << ", safeResumeTick " << safeResumeTick << ", useTick: " << _useTick << ", initialTick: " << _initialTick;
 
   if (fromTick == 0) {
     return TRI_ERROR_REPLICATION_NO_START_TICK;
