@@ -233,7 +233,7 @@ retry:
             _vocbase, &_configuration, _configuration._restrictCollections,
             _configuration._restrictType, _configuration._verbose);
 
-        res = syncer.run(errorMsg, true);
+        res = syncer.run(errorMsg, _configuration._incremental);
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
@@ -1206,9 +1206,9 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
-    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) +
+    errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) +
                "' is not present (anymore?) on master at " +
-               std::string(_masterInfo._endpoint) +
+               _masterInfo._endpoint +
                ". Last tick available on master is " +
                StringUtils::itoa(readTick) +
                ". It may be required to do a full resync and increase the "
@@ -1400,9 +1400,9 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       fetchTick > 0) {
     TRI_ASSERT(_masterIs27OrHigher);
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-    errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) +
+    errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) +
                "' is not present (anymore?) on master at " +
-               std::string(_masterInfo._endpoint) +
+               _masterInfo._endpoint +
                ". Last tick available on master is " + StringUtils::itoa(tick) +
                ". It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";

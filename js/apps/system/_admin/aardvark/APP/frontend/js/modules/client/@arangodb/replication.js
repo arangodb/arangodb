@@ -195,8 +195,6 @@ var sync = function(config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var syncCollection = function(collection, config) {
-  var db = internal.db;
-
   config = config || {};
   config.restrictType = "include";
   config.restrictCollections = [collection];

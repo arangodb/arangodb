@@ -62,6 +62,7 @@ class TRI_replication_applier_configuration_t {
   bool _autoResync;
   bool _includeSystem;
   bool _requireFromPresent;
+  bool _incremental;
   bool _verbose;
   std::string _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;

@@ -573,6 +573,13 @@ static void JS_ConfigureApplierReplication(
             object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
       }
     }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("incremental"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("incremental"))->IsBoolean()) {
+        config._incremental = TRI_ObjectToBoolean(
+            object->Get(TRI_V8_ASCII_STRING("incremental")));
+      }
+    }
 
     if (object->Has(TRI_V8_ASCII_STRING("verbose"))) {
       if (object->Get(TRI_V8_ASCII_STRING("verbose"))->IsBoolean()) {

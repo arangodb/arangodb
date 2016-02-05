@@ -216,6 +216,12 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   if (TRI_IsBooleanJson(value)) {
     config->_verbose = value->_value._boolean;
   }
+  
+  value = TRI_LookupObjectJson(json.get(), "incremental");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_incremental = value->_value._boolean;
+  }
 
   value = TRI_LookupObjectJson(json.get(), "ignoreErrors");
 
@@ -598,6 +604,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   builder.add("includeSystem", VPackValue(_includeSystem));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
+  builder.add("incremental", VPackValue(_incremental));
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
@@ -932,11 +939,12 @@ void TRI_InitConfigurationReplicationApplier(
   config->_includeSystem = true;
   config->_requireFromPresent = false;
   config->_verbose = false;
+  config->_incremental = false;
   config->_restrictType = "";
   config->_restrictCollections.clear();
   config->_connectionRetryWaitTime = 15 * 1000 * 1000;
   config->_initialSyncMaxWaitTime = 300 * 1000 * 1000;
-  config->_idleMinWaitTime = 500 * 1000;
+  config->_idleMinWaitTime = 1000 * 1000;
   config->_idleMaxWaitTime = 5 * 500 * 1000;
   config->_autoResyncRetries = 2;
 }
@@ -984,6 +992,7 @@ void TRI_CopyConfigurationReplicationApplier(
   dst->_includeSystem = src->_includeSystem;
   dst->_requireFromPresent = src->_requireFromPresent;
   dst->_verbose = src->_verbose;
+  dst->_incremental = src->_incremental;
   dst->_restrictType = src->_restrictType;
   dst->_restrictCollections = src->_restrictCollections;
   dst->_connectionRetryWaitTime = src->_connectionRetryWaitTime;
