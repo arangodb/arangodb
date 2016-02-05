@@ -33,6 +33,10 @@ class VocShaper;
 
 namespace arangodb {
 
+namespace velocypack {
+class Slice;
+}
+
 class ExampleMatcher {
   struct DocumentId {
     TRI_voc_cid_t cid;
@@ -60,6 +64,10 @@ class ExampleMatcher {
                              arangodb::CollectionNameResolver const* resolver,
                              ExampleDefinition& def);
 
+  void fillExampleDefinition(arangodb::velocypack::Slice const& example,
+                             arangodb::CollectionNameResolver const* resolver,
+                             ExampleDefinition& def);
+
   void fillExampleDefinition(v8::Isolate* isolate,
                              v8::Handle<v8::Object> const& example,
                              v8::Handle<v8::Array> const& names, size_t& n,
@@ -73,6 +81,9 @@ class ExampleMatcher {
                  VocShaper* shaper, std::string& errorMessage);
 
   ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
+                 arangodb::CollectionNameResolver const* resolver);
+
+  ExampleMatcher(arangodb::velocypack::Slice const& example, VocShaper* shaper,
                  arangodb::CollectionNameResolver const* resolver);
 
   ~ExampleMatcher() { cleanup(); }

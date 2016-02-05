@@ -297,6 +297,22 @@ void BasicOptions::addEdgeFilter(Json const& example, VocShaper* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a new edge matcher object
+////////////////////////////////////////////////////////////////////////////////
+
+void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
+                                 TRI_voc_cid_t const& cid,
+                                 CollectionNameResolver const* resolver) {
+  useEdgeFilter = true;
+  auto it = _edgeFilter.find(cid);
+  if (it == _edgeFilter.end()) {
+    _edgeFilter.emplace(cid, new ExampleMatcher(example, shaper, resolver));
+  }
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -309,6 +309,16 @@ struct Functions {
   static AqlValue$ UnionDistinctVPack(arangodb::aql::Query*,
                                       arangodb::AqlTransaction*,
                                       VPackFunctionParameters const&);
+  static AqlValue$ IntersectionVPack(arangodb::aql::Query*,
+                                     arangodb::AqlTransaction*,
+                                     VPackFunctionParameters const&);
+  static AqlValue$ NeighborsVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction*,
+                                  VPackFunctionParameters const&);
+  static AqlValue$ NearVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ WithinVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
 };
 }
 }

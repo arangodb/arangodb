@@ -795,6 +795,49 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
   return json;
 }
 
+
+static inline void ExpandShapedJson(VocShaper* shaper,
+                                    CollectionNameResolver const* resolver,
+                                    TRI_voc_cid_t const& cid,
+                                    TRI_doc_mptr_t const* mptr,
+                                    VPackBuilder& b) {
+  VPackObjectBuilder guard(&b);
+  TRI_df_marker_t const* marker =
+      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+
+  TRI_shaped_json_t shaped;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
+  std::shared_ptr<VPackBuilder> tmp = TRI_VelocyPackShapedJson(shaper, &shaped); 
+  // Copy the shaped into our local builder
+  for (auto const& it : VPackObjectIterator(tmp->slice())) {
+    b.add(it.key.copyString(), it.value);
+  }
+
+  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+  std::string id(resolver->getCollectionName(cid));
+  id.push_back('/');
+  id.append(key);
+  b.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
+  b.add(TRI_VOC_ATTRIBUTE_REV,
+        VPackValue(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+
+  if (TRI_IS_EDGE_MARKER(marker)) {
+    std::string from(resolver->getCollectionNameCluster(
+        TRI_EXTRACT_MARKER_FROM_CID(marker)));
+    from.push_back('/');
+    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+    b.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+
+    std::string to(
+        resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+
+    to.push_back('/');
+    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+    b.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads a document by cid and key
 ///        Also lazy locks the collection.
@@ -1040,6 +1083,146 @@ static AqlValue$ MergeParameters(arangodb::aql::Query* query,
     }
   }
   return AqlValue$(b);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to Json
+////////////////////////////////////////////////////////////////////////////////
+
+static Json VertexIdToJson(arangodb::AqlTransaction* trx,
+                           CollectionNameResolver const* resolver,
+                           VertexId const& id) {
+  auto collection = trx->trxCollection(id.cid);
+
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), id.cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(id.cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "collection is a nullptr");
+    }
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, id.key);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      return Json(Json::Null);
+    }
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return ExpandShapedJson(collection->_collection->_collection->getShaper(),
+                          resolver, id.cid, &mptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+static void VertexIdToVPack(arangodb::AqlTransaction* trx,
+                            CollectionNameResolver const* resolver,
+                            VertexId const& id,
+                            VPackBuilder& b) {
+  auto collection = trx->trxCollection(id.cid);
+
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), id.cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(id.cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "collection is a nullptr");
+    }
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, id.key);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      b.add(VPackValue(VPackValueType::Null));
+      return;
+    }
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
+                   id.cid, &mptr, b);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms VertexId to std::string
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string VertexIdToString(CollectionNameResolver const* resolver,
+                                    VertexId const& id) {
+  return resolver->getCollectionName(id.cid) + "/" + std::string(id.key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms an unordered_map<VertexId> to AQL json values
+////////////////////////////////////////////////////////////////////////////////
+
+static AqlValue VertexIdsToAqlValue(arangodb::AqlTransaction* trx,
+                                    CollectionNameResolver const* resolver,
+                                    std::unordered_set<VertexId>& ids,
+                                    bool includeData = false) {
+  auto result = std::make_unique<Json>(Json::Array, ids.size());
+
+  if (includeData) {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToJson(trx, resolver, it)));
+    }
+  } else {
+    for (auto& it : ids) {
+      result->add(Json(VertexIdToString(resolver, it)));
+    }
+  }
+
+  AqlValue v(result.get());
+  result.release();
+
+  return v;
+}
+
+static AqlValue$ VertexIdsToAqlValueVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    CollectionNameResolver const* resolver, std::unordered_set<VertexId>& ids,
+    bool includeData = false) {
+  std::shared_ptr<VPackBuilder> result = query->getSharedBuilder();
+  {
+    VPackArrayBuilder b(result.get());
+    if (includeData) {
+      for (auto& it : ids) {
+        VertexIdToVPack(trx, resolver, it, *result);
+      }
+    } else {
+      for (auto& it : ids) {
+        result->add(VPackValue(VertexIdToString(resolver, it)));
+      }
+    }
+  }
+
+  return AqlValue$(result.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3781,6 +3964,10 @@ AqlValue$ Functions::UnionDistinctVPack(arangodb::aql::Query* query,
 AqlValue Functions::Intersection(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(IntersectionVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -3887,81 +4074,77 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
   auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
   result.release();
   return AqlValue(jr);
+#endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms VertexId to Json
-////////////////////////////////////////////////////////////////////////////////
 
-static Json VertexIdToJson(arangodb::AqlTransaction* trx,
-                           CollectionNameResolver const* resolver,
-                           VertexId const& id) {
-  auto collection = trx->trxCollection(id.cid);
+AqlValue$ Functions::IntersectionVPack(arangodb::aql::Query* query,
+                                       arangodb::AqlTransaction* trx,
+                                       VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
 
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), id.cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(id.cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "collection is a nullptr");
-    }
+  if (n < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION",
+        (int)2, (int)Function::MaxArguments);
   }
 
-  TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, id.key);
+  std::unordered_map<VPackSlice const, size_t,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
+             arangodb::basics::VelocyPackHelper::VPackEqual());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-      return Json(Json::Null);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = ExtractFunctionParameter(trx, parameters, i);
+
+    if (!value.isArray()) {
+      // not an array
+      RegisterWarning(query, "INTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      b->clear();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
     }
-    THROW_ARANGO_EXCEPTION(res);
+    
+    for (auto const& it : VPackArrayIterator(value)) {
+      if (i == 0) {
+        // round one
+
+        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        values.emplace(it, 1);
+      } else {
+        // check if we have seen the same element before
+        auto found = values.find(it);
+        if (found != values.end()) {
+          // already seen
+          TRI_ASSERT((*found).second > 0);
+          ++((*found).second);
+        }
+      }
+    }
+
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    VPackArrayBuilder guard(b.get());
+    for (auto& it : values) {
+      if (it.second == n) {
+        b->add(it.first);
+      }
+    }
+    values.clear();
   }
 
-  return ExpandShapedJson(collection->_collection->_collection->getShaper(),
-                          resolver, id.cid, &mptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms VertexId to std::string
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string VertexIdToString(CollectionNameResolver const* resolver,
-                                    VertexId const& id) {
-  return resolver->getCollectionName(id.cid) + "/" + std::string(id.key);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms an unordered_map<VertexId> to AQL json values
-////////////////////////////////////////////////////////////////////////////////
-
-static AqlValue VertexIdsToAqlValue(arangodb::AqlTransaction* trx,
-                                    CollectionNameResolver const* resolver,
-                                    std::unordered_set<VertexId>& ids,
-                                    bool includeData = false) {
-  auto result = std::make_unique<Json>(Json::Array, ids.size());
-
-  if (includeData) {
-    for (auto& it : ids) {
-      result->add(Json(VertexIdToJson(trx, resolver, it)));
-    }
-  } else {
-    for (auto& it : ids) {
-      result->add(Json(VertexIdToString(resolver, it)));
-    }
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  AqlValue v(result.get());
-  result.release();
-
-  return v;
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3971,6 +4154,10 @@ static AqlValue VertexIdsToAqlValue(arangodb::AqlTransaction* trx,
 AqlValue Functions::Neighbors(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(NeighborsVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   arangodb::traverser::NeighborsOptions opts;
 
@@ -4163,8 +4350,193 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
   TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
 
   return VertexIdsToAqlValue(trx, resolver, neighbors, includeData);
+#endif
 }
 
+AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
+                                    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  arangodb::traverser::NeighborsOptions opts;
+
+  if (n < 4 || n > 6) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int)4,
+        (int)6);
+  }
+
+  auto resolver = trx->resolver();
+
+  VPackSlice vertexCol = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!vertexCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string vColName = vertexCol.copyString();
+
+  VPackSlice edgeCol = ExtractFunctionParameter(trx, parameters, 1);
+  if (!edgeCol.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  std::string eColName = edgeCol.copyString();
+
+  VPackSlice vertexInfo = ExtractFunctionParameter(trx, parameters, 2);
+  std::string vertexId;
+  bool splitCollection = false;
+  if (vertexInfo.isString()) {
+    vertexId = vertexInfo.copyString();
+    if (vertexId.find("/") != std::string::npos) {
+      splitCollection = true;
+    }
+  } else if (vertexInfo.isObject()) {
+    if (!vertexInfo.hasKey("_id")) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    VPackSlice idSlice = vertexInfo.get("_id");
+    if (!idSlice.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    vertexId = idSlice.copyString();
+    splitCollection = true;
+  } else {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+
+  if (splitCollection) {
+    size_t split;
+    char const* str = vertexId.c_str();
+
+    if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+
+    std::string const collectionName = vertexId.substr(0, split);
+    if (collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
+                                    "specified vertex collection '%s' does "
+                                    "not match start vertex collection '%s'",
+                                    vColName.c_str(), collectionName.c_str());
+    }
+    auto coli = resolver->getCollectionStruct(collectionName);
+
+    if (coli == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'", collectionName.c_str());
+    }
+
+    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
+    opts.start = v;
+  } else {
+    VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+    opts.start = v;
+  }
+
+  VPackSlice direction = ExtractFunctionParameter(trx, parameters, 3);
+  if (!direction.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+  }
+  {
+    std::string const dir = direction.copyString();
+    if (dir.compare("outbound") == 0) {
+      opts.direction = TRI_EDGE_OUT;
+    } else if (dir.compare("inbound") == 0) {
+      opts.direction = TRI_EDGE_IN;
+    } else if (dir.compare("any") == 0) {
+      opts.direction = TRI_EDGE_ANY;
+    } else {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+  }
+
+  bool includeData = false;
+
+  if (n > 5) {
+    auto options = ExtractFunctionParameter(trx, parameters, 5);
+    if (!options.isObject()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
+    }
+    includeData = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        options, "includeData", false);
+    opts.minDepth =
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+            options, "minDepth", 1);
+    if (opts.minDepth == 0) {
+      opts.maxDepth =
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+              options, "maxDepth", 1);
+    } else {
+      opts.maxDepth =
+          arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+              options, "maxDepth", opts.minDepth);
+    }
+  }
+
+  TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+
+  {
+    // ensure the collection is loaded
+    auto collection = trx->trxCollection(eCid);
+
+    if (collection == nullptr) {
+      int res = TRI_AddCollectionTransaction(trx->getInternals(), eCid,
+                                             TRI_TRANSACTION_READ,
+                                             trx->nestingLevel(), true, true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      TRI_EnsureCollectionsTransaction(trx->getInternals());
+      collection = trx->trxCollection(eCid);
+
+      if (collection == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "collection is a nullptr");
+      }
+    }
+  }
+
+  // Function to return constant distance
+  auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
+
+  auto eci = std::make_unique<EdgeCollectionInfo>(
+      trx, eCid, trx->documentCollection(eCid), wc);
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (n > 4) {
+    auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4);
+    if (!(edgeExamples.isArray() && edgeExamples.length() == 0)) {
+      opts.addEdgeFilter(edgeExamples, eci->getShaper(), eCid, resolver);
+    }
+  }
+
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
+                                     [&edgeCollectionInfos]() -> void {
+                                       for (auto& p : edgeCollectionInfos) {
+                                         delete p;
+                                       }
+                                     }};
+  edgeCollectionInfos.emplace_back(eci.get());
+  eci.release();
+  TRI_IF_FAILURE("EdgeCollectionInfoOOM2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  std::unordered_set<VertexId> neighbors;
+  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+
+  return VertexIdsToAqlValueVPack(query, trx, resolver, neighbors, includeData);
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function NEAR
 ////////////////////////////////////////////////////////////////////////////////
