@@ -430,3 +430,17 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       return 0;
   }
 }
+
+
+
+arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
+  VPackSlice const& slice) {
+  size_t cutoff = 100;
+  std::string slice_str(slice.toString());
+  bool longer = slice_str.size() > cutoff;
+  if (longer)
+    logger << slice_str.substr(cutoff) << "...";
+  else
+    logger << slice_str;
+  return logger;
+}
