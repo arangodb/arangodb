@@ -362,7 +362,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
     collectionName = trx.resolver()->getCollectionName(trx.cid());
   }
 
-  std::string startVertexString(startVertex);
   size_t filtered = 0;
   size_t scannedIndex = 0;
   
