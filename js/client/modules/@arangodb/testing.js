@@ -1283,7 +1283,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
 
     let roles = runInfo[j].roles;
     let endpoints = runInfo[j].endpoints;
-    let pos = roles.indexOf("Coordinator");
+    let pos = roles.indexOf("COORDINATOR");
 
     endpoint = endpoints[pos];
   }
