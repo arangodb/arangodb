@@ -613,7 +613,7 @@ void RestReplicationHandler::handleCommandBarrier() {
   TRI_ASSERT(len >= 1);
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
-    // create a new blocker
+    // create a new barrier
 
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
@@ -693,7 +693,7 @@ void RestReplicationHandler::handleCommandBarrier() {
   }
 
   if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
-    // delete an existing blocker
+    // delete an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
@@ -701,6 +701,25 @@ void RestReplicationHandler::handleCommandBarrier() {
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+  
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    // fetch all barriers
+    auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
+
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Array));
+      for (auto& it : ids) {
+        b.add(VPackValue(std::to_string(it)));
+      }
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }

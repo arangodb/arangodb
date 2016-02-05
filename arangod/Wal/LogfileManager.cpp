@@ -1138,6 +1138,25 @@ void LogfileManager::collectLogfileBarriers() {
     }
   }
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list of all logfile barrier ids
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<TRI_voc_tick_t> LogfileManager::getLogfileBarriers() {
+  std::vector<TRI_voc_tick_t> result;
+  
+  {
+    READ_LOCKER(barrierLock, _barriersLock);
+    result.reserve(_barriers.size());
+
+    for (auto& it : _barriers) {
+      result.emplace_back(it.second->id);
+    }
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a specific logfile barrier
