@@ -607,7 +607,9 @@ static bool FillShapeValueList (VocShaper* shaper,
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values;  p < e;  ++p) {
-      memcpy(ptr, p->_value, (size_t) p->_size);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t) p->_size);
+      }
       ptr += p->_size;
     }
   }
@@ -662,7 +664,9 @@ static bool FillShapeValueList (VocShaper* shaper,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, (size_t) p->_size);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t) p->_size);
+      }
       ptr += p->_size;
     }
 
@@ -704,7 +708,9 @@ static bool FillShapeValueList (VocShaper* shaper,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, (size_t) p->_size);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t) p->_size);
+      }
       ptr += p->_size;
     }
 
@@ -906,7 +912,9 @@ static bool FillShapeValueArray (VocShaper* shaper,
     *aids++ = p->_aid;
     *sids++ = p->_sid;
 
-    memcpy(ptr, p->_value, (size_t) p->_size);
+    if (p->_value != nullptr) {
+      memcpy(ptr, p->_value, (size_t) p->_size);
+    }
     ptr += p->_size;
 
     dst->_fixedSized &= p->_fixedSized;

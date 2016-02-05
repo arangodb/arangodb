@@ -422,7 +422,8 @@ bool ExampleMatcher::matches (TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) con
         goto nextExample;
       }
 
-      if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
+      if (result._data.length > 0 &&
+          memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
         // suppress excessive log spam
         // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
         goto nextExample;

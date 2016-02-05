@@ -1832,7 +1832,9 @@ void TRI_FillShapedSub (TRI_shaped_sub_t* element,
   element->_sid = shapedObject->_sid;
 
   if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    memcpy((char*) &element->_value._data, shapedObject->_data.data, BasicShapes::TypeLengths[element->_sid]);
+    if (shapedObject->_data.data != nullptr) {
+      memcpy((char*) &element->_value._data, shapedObject->_data.data, BasicShapes::TypeLengths[element->_sid]);
+    }
   }
   else {
     element->_value._position._length = shapedObject->_data.length;

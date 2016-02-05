@@ -428,7 +428,9 @@ static int FillShapeValueList (v8::Isolate* isolate,
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values;  p < e;  ++p) {
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
   }
@@ -510,7 +512,9 @@ static int FillShapeValueList (v8::Isolate* isolate,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
 
@@ -558,7 +562,9 @@ static int FillShapeValueList (v8::Isolate* isolate,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+      }
       ptr += p->_size;
     }
 
@@ -787,8 +793,10 @@ static int FillShapeValueArray (v8::Isolate* isolate,
   for (p = values;  p < e;  ++p) {
     *aids++ = p->_aid;
     *sids++ = p->_sid;
-
-    memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+ 
+    if (p->_value != nullptr) {
+      memcpy(ptr, p->_value, static_cast<size_t>(p->_size));
+    }
     ptr += p->_size;
 
     dst->_fixedSized &= p->_fixedSized;
