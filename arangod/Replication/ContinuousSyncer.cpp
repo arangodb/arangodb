@@ -184,7 +184,7 @@ retry:
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
-        LOG_TOPIC(TRACE, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->_name << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->_name << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -285,7 +285,10 @@ void ContinuousSyncer::setProgress(char const* msg) {
   _applier->setProgress(msg, true);
 
   if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << "applier progress: " << msg;
+    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+  }
+  else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 }
 
@@ -294,7 +297,14 @@ void ContinuousSyncer::setProgress(char const* msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ContinuousSyncer::setProgress(std::string const& msg) {
-  setProgress(msg.c_str());
+  _applier->setProgress(msg.c_str(), true);
+  
+  if (_verbose) {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+  }
+  else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,7 +626,7 @@ int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting transaction " << tid;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
   auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase, tid);
 
@@ -658,7 +668,7 @@ int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "abort replication transaction " << tid;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid;
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -1022,8 +1032,6 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting with from tick " << fromTick << ", fetch tick " << fetchTick << ", open transactions: " << _ongoingTransactions.size();
-
   std::string const progress =
       "starting with from tick " + StringUtils::itoa(fromTick) +
       ", fetch tick " + StringUtils::itoa(fetchTick) + ", open transactions: " +
@@ -1150,8 +1158,6 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
                                StringUtils::itoa(toTick);
 
   setProgress(progress);
-
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "fetching initial master state with from tick " << fromTick << ", to tick " << toTick << ", url " << url.c_str();
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(
@@ -1280,11 +1286,10 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                           _localServerIdString + "&includeSystem=" +
                           (_includeSystem ? "true" : "false");
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "running continuous replication request with from tick " << fetchTick << ", first regular tick " << firstRegularTick << ", url " << url.c_str();
-
   // send request
   std::string const progress =
       "fetching master log from tick " + StringUtils::itoa(fetchTick) +
+      ", first regular tick " + StringUtils::itoa(firstRegularTick) + 
       ", open transactions: " + std::to_string(_ongoingTransactions.size());
   setProgress(progress);
 

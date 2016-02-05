@@ -149,7 +149,6 @@ applier.properties = function(config) {
   return requestResult;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,33 +160,31 @@ var sync = function(config) {
   const headers = {
     "X-Arango-Async": "store"
   };
+    
+  const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+  arangosh.checkRequestResult(requestResult);
+
 
   if (config.async) {
-    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-    arangosh.checkRequestResult(requestResult);
-
     return requestResult.headers["x-arango-async-id"];
-  } else {
-    const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-    arangosh.checkRequestResult(requestResult);
+  }
+   
+  let count = 0;
 
-    let count = 0;
+  while (true) {
+    const jobResult = db._connection.PUT(
+      "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
+    arangosh.checkRequestResult(jobResult);
 
-    while (true) {
-      const jobResult = db._connection.PUT(
-        "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
-      arangosh.checkRequestResult(jobResult);
-
-      if (jobResult.code !== 204) {
-        return jobResult;
-      }
-
-      if (++count % 6 === 0) {
-        internal.print("still synchronizing, please wait...");
-      }
-
-      internal.sleep(10);
+    if (jobResult.code !== 204) {
+      return jobResult;
     }
+
+    if (++count % 6 === 0) {
+      internal.print("still synchronizing, please wait...");
+    }
+
+    internal.sleep(5);
   }
 };
 
@@ -203,24 +200,64 @@ var syncCollection = function(collection, config) {
   config.restrictType = "include";
   config.restrictCollections = [collection];
   config.includeSystem = true;
-  var body = JSON.stringify(config);
-  var requestResult;
-  if (config.async) {
-    var headers = {
-      "X-Arango-Async": "store"
-    };
-    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-  } else {
-    requestResult = db._connection.PUT("/_api/replication/sync", body);
+
+  return sync(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the replication (all-in-one function for initial
+/// synchronization and continuous replication)
+////////////////////////////////////////////////////////////////////////////////
+
+var setupReplication = function(config) {
+  config = config || { };
+  if (! config.hasOwnProperty('autoStart')) {
+    config.autoStart = true;
+  }
+  if (! config.hasOwnProperty('includeSystem')) {
+    config.includeSystem = true;
+  }
+  if (! config.hasOwnProperty('verbose')) {
+    config.verbose = false;
   }
 
+  const db = internal.db;
+
+  const body = JSON.stringify(config);
+  const headers = {
+    "X-Arango-Async": "store"
+  };
+    
+  const requestResult = db._connection.PUT_RAW("/_api/replication/make-slave", body, headers);
   arangosh.checkRequestResult(requestResult);
+
+
   if (config.async) {
     return requestResult.headers["x-arango-async-id"];
   }
+   
+  let count = 0;
 
-  return requestResult;
+  while (true) {
+    const jobResult = db._connection.PUT(
+      "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
+    arangosh.checkRequestResult(jobResult);
+
+    if (jobResult.code !== 204) {
+      return jobResult;
+    }
+
+    if (++count % 6 === 0) {
+      internal.print("still synchronizing, please wait...");
+    }
+
+    internal.sleep(5);
+  }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries the sync result status
+////////////////////////////////////////////////////////////////////////////////
 
 var getSyncResult = function(id) {
   var db = internal.db;
@@ -249,10 +286,10 @@ var serverId = function() {
   return requestResult.serverId;
 };
 
-
 exports.logger = logger;
 exports.applier = applier;
 exports.sync = sync;
 exports.syncCollection = syncCollection;
+exports.setupReplication = setupReplication;
 exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;

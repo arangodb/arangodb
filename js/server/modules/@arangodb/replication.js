@@ -29,8 +29,6 @@
 
 var internal = require("internal");
 
-
-
 var logger  = { };
 var applier = { };
 
@@ -106,7 +104,6 @@ applier.properties = function (config) {
   return internal.configureReplicationApplier(config);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +129,42 @@ function syncCollection (collection, config) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the replication (all-in-one function for initial
+/// synchronization and continuous replication)
+////////////////////////////////////////////////////////////////////////////////
+
+function setupReplication (config) {
+  config = config || { };
+  if (! config.hasOwnProperty('autoStart')) {
+    config.autoStart = true;
+  }
+  if (! config.hasOwnProperty('includeSystem')) {
+    config.includeSystem = true;
+  }
+  if (! config.hasOwnProperty('verbose')) {
+    config.verbose = false;
+  }
+
+  try {
+    // stop previous instance
+    applier.stop();
+  }
+  catch (err) {
+  }
+  // remove existing configuration
+  applier.forget();
+
+  // run initial sync
+  var result = internal.synchronizeReplication(config);
+
+  // store applier configuration
+  applier.properties(config);
+
+  applier.start(result.lastLogTick);
+  return applier.state();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -139,11 +172,10 @@ function serverId () {
   return internal.serverId();
 }
 
-
-exports.logger         = logger;
-exports.applier        = applier;
-exports.sync           = sync;
-exports.syncCollection = syncCollection;
-exports.serverId       = serverId;
-
+exports.logger           = logger;
+exports.applier          = applier;
+exports.sync             = sync;
+exports.syncCollection   = syncCollection;
+exports.setupReplication = setupReplication;
+exports.serverId         = serverId;
 

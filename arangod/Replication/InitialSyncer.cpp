@@ -1720,6 +1720,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
     int res = TRI_ERROR_INTERNAL;
 
     {
+      READ_LOCKER(readLocker, _vocbase->_inventoryLock);
+
       SingleCollectionWriteTransaction<UINT64_MAX> trx(
           new StandaloneTransactionContext(), _vocbase, col->_cid);
 
@@ -1759,52 +1761,41 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
                                        " index(es) for " + collectionMsg;
           setProgress(progress);
 
-          READ_LOCKER(readLocker, _vocbase->_inventoryLock);
-
           try {
-            arangodb::CollectionGuard guard(_vocbase, col->_cid, false);
-            TRI_vocbase_col_t* col = guard.collection();
+            TRI_document_collection_t* document = trx.documentCollection();
+            TRI_ASSERT(document != nullptr);
 
-            if (col == nullptr) {
-              res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-            } else {
-              TRI_document_collection_t* document = col->_collection;
-              TRI_ASSERT(document != nullptr);
+            for (auto const& idxDef : VPackArrayIterator(indexes)) {
+              arangodb::Index* idx = nullptr;
 
-              for (auto const& idxDef : VPackArrayIterator(indexes)) {
-                arangodb::Index* idx = nullptr;
-
-                if (idxDef.isObject()) {
-                  VPackSlice const type = idxDef.get("type");
-                  if (type.isString()) {
-                    std::string const progress = "creating index of type " +
-                                                 type.copyString() + " for " +
-                                                 collectionMsg;
-                    setProgress(progress);
-                  }
-                }
-
-                res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
-                                                                idxDef, &idx);
-
-                if (res != TRI_ERROR_NO_ERROR) {
-                  errorMsg = "could not create index: " +
-                             std::string(TRI_errno_string(res));
-                  break;
-                } else {
-                  TRI_ASSERT(idx != nullptr);
-
-                  res = TRI_SaveIndex(document, idx, true);
-
-                  if (res != TRI_ERROR_NO_ERROR) {
-                    errorMsg = "could not save index: " +
-                               std::string(TRI_errno_string(res));
-                    break;
-                  }
+              if (idxDef.isObject()) {
+                VPackSlice const type = idxDef.get("type");
+                if (type.isString()) {
+                  std::string const progress = "creating index of type " +
+                                                type.copyString() + " for " +
+                                                collectionMsg;
+                  setProgress(progress);
                 }
               }
 
-              TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+              res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document,
+                                                              idxDef, &idx);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                errorMsg = "could not create index: " +
+                            std::string(TRI_errno_string(res));
+                break;
+              } else {
+                TRI_ASSERT(idx != nullptr);
+
+                res = TRI_SaveIndex(document, idx, true);
+
+                if (res != TRI_ERROR_NO_ERROR) {
+                  errorMsg = "could not save index: " +
+                              std::string(TRI_errno_string(res));
+                  break;
+                }
+              }
             }
           } catch (arangodb::basics::Exception const& ex) {
             res = ex.code();
