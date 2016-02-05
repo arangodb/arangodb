@@ -415,10 +415,13 @@ ExampleMatcher::ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a VelocyPack object
+///        Note: allowStrings is used to define if strings in example-array
+///        should be matched to _id
 ////////////////////////////////////////////////////////////////////////////////
 
 ExampleMatcher::ExampleMatcher(VPackSlice const& example, VocShaper* shaper,
-                               CollectionNameResolver const* resolver)
+                               CollectionNameResolver const* resolver,
+                               bool allowStrings)
     : _shaper(shaper) {
   if (example.isObject() || example.isString()) {
     ExampleDefinition def;
@@ -433,6 +436,10 @@ ExampleMatcher::ExampleMatcher(VPackSlice const& example, VocShaper* shaper,
   } else if (example.isArray()) {
     for (auto const& e : VPackArrayIterator(example)) {
       ExampleDefinition def;
+      if (!allowStrings && e.isString()) {
+        // We do not match strings in Array
+        continue;
+      }
       try {
         ExampleMatcher::fillExampleDefinition(e, resolver, def);
         definitions.emplace_back(std::move(def));

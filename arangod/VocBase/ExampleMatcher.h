@@ -84,7 +84,8 @@ class ExampleMatcher {
                  arangodb::CollectionNameResolver const* resolver);
 
   ExampleMatcher(arangodb::velocypack::Slice const& example, VocShaper* shaper,
-                 arangodb::CollectionNameResolver const* resolver);
+                 arangodb::CollectionNameResolver const* resolver,
+                 bool allowStrings);
 
   ~ExampleMatcher() { cleanup(); }
 

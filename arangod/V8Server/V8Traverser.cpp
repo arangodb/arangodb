@@ -306,7 +306,8 @@ void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(example, shaper, resolver));
+    _edgeFilter.emplace(cid,
+                        new ExampleMatcher(example, shaper, resolver, true));
   }
 }
 

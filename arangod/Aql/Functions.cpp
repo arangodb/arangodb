@@ -893,6 +893,45 @@ static Json ReadDocument(arangodb::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads a document by cid and key
+///        Also lazy locks the collection.
+///        Returns null if the document does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+static void ReadDocument(arangodb::AqlTransaction* trx,
+                         CollectionNameResolver const* resolver,
+                         TRI_voc_cid_t cid, char const* key,
+                         VPackBuilder& result) {
+  auto collection = trx->trxCollection(cid);
+
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "collection is a nullptr");
+    }
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, key);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    result.add(VPackValue(VPackValueType::Null));
+  } else {
+    ExpandShapedJson(collection->_collection->_collection->getShaper(),
+                     resolver, cid, &mptr, result);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function to filter the given list of mptr
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -996,6 +1035,88 @@ static void RequestEdges(arangodb::basics::Json const& vertexJson,
     }
   }
 }
+
+static void RequestEdges(VPackSlice const& vertexSlice,
+                         arangodb::AqlTransaction* trx,
+                         CollectionNameResolver const* resolver,
+                         VocShaper* shaper, TRI_voc_cid_t cid,
+                         TRI_document_collection_t* collection,
+                         TRI_edge_direction_e direction,
+                         arangodb::ExampleMatcher const* matcher,
+                         bool includeVertices, VPackBuilder& result) {
+  std::string vertexId;
+  if (vertexSlice.isString()) {
+    vertexId = vertexSlice.copyString();
+  } else if (vertexSlice.isObject()) {
+    vertexId = arangodb::basics::VelocyPackHelper::getStringValue(vertexSlice,
+                                                                  "_id", "");
+  } else {
+    // Nothing to do.
+    // Return (error for illegal input is thrown outside
+    return;
+  }
+
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(vertexId, "/");
+  if (parts.size() != 2) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+                                   vertexId);
+  }
+
+  TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
+  if (startCid == 0) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  parts[0].c_str());
+  }
+
+  char* key = const_cast<char*>(parts[1].c_str());
+  std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
+      trx, collection, direction, startCid, key);
+  FilterDocuments(matcher, cid, edges);
+  size_t resultCount = edges.size();
+
+  if (includeVertices) {
+    for (size_t i = 0; i < resultCount; ++i) {
+      VPackObjectBuilder guard(&result);
+      result.add(VPackValue("edge"));
+      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result);
+      char const* targetKey = nullptr;
+      TRI_voc_cid_t targetCid = 0;
+
+      switch (direction) {
+        case TRI_EDGE_OUT:
+          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
+          break;
+        case TRI_EDGE_IN:
+          targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
+          break;
+        case TRI_EDGE_ANY:
+          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
+          if (targetCid == startCid && strcmp(targetKey, key) == 0) {
+            targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
+            targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
+          }
+          break;
+      }
+
+      if (targetKey == nullptr || targetCid == 0) {
+        // somehow invalid
+        continue;
+      }
+
+      result.add(VPackValue("vertex"));
+      ReadDocument(trx, resolver, targetCid, targetKey, result);
+    }
+  } else {
+    for (size_t i = 0; i < resultCount; ++i) {
+      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result);
+    }
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function to unset or keep all given names in the value.
@@ -5994,6 +6115,10 @@ AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
 AqlValue Functions::Edges(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(EdgesVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 3 || 5 < n) {
@@ -6138,6 +6263,132 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
                  includeVertices, result);
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+#endif
+}
+
+AqlValue$ Functions::EdgesVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || 5 < n) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "EDGES", (int)3,
+        (int)5);
+  }
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  std::string collectionName = collectionSlice.copyString();
+
+  TRI_transaction_collection_t* collection = nullptr;
+  TRI_voc_cid_t cid;
+  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  if (collection->_collection->_type != TRI_COL_TYPE_EDGE) {
+    RegisterWarning(query, "EDGES", TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  VPackSlice vertexSlice = ExtractFunctionParameter(trx, parameters, 1);
+  if (!vertexSlice.isArray() && !vertexSlice.isString() && !vertexSlice.isObject()) {
+    // Invalid Start vertex
+    // Early Abort before parsing other parameters
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  VPackSlice directionSlice = ExtractFunctionParameter(trx, parameters, 2);
+  if (!directionSlice.isString()) {
+    RegisterWarning(query, "EDGES",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  std::string dirString = directionSlice.copyString();
+  // transform String to lower case
+  std::transform(dirString.begin(), dirString.end(), dirString.begin(),
+                 ::tolower);
+
+  TRI_edge_direction_e direction;
+
+  if (dirString == "inbound") {
+    direction = TRI_EDGE_IN;
+  } else if (dirString == "outbound") {
+    direction = TRI_EDGE_OUT;
+  } else if (dirString == "any") {
+    direction = TRI_EDGE_ANY;
+  } else {
+    RegisterWarning(query, "EDGES",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  auto resolver = trx->resolver();
+
+  auto shaper = collection->_collection->_collection->getShaper();
+  std::unique_ptr<arangodb::ExampleMatcher> matcher;
+
+  if (n > 3) {
+    // We might have examples
+    VPackSlice exampleSlice = ExtractFunctionParameter(trx, parameters, 3);
+    if ((exampleSlice.isArray() && exampleSlice.length() != 0)|| exampleSlice.isObject()) {
+      try {
+        matcher.reset(
+            new arangodb::ExampleMatcher(exampleSlice, shaper, resolver, false));
+      } catch (arangodb::basics::Exception const& e) {
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          throw;
+        }
+        // We can never fulfill this filter!
+        // RETURN empty Array
+        std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+        {
+          VPackArrayBuilder guard(b.get());
+        }
+        return AqlValue$(b.get());
+      }
+    }
+  }
+
+  bool includeVertices = false;
+
+  if (n == 5) {
+    // We have options
+    VPackSlice options = ExtractFunctionParameter(trx, parameters, 4);
+    if (options.isObject()) {
+      includeVertices = arangodb::basics::VelocyPackHelper::getBooleanValue(
+          options, "includeVertices", false);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  {
+    VPackArrayBuilder guard(b.get());
+    if (vertexSlice.isArray()) {
+      for (auto const& v : VPackArrayIterator(vertexSlice)) {
+        try {
+          RequestEdges(v, trx, resolver, shaper, cid,
+                       collection->_collection->_collection, direction,
+                       matcher.get(), includeVertices, *b);
+        } catch (...) {
+          // Errors in Array are simply ignored
+        }
+      }
+    } else {
+      RequestEdges(vertexSlice, trx, resolver, shaper, cid,
+                   collection->_collection->_collection, direction,
+                   matcher.get(), includeVertices, *b);
+    }
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6145,17 +6396,17 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Round(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          FunctionParameters const& parameters) {
-  size_t const n = parameters.size();
+                        arangodb::AqlTransaction* trx,
+                        FunctionParameters const& parameters) {
+size_t const n = parameters.size();
 
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
-        (int)1);
-  }
+if (n != 1) {
+  THROW_ARANGO_EXCEPTION_PARAMS(
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
+      (int)1);
+}
 
-  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
   bool unused = false;
   double input = TRI_ToDoubleJson(inputJson.json(), unused);

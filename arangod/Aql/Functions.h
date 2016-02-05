@@ -332,6 +332,8 @@ struct Functions {
   static AqlValue$ DocumentVPack(arangodb::aql::Query*,
                                  arangodb::AqlTransaction*,
                                  VPackFunctionParameters const&);
+  static AqlValue$ EdgesVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
 };
 }
 }
