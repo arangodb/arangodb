@@ -57,7 +57,7 @@ var PlannerLocalDefaults = {
   "useSSLonDBservers"       : false,
   "useSSLonCoordinators"    : false,
   "valgrind"                : "",
-  "valgrindopts"            : [],
+  "valgrindOpts"            : [],
   "valgrindXmlFileBase"     : "",
   "valgrindTestname"        : "",
   "valgrindHosts"           : "",
@@ -439,6 +439,7 @@ Planner.prototype.makePlan = function() {
   var agencyData = this.agencyData = {};
   var prefix = agencyData[config.agencyPrefix] = {Dispatcher: {}};
   var endpoints = {};
+  var s, ep, tmp;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
     ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
@@ -471,7 +472,7 @@ Planner.prototype.makePlan = function() {
              "agentPath"           : config.agentPath,
              "onlyLocalhost"       : config.onlyLocalhost,
              "valgrind"            : config.valgrind,
-             "valgrindopts"        : config.valgrindopts,
+             "valgrindOpts"        : config.valgrindOpts,
              "valgrindXmlFileBase" : config.valgrindXmlFileBase,
              "valgrindTestname"    : config.valgrindXmlFileBase,
              "valgrindHosts"       : config.valgrindHosts,
@@ -508,7 +509,7 @@ Planner.prototype.makePlan = function() {
                 "useSSLonDBservers"      : config.useSSLonDBservers,
                 "useSSLonCoordinators"   : config.useSSLonCoordinators,
                 "valgrind"               : config.valgrind,
-                "valgrindopts"           : config.valgrindopts,
+                "valgrindOpts"           : config.valgrindOpts,
                 "valgrindXmlFileBase"    : config.valgrindXmlFileBase,
                 "valgrindTestname"       : config.valgrindTestname,
                 "valgrindHosts"          : config.valgrindHosts,

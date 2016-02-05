@@ -417,10 +417,10 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if ((cmd.valgrind !== '') &&
         (cmd.valgrindHosts !== undefined) &&
         (cmd.valgrindHosts.indexOf(roles[i]) > -1)) {
-      var valgrindopts = cmd.valgrindopts.concat(
+      var valgrindOpts = cmd.valgrindOpts.concat(
         ["--xml-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
          "--log-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
-      var newargs = valgrindopts.concat([arangodPath]).concat(args);
+      var newargs = valgrindOpts.concat([arangodPath]).concat(args);
       var cmdline = cmd.valgrind;
       pids.push(executeExternal(cmdline, newargs));
     }
