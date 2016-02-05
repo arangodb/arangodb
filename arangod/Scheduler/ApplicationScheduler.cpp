@@ -278,7 +278,25 @@ bool CtrlHandler(DWORD eventType) {
 }
 
 #endif
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify an rlimit value
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_GETRLIMIT
+
+template<typename T>
+static std::string StringifyLimitValue(T value) {
+  auto max = std::numeric_limits<decltype(value)>::max();
+  if (value == max || value == max / 2) {
+    return "unlimited";
+  }
+  return std::to_string(value);
 }
+
+#endif
+
+} // namespace
 
 ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
     : ApplicationFeature("scheduler"),
@@ -427,15 +445,8 @@ bool ApplicationScheduler::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    auto stringifier = [] (decltype(rlim.rlim_max) value) -> std::string {
-      if (value == std::numeric_limits<decltype(value)>::max()) {
-        return "unlimited";
-      }
-      return std::to_string(value);
-    };
-
-    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << stringifier(rlim.rlim_max) 
-              << ", soft limit is " << stringifier(rlim.rlim_cur);
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max) 
+              << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
   }
 #endif
 
@@ -583,15 +594,8 @@ void ApplicationScheduler::adjustFileDescriptors() {
       LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
     }
     
-    auto stringifier = [] (decltype(rlim.rlim_max) value) -> std::string {
-      if (value == std::numeric_limits<decltype(value)>::max()) {
-        return "unlimited";
-      }
-      return std::to_string(value);
-    };
-
-    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << stringifier(rlim.rlim_max)
-               << ", soft limit is " << stringifier(rlim.rlim_cur); 
+    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
+               << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
 
     bool changed = false;
 
@@ -629,8 +633,8 @@ void ApplicationScheduler::adjustFileDescriptors() {
         LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
-      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << stringifier(rlim.rlim_max) 
-                << ", new soft limit is " << ", soft limit is " << stringifier(rlim.rlim_cur); 
+      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << StringifyLimitValue(rlim.rlim_max) 
+                << ", new soft limit is " << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
     }
 
     // the select backend has more restrictions
