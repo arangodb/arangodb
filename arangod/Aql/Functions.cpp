@@ -5695,12 +5695,98 @@ static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to get a document by it's identifier
+///        The collection has to be locked by the transaction before
+////////////////////////////////////////////////////////////////////////////////
+
+static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
+                                    CollectionNameResolver const* resolver,
+                                    TRI_transaction_collection_t* collection,
+                                    TRI_voc_cid_t const& cid,
+                                    std::string const& collectionName,
+                                    std::string const& identifier,
+                                    VPackBuilder& result) {
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(identifier, "/");
+
+  TRI_doc_mptr_copy_t mptr;
+  if (parts.size() == 1) {
+    int res = trx->readSingle(collection, &mptr, parts[0]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return;
+    }
+  } else if (parts.size() == 2) {
+    if (parts[0] != collectionName) {
+      // Reqesting an _id that cannot be stored in this collection
+      return;
+    }
+    int res = trx->readSingle(collection, &mptr, parts[1]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return;
+    }
+  } else {
+    return;
+  }
+
+  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
+                   cid, &mptr, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to get a document by its _id
+///        This function will lazy read-lock the collection.
+/// this function will not throw if the document or the collection cannot be
+/// found
+////////////////////////////////////////////////////////////////////////////////
+
+static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
+                                    CollectionNameResolver const* resolver,
+                                    std::string const& identifier,
+                                    VPackBuilder& result) {
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(identifier, "/");
+
+  if (parts.size() != 2) {
+    return;
+  }
+  std::string collectionName = parts[0];
+  TRI_transaction_collection_t* collection = nullptr;
+  TRI_voc_cid_t cid = 0;
+  try {
+    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  } catch (arangodb::basics::Exception const& ex) {
+    // don't throw if collection is not found
+    if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return;
+    }
+    throw;
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, parts[1]);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return;
+  }
+
+  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
+                   cid, &mptr, result);
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function Document
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Document(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(DocumentVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 1 || 2 < n) {
@@ -5799,6 +5885,106 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   }
   // Id has invalid format
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 1 || 2 < n) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "DOCUMENT", (int)1,
+        (int)2);
+  }
+
+  auto resolver = trx->resolver();
+  if (n == 1) {
+    VPackSlice id = ExtractFunctionParameter(trx, parameters, 0);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    if (id.isString()) {
+      std::string identifier = id.copyString();
+      getDocumentByIdentifier(trx, resolver, identifier, *b);
+      if (b->isEmpty()) {
+        // not found
+        b->add(VPackValue(VPackValueType::Null));
+      }
+    } else if (id.isArray()) {
+      VPackArrayBuilder guard(b.get());
+      for (auto const& next : VPackArrayIterator(id)) {
+        try {
+          if (next.isString()) {
+            std::string identifier = next.copyString();
+            getDocumentByIdentifier(trx, resolver, identifier, *b);
+          }
+        } catch (arangodb::basics::Exception const&) {
+          // Ignore all ArangoDB exceptions here
+        }
+      }
+    } else {
+      b->add(VPackValue(VPackValueType::Null));
+    }
+    return AqlValue$(b.get());
+  }
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  std::string collectionName = collectionSlice.copyString();
+
+  TRI_transaction_collection_t* collection = nullptr;
+  TRI_voc_cid_t cid;
+  bool notFound = false;
+
+  try {
+    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  } catch (arangodb::basics::Exception const& ex) {
+    // don't throw if collection is not found
+    if (ex.code() != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      throw;
+    }
+    notFound = true;
+  }
+
+  VPackSlice id = ExtractFunctionParameter(trx, parameters, 1);
+  if (id.isString()) {
+    if (notFound) {
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    std::string identifier = id.copyString();
+    getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+    if (b->isEmpty()) {
+      b->add(VPackValue(VPackValueType::Null));
+    }
+    return AqlValue$(b.get());
+  } else if (id.isArray()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackArrayBuilder guard(b.get());
+      if (!notFound) {
+        for (auto const& next : VPackArrayIterator(id)) {
+          try {
+            if (next.isString()) {
+              std::string identifier = next.copyString();
+              getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+            }
+          } catch (arangodb::basics::Exception const&) {
+            // Ignore all ArangoDB exceptions here
+          }
+        }
+      }
+    }
+    return AqlValue$(b.get());
+  }
+  // Id has invalid format
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
