@@ -1,8 +1,20 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
-* added a new log option "--log.output <definition>". The output definition
-  "<definition>" can either
+* make logging configurable per log "topic"
+
+  `--log.level <level>` sets the global log level to <level>, e.g. `info`,
+  `debug`, `trace`.
+
+  `--log.level topic=<level>` sets the log level for a specific topic.
+  Currently, the following topics exist: `collector`, `compactor`, `mmap`,
+  `performance`, `queries`, and `requests`. `performance` and `requests` are
+  set to FATAL by default. `queries` is set to info. All others are
+  set to the global level by default.
+
+  The new log option `--log.output <definition>` allows directing the global
+  or per-topic log output to different outputs. The output definition
+  "<definition>" can be one of
 
     "-" for stdin
     "+" for stderr
@@ -10,45 +22,30 @@ v3.0.0 (XXXX-XX-XX)
     "syslog://<syslog-facility>/<application-name>"
     "file://<relative-path>"
 
-  "--log.level <level>" sets the global log level to <level>.
-
-  It is also possible to configure logging for topics.
-
-  "--log.level topic=<level>" sets the log level for a specific topic.
-  Currently, the following topics exists: collector, compactor, mmap,
-  performance, queries, and requests. Performance and requests are
-  set to FATAL by default. Queries is set to info. All others are
-  set to the global level by default.
-
-  You can also output specicify topics to specicify output channels.
-  For example
+  The option can be specified multiple times in order to configure the output
+  for different log topics. To set up a per-topic output configuration, use
+  `--log.output <topic>=<definition>`, e.g.
 
     queries=file://queries.txt
 
-  logs all queries requests to the file "queries.txt".
+  logs all queries to the file "queries.txt".
 
-  "--log.requests" is now deprecated. Use
+* the option `--log.requests-file` is now deprecated. Instead use
 
-    "--log.level requests=info"
-    "--log.output requests=file://requests.txt"
+    `--log.level requests=info`
+    `--log.output requests=file://requests.txt`
 
-  instead.
+* the option `--log.facility` is now deprecated. Instead use
 
-  "--log.facility" is now deprected. Use
+    `--log.output requests=syslog://facility`
 
-    "--log.output requests=syslog://facility"
+* the option `--log.performance` is now deprecated. Instead use
 
-  instead.
+    `--log.level performance=trace`
 
-  "--log.performance" is now deprected. Use
-
-    "--log.level requests=trace"
-
-  instead.
+* removed option `--log.source-filter`
 
 * removed configure option `--enable-logger`
-
-* removed startup option `--log.source-filter`
 
 * change collection directory names to include a random id component at the end
 
@@ -100,7 +97,7 @@ v2.8.2 (XXXX-XX-XX)
 * added all-in-one function *setupReplication* to synchronize data from master 
   to slave and start the continuous replication:
 
-      require("org/arangodb/replication").setupReplication(configuration);
+      require("@arangodb/replication").setupReplication(configuration);
 
   The command will return when the initial synchronization is finished and the 
   continuous replication has been started, or in case the initial synchronization 
@@ -120,7 +117,7 @@ v2.8.2 (XXXX-XX-XX)
   master:
 
       db._useDatabase("_system");
-      require("org/arangodb/replication").setupReplication({
+      require("@arangodb/replication").setupReplication({
         endpoint: "tcp://master.domain.org:8529",
         username: "myuser",
         password: "mypasswd",
@@ -469,7 +466,7 @@ v2.8.0-alpha1 (2015-12-03)
     ArangoShell like this:
 
         /* starts initial synchronization */
-        var replication = require("org/arangodb/replication");
+        var replication = require("@arangodb/replication");
         var id = replication.sync({
           endpoint: "tcp://master.domain.org:8529",
           username: "myuser",
@@ -486,7 +483,6 @@ v2.8.0-alpha1 (2015-12-03)
 
 
 * fixed non-deterministic query results in some cluster queries
->>>>>>> 181db60b494097080cc1fac0a50895794eb91a57
 
 * fixed issue #1589
 
