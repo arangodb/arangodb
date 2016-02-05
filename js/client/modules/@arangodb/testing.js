@@ -129,6 +129,7 @@ const optionsDefaults = {
   "skipNightly": true,
   "skipNondeterministic": false,
   "skipRanges": false,
+  "skipSsl": false,
   "skipTimeCritical": false,
   "test": undefined,
   "username": "root",
@@ -2908,7 +2909,7 @@ testFuncs.single_server = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.ssl_server = function(options) {
-  if (options.hasOwnProperty('skipSsl')) {
+  if (options.skipSsl) {
     return {
       ssl_server: {
         status: true,
