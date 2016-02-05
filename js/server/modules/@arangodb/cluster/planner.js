@@ -439,6 +439,7 @@ Planner.prototype.makePlan = function() {
   var agencyData = this.agencyData = {};
   var prefix = agencyData[config.agencyPrefix] = {Dispatcher: {}};
   var endpoints = {};
+  var s, ep, tmp;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
     ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
