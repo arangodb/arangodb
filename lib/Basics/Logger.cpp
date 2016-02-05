@@ -33,6 +33,10 @@
 #define prioritynames TRI_prioritynames
 #define facilitynames TRI_facilitynames
 #include <syslog.h>
+
+#ifdef TRI_ENABLE_SYSLOG_STRINGS
+#include "syslog_names.h"
+#endif
 #endif
 
 #include <boost/lockfree/queue.hpp>
@@ -252,7 +256,7 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   size_t escapedLength;
   char* escaped =
       TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, message.c_str(),
-                                message.size(), &escapedLength, true);
+                                message.size(), &escapedLength, true, false);
 
   if (escaped != nullptr) {
     writeLogFile(fd, escaped, (ssize_t)escapedLength);
@@ -555,9 +559,6 @@ static void QueueMessage(char const* function, char const* file, long int line,
 
   std::stringstream out;
 
-  TRI_pid_t processId = TRI_CurrentProcessId();
-  uint64_t threadNumber = Thread::currentThreadNumber();
-
   // time prefix
   {
     char timePrefix[32];
@@ -589,7 +590,10 @@ static void QueueMessage(char const* function, char const* file, long int line,
   {
     char processPrefix[128];
 
+    TRI_pid_t processId = TRI_CurrentProcessId();
+
     if (ShowThreadIdentifier.load(std::memory_order_relaxed)) {
+      uint64_t threadNumber = Thread::currentThreadNumber();
       snprintf(processPrefix, sizeof(processPrefix), "[%llu-%llu] ",
                (unsigned long long)processId, (unsigned long long)threadNumber);
     } else {
@@ -604,17 +608,15 @@ static void QueueMessage(char const* function, char const* file, long int line,
   out << Logger::translateLogLevel(level) << " ";
 
   // check if we must display the line number
-  bool sln = ShowLineNumber.load(std::memory_order_relaxed);
-
-  // append the file and line
-  if (sln) {
+  if (ShowLineNumber.load(std::memory_order_relaxed)) {
+    // append the file and line
     out << "[" << file << ":" << line << "] ";
   }
 
   // generate the complete message
-  size_t offset = out.str().size();
   out << message;
   std::string const& m = out.str();
+  size_t offset = m.size() - message.size();
 
   // now either queue or output the message
   if (ThreadedLogging.load(std::memory_order_relaxed)) {
@@ -708,6 +710,7 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance",
                              LogLevel::FATAL);  // suppress by default
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
+LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,7 +924,7 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
 
 void Logger::setOutputPrefix(std::string const& prefix) {
   char* outputPrefix =
-      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix.c_str());
+      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix.c_str(), prefix.size());
 
   if (outputPrefix == nullptr) {
     return;
@@ -1127,23 +1130,6 @@ void Logger::shutdown(bool clearBuffers) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, prefix);
     }
   }
-
-#if 0
-  // and clear all logging buffers
-  if (clearBuffers) {
-    // cleanup output buffers
-    MUTEX_LOCKER(mutexLocker, BufferLock);
-
-    for (size_t i = 0; i < OUTPUT_LOG_LEVELS; i++) {
-      for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
-        if (BufferOutput[i][j]._text != nullptr) {
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, BufferOutput[i][j]._text);
-          BufferOutput[i][j]._text = nullptr;
-        }
-      }
-    }
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

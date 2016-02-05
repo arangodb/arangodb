@@ -262,7 +262,6 @@ add_executable(
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp
-    VocBase/replication-master.cpp
     VocBase/server.cpp
     VocBase/shape-accessor.cpp
     VocBase/shaped-json.cpp

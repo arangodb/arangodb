@@ -41,6 +41,11 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -76,7 +81,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   TRI_InitConfigurationReplicationApplier(&_configuration);
   TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
 
-  TRI_InitMasterInfoReplication(&_masterInfo, configuration->_endpoint);
+  _masterInfo._endpoint = configuration->_endpoint;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
@@ -123,8 +128,6 @@ Syncer::~Syncer() {
   delete _client;
   delete _connection;
   delete _endpoint;
-
-  TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,23 +376,19 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_json_t* keyOptions = nullptr;
-
-  if (JsonHelper::isObject(JsonHelper::getObjectElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE,
-                              JsonHelper::getObjectElement(json, "keyOptions"));
-  }
-
-  std::shared_ptr<VPackBuilder> opts = JsonHelper::toVelocyPack(keyOptions);
-
-  if (keyOptions != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  }
 
   std::shared_ptr<VPackBuilder> builder =
       arangodb::basics::JsonHelper::toVelocyPack(json);
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
+  // merge in "isSystem" attribute
+  VPackBuilder s;
+  s.openObject();
+  s.add("isSystem", VPackValue(true));
+  s.close();
+
+  VPackBuilder merged = VPackCollection::merge(s.slice(), builder->slice(), true);
+
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice());
 
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
@@ -570,7 +569,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -582,7 +581,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
   } else {
@@ -595,7 +594,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": invalid JSON";
+                 _masterInfo._endpoint + ": invalid JSON";
     }
   }
 
@@ -608,7 +607,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
 
 int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   std::string const endpointString =
-      " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
+      " from endpoint '" + _masterInfo._endpoint + "'";
 
   // process "state" section
   TRI_json_t const* state = JsonHelper::getObjectElement(json, "state");
@@ -708,7 +707,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   _masterInfo._lastLogTick = lastLogTick;
   _masterInfo._active = running;
 
-  TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "connected to master at " << _masterInfo._endpoint << ", id " << _masterInfo._serverId << ", version " << _masterInfo._majorVersion << "." << _masterInfo._minorVersion << ", last log tick " << _masterInfo._lastLogTick;
 
   return TRI_ERROR_NO_ERROR;
 }

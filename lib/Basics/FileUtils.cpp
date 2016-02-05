@@ -407,10 +407,12 @@ bool copyDirectoryRecursive(std::string const& source,
       if (!TRI_CopyAttributes(src, dst, error)) {
         break;
       }
+#ifndef _WIN32
     } else if (isSymbolicLink(oneItem->d_name)) {
       if (!TRI_CopySymlink(src, dst, error)) {
         break;
       }
+#endif
     } else {
       if (!TRI_CopyFile(src, dst, error)) {
         break;
@@ -481,7 +483,11 @@ std::vector<std::string> listFiles(std::string const& directory) {
 bool isDirectory(std::string const& path) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
+#ifdef _WIN32
+  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
+#else
   return (res == 0) && S_ISDIR(stbuf.st_mode);
+#endif
 }
 
 bool isSymbolicLink(std::string const& path) {

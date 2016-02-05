@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-master.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
@@ -176,7 +175,15 @@ class Syncer {
   /// @brief information about the master state
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_replication_master_info_t _masterInfo;
+  struct {
+    std::string _endpoint;
+    TRI_server_id_t _serverId;
+    int _majorVersion;
+    int _minorVersion;
+    TRI_voc_tick_t _lastLogTick;
+    bool _active;
+  }
+  _masterInfo;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the update policy object (will be the same for all actions)

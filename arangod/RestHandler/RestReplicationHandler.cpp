@@ -2928,6 +2928,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                                          defaults._autoResync);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", defaults._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -3290,6 +3292,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       body, "includeSystem", config._includeSystem);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", config._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", config._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
