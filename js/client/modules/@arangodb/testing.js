@@ -92,10 +92,10 @@ const optionsDocumentation = [
   '',
   '   - benchargs : additional commandline arguments to arangob',
   '',
-  '   - `valgrind`: if set to true the arangods are run with the valgrind',
-  '     memory checker',
+  '   - `valgrind`: if set the programs are run with the valgrind',
+  '     memory checker; should point to the valgrind executable',
   '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
-  '   - `valgrindargs`: list of commandline parameters to add to valgrind',
+  '   - `valgrindArgs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
@@ -106,6 +106,7 @@ const optionsDocumentation = [
 const optionsDefaults = {
   "cleanup": true,
   "cluster": false,
+  "clusterNodes": 2,
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
@@ -133,7 +134,8 @@ const optionsDefaults = {
   "username": "root",
   "valgrind": false,
   "valgrindXmlFileBase": "",
-  "valgrindargs": [],
+  "valgrindArgs": [],
+  "valgrindHosts": false,
   "writeXmlReport": true,
 };
 
@@ -359,57 +361,69 @@ function analyzeCoreDumpWindows(instanceInfo) {
 /// @brief checks of an instance is still alive
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkInstanceAlive(instanceInfo, options) {
-  if (options.cluster === false) {
-    if (instanceInfo.hasOwnProperty('exitStatus')) {
-      return false;
-    }
-
-    const res = statusExternal(instanceInfo.pid, false);
-    const ret = res.status === "RUNNING";
-
-    if (!ret) {
-      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-      print(instanceInfo);
-
-      if (res.hasOwnProperty('signal') &&
-        ((res.signal === 11) ||
-          (res.signal === 6) ||
-          // Windows sometimes has random numbers in signal...
-          (require("internal").platform.substr(0, 3) === 'win')
-        )
-      ) {
-        const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
-
-        print("Core dump written; copying arangod to " +
-          instanceInfo.tmpDataDir + " for later analysis.");
-
-        res.gdbHint = "Run debugger with 'gdb " +
-          storeArangodPath + " " + options.coreDirectory +
-          "/core*" + instanceInfo.pid.pid + "*'";
-
-        if (require("internal").platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(instanceInfo.monitor, true);
-          analyzeCoreDumpWindows(instanceInfo);
-        } else {
-          fs.copyFile("bin/arangod", storeArangodPath);
-          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
-        }
-      }
-
-      instanceInfo.exitStatus = res;
-    }
-
-    if (!ret) {
-      print("marking crashy");
-      serverCrashed = true;
-    }
-
-    return ret;
+function checkInstanceAliveSingleServer(instanceInfo, options) {
+  if (instanceInfo.hasOwnProperty('exitStatus')) {
+    return false;
   }
 
-  // cluster tests
+  const res = statusExternal(instanceInfo.pid, false);
+  const ret = res.status === "RUNNING";
+
+  if (!ret) {
+    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+    print(instanceInfo);
+
+    if (res.hasOwnProperty('signal') &&
+      ((res.signal === 11) ||
+        (res.signal === 6) ||
+        // Windows sometimes has random numbers in signal...
+        (require("internal").platform.substr(0, 3) === 'win')
+      )
+    ) {
+      const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+
+      print("Core dump written; copying arangod to " +
+        instanceInfo.tmpDataDir + " for later analysis.");
+
+      res.gdbHint = "Run debugger with 'gdb " +
+        storeArangodPath + " " + options.coreDirectory +
+        "/core*" + instanceInfo.pid.pid + "*'";
+
+      if (require("internal").platform.substr(0, 3) === 'win') {
+        // Windows: wait for procdump to do its job...
+        statusExternal(instanceInfo.monitor, true);
+        analyzeCoreDumpWindows(instanceInfo);
+      } else {
+        fs.copyFile("bin/arangod", storeArangodPath);
+        analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
+      }
+    }
+
+    instanceInfo.exitStatus = res;
+  }
+
+  if (!ret) {
+    print("marking crashy");
+    serverCrashed = true;
+  }
+
+  return ret;
+}
+
+function checkRemoteInstance(pid, wait, options) {
+  const debug = options.debug || false;
+  const p = JSON.stringify(pid);
+  const res = JSON.parse(arango.PUT("/_admin/execute",
+    `return require("internal").statusExternal(${p}, ${wait});`));
+
+  if (debug) {
+    print(`status of remote process ${p}: ${res.status}`);
+  }
+
+  return res;
+}
+
+function checkInstanceAliveCluster(instanceInfo, options) {
   let clusterFit = true;
 
   for (let part in instanceInfo.kickstarter.runInfo) {
@@ -417,7 +431,7 @@ function checkInstanceAlive(instanceInfo, options) {
       for (let pid in instanceInfo.kickstarter.runInfo[part].pids) {
         if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
           const checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
-          const ress = statusExternal(checkpid, false);
+          const ress = checkRemoteInstance(checkpid, false, options);
 
           if (ress.hasOwnProperty('signal') &&
             ((ress.signal === 11) || (ress.signal === 6))) {
@@ -432,7 +446,7 @@ function checkInstanceAlive(instanceInfo, options) {
 
             if (require("internal").platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
-              statusExternal(instanceInfo.monitor, true);
+              checkRemoteInstance(instanceInfo.monitor, true, options);
               analyzeCoreDumpWindows(instanceInfo);
             } else {
               fs.copyFile("bin/arangod", storeArangodPath);
@@ -454,6 +468,14 @@ function checkInstanceAlive(instanceInfo, options) {
     serverCrashed = true;
     return false;
   }
+}
+
+function checkInstanceAlive(instanceInfo, options) {
+  if (options.cluster === false) {
+    return checkInstanceAliveSingleServer(instanceInfo, options);
+  }
+  
+  return checkInstanceAliveCluster(instanceInfo, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,7 +586,7 @@ function runThere(options, instanceInfo, file) {
     httpOptions.method = "POST";
     httpOptions.timeout = 3600;
 
-    if (typeof(options.valgrind) === 'string') {
+    if (options.valgrind) {
       httpOptions.timeout *= 2;
     }
 
@@ -1056,7 +1078,7 @@ function shutdownInstance(instanceInfo, options) {
         if (instanceInfo.exitStatus.status === "RUNNING") {
           ++count;
 
-          if (typeof(options.valgrind) === 'string') {
+          if (options.valgrind) {
             wait(1);
             continue;
           }
@@ -1167,35 +1189,46 @@ function startDispatcher(instanceInfo) {
 /// protocol must be one of ["tcp", "ssl", "unix"]
 ////////////////////////////////////////////////////////////////////////////////
 
-function startInstance(protocol, options, addArgs, testname, tmpDir) {
-  const startTime = time();
-  const topDir = findTopDir();
+function startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+                              addArgs, testname, appDir, tmpDataDir) {
+  startDispatcher(instanceInfo, options);
 
-  let instanceInfo = {};
-  instanceInfo.topDir = topDir;
-  instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
+  const clusterNodes = options.clusterNodes;
 
-  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-  const appDir = fs.join(tmpDataDir, "apps");
+  let extraArgs = makeArgsArangod(options, appDir);
+  extraArgs = _.extend(extraArgs, optionsExtraArgs);
 
-  fs.makeDirectoryRecursive(tmpDataDir);
-  instanceInfo.tmpDataDir = tmpDataDir;
-
-  let optionsExtraArgs = {};
-
-  if (typeof(options.extraargs) === 'object') {
-    optionsExtraArgs = options.extraargs;
+  if (addArgs !== undefined) {
+    extraArgs = _.extend(extraArgs, addArgs);
   }
 
-  let valgrindopts = {};
+  const dispatcher = {
+    "endpoint": "tcp://127.0.0.1:",
+    "arangodExtraArgs": toArgv(extraArgs),
+    "username": "root",
+    "password": ""
+  };
 
-  if (typeof(options.valgrindargs) === 'object') {
-    valgrindopts = options.valgrindargs;
+  print("Temporary cluster data and logs are in", tmpDataDir);
+
+  let runInValgrind = "";
+  let testfn = "";
+
+  if (options.valgrind) {
+    runInValgrind = options.valgrind;
+
+    testfn = options.valgrindXmlFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    testfn += "cluster";
   }
 
   let valgrindHosts = '';
 
-  if (typeof(options.valgrindHosts) === 'object') {
+  if (options.valgrindHosts) {
     if (options.valgrindHosts.Coordinator === true) {
       valgrindHosts += 'Coordinator';
     }
@@ -1205,142 +1238,163 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     }
   }
 
-  let dispatcher;
-  let endpoint;
+  let valgrindOpts = {};
 
-  // cluster mode
+  if (options.valgrindArgs) {
+    valgrindOpts = options.valgrindArgs;
+  }
+
+  let plan = new Planner({
+    "numberOfDBservers": clusterNodes,
+    "numberOfCoordinators": 1,
+    "dispatchers": {
+      "me": dispatcher
+    },
+    "dataPath": tmpDataDir,
+    "logPath": tmpDataDir,
+    "useSSLonCoordinators": protocol === "ssl",
+    "valgrind": runInValgrind,
+    "valgrindOpts": toArgv(valgrindOpts, true),
+    "valgrindXmlFileBase": testfn,
+    "valgrindTestname": testname,
+    "valgrindHosts": valgrindHosts,
+    "extremeVerbosity": options.extremeVerbosity
+  });
+
+  instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
+
+  let rc = instanceInfo.kickstarter.launch();
+
+  if (rc.error) {
+    print("Cluster startup failed: " + rc.errorMessage);
+    return false;
+  }
+
+  let runInfo = instanceInfo.kickstarter.runInfo;
+  let j = runInfo.length - 1;
+
+  while (j > 0 && runInfo[j].isStartServers === undefined) {
+    --j;
+  }
+
+  if ((runInfo.length === 0) || (runInfo[0].error === true)) {
+    let error = new Error();
+    error.errorMessage = yaml.safeDump(runInfo);
+    throw error;
+  }
+
+  let roles = runInfo[j].roles;
+  let endpoints = runInfo[j].endpoints;
+  let pos = roles.indexOf("COORDINATOR");
+
+  instanceInfo.endpoint = endpoints[pos];
+
+  return true;
+}
+
+function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+                                   addArgs, testname, appDir, tmpDataDir) {
+  const port = findFreePort();
+  instanceInfo.port = port;
+
+  const endpoint = protocol + "://127.0.0.1:" + port;
+  instanceInfo.endpoint = endpoint;
+
+  let td = fs.join(tmpDataDir, "data");
+  fs.makeDirectoryRecursive(td);
+
+  let args = makeArgsArangod(options, appDir);
+  args["server.endpoint"] = endpoint;
+  args["database.directory"] = td;
+  args["log.file"] = fs.join(tmpDataDir, "log");
+
+  if (protocol === "ssl") {
+    args["server.keyfile"] = fs.join("UnitTests", "server.pem");
+  }
+
+  args = _.extend(args, optionsExtraArgs);
+
+  if (addArgs !== undefined) {
+    args = _.extend(args, addArgs);
+  }
+
+  let valgrindOpts = {};
+
+  if (options.valgrindArgs) {
+    valgrindOpts = options.valgrindArgs;
+  }
+
+  if (options.valgrind) {
+    const run = fs.join("bin", "arangod");
+    let testfn = options.valgrindXmlFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    testfn += testname;
+
+    valgrindOpts["xml-file"] = testfn + '.%p.xml';
+    valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
+
+    // Sequence: Valgrind arguments; binary to run; options to binary:
+    const newargs = toArgv(valgrindOpts, true).concat([run]).concat(toArgv(args));
+    const cmdline = options.valgrind;
+
+    instanceInfo.pid = executeExternal(cmdline, newargs);
+  } else {
+    instanceInfo.pid = executeExternal(fs.join("bin", "arangod"), toArgv(args));
+  }
+
+  return true;
+}
+
+function startInstance(protocol, options, addArgs, testname, tmpDir) {
+  const startTime = time();
+  const topDir = findTopDir();
+
+  let instanceInfo = {};
+  instanceInfo.topDir = topDir;
+
+  // create temporary directories
+  instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
+
+  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
+  const appDir = fs.join(tmpDataDir, "apps");
+
+  fs.makeDirectoryRecursive(tmpDataDir);
+  instanceInfo.tmpDataDir = tmpDataDir;
+
+  // build extra / valgrind arguments
+  let optionsExtraArgs = {};
+
+  if (typeof(options.extraArgs) === 'object') {
+    optionsExtraArgs = options.extraArgs;
+  }
+
+  // startup in cluster mode
+  let res = false;
+
   if (options.cluster) {
-    startDispatcher(instanceInfo, options);
-
-    let clusterNodes = 2;
-
-    if (options.clusterNodes) {
-      clusterNodes = options.clusterNodes;
-    }
-
-    let extraargs = makeArgsArangod(options, appDir);
-    extraargs = _.extend(extraargs, optionsExtraArgs);
-
-    if (addArgs !== undefined) {
-      extraargs = _.extend(extraargs, addArgs);
-    }
-
-    dispatcher = {
-      "endpoint": "tcp://127.0.0.1:",
-      "arangodExtraArgs": toArgv(extraargs),
-      "username": "root",
-      "password": ""
-    };
-
-    print("Temporary cluster data and logs are in", tmpDataDir);
-
-    let runInValgrind = "";
-    let valgrindXmlFileBase = "";
-
-    if (typeof(options.valgrind) === 'string') {
-      runInValgrind = options.valgrind;
-      valgrindXmlFileBase = options.valgrindXmlFileBase;
-    }
-
-    let plan = new Planner({
-      "numberOfDBservers": clusterNodes,
-      "numberOfCoordinators": 1,
-      "dispatchers": {
-        "me": dispatcher
-      },
-      "dataPath": tmpDataDir,
-      "logPath": tmpDataDir,
-      "useSSLonCoordinators": protocol === "ssl",
-      "valgrind": runInValgrind,
-      "valgrindopts": toArgv(valgrindopts, true),
-      "valgrindXmlFileBase": valgrindXmlFileBase + '_cluster',
-      "valgrindTestname": testname,
-      "valgrindHosts": valgrindHosts,
-      "extremeVerbosity": options.extremeVerbosity
-    });
-
-    instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
-
-    let rc = instanceInfo.kickstarter.launch();
-
-    if (rc.error) {
-      print("Cluster startup failed: " + rc.errorMessage);
-      return false;
-    }
-
-    let runInfo = instanceInfo.kickstarter.runInfo;
-    let j = runInfo.length - 1;
-
-    while (j > 0 && runInfo[j].isStartServers === undefined) {
-      --j;
-    }
-
-    if ((runInfo.length === 0) || (runInfo[0].error === true)) {
-      let error = new Error();
-      error.errorMessage = yaml.safeDump(runInfo);
-      throw error;
-    }
-
-    let roles = runInfo[j].roles;
-    let endpoints = runInfo[j].endpoints;
-    let pos = roles.indexOf("Coordinator");
-
-    endpoint = endpoints[pos];
+    res = startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+                               addArgs, testname, appDir, tmpDataDir);
   }
 
   // single instance mode
   else {
-    const port = findFreePort();
-    instanceInfo.port = port;
-    endpoint = protocol + "://127.0.0.1:" + port;
+    res = startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+                                    addArgs, testname, appDir, tmpDataDir);
+  }
 
-    let td = fs.join(tmpDataDir, "data");
-    fs.makeDirectoryRecursive(td);
-
-    let args = makeArgsArangod(options, appDir);
-    args["server.endpoint"] = endpoint;
-    args["database.directory"] = td;
-    args["log.file"] = fs.join(tmpDataDir, "log");
-
-    if (protocol === "ssl") {
-      args["server.keyfile"] = fs.join("UnitTests", "server.pem");
-    }
-
-    args = _.extend(args, optionsExtraArgs);
-
-    if (addArgs !== undefined) {
-      args = _.extend(args, addArgs);
-    }
-
-    if (typeof(options.valgrind) === 'string') {
-      const run = fs.join("bin", "arangod");
-      let testfn = options.valgrindXmlFileBase;
-
-      if (testfn.length > 0) {
-        testfn += '_';
-      }
-
-      testfn += testname;
-
-      valgrindopts["xml-file"] = testfn + '.%p.xml';
-      valgrindopts["log-file"] = testfn + '.%p.valgrind.log';
-
-      // Sequence: Valgrind arguments; binary to run; options to binary:
-      const newargs = toArgv(valgrindopts, true).concat([run]).concat(toArgv(args));
-      const cmdline = options.valgrind;
-
-      instanceInfo.pid = executeExternal(cmdline, newargs);
-    } else {
-      instanceInfo.pid = executeExternal(fs.join("bin", "arangod"), toArgv(args));
-    }
+  if (! res) {
+    return false;
   }
 
   // wait until the server/coordinator is up:
   let count = 0;
-  const url = endpointToURL(endpoint);
 
+  const url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.url = url;
-  instanceInfo.endpoint = endpoint;
 
   while (true) {
     wait(0.5, false);
@@ -1688,8 +1742,7 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf("-novalgrind") !== -1) &&
-    (typeof(options.valgrind) === 'string')) {
+  if ((testname.indexOf("-novalgrind") !== -1) && options.valgrind) {
     whichFilter.filter = "skip in valgrind";
     return false;
   }
@@ -2111,7 +2164,7 @@ testFuncs.authentication_parameters = function(options) {
     returnBodyOnError: true
   };
 
-  if (typeof(options.valgrind) === 'string') {
+  if (options.valgrind) {
     downloadOptions.timeout = 300;
   }
 
@@ -2801,53 +2854,53 @@ testFuncs.single_client = function(options) {
 testFuncs.single_server = function(options) {
   options.writeXmlReport = false;
 
-  if (options.test !== undefined) {
-    let instanceInfo = startInstance("tcp", options, [], "single_server");
+  if (options.test === undefined) {
+    findTests();
+    return single_usage("server", testsCases.server);
+  }
 
-    if (instanceInfo === false) {
-      return {
-        status: false,
-        message: "failed to start server!"
-      };
-    }
+  let instanceInfo = startInstance("tcp", options, [], "single_server");
 
-    const te = options.test;
+  if (instanceInfo === false) {
+    return {
+      status: false,
+      message: "failed to start server!"
+    };
+  }
 
-    print("\n" + Date() + " arangod: Trying", te, "...");
+  const te = options.test;
 
-    let result = {};
-    let reply = runThere(options, instanceInfo, makePathGeneric(te));
+  print("\n" + Date() + " arangod: Trying", te, "...");
 
-    if (reply.hasOwnProperty('status')) {
-      result[te] = reply;
+  let result = {};
+  let reply = runThere(options, instanceInfo, makePathGeneric(te));
 
-      if (result[te].status === false) {
-        options.cleanup = false;
-      }
-    }
-
-    print("Shutting down...");
+  if (reply.hasOwnProperty('status')) {
+    result[te] = reply;
 
     if (result[te].status === false) {
       options.cleanup = false;
     }
-
-    shutdownInstance(instanceInfo, options);
-
-    print("done.");
-
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      Object.keys(instanceInfo.importantLogLines).length > 0) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
-    return result;
-  } else {
-    findTests();
-    return single_usage("server", testsCases.server);
   }
+
+  print("Shutting down...");
+
+  if (result[te].status === false) {
+    options.cleanup = false;
+  }
+
+  shutdownInstance(instanceInfo, options);
+
+  print("done.");
+
+  if ((!options.skipLogAnalysis) &&
+    instanceInfo.hasOwnProperty('importantLogLines') &&
+    Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" +
+      yaml.safeDump(instanceInfo.importantLogLines));
+  }
+
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -116,6 +116,11 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
+    } else if (command == "barrier") {
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
+      handleCommandBarrier();
     } else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -503,14 +508,6 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_batch_replication
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_batch_replication
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_delete_batch_replication
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -594,6 +591,135 @@ void RestReplicationHandler::handleCommandBatch() {
       createResponse(HttpResponse::NO_CONTENT);
     } else {
       generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  // we get here if anything above is invalid
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add or remove a WAL logfile barrier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandBarrier() {
+  // extract the request type
+  HttpRequest::HttpRequestType const type = _request->requestType();
+  std::vector<std::string> const& suffix = _request->suffix();
+  size_t const len = suffix.size();
+
+  TRI_ASSERT(len >= 1);
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    // create a new barrier
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+
+    if (minTick == 0) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid tick value");
+      return;
+    }
+
+    TRI_voc_tick_t id = arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick, ttl);
+
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Object));
+      std::string const idString(std::to_string(id));
+      b.add("id", VPackValue(idString));
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+    // extend an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+    
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+    
+    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(id, ttl, minTick)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+    // delete an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+  
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    // fetch all barriers
+    auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
+
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Array));
+      for (auto& it : ids) {
+        b.add(VPackValue(std::to_string(it)));
+      }
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }
@@ -707,6 +833,13 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
+  
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = 0;
+  value = _request->value("barrier", found);
+  if (found) {
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
 
   bool includeSystem = true;
   value = _request->value("includeSystem", found);
@@ -750,6 +883,11 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       }
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
+  }
+      
+  if (barrierId > 0) {
+    // extend the WAL logfile barrier
+    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(barrierId, 180, tickStart);
   }
 
   int res = TRI_ERROR_NO_ERROR;
@@ -2928,6 +3066,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                                          defaults._autoResync);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", defaults._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -2991,6 +3131,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
+  TRI_voc_tick_t barrierId = 0;
   std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
@@ -3000,6 +3141,9 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
     try {
       res = syncer.run(errorMsg, false);
+
+      // steal the barrier from the syncer
+      barrierId = syncer.stealBarrier();
     } catch (...) {
       errorMsg = "caught an exception";
       res = TRI_ERROR_INTERNAL;
@@ -3020,7 +3164,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = _vocbase->_replicationApplier->start(lastLogTick, true);
+  res = _vocbase->_replicationApplier->start(lastLogTick, true, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
@@ -3290,6 +3434,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       body, "includeSystem", config._includeSystem);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", config._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", config._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
@@ -3357,7 +3503,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     initialTick = (TRI_voc_tick_t)StringUtils::uint64(value);
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, found);
+  int res = _vocbase->_replicationApplier->start(initialTick, found, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||

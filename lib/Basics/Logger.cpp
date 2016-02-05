@@ -231,7 +231,6 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   }
 
   if (level == LogLevel::FATAL && _fatal2stderr) {
-    MUTEX_LOCKER(guard, AppendersLock);
 
     // a fatal error. always print this on stderr, too.
     WriteStderr(level, message);
@@ -710,6 +709,7 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance",
                              LogLevel::FATAL);  // suppress by default
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
+LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
 
 ////////////////////////////////////////////////////////////////////////////////
