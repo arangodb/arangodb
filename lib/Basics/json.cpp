@@ -674,6 +674,10 @@ int TRI_PushBack3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* array, TRI_json
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_LookupArrayJson (TRI_json_t const* array, size_t pos) {
+  if (array == nullptr) {
+    return nullptr;
+  }
+
   TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
 
   size_t const n = TRI_LengthVector(&array->_value._objects);
