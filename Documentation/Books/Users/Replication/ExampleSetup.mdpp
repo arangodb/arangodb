@@ -41,7 +41,7 @@ require("org/arangodb/replication").setupReplication({
 ```
 
 The command will return when the initial synchronization is finished and the continuous replication
-is started, or in case the initial synchronization has failed. 
+has been started, or in case the initial synchronization has failed. 
 
 If the initial synchronization is successful, the command will store the given configuration on
 the slave. It also configures the continuous replication to start automatically if the slave is 
