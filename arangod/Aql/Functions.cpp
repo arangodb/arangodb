@@ -795,13 +795,13 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
   return json;
 }
 
+static inline void ExpandShapedJson(
+    VocShaper* shaper, CollectionNameResolver const* resolver,
+    TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr, VPackBuilder& b,
+    bool keepTopLevelOpen = false,
+    std::unordered_set<std::string> const& forbidden = {}) {
+  b.add(VPackValue(VPackValueType::Object));
 
-static inline void ExpandShapedJson(VocShaper* shaper,
-                                    CollectionNameResolver const* resolver,
-                                    TRI_voc_cid_t const& cid,
-                                    TRI_doc_mptr_t const* mptr,
-                                    VPackBuilder& b) {
-  VPackObjectBuilder guard(&b);
   TRI_df_marker_t const* marker =
       static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
 
@@ -810,31 +810,47 @@ static inline void ExpandShapedJson(VocShaper* shaper,
   std::shared_ptr<VPackBuilder> tmp = TRI_VelocyPackShapedJson(shaper, &shaped); 
   // Copy the shaped into our local builder
   for (auto const& it : VPackObjectIterator(tmp->slice())) {
-    b.add(it.key.copyString(), it.value);
+    std::string key = it.key.copyString();
+    if (forbidden.count(key) == 0) {
+      b.add(it.key.copyString(), it.value);
+    }
   }
 
   char const* key = TRI_EXTRACT_MARKER_KEY(marker);
   std::string id(resolver->getCollectionName(cid));
   id.push_back('/');
   id.append(key);
-  b.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
-  b.add(TRI_VOC_ATTRIBUTE_REV,
-        VPackValue(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-  b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  if (forbidden.count(TRI_VOC_ATTRIBUTE_ID) == 0) {
+    b.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
+  }
+  if (forbidden.count(TRI_VOC_ATTRIBUTE_REV) == 0) {
+    b.add(TRI_VOC_ATTRIBUTE_REV,
+          VPackValue(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  }
+  if (forbidden.count(TRI_VOC_ATTRIBUTE_KEY) == 0) {
+    b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  }
 
   if (TRI_IS_EDGE_MARKER(marker)) {
-    std::string from(resolver->getCollectionNameCluster(
-        TRI_EXTRACT_MARKER_FROM_CID(marker)));
-    from.push_back('/');
-    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-    b.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+    if (forbidden.count(TRI_VOC_ATTRIBUTE_FROM) == 0) {
+      std::string from(resolver->getCollectionNameCluster(
+          TRI_EXTRACT_MARKER_FROM_CID(marker)));
+      from.push_back('/');
+      from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+      b.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+    }
 
-    std::string to(
-        resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+    if (forbidden.count(TRI_VOC_ATTRIBUTE_TO) == 0) {
+      std::string to(
+          resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
 
-    to.push_back('/');
-    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-    b.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
+      to.push_back('/');
+      to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+      b.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
+    }
+  }
+  if (!keepTopLevelOpen) {
+    b.close();
   }
 }
 
@@ -1223,6 +1239,142 @@ static AqlValue$ VertexIdsToAqlValueVPack(
   }
 
   return AqlValue$(result.get());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Load geoindex for collection name
+////////////////////////////////////////////////////////////////////////////////
+
+static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
+                                    TRI_voc_cid_t const& cid,
+                                    std::string const& colName,
+                                    VocShaper*& shaper) {
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'", colName.c_str());
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  arangodb::Index* index = nullptr;
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = idx;
+      break;
+    }
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
+                                  colName.c_str());
+  }
+
+  if (trx->orderDitch(collection) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  shaper = collection->_collection->_collection->getShaper();
+  return index;
+}
+
+static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
+                                GeoCoordinates* cors, VocShaper* shaper,
+                                CollectionNameResolver const* resolver,
+                                TRI_voc_cid_t const& cid,
+                                std::string const& attributeName) {
+  if (cors == nullptr) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackArrayBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+
+  size_t const nCoords = cors->length;
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackArrayBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t(double distance, TRI_doc_mptr_t const* mptr)
+        : _distance(distance), _mptr(mptr) {}
+
+    double _distance;
+    TRI_doc_mptr_t const* _mptr;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+
+  try {
+    distances.reserve(nCoords);
+
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(
+          cors->distances[i],
+          static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+    }
+  } catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(),
+            [](geo_coordinate_distance_t const& left,
+               geo_coordinate_distance_t const& right) {
+              return left._distance < right._distance;
+            });
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    std::unordered_set<std::string> forbidden;
+    bool saveAttr = !attributeName.empty();
+    if (saveAttr) {
+      forbidden.emplace(attributeName);
+    }
+
+    for (auto& it : distances) {
+      ExpandShapedJson(shaper, resolver, cid, it._mptr, *b,
+                       saveAttr, forbidden);
+      if (saveAttr) {
+        // The Object is Open and attributeName is not set
+        b->add(attributeName, VPackValue(it._distance));
+        b->close();
+      }
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4537,6 +4689,7 @@ AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
 
   return VertexIdsToAqlValueVPack(query, trx, resolver, neighbors, includeData);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function NEAR
 ////////////////////////////////////////////////////////////////////////////////
@@ -4544,6 +4697,10 @@ AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
 AqlValue Functions::Near(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(NearVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 3 || n > 5) {
@@ -4714,6 +4871,79 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+#endif
+}
+
+AqlValue$ Functions::NearVPack(arangodb::aql::Query* query,
+                               arangodb::AqlTransaction* trx,
+                               VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEAR", (int)3,
+        (int)5);
+  }
+
+  auto resolver = trx->resolver();
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  std::string colName = collectionSlice.copyString();
+
+  VPackSlice latitude = ExtractFunctionParameter(trx, parameters, 1);
+  VPackSlice longitude = ExtractFunctionParameter(trx, parameters, 2);
+
+  if (!latitude.isNumber() || !longitude.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  // extract limit
+  int64_t limitValue = 100;
+
+  if (n > 3) {
+    VPackSlice limit = ExtractFunctionParameter(trx, parameters, 3);
+
+    if (limit.isNumber()) {
+      limitValue = limit.getNumericValue<int64_t>();
+    } else if (!limit.isNull()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+  }
+
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    VPackSlice distanceAttribute = ExtractFunctionParameter(trx, parameters, 4);
+
+    if (!distanceAttribute.isNull() && !distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = distanceAttribute.copyString();
+    }
+  }
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  VocShaper* shaper = nullptr;
+  arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
+
+  TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(shaper != nullptr);
+
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
+      trx, latitude.getNumericValue<double>(),
+      longitude.getNumericValue<double>(), limitValue);
+
+  return buildGeoResult(query, cors, shaper, resolver, cid, attributeName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4723,6 +4953,10 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
 AqlValue Functions::Within(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(WithinVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 4 || n > 5) {
@@ -4879,6 +5113,67 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+#endif
+}
+
+AqlValue$ Functions::WithinVPack(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 4 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN", (int)4,
+        (int)5);
+  }
+
+  auto resolver = trx->resolver();
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string colName = collectionSlice.copyString();
+
+  VPackSlice latitude = ExtractFunctionParameter(trx, parameters, 1);
+  VPackSlice longitude = ExtractFunctionParameter(trx, parameters, 2);
+  VPackSlice radius = ExtractFunctionParameter(trx, parameters, 3);
+
+  if (!latitude.isNumber() || !longitude.isNumber() || !radius.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    VPackSlice distanceAttribute = ExtractFunctionParameter(trx, parameters, 4);
+
+    if (!distanceAttribute.isNull() && !distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = distanceAttribute.copyString();
+    }
+  }
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  VocShaper* shaper = nullptr;
+  arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
+
+  TRI_ASSERT(index != nullptr);
+  TRI_ASSERT(shaper != nullptr);
+
+  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
+      trx, latitude.getNumericValue<double>(),
+      longitude.getNumericValue<double>(), radius.getNumericValue<double>());
+
+  return buildGeoResult(query, cors, shaper, resolver, cid, attributeName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
