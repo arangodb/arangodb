@@ -925,6 +925,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
+  TRI_DestroyStateReplicationApplier(state);
   TRI_InitStateReplicationApplier(state);
   char* filename = GetStateFilename(vocbase);
 

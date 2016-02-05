@@ -1056,7 +1056,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     }
     
     if (triagens::wal::LogfileManager::instance()->extendLogfileBarrier(id, ttl, minTick)) {
-      createResponse(HttpResponse::NO_CONTENT);
+      _response = createResponse(HttpResponse::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(HttpResponse::responseCode(res), res);
@@ -1069,7 +1069,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     if (triagens::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
-      createResponse(HttpResponse::NO_CONTENT);
+      _response = createResponse(HttpResponse::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(HttpResponse::responseCode(res), res);
