@@ -65,7 +65,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
                                     TRI_vocbase_t* vocbase,
                                     TRI_replication_applier_configuration_t const* configuration,
                                     TRI_voc_tick_t initialTick,
-                                    bool useTick)
+                                    bool useTick,
+                                    TRI_voc_tick_t barrierId)
   : Syncer(vocbase, configuration),
     _server(server),
     _applier(vocbase->_replicationApplier),
@@ -93,6 +94,11 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
   }
   else if (configuration->_restrictType == "exclude") {
     _restrictType = RESTRICT_EXCLUDE;
+  }
+
+  if (barrierId > 0) {
+    _barrierId = barrierId;
+    _barrierUpdateTime = TRI_microtime();
   }
 }
 
@@ -273,7 +279,7 @@ retry:
             _configuration._restrictType, 
             _configuration._verbose);
 
-        res = syncer.run(errorMsg, true);
+        res = syncer.run(errorMsg, _configuration._incremental);
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
@@ -334,6 +340,9 @@ void ContinuousSyncer::setProgress (char const* msg) {
          
   if (_verbose) {
     LOG_INFO("applier progress: %s", msg);
+  }
+  else {
+    LOG_DEBUG("applier progress: %s", msg);
   }
 }
 
@@ -705,7 +714,7 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   
   TRI_ASSERT(tid > 0);
 
-  LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
+  LOG_TRACE("aborting replication transaction %llu", (unsigned long long) tid);
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -1039,9 +1048,12 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   // ---------------------------------------
   TRI_voc_tick_t fromTick = 0;
   TRI_voc_tick_t safeResumeTick = 0;
+  TRI_replication_applier_state_t oldState;
 
   {
     WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+
+    oldState = _applier->_state;
 
     if (_useTick) {
       // use user-defined tick
@@ -1052,14 +1064,20 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     }
     else {
       // if we already transferred some data, we'll use the last applied tick
-      if (_applier->_state._lastAppliedContinuousTick > fromTick) {
+      if (_applier->_state._lastAppliedContinuousTick >= fromTick) {
         fromTick = _applier->_state._lastAppliedContinuousTick;
       }
       safeResumeTick = _applier->_state._safeResumeTick;
     }
   }
 
+  LOG_DEBUG("requesting continuous synchronization, fromTick: %llu, safeResumeTick: %llu, useTick: %d, initialTick: %llu", 
+            (unsigned long long) fromTick, (unsigned long long) safeResumeTick, (int) _useTick, (unsigned long long) _initialTick);
+
   if (fromTick == 0) {
+    LOG_WARNING("continuous synchronization start failed because there is no start tick, fromTick: %llu, safeResumeTick: %llu, useTick: %d, initialTick: %llu, old state lastAppliedContinuousTick: %llu", 
+                (unsigned long long) fromTick, (unsigned long long) safeResumeTick, (int) _useTick, (unsigned long long) _initialTick, (unsigned long long) oldState._lastAppliedContinuousTick);
+
     return TRI_ERROR_REPLICATION_NO_START_TICK;
   }
 
@@ -1236,7 +1254,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
                                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1245,7 +1263,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -1265,7 +1283,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (! found) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                 ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1276,8 +1294,8 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   if (! fromIncluded && 
       _requireFromPresent && 
       fromTick > 0) {
-    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + 
-               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+    errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) + 
+               "' is not present (anymore?) on master at " + _masterInfo._endpoint +
                ". Last tick available on master is " + StringUtils::itoa(readTick) + 
                ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
 
@@ -1294,7 +1312,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
 
   if (! TRI_IsArrayJson(json.get())) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                 ": invalid response type for initial data. expecting array";
     
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1304,7 +1322,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     auto id = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
 
     if (! TRI_IsStringJson(id)) {
-      errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                   ": invalid response type for initial data. expecting array of ids";
     
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1335,7 +1353,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                                        uint64_t& ignoreCount,
                                        bool& worked,
                                        bool& masterActive) {
-  string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
+  string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&barrier=" + StringUtils::itoa(_barrierId);
 
   worked = false;
 
@@ -1352,6 +1370,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   // send request
   string const progress = "fetching master log from tick " + StringUtils::itoa(fetchTick) + 
+                          ", first regular tick " + StringUtils::itoa(firstRegularTick) + 
+                          ", barrier: " + StringUtils::itoa(_barrierId) +  
                           ", open transactions: " + std::to_string(_ongoingTransactions.size());
   setProgress(progress);
 
@@ -1388,7 +1408,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   );
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1397,7 +1417,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -1408,7 +1428,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   bool checkMore    = false;
   bool active       = false;
   bool fromIncluded = false;
-  TRI_voc_tick_t tick;
+  TRI_voc_tick_t tick = 0;
 
   bool found;
   std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
@@ -1453,7 +1473,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   if (! found) {
     res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                 ": required header is missing";
   }
 
@@ -1463,8 +1483,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       fetchTick > 0) {
     TRI_ASSERT(_masterIs27OrHigher);
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-    errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) + 
-               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+    errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) + 
+               "' is not present (anymore?) on master at " + _masterInfo._endpoint +
                ". Last tick available on master is " + StringUtils::itoa(tick) + 
                ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
   }

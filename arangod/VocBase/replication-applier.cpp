@@ -190,6 +190,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
+                       "incremental",
+                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_incremental));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
                        "restrictType",
                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str(), config->_restrictType.size()));
   
@@ -375,6 +380,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 
   if (TRI_IsBooleanJson(value)) {
     config->_verbose = value->_value._boolean;
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "incremental");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_incremental = value->_value._boolean;
   }
   
   value = TRI_LookupObjectJson(json.get(), "ignoreErrors");
@@ -993,11 +1004,12 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_includeSystem           = true;
   config->_requireFromPresent      = false;
   config->_verbose                 = false;
+  config->_incremental             = false;
   config->_restrictType            = "";
   config->_restrictCollections.clear();
   config->_connectionRetryWaitTime = 15 * 1000 * 1000;
   config->_initialSyncMaxWaitTime  = 300 * 1000 * 1000;
-  config->_idleMinWaitTime         = 500 * 1000;
+  config->_idleMinWaitTime         = 1000 * 1000;
   config->_idleMaxWaitTime         = 5 * 500 * 1000;
   config->_autoResyncRetries       = 2;
 }
@@ -1074,6 +1086,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_includeSystem           = src->_includeSystem;
   dst->_requireFromPresent      = src->_requireFromPresent;
   dst->_verbose                 = src->_verbose;
+  dst->_incremental             = src->_incremental;
   dst->_restrictType            = src->_restrictType;
   dst->_restrictCollections     = src->_restrictCollections;
   dst->_connectionRetryWaitTime = src->_connectionRetryWaitTime;
@@ -1175,7 +1188,8 @@ TRI_replication_applier_t::~TRI_replication_applier_t () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
-                                      bool useTick) {
+                                      bool useTick,
+                                      TRI_voc_tick_t barrierId) {
   LOG_TRACE("requesting replication applier start. initialTick: %llu, useTick: %d",
             (unsigned long long) initialTick,
             (int) useTick);
@@ -1211,7 +1225,8 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
                                                          _vocbase,
                                                          &_configuration,
                                                          initialTick,
-                                                         useTick));
+                                                         useTick,
+                                                         barrierId));
 
   // reset error
   if (_state._lastError._msg != nullptr) {
@@ -1425,7 +1440,7 @@ int TRI_replication_applier_t::shutdown () {
 
   setTermination(false);
  
-  LOG_INFO("stopped replication applier for database '%s'", _databaseName.c_str());
+  LOG_INFO("shut down replication applier for database '%s'", _databaseName.c_str());
 
   return res;
 }

@@ -162,6 +162,9 @@ namespace triagens {
           if (_verbose) {
             LOG_INFO("synchronization progress: %s", msg.c_str());
           }
+          else {
+            LOG_TRACE("synchronization progress: %s", msg.c_str());
+          }
    
           if (_vocbase->_replicationApplier != nullptr) {
             _vocbase->_replicationApplier->setProgress(msg.c_str(), true);

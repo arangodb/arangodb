@@ -1960,7 +1960,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
         LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
       }
       else {
-        int res = vocbase->_replicationApplier->start(0, false);
+        int res = vocbase->_replicationApplier->start(0, false, 0);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("unable to start replication applier for database '%s': %s",
@@ -2226,7 +2226,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
           LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
         }
         else {
-          res = vocbase->_replicationApplier->start(0, false);
+          res = vocbase->_replicationApplier->start(0, false, 0);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("unable to start replication applier for database '%s': %s",

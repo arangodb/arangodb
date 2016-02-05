@@ -78,7 +78,8 @@ namespace triagens {
                           TRI_vocbase_t*,
                           struct TRI_replication_applier_configuration_t const*,
                           TRI_voc_tick_t,
-                          bool); 
+                          bool,
+                          TRI_voc_tick_t); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

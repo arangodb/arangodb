@@ -162,8 +162,10 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 InitialSyncer::~InitialSyncer () {
-  if (_batchId > 0) {
+  try {
     sendFinishBatch();
+  }
+  catch (...) {
   }
 }
 
@@ -216,6 +218,9 @@ int InitialSyncer::run (string& errorMsg,
       }
     }
 
+    // create a WAL logfile barrier that prevents WAL logfile collection
+    sendCreateBarrier(errorMsg, _masterInfo._lastLogTick);
+
     res = sendStartBatch(errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -237,7 +242,7 @@ int InitialSyncer::run (string& errorMsg,
                                                                     0));
 
     if (response == nullptr || ! response->isComplete()) {
-      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+      errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                 ": " + _client->getErrorMessage();
 
       sendFinishBatch();
@@ -250,7 +255,7 @@ int InitialSyncer::run (string& errorMsg,
     if (response->wasHttpError()) {
       res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                 ": " + response->getHttpReturnMessage();
     }
@@ -263,7 +268,7 @@ int InitialSyncer::run (string& errorMsg,
       else {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+        errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
           ": invalid JSON";
       }
     }
@@ -316,7 +321,7 @@ int InitialSyncer::sendFlush (std::string& errorMsg) {
                                                                    body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -327,7 +332,7 @@ int InitialSyncer::sendFlush (std::string& errorMsg) {
   if (response->wasHttpError()) {
     int res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -358,7 +363,7 @@ int InitialSyncer::sendStartBatch (std::string& errorMsg) {
                                                                    body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -371,7 +376,7 @@ int InitialSyncer::sendStartBatch (std::string& errorMsg) {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   }
@@ -417,7 +422,7 @@ int InitialSyncer::sendExtendBatch () {
   string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  string const progress = "send batch start command to url " + url;
+  string const progress = "send batch extend command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
@@ -644,6 +649,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     sendExtendBatch();
+    sendExtendBarrier();
 
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
@@ -676,7 +682,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
                                                                      headers));
 
     if (response == nullptr || ! response->isComplete()) {
-      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+      errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                  ": " + _client->getErrorMessage();
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -685,7 +691,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     TRI_ASSERT(response != nullptr);
 
     if (response->wasHttpError()) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                  ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                  ": " + response->getHttpReturnMessage();
 
@@ -701,7 +707,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
       }
 
       if (! found) {
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+        errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                    ": could not find 'X-Arango-Async' header";
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
@@ -711,6 +717,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
       // wait until we get a responsable response
       while (true) {
         sendExtendBatch();
+        sendExtendBarrier();
         
         std::string const jobUrl = "/_api/job/" + jobId; 
         response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT, jobUrl, nullptr, 0));
@@ -720,12 +727,18 @@ int InitialSyncer::handleCollectionDump (string const& cid,
             // got the actual response
             break;
           }
+          if (response->getHttpReturnCode() == 404) {
+            // unknown job, we can abort
+            errorMsg = "no response received from master at " +
+                       _masterInfo._endpoint;
+            return TRI_ERROR_REPLICATION_NO_RESPONSE;
+          }
         }
 
         double waitTime = TRI_microtime() - startTime;
 
         if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _configuration._initialSyncMaxWaitTime) {
-          errorMsg = "timed out waiting for response from master at " + string(_masterInfo._endpoint);
+          errorMsg = "timed out waiting for response from master at " + _masterInfo._endpoint;
           return TRI_ERROR_REPLICATION_NO_RESPONSE;
         }
 
@@ -783,7 +796,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     if (! found) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                  ": required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
@@ -827,6 +840,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
                                          string& errorMsg) {
 
   sendExtendBatch();
+  sendExtendBarrier();
 
   string const baseUrl = BaseUrl + "/keys";
   string url = baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
@@ -846,7 +860,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
                                                                    headers));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -855,7 +869,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -869,7 +883,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   }
 
   if (! found) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": could not find 'X-Arango-Async' header";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -878,21 +892,28 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
 
   while (true) {
     sendExtendBatch();
+    sendExtendBarrier();
     
     std::string const jobUrl = "/_api/job/" + jobId; 
     response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT, jobUrl, nullptr, 0));
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
-        // got the actual response
+        // job is done, got the actual response
         break;
+      }
+      if (response->getHttpReturnCode() == 404) {
+        // unknown job, we can abort
+        errorMsg = "no response received from master at " +
+                   _masterInfo._endpoint;
+        return TRI_ERROR_REPLICATION_NO_RESPONSE;
       }
     }
 
     double waitTime = TRI_microtime() - startTime;
 
     if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _configuration._initialSyncMaxWaitTime) {
-      errorMsg = "timed out waiting for response from master at " + string(_masterInfo._endpoint);
+      errorMsg = "timed out waiting for response from master at " + _masterInfo._endpoint;
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
 
@@ -922,7 +943,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
   if (! TRI_IsObjectJson(json.get())) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": response is no object";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -931,7 +952,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   TRI_json_t const* idJson = TRI_LookupObjectJson(json.get(), "id");
 
   if (! TRI_IsStringJson(idJson)) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": response does not contain valid 'id' attribute";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -957,7 +978,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   TRI_json_t const* countJson = TRI_LookupObjectJson(json.get(), "count");
 
   if (! TRI_IsNumberJson(countJson)) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": response does not contain valid 'count' attribute";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1050,6 +1071,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   }
 
   sendExtendBatch();
+  sendExtendBarrier();
 
   std::vector<size_t> toFetch;
 
@@ -1066,7 +1088,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
                                                                    0));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1075,7 +1097,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -1088,7 +1110,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
   if (! TRI_IsArrayJson(json.get())) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1148,12 +1170,13 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     setProgress(progress);
 
     sendExtendBatch();
+    sendExtendBarrier();
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
 
     if (! TRI_IsObjectJson(chunk)) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                  ": chunk is no object";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1165,7 +1188,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         
     //std::cout << "i: " << i << ", RANGE LOW: " << std::string(lowJson->_value._string.data) << ", HIGH: " << std::string(highJson->_value._string.data) << ", HASH: " << std::string(hashJson->_value._string.data) << "\n";
     if (! TRI_IsStringJson(lowJson) || ! TRI_IsStringJson(highJson) || ! TRI_IsStringJson(hashJson)) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                  ": chunks in response have an invalid format";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1214,7 +1237,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
                                                                        0));
 
       if (response == nullptr || ! response->isComplete()) {
-        errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+        errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                   ": " + _client->getErrorMessage();
 
         return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1223,7 +1246,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       TRI_ASSERT(response != nullptr);
 
       if (response->wasHttpError()) {
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+        errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                   ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                   ": " + response->getHttpReturnMessage();
 
@@ -1236,7 +1259,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       std::unique_ptr<TRI_json_t> rangeKeysJson(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, rangeKeys.c_str()));
 
       if (! TRI_IsArrayJson(rangeKeysJson.get())) {
-        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+        errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                    ": response is no array";
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1267,7 +1290,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         auto pair = static_cast<TRI_json_t const*>(TRI_AtVector(&(rangeKeysJson.get()->_value._objects), i));
 
         if (! TRI_IsArrayJson(pair) || TRI_LengthArrayJson(pair) != 2) {
-          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+          errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                      ": response key pair is no valid array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1277,7 +1300,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&pair->_value._objects, 0));
 
         if (! TRI_IsStringJson(keyJson)) {
-          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+          errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                      ": response key is no string";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1367,7 +1390,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
                                                                          keyJsonString.size()));
 
         if (response == nullptr || ! response->isComplete()) {
-          errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+          errorMsg = "could not connect to master at " + _masterInfo._endpoint +
                     ": " + _client->getErrorMessage();
 
           return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1376,7 +1399,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         TRI_ASSERT(response != nullptr);
 
         if (response->wasHttpError()) {
-          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+          errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                     ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                     ": " + response->getHttpReturnMessage();
 
@@ -1389,7 +1412,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         std::unique_ptr<TRI_json_t> documentsJson(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, documentsData.c_str()));
 
         if (! TRI_IsArrayJson(documentsJson.get())) {
-          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+          errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                      ": response is no array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1401,7 +1424,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           auto documentJson = static_cast<TRI_json_t const*>(TRI_AtVector(&(documentsJson.get()->_value._objects), i));
 
           if (! TRI_IsObjectJson(documentJson)) {
-            errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+            errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                        ": document is no object";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1410,7 +1433,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           auto const keyJson = TRI_LookupObjectJson(documentJson, "_key");
 
           if (! TRI_IsStringJson(keyJson)) {
-            errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+            errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                        ": document key is invalid";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1419,7 +1442,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           auto const revJson = TRI_LookupObjectJson(documentJson, "_rev");
           
           if (! TRI_IsStringJson(revJson)) {
-            errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+            errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                        ": document revision is invalid";
 
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1542,6 +1565,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
   }
 
   sendExtendBatch();
+  sendExtendBarrier();
 
   string const masterName = JsonHelper::getStringValue(parameters, "name", "");
 

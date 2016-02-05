@@ -286,6 +286,11 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
     }
   }
 
+  bool keepBarrier = false;
+  if (object->Has(TRI_V8_ASCII_STRING("keepBarrier"))) {
+    keepBarrier = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
+  }
+
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
   TRI_DestroyConfigurationReplicationApplier(&config);
@@ -295,6 +300,11 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
 
   try {
     res = syncer.run(errorMsg, incremental);
+
+    if (keepBarrier) {
+      result->Set(TRI_V8_ASCII_STRING("barrierId"),
+                  V8TickId(isolate, syncer.stealBarrier()));
+    }
 
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, syncer.getLastLogTick()));
 
@@ -638,19 +648,24 @@ static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (args.Length() > 1) {
+  if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_START(<from>)");
   }
 
   TRI_voc_tick_t initialTick = 0;
   bool useTick = false;
 
-  if (args.Length() == 1) {
+  if (args.Length() >= 1) {
     initialTick = TRI_ObjectToUInt64(args[0], true);
     useTick = true;
   }
 
-  int res = vocbase->_replicationApplier->start(initialTick, useTick);
+  TRI_voc_tick_t barrierId = 0;
+  if (args.Length() >= 2) {
+    barrierId = TRI_ObjectToUInt64(args[1], true);
+  }
+
+  int res = vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");

@@ -151,6 +151,12 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       else {
         handleCommandBatch();
       }
+    } 
+    else if (command == "barrier") {
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
+      handleCommandBarrier();
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -971,6 +977,129 @@ void RestReplicationHandler::handleCommandBatch () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add or remove a WAL logfile barrier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandBarrier() {
+  // extract the request type
+  HttpRequest::HttpRequestType const type = _request->requestType();
+  std::vector<std::string> const& suffix = _request->suffix();
+  size_t const len = suffix.size();
+
+  TRI_ASSERT(len >= 1);
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    // create a new barrier
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+   // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+    if (minTick == 0) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid tick value");
+      return;
+    }
+
+    TRI_voc_tick_t id = triagens::wal::LogfileManager::instance()->addLogfileBarrier(minTick, ttl);
+    
+    TRI_json_t json;
+    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
+    std::string const idString(std::to_string(id));
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "id",
+                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
+
+    generateResult(&json);
+    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+    // extend an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+    
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+    
+    if (triagens::wal::LogfileManager::instance()->extendLogfileBarrier(id, ttl, minTick)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+    // delete an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    if (triagens::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    // fetch all barriers
+    auto ids = triagens::wal::LogfileManager::instance()->getLogfileBarriers();
+    
+    TRI_json_t json;
+    TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &json);
+      
+    for (auto& it : ids) {
+      std::string idString = std::to_string(it);
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &json, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
+    }
+
+    generateResult(&json);
+    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+    return;
+  }
+
+  // we get here if anything above is invalid
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1280,6 +1409,13 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     return;
   }
 
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = 0;
+  value = _request->value("barrier", found);
+  if (found) {
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+
   bool includeSystem = true;
   value = _request->value("includeSystem", found);
 
@@ -1318,6 +1454,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     
       transactionIds.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1));
     }
+  }
+
+  if (barrierId > 0) {
+    // extend the WAL logfile barrier
+    triagens::wal::LogfileManager::instance()->extendLogfileBarrier(barrierId, 180, tickStart);
   }
   
   int res = TRI_ERROR_NO_ERROR;
@@ -4018,6 +4159,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._adaptivePolling         = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", defaults._adaptivePolling);
   config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", defaults._autoResync);
   config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
+  config._incremental             = JsonHelper::getBooleanValue(json.get(), "incremental", defaults._incremental);
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
   config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
@@ -4066,6 +4208,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
+  TRI_voc_tick_t barrierId = 0;
   string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections, restrictType, false);
@@ -4074,6 +4217,8 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
     try {
       res = syncer.run(errorMsg, false);
+      // steal the barrier from the syncer
+      barrierId = syncer.stealBarrier();
     }
     catch (...) {
       errorMsg = "caught an exception";
@@ -4099,7 +4244,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
     
   TRI_DestroyConfigurationReplicationApplier(&config);
   
-  res =_vocbase->_replicationApplier->start(lastLogTick, true);
+  res =_vocbase->_replicationApplier->start(lastLogTick, true, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
@@ -4762,6 +4907,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", config._autoResync);
   config._includeSystem           = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
   config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
+  config._incremental             = JsonHelper::getBooleanValue(json.get(), "incremental", config._incremental);
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
   config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
@@ -4873,7 +5019,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, found);
+  int res = _vocbase->_replicationApplier->start(initialTick, found, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
