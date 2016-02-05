@@ -60,12 +60,12 @@ logger.firstTick = function () {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (initialTick) {
+applier.start = function (initialTick, barrierId) {
   if (initialTick === undefined) {
     return internal.startReplicationApplier();
   }
 
-  return internal.startReplicationApplier(initialTick);
+  return internal.startReplicationApplier(initialTick, barrierId);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,6 +144,7 @@ function setupReplication (config) {
   if (! config.hasOwnProperty('verbose')) {
     config.verbose = false;
   }
+  config.keepBarrier = true;
 
   try {
     // stop previous instance
@@ -160,7 +161,7 @@ function setupReplication (config) {
   // store applier configuration
   applier.properties(config);
 
-  applier.start(result.lastLogTick);
+  applier.start(result.lastLogTick, result.barrierId);
   return applier.state();
 }
 

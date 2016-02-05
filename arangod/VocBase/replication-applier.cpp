@@ -1091,7 +1091,8 @@ TRI_replication_applier_t::~TRI_replication_applier_t() {
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
+int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
+                                     TRI_voc_tick_t barrierId) {
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -1123,7 +1124,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
   }
 
   auto syncer = std::make_unique<arangodb::ContinuousSyncer>(
-      _server, _vocbase, &_configuration, initialTick, useTick);
+      _server, _vocbase, &_configuration, initialTick, useTick, barrierId);
 
   // reset error
   if (_state._lastError._msg != nullptr) {

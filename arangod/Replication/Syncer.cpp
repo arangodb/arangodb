@@ -65,7 +65,11 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr),
       _endpoint(nullptr),
       _connection(nullptr),
-      _client(nullptr) {
+      _client(nullptr),
+      _barrierId(0),
+      _barrierUpdateTime(0),
+      _barrierTtl(300) {
+
   if (configuration->_database != nullptr) {
     // use name from configuration
     _databaseName = std::string(configuration->_database);
@@ -124,6 +128,12 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
 }
 
 Syncer::~Syncer() {
+  try {
+    sendRemoveBarrier();
+  }
+  catch (...) {
+  }
+
   // shutdown everything properly
   delete _client;
   delete _connection;
@@ -146,8 +156,149 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
 
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
+  } 
+  return "/_db/" + s->_databaseName + "/" + location;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the barrier id from the syncer
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t Syncer::stealBarrier() {
+  auto id = _barrierId;
+  _barrierId = 0;
+  _barrierUpdateTime = 0;
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "create barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
+  _barrierId = 0;
+
+  std::string const url = BaseUrl + "/barrier";
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
+
+  // send request
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
+      HttpRequest::HTTP_REQUEST_POST, url, body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " +
+               _masterInfo._endpoint + ": " +
+               _client->getErrorMessage();
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+
+    errorMsg = "got invalid response from master at " +
+               _masterInfo._endpoint + ": HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
   } else {
-    return "/_db/" + s->_databaseName + "/" + location;
+    std::unique_ptr<TRI_json_t> json(
+        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+
+    if (json == nullptr) {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    } else {
+      std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
+
+      if (id.empty()) {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      } else {
+        _barrierId = StringUtils::uint64(id);
+        _barrierUpdateTime = TRI_microtime();
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << _barrierId;
+      }
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send an "extend barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
+  if (_barrierId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  double now = TRI_microtime();
+
+  if (now <= _barrierUpdateTime + _barrierTtl - 60.0) {
+    // no need to extend the barrier yet
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
+
+  // send request
+  std::unique_ptr<SimpleHttpResult> response(_client->request(
+      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+  } else {
+    _barrierUpdateTime = TRI_microtime();
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "remove barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendRemoveBarrier() {
+  if (_barrierId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  try {
+    std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+
+    // send request
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
+        HttpRequest::HTTP_REQUEST_DELETE, url, nullptr, 0));
+
+    if (response == nullptr || !response->isComplete()) {
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    TRI_ASSERT(response != nullptr);
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    if (response->wasHttpError()) {
+      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    } else {
+      _barrierId = 0;
+      _barrierUpdateTime = 0;
+    }
+    return res;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 }
 

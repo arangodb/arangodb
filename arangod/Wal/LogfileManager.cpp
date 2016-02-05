@@ -166,6 +166,11 @@ LogfileManager::~LogfileManager() {
   stop();
 
   regfree(&_filenameRegex);
+  
+  for (auto& it : _barriers) {
+    delete it.second;
+  }
+  _barriers.clear();
 
   if (_recoverState != nullptr) {
     delete _recoverState;
@@ -1111,6 +1116,120 @@ void LogfileManager::getActiveLogfileRegion(Logfile* logfile,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief garbage collect expired logfile barriers
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::collectLogfileBarriers() {
+  auto now = TRI_microtime();
+
+  WRITE_LOCKER(barrierLock, _barriersLock);
+
+  for (auto it = _barriers.begin(); it != _barriers.end(); /* no hoisting */) {
+    auto logfileBarrier = (*it).second;
+
+    if (logfileBarrier->expires <= now) {
+      LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage-collecting expired WAL logfile barrier " << logfileBarrier->id;
+
+      it = _barriers.erase(it);
+      delete logfileBarrier;
+    }
+    else {
+      ++it;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a specific logfile barrier
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
+  WRITE_LOCKER(barrierLock, _barriersLock);
+
+  auto it = _barriers.find(id);
+
+  if (it == _barriers.end()) {
+    return false;
+  }
+
+  auto logfileBarrier = (*it).second;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing WAL logfile barrier " << logfileBarrier->id;
+
+  _barriers.erase(it);
+  delete logfileBarrier;
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a barrier that prevents removal of logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick, double ttl) {
+  TRI_voc_tick_t id = TRI_NewTickServer();
+  double expires = TRI_microtime() + ttl;
+
+  auto logfileBarrier = std::make_unique<LogfileBarrier>(id, expires, minTick);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "adding WAL logfile barrier " << logfileBarrier->id << ", minTick: " << minTick;
+
+  {
+    WRITE_LOCKER(barrierLock, _barriersLock);
+    _barriers.emplace(id, logfileBarrier.get());
+  }
+
+  logfileBarrier.release();
+
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extend the lifetime of a logfile barrier
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl, TRI_voc_tick_t tick) {
+  WRITE_LOCKER(barrierLock, _barriersLock);
+
+  auto it = _barriers.find(id);
+
+  if (it == _barriers.end()) {
+    return false;
+  }
+  
+  auto logfileBarrier = (*it).second;
+  logfileBarrier->expires = TRI_microtime() + ttl;
+
+  if (tick > 0 && tick > logfileBarrier->minTick) {
+    // patch tick
+    logfileBarrier->minTick = tick;
+  }
+  
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "extending WAL logfile barrier " << logfileBarrier->id << ", minTick: " << logfileBarrier->minTick;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get minimum tick value from all logfile barriers
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t LogfileManager::getMinBarrierTick() {
+  TRI_voc_tick_t value = 0;
+
+  READ_LOCKER(barrierLock, _barriersLock);
+
+  for (auto const& it : _barriers) {
+    auto logfileBarrier = it.second;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "server has WAL logfile barrier " << logfileBarrier->id << ", minTick: " << logfileBarrier->minTick;
+
+    if (value == 0 || value < logfileBarrier->minTick) {
+      value = logfileBarrier->minTick;
+    }
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get logfiles for a tick range
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1360,6 +1479,9 @@ Logfile* LogfileManager::getCollectableLogfile() {
 Logfile* LogfileManager::getRemovableLogfile() {
   TRI_ASSERT(!_inRecovery);
 
+  // take all barriers into account
+  Logfile::IdType const minBarrierTick = getMinBarrierTick();
+
   Logfile::IdType minId = UINT64_MAX;
 
   {
@@ -1390,7 +1512,11 @@ Logfile* LogfileManager::getRemovableLogfile() {
         continue;
       }
 
-      if (logfile->id() <= minId && logfile->canBeRemoved()) {
+      if (logfile->id() <= minId && 
+          logfile->canBeRemoved() && 
+          (minBarrierTick == 0 || (logfile->df()->_tickMin < minBarrierTick && logfile->df()->_tickMax < minBarrierTick))) {
+        // only check those logfiles that are outside the ranges specified by barriers
+
         if (first == nullptr) {
           // note the oldest of the logfiles (_logfiles is a map, thus sorted)
           first = logfile;

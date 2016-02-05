@@ -48,7 +48,8 @@ using namespace arangodb::rest;
 ContinuousSyncer::ContinuousSyncer(
     TRI_server_t* server, TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
-    TRI_voc_tick_t initialTick, bool useTick)
+    TRI_voc_tick_t initialTick, bool useTick,
+    TRI_voc_tick_t barrierId)
     : Syncer(vocbase, configuration),
       _server(server),
       _applier(vocbase->_replicationApplier),
@@ -75,9 +76,16 @@ ContinuousSyncer::ContinuousSyncer(
   } else if (configuration->_restrictType == "exclude") {
     _restrictType = RESTRICT_EXCLUDE;
   }
+
+  if (barrierId > 0) {
+    _barrierId = barrierId;
+    _barrierUpdateTime = TRI_microtime();
+  }
 }
 
-ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
+ContinuousSyncer::~ContinuousSyncer() { 
+  abortOngoingTransactions(); 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs continuous synchronization
@@ -1278,7 +1286,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl =
-      BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
+      BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&barrier=" + StringUtils::itoa(_barrierId);
 
   worked = false;
 
@@ -1292,6 +1300,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   std::string const progress =
       "fetching master log from tick " + StringUtils::itoa(fetchTick) +
       ", first regular tick " + StringUtils::itoa(firstRegularTick) + 
+      ", barrier: " + StringUtils::itoa(_barrierId) +  
       ", open transactions: " + std::to_string(_ongoingTransactions.size());
   setProgress(progress);
 

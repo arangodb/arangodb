@@ -138,8 +138,10 @@ InitialSyncer::InitialSyncer(
 }
 
 InitialSyncer::~InitialSyncer() {
-  if (_batchId > 0) {
+  try {
     sendFinishBatch();
+  }
+  catch (...) {
   }
 }
 
@@ -176,7 +178,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "incremental replication is not supported with a master < ArangoDB 2.7";
       incremental = false;
     }
-
+      
     if (incremental) {
       res = sendFlush(errorMsg);
 
@@ -184,6 +186,9 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
         return res;
       }
     }
+
+    // create a WAL logfile barrier that prevents WAL logfile collection
+    sendCreateBarrier(errorMsg, _masterInfo._lastLogTick);
 
     res = sendStartBatch(errorMsg);
 
@@ -377,7 +382,7 @@ int InitialSyncer::sendExtendBatch() {
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  std::string const progress = "send batch start command to url " + url;
+  std::string const progress = "send batch extend command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->request(
@@ -594,6 +599,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     sendExtendBatch();
+    sendExtendBarrier();
 
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
@@ -618,7 +624,7 @@ int InitialSyncer::handleCollectionDump(
         StringUtils::itoa(markersProcessed) + ", bytes received: " +
         StringUtils::itoa(bytesReceived);
 
-    setProgress(progress.c_str());
+    setProgress(progress);
 
     // use async mode for first batch
     std::map<std::string, std::string> headers;
@@ -667,6 +673,7 @@ int InitialSyncer::handleCollectionDump(
       // wait until we get a responsable response
       while (true) {
         sendExtendBatch();
+        sendExtendBarrier();
 
         std::string const jobUrl = "/_api/job/" + jobId;
         response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT, jobUrl,
@@ -789,6 +796,7 @@ int InitialSyncer::handleCollectionSync(
     std::string const& collectionName, TRI_voc_tick_t maxTick,
     std::string& errorMsg) {
   sendExtendBatch();
+  sendExtendBarrier();
 
   std::string const baseUrl = BaseUrl + "/keys";
   std::string url =
@@ -844,6 +852,7 @@ int InitialSyncer::handleCollectionSync(
 
   while (true) {
     sendExtendBatch();
+    sendExtendBarrier();
 
     std::string const jobUrl = "/_api/job/" + jobId;
     response.reset(
@@ -1028,6 +1037,7 @@ int InitialSyncer::handleSyncKeys(
   }
 
   sendExtendBatch();
+  sendExtendBarrier();
 
   std::vector<size_t> toFetch;
 
@@ -1136,6 +1146,7 @@ int InitialSyncer::handleSyncKeys(
     setProgress(progress);
 
     sendExtendBatch();
+    sendExtendBarrier();
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(
@@ -1565,6 +1576,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
   }
 
   sendExtendBatch();
+  sendExtendBarrier();
 
   std::string const masterName =
       JsonHelper::getStringValue(parameters, "name", "");
