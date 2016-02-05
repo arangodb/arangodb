@@ -1378,6 +1378,37 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal recursive flatten helper
+////////////////////////////////////////////////////////////////////////////////
+
+static void FlattenList(Json array, size_t maxDepth, size_t curDepth,
+                        Json& result) {
+  size_t elementCount = array.size();
+  for (size_t i = 0; i < elementCount; ++i) {
+    Json tmp = array.at(i);
+    if (tmp.isArray() && curDepth < maxDepth) {
+      FlattenList(tmp, maxDepth, curDepth + 1, result);
+    } else {
+      // Transfer the content of tmp into the result
+      result.transfer(tmp.json());
+    }
+  }
+}
+
+static void FlattenList(VPackSlice const& array, size_t maxDepth,
+                        size_t curDepth, VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenArray());
+  for (auto const& tmp : VPackArrayIterator(array)) {
+    if (tmp.isArray() && curDepth < maxDepth) {
+      FlattenList(tmp, maxDepth, curDepth + 1, result);
+    } else {
+      // Copy the content of tmp into the result
+      result.add(tmp);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief called before a query starts
 /// has the chance to set up any thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
@@ -4275,23 +4306,25 @@ AqlValue$ Functions::IntersectionVPack(arangodb::aql::Query* query,
         if (found != values.end()) {
           // already seen
           TRI_ASSERT((*found).second > 0);
-          ++((*found).second);
+          ++(found->second);
         }
       }
     }
+  }
 
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
+  {
     VPackArrayBuilder guard(b.get());
-    for (auto& it : values) {
+    for (auto const& it : values) {
       if (it.second == n) {
         b->add(it.first);
       }
     }
-    values.clear();
   }
+  values.clear();
 
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -5177,30 +5210,16 @@ AqlValue$ Functions::WithinVPack(arangodb::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal recursive flatten helper
-////////////////////////////////////////////////////////////////////////////////
-
-static void FlattenList(Json array, size_t maxDepth, size_t curDepth,
-                        Json& result) {
-  size_t elementCount = array.size();
-  for (size_t i = 0; i < elementCount; ++i) {
-    Json tmp = array.at(i);
-    if (tmp.isArray() && curDepth < maxDepth) {
-      FlattenList(tmp, maxDepth, curDepth + 1, result);
-    } else {
-      // Transfer the content of tmp into the result
-      result.transfer(tmp.json());
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief function FLATTEN
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(FlattenVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n == 0 || n > 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -5230,6 +5249,48 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
   FlattenList(listJson.copy(), maxDepth, 0, result);
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+#endif
+}
+
+AqlValue$ Functions::FlattenVPack(arangodb::aql::Query* query,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n == 0 || n > 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLATTEN", (int)1,
+        (int)2);
+  }
+
+  VPackSlice listSlice = ExtractFunctionParameter(trx, parameters, 0);
+  if (!listSlice.isArray()) {
+    RegisterWarning(query, "FLATTEN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  size_t maxDepth = 1;
+  if (n == 2) {
+    VPackSlice maxDepthSlice = ExtractFunctionParameter(trx, parameters, 1);
+    bool isValid = true;
+    double tmpMaxDepth = ValueToNumber(maxDepthSlice, isValid);
+    if (!isValid || tmpMaxDepth < 1) {
+      maxDepth = 1;
+    } else {
+      maxDepth = static_cast<size_t>(tmpMaxDepth);
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    FlattenList(listSlice, maxDepth, 0, *b);
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5239,6 +5300,10 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
 AqlValue Functions::Zip(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(ZipVPack(query, trx, tmp));
+#else
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ZIP", (int)2,
@@ -5265,6 +5330,48 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
     result.set(buffer.c_str(), valuesJson.at(i).copy().steal());
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+#endif
+}
+
+AqlValue$ Functions::ZipVPack(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters) {
+  if (parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ZIP", (int)2,
+        (int)2);
+  }
+
+  VPackSlice keysSlice = ExtractFunctionParameter(trx, parameters, 0);
+  VPackSlice valuesSlice = ExtractFunctionParameter(trx, parameters, 1);
+
+  if (!keysSlice.isArray() || !valuesSlice.isArray() ||
+      keysSlice.length() != valuesSlice.length()) {
+    RegisterWarning(query, "ZIP",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  VPackValueLength n = keysSlice.length();
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackObjectBuilder guard(b.get());
+
+    // Buffer will temporarily hold the keys
+    arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+    for (VPackValueLength i = 0; i < n; ++i) {
+      buffer.reset();
+      AppendAsString(adapter, keysSlice.at(i));
+      b->add(std::string(buffer.c_str(), buffer.length()), valuesSlice.at(i));
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5274,6 +5381,10 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
 AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
                                     arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(ParseIdentifierVPack(query, trx, tmp));
+#else
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER",
@@ -5304,6 +5415,48 @@ AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
   RegisterWarning(query, "PARSE_IDENTIFIER",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::ParseIdentifierVPack(arangodb::aql::Query* query,
+                                          arangodb::AqlTransaction* trx,
+                                          VPackFunctionParameters const& parameters) {
+  if (parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER",
+        (int)1, (int)1);
+  }
+
+  VPackSlice value = ExtractFunctionParameter(trx, parameters, 0);
+  std::string identifier;
+  if (value.isObject() && value.hasKey(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = arangodb::basics::VelocyPackHelper::getStringValue(
+        value, TRI_VOC_ATTRIBUTE_ID, "");
+  } else if (value.isString()) {
+    identifier = value.copyString();
+  }
+
+  if (!identifier.empty()) {
+    std::vector<std::string> parts =
+        arangodb::basics::StringUtils::split(identifier, "/");
+    if (parts.size() == 2) {
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      try {
+        VPackObjectBuilder guard(b.get());
+        b->add("collection", VPackValue(parts[0]));
+        b->add("key", VPackValue(parts[1]));
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+      return AqlValue$(b.get());
+    }
+  }
+
+  RegisterWarning(query, "PARSE_IDENTIFIER",
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5313,6 +5466,10 @@ AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
 AqlValue Functions::Minus(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(MinusVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -5363,6 +5520,70 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+#endif
+}
+
+AqlValue$ Functions::MinusVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // The max number is arbitrary
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MINUS", (int)2,
+        (int)99999);
+  }
+  VPackSlice baseArray = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!baseArray.isArray()) {
+    RegisterWarning(query, "MINUS",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::unordered_map<std::string, size_t> contains;
+  contains.reserve(n);
+
+  // Fill the original map
+  for (size_t i = 0; i < baseArray.length(); ++i) {
+    contains.emplace(baseArray.at(i).toJson(), i);
+  }
+
+  // Iterate through all following parameters and delete found elements from the
+  // map
+  for (size_t k = 1; k < n; ++k) {
+    VPackSlice nextArray = ExtractFunctionParameter(trx, parameters, k);
+    if (!nextArray.isArray()) {
+      RegisterWarning(query, "MINUS",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+
+    for (auto const& searchSlice : VPackArrayIterator(nextArray)) {
+      std::string search = searchSlice.toJson();
+      auto find = contains.find(search);
+      if (find != contains.end()) {
+        contains.erase(find);
+      }
+    }
+  }
+
+  // We ommit the normalize part from js, cannot occur here
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    for (auto const& it : contains) {
+      b->add(baseArray.at(it.second));
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 static void RegisterCollectionInTransaction(

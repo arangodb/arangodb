@@ -319,6 +319,19 @@ struct Functions {
                              VPackFunctionParameters const&);
   static AqlValue$ WithinVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                                VPackFunctionParameters const&);
+  static AqlValue$ FlattenVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ ZipVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ ParseIdentifierVPack(arangodb::aql::Query*,
+                                        arangodb::AqlTransaction*,
+                                        VPackFunctionParameters const&);
+  static AqlValue$ MinusVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ DocumentVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
 };
 }
 }
