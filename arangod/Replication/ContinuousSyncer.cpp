@@ -586,6 +586,10 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
     if (trxCollection == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
+    
+   if (trx->orderDitch(trx->trxCollection(cid)) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     int res = applyCollectionDumpMarker(trxCollection,
                                         type,
@@ -613,6 +617,10 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
       errorMsg = "unable to create replication transaction: " + string(TRI_errno_string(res));
 
       return res;
+    }
+
+    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     TRI_transaction_collection_t* trxCollection = trx.trxCollection();
@@ -1005,6 +1013,8 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
           errorMsg += ", offending marker: " + std::string(lineStart, lineLength);
         }
 
+        LOG_WARNING("replication applier error: %s", errorMsg.c_str());
+
         return res;
       }
       
@@ -1060,7 +1070,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       fromTick = _initialTick;
       _applier->_state._lastAppliedContinuousTick = 0;
       _applier->_state._lastProcessedContinuousTick = 0;
-      saveApplierState();
+      // saveApplierState();
     }
     else {
       // if we already transferred some data, we'll use the last applied tick

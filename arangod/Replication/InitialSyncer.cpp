@@ -1770,6 +1770,8 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
           else {
             TRI_document_collection_t* document = col->_collection;
             TRI_ASSERT(document != nullptr);
+  
+            auto ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
             // create a fake transaction object to avoid assertions
             TransactionBase trx(true);
@@ -1808,6 +1810,10 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             }
 
             TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    
+            if (ditch != nullptr) {
+              document->ditches()->freeDocumentDitch(ditch, false);
+            }
           }
         }
         catch (triagens::basics::Exception const& ex) {

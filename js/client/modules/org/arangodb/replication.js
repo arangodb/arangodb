@@ -173,7 +173,8 @@ var waitForResult = function (config, id) {
     config.progress = true;
   }
     
-  internal.sleep(2);
+  internal.sleep(1);
+  var iterations = 0;
     
   while (true) {
     const jobResult = db._connection.PUT("/_api/job/" + encodeURIComponent(id), "");
@@ -183,19 +184,24 @@ var waitForResult = function (config, id) {
       return jobResult;
     }
 
-    internal.sleep(5);
+    ++iterations;
 
-    if (!config.progress) {
-      continue;
+    if (iterations < 6) {
+      internal.sleep(2);
+    }
+    else {
+      internal.sleep(3);
     }
 
-    try {
-      var progress = applier.state().state.progress;
-      var msg = progress.time + ": " + progress.message;
+    if (config.progress && iterations % 3 === 0) {
+      try {
+        var progress = applier.state().state.progress;
+        var msg = progress.time + ": " + progress.message;
 
-      internal.print("still sychronizing... last received status: " + msg);
-    }
-    catch (err) {
+        internal.print("still sychronizing... last received status: " + msg);
+      }
+      catch (err) {
+      }
     }
   }
 };
