@@ -1758,6 +1758,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
         return res;
       }
 
+
       TRI_transaction_collection_t* trxCollection = trx.trxCollection();
 
       if (trxCollection == nullptr) {
@@ -1765,6 +1766,10 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
         errorMsg = "unable to start transaction: " +
                    std::string(TRI_errno_string(res));
       } else {
+        if (trx.orderDitch(trxCollection) == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
         if (incremental && trx.documentCollection()->size() > 0) {
           res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName,
                                      _masterInfo._lastLogTick, errorMsg);

@@ -552,6 +552,10 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
+    if (trx->orderDitch(trxCollection) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     int res = applyCollectionDumpMarker(
         trx, trxCollection, type,
         (const TRI_voc_key_t)keyJson->_value._string.data, rid, doc, errorMsg);
@@ -583,6 +587,10 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
     if (trxCollection == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+
+    if (trx.orderDitch(trxCollection) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     res = applyCollectionDumpMarker(
@@ -950,6 +958,8 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
               ", offending marker: " + std::string(lineStart, lineLength);
         }
 
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: " << errorMsg;
+
         return res;
       }
 
@@ -1002,7 +1012,7 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       fromTick = _initialTick;
       _applier->_state._lastAppliedContinuousTick = 0;
       _applier->_state._lastProcessedContinuousTick = 0;
-      saveApplierState();
+      // saveApplierState();
     } else {
       // if we already transferred some data, we'll use the last applied tick
       if (_applier->_state._lastAppliedContinuousTick >= fromTick) {
