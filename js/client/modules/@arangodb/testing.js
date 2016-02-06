@@ -61,7 +61,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
-  '   - `skipAuth : testing authentication will be skipped.',
+  '   - `skipAuth : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
