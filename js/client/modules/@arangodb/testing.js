@@ -34,6 +34,7 @@ const functionsDocumentation = {
   "boost": "boost test suites",
   "config": "checks the config file parsing",
   "dump": "dump tests",
+  "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
   "http_server": "http server tests",
   "importing": "import tests",
@@ -475,7 +476,7 @@ function checkInstanceAlive(instanceInfo, options) {
   if (options.cluster === false) {
     return checkInstanceAliveSingleServer(instanceInfo, options);
   }
-  
+
   return checkInstanceAliveCluster(instanceInfo, options);
 }
 
@@ -1191,7 +1192,7 @@ function startDispatcher(instanceInfo) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
-                              addArgs, testname, appDir, tmpDataDir) {
+  addArgs, testname, appDir, tmpDataDir) {
   startDispatcher(instanceInfo, options);
 
   const clusterNodes = options.clusterNodes;
@@ -1315,7 +1316,7 @@ function valgrindArgsSingleServer(options, testname, run) {
 }
 
 function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
-                                   addArgs, testname, appDir, tmpDataDir) {
+  addArgs, testname, appDir, tmpDataDir) {
   const port = findFreePort();
   instanceInfo.port = port;
 
@@ -1382,16 +1383,16 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
 
   if (options.cluster) {
     res = startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
-                               addArgs, testname, appDir, tmpDataDir);
+      addArgs, testname, appDir, tmpDataDir);
   }
 
   // single instance mode
   else {
     res = startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
-                                    addArgs, testname, appDir, tmpDataDir);
+      addArgs, testname, appDir, tmpDataDir);
   }
 
-  if (! res) {
+  if (!res) {
     return false;
   }
 
@@ -1767,6 +1768,7 @@ let allTests = [
   "boost",
   "config",
   "dump",
+  "dfdb",
   "http_server",
   "importing",
   "shell_client",
@@ -2280,8 +2282,7 @@ testFuncs.boost = function(options) {
       const newargs = valgrindArgs.concat(args);
 
       results.basics = executeAndWait(options.valgrind, newargs);
-    }
-    else {
+    } else {
       results.basics = executeAndWait(run, args);
     }
   }
@@ -2294,8 +2295,7 @@ testFuncs.boost = function(options) {
       const newargs = valgrindArgs.concat(args);
 
       results.geo_suite = executeAndWait(options.valgrind, newargs);
-    }
-    else {
+    } else {
       results.geo_suite = executeAndWait(run, args);
     }
   }
@@ -2357,8 +2357,7 @@ testFuncs.config = function(options) {
       const newargs = valgrindArgs.concat(toArgv(args));
 
       results.absolut[test] = executeAndWait(options.valgrind, newargs);
-    }
-    else {
+    } else {
       results.absolut[test] = executeAndWait(run, toArgv(args));
     }
 
@@ -2392,8 +2391,7 @@ testFuncs.config = function(options) {
       const newargs = valgrindArgs.concat(toArgv(args));
 
       results.relative[test] = executeAndWait(options.valgrind, newargs);
-    }
-    else {
+    } else {
       results.relative[test] = executeAndWait(run, toArgv(args));
     }
 
@@ -2409,6 +2407,31 @@ testFuncs.config = function(options) {
     print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
     print("Result: " + results.relative[test].status);
+  }
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: dfdb
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.dfdb = function(options) {
+  const topDir = findTopDir();
+  const dataDir = fs.getTempFile();
+  const args = ["-c", "etc/relative/arango-dfdb.conf", "--no-server", dataDir];
+
+  let results = {};
+
+  const run = fs.join(topDir, "bin", "arangod");
+
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", run);
+    const newargs = valgrindArgs.concat(args);
+
+    results.dfdb = executeAndWait(options.valgrind, newargs);
+  } else {
+    results.dfdb = executeAndWait(run, args);
   }
 
   return results;

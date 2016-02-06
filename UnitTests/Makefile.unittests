@@ -29,8 +29,7 @@ unittests: all unittests-verbose unittests-brief
 unittests-brief: \
 	jslint \
 	unittests-recovery \
-	unittests-dump-authentication \
-	unittests-dfdb
+	unittests-dump-authentication
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -353,21 +352,6 @@ unittests-replication-ongoing:
 	@rm -rf "$(VOCDIR)"
 	@rm -rf "$(SLAVEDIR)"
 	@echo
-
-################################################################################
-### @brief DATAFILE DEBUGGER TESTS
-###
-### this test just checks whether the dfdb starts.
-### we will send an EOT signal to the dfdb process to stop it right away.
-################################################################################
-
-.PHONY: unittests-dfdb
-
-unittests-dfdb:
-	@mkdir -p "$(VOCDIR)/databases"
-	@test -d "$(VOCDIR)"
-
-	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 ################################################################################
 ### @brief ARANGODUMP TESTS
