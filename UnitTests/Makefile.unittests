@@ -28,23 +28,9 @@ unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
 	jslint \
-	unittests-config \
 	unittests-recovery \
-	unittests-boost \
-	unittests-shell-server \
-	unittests-shell-server-aql \
-	unittests-http-server \
-	unittests-ssl-server \
-	unittests-shell-client \
-	unittests-dump \
 	unittests-dump-authentication \
-	unittests-arangob \
-	unittests-import \
-	unittests-upgrade \
-	unittests-dfdb \
-	unittests-foxx-manager \
-	unittests-authentication \
-	unittests-authentication-parameters
+	unittests-dfdb
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -195,36 +181,10 @@ start-slave:
 	@echo
 
 ################################################################################
-### @brief CONFIGURATION FILES TESTS
-################################################################################
-
-.PHONY: unittests-config
-
-unittests-config:
-	@echo
-	@echo "================================================================================"
-	@echo "<< CONFIGURATION FILE TESTS                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) config || test "x$(FORCE)" == "x1"
-
-################################################################################
 ### @brief BOOST TESTS
 ################################################################################
 
-.PHONY: unittests-boost
-
 if ENABLE_BOOST_TESTS
-
-unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
-	@echo
-	@echo "================================================================================"
-	@echo "<< BOOST TESTS                                                                >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) boost || test "x$(FORCE)" == "x1"
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
@@ -283,122 +243,7 @@ UnitTests_geo_suite_SOURCES = \
 	arangod/GeoIndex/GeoIndex.cpp \
 	lib/Basics/WorkMonitorDummy.cpp
 
-else
-
-unittests-boost:
-	@echo
-	@echo "================================================================================"
-	@echo "<< BOOST TESTS                                                                >>"
-	@echo "================================================================================"
-	@echo
-
-	@echo "to enable boost unit-tests, install Boost test and configure with --enable-boost-tests"
 endif
-
-################################################################################
-### @brief SHELL SERVER TESTS (BASICS)
-################################################################################
-
-.PHONY: unittests-shell-server
-
-unittests-shell-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (ALL)                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) shell_server || test "x$(FORCE)" == "x1"
-
-.PHONY: unittests-shell-server-only
-
-unittests-shell-server-only:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (SERVER-ONLY)                                           >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) shell_server_only || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief SHELL SERVER TESTS (AQL)
-################################################################################
-
-.PHONY: unittests-shell-server-aql
-
-unittests-shell-server-aql:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (AQL)                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	@(if test "x$(SKIP_RANGES)" == "x1"; then \
-            ./scripts/unittest $(VALGRIND) shell_server_aql '{"skipRanges":true}'; \
-	  else \
-            ./scripts/unittest $(VALGRIND) shell_server_aql; \
-	  fi) || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief SHELL CLIENT TESTS
-################################################################################
-
-.PHONY: unittests-shell-client
-
-unittests-shell-client:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL CLIENT TESTS                                                         >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) shell_client || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief HTTP SERVER TESTS
-################################################################################
-
-.PHONY: unittests-http-server
-
-unittests-http-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< HTTP SERVER TESTS                                                          >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) http_server || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
-################################################################################
-
-.PHONY: unittests-ssl-server
-
-unittests-ssl-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)                 >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) ssl_server || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief IMPORT TESTS
-################################################################################
-
-.PHONY: unittests-import
-
-unittests-import:
-	@echo
-	@echo "================================================================================"
-	@echo "<< IMPORT TESTS                                                               >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) importing || test "x$(FORCE)" == "x1"
 
 ################################################################################
 ### @brief REPLICATION TESTS
@@ -510,23 +355,6 @@ unittests-replication-ongoing:
 	@echo
 
 ################################################################################
-### @brief UPGRADE TESTS
-###
-### invokes the --upgrade option twice and checks for errors
-################################################################################
-
-.PHONY: unittests-upgrade
-
-unittests-upgrade:
-	@echo
-	@echo "================================================================================"
-	@echo "<< UPGRADE TESTS                                                              >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) upgrade || test "x$(FORCE)" == "x1"
-
-################################################################################
 ### @brief DATAFILE DEBUGGER TESTS
 ###
 ### this test just checks whether the dfdb starts.
@@ -542,36 +370,8 @@ unittests-dfdb:
 	echo -e "\x04" | ($(VALGRIND) @builddir@/bin/arangod -c etc/relative/arango-dfdb.conf --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --database.directory "$(VOCDIR)" || test "x$(FORCE)" == "x1")
 
 ################################################################################
-### @brief FOXX MANAGER TESTS
-###
-### this test runs a few actions in the foxx manager binary
-################################################################################
-
-.PHONY: unittests-foxx-manager
-
-unittests-foxx-manager:
-	@echo
-	@echo "================================================================================"
-	@echo "<< FOXX MANAGER TESTS                                                         >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) foxx_manager || test "x$(FORCE)" == "x1"
-
-################################################################################
 ### @brief ARANGODUMP TESTS
 ################################################################################
-
-.PHONY: unittests-dump
-
-unittests-dump:
-	@echo
-	@echo "================================================================================"
-	@echo "<< ARANGODUMP TESTS                                                           >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) dump || test "x$(FORCE)" == "x1"
 
 .PHONY: unittests-dump-authentication
 
@@ -598,47 +398,6 @@ unittests-dump-authentication:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
-
-################################################################################
-### @brief ARANGOB TESTS
-################################################################################
-
-.PHONY: unittests-arangob
-
-unittests-arangob:
-	@echo
-	@echo "================================================================================"
-	@echo "<< ARANGOB TESTS                                                              >>"
-	@echo "================================================================================"
-
-	./scripts/unittest $(VALGRIND) arangob || test "x$(FORCE)" == "x1"
-
-################################################################################
-### @brief AUTHENTICATION
-################################################################################
-
-.PHONY: unittests-authentication
-
-unittests-authentication:
-	@echo
-	@echo "================================================================================"
-	@echo "<< AUTHENTICATION TESTS                                                       >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) authentication || test "x$(FORCE)" == "x1"
-
-
-.PHONY: unittests-authentication-parameters
-
-unittests-authentication-parameters:
-	@echo
-	@echo "================================================================================"
-	@echo "<< AUTHENTICATION PARAMETER TESTS                                             >>"
-	@echo "================================================================================"
-	@echo
-
-	./scripts/unittest $(VALGRIND) authentication_parameters || test "x$(FORCE)" == "x1"
 
 ################################################################################
 ### @brief CPPCHECK

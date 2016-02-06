@@ -1293,6 +1293,27 @@ function startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
   return true;
 }
 
+function valgrindArgsSingleServer(options, testname, run) {
+  let valgrindOpts = {};
+
+  if (options.valgrindArgs) {
+    valgrindOpts = options.valgrindArgs;
+  }
+
+  let testfn = options.valgrindXmlFileBase;
+
+  if (testfn.length > 0) {
+    testfn += '_';
+  }
+
+  testfn += testname;
+
+  valgrindOpts["xml-file"] = testfn + '.%p.xml';
+  valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
+
+  return toArgv(valgrindOpts, true).concat([run]);
+}
+
 function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
                                    addArgs, testname, appDir, tmpDataDir) {
   const port = findFreePort();
@@ -1319,32 +1340,15 @@ function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtra
     args = _.extend(args, addArgs);
   }
 
-  let valgrindOpts = {};
-
-  if (options.valgrindArgs) {
-    valgrindOpts = options.valgrindArgs;
-  }
+  const run = fs.join("bin", "arangod");
 
   if (options.valgrind) {
-    const run = fs.join("bin", "arangod");
-    let testfn = options.valgrindXmlFileBase;
+    const valgrindArgs = valgrindArgsSingleServer(options, testname, run);
+    const newargs = valgrindArgs.concat(toArgv(args));
 
-    if (testfn.length > 0) {
-      testfn += '_';
-    }
-
-    testfn += testname;
-
-    valgrindOpts["xml-file"] = testfn + '.%p.xml';
-    valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
-
-    // Sequence: Valgrind arguments; binary to run; options to binary:
-    const newargs = toArgv(valgrindOpts, true).concat([run]).concat(toArgv(args));
-    const cmdline = options.valgrind;
-
-    instanceInfo.pid = executeExternal(cmdline, newargs);
+    instanceInfo.pid = executeExternal(options.valgrind, newargs);
   } else {
-    instanceInfo.pid = executeExternal(fs.join("bin", "arangod"), toArgv(args));
+    instanceInfo.pid = executeExternal(run, toArgv(args));
   }
 
   return true;
@@ -2264,16 +2268,36 @@ testFuncs.authentication_parameters = function(options) {
 
 testFuncs.boost = function(options) {
   const topDir = findTopDir();
+  const args = ["--show_progress"];
+
   let results = {};
 
   if (!options.skipBoost) {
-    results.basics = executeAndWait(fs.join(topDir,
-      "UnitTests", "basics_suite"), ["--show_progress"]);
+    const run = fs.join(topDir, "UnitTests", "basics_suite");
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
+      const newargs = valgrindArgs.concat(args);
+
+      results.basics = executeAndWait(options.valgrind, newargs);
+    }
+    else {
+      results.basics = executeAndWait(run, args);
+    }
   }
 
   if (!options.skipGeo) {
-    results.geo_suite = executeAndWait(
-      fs.join(topDir, "UnitTests", "geo_suite"), ["--show_progress"]);
+    const run = fs.join(topDir, "UnitTests", "geo_suite");
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
+      const newargs = valgrindArgs.concat(args);
+
+      results.geo_suite = executeAndWait(options.valgrind, newargs);
+    }
+    else {
+      results.geo_suite = executeAndWait(run, args);
+    }
   }
 
   return results;
@@ -2326,7 +2350,17 @@ testFuncs.config = function(options) {
       "flatCommands": ["--help"]
     };
 
-    results.absolut[test] = executeAndWait(fs.join(topDir, "bin", test), toArgv(args));
+    const run = fs.join(topDir, "bin", test);
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
+      const newargs = valgrindArgs.concat(toArgv(args));
+
+      results.absolut[test] = executeAndWait(options.valgrind, newargs);
+    }
+    else {
+      results.absolut[test] = executeAndWait(run, toArgv(args));
+    }
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -2350,6 +2384,18 @@ testFuncs.config = function(options) {
       "configuration": fs.join(topDir, "etc", "relative", test + ".conf"),
       "flatCommands": ["--help"]
     };
+
+    const run = fs.join(topDir, "bin", test);
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
+      const newargs = valgrindArgs.concat(toArgv(args));
+
+      results.relative[test] = executeAndWait(options.valgrind, newargs);
+    }
+    else {
+      results.relative[test] = executeAndWait(run, toArgv(args));
+    }
 
     results.relative[test] = executeAndWait(fs.join(topDir, "bin", test),
       toArgv(args));
@@ -2955,9 +3001,17 @@ testFuncs.upgrade = function(options) {
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
+  const run = fs.join("bin", "arangod");
   const argv = toArgv(args).concat(["--upgrade"]);
 
-  result.upgrade.first = executeAndWait(fs.join("bin", "arangod"), argv);
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const newargs = valgrindArgs.concat(argv);
+
+    result.upgrade.first = executeAndWait(options.valgrind, newargs);
+  } else {
+    result.upgrade.first = executeAndWait(run, argv);
+  }
 
   if (result.upgrade.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
@@ -2965,7 +3019,15 @@ testFuncs.upgrade = function(options) {
   }
 
   ++result.upgrade.total;
-  result.upgrade.second = executeAndWait(fs.join("bin", "arangod"), argv);
+
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const newargs = valgrindArgs.concat(argv);
+
+    result.upgrade.second = executeAndWait(options.valgrind, newargs);
+  } else {
+    result.upgrade.second = executeAndWait(run, argv);
+  }
 
   cleanupDirectories.push(tmpDataDir);
 
