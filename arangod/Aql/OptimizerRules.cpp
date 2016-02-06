@@ -71,7 +71,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
     // expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto inNode = filterExpression->nodeForModification();
+    auto const* inNode = filterExpression->node();
 
     TRI_ASSERT(inNode != nullptr);
 
@@ -204,10 +204,12 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
     }
 
-    // finally adjust the variable inside the IN calculation
-    inNode->changeMember(1, ast->createNodeReference(outVar));
+    AstNode* clone = ast->clone(inNode);
     // set sortedness bit for the IN operator
-    inNode->setBoolValue(true);
+    clone->setBoolValue(true);
+    // finally adjust the variable inside the IN calculation
+    clone->changeMember(1, ast->createNodeReference(outVar));
+    filterExpression->replaceNode(clone);
 
     modified = true;
   }
