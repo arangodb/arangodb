@@ -303,7 +303,7 @@ namespace arangodb {
 }
  
  /* ---------------------------------------------------------------------------
-  * literals
+  * identifiers
   * --------------------------------------------------------------------------- */
 
 ($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
@@ -351,7 +351,7 @@ namespace arangodb {
   /* end of forwardtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 2, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -368,6 +368,9 @@ namespace arangodb {
   /* any character (except newline) inside forwardtick */
 }
 
+ /* ---------------------------------------------------------------------------
+  * strings
+  * --------------------------------------------------------------------------- */
 
 <INITIAL>\" {
   yyextra->marker(yyextra->queryString() + yyextra->offset());
@@ -420,6 +423,10 @@ namespace arangodb {
 <SINGLE_QUOTE>. {
   /* any character (except newline) inside quote */
 }
+
+ /* ---------------------------------------------------------------------------
+  * number literals
+  * --------------------------------------------------------------------------- */
 
 (0|[1-9][0-9]*) {  
   /* a numeric integer value */
@@ -489,6 +496,10 @@ namespace arangodb {
 [\n] {
   yycolumn = 0;
 }
+ 
+ /* ---------------------------------------------------------------------------
+  * comments
+  * --------------------------------------------------------------------------- */
 
 <INITIAL>"//" {
   BEGIN(COMMENT_SINGLE);
@@ -496,11 +507,12 @@ namespace arangodb {
 
 <COMMENT_SINGLE>\n {
   /* line numbers are counted elsewhere already */
+  yycolumn = 0;
   BEGIN(INITIAL);
 }
 
 <COMMENT_SINGLE>[^\n]+ { 
-  // eat comment in chunks
+  /* everything else */
 }
 
 <INITIAL>"/*" {
@@ -521,7 +533,9 @@ namespace arangodb {
 
 <COMMENT_MULTI>\n {
   /* line numbers are counted elsewhere already */
+  yycolumn = 0;
 }
+
 
 . {
   /* anything else is returned as it is */

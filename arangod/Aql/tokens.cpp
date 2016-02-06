@@ -1425,7 +1425,7 @@ YY_RULE_SETUP
 }
 	YY_BREAK
 /* ---------------------------------------------------------------------------
-  * literals
+  * identifiers
   * --------------------------------------------------------------------------- */
 case 58:
 YY_RULE_SETUP
@@ -1488,7 +1488,7 @@ YY_RULE_SETUP
   /* end of forwardtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 2, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -1512,6 +1512,9 @@ YY_RULE_SETUP
   /* any character (except newline) inside forwardtick */
 }
 	YY_BREAK
+/* ---------------------------------------------------------------------------
+  * strings
+  * --------------------------------------------------------------------------- */
 case 69:
 YY_RULE_SETUP
 {
@@ -1586,6 +1589,9 @@ YY_RULE_SETUP
   /* any character (except newline) inside quote */
 }
 	YY_BREAK
+/* ---------------------------------------------------------------------------
+  * number literals
+  * --------------------------------------------------------------------------- */
 case 79:
 YY_RULE_SETUP
 {  
@@ -1664,6 +1670,9 @@ YY_RULE_SETUP
   yycolumn = 0;
 }
 	YY_BREAK
+/* ---------------------------------------------------------------------------
+  * comments
+  * --------------------------------------------------------------------------- */
 case 84:
 YY_RULE_SETUP
 {
@@ -1675,13 +1684,14 @@ case 85:
 YY_RULE_SETUP
 {
   /* line numbers are counted elsewhere already */
+  yycolumn = 0;
   BEGIN(INITIAL);
 }
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
 { 
-  // eat comment in chunks
+  /* everything else */
 }
 	YY_BREAK
 case 87:
@@ -1713,6 +1723,7 @@ case 91:
 YY_RULE_SETUP
 {
   /* line numbers are counted elsewhere already */
+  yycolumn = 0;
 }
 	YY_BREAK
 case 92:
