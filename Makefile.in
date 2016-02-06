@@ -468,7 +468,6 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/VocBase/arangod_libarangod_a-replication-applier.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-common.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-replication-dump.$(OBJEXT) \
-	arangod/VocBase/arangod_libarangod_a-replication-master.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-server.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-shape-accessor.$(OBJEXT) \
 	arangod/VocBase/arangod_libarangod_a-shaped-json.$(OBJEXT) \
@@ -1627,7 +1626,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \
-	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
 	arangod/VocBase/shape-accessor.cpp \
 	arangod/VocBase/shaped-json.cpp \
@@ -2960,9 +2958,6 @@ arangod/VocBase/arangod_libarangod_a-replication-common.$(OBJEXT):  \
 arangod/VocBase/arangod_libarangod_a-replication-dump.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/arangod_libarangod_a-replication-master.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/arangod_libarangod_a-server.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -4075,7 +4070,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-applier.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-dump.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shape-accessor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-shaped-json.Po@am__quote@
@@ -7058,20 +7052,6 @@ arangod/VocBase/arangod_libarangod_a-replication-dump.obj: arangod/VocBase/repli
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/replication-dump.cpp' object='arangod/VocBase/arangod_libarangod_a-replication-dump.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-replication-dump.obj `if test -f 'arangod/VocBase/replication-dump.cpp'; then $(CYGPATH_W) 'arangod/VocBase/replication-dump.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/replication-dump.cpp'; fi`
-
-arangod/VocBase/arangod_libarangod_a-replication-master.o: arangod/VocBase/replication-master.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-replication-master.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Tpo -c -o arangod/VocBase/arangod_libarangod_a-replication-master.o `test -f 'arangod/VocBase/replication-master.cpp' || echo '$(srcdir)/'`arangod/VocBase/replication-master.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/replication-master.cpp' object='arangod/VocBase/arangod_libarangod_a-replication-master.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-replication-master.o `test -f 'arangod/VocBase/replication-master.cpp' || echo '$(srcdir)/'`arangod/VocBase/replication-master.cpp
-
-arangod/VocBase/arangod_libarangod_a-replication-master.obj: arangod/VocBase/replication-master.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-replication-master.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Tpo -c -o arangod/VocBase/arangod_libarangod_a-replication-master.obj `if test -f 'arangod/VocBase/replication-master.cpp'; then $(CYGPATH_W) 'arangod/VocBase/replication-master.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/replication-master.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Tpo arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-replication-master.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/VocBase/replication-master.cpp' object='arangod/VocBase/arangod_libarangod_a-replication-master.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/VocBase/arangod_libarangod_a-replication-master.obj `if test -f 'arangod/VocBase/replication-master.cpp'; then $(CYGPATH_W) 'arangod/VocBase/replication-master.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/replication-master.cpp'; fi`
 
 arangod/VocBase/arangod_libarangod_a-server.o: arangod/VocBase/server.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/VocBase/arangod_libarangod_a-server.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/arangod_libarangod_a-server.Tpo -c -o arangod/VocBase/arangod_libarangod_a-server.o `test -f 'arangod/VocBase/server.cpp' || echo '$(srcdir)/'`arangod/VocBase/server.cpp
