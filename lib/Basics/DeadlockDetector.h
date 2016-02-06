@@ -350,8 +350,13 @@ namespace triagens {
             TRI_ASSERT(!(*it).second.first.empty());
             TRI_ASSERT(!(*it).second.second);
             TRI_ASSERT(!isWrite);
-            auto result = (*it).second.first.emplace(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            auto result =
+#endif
+              (*it).second.first.emplace(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(result.second);
+#endif
           }
 
           if (wasBlockedBefore) {
