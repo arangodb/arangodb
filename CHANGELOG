@@ -1,6 +1,9 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* allow to set print.limitString to configure the number of characters
+  to output before truncating
+
 * make logging configurable per log "topic"
 
   `--log.level <level>` sets the global log level to <level>, e.g. `info`,
