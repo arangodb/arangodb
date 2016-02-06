@@ -40,6 +40,7 @@ const functionsDocumentation = {
   "http_server": "http server tests",
   "importing": "import tests",
   "shell_client": "shell client tests",
+  "shell_replication": "shell replication tests",
   "shell_server": "shell server tests",
   "shell_server_aql": "AQL tests in the server",
   "shell_server_only": "server specific tests",
@@ -121,6 +122,7 @@ const optionsDefaults = {
   "loopSleepWhen": 1,
   "onlyNightly": false,
   "password": "",
+  "replication": false,
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": false,
@@ -139,7 +141,7 @@ const optionsDefaults = {
   "valgrindXmlFileBase": "",
   "valgrindArgs": [],
   "valgrindHosts": false,
-  "writeXmlReport": true,
+  "writeXmlReport": true
 };
 
 const _ = require("lodash");
@@ -719,6 +721,10 @@ function performTests(options, testList, testname) {
       }
     }
   }
+
+  print("------------------");
+  print(testList);
+  print(results);
 
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
@@ -1678,6 +1684,14 @@ function findTests() {
         return fs.join(makePathUnix("js/server/perftests"), x);
       }).sort();
 
+  testsCases.replication = _.filter(fs.list(makePathUnix("js/common/tests/replication")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/common/tests/replication"), x);
+    }).sort();
+
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
 
@@ -1734,7 +1748,7 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf("replication") !== -1) {
+  if (testname.indexOf("replication") !== -1 && !options.replication) {
     whichFilter.filter = 'replication';
     return false;
   }
@@ -1769,6 +1783,7 @@ let allTests = [
   "boost",
   "config",
   "dump",
+  "dump_authentication",
   "dfdb",
   "http_server",
   "importing",
@@ -2820,6 +2835,19 @@ testFuncs.importing = function(options) {
   }
 
   return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: shell_replication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.shell_replication = function(options) {
+  findTests();
+
+  var opts = { "replication": true };
+  _.defaults(opts, options);
+
+  return performTests(opts, testsCases.replication, 'shell_replication');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
