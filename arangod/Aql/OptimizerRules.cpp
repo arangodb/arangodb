@@ -80,8 +80,8 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
     // filter variable was introduced a CalculationNode. now check the expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto inNode = filterExpression->nodeForModification();
-    
+    auto inNode = filterExpression->node();
+
     TRI_ASSERT(inNode != nullptr);
 
     // check the filter condition
@@ -212,10 +212,12 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
       static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
     }
 
+    AstNode* clone = ast->clone(inNode);
     // finally adjust the variable inside the IN calculation
-    inNode->changeMember(1, ast->createNodeReference(outVar));
     // set sortedness bit for the IN operator 
-    inNode->setBoolValue(true);
+    clone->setBoolValue(true);
+    clone->changeMember(1, ast->createNodeReference(outVar));
+    filterExpression->replaceNode(clone);
 
     modified = true;
   }
