@@ -34,6 +34,7 @@ const functionsDocumentation = {
   "boost": "boost test suites",
   "config": "checks the config file parsing",
   "dump": "dump tests",
+  "dump_authentication": "dump tests with authentication",
   "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
   "http_server": "http server tests",
@@ -2474,13 +2475,15 @@ testFuncs.dump = function(options) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
       "UnitTestsDumpSrc");
 
-    if (checkInstanceAlive(instanceInfo, options)) {
+    if (checkInstanceAlive(instanceInfo, options) &&
+      (results.dump.status === true)) {
       print(Date() + ": Dump and Restore - restore");
 
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
-      if (checkInstanceAlive(instanceInfo, options)) {
+      if (checkInstanceAlive(instanceInfo, options) &&
+        (results.restore.status === true)) {
         print(Date() + ": Dump and Restore - dump after restore");
 
         results.test = runInArangosh(options, instanceInfo,
@@ -2488,11 +2491,110 @@ testFuncs.dump = function(options) {
             "server.database": "UnitTestsDumpDst"
           });
 
-        if (checkInstanceAlive(instanceInfo, options)) {
+        if (checkInstanceAlive(instanceInfo, options) &&
+          (results.test.status === true)) {
           print(Date() + ": Dump and Restore - teardown");
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown" + cluster + ".js"));
+        }
+      }
+    }
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
+
+  if ((!options.skipLogAnalysis) &&
+    instanceInfo.hasOwnProperty('importantLogLines') &&
+    Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" +
+      yaml.safeDump(instanceInfo.importantLogLines));
+  }
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: dump_authentication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.dump_authentication = function(options) {
+  if (options.cluster) {
+    if (options.extremeVerbosity) {
+      print("Skipped because of cluster.");
+    }
+
+    return {
+      "dump_authentication": {
+        "status": true,
+        "message": "skipped because of cluster",
+        "skipped": true
+      }
+    };
+  }
+
+  print("dump_authentication tests...");
+
+  const auth = {
+    "server.disable-authentication": "false"
+  };
+
+  print(JSON.stringify(auth));
+
+  let instanceInfo = startInstance("tcp", options, auth, "dump_authentication");
+
+  if (instanceInfo === false) {
+    return {
+      status: false,
+      message: "failed to start server!"
+    };
+  }
+
+  print(Date() + ": Setting up");
+
+  let results = {};
+  results.setup = runInArangosh(options, instanceInfo,
+    makePathUnix("js/server/tests/dump/dump-authentication-setup.js"),
+    auth);
+
+  if (checkInstanceAlive(instanceInfo, options) &&
+    (results.setup.status === true)) {
+    print(Date() + ": Dump and Restore - dump");
+
+    let authOpts = {
+      username: "foobaruser",
+      password: "foobarpasswd"
+    };
+
+    _.defaults(authOpts, options);
+
+    results.dump = runArangoDumpRestore(authOpts, instanceInfo, "dump",
+      "UnitTestsDumpSrc");
+
+    if (checkInstanceAlive(instanceInfo, options) &&
+      (results.dump.status === true)) {
+      print(Date() + ": Dump and Restore - restore");
+
+      results.restore = runArangoDumpRestore(authOpts, instanceInfo, "restore",
+        "UnitTestsDumpDst");
+
+      if (checkInstanceAlive(instanceInfo, options) &&
+        (results.restore.status === true)) {
+        print(Date() + ": Dump and Restore - dump after restore");
+
+        results.test = runInArangosh(authOpts, instanceInfo,
+          makePathUnix("js/server/tests/dump/dump-authentication.js"), {
+            "server.database": "UnitTestsDumpDst"
+          });
+
+        if (checkInstanceAlive(instanceInfo, options) &&
+          (results.test.status === true)) {
+          print(Date() + ": Dump and Restore - teardown");
+
+          results.tearDown = runInArangosh(options, instanceInfo,
+            makePathUnix("js/server/tests/dump/dump-teardown.js"), auth);
         }
       }
     }
