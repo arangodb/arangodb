@@ -308,6 +308,7 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
     }
 
     json.transfer(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
   }
 }
 
