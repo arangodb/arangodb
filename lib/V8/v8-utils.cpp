@@ -1734,6 +1734,7 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                          TRI_V8_PAIR_STRING(content, length),
                                          filename->ToString(),
                                          false);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     // restore old values for __dirname and __filename
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -1761,7 +1762,6 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
