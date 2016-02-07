@@ -39,6 +39,9 @@ const functionsDocumentation = {
   "foxx_manager": "foxx manager tests",
   "http_server": "http server tests",
   "importing": "import tests",
+  "replication_ongoing": "replication ongoing tests",
+  "replication_static": "replication static tests",
+  "replication_sync": "replication sync tests",
   "shell_client": "shell client tests",
   "shell_replication": "shell replication tests",
   "shell_server": "shell server tests",
@@ -165,6 +168,19 @@ const Kickstarter = require("@arangodb/cluster").Kickstarter;
 
 let cleanupDirectories = [];
 let serverCrashed = false;
+
+const makeResults = function(testname) {
+  return function(status, message) {
+    let results = {};
+    results[testname] = {
+      status: status
+    };
+    if (message) {
+      results[testname].message = message;
+    }
+    return results;
+  };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level directory
@@ -572,7 +588,7 @@ function makePathGeneric(path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a remote command using /_admin/execute
+/// @brief runs a remote unittest file using /_admin/execute
 ////////////////////////////////////////////////////////////////////////////////
 
 function runThere(options, instanceInfo, file) {
@@ -630,12 +646,14 @@ function runThere(options, instanceInfo, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function performTests(options, testList, testname) {
-  let instanceInfo = startInstance("tcp", options, [], testname);
+  let instanceInfo = startInstance("tcp", options, {}, testname);
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      setup: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -1460,9 +1478,9 @@ function rubyTests(options, ssl) {
   let instanceInfo;
 
   if (ssl) {
-    instanceInfo = startInstance("ssl", options, [], "ssl_server");
+    instanceInfo = startInstance("ssl", options, {}, "ssl_server");
   } else {
-    instanceInfo = startInstance("tcp", options, [], "http_server");
+    instanceInfo = startInstance("tcp", options, {}, "http_server");
   }
 
   if (instanceInfo === false) {
@@ -1991,7 +2009,7 @@ testFuncs.arangob = function(options) {
 
   print("arangob tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "arangob");
+  let instanceInfo = startInstance("tcp", options, {}, "arangob");
 
   if (instanceInfo === false) {
     return {
@@ -2467,12 +2485,14 @@ testFuncs.dump = function(options) {
 
   print("dump tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "dump");
+  let instanceInfo = startInstance("tcp", options, {}, "dump");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      dump: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2561,8 +2581,10 @@ testFuncs.dump_authentication = function(options) {
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      "dump_authentication": {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2635,12 +2657,14 @@ testFuncs.dump_authentication = function(options) {
 testFuncs.foxx_manager = function(options) {
   print("foxx_manager tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "foxx_manager");
+  let instanceInfo = startInstance("tcp", options, {}, "foxx_manager");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      foxx_manager: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2794,12 +2818,14 @@ testFuncs.importing = function(options) {
     };
   }
 
-  let instanceInfo = startInstance("tcp", options, [], "importing");
+  let instanceInfo = startInstance("tcp", options, {}, "importing");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      "importing": {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2850,6 +2876,155 @@ testFuncs.importing = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_ongoing
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_ongoing = function(options) {
+  const mr = makeResults('replication_ongoing');
+
+  let master = startInstance("tcp", options, {}, "master_ongoing");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_ongoing");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.unit-tests",
+    "./js/server/tests/replication/replication-ongoing.js",
+    slave.endpoint
+  ]);
+
+  let results;
+
+  if (!res.status) {
+    results = mr(false, "replication-ongoing.js failed");
+  } else {
+    results = mr(true);
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_static
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_static = function(options) {
+  const mr = makeResults('replication_static');
+
+  let master = startInstance("tcp", options, {
+    "server.disable-authentication": "false"
+  }, "master_static");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_static");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.execute-string",
+    "var users = require('@arangodb/users'); " +
+    "users.save('replicator-user', 'replicator-password', true); " +
+    "users.reload();"
+  ]);
+
+  let results;
+
+  if (res.status) {
+    res = runArangoshCmd(options, master, {}, [
+      "--javascript.unit-tests",
+      "./js/server/tests/replication/replication-static.js",
+      slave.endpoint
+    ]);
+
+    if (res.status) {
+      results = mr(true);
+    } else {
+      results = mr(false, "replication-static.js failed");
+    }
+  } else {
+    results = mr(false, "cannot create users");
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_sync
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_sync = function(options) {
+  const mr = makeResults('replication_sync');
+  let master = startInstance("tcp", options, {}, "master_sync");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_sync");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.execute-string",
+    "var users = require('@arangodb/users'); " +
+    "users.save('replicator-user', 'replicator-password', true); " +
+    "users.reload();"
+  ]);
+
+  let results;
+
+  if (res.status) {
+    res = runArangoshCmd(options, master, {}, [
+      "--javascript.unit-tests",
+      "./js/server/tests/replication/replication-sync.js",
+      slave.endpoint
+    ]);
+
+    if (res.status) {
+      results = mr(true);
+    } else {
+      results = mr(false, "replication-sync.js failed");
+    }
+  } else {
+    results = mr(false, "cannot create users");
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief TEST: shell_replication
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2871,12 +3046,14 @@ testFuncs.shell_replication = function(options) {
 testFuncs.shell_client = function(options) {
   findTests();
 
-  let instanceInfo = startInstance("tcp", options, [], "shell_client");
+  let instanceInfo = startInstance("tcp", options, {}, "shell_client");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      shell_client: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -3012,8 +3189,10 @@ function single_usage(testsuite, list) {
   print(" where <testfilename> is one from the list above.");
 
   return {
-    status: false,
-    message: "No test specified!"
+    usage: {
+      status: false,
+      message: "No test specified!"
+    }
   };
 }
 
@@ -3021,12 +3200,14 @@ testFuncs.single_client = function(options) {
   options.writeXmlReport = false;
 
   if (options.test !== undefined) {
-    let instanceInfo = startInstance("tcp", options, [], "single_client");
+    let instanceInfo = startInstance("tcp", options, {}, "single_client");
 
     if (instanceInfo === false) {
       return {
-        status: false,
-        message: "failed to start server!"
+        single_client: {
+          status: false,
+          message: "failed to start server!"
+        }
       };
     }
 
@@ -3073,12 +3254,14 @@ testFuncs.single_server = function(options) {
     return single_usage("server", testsCases.server);
   }
 
-  let instanceInfo = startInstance("tcp", options, [], "single_server");
+  let instanceInfo = startInstance("tcp", options, {}, "single_server");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      single_server: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 

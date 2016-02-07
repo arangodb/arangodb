@@ -5,24 +5,11 @@
 ## -----------------------------------------------------------------------------
 
 FORCE = 0
-SKIP_BOOST = 0
-SKIP_GEO = 0
-SKIP_RANGES = 0
 VALGRIND =
-NO_LOG =
-USERNAME = root
-PASSWORD =
-PROTO = http
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                         UNITTESTS
 ## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief single test
-################################################################################
-
-TEST := $(shell echo $$TEST)
 
 ################################################################################
 ### @brief arango server configuration
@@ -30,29 +17,7 @@ TEST := $(shell echo $$TEST)
 
 PID := $(shell echo $$PPID)
 
-PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
-VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
-VOCHOST := 127.0.0.1
-STARTFILE := $(VOCDIR)/startup
-
-################################################################################
-### @brief slave stuff
-################################################################################
-
-SLAVEPIDFILE := /tmp/arango-slave.$(PID).pid
-SLAVEPORT := $(shell printf "4%04d" `expr $(PID) % 10000`)
-SLAVEHOST := 127.0.0.1
-SLAVEDIR := /tmp/vocdir-slave.$(PID)
-SLAVESTARTFILE := $(SLAVEDIR)/startup
-
-################################################################################
-### @brief client configuration
-################################################################################
-
-CURL := curl
-CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
-CERT_FILE := @top_srcdir@/UnitTests/server.pem
 
 ################################################################################
 ### @brief start the arango server
@@ -71,83 +36,6 @@ SERVER_OPT := \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
-
-CLIENT_OPT := \
-	--configuration none \
-	--javascript.startup-directory @top_srcdir@/js \
-	--log.level fatal \
-	--no-colors \
-	--quiet
-
-.PHONY: start-server
-
-start-server:
-	@echo
-	@echo "================================================================================"
-	@(test "$(PROTO)" == "http"  && echo "<< STARTING SERVER ON TCP ENDPOINT                                            >>") || true
-	@(test "$(PROTO)" == "https" && echo "<< STARTING SERVER ON SSL ENDPOINT                                            >>") || true
-	@(test "$(PROTO)" == "unix"  && echo "<< STARTING SERVER ON UNIX SOCKET ENDPOINT                                    >>") || true
-	@echo "================================================================================"
-	@echo
-	@echo "Server Options: $(SERVER_OPT)"
-	@echo
-
-	@rm -f "$(PIDFILE)"
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	@test -d "$(VOCDIR)"
-
-	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
-# Wait for http/https server endpoints:
-	@test "$(PROTO)" == "unix" || \
-	   ( \
-		rm -f "$(STARTFILE)"; \
-		while [ ! -s "$(STARTFILE)" ]; do \
-			$(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || \
-			sleep 2; \
-		done)
-# wait for unix domain socket enpoints:
-	@(test "$(PROTO)" == "unix" && \
-		while ! @builddir@/bin/arangosh $(CLIENT_OPT)  \
-			--server.endpoint unix://$(VOCDIR)/arango.sock \
-                        --server.disable-authentication true \
-                        --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
-		    sleep 1; \
-		    echo .; \
-		done;) ||\
-	     true
-
-	@rm -f "$(STARTFILE)"
-	@echo "server has been started."
-	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
-	@echo
-
-
-.PHONY: start-slave
-
-start-slave:
-	@echo
-	@echo "================================================================================"
-	@echo "<< STARTING SLAVE                                                             >>"
-	@echo "================================================================================"
-	@echo
-	@echo "Slave Options: $(SERVER_OPT)"
-	@echo
-
-	@rm -f "$(SLAVEPIDFILE)"
-	@rm -rf "$(SLAVEDIR)"
-	@mkdir -p "$(SLAVEDIR)/databases"
-
-	@test -d "$(SLAVEDIR)"
-
-	($(VALGRIND) @builddir@/bin/arangod "$(SLAVEDIR)" $(SERVER_OPT) --pid-file $(SLAVEPIDFILE) --watch-process $(PID) && rm -rf "$(SLAVEDIR)") &
-
-	@rm -f "$(SLAVESTARTFILE)"; while [ ! -s "$(SLAVESTARTFILE)" ]; do $(CURL) $(CURL_OPT) -X GET -s "$(PROTO)://$(SLAVEHOST):$(SLAVEPORT)/_api/version" > "$(SLAVESTARTFILE)" || sleep 2; done
-	@rm -f "$(SLAVESTARTFILE)"
-	@echo "slave has been started."
-	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
-	@echo
 
 ################################################################################
 ### @brief BOOST TESTS
@@ -213,83 +101,6 @@ UnitTests_geo_suite_SOURCES = \
 	lib/Basics/WorkMonitorDummy.cpp
 
 endif
-
-################################################################################
-### @brief REPLICATION TESTS
-###
-### starts two servers (master & slave) and checks for data drift
-################################################################################
-
-.PHONY: unittests-replication unittests-replication-sync unittests-replication-static unittests-replication-ongoing
-
-unittests-replication: unittests-replication-sync unittests-replication-static unittests-replication-ongoing
-
-unittests-replication-sync:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION SYNC TESTS                                                     >>"
-	@echo "================================================================================"
-	@echo
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('@arangodb/users').save('replicator-user', 'replicator-password', true); require('@arangodb/users').reload();"
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-sync.js || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	kill `cat $(SLAVEPIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	while test -f $(SLAVEPIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-	@rm -rf "$(SLAVEDIR)"
-	@echo
-
-unittests-replication-static:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
-	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION DATA TESTS                                                     >>"
-	@echo "================================================================================"
-	@echo
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('@arangodb/users').save('replicator-user', 'replicator-password', true); require('@arangodb/users').reload();"
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-static.js || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	kill `cat $(SLAVEPIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	while test -f $(SLAVEPIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-	@rm -rf "$(SLAVEDIR)"
-	@echo
-
-unittests-replication-ongoing:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION DATA TESTS                                                     >>"
-	@echo "================================================================================"
-	@echo
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-ongoing.js || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	kill `cat $(SLAVEPIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	while test -f $(SLAVEPIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-	@rm -rf "$(SLAVEDIR)"
-	@echo
 
 ################################################################################
 ### @brief CPPCHECK
