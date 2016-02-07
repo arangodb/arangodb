@@ -2996,7 +2996,7 @@ const recoveryTests = [
 
 testFuncs.recovery = function(options) {
   let results = {};
-  
+
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let instanceInfo = {};
@@ -3544,6 +3544,31 @@ testFuncs.stress_crud = function(options) {
 `;
 
   return runStressTest(options, command, "stress_crud");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_killing
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.stress_killing = function(options) {
+  const duration = options.duration;
+
+  let opts = {
+    concurrency: 4
+  };
+
+  _.defaults(opts, options);
+
+  const command = `
+    const stressCrud = require("./js/server/tests/stress/killingQueries");
+
+    stressCrud.killingParallel({
+      duration: ${duration},
+      gnuplot: true
+    });
+`;
+
+  return runStressTest(opts, command, "stress_killing");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
