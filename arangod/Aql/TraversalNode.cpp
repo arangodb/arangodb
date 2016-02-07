@@ -49,7 +49,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 SimpleTraverserExpression::SimpleTraverserExpression(arangodb::aql::Ast* ast,
-                                                     arangodb::basics::Json j)
+                                                     arangodb::basics::Json const& j)
     : TraverserExpression(), expression(nullptr) {
   isEdgeAccess =
       basics::JsonHelper::checkAndGetBooleanValue(j.json(), "isEdgeAccess");
