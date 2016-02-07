@@ -811,6 +811,10 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
         return res;
       }
+          
+      if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
       
       TRI_transaction_collection_t* trxCollection = trx.trxCollection();
 
@@ -1015,6 +1019,10 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
 
       return res;
     }
+          
+    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     res = trx.truncate(false);
  
@@ -1065,6 +1073,33 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
   // fetch all local keys from primary index
   std::vector<TRI_df_marker_t const*> markers;
+  
+  TRI_document_collection_t* document = nullptr;
+  DocumentDitch* ditch = nullptr;
+
+  // acquire a replication ditch so no datafiles are thrown away from now on
+  // note: the ditch also protects against unloading the collection
+  {    
+    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+  
+    int res = trx.begin();
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
+      return res;
+    }
+    
+    document = trx.documentCollection();
+    ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+
+    if (ditch == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  
+  TRI_ASSERT(document != nullptr);
+  TRI_ASSERT(ditch != nullptr);
+  TRI_DEFER(document->ditches()->freeDitch(ditch));
 
   {
     SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
@@ -1119,6 +1154,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       return res < 0;
     });
   }
+  
     
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1184,6 +1220,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
       return res;
     }
+          
+    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), 0));
 
@@ -1238,6 +1278,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
       return res;
+    }
+          
+    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
     
     auto idx = trx.documentCollection()->primaryIndex();
@@ -1588,8 +1632,12 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
                                   
       }
+    }
 
-      trx.commit();
+    res = trx.commit();
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
   }
 
@@ -1730,6 +1778,10 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
 
             return res;
+          }
+
+          if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
           }
 
           res = trx.truncate(false);
