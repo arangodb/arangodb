@@ -1032,7 +1032,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   std::vector<TRI_df_marker_t const*> markers;
     
   TRI_document_collection_t* document = nullptr;
-  ReplicationDitch* ditch = nullptr;
+  DocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
@@ -1047,7 +1047,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     }
     
     document = trx.documentCollection();
-    ditch = document->ditches()->createReplicationDitch(__FILE__, __LINE__);
+    ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
