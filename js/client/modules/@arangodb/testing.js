@@ -37,8 +37,10 @@ const functionsDocumentation = {
   "dump_authentication": "dump tests with authentication",
   "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
+  "http_replication": "http replication tests",
   "http_server": "http server tests",
   "importing": "import tests",
+  "recovery": "run recovery tests",
   "replication_ongoing": "replication ongoing tests",
   "replication_static": "replication static tests",
   "replication_sync": "replication sync tests",
@@ -2873,6 +2875,144 @@ testFuncs.importing = function(options) {
   }
 
   return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: recovery
+////////////////////////////////////////////////////////////////////////////////
+
+function runArangodRecovery(instanceInfo, options, script, setup) {
+  if (!instanceInfo.tmpDataDir) {
+    let td = fs.join(fs.getTempFile(), "data");
+    fs.makeDirectoryRecursive(td);
+
+    instanceInfo.tmpDataDir = td;
+  }
+
+  if (!instanceInfo.recoveryArgs) {
+    let args = makeArgsArangod(options);
+    args["server.threads"] = 1;
+    args["wal.reserve-logfiles"] = 1;
+    args["database.directory"] = instanceInfo.tmpDataDir;
+
+    instanceInfo.recoveryArgv = toArgv(args).concat(["--no-server"]);
+  }
+
+  let argv = instanceInfo.recoveryArgv;
+
+  if (setup) {
+    argv = argv.concat([
+      "--log.level", "fatal",
+      "--javascript.script-parameter", "setup"
+    ]);
+  } else {
+    argv = argv.concat([
+      "--log.level", "info",
+      "--wal.ignore-logfile-errors", "true",
+      "--javascript.script-parameter", "recovery"
+    ]);
+  }
+
+  argv = argv.concat([
+    "--javascript.script",
+    fs.join(".", "js", "server", "tests", "recovery", script + ".js")
+  ]);
+
+  instanceInfo.pid = executeAndWait(fs.join("bin", "arangod"), argv);
+}
+
+const recoveryTests = [
+  "disk-full-logfile",
+  "disk-full-logfile-data",
+  "disk-full-datafile",
+  "disk-full-datafile",
+  "collection-drop-recreate",
+  "create-with-temp",
+  "create-with-temp-old",
+  "create-collection-fail",
+  "create-database-fail",
+  "empty-datafiles",
+  "flush-drop-database-and-fail",
+  "drop-database-flush-and-fail",
+  "create-databases",
+  "recreate-databases",
+  "drop-databases",
+  "create-and-drop-databases",
+  "drop-database-and-fail",
+  "flush-drop-database-and-fail",
+  "collection-rename-recreate",
+  "collection-rename-recreate-flush",
+  "collection-unload",
+  "resume-recovery-multi-flush",
+  "resume-recovery-simple",
+  "resume-recovery-all",
+  "resume-recovery-other",
+  "resume-recovery",
+  "foxx-directories",
+  "collection-rename",
+  "collection-properties",
+  "empty-logfiles",
+  "many-logs",
+  "multiple-logs",
+  "collection-recreate",
+  "drop-indexes",
+  "create-indexes",
+  "create-collections",
+  "recreate-collection",
+  "drop-single-collection",
+  "drop-collections",
+  "collections-reuse",
+  "collections-different-attributes",
+  "indexes-hash",
+  "indexes-sparse-hash",
+  "indexes-skiplist",
+  "indexes-sparse-skiplist",
+  "indexes-geo",
+  "edges",
+  "cap-constraint",
+  "indexes",
+  "many-inserts",
+  "many-updates",
+  "wait-for-sync",
+  "attributes",
+  "no-journal",
+  "write-throttling",
+  "collector-oom",
+  "transaction-no-abort",
+  "transaction-no-commit",
+  "multi-database-durability",
+  "disk-full-no-collection-journal",
+  "no-shutdown-info-with-flush",
+  "no-shutdown-info-no-flush",
+  "no-shutdown-info-multiple-logs",
+  "insert-update-remove",
+  "insert-update-remove-distance",
+  "big-transaction-durability",
+  "transaction-durability",
+  "transaction-durability-multiple",
+  "corrupt-wal-marker-multiple",
+  "corrupt-wal-marker-single"
+];
+
+testFuncs.recovery = function(options) {
+  let results = {};
+  
+  for (let i = 0; i < recoveryTests.length; ++i) {
+    let test = recoveryTests[i];
+    let instanceInfo = {};
+
+    runArangodRecovery(instanceInfo, options, test, true);
+
+    runArangodRecovery(instanceInfo, options, test, false);
+
+    if (instanceInfo.tmpDataDir) {
+      fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
+    }
+
+    results[test] = instanceInfo.pid;
+  }
+
+  return results;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
