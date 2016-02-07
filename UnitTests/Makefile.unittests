@@ -220,41 +220,9 @@ endif
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
+.PHONY: unittests-replication unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
-unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
-
-unittests-replication-server:
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION SERVER TESTS                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication/replication.js || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-unittests-replication-http:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION HTTP TESTS                                                     >>"
-	@echo "================================================================================"
-	@echo
-
-	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests-replication || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-	@rm -rf "$(VOCDIR)"
-	@echo
+unittests-replication: unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
 unittests-replication-sync:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http

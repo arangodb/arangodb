@@ -722,10 +722,6 @@ function performTests(options, testList, testname) {
     }
   }
 
-  print("------------------");
-  print(testList);
-  print(results);
-
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
@@ -1704,67 +1700,70 @@ function findTests() {
 
 function filterTestcaseByOptions(testname, options, whichFilter) {
   if (options.hasOwnProperty('test') && (typeof(options.test) !== 'undefined')) {
-    whichFilter.filter = "testcase";
+    whichFilter.filter = 'testcase';
     return testname === options.test;
   }
 
-  if ((testname.indexOf("-cluster") !== -1) && !options.cluster) {
-    whichFilter.filter = 'noncluster';
-    return false;
-  }
-
-  if (testname.indexOf("-noncluster") !== -1 && options.cluster) {
-    whichFilter.filter = 'cluster';
-    return false;
-  }
-
-  if (testname.indexOf("-timecritical") !== -1 && options.skipTimeCritical) {
-    whichFilter.filter = 'timecritical';
-    return false;
-  }
-
-  if (testname.indexOf("-nightly") !== -1 && options.skipNightly && !options.onlyNightly) {
-    whichFilter.filter = 'skip nightly';
-    return false;
-  }
-
-  if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
-    whichFilter.filter = 'geo';
-    return false;
-  }
-
-  if (testname.indexOf("-nondeterministic") !== -1 && options.skipNondeterministic) {
-    whichFilter.filter = 'nondeterministic';
-    return false;
-  }
-
-  if (testname.indexOf("-graph") !== -1 && options.skipGraph) {
-    whichFilter.filter = 'graph';
-    return false;
-  }
-
-  if (testname.indexOf("-disabled") !== -1) {
-    whichFilter.filter = 'disabled';
-    return false;
-  }
-
-  if (testname.indexOf("replication") !== -1 && !options.replication) {
+  if (options.replication) {
+    whichFilter.filter = 'replication';
+    return testname.indexOf('replication') !== -1;
+  } else if (testname.indexOf('replication') !== -1) {
     whichFilter.filter = 'replication';
     return false;
   }
 
-  if ((testname.indexOf("-memoryintense") !== -1) && options.skipMemoryIntense) {
+  if ((testname.indexOf('-cluster') !== -1) && !options.cluster) {
+    whichFilter.filter = 'noncluster';
+    return false;
+  }
+
+  if (testname.indexOf('-noncluster') !== -1 && options.cluster) {
+    whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
+    whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf('-nightly') !== -1 && options.skipNightly && !options.onlyNightly) {
+    whichFilter.filter = 'skip nightly';
+    return false;
+  }
+
+  if (testname.indexOf('-geo') !== -1 && options.skipGeo) {
+    whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
+    whichFilter.filter = 'nondeterministic';
+    return false;
+  }
+
+  if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
+    whichFilter.filter = 'graph';
+    return false;
+  }
+
+  if (testname.indexOf('-disabled') !== -1) {
+    whichFilter.filter = 'disabled';
+    return false;
+  }
+
+  if ((testname.indexOf('-memoryintense') !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
     return false;
   }
 
-  if (testname.indexOf("-nightly") === -1 && options.onlyNightly) {
+  if (testname.indexOf('-nightly') === -1 && options.onlyNightly) {
     whichFilter.filter = 'only nightly';
     return false;
   }
 
-  if ((testname.indexOf("-novalgrind") !== -1) && options.valgrind) {
-    whichFilter.filter = "skip in valgrind";
+  if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
+    whichFilter.filter = 'skip in valgrind';
     return false;
   }
 
@@ -2672,6 +2671,19 @@ testFuncs.foxx_manager = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: http replication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.http_replication = function(options) {
+  var opts = {
+    "replication": true
+  };
+  _.defaults(opts, options);
+
+  return rubyTests(opts, false);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief TEST: http server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2844,7 +2856,9 @@ testFuncs.importing = function(options) {
 testFuncs.shell_replication = function(options) {
   findTests();
 
-  var opts = { "replication": true };
+  var opts = {
+    "replication": true
+  };
   _.defaults(opts, options);
 
   return performTests(opts, testsCases.replication, 'shell_replication');
