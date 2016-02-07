@@ -436,7 +436,6 @@ bool VelocyCommTask::processRead() {
   // forbidden
   else if (authResult == VstreamResponse::FORBIDDEN) {
     VstreamResponse response(authResult, compatibility);
-    response.setContentType("application/json; charset=utf-8");
     Builder b;                                                                                                         
 	b.add(Value(ValueType::Object));                                                                                   
 	b.add("error", Value("true"));                                                                              
@@ -463,3 +462,129 @@ bool VelocyCommTask::processRead() {
   }
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends more chunked data
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::sendChunk(arangodb::velocypack::Builder* buffer) {
+  if (_isChunked) {
+    TRI_ASSERT(buffer != nullptr);
+
+    _writeBuffers.push_back(buffer);
+    _writeBuffersStats.push_back(nullptr);
+
+    fillWriteBuffer();
+  } else {
+    delete buffer;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief chunking is finished
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpCommTask::finishedChunked() {
+  auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE, 6);
+
+  _writeBuffers.push_back(buffer.get());
+  buffer.release();
+  _writeBuffersStats.push_back(nullptr);
+
+  _isChunked = false;
+  _requestPending = false;
+
+  fillWriteBuffer();
+  processRead();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task set up complete
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::setupDone() {
+  _setupDone.store(true, std::memory_order_relaxed);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads data from the socket
+////////////////////////////////////////////////////////////////////////////////
+
+// void VelocyCommTask::addResponse(VelocyResponse* response) {
+
+//   if (!_origin.empty()) {
+
+//     LOG_TRACE("handling CORS response");
+
+//     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
+//                         "etag, content-encoding, content-length, location, "
+//                         "server, x-arango-errors, x-arango-async-id");
+
+//     // send back original value of "Origin" header
+//     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"),
+//                         _origin);
+
+//     // send back "Access-Control-Allow-Credentials" header
+//     response->setHeader(
+//         TRI_CHAR_LENGTH_PAIR("access-control-allow-credentials"),
+//         (_denyCredentials ? "false" : "true"));
+//   }
+//   // CORS request handling EOF
+
+//   // set "connection" header
+//   // keep-alive is the default
+//   response->setHeader(TRI_CHAR_LENGTH_PAIR("connection"),
+//                       (_closeRequested ? "Close" : "Keep-Alive"));
+
+//   size_t const responseBodyLength = response->bodySize();
+
+//   if (_requestType == GeneralRequest::VSTREAM_REQUEST_HEAD) {
+//     // clear body if this is an VSTREAM HEAD request
+//     // HEAD must not return a body
+//     response->headResponse(responseBodyLength);
+//   }
+
+//   // reserve a buffer with some spare capacity
+//   auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE,
+//                                                responseBodyLength + 128);
+
+//   // write header
+//   response->writeHeader(buffer.get());
+
+//   // write body
+//   if (_requestType != GeneralRequest::VSTREAM_REQUEST_HEAD) {
+//     if (_isChunked) {
+//       if (0 != responseBodyLength) {
+//         buffer->appendHex(response->body().length());
+//         buffer->appendText(response->body());
+//       }
+//     } else {
+//       buffer->appendText(response->body());
+//     }
+//   }
+
+//   _writeBuffers.push_back(buffer.get());
+//   auto b = buffer.release();
+
+//   LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
+
+//   // clear body
+//   response->body().clear();
+
+//   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
+
+//   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+
+//   // disable the following statement to prevent excessive logging of incoming
+//   // requests
+//   LOG_USAGE(
+//       ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+//       _connectionInfo.clientAddress.c_str(),
+//       GeneralRequest::translateMethod(_requestType).c_str(),
+//       GeneralRequest::translateVersion(_httpVersion).c_str(),
+//       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
+//       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+
+//   // start output
+//   fillWriteBuffer();
+// }
