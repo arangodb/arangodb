@@ -68,7 +68,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _client(nullptr),
       _barrierId(0),
       _barrierUpdateTime(0),
-      _barrierTtl(300) {
+      _barrierTtl(600) {
 
   if (configuration->_database != nullptr) {
     // use name from configuration
@@ -237,7 +237,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   double now = TRI_microtime();
 
-  if (now <= _barrierUpdateTime + _barrierTtl - 60.0) {
+  if (now <= _barrierUpdateTime + _barrierTtl - 120.0) {
     // no need to extend the barrier yet
     return TRI_ERROR_NO_ERROR;
   }
