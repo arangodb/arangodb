@@ -210,13 +210,18 @@ namespace triagens {
                                  uint64_t&,
                                  std::string&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of documents in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t getSize(TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollectionDump (std::string const&, 
-                                  struct TRI_transaction_collection_s*,
+                                  TRI_vocbase_col_t*,
                                   std::string const&,
                                   TRI_voc_tick_t,
                                   std::string&);
@@ -226,7 +231,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollectionSync (std::string const&, 
-                                  SingleCollectionWriteTransaction<UINT64_MAX>&,
+                                  TRI_vocbase_col_t*,
                                   std::string const&,
                                   TRI_voc_tick_t,
                                   std::string&);
@@ -237,7 +242,7 @@ namespace triagens {
 
         int handleSyncKeys (std::string const&,
                             std::string const&, 
-                            SingleCollectionWriteTransaction<UINT64_MAX>&,
+                            TRI_vocbase_col_t*,
                             std::string const&,
                             TRI_voc_tick_t,
                             std::string&);

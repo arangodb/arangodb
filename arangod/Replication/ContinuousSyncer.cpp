@@ -1070,7 +1070,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       fromTick = _initialTick;
       _applier->_state._lastAppliedContinuousTick = 0;
       _applier->_state._lastProcessedContinuousTick = 0;
-      // saveApplierState();
+      //saveApplierState();
     }
     else {
       // if we already transferred some data, we'll use the last applied tick

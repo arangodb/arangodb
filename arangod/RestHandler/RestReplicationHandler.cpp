@@ -4382,6 +4382,7 @@ void RestReplicationHandler::handleCommandSync () {
   bool const verbose       = JsonHelper::getBooleanValue(json.get(), "verbose", false);
   bool const includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
   bool const incremental   = JsonHelper::getBooleanValue(json.get(), "incremental", false);
+  bool const keepBarrier   = JsonHelper::getBooleanValue(json.get(), "keepBarrier", false);
 
   std::unordered_map<string, bool> restrictCollections;
   TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
@@ -4469,6 +4470,11 @@ void RestReplicationHandler::handleCommandSync () {
 
   char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
+
+  if (keepBarrier) {
+    char* barrierId = TRI_StringUInt64(syncer.stealBarrier());
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "barrierId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, barrierId, strlen(barrierId)));
+  }
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -5014,12 +5020,21 @@ void RestReplicationHandler::handleCommandApplierStart () {
   const char* value = _request->value("from", found);
 
   TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
   if (found) {
     // query parameter "from" specified
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
+    useTick = true;
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, found, 0);
+  TRI_voc_tick_t barrierId = 0;
+  value = _request->value("barrierId", found);
+  if (found) {
+    // query parameter "barrierId" specified
+    barrierId = (TRI_voc_tick_t) StringUtils::uint64(value);
+  }
+
+  int res = _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||

@@ -7,7 +7,7 @@ v2.8.2 (XXXX-XX-XX)
   which would have been needed by the slave later.
 
   The initial synchronization will block removal of still needed WAL logfiles
-  on the master for 5 minutes initially, and will extend this period when further
+  on the master for 10 minutes initially, and will extend this period when further
   requests are made to the master. Initial synchronization hands over its handle
   for blocking logfile removal to the continuous replication when started via
   the *setupReplication* function. In this case, continuous replication will

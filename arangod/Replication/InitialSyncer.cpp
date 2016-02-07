@@ -616,7 +616,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionDump (string const& cid,
-                                         TRI_transaction_collection_t* trxCollection,
+                                         TRI_vocbase_col_t* col,
                                          string const& collectionName,
                                          TRI_voc_tick_t maxTick,
                                          string& errorMsg) {
@@ -660,7 +660,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     url += "&serverId=" + _localServerIdString;
     url += "&chunkSize=" + StringUtils::itoa(chunkSize);
   
-    std::string const typeString = (trxCollection->_collection->_collection->_info._type == TRI_COL_TYPE_EDGE ? "edge" : "document");
+    std::string const typeString = (col->_type == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     // send request
     string const progress = "fetching master collection dump for collection '" + collectionName +
@@ -802,7 +802,27 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = applyCollectionDump(trxCollection, response.get(), markersProcessed, errorMsg);
+      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+      
+      res = trx.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+
+        return res;
+      }
+      
+      TRI_transaction_collection_t* trxCollection = trx.trxCollection();
+
+      if (trxCollection == nullptr) {
+        res = TRI_ERROR_INTERNAL;
+        errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
+      }
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = applyCollectionDump(trxCollection, response.get(), markersProcessed, errorMsg);
+        res = trx.finish(res);
+      }
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -834,7 +854,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::handleCollectionSync (std::string const& cid,
-                                         SingleCollectionWriteTransaction<UINT64_MAX>& trx,
+                                         TRI_vocbase_col_t* col,
                                          std::string const& collectionName,
                                          TRI_voc_tick_t maxTick,
                                          string& errorMsg) {
@@ -985,15 +1005,28 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   }
 
   if (countJson->_value._number <= 0.0) {
-    int res = trx.truncate(false);
- 
+    // remote collection has no documents. now truncate our local collection
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+
+    int res = trx.begin();
+
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "unable to truncate collection '" + collectionName + "': " + TRI_errno_string(res);
- 
+      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
+
       return res;
     }
 
-    return TRI_ERROR_NO_ERROR;
+    res = trx.truncate(false);
+ 
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = std::string("unable to truncate collection '") + collectionName + "': " + TRI_errno_string(res);
+ 
+      return res;
+    }
+          
+    res = trx.commit();
+
+    return res;
   }
 
 
@@ -1001,7 +1034,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   int res;
 
   try {
-    res = handleSyncKeys(id, cid, trx, collectionName, maxTick, errorMsg);
+    res = handleSyncKeys(id, cid, col, collectionName, maxTick, errorMsg);
   }
   catch (triagens::basics::Exception const& ex) {
     res = ex.code();
@@ -1019,28 +1052,36 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
 
 int InitialSyncer::handleSyncKeys (std::string const& keysId,
                                    std::string const& cid,
-                                   SingleCollectionWriteTransaction<UINT64_MAX>& trx,
+                                   TRI_vocbase_col_t* col,
                                    std::string const& collectionName,
                                    TRI_voc_tick_t maxTick,
                                    std::string& errorMsg) {
 
   TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-  auto shaper = trx.documentCollection()->getShaper();
-          
-  bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdge = (col->_type == TRI_COL_TYPE_EDGE);
    
-  string progress = "collecting local keys for collection '" + collectionName + "'";
+  std::string progress = "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
 
   // fetch all local keys from primary index
   std::vector<TRI_df_marker_t const*> markers;
 
-  auto idx = trx.documentCollection()->primaryIndex();
-  markers.reserve(idx->size());
-
   {
+    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+  
+    int res = trx.begin();
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
+      return res;
+    }
+
+    auto idx = trx.documentCollection()->primaryIndex();
+    markers.reserve(idx->size());
+
     triagens::basics::BucketPosition position;
 
+    uint64_t iterations = 0;
     uint64_t total = 0;
     while (true) {
       auto ptr = idx->lookupSequential(position, total);
@@ -1053,7 +1094,20 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       void const* marker = ptr->getDataPtr();
       auto df = static_cast<TRI_df_marker_t const*>(marker);
       markers.emplace_back(df);
+
+      if (++iterations % 10000 == 0) {
+        if (checkAborted()) {
+          return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+        }
+      }
     }
+  
+    if (checkAborted()) {
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    }
+  
+    sendExtendBatch();
+    sendExtendBarrier();
 
     string progress = "sorting " + std::to_string(markers.size()) + " local key(s) for collection '" + collectionName + "'";
     setProgress(progress);
@@ -1121,6 +1175,16 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
+    
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+  
+    int res = trx.begin();
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
+      return res;
+    }
+
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), 0));
 
     TRI_ASSERT(TRI_IsObjectJson(chunk));
@@ -1155,6 +1219,8 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
       TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) key, 0, nullptr, &policy, false, false);
     }
+
+    trx.commit();
   }
 
   size_t nextStart = 0;
@@ -1164,6 +1230,18 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
+  
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+  
+    int res = trx.begin();
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = std::string("unable to start transaction: ") + TRI_errno_string(res);
+      return res;
+    }
+    
+    auto idx = trx.documentCollection()->primaryIndex();
+    auto shaper = trx.documentCollection()->getShaper();
   
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "'";
@@ -1510,6 +1588,8 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
                                   
       }
+
+      trx.commit();
     }
   }
 
@@ -1548,6 +1628,22 @@ int InitialSyncer::changeCollection (TRI_vocbase_col_t* col,
   catch (...) {
     return TRI_ERROR_INTERNAL;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of documents in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t InitialSyncer::getSize(TRI_vocbase_col_t* col) {
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return -1;
+  }
+   
+  return static_cast<int64_t>(trx.documentCollection()->size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1719,35 +1815,13 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    int res = TRI_ERROR_INTERNAL;
+    int res;
 
-    {
-      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
-
-      res = trx.begin();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
-
-        return res;
-      }
-
-      TRI_transaction_collection_t* trxCollection = trx.trxCollection();
-
-      if (trxCollection == nullptr) {
-        res = TRI_ERROR_INTERNAL;
-        errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
-      }
-      else {
-        if (incremental && trx.documentCollection()->size() > 0) {
-          res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName, _masterInfo._lastLogTick, errorMsg);
-        }
-        else {
-          res = handleCollectionDump(StringUtils::itoa(cid), trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
-        } 
-      }
-
-      res = trx.finish(res);
+    if (incremental && getSize(col) > 0) {
+      res = handleCollectionSync(StringUtils::itoa(cid), col, masterName, _masterInfo._lastLogTick, errorMsg);
+    }
+    else {
+      res = handleCollectionDump(StringUtils::itoa(cid), col, masterName, _masterInfo._lastLogTick, errorMsg);
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -1755,6 +1829,9 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       size_t const n = TRI_LengthVector(&indexes->_value._objects);
 
       if (n > 0) {
+        sendExtendBatch();
+        sendExtendBarrier();
+
         string const progress = "creating " + std::to_string(n) + " index(es) for " + collectionMsg;
         setProgress(progress);
 

@@ -84,12 +84,21 @@ logger.firstTick = function () {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (initialTick) {
+applier.start = function (initialTick, barrierId) {
   var db = internal.db;
   var append = "";
 
   if (initialTick !== undefined) {
     append = "?from=" + encodeURIComponent(initialTick);
+  }
+  if (barrierId !== undefined) {
+    if (append === "") {
+      append += "?";
+    }
+    else {
+      append += "&";
+    }
+    append += "barrierId=" + encodeURIComponent(barrierId);
   }
 
   var requestResult = db._connection.PUT("/_api/replication/applier-start" + append, "");

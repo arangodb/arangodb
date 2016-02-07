@@ -106,6 +106,7 @@ function ReplicationSuite () {
     var includeSystem = true;
     var restrictType = "";
     var restrictCollections = [ ];
+    applierConfiguration = applierConfiguration || { };
     
     if (typeof applierConfiguration === 'object') {
       if (applierConfiguration.hasOwnProperty("includeSystem")) {
@@ -119,6 +120,11 @@ function ReplicationSuite () {
       }
     }
 
+    var keepBarrier = false;
+    if (applierConfiguration.hasOwnProperty("keepBarrier")) {
+      keepBarrier = applierConfiguration.keepBarrier; 
+    }
+
     var syncResult = replication.sync({
       endpoint: masterEndpoint,
       username: "root",
@@ -126,7 +132,8 @@ function ReplicationSuite () {
       verbose: true,
       includeSystem: includeSystem,
       restrictType: restrictType,
-      restrictCollections: restrictCollections
+      restrictCollections: restrictCollections,
+      keepBarrier: keepBarrier
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -150,7 +157,12 @@ function ReplicationSuite () {
     connectToSlave();
 
     replication.applier.properties(applierConfiguration);
-    replication.applier.start(syncResult.lastLogTick);
+    if (keepBarrier) {
+      replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
+    }
+    else {
+      replication.applier.start(syncResult.lastLogTick);
+    }
 
     var printed = false;
 
@@ -231,7 +243,6 @@ function ReplicationSuite () {
             internal.wal.flush(); //true, true);
           }
           db._collection(cn).save({ value: i });
-          internal.wal.flush(true, true);
           internal.wait(6, false);
         },
 
@@ -244,7 +255,51 @@ function ReplicationSuite () {
           assertTrue(db._collection(cn).count() < 25);
         },
         { 
-          requireFromPresent: false 
+          requireFromPresent: false,
+          keepBarrier: false 
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test require from present, no barrier
+////////////////////////////////////////////////////////////////////////////////
+
+    testRequireFromPresentTrueNoBarrier : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._create(cn);
+        },
+
+        function (state) {
+          // flush the wal logs on the master so the start tick is not available
+          // anymore when we start replicating
+          for (var i = 0; i < 30; ++i) {
+            db._collection(cn).save({ value: i });
+            internal.wal.flush(); //true, true);
+          }
+          internal.wal.flush(true, true);
+          internal.wait(6, false);
+        },
+
+        function (state) {
+          // wait for slave applier to have started and detect the mess
+          internal.wait(5, false);
+
+          // slave should have failed
+          assertFalse(replication.applier.state().state.running);
+          return true;
+        },
+
+        function (state) {
+          // data loss on slave!
+          assertTrue(db._collection(cn).count() < 25);
+        },
+        { 
+          requireFromPresent: true,
+          keepBarrier: false
         }
       );
     },
@@ -268,26 +323,30 @@ function ReplicationSuite () {
             db._collection(cn).save({ value: i });
             internal.wal.flush(); //true, true);
           }
+          internal.wal.flush(true, true);
           internal.wait(6, false);
+          
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(30, state.count);
         },
 
         function (state) {
-          // wait for slave applier to have started and detect the mess
-          internal.wait(3, false);
+          // wait for slave applier to have started and run
+          internal.wait(5, false);
 
-          // slave should have stopped
-          assertFalse(replication.applier.state().state.running);
-          assertEqual(errors.ERROR_REPLICATION_START_TICK_NOT_PRESENT.code, 
-                      replication.applier.state().state.lastError.errorNum);
+          // slave should not have stopped
+          assertTrue(replication.applier.state().state.running);
           return true;
         },
 
         function (state) {
-          // data loss on slave!
-          assertTrue(db._collection(cn).count() < 25);
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         },
         { 
-          requireFromPresent: true 
+          requireFromPresent: true,
+          keepBarrier: true 
         }
       );
     },
@@ -335,17 +394,20 @@ function ReplicationSuite () {
         function (state) {
           // stop and restart replication on the slave
           assertTrue(replication.applier.state().state.running);
+
           replication.applier.stop();
           assertFalse(replication.applier.state().state.running);
 
           internal.wait(0.5, false);
           replication.applier.start();
+          internal.wait(0.5, false);
           assertTrue(replication.applier.state().state.running);
-
+          
           return true;
         },
 
         function (state) {
+          internal.wait(3, false);
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
