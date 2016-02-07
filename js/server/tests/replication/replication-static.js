@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -131,7 +131,8 @@ function ReplicationSuite() {
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
     if (typeof applierConfiguration === 'object') {
-      console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
+      console.log("using special applier configuration: " +
+        JSON.stringify(applierConfiguration));
     }
 
     applierConfiguration = applierConfiguration || {};

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -37,36 +37,35 @@ var replication = require("@arangodb/replication");
 var console = require("console");
 var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
-
+var slaveEndpoint = ARGUMENTS[0];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite () {
+function ReplicationSuite() {
   'use strict';
-  var cn  = "UnitTestsReplication";
+  var cn = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
-  var connectToMaster = function () {
+  var connectToMaster = function() {
     arango.reconnect(masterEndpoint, db._name(), "root", "");
   };
 
-  var connectToSlave = function () {
+  var connectToSlave = function() {
     arango.reconnect(slaveEndpoint, db._name(), "root", "");
   };
 
-  var collectionChecksum = function (name) {
+  var collectionChecksum = function(name) {
     var c = db._collection(name).checksum(true, true);
     return c.checksum;
   };
 
-  var collectionCount = function (name) {
+  var collectionCount = function(name) {
     return db._collection(name).count();
   };
 
-  var compareTicks = function (l, r) {
+  var compareTicks = function(l, r) {
     var i;
     if (l === null) {
       l = "0";
@@ -88,8 +87,8 @@ function ReplicationSuite () {
     return 0;
   };
 
-  var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
-    var state = { };
+  var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
+    var state = {};
 
     db._flushCache();
     masterFunc(state);
@@ -102,8 +101,8 @@ function ReplicationSuite () {
 
     var includeSystem = true;
     var restrictType = "";
-    var restrictCollections = [ ];
-    
+    var restrictCollections = [];
+
     if (typeof applierConfiguration === 'object') {
       if (applierConfiguration.hasOwnProperty("includeSystem")) {
         includeSystem = applierConfiguration.includeSystem;
@@ -135,12 +134,12 @@ function ReplicationSuite () {
       console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
     }
 
-    applierConfiguration = applierConfiguration || { };
+    applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
     applierConfiguration.username = "root";
     applierConfiguration.password = "";
 
-    if (! applierConfiguration.hasOwnProperty('chunkSize')) {
+    if (!applierConfiguration.hasOwnProperty('chunkSize')) {
       applierConfiguration.chunkSize = 16384;
     }
 
@@ -152,23 +151,23 @@ function ReplicationSuite () {
     var printed = false;
 
     while (true) {
-      if (! slaveFuncOngoing(state)) {
+      if (!slaveFuncOngoing(state)) {
         return;
       }
 
       var slaveState = replication.applier.state();
 
-      if (! slaveState.state.running || slaveState.state.lastError.errorNum > 0) {
+      if (!slaveState.state.running || slaveState.state.lastError.errorNum > 0) {
         break;
       }
 
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { // ||
-//          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+        compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { // ||
+        //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
         break;
       }
 
-      if (! printed) {
+      if (!printed) {
         console.log("waiting for slave to catch up");
         printed = true;
       }
@@ -181,22 +180,22 @@ function ReplicationSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function() {
       connectToMaster();
 
       db._drop(cn);
       db._drop(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function() {
       connectToMaster();
 
       db._drop(cn);
@@ -208,112 +207,120 @@ function ReplicationSuite () {
       db._drop(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test require from present
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test require from present
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentFalse : function () {
+    testRequireFromPresentFalse: function() {
       connectToMaster();
 
       compare(
-        function (state) {
+        function(state) {
           db._create(cn);
         },
 
-        function (state) {
+        function(state) {
           // flush the wal logs on the master so the start tick is not available
           // anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
+            db._collection(cn).save({
+              value: i
+            });
             internal.wal.flush(); //true, true);
           }
-          db._collection(cn).save({ value: i });
+          db._collection(cn).save({
+            value: i
+          });
           internal.wal.flush(true, true);
           internal.wait(6, false);
         },
 
-        function (state) {
+        function(state) {
           return true;
         },
 
-        function (state) {
+        function(state) {
           // data loss on slave!
           assertTrue(db._collection(cn).count() < 25);
-        },
-        { 
-          requireFromPresent: false 
+        }, {
+          requireFromPresent: false
         }
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test require from present
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test require from present
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRequireFromPresentTrue : function () {
+    testRequireFromPresentTrue: function() {
       connectToMaster();
 
       compare(
-        function (state) {
+        function(state) {
           db._create(cn);
         },
 
-        function (state) {
+        function(state) {
           // flush the wal logs on the master so the start tick is not available
           // anymore when we start replicating
           for (var i = 0; i < 30; ++i) {
-            db._collection(cn).save({ value: i });
+            db._collection(cn).save({
+              value: i
+            });
             internal.wal.flush(); //true, true);
           }
           internal.wait(6, false);
         },
 
-        function (state) {
+        function(state) {
           // wait for slave applier to have started and detect the mess
           internal.wait(3, false);
 
           // slave should have stopped
           assertFalse(replication.applier.state().state.running);
-          assertEqual(errors.ERROR_REPLICATION_START_TICK_NOT_PRESENT.code, 
-                      replication.applier.state().state.lastError.errorNum);
+          assertEqual(errors.ERROR_REPLICATION_START_TICK_NOT_PRESENT.code,
+            replication.applier.state().state.lastError.errorNum);
           return true;
         },
 
-        function (state) {
+        function(state) {
           // data loss on slave!
           assertTrue(db._collection(cn).count() < 25);
-        },
-        { 
-          requireFromPresent: true 
+        }, {
+          requireFromPresent: true
         }
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test long transaction, blocking
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test long transaction, blocking
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionBlocking : function () {
+    testLongTransactionBlocking: function() {
       connectToMaster();
 
       compare(
-        function (state) {
+        function(state) {
           db._create(cn);
         },
 
-        function (state) {
+        function(state) {
           db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function (params) {
+            action: function(params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
 
               for (var i = 0; i < 10; ++i) {
-                c.save({ test1: i });
-                c.save({ test2: i });
+                c.save({
+                  test1: i
+                });
+                c.save({
+                  test2: i
+                });
 
                 // intentionally delay the transaction
                 wait(0.75, false);
@@ -323,13 +330,13 @@ function ReplicationSuite () {
               cn: cn
             }
           });
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(20, state.count);
         },
 
-        function (state) {
+        function(state) {
           // stop and restart replication on the slave
           assertTrue(replication.applier.state().state.running);
           replication.applier.stop();
@@ -342,38 +349,42 @@ function ReplicationSuite () {
           return true;
         },
 
-        function (state) {
+        function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test long transaction, asynchronous
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test long transaction, asynchronous
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionAsync : function () {
+    testLongTransactionAsync: function() {
       connectToMaster();
 
       compare(
-        function (state) {
+        function(state) {
           db._create(cn);
         },
 
-        function (state) {
+        function(state) {
           var func = db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function (params) {
+            action: function(params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
 
               for (var i = 0; i < 10; ++i) {
-                c.save({ test1: i });
-                c.save({ test2: i });
+                c.save({
+                  test1: i
+                });
+                c.save({
+                  test2: i
+                });
 
                 // intentionally delay the transaction
                 wait(0.75, false);
@@ -387,21 +398,20 @@ function ReplicationSuite () {
           state.task = require("@arangodb/tasks").register({
             name: "replication-test",
             command: String(func),
-            params: { 
-              cn: cn 
+            params: {
+              cn: cn
             }
           }).id;
         },
 
-        function (state) {
+        function(state) {
           assertTrue(replication.applier.state().state.running);
 
           connectToMaster();
           try {
             require("@arangodb/tasks").get(state.task);
             // task exists
-          }
-          catch (err) {
+          } catch (err) {
             // task does not exist. we're done
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
@@ -415,37 +425,41 @@ function ReplicationSuite () {
           return true;
         },
 
-        function (state) {
+        function(state) {
           assertEqual(state.count, collectionCount(cn));
         }
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test long transaction, asynchronous
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test long transaction, asynchronous
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLongTransactionAsyncWithSlaveRestarts : function () {
+    testLongTransactionAsyncWithSlaveRestarts: function() {
       connectToMaster();
 
       compare(
-        function (state) {
+        function(state) {
           db._create(cn);
         },
 
-        function (state) {
+        function(state) {
           var func = db._executeTransaction({
             collections: {
               write: cn
             },
-            action: function (params) {
+            action: function(params) {
               var wait = require("internal").wait;
               var db = require("internal").db;
               var c = db._collection(params.cn);
 
               for (var i = 0; i < 10; ++i) {
-                c.save({ test1: i });
-                c.save({ test2: i });
+                c.save({
+                  test1: i
+                });
+                c.save({
+                  test2: i
+                });
 
                 // intentionally delay the transaction
                 wait(0.75, false);
@@ -459,13 +473,13 @@ function ReplicationSuite () {
           state.task = require("@arangodb/tasks").register({
             name: "replication-test",
             command: String(func),
-            params: { 
-              cn: cn 
+            params: {
+              cn: cn
             }
           }).id;
         },
 
-        function (state) {
+        function(state) {
           // stop and restart replication on the slave
           assertTrue(replication.applier.state().state.running);
           replication.applier.stop();
@@ -475,8 +489,7 @@ function ReplicationSuite () {
           try {
             require("@arangodb/tasks").get(state.task);
             // task exists
-          }
-          catch (err) {
+          } catch (err) {
             // task does not exist. we're done
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
@@ -493,13 +506,13 @@ function ReplicationSuite () {
           return true;
         },
 
-        function (state) {
+        function(state) {
           assertEqual(state.count, collectionCount(cn));
         }
       );
     }
 
-// done
+    // done
 
   };
 }
@@ -512,4 +525,3 @@ function ReplicationSuite () {
 jsunity.run(ReplicationSuite);
 
 return jsunity.done();
-
