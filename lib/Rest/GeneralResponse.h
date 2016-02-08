@@ -30,6 +30,11 @@
 #include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace rest {
 
@@ -123,7 +128,7 @@ class GeneralResponse {
 
     VSTREAM_MOVED_PERMANENTLY = 301,
     VSTREAM_FOUND = 302,
-    VSTREANM_SEE_OTHER = 303,
+    VSTREAM_SEE_OTHER = 303,
     VSTREAM_NOT_MODIFIED = 304,
     VSTREAM_TEMPORARY_REDIRECT = 307,
     VSTREAM_PERMANENT_REDIRECT = 308,
@@ -143,7 +148,7 @@ class GeneralResponse {
     VSTREAM_LOCKED = 423,
     VSTREAM_PRECONDITION_REQUIRED = 428,
     VSTREAM_TOO_MANY_REQUESTS = 429,
-    VSTRAM_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
+    VSTREAM_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
 
     VSTREAM_SERVER_ERROR = 500,
     VSTREAM_NOT_IMPLEMENTED = 501,
@@ -250,7 +255,7 @@ class GeneralResponse {
   /// @brief returns the response code (vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  VstreamResponseCode responseCode() const;
+  VstreamResponseCode responseCodeVstream() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the response code
@@ -409,7 +414,7 @@ class GeneralResponse {
   /// @brief writes the header (Vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  void writeHeader(velocypack::Builder);
+  arangodb::velocypack::Builder writeHeader(arangodb::velocypack::Builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the size of the body

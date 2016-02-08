@@ -115,7 +115,7 @@ HttpCommTask::~HttpCommTask() {
 /// @brief handles response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::handleResponse(HttpResponse* response) {
+void HttpCommTask::handleResponse(GeneralResponse* response) {
   if (response->isChunked()) {
     _requestPending = true;
     _isChunked = true;
@@ -183,7 +183,7 @@ bool HttpCommTask::processRead() {
                   (int)MaximalHeaderSize, (int)headerLength);
 
       // header is too large
-      HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
+      GeneralResponse response(GeneralResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
                             getCompatibility());
 
       // we need to close the connection, because there is no way we
@@ -213,7 +213,7 @@ bool HttpCommTask::processRead() {
         LOG_ERROR("cannot generate request");
 
         // internal server error
-        HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
+        GeneralResponse response(GeneralResponse::SERVER_ERROR, getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know how to remove the body and then continue
@@ -230,7 +230,7 @@ bool HttpCommTask::processRead() {
 
       if (_httpVersion != GeneralRequest::HTTP_1_0 &&
           _httpVersion != GeneralRequest::HTTP_1_1) {
-        HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED,
+        GeneralResponse response(GeneralResponse::HTTP_VERSION_NOT_SUPPORTED,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -245,7 +245,7 @@ bool HttpCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG,
+        GeneralResponse response(GeneralResponse::REQUEST_URI_TOO_LONG,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -331,7 +331,7 @@ bool HttpCommTask::processRead() {
               std::string(_readBuffer->c_str() + _startPosition, l).c_str());
 
           // bad request, method not allowed
-          HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
+          GeneralResponse response(GeneralResponse::METHOD_NOT_ALLOWED,
                                 getCompatibility());
 
           // we need to close the connection, because there is no way we
@@ -360,7 +360,7 @@ bool HttpCommTask::processRead() {
         // server is inactive and will intentionally respond with HTTP 503
         LOG_TRACE("cannot serve request - server is inactive");
 
-        HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE,
+        GeneralResponse response(GeneralResponse::SERVICE_UNAVAILABLE,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -473,12 +473,12 @@ bool HttpCommTask::processRead() {
 
   auto const compatibility = _request->compatibility();
 
-  HttpResponse::HttpResponseCode authResult =
+  GeneralResponse::HttpResponseCode authResult =
       _server->handlerFactory()->authenticateRequest(_request);
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
-  if (authResult == HttpResponse::OK || isOptionsRequest) {
+  if (authResult == GeneralResponse::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
       processCorsOptions(compatibility);
@@ -488,8 +488,8 @@ bool HttpCommTask::processRead() {
   }
 
   // not found
-  else if (authResult == HttpResponse::NOT_FOUND) {
-    HttpResponse response(authResult, compatibility);
+  else if (authResult == GeneralResponse::NOT_FOUND) {
+    GeneralResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
@@ -506,8 +506,8 @@ bool HttpCommTask::processRead() {
   }
 
   // forbidden
-  else if (authResult == HttpResponse::FORBIDDEN) {
-    HttpResponse response(authResult, compatibility);
+  else if (authResult == GeneralResponse::FORBIDDEN) {
+    GeneralResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
@@ -524,7 +524,7 @@ bool HttpCommTask::processRead() {
 
   // not authenticated
   else {
-    HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
+    GeneralResponse response(GeneralResponse::UNAUTHORIZED, compatibility);
     std::string const realm =
         "basic realm=\"" +
         _server->handlerFactory()->authenticationRealm(_request) + "\"";
@@ -589,7 +589,7 @@ void HttpCommTask::setupDone() {
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::addResponse(HttpResponse* response) {
+void HttpCommTask::addResponse(GeneralResponse* response) {
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
@@ -689,7 +689,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    HttpResponse response(HttpResponse::LENGTH_REQUIRED, getCompatibility());
+    GeneralResponse response(GeneralResponse::LENGTH_REQUIRED, getCompatibility());
 
     resetState(true);
     handleResponse(&response);
@@ -711,7 +711,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
                 (int)MaximalBodySize, (int)bodyLength);
 
     // request entity too large
-    HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE,
+    GeneralResponse response(GeneralResponse::REQUEST_ENTITY_TOO_LARGE,
                           getCompatibility());
 
     resetState(true);
@@ -758,7 +758,7 @@ void HttpCommTask::fillWriteBuffer() {
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
   std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
-  HttpResponse response(HttpResponse::OK, compatibility);
+  GeneralResponse response(GeneralResponse::OK, compatibility);
 
   response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
 
@@ -817,7 +817,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   if (handler == nullptr) {
     LOG_TRACE("no handler is known, giving up");
 
-    HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
+    GeneralResponse response(GeneralResponse::NOT_FOUND, compatibility);
 
     clearRequest();
     handleResponse(&response);
@@ -847,7 +847,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
     }
 
     if (ok) {
-      HttpResponse response(HttpResponse::ACCEPTED, compatibility);
+      GeneralResponse response(GeneralResponse::ACCEPTED, compatibility);
 
       if (jobId > 0) {
         // return the job id we just created
@@ -867,7 +867,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (!ok) {
-    HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
+    GeneralResponse response(GeneralResponse::SERVER_ERROR, compatibility);
     handleResponse(&response);
   }
 }

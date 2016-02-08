@@ -38,7 +38,7 @@ namespace rest {
 class HttpCommTask;
 class HttpHandler;
 class GeneralRequest;
-class HttpResponse;
+class GeneralResponse;
 class HttpServer;
 class HttpServerJob;
 
@@ -73,7 +73,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief handles response
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleResponse(HttpResponse*);
+  void handleResponse(GeneralResponse*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reads data from the socket
@@ -105,7 +105,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief reads data from the socket
   //////////////////////////////////////////////////////////////////////////////
 
-  void addResponse(HttpResponse*);
+  void addResponse(GeneralResponse*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// check the content-length header of a request and fail it is broken

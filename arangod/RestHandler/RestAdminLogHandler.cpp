@@ -72,7 +72,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 HttpHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::FORBIDDEN,
+    generateError(GeneralResponse::FORBIDDEN,
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return status_t(HANDLER_DONE);
   }
@@ -114,7 +114,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = TRI_LOG_LEVEL_TRACE;
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
@@ -186,7 +186,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   TRI_vector_t* logs = TRI_BufferLogging(ul, start, useUpto);
 
   if (logs == nullptr) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return status_t(HANDLER_DONE);
   }
 

@@ -299,7 +299,7 @@ static std::string GetArangoVersion() {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // default value
     version = "arango";
     try {
@@ -346,7 +346,7 @@ static bool GetArangoIsCluster() {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();

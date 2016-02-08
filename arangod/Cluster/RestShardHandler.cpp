@@ -51,8 +51,8 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
 #if 0
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_COORDINATOR) {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int) arangodb::rest::HttpResponse::BAD,
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int) arangodb::rest::GeneralResponse::BAD,
                   "this API is meant to be called on a coordinator node");
     return status_t(HANDLER_DONE);
   }
@@ -62,8 +62,8 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
   if (!found) {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int)arangodb::rest::HttpResponse::BAD,
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int)arangodb::rest::GeneralResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
@@ -73,10 +73,10 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    createResponse(arangodb::rest::HttpResponse::ACCEPTED);
+    createResponse(arangodb::rest::GeneralResponse::ACCEPTED);
   } else {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int)arangodb::rest::HttpResponse::BAD, result.c_str());
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int)arangodb::rest::GeneralResponse::BAD, result.c_str());
   }
 
   return status_t(HANDLER_DONE);

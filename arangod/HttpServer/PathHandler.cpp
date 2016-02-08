@@ -77,7 +77,7 @@ HttpHandler::status_t PathHandler::execute() {
     }
     url += defaultFile;
 
-    createResponse(HttpResponse::MOVED_PERMANENTLY);
+    createResponse(GeneralResponse::MOVED_PERMANENTLY);
 
     _response->setHeader(TRI_CHAR_LENGTH_PAIR("location"), url);
     _response->setContentType("text/html");
@@ -100,7 +100,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == ".") {
       LOG_WARNING("file '%s' contains '.'", name.c_str());
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains '.'");
       return status_t(HANDLER_DONE);
     }
@@ -108,7 +108,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == "..") {
       LOG_WARNING("file '%s' contains '..'", name.c_str());
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains '..'");
       return status_t(HANDLER_DONE);
     }
@@ -118,7 +118,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG_WARNING("file '%s' contains illegal character", name.c_str());
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
                                    std::string(1, next[sc]) + "'");
       return status_t(HANDLER_DONE);
@@ -128,7 +128,7 @@ HttpHandler::status_t PathHandler::execute() {
       if (!FileUtils::isDirectory(path)) {
         LOG_WARNING("file '%s' not found", name.c_str());
 
-        createResponse(HttpResponse::NOT_FOUND);
+        createResponse(GeneralResponse::NOT_FOUND);
         _response->body().appendText("file not found");
         return status_t(HANDLER_DONE);
       }
@@ -140,7 +140,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG_WARNING("file '%s' contains symbolic link", name.c_str());
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
       return status_t(HANDLER_DONE);
     }
@@ -149,19 +149,19 @@ HttpHandler::status_t PathHandler::execute() {
   if (!FileUtils::isRegularFile(name)) {
     LOG_WARNING("file '%s' not found", name.c_str());
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::NOT_FOUND);
     _response->body().appendText("file not found");
     return status_t(HANDLER_DONE);
   }
 
-  createResponse(HttpResponse::OK);
+  createResponse(GeneralResponse::OK);
 
   try {
     FileUtils::slurp(name, _response->body());
   } catch (...) {
     LOG_WARNING("file '%s' not readable", name.c_str());
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::NOT_FOUND);
     _response->body().appendText("file not readable");
     return status_t(HANDLER_DONE);
   }
@@ -200,7 +200,7 @@ HttpHandler::status_t PathHandler::execute() {
 }
 
 void PathHandler::handleError(const Exception&) {
-  createResponse(HttpResponse::SERVER_ERROR);
+  createResponse(GeneralResponse::SERVER_ERROR);
 }
 }
 }

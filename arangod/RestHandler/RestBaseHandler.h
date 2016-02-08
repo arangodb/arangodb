@@ -62,7 +62,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(rest::GeneralResponse::HttpResponseCode,
                               TRI_json_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(rest::GeneralResponse::HttpResponseCode,
                               VPackSlice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -88,13 +88,13 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int);
+  virtual void generateError(rest::GeneralResponse::HttpResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int,
+  virtual void generateError(rest::GeneralResponse::HttpResponseCode, int,
                              std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////

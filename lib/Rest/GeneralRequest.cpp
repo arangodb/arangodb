@@ -717,7 +717,7 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
       
      } else if(StringUtils::tolower(it.key.getString(len)) == "database"){
 
-        if(getValue(it.value).c_str() != ""){
+        if(!getValue(it.value).empty()){
           _databaseName = getValue(it.value);
         } else{
           _databaseName = "_system";
@@ -725,7 +725,7 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
 
      }else if(StringUtils::tolower(it.key.getString(len)) == "request"){
 
-        if(getValue(it.value).c_str() != ""){
+        if(!getValue(it.value).empty()){
           _requestPath = getValue(it.value).c_str();
         } else{
           _requestPath = "";
@@ -733,7 +733,7 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
 
      } else if(StringUtils::tolower(it.key.getString(len)) == "fullUrl") { 
 
-        if(getValue(it.value).c_str() != ""){
+        if(!getValue(it.value).empty()){
           _fullUrl = getValue(it.value);
         } else{
           _fullUrl = "";
@@ -758,7 +758,7 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
      }else if(StringUtils::tolower(it.key.getString(len)) == "meta") {
 
         for (auto const& it : velocypack::ObjectIterator(s.get("meta"))) {
-            if(getValue(it.value).c_str() != ""){
+            if(!getValue(it.value).empty()){
               setHeader(it.key.getString(len), it.key.byteSize(), getValue(it.value).c_str());
             }
         }

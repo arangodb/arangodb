@@ -69,7 +69,7 @@ HttpHandler::status_t RestCursorHandler::execute() {
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
@@ -85,19 +85,19 @@ bool RestCursorHandler::cancel() { return cancelQuery(); }
 
 void RestCursorHandler::processQuery(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(GeneralResponse::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(GeneralResponse::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
       return;
     }
@@ -132,7 +132,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
 
   {
-    createResponse(HttpResponse::CREATED);
+    createResponse(GeneralResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
     arangodb::basics::Json extra = buildExtra(queryResult);
@@ -361,7 +361,7 @@ void RestCursorHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
     return;
   }
@@ -380,16 +380,16 @@ void RestCursorHandler::createCursor() {
     processQuery(body);
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -401,7 +401,7 @@ void RestCursorHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
@@ -419,17 +419,17 @@ void RestCursorHandler::modifyCursor() {
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
                     TRI_ERROR_CURSOR_BUSY);
     } else {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
     }
     return;
   }
 
   try {
-    createResponse(HttpResponse::OK);
+    createResponse(GeneralResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
@@ -443,11 +443,11 @@ void RestCursorHandler::modifyCursor() {
   } catch (arangodb::basics::Exception const& ex) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -459,7 +459,7 @@ void RestCursorHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
   }
@@ -475,11 +475,11 @@ void RestCursorHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(GeneralResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  createResponse(HttpResponse::ACCEPTED);
+  createResponse(GeneralResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
 
   arangodb::basics::Json json(arangodb::basics::Json::Object);

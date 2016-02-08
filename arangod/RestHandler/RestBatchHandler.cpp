@@ -54,7 +54,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
   if (type != GeneralRequest::HTTP_REQUEST_POST &&
       type != GeneralRequest::HTTP_REQUEST_PUT) {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+    generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status_t(HttpHandler::HANDLER_DONE);
   }
@@ -63,7 +63,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
   // invalid content-type or boundary sent
   if (!getBoundary(&boundary)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
     return status_t(HttpHandler::HANDLER_FAILED);
   }
@@ -76,7 +76,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   std::string authorization = _request->header("authorization");
 
   // create the response
-  createResponse(HttpResponse::OK);
+  createResponse(GeneralResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
@@ -92,7 +92,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     // get the next part from the multipart message
     if (!extractPart(&helper)) {
       // error
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
       LOG_WARNING("received a corrupted multipart message");
 
@@ -137,7 +137,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
                         _request->compatibility(), false);
 
     if (request == nullptr) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 
       return status_t(HttpHandler::HANDLER_FAILED);
     }
@@ -165,7 +165,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     if (!handler) {
       delete request;
 
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                     "could not create handler for batch part processing");
 
       return status_t(HttpHandler::HANDLER_FAILED);
@@ -177,22 +177,22 @@ HttpHandler::status_t RestBatchHandler::execute() {
       HttpHandler::status_t status = handler->executeFull();
 
       if (status._status == HttpHandler::HANDLER_FAILED) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+        generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
         return status_t(HttpHandler::HANDLER_FAILED);
       }
 
-      HttpResponse* partResponse = handler->getResponse();
+      GeneralResponse* partResponse = handler->getResponse();
 
       if (partResponse == nullptr) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+        generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                       "could not create a response for batch part request");
 
         return status_t(HttpHandler::HANDLER_FAILED);
       }
 
-      const HttpResponse::HttpResponseCode code = partResponse->responseCode();
+      const GeneralResponse::HttpResponseCode code = partResponse->responseCode();
 
       // count everything above 400 as error
       if (code >= 400) {
@@ -235,7 +235,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponse::BatchErrorHeader,
+    _response->setHeader(GeneralResponse::BatchErrorHeader,
                          StringUtils::itoa(errors));
   }
 

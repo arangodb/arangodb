@@ -48,13 +48,13 @@ class MaintenanceHandler : public HttpHandler {
   bool isDirect() const override { return true; };
 
   status_t execute() override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::SERVICE_UNAVAILABLE);
 
     return status_t(HANDLER_DONE);
   };
 
   void handleError(const Exception& error) override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::SERVICE_UNAVAILABLE);
   };
 };
 }
@@ -134,13 +134,13 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
+GeneralResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
     GeneralRequest* request) {
   auto context = request->getRequestContext();
 
   if (context == nullptr) {
     if (!setRequestContext(request)) {
-      return HttpResponse::NOT_FOUND;
+      return GeneralResponse::NOT_FOUND;
     }
 
     context = request->getRequestContext();

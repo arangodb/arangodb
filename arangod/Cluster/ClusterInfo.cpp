@@ -1032,7 +1032,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     res = ac.casValue("Plan/Databases/" + name, json, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
-          arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+          arangodb::rest::GeneralResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
@@ -1140,7 +1140,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name, std::string& e
 
     res = ac.removeValues("Plan/Databases/" + name, false);
     if (!res.successful()) {
-      if (res.httpCode() == (int)rest::HttpResponse::NOT_FOUND) {
+      if (res.httpCode() == (int)rest::GeneralResponse::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
       }
 
@@ -1152,7 +1152,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name, std::string& e
     res = ac.removeValues("Plan/Collections/" + name, true);
 
     if (!res.successful() &&
-        res.httpCode() != (int)rest::HttpResponse::NOT_FOUND) {
+        res.httpCode() != (int)rest::GeneralResponse::NOT_FOUND) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                          errorMsg);
     }
@@ -1341,7 +1341,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     res = ac.removeValues(
         "Plan/Collections/" + databaseName + "/" + collectionID, false);
     if (!res.successful()) {
-      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+      if (res._statusCode == rest::GeneralResponse::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,

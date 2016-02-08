@@ -186,13 +186,13 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief returns the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* getResponse() const;
+  GeneralResponse* getResponse() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* stealResponse();
+  GeneralResponse* stealResponse();
 
   
  protected:
@@ -200,7 +200,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief create a new HTTP response
   //////////////////////////////////////////////////////////////////////////////
 
-  void createResponse(HttpResponse::HttpResponseCode);
+  void createResponse(GeneralResponse::HttpResponseCode);
 
   
  protected:
@@ -232,7 +232,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* _response;
+  GeneralResponse* _response;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the server

@@ -36,7 +36,7 @@ namespace rest {
 struct ConnectionInfo;
 class HttpHandler;
 class GeneralRequest;
-class HttpResponse;
+class GeneralResponse;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +62,7 @@ class HttpHandlerFactory {
   /// @brief response
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef HttpResponse GeneralResponse;
+  typedef GeneralResponse GeneralResponse;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler creator
@@ -116,7 +116,7 @@ class HttpHandlerFactory {
   /// @brief authenticates a new request, wrapper method
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse::HttpResponseCode authenticateRequest(GeneralRequest*);
+  GeneralResponse::HttpResponseCode authenticateRequest(GeneralRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set request context, wrapper method

@@ -46,7 +46,7 @@ RestImportHandler::RestImportHandler(GeneralRequest* request)
 
 HttpHandler::status_t RestImportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(GeneralResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/import' is not yet supported in a cluster");
     return status_t(HANDLER_DONE);
   }
@@ -365,7 +365,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -380,7 +380,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
-    generateError(HttpResponse::BAD,
+    generateError(GeneralResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -419,7 +419,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       break;
     }
   } else {
-    generateError(HttpResponse::BAD, TRI_ERROR_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_BAD_PARAMETER,
                   "invalid value for 'type'");
     return false;
   }
@@ -533,7 +533,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
           reinterpret_cast<uint8_t const*>(_request->body()),
           _request->bodySize());
     } catch (VPackException const&) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
     }
@@ -541,7 +541,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     VPackSlice const documents = parsedDocuments->slice();
 
     if (!documents.isArray()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
     }
@@ -592,7 +592,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -607,7 +607,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
-    generateError(HttpResponse::BAD,
+    generateError(GeneralResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -632,7 +632,7 @@ bool RestImportHandler::createFromKeyValueList() {
   char const* next = strchr(current, '\n');
 
   if (next == nullptr) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON array found in second line");
     return false;
   }
@@ -661,14 +661,14 @@ bool RestImportHandler::createFromKeyValueList() {
     parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
   } catch (...) {
     // This throws if the body is not parseable
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
   }
   VPackSlice const keys = parsedKeys->slice();
 
   if (!success || !checkKeys(keys)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
   }
@@ -797,7 +797,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
 void RestImportHandler::generateDocumentsCreated(
     RestImportResult const& result) {
-  createResponse(HttpResponse::CREATED);
+  createResponse(GeneralResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   try {
@@ -824,7 +824,7 @@ void RestImportHandler::generateDocumentsCreated(
     }
     json.close();
     VPackSlice s = json.slice();
-    generateResult(HttpResponse::CREATED, s);
+    generateResult(GeneralResponse::CREATED, s);
   } catch (...) {
     // Ignore the error
   }

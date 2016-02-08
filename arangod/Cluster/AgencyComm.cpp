@@ -416,7 +416,7 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
 
   AgencyCommResult result = comm.getValues(_key + "/Version", false);
   if (!result.successful()) {
-    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() != (int)arangodb::rest::GeneralResponse::NOT_FOUND) {
       return false;
     }
 
@@ -872,7 +872,7 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   AgencyCommResult result = getValues(key, false);
 
   if (!result.successful()) {
-    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() != (int)arangodb::rest::GeneralResponse::NOT_FOUND) {
       return false;
     }
 
@@ -1230,7 +1230,7 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     result.clear();
     result = getValues(key, false);
 
-    if (result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() == (int)arangodb::rest::GeneralResponse::NOT_FOUND) {
       std::unique_ptr<TRI_json_t> json(
           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0")));
 
@@ -1333,7 +1333,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
         casValue(key + "/Lock", oldJson.get(), json, ttl, timeout);
 
     if (!result.successful() &&
-        result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+        result.httpCode() == (int)arangodb::rest::GeneralResponse::NOT_FOUND) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", json, false, ttl, timeout);
     }
@@ -1550,7 +1550,7 @@ bool AgencyComm::sendWithFailover(
     }
 
     if (result._statusCode ==
-        (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
+        (int)arangodb::rest::GeneralResponse::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1694,7 +1694,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
-      (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
+      (int)arangodb::rest::GeneralResponse::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;

@@ -70,7 +70,7 @@ HttpHandler::status_t RestSimpleHandler::execute() {
     VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
       return status_t(HANDLER_DONE);
     }
@@ -85,14 +85,14 @@ HttpHandler::status_t RestSimpleHandler::execute() {
                0) {
       lookupByKeys(body);
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
     }
 
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
@@ -159,7 +159,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       VPackSlice const value = slice.get("collection");
 
       if (!value.isString()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+        generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
@@ -181,7 +181,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     VPackSlice const keys = slice.get("keys");
 
     if (!keys.isArray()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting array for <keys>");
       return;
     }
@@ -229,7 +229,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
 
     {
-      createResponse(HttpResponse::OK);
+      createResponse(GeneralResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       size_t ignored = 0;
@@ -265,10 +265,10 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -282,7 +282,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     {
       VPackSlice const value = slice.get("collection");
       if (!value.isString()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+        generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
@@ -303,7 +303,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     VPackSlice const keys = slice.get("keys");
 
     if (!keys.isArray()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting array for <keys>");
       return;
     }
@@ -347,7 +347,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     }
 
     {
-      createResponse(HttpResponse::OK);
+      createResponse(GeneralResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       arangodb::basics::Json result(arangodb::basics::Json::Object, 3);
@@ -440,13 +440,13 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     }
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 

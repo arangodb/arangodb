@@ -322,11 +322,11 @@ static int TryCreateDatabase(std::string const& name) {
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == HttpResponse::OK || returnCode == HttpResponse::CREATED) {
+  if (returnCode == GeneralResponse::OK || returnCode == GeneralResponse::CREATED) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } else if (returnCode == HttpResponse::UNAUTHORIZED ||
-             returnCode == HttpResponse::FORBIDDEN) {
+  } else if (returnCode == GeneralResponse::UNAUTHORIZED ||
+             returnCode == GeneralResponse::FORBIDDEN) {
     // invalid authorization
     Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     return TRI_ERROR_FORBIDDEN;
@@ -351,7 +351,7 @@ static std::string GetArangoVersion() {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // default value
     version = "arango";
 
@@ -399,7 +399,7 @@ static bool GetArangoIsCluster() {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // convert response body to json
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();

@@ -85,7 +85,7 @@ V8ClientConnection::V8ClientConnection(
   } else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == HttpResponse::OK) {
+    if (result->getHttpReturnCode() == GeneralResponse::OK) {
       // default value
       _version = "arango";
       _mode = "unknown mode";
@@ -406,13 +406,13 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = HttpResponse::SERVER_ERROR;
+    _lastHttpReturnCode = GeneralResponse::SERVER_ERROR;
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_ASCII_STRING("code"),
-                     v8::Integer::New(isolate, HttpResponse::SERVER_ERROR));
+                     v8::Integer::New(isolate, GeneralResponse::SERVER_ERROR));
 
     int errorNumber = 0;
 
@@ -516,11 +516,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = HttpResponse::SERVER_ERROR;
+    _lastHttpReturnCode = GeneralResponse::SERVER_ERROR;
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_ASCII_STRING("code"),
-                     v8::Integer::New(isolate, HttpResponse::SERVER_ERROR));
+                     v8::Integer::New(isolate, GeneralResponse::SERVER_ERROR));
 
     int errorNumber = 0;
 

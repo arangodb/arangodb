@@ -136,7 +136,7 @@ class v8_action_t : public TRI_action_t {
 
         result.isValid = true;
         result.response =
-            new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
+            new GeneralResponse(GeneralResponse::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -242,7 +242,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
-                      HttpResponse* response, v8::Handle<v8::Object> data) {
+                      GeneralResponse* response, v8::Handle<v8::Object> data) {
   std::string name;
   std::string value;
   int lifeTimeSeconds = 0;
@@ -524,20 +524,20 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 /// @brief convert a C++ GeneralRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
+static GeneralResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                                      TRI_v8_global_t const* v8g,
                                      v8::Handle<v8::Object> const res,
                                      uint32_t compatibility) {
-  HttpResponse::HttpResponseCode code = HttpResponse::OK;
+  GeneralResponse::HttpResponseCode code = GeneralResponse::OK;
 
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (HttpResponse::HttpResponseCode)(
+    code = (GeneralResponse::HttpResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  auto response = std::make_unique<HttpResponse>(code, compatibility);
+  auto response = std::make_unique<GeneralResponse>(code, compatibility);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
@@ -619,7 +619,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
           std::string("cannot read file '") + *filename + "': " + TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
-      response->setResponseCode(HttpResponse::SERVER_ERROR);
+      response->setResponseCode(GeneralResponse::SERVER_ERROR);
     }
   }
 
@@ -742,8 +742,8 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
-    HttpResponse* response =
-        new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
+    GeneralResponse* response =
+        new GeneralResponse(GeneralResponse::SERVER_ERROR, request->compatibility());
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
     }
@@ -757,7 +757,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR,
+     GeneralResponse* response = new GeneralResponse(GeneralResponse::SERVER_ERROR,
                                                 request->compatibility());
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 

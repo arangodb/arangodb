@@ -36,7 +36,7 @@ struct TRI_json_t;
 namespace arangodb {
 namespace rest {
 class Scheduler;
-class HttpResponse;
+class GeneralResponse;
 
 class TaskData : public RequestStatisticsAgent {
  public:
@@ -48,7 +48,7 @@ class TaskData : public RequestStatisticsAgent {
   EventLoop _loop;
   uint64_t _type;
   std::string _data;
-  std::unique_ptr<HttpResponse> _response;
+  std::unique_ptr<GeneralResponse> _response;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

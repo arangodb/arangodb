@@ -174,7 +174,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
-    HttpResponse::HttpResponseCode responseCode,
+    GeneralResponse::HttpResponseCode responseCode,
     std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid,
     TRI_col_type_e type) {
   std::string handle(
@@ -184,7 +184,7 @@ void RestVocbaseBaseHandler::generate20x(
   createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
 
-  if (responseCode != HttpResponse::OK) {
+  if (responseCode != GeneralResponse::OK) {
     // 200 OK is sent is case of delete or update.
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
@@ -226,7 +226,7 @@ void RestVocbaseBaseHandler::generate20x(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotImplemented(std::string const& path) {
-  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+  generateError(GeneralResponse::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
 
@@ -235,7 +235,7 @@ void RestVocbaseBaseHandler::generateNotImplemented(std::string const& path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateForbidden() {
-  generateError(HttpResponse::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+  generateError(GeneralResponse::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                 "operation forbidden");
 }
 
@@ -247,14 +247,14 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   std::string rev(std::move(StringUtils::itoa(rid)));
 
-  createResponse(HttpResponse::PRECONDITION_FAILED);
+  createResponse(GeneralResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("etag", 4, "\"" + rev + "\"");
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
       .appendText("{\"error\":true,\"code\":")
-      .appendInteger((int32_t)HttpResponse::PRECONDITION_FAILED)
+      .appendInteger((int32_t)GeneralResponse::PRECONDITION_FAILED)
       .appendText(",\"errorNum\":")
       .appendInteger((int32_t)TRI_ERROR_ARANGO_CONFLICT)
       .appendText(",\"errorMessage\":\"precondition failed\"")
@@ -274,7 +274,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
   std::string const&& rev = StringUtils::itoa(rid);
 
-  createResponse(HttpResponse::NOT_MODIFIED);
+  createResponse(GeneralResponse::NOT_MODIFIED);
   _response->setHeader("etag", 4, "\"" + rev + "\"");
 }
 
@@ -353,7 +353,7 @@ void RestVocbaseBaseHandler::generateDocument(
                                      augmented.get());
 
     // and generate a response
-    createResponse(HttpResponse::OK);
+    createResponse(GeneralResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
     _response->setHeader("etag", 4, "\"" + rev + "\"");
 
@@ -384,33 +384,33 @@ void RestVocbaseBaseHandler::generateTransactionError(
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
-        generateError(HttpResponse::BAD, res, "no collection name specified");
+        generateError(GeneralResponse::BAD, res, "no collection name specified");
       } else {
         // collection name specified but collection not found
-        generateError(HttpResponse::NOT_FOUND, res,
+        generateError(GeneralResponse::NOT_FOUND, res,
                       "collection '" + collectionName + "' not found");
       }
       return;
 
     case TRI_ERROR_ARANGO_READ_ONLY:
-      generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
+      generateError(GeneralResponse::FORBIDDEN, res, "collection is read-only");
       return;
 
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-      generateError(HttpResponse::CONFLICT, res,
+      generateError(GeneralResponse::CONFLICT, res,
                     "cannot create document, unique constraint violated");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
-      generateError(HttpResponse::BAD, res, "invalid document key");
+      generateError(GeneralResponse::BAD, res, "invalid document key");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
-      generateError(HttpResponse::SERVER_ERROR, res, "out of keys");
+      generateError(GeneralResponse::SERVER_ERROR, res, "out of keys");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
-      generateError(HttpResponse::BAD, res,
+      generateError(GeneralResponse::BAD, res,
                     "collection does not allow using user-defined keys");
       return;
 
@@ -419,7 +419,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
-      generateError(HttpResponse::BAD, res);
+      generateError(GeneralResponse::BAD, res);
       return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
@@ -428,27 +428,27 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:
-      generateError(HttpResponse::SERVER_ERROR, res,
+      generateError(GeneralResponse::SERVER_ERROR, res,
                     "coordinator: no responsible shard found");
       return;
 
     case TRI_ERROR_CLUSTER_TIMEOUT:
-      generateError(HttpResponse::SERVER_ERROR, res);
+      generateError(GeneralResponse::SERVER_ERROR, res);
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
-      generateError(HttpResponse::BAD, res);
+      generateError(GeneralResponse::BAD, res);
       return;
     }
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
-      generateError(HttpResponse::NOT_IMPLEMENTED, res);
+      generateError(GeneralResponse::NOT_IMPLEMENTED, res);
       return;
     }
 
     default:
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
@@ -553,7 +553,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   } catch (VPackException const& e) {
     std::string errmsg("Parse error: ");
     errmsg.append(e.what());
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   }
   success = false;
   VPackParser p;

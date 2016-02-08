@@ -110,7 +110,7 @@ bool RestQueryHandler::readQueryProperties() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("code", VPackValue(GeneralResponse::OK));
     result.add("enabled", VPackValue(queryList->enabled()));
     result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
     result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
@@ -189,7 +189,7 @@ bool RestQueryHandler::readQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
     return true;
   }
@@ -204,7 +204,7 @@ bool RestQueryHandler::readQuery() {
     return readQueryProperties();
   }
 
-  generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+  generateError(GeneralResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                 "unknown type '" + name +
                     "', expecting 'slow', 'current', or 'properties'");
   return true;
@@ -221,7 +221,7 @@ bool RestQueryHandler::deleteQuerySlow() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(HttpResponse::OK));
+  result.add("code", VPackValue(GeneralResponse::OK));
   result.close();
   VPackSlice slice = result.slice();
   generateResult(slice);
@@ -244,12 +244,12 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("code", VPackValue(GeneralResponse::OK));
     result.close();
     VPackSlice slice = result.slice();
     generateResult(slice);
   } else {
-    generateError(HttpResponse::BAD, res, "cannot kill query '" + name + "'");
+    generateError(GeneralResponse::BAD, res, "cannot kill query '" + name + "'");
   }
 
   return true;
@@ -263,7 +263,7 @@ bool RestQueryHandler::deleteQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
     return true;
   }
@@ -284,7 +284,7 @@ bool RestQueryHandler::replaceProperties() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
     return true;
   }
@@ -300,7 +300,7 @@ bool RestQueryHandler::replaceProperties() {
 
   VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
@@ -368,7 +368,7 @@ bool RestQueryHandler::parseQuery() {
   const auto& suffix = _request->suffix();
 
   if (!suffix.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/query");
     return true;
   }
@@ -385,7 +385,7 @@ bool RestQueryHandler::parseQuery() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
@@ -399,7 +399,7 @@ bool RestQueryHandler::parseQuery() {
     auto parseResult = query.parse();
 
     if (parseResult.code != TRI_ERROR_NO_ERROR) {
-      generateError(HttpResponse::BAD, parseResult.code, parseResult.details);
+      generateError(GeneralResponse::BAD, parseResult.code, parseResult.details);
       return true;
     }
 
@@ -407,7 +407,7 @@ bool RestQueryHandler::parseQuery() {
     {
       VPackObjectBuilder b(&result);
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue(HttpResponse::OK));
+      result.add("code", VPackValue(GeneralResponse::OK));
       result.add("parsed", VPackValue(true));
 
       result.add("collections", VPackValue(VPackValueType::Array));

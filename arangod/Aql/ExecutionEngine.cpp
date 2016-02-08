@@ -550,9 +550,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
       if (res.status == arangodb::CL_COMM_RECEIVED) {
-        if (res.answer_code == arangodb::rest::HttpResponse::OK ||
-            res.answer_code == arangodb::rest::HttpResponse::CREATED ||
-            res.answer_code == arangodb::rest::HttpResponse::ACCEPTED) {
+        if (res.answer_code == arangodb::rest::GeneralResponse::OK ||
+            res.answer_code == arangodb::rest::GeneralResponse::CREATED ||
+            res.answer_code == arangodb::rest::GeneralResponse::ACCEPTED) {
           // query instantiated without problems
           nrok++;
 

@@ -183,7 +183,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
-    _response = new HttpResponse(HttpResponse::SERVER_ERROR,
+    _response = new GeneralResponse(GeneralResponse::SERVER_ERROR,
                                  GeneralRequest::MinCompatibility);
   }
 
@@ -218,14 +218,14 @@ GeneralRequest* HttpHandler::stealRequest() {
 /// @brief returns the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::getResponse() const { return _response; }
+GeneralResponse* HttpHandler::getResponse() const { return _response; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::stealResponse() {
-  HttpResponse* tmp = _response;
+GeneralResponse* HttpHandler::stealResponse() {
+  GeneralResponse* tmp = _response;
   _response = nullptr;
   return tmp;
 }
@@ -235,7 +235,7 @@ HttpResponse* HttpHandler::stealResponse() {
 /// @brief create a new HTTP response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
+void HttpHandler::createResponse(GeneralResponse::HttpResponseCode code) {
   // avoid having multiple responses. this would be a memleak
   if (_response != nullptr) {
     delete _response;
@@ -251,7 +251,7 @@ void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
   }
 
   // create a "standard" (standalone) Http response
-  _response = new HttpResponse(code, apiCompatibility);
+  _response = new GeneralResponse(code, apiCompatibility);
 }
 
 

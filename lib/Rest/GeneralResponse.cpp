@@ -27,6 +27,12 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
+
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace std;
@@ -297,90 +303,90 @@ GeneralResponse::VstreamResponseCode GeneralResponse::responseCodeVstream(
 
   switch (number) {
     case 100:
-      return CONTINUE;
+      return VSTREAM_CONTINUE;
     case 101:
-      return SWITCHING_PROTOCOLS;
+      return VSTREAM_SWITCHING_PROTOCOLS;
     case 102:
-      return PROCESSING;
+      return VSTREAM_PROCESSING;
 
     case 200:
-      return OK;
+      return VSTREAM_OK;
     case 201:
-      return CREATED;
+      return VSTREAM_CREATED;
     case 202:
-      return ACCEPTED;
+      return VSTREAM_ACCEPTED;
     case 203:
-      return PARTIAL;
+      return VSTREAM_PARTIAL;
     case 204:
-      return NO_CONTENT;
+      return VSTREAM_NO_CONTENT;
     case 205:
-      return RESET_CONTENT;
+      return VSTREAM_RESET_CONTENT;
     case 206:
-      return PARTIAL_CONTENT;
+      return VSTREAM_PARTIAL_CONTENT;
 
     case 301:
-      return MOVED_PERMANENTLY;
+      return VSTREAM_MOVED_PERMANENTLY;
     case 302:
-      return FOUND;
+      return VSTREAM_FOUND;
     case 303:
-      return SEE_OTHER;
+      return VSTREAM_SEE_OTHER;
     case 304:
-      return NOT_MODIFIED;
+      return VSTREAM_NOT_MODIFIED;
     case 307:
-      return TEMPORARY_REDIRECT;
+      return VSTREAM_TEMPORARY_REDIRECT;
     case 308:
-      return PERMANENT_REDIRECT;
+      return VSTREAM_PERMANENT_REDIRECT;
 
     case 400:
-      return BAD;
+      return VSTREAM_BAD;
     case 403:
-      return FORBIDDEN;
+      return VSTREAM_FORBIDDEN;
     case 404:
-      return NOT_FOUND;
+      return VSTREAM_NOT_FOUND;
     case 405:
-      return METHOD_NOT_ALLOWED;
+      return VSTREAM_METHOD_NOT_ALLOWED;
     case 406:
-      return NOT_ACCEPTABLE;
+      return VSTREAM_NOT_ACCEPTABLE;
     case 408:
-      return REQUEST_TIMEOUT;
+      return VSTREAM_REQUEST_TIMEOUT;
     case 409:
-      return CONFLICT;
+      return VSTREAM_CONFLICT;
     case 410:
-      return GONE;
+      return VSTREAM_GONE;
     case 414:
-      return REQUEST_URI_TOO_LONG;
+      return VSTREAM_REQUEST_URI_TOO_LONG;
     case 415:
-      return UNSUPPORTED_MEDIA_TYPE;
+      return VSTREAM_UNSUPPORTED_MEDIA_TYPE;
     case 416:
-      return REQUESTED_RANGE_NOT_SATISFIABLE;
+      return VSTREAM_REQUESTED_RANGE_NOT_SATISFIABLE;
     case 422:
-      return UNPROCESSABLE_ENTITY;
+      return VSTREAM_UNPROCESSABLE_ENTITY;
     case 423:
-      return LOCKED;
+      return VSTREAM_LOCKED;
     case 428:
-      return PRECONDITION_REQUIRED;
+      return VSTREAM_PRECONDITION_REQUIRED;
     case 429:
-      return TOO_MANY_REQUESTS;
+      return VSTREAM_TOO_MANY_REQUESTS;
     case 451:
-      return UNAVAILABLE_FOR_LEGAL_REASONS;
+      return VSTREAM_UNAVAILABLE_FOR_LEGAL_REASONS;
 
     case 500:
-      return SERVER_ERROR;
+      return VSTREAM_SERVER_ERROR;
     case 501:
-      return NOT_IMPLEMENTED;
+      return VSTREAM_NOT_IMPLEMENTED;
     case 502:
-      return BAD_GATEWAY;
+      return VSTREAM_BAD_GATEWAY;
     case 503:
-      return SERVICE_UNAVAILABLE;
+      return VSTREAM_SERVICE_UNAVAILABLE;
     case 505:
-      return HTTP_VERSION_NOT_SUPPORTED;
+      return VSTREAM_VERSION_NOT_SUPPORTED;
     case 509:
-      return BANDWIDTH_LIMIT_EXCEEDED;
+      return VSTREAM_BANDWIDTH_LIMIT_EXCEEDED;
     case 510:
-      return NOT_EXTENDED;
+      return VSTREAM_NOT_EXTENDED;
       
     default:
-      return NOT_IMPLEMENTED;
+      return VSTREAM_NOT_IMPLEMENTED;
   }
 }
 
@@ -973,18 +979,18 @@ GeneralResponse* GeneralResponse::swap() {
 /// @brief writes the header (velocystream)
 ////////////////////////////////////////////////////////////////////////////////
 
-velocypack::Builder GeneralResponse::writeHeader(velocypack::Builder vobject) {
+arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack::Builder vobject) {
 
-  Builder b; // { VPackObjectBuilder bb(&b, "parameter");//   b.add("a", Value("1");// }  
+  arangodb::velocypack::Builder b; // { VPackObjectBuilder bb(&b, "parameter");//   b.add("a", Value("1");// }  
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
   bool seenTransferEncoding = false;
   std::string transferEncoding;
   bool const capitalizeHeaders = (_apiCompatibility >= 20100);
-  b.add(Value(ValueType::Object));
-  b.add("version", "VSTREAM_1_0");
-  b.add("code", _codeVstream);
+  b.add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
+  b.add("version", arangodb::velocypack::Value("VSTREAM_1_0"));
+  b.add("code", arangodb::velocypack::Value(_codeVstream));
   for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
@@ -995,33 +1001,35 @@ velocypack::Builder GeneralResponse::writeHeader(velocypack::Builder vobject) {
     size_t const keyLength = strlen(key);
 
     if (capitalizeHeaders) {
-      b.add(::toupper(key), begin->_value);
+      // @TODO: Revaluate this  => ::toupper
+      b.add(key, arangodb::velocypack::Value(begin->_value));
     } else {
-      b.add(key, begin->_value);
+      b.add(key, arangodb::velocypack::Value(begin->_value));
     }
   }
 
   for (std::vector<char const*>::iterator iter = _cookies.begin();
        iter != _cookies.end(); ++iter) {
     if (capitalizeHeaders) {
-      b.add("Set-Cookie: ", *iter);
+      b.add("Set-Cookie: ", arangodb::velocypack::Value(*iter));
     } else {
-      b.add("set-cookie: ", *iter);
+      b.add("set-cookie: ", arangodb::velocypack::Value(*iter));
     }
   }
 
   // Size of Entire Document, not just current chunk
     if (capitalizeHeaders) {
       if (_isHeadResponse) {
-        b.add("Content-Size: ", _bodySize);
+        b.add("Content-Size: ", arangodb::velocypack::Value(_bodySize));
       }else{
-        b.add("Content-Size: ", _body.length());
+        b.add("Content-Size: ", arangodb::velocypack::Value(_body.length()));
       }
     } else {
       if (_isHeadResponse) {
-        b.add("content-size: ", _bodySize);
+        b.add("content-size: ", arangodb::velocypack::Value(_bodySize));
       }else{
-        b.add("content-size: ", _body.length());
+        b.add("content-size: ", arangodb::velocypack::Value(_body.length()))
+        ;
       }
     }
   b.close();  

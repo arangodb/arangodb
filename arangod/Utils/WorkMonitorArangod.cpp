@@ -127,7 +127,7 @@ void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
-  auto response = std::make_unique<HttpResponse>(HttpResponse::OK,
+  auto response = std::make_unique<GeneralResponse>(GeneralResponse::OK,
                                                  GeneralRequest::MinCompatibility);
 
   response->setContentType("application/json; charset=utf-8");

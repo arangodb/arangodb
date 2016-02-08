@@ -249,13 +249,13 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isCoordinator()) {
-        generateError(HttpResponse::FORBIDDEN,
+        generateError(GeneralResponse::FORBIDDEN,
                       TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
       } else {
         handleCommandClusterInventory();
       }
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid command");
     }
 
@@ -264,10 +264,10 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
 BAD_CALL:
   if (len != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "expecting URL /_api/replication/<command>");
   } else {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+    generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
@@ -324,7 +324,7 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
 
 bool RestReplicationHandler::isCoordinatorError() {
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-    generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(GeneralResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
     return true;
   }
@@ -429,7 +429,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     VPackSlice slice = json.slice();
     generateResult(slice);
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
@@ -462,7 +462,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
     b.close();
     generateResult(b.slice());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
@@ -498,7 +498,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
     b.close();
     generateResult(b.slice());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
@@ -528,7 +528,7 @@ void RestReplicationHandler::handleCommandBatch() {
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -540,7 +540,7 @@ void RestReplicationHandler::handleCommandBatch() {
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
       return;
     }
 
@@ -553,7 +553,7 @@ void RestReplicationHandler::handleCommandBatch() {
       VPackSlice s = b.slice();
       generateResult(s);
     } catch (...) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }
@@ -565,7 +565,7 @@ void RestReplicationHandler::handleCommandBatch() {
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -577,9 +577,9 @@ void RestReplicationHandler::handleCommandBatch() {
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      createResponse(HttpResponse::NO_CONTENT);
+      createResponse(GeneralResponse::NO_CONTENT);
     } else {
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
     }
     return;
   }
@@ -591,15 +591,15 @@ void RestReplicationHandler::handleCommandBatch() {
     int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      createResponse(HttpResponse::NO_CONTENT);
+      createResponse(GeneralResponse::NO_CONTENT);
     } else {
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
     }
     return;
   }
 
   // we get here if anything above is invalid
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
@@ -611,7 +611,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   // First check the DBserver component of the body json:
   ServerID DBserver = _request->value("DBserver");
   if (DBserver.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "need \"DBserver\" parameter");
     return;
   }
@@ -647,7 +647,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
-    generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
+    generateError(GeneralResponse::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");
     return;
   }
@@ -655,7 +655,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
-      generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
+      generateError(GeneralResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
                     "lost connection within cluster");
       return;
     }
@@ -665,7 +665,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   bool dummy;
-  createResponse(static_cast<HttpResponse::HttpResponseCode>(
+  createResponse(static_cast<GeneralResponse::HttpResponseCode>(
       res->result->getHttpReturnCode()));
   _response->setContentType(res->result->getHeaderField("content-type", dummy));
   _response->body().swap(&(res->result->getBody()));
@@ -703,7 +703,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   if (found && (tickStart > tickEnd || tickEnd == 0)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -731,20 +731,20 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     try {
       parsedRequest = _request->toVelocyPack(&options);
     } catch (...) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
     VPackSlice const slice = parsedRequest->slice();
     if (!slice.isArray()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
 
     for (auto const& id : VPackArrayIterator(slice)) {
       if (id.isString()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");
         return;
       }
@@ -771,9 +771,9 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        createResponse(HttpResponse::NO_CONTENT);
+        createResponse(GeneralResponse::NO_CONTENT);
       } else {
-        createResponse(HttpResponse::OK);
+        createResponse(GeneralResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -815,7 +815,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -848,7 +848,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   }
 
   if (found && (tickStart > tickEnd || tickEnd == 0)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -867,9 +867,9 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        createResponse(HttpResponse::NO_CONTENT);
+        createResponse(GeneralResponse::NO_CONTENT);
       } else {
-        createResponse(HttpResponse::OK);
+        createResponse(GeneralResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -896,7 +896,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -952,7 +952,7 @@ void RestReplicationHandler::handleCommandInventory() {
 
     generateResult(builder.slice());
   } catch (std::bad_alloc&) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
@@ -981,16 +981,16 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
     AgencyCommLocker locker("Plan", "READ");
     if (!locker.successful()) {
-      generateError(HttpResponse::SERVER_ERROR,
+      generateError(GeneralResponse::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     } else {
       result = _agency.getValues(prefix, false);
       if (!result.successful()) {
-        generateError(HttpResponse::SERVER_ERROR,
+        generateError(GeneralResponse::SERVER_ERROR,
                       TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
       } else {
         if (!result.parse(prefix + "/", false)) {
-          generateError(HttpResponse::SERVER_ERROR,
+          generateError(GeneralResponse::SERVER_ERROR,
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
         } else {
           VPackBuilder resultBuilder;
@@ -1020,7 +1020,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             resultBuilder.add("tick", VPackValue(tickString));
             resultBuilder.add("state", VPackValue("unused"));
           }
-          generateResult(HttpResponse::OK, resultBuilder.slice());
+          generateResult(GeneralResponse::OK, resultBuilder.slice());
         }
       }
     }
@@ -1174,7 +1174,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   try {
     parsedRequest = _request->toVelocyPack(&options);
   } catch (...) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return;
   }
@@ -1219,7 +1219,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   } else {
     try {
       VPackBuilder result;
@@ -1247,7 +1247,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   try {
     parsedRequest = _request->toVelocyPack(&options);
   } catch (...) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return;
   }
@@ -1269,7 +1269,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   } else {
     try {
       VPackBuilder result;
@@ -2092,7 +2092,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
   char const* value = _request->value("collection");
 
   if (value == nullptr) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter, not given");
     return;
   }
@@ -2105,7 +2105,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
     std::string msg = "invalid collection parameter: '";
     msg += value;
     msg += "', cid is 0";
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return;
   }
 
@@ -2127,9 +2127,9 @@ void RestReplicationHandler::handleCommandRestoreData() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
     } else {
-      generateError(HttpResponse::responseCode(res), res,
+      generateError(GeneralResponse::responseCode(res), res,
                     std::string(TRI_errno_string(res)) + ": " + errorMsg);
     }
   } else {
@@ -2154,7 +2154,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   char const* name = _request->value("collection");
 
   if (name == nullptr) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
@@ -2167,7 +2167,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(GeneralResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
 
@@ -2302,8 +2302,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     for (count = (int)(*shardIdsMap).size(); count > 0; count--) {
       auto result = cc->wait("", coordTransactionID, 0, "", 0.0);
       if (result.status == CL_COMM_RECEIVED) {
-        if (result.answer_code == arangodb::rest::HttpResponse::OK ||
-            result.answer_code == arangodb::rest::HttpResponse::CREATED) {
+        if (result.answer_code == arangodb::rest::GeneralResponse::OK ||
+            result.answer_code == arangodb::rest::GeneralResponse::CREATED) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
@@ -2335,7 +2335,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             LOG_ERROR("result body is no object");
           }
         } else if (result.answer_code ==
-                   arangodb::rest::HttpResponse::SERVER_ERROR) {
+                   arangodb::rest::GeneralResponse::SERVER_ERROR) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
@@ -2389,7 +2389,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res, errorMsg);
+    generateError(GeneralResponse::responseCode(res), res, errorMsg);
     return;
   }
   try {
@@ -2411,7 +2411,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   char const* collection = _request->value("collection");
 
   if (collection == nullptr) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
@@ -2430,7 +2430,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
       TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
-    generateError(HttpResponse::NOT_FOUND,
+    generateError(GeneralResponse::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
@@ -2485,7 +2485,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -2497,7 +2497,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/replication/keys/<keys-id>");
     return;
   }
@@ -2534,7 +2534,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
@@ -2577,7 +2577,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -2589,7 +2589,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/replication/keys/<keys-id>");
     return;
   }
@@ -2626,7 +2626,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   } else if (strcmp(value, "docs") == 0) {
     keys = false;
   } else {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid 'type' value");
     return;
   }
@@ -2647,7 +2647,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
@@ -2671,7 +2671,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
       collectionKeys->release();
 
-      generateResult(HttpResponse::OK, json.json());
+      generateResult(GeneralResponse::OK, json.json());
     } catch (...) {
       collectionKeys->release();
       throw;
@@ -2683,7 +2683,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -2691,7 +2691,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/replication/keys/<keys-id>");
     return;
   }
@@ -2707,11 +2707,11 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
   bool found = keys->remove(collectionKeysId);
 
   if (!found) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(GeneralResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  createResponse(HttpResponse::ACCEPTED);
+  createResponse(GeneralResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
 
   arangodb::basics::Json json(arangodb::basics::Json::Object);
@@ -2731,7 +2731,7 @@ void RestReplicationHandler::handleCommandDump() {
   char const* collection = _request->value("collection");
 
   if (collection == nullptr) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
   }
@@ -2787,7 +2787,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   if (tickStart > tickEnd || tickEnd == 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
@@ -2815,7 +2815,7 @@ void RestReplicationHandler::handleCommandDump() {
       TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
-    generateError(HttpResponse::NOT_FOUND,
+    generateError(GeneralResponse::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
@@ -2859,9 +2859,9 @@ void RestReplicationHandler::handleCommandDump() {
     size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
-      createResponse(HttpResponse::NO_CONTENT);
+      createResponse(GeneralResponse::NO_CONTENT);
     } else {
-      createResponse(HttpResponse::OK);
+      createResponse(GeneralResponse::OK);
     }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -2888,7 +2888,7 @@ void RestReplicationHandler::handleCommandDump() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
   }
 }
 
@@ -2902,7 +2902,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -2911,7 +2911,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<endpoint> must be a valid endpoint");
     return;
   }
@@ -3010,7 +3010,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       (!restrictType.empty() && config._restrictCollections.empty()) ||
       (!restrictType.empty() && restrictType != "include" &&
        restrictType != "exclude")) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
@@ -3019,7 +3019,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
 
@@ -3043,21 +3043,21 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res, errorMsg);
+    generateError(GeneralResponse::responseCode(res), res, errorMsg);
     return;
   }
 
   res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
 
   res = _vocbase->_replicationApplier->start(lastLogTick, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
 
@@ -3066,7 +3066,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
         _vocbase->_replicationApplier->toVelocyPack();
     generateResult(result->slice());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
@@ -3081,7 +3081,7 @@ void RestReplicationHandler::handleCommandSync() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -3090,7 +3090,7 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<endpoint> must be a valid endpoint");
     return;
   }
@@ -3127,7 +3127,7 @@ void RestReplicationHandler::handleCommandSync() {
       (!restrictType.empty() && restrictCollections.empty()) ||
       (!restrictType.empty() && restrictType != "include" &&
        restrictType != "exclude")) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
@@ -3159,7 +3159,7 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res, errorMsg);
+    generateError(GeneralResponse::responseCode(res), res, errorMsg);
     return;
   }
   try {
@@ -3231,7 +3231,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
     generateResult(configBuilder->slice());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
@@ -3251,7 +3251,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       parseVelocyPackBody(&options, success);
 
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -3368,7 +3368,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
 
@@ -3396,9 +3396,9 @@ void RestReplicationHandler::handleCommandApplierStart() {
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
         res == TRI_ERROR_REPLICATION_RUNNING) {
-      generateError(HttpResponse::BAD, res);
+      generateError(GeneralResponse::BAD, res);
     } else {
-      generateError(HttpResponse::SERVER_ERROR, res);
+      generateError(GeneralResponse::SERVER_ERROR, res);
     }
     return;
   }
@@ -3416,7 +3416,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
   int res = _vocbase->_replicationApplier->stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(GeneralResponse::SERVER_ERROR, res);
     return;
   }
 
@@ -3435,7 +3435,7 @@ void RestReplicationHandler::handleCommandApplierGetState() {
         _vocbase->_replicationApplier->toVelocyPack();
     generateResult(result->slice());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
@@ -3450,7 +3450,7 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
   int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(GeneralResponse::SERVER_ERROR, res);
     return;
   }
 

@@ -82,7 +82,7 @@ class BenchmarkThread : public arangodb::basics::Thread {
         _time(0.0),
         _verbose(verbose) {
     _errorHeader =
-        basics::StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
+        basics::StringUtils::tolower(rest::GeneralResponse::BatchErrorHeader);
   }
 
   //////////////////////////////////////////////////////////////////////////////

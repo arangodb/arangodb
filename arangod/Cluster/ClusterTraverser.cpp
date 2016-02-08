@@ -122,7 +122,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
     arangodb::basics::Json resultEdges(arangodb::basics::Json::Object);
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
     std::string contentType;
     std::string collName = _traverser->_edgeCols[eColIdx];
     std::vector<TraverserExpression*> expEdges;
@@ -251,7 +251,7 @@ void ClusterTraverser::setStartVertex(
   _done = false;
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
     std::map<std::string, std::string> resultHeaders;
@@ -267,7 +267,7 @@ void ClusterTraverser::setStartVertex(
     }
     ++_readDocuments;
     if (responseCode ==
-        arangodb::rest::HttpResponse::HttpResponseCode::NOT_FOUND) {
+        arangodb::rest::GeneralResponse::HttpResponseCode::NOT_FOUND) {
       _vertices.emplace(id, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
     } else {
       _vertices.emplace(id,
