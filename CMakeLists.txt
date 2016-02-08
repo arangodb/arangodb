@@ -29,6 +29,9 @@ if (NOT CMAKE_BUILD_TYPE)
     FORCE)
 endif ()
 
+# Where 2 find CMAKE modules
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+
 # ArangoDB needs c++11
 set(CMAKE_CXX_STANDARD 11)
 
@@ -99,6 +102,8 @@ elseif(APPLE)
     set(MACOSX TRUE)
   endif()
 endif()
+
+# TODO: Exclude non-supported?
 
 ## Compiler flags --------------------------------------------------------------
 # GCC 
@@ -519,6 +524,9 @@ find_package (BISON)
 
 # FLEX -------------------------------------------------------------------------
 find_package (FLEX)
+
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
 
 # zlib -------------------------------------------------------------------------
 set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
