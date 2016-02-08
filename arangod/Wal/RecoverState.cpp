@@ -950,6 +950,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       parameters._doCompact = true;
       parameters._waitForSync = vocbase->_settings.defaultWaitForSync;
       parameters._maximalSize = vocbase->_settings.defaultMaximalSize; 
+      parameters._indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
 
       value = TRI_LookupObjectJson(json, "doCompact");
       if (TRI_IsBooleanJson(value)) {
@@ -966,7 +967,13 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         parameters._maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
       }
       
+      value = TRI_LookupObjectJson(json, "indexBuckets");
+      if (TRI_IsNumberJson(value)) {
+        parameters._indexBuckets = static_cast<uint32_t>(value->_value._number);
+      }
+      
       int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters, vocbase->_settings.forceSyncProperties);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot change collection properties for collection %llu in database %llu: %s", 

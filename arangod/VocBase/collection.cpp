@@ -1335,7 +1335,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "count",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_initialCount));
   }
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_indexBuckets));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_indexBuckets));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));

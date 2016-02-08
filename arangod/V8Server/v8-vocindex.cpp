@@ -1070,7 +1070,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isVolatile));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._waitForSync));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._maximalSize));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._indexBuckets));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) parameters._indexBuckets));
 
   TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (keyOptions != nullptr) {
