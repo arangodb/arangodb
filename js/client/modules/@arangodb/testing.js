@@ -329,6 +329,10 @@ function readImportantLogLines(logPath) {
 /// # and know the PID plus the process name for later use.
 /// kernel.core_uses_pid = 1
 /// kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+///
+/// If you set coreDirectory to empty, this behavior is changed: The core file
+/// expected to be named simply "core" and should exist in the current
+/// directory.
 ////////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
@@ -340,7 +344,12 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
   command += "echo quit;";
   command += "sleep 2";
   command += ") | gdb " + storeArangodPath + " ";
-  command += options.coreDirectory + "/*core*" + pid + '*';
+
+  if (options.coreDirectory === "") {
+    command += "core";
+  } else {
+    command += options.coreDirectory + "/*core*" + pid + '*';
+  }
 
   const args = ['-c', command];
   print(JSON.stringify(args));
@@ -408,9 +417,12 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
       print("Core dump written; copying arangod to " +
         instanceInfo.tmpDataDir + " for later analysis.");
 
+      let corePath = (options.coreDirectory === "") ?
+        "core" :
+        options.coreDirectory + "/core*" + instanceInfo.pid.pid + "*'";
+
       res.gdbHint = "Run debugger with 'gdb " +
-        storeArangodPath + " " + options.coreDirectory +
-        "/core*" + instanceInfo.pid.pid + "*'";
+        storeArangodPath + " " + corePath;
 
       if (require("internal").platform.substr(0, 3) === 'win') {
         // Windows: wait for procdump to do its job...
