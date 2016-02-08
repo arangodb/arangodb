@@ -110,6 +110,10 @@ struct Profile {
 ////////////////////////////////////////////////////////////////////////////////
 
 class Query {
+ private:
+  Query(Query const&) = delete;
+  Query& operator=(Query const&) = delete;
+
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
         struct TRI_json_t*, struct TRI_json_t*, QueryPart);
