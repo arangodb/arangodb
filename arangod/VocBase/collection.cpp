@@ -844,6 +844,9 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
       }
       else if (TRI_EqualString(key->_value._string.data, "indexBuckets")) {
         parameters->_indexBuckets = static_cast<uint32_t>(value->_value._number);
+        if (parameters->_indexBuckets == 0 || parameters->_indexBuckets > 1024) {
+          parameters->_indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
+        }
       }
     }
     else if (TRI_IsStringJson(value)) {
@@ -1476,6 +1479,10 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     collection->_info._maximalSize = parameters->_maximalSize;
     collection->_info._waitForSync = parameters->_waitForSync;
     collection->_info._indexBuckets = parameters->_indexBuckets;
+    
+    if (collection->_info._indexBuckets == 0 || collection->_info._indexBuckets > 1024) {
+      collection->_info._indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
+    }
 
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:

@@ -50,6 +50,11 @@ function runSetup () {
   c.properties({ waitForSync: false, journalSize: 16 * 1024 * 1024, doCompact: true });
   c.properties({ waitForSync: true, journalSize: 4 * 1024 * 1024, doCompact: false });
   
+  db._drop("UnitTestsRecovery4");
+  c = db._create("UnitTestsRecovery4");
+  c.properties({ waitForSync: false, indexBuckets: 16 });
+  c.properties({ waitForSync: true, indexBuckets: 32 });
+
   c.save({ _key: "foo" }, true);
 
   internal.debugSegfault("crashing server");
@@ -81,18 +86,27 @@ function recoverySuite () {
       assertTrue(prop.waitForSync);
       assertEqual(8 * 1024 * 1024, prop.journalSize);
       assertFalse(prop.doCompact);
+      assertEqual(8, prop.indexBuckets);
       
       c = db._collection("UnitTestsRecovery2");
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(16 * 1024 * 1024, prop.journalSize);
       assertTrue(prop.doCompact);
+      assertEqual(8, prop.indexBuckets);
   
       c = db._collection("UnitTestsRecovery3");
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(4 * 1024 * 1024, prop.journalSize);
       assertFalse(prop.doCompact);
+      assertEqual(8, prop.indexBuckets);
+      
+      c = db._collection("UnitTestsRecovery4");
+      prop = c.properties();
+      assertTrue(prop.waitForSync);
+      assertTrue(prop.doCompact);
+      assertEqual(32, prop.indexBuckets);
     }
         
   };
