@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global $, Joi, _, alert, templateEngine*/
+/*global $, Joi, _, alert, templateEngine, window*/
 (function() {
   "use strict";
 
@@ -310,6 +310,34 @@
       showSearchBox: false,
       minimumResultsForSearch: -1,
       width: "336px"
+    });
+
+    var checkButton = function() {
+      var button = $("#modalButton1");
+        if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+          button.prop("disabled", true);
+        }
+        else {
+          button.prop("disabled", false);
+        }
+    };
+
+    $('.select2-search-field input').focusout(function() {
+      checkButton();
+      window.setTimeout(function() {
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            $('#s2id_new-app-collections').select2('close');
+            checkButton();
+          }
+        }
+      }, 80);
+    });
+    $('.select2-search-field input').focusin(function() {
+      if ($('.select2-drop').is(':visible')) {
+        var button = $("#modalButton1");
+        button.prop("disabled", true);
+      }
     });
     $("#upload-foxx-zip").uploadFile({
       url: "/_api/upload?multipart=true",
