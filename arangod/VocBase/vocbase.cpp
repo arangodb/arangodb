@@ -1871,7 +1871,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return nullptr;
   }
   
-  if (parameters->_indexBuckets == 0 || parameters->_indexBuckets >= 1024) {
+  if (parameters->_indexBuckets == 0 || parameters->_indexBuckets > 1024) {
     parameters->_indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
   }
 
