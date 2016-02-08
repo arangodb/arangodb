@@ -64,21 +64,21 @@
       }
       var query = " FILTER", res = '',
       parts = _.map(this.filters, function(f, i) {
-        if (f.op === 'IN') {
+        if (f.op === 'IN' || f.op === 'NOT IN') {
           res = ' ';
         }
         else {
           res = " x.`";
         }
         res += f.attr;
-        if (f.op !== 'IN') {
-          res += "` ";
-        }
-        else {
+        if (f.op === 'IN' || f.op === 'NOT IN') {
           res += " ";
         }
+        else {
+          res += "` ";
+        }
         res += f.op;
-        if (f.op === 'IN') {
+        if (f.op === 'IN' || f.op === 'NOT IN') {
           res += " x.@param";
         }
         else {
