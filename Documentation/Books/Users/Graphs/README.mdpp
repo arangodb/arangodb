@@ -27,11 +27,11 @@ They use the ful spectrum of ArangoDBs graph features. You may access them via s
    - [AQL Graph traversals](../Aql/GraphTraversals.md) on both named and anonymous graphs
    - [AQL operations on named Graphs](../Aql/GraphOperations.md)
    - [AQL operations on raw vertex & edge collections](../Aql/GraphFunctions.md)
- - [the RESTful General Graph interface](../HttpGharial/README.md)
  - [The javascript General Graph implementation, as you may use it in FOXX Services](../GeneralGraphs/README.md)
-    * [Graph Management](../GeneralGraphs/Management.md)
-    * [Graph Functions](../GeneralGraphs/Functions.md)
-    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md)
+    * [Graph Management](../GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+    * [Graph Functions](../GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
+    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
+ - [the RESTful General Graph interface](../HttpGharial/README.md) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions
 
