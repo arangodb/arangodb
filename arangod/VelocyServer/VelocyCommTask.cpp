@@ -43,24 +43,24 @@ size_t const VelocyCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 M
 size_t const VelocyCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
 size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
-typedef struct
-{
-  unsigned int x : 1; // minimum 1 bit
-} uint1_t;
+// typedef struct // @TODO: Remove this
+// {
+//   unsigned int x : 1; // minimum 1 bit
+// } uint1_t;
 
-typedef struct 
-{
-  unsigned int y: 31; // minimum 31 bits
-} uint31_t;
+// typedef struct 
+// {
+//   unsigned int y: 31; // minimum 31 bits
+// } uint31_t;
 
-struct Vstream {
-  uint32_t length;
-  uint31_t chunk; //use .x to access value
-  uint1_t isFirstChunk; //use .y to access value
-  uint64_t messageId;
-  Builder s1;
-  Builder s2;
-};
+// struct Vstream {
+//   uint32_t length;
+//   uint31_t chunk; //use .x to access value
+//   uint1_t isFirstChunk; //use .y to access value
+//   uint64_t messageId;
+//   Builder s1;
+//   Builder s2;
+// };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
@@ -147,55 +147,11 @@ void VelocyCommTask::handleResponse(GeneralResponse* response) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieve object from Slice(VPack) and return as string
-////////////////////////////////////////////////////////////////////////////////
-
-string getValue(arangodb::velocypack::Slice s) {
-  string result;
-  arangodb::velocypack::ValueLength len;
-  switch(s.type()) {
-    case arangodb::velocypack::ValueType::String  :try{
-                                                    result = s.getString(len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("String Parse error: '%s'", e.what());
-                                                  }
-                                                 break;
-    case arangodb::velocypack::ValueType::Double :try{
-                                                    result = std::string(s.getDouble(), len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("Double Parse error: '%s'", e.what());
-                                                  }
-                                                 break;
-    case arangodb::velocypack::ValueType::Int  : try{
-                                                  result = std::string(s.getInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Int Parse error: '%s'", e.what());
-                                                 }
-                                                 break;
-    case arangodb::velocypack::ValueType::UInt : try{
-                                                  result = std::string(s.getUInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
-                                                 }
-                                                 break;
-    case arangodb::velocypack::ValueType::Bool : try{
-                                                  result = std::string(s.getBool(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Boolean Parse error: '%s'", e.what());
-                                                 }
-                                                 break;
-    default : result = "";
-              break;
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VelocyCommTask::processRead() {
-  if (_requestPending == NULL || _readBufferVstream == arangodb::velocypack::ValueType::Null) {
+  if (_requestPending && _readBufferVstream == arangodb::velocypack::ValueType::Null) {
     return false;
   }
   bool handleRequest = false;
@@ -205,7 +161,7 @@ bool VelocyCommTask::processRead() {
 	  	// starting a new request
 	    if (_newRequest) {
 	      // acquire a new statistics entry for the request
-	      // RequestStatisticsAgent::acquire(); // @TODO: What does this do ?? need to understand
+	      RequestStatisticsAgent::acquire();
 
 	      _newRequest = false;
 	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
@@ -217,11 +173,9 @@ bool VelocyCommTask::processRead() {
 	      _sinceCompactification++;
 	    }
 
-	    // Insert a case which handles null velocypack value (header + body)
+      requestStatisticsAgentSetReadStart();
 
-	    // requestStatisticsAgentSetReadStart(); // @TODO: What does this do ?? need to understand
-
-	    if (isFirstChunk && _readBufferVstream.byteSize() > MaximalHeaderSize) {
+	    if (_isFirstChunk && _readBufferVstream.byteSize() > MaximalHeaderSize) {
 	      LOG_WARNING("maximal header size is %d, request header size is %d",
 	                  (int)MaximalHeaderSize, (int)_readBufferVstream.byteSize());
 
@@ -229,8 +183,6 @@ bool VelocyCommTask::processRead() {
 	      GeneralResponse response(VstreamResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
 	                            getCompatibility());
 
-	      // we need to close the connection, because there is no way we
-	      // know what to remove and then continue
 	      resetState(true);
 	      handleResponse(&response);
 
@@ -240,7 +192,7 @@ bool VelocyCommTask::processRead() {
 	if (_readBufferVstream != arangodb::velocypack::ValueType::Null) {
 
 	  // @TODO: Create a new handler in HandlerFactory for VelocyStream
-
+    /// insert _request here
       // // check that we know, how to serve this request and update the connection
       // // information, i. e. client and server addresses and ports and create a
       // // request context for that request
@@ -284,7 +236,7 @@ bool VelocyCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        GeneralResponse response(VstreamResponse::REQUEST_URI_TOO_LONG,
+        GeneralResponse response(VstreamResponse::REQUEST_URL_TOO_LONG,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -333,7 +285,10 @@ bool VelocyCommTask::processRead() {
         case GeneralRequest::VSTEAM_REQUEST_OPTIONS:
         case GeneralRequest::VSTREAM_REQUEST_POST:
         case GeneralRequest::VSTREAM_REQUEST_PUT:
-        case GeneralRequest::VSTREAM_REQUEST_PATCH: {
+        case GeneralRequest::VSTREAM_REQUEST_PATCH: 
+        case GeneralRequest::VSTREAM_REQUEST_CRED:
+        case GeneralRequest::VSTREAM_REQUEST_REGISTER:
+        case GeneralRequest::VSTREAM_REQUEST_STATUS:{
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
@@ -341,13 +296,16 @@ bool VelocyCommTask::processRead() {
                _requestType == GeneralRequest::VSTREAM_REQUEST_PUT ||
                _requestType == GeneralRequest::VSTREAM_REQUEST_PATCH ||
                _requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE);
+               _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE ||
+               _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
+               _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
+               _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
 
           if (!checkContentLength(expectContentLength)) {
             return false;
           }
 
-        if(!isFirstChunk){ 
+        if(!_isFirstChunk){ 
           if (_readBufferVstream.byteSize() == 0) {
             handleRequest = true;
           }
@@ -357,7 +315,7 @@ bool VelocyCommTask::processRead() {
 
         default: {
 
-          LOG_WARNING( "got corrupted HTTP request ");
+          LOG_WARNING( "got corrupted VELOCYSTREAM request ");
 
           // bad request, method not allowed
           GeneralResponse response(VstreamResponse::METHOD_NOT_ALLOWED,
@@ -422,7 +380,7 @@ bool VelocyCommTask::processRead() {
   } 
 
   // readRequestBody might have changed, so cannot use else
-  if (!isFirstChunk) {
+  if (!_isFirstChunk) {
 
     // read "bodyLength" from read buffer and add this body to "GeneralRequest"
     _request->setBody(_readBufferVstream, _readBufferVstream.byteSize());
@@ -437,7 +395,7 @@ bool VelocyCommTask::processRead() {
   if (!handleRequest) {
     return false;
   }
-  if(!isFirstChunk){
+  if(!_isFirstChunk){
   	requestStatisticsAgentSetReadEnd();
   	requestStatisticsAgentAddReceivedBytes(_readBufferVstream.byteSize());
   }
@@ -485,12 +443,12 @@ bool VelocyCommTask::processRead() {
     GeneralResponse response(authResult, compatibility);
 
     Builder b;                                                                                                         
-	b.add(Value(ValueType::Object));                                                                                   
-	b.add("error", Value("true"));                                                                              
-	b.add("errorMessage", Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
-	b.add("code:", Value(to_string((int)authResult)));                                                 
-	b.add("errorNum", Value(to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
-	b.close()
+  	b.add(Value(ValueType::Object));                                                                                   
+  	b.add("error", Value("true"));                                                                              
+  	b.add("errorMessage", Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
+  	b.add("code:", Value(to_string((int)authResult)));                                                 
+  	b.add("errorNum", Value(to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
+  	b.close()
 
     clearRequest();
     handleResponse(&b); // Create a response for builder objects
@@ -500,12 +458,12 @@ bool VelocyCommTask::processRead() {
   else if (authResult == VstreamResponse::FORBIDDEN) {
     VstreamResponse response(authResult, compatibility);
     Builder b;                                                                                                         
-	b.add(Value(ValueType::Object));                                                                                   
-	b.add("error", Value("true"));                                                                              
-	b.add("errorMessage", Value("change password")));                                                                                  
-	b.add("code:", Value(to_string((int)authResult)));                                                 
-	b.add("errorNum", Value(to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
-	b.close()
+  	b.add(Value(ValueType::Object));                                                                                   
+  	b.add("error", Value("true"));                                                                              
+  	b.add("errorMessage", Value("change password")));                                                                                  
+  	b.add("code:", Value(to_string((int)authResult)));                                                 
+  	b.add("errorNum", Value(to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
+  	b.close()
 
     clearRequest();
     handleResponse(&b);
