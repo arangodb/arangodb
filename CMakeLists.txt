@@ -115,10 +115,21 @@ if (CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 endif ()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set (CMAKE_COMPILER_IS_CLANG 1)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES  "Intel")
+  set (CMAKE_COMPILER_IS_INTEL 1)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES  "MSVC")
+  set (CMAKE_COMPILER_IS_INTEL 1)
+endif()
+
 # OSX
 if (APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -stdlib=libc++")
-  add_definitions("-Wno-deprecated-declarations")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
+  if (CMAKE_COMPILER_IS_CLANG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    add_definitions("-Wno-deprecated-declarations")
+  endif()
 endif ()
 
 # Visual Studio
