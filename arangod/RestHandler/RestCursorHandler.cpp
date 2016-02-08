@@ -153,7 +153,6 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
-        queryResult.json = nullptr;
         result.add("hasMore", VPackValue(false));
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
                                                                 false)) {

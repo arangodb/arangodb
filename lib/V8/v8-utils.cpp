@@ -157,7 +157,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename << "': " << TRI_last_error();
+    LOG(ERR) << "cannot load java script file '" << filename
+             << "': " << TRI_last_error();
     return false;
   }
 
@@ -175,7 +176,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   if (content == nullptr) {
-    LOG(ERR) << "cannot load java script file '" << filename << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+    LOG(ERR) << "cannot load java script file '" << filename
+             << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -195,7 +197,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
-    LOG(ERR) << "cannot load java script file '" << filename << "': compilation failed.";
+    LOG(ERR) << "cannot load java script file '" << filename
+             << "': compilation failed.";
     return false;
   }
 
@@ -759,7 +762,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG(TRACE) << "downloading file. endpoint: " << endpoint.c_str() << ", relative URL: " << url.c_str();
+    LOG(TRACE) << "downloading file. endpoint: " << endpoint.c_str()
+               << ", relative URL: " << url.c_str();
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
@@ -931,7 +935,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName << "' from sandbox to context";
+          LOG(TRACE) << "copying key '" << *keyName
+                     << "' from sandbox to context";
         }
       }
 
@@ -1002,7 +1007,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != nullptr) {
-          LOG(TRACE) << "copying key '" << *keyName << "' from context to sandbox";
+          LOG(TRACE) << "copying key '" << *keyName
+                     << "' from context to sandbox";
         }
       }
 
@@ -1606,6 +1612,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(content, length),
                                          filename->ToString(), false);
+  
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     // restore old values for __dirname and __filename
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -1630,7 +1638,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -1697,9 +1704,11 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ///
 /// @FUN{internal.logLevel()}
 ///
-/// Returns the current log-level as string.
+/// Returns the current global log-level as string.
 ///
-/// @verbinclude fluent37
+/// @FUN{internal.logLevel(true)}
+///
+/// Returns all topic log-level as vector of strings.
 ///
 /// @FUN{internal.logLevel(@FA{level})}
 ///
@@ -1711,8 +1720,6 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// - info
 /// - debug
 /// - trace
-///
-/// @verbinclude fluent38
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1720,12 +1727,33 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (1 <= args.Length()) {
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, args[0]);
+    if (args[0]->IsBoolean()) {
+      auto levels = Logger::logLevelTopics();
+      size_t n = levels.size();
+      v8::Handle<v8::Array> object =
+          v8::Array::New(isolate, static_cast<int>(n));
 
-    TRI_SetLogLevelLogging(*str);
+      uint32_t pos = 0;
+
+      for (auto level : levels) {
+        std::string output =
+            level.first + "=" + Logger::translateLogLevel(level.second);
+        v8::Handle<v8::String> val = TRI_V8_STD_STRING(output);
+
+        object->Set(pos++, val);
+      }
+
+      TRI_V8_RETURN(object);
+    } else {
+      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, args[0]);
+      Logger::setLogLevel(*str);
+      TRI_V8_RETURN_UNDEFINED();
+    }
+  } else {
+    auto level = Logger::translateLogLevel(Logger::logLevel());
+    TRI_V8_RETURN_STRING(level.c_str());
   }
 
-  TRI_V8_RETURN_STRING(TRI_LogLevelLogging());
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3679,13 +3707,15 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       }
     } else {
       if (exceptionString == nullptr) {
-        result = "JavaScript exception in file '" + std::string(filenameString) +
-                 "' at " + StringUtils::itoa(linenum) + "," +
-                 StringUtils::itoa(start) + "\n";
+        result = "JavaScript exception in file '" +
+                 std::string(filenameString) + "' at " +
+                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
+                 "\n";
       } else {
-        result = "JavaScript exception in file '" + std::string(filenameString) +
-                 "' at " + StringUtils::itoa(linenum) + "," +
-                 StringUtils::itoa(start) + ": " + exceptionString + "\n";
+        result = "JavaScript exception in file '" +
+                 std::string(filenameString) + "' at " +
+                 StringUtils::itoa(linenum) + "," + StringUtils::itoa(start) +
+                 ": " + exceptionString + "\n";
       }
     }
 
@@ -3754,9 +3784,12 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
       }
     } else {
       if (exceptionString == nullptr) {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start;
+        LOG(ERR) << "JavaScript exception in file '" << filenameString
+                 << "' at " << linenum << "," << start;
       } else {
-        LOG(ERR) << "JavaScript exception in file '" << filenameString << "' at " << linenum << "," << start << ": " << exceptionString;
+        LOG(ERR) << "JavaScript exception in file '" << filenameString
+                 << "' at " << linenum << "," << start << ": "
+                 << exceptionString;
       }
     }
 
@@ -3901,8 +3934,9 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
   v8::HandleScope scope(isolate);
 
   if (autoPrepend) {
-    CreateErrorObject(isolate, errorNumber,
-                      message + ": " + std::string(TRI_errno_string(errorNumber)));
+    CreateErrorObject(
+        isolate, errorNumber,
+        message + ": " + std::string(TRI_errno_string(errorNumber)));
   } else {
     CreateErrorObject(isolate, errorNumber, message);
   }

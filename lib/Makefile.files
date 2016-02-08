@@ -37,7 +37,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/levenshtein.cpp \
 	lib/Basics/locks-posix.cpp \
-	lib/Basics/logging.cpp \
 	lib/Basics/Logger.cpp \
 	lib/Basics/memory-map-posix.cpp \
 	lib/Basics/memory.cpp \

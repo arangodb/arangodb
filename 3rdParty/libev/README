@@ -24,23 +24,23 @@ ABOUT
    - relative timers/timeouts (handle time jumps).
    - fast intra-thread communication between multiple
      event loops (with optional fast linux eventfd backend).
-   - extremely easy to embed.
-   - very small codebase, no bloated library.
+   - extremely easy to embed (fully documented, no dependencies,
+     autoconf supported but optional).
+   - very small codebase, no bloated library, simple code.
    - fully extensible by being able to plug into the event loop,
      integrate other event loops, integrate other event loop users.
    - very little memory use (small watchers, small event loop data).
    - optional C++ interface allowing method and function callbacks
      at no extra memory or runtime overhead.
    - optional Perl interface with similar characteristics (capable
-     of running Glib/Gtk2 on libev, interfaces with Net::SNMP and
-     libadns).
+     of running Glib/Gtk2 on libev).
    - support for other languages (multiple C++ interfaces, D, Ruby,
      Python) available from third-parties.
 
-   Examples of programs that embed libev: the EV perl module,
-   rxvt-unicode, gvpe (GNU Virtual Private Ethernet), the Deliantra MMORPG
-   server (http://www.deliantra.net/), Rubinius (a next-generation Ruby
-   VM), the Ebb web server, the Rev event toolkit.
+   Examples of programs that embed libev: the EV perl module, node.js,
+   auditd, rxvt-unicode, gvpe (GNU Virtual Private Ethernet), the
+   Deliantra MMORPG server (http://www.deliantra.net/), Rubinius (a
+   next-generation Ruby VM), the Ebb web server, the Rev event toolkit.
 
 
 CONTRIBUTORS

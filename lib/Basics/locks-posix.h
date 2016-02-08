@@ -44,10 +44,10 @@
 /// @brief condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_condition_s {
+struct TRI_condition_t {
   pthread_cond_t _cond;
-  pthread_mutex_t* _mutex;
-} TRI_condition_t;
+  pthread_mutex_t _mutex;
+};
 
 #endif
 

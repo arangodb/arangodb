@@ -1215,66 +1215,6 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if collection _trx is present and build a set of entries
-/// with it. this is done to ensure compatibility with old datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ScanTrxCallback(TRI_doc_mptr_t const* mptr,
-                            TRI_document_collection_t* document, void* data) {
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
-
-  char const* key = TRI_EXTRACT_MARKER_KEY(mptr);  // PROTECTED by trx in caller
-
-  if (vocbase->_oldTransactions == nullptr) {
-    vocbase->_oldTransactions = new std::set<TRI_voc_tid_t>;
-  }
-
-  uint64_t tid = TRI_UInt64String(key);
-
-  vocbase->_oldTransactions->insert(static_cast<TRI_voc_tid_t>(tid));
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if collection _trx is present and build a set of entries
-/// with it. this is done to ensure compatibility with old datafiles
-////////////////////////////////////////////////////////////////////////////////
-
-static int ScanTrxCollection(TRI_vocbase_t* vocbase) {
-  TRI_vocbase_col_t* collection =
-      TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_TRANSACTION);
-
-  if (collection == nullptr) {
-    // collection not found, no problem - seems to be a newer ArangoDB version
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int res = TRI_ERROR_INTERNAL;
-
-  {
-    arangodb::SingleCollectionReadOnlyTransaction trx(
-        new arangodb::StandaloneTransactionContext(), vocbase,
-        collection->_cid);
-
-    res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    TRI_DocumentIteratorDocumentCollection(&trx, trx.documentCollection(),
-                                           vocbase, &ScanTrxCallback);
-
-    trx.finish(res);
-  }
-
-  // don't need the collection anymore, so unload it
-  TRI_UnloadCollectionVocBase(vocbase, collection, true);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
 /// a number, and type and ending are arbitrary letters
@@ -1459,8 +1399,6 @@ TRI_vocbase_t* TRI_OpenVocBase(TRI_server_t* server, char const* path,
 
     return nullptr;
   }
-
-  ScanTrxCollection(vocbase);
 
   // .............................................................................
   // vocbase is now active
@@ -2357,7 +2295,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
       _authInfoLoaded(false),
       _hasCompactor(false),
       _isOwnAppsDirectory(true),
-      _oldTransactions(nullptr),
       _replicationApplier(nullptr) {
   _queries = new arangodb::aql::QueryList(this);
   _cursorRepository = new arangodb::CursorRepository(this);
@@ -2401,8 +2338,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   if (_replicationApplier != nullptr) {
     delete _replicationApplier;
   }
-
-  delete _oldTransactions;
 
   TRI_DestroyCondition(&_cleanupCondition);
   TRI_DestroyCondition(&_compactorCondition);

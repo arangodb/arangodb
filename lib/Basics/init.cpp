@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "init.h"
+
+#include "Basics/Logger.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize function
@@ -39,7 +42,7 @@ void TRI_InitializeC(int argc, char* argv[]) {
   TRI_InitializeError();
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
   TRI_InitializeHashes();
   TRI_InitializeRandom();
   TRI_InitializeProcess(argc, argv);
@@ -53,7 +56,7 @@ void TRI_ShutdownC() {
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
-  TRI_ShutdownLogging(true);
+  Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
   TRI_ShutdownError();

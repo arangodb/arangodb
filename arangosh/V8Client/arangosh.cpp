@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
 #include <iostream>
 
 #include <v8.h>
@@ -30,13 +31,14 @@
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Logger.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/Logger.h"
+#include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
@@ -1516,8 +1518,27 @@ static std::string BuildPrompt() {
         result.push_back(c);
       } else if (c == 'd') {
         result.append(BaseClient.databaseName());
-      } else if (c == 'e') {
-        result.append(BaseClient.endpointString());
+      } else if (c == 'e' || c == 'E') {
+        std::string ep;
+
+        if (ClientConnection == nullptr) {
+          ep = "none";
+        } else {
+          ep = BaseClient.endpointString();
+        }
+
+        if (c == 'E') {
+          // replace protocol
+          if (ep.find("tcp://") == 0) {
+            ep = ep.substr(6);
+          } else if (ep.find("ssl://") == 0) {
+            ep = ep.substr(6);
+          } else if (ep.find("unix://") == 0) {
+            ep = ep.substr(7);
+          }
+        }
+
+        result.append(ep);
       } else if (c == 'u') {
         result.append(BaseClient.username());
       }
@@ -1567,12 +1588,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   while (true) {
     // set up prompts
-    std::string dynamicPrompt;
-    if (ClientConnection != nullptr) {
-      dynamicPrompt = BuildPrompt();
-    } else {
-      dynamicPrompt = "disconnected> ";
-    }
+    std::string dynamicPrompt = BuildPrompt();
 
     std::string goodPrompt;
     std::string badPrompt;
@@ -2433,7 +2449,7 @@ int main(int argc, char* args[]) {
   TRIAGENS_C_INITIALIZE(argc, args);
   TRIAGENS_REST_INITIALIZE(argc, args);
 
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
 
   {
     std::ostringstream foxxManagerHelp;

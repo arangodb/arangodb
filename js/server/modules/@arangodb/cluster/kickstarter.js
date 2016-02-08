@@ -324,7 +324,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   if (cmd.extremeVerbosity) {
     console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
   }
-  var res = download(url + "Launchers/" + encode(cmd.name), "", { method: "GET",
+  var res = download(url + "Dispatcher/Launchers/" + encode(cmd.name), "", { method: "GET",
                                                        followRedirects: true });
   if (res.code !== 200) {
     return {"error": true, "isStartServers": true, "suberror": res};
@@ -338,30 +338,32 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   var servers = info.DBservers.concat(info.Coordinators);
   roles = [];
   for (i = 0; i < info.DBservers.length; i++) {
-    roles.push("DBserver");
+    roles.push("PRIMARY");
   }
   for (i = 0; i < info.Coordinators.length; i++) {
-    roles.push("Coordinator");
+    roles.push("COORDINATOR");
   }
   pids = [];
   endpoints = [];
   endpointNames = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
+
+    var serverUrl = url + "Dispatcher/Endpoints/" + encodeURIComponent(id);
     if (cmd.extremeVerbosity) {
-      console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
+      console.info("Downloading ", serverUrl);
     }
-    res = download(url + "Target/MapIDToEndpoint/" + id);
+    res = download(serverUrl);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
               "isStartServers": true, "suberror": res};
     }
     console.info("Starting server %s",id);
     body = JSON.parse(res.body);
-    ep = JSON.parse(body.node.value);
+    ep = body.node.value;
     port = getPort(ep);
     var useSSL = false;
-    if (roles[i] === "DBserver") {
+    if (roles[i] === "PRIMARY") {
       args = ["--configuration", ArangoServerState.dbserverConfig()];
       useSSL = cmd.useSSLonDBservers;
     }
@@ -372,7 +374,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
             "--cluster.disable-dispatcher-frontend", "true",
-            "--cluster.my-id", id,
+            "--cluster.my-local-info", id,
+            "--cluster.my-role", roles[i],
+            "--cluster.my-address", ep,
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
@@ -413,10 +417,10 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if ((cmd.valgrind !== '') &&
         (cmd.valgrindHosts !== undefined) &&
         (cmd.valgrindHosts.indexOf(roles[i]) > -1)) {
-      var valgrindopts = cmd.valgrindopts.concat(
+      var valgrindOpts = cmd.valgrindOpts.concat(
         ["--xml-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
          "--log-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
-      var newargs = valgrindopts.concat([arangodPath]).concat(args);
+      var newargs = valgrindOpts.concat([arangodPath]).concat(args);
       var cmdline = cmd.valgrind;
       pids.push(executeExternal(cmdline, newargs));
     }

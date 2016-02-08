@@ -276,8 +276,6 @@ struct TRI_vocbase_t {
   bool _hasCompactor;
   bool _isOwnAppsDirectory;
 
-  std::set<TRI_voc_tid_t>* _oldTransactions;
-
   class TRI_replication_applier_t* _replicationApplier;
 
   arangodb::basics::ReadWriteLock _replicationClientsLock;
