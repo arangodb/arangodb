@@ -2996,6 +2996,7 @@ const recoveryTests = [
 
 testFuncs.recovery = function(options) {
   let results = {};
+  let status = true;
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -3010,9 +3011,17 @@ testFuncs.recovery = function(options) {
     }
 
     results[test] = instanceInfo.pid;
+
+    if (!results[test].status) {
+      status = false;
+    }
   }
 
-  return results;
+  results.status = status;
+
+  return {
+    recovery: results
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3852,7 +3861,6 @@ function unitTest(which, options) {
       if (thisReply.hasOwnProperty(i)) {
         if (thisReply[i].status !== true) {
           ok = false;
-          allok = false;
         }
       }
     }
@@ -3861,7 +3869,7 @@ function unitTest(which, options) {
     results.status = ok;
     results.crashed = serverCrashed;
 
-    if (allok) {
+    if (ok) {
       cleanupDBDirectories(options);
     } else {
       print("since some tests weren't successfully, not cleaning up: \n" +
@@ -3873,7 +3881,7 @@ function unitTest(which, options) {
     if (jsonReply === true) {
       return results;
     } else {
-      return allok;
+      return ok;
     }
   }
 
