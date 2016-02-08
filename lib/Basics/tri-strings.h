@@ -211,7 +211,7 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
 
 char* TRI_EscapeControlsCString(TRI_memory_zone_t*, char const* in,
                                 size_t inLength, size_t* outLength,
-                                bool appendNewline);
+                                bool appendNewline, bool truncate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using unicode escapes

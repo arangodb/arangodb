@@ -95,6 +95,7 @@ dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
 tr_FREEBSD="no"
+tr_SOLARIS="no"
 tr_ARM="no"
 
 case $target in
@@ -104,6 +105,15 @@ case $target in
 
   *-*-freebsd*)
     tr_FREEBSD="yes"
+    ;;
+
+  *-*-solaris*)
+    tr_SOLARIS="yes"
+    CC="gcc -std=gnu99"
+    CPPFLAGS=" -I/opt/local/include -L/opt/local/lib"
+    CXXFLAGS="-static-libstdc++ -D_GLIBCXX_USE_C99"
+    LDFLAGS="-Wl,-rpath,/opt/local/lib,-lnsl,-lsocket -L/opt/local/lib"
+    LIBEV_FLAGS="${LIBEV_FLAGS} -D _REENTRANT=1 -D HAVE_PORT_H=1 -D EV_USE_PORT=1 -D EV_USE_INOTIFY=0 -D EV_USE_EVENTFD=0"
     ;;
 
   armv7l-*-linux-gnueabihf)
@@ -125,6 +135,7 @@ esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
 AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_SOLARIS, test "x$tr_SOLARIS" = xyes)
 AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
@@ -571,11 +582,13 @@ LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev -DTRI_LIBEV_VERSION='\"${LIBEV_VERSIO
 LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
 LIBEV_LDFLAGS=""
 LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
+LIBEV_FLAGS="${LIBEV_FLAGS}"
 
 AC_SUBST(LIBEV_VERSION)
 AC_SUBST(LIBEV_CPPFLAGS)
 AC_SUBST(LIBEV_LDFLAGS)
 AC_SUBST(LIBEV_LIBS)
+AC_SUBST(LIBEV_FLAGS)
 
 LIB_INFO="$LIB_INFO|LIBEV: 3rdParty version"
 LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
@@ -583,6 +596,7 @@ LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
 LIB_INFO="$LIB_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
 LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+LIB_INFO="$LIB_INFO|LIBEV_FLAGS:    ${LIBEV_FLAGS}"
 
 LIB_INFO="$LIB_INFO|."
 

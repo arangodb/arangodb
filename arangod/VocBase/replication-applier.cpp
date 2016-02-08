@@ -40,6 +40,8 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a tick value from a JSON struct
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +99,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
       TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
   if (!TRI_IsObjectJson(json.get())) {
-    LOG(ERR) << "unable to read replication applier configuration from file '" << filename << "'";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "unable to read replication applier configuration from file '" << filename << "'";
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
@@ -213,6 +215,12 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   if (TRI_IsBooleanJson(value)) {
     config->_verbose = value->_value._boolean;
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "incremental");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_incremental = value->_value._boolean;
   }
 
   value = TRI_LookupObjectJson(json.get(), "ignoreErrors");
@@ -596,6 +604,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   builder.add("includeSystem", VPackValue(_includeSystem));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
+  builder.add("incremental", VPackValue(_incremental));
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
@@ -796,7 +805,7 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
 
   int res;
   if (TRI_ExistsFile(filename)) {
-    LOG(TRACE) << "removing replication state file '" << filename << "'";
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '" << filename << "'";
     res = TRI_UnlinkFile(filename);
   } else {
     res = TRI_ERROR_NO_ERROR;
@@ -825,7 +834,7 @@ int TRI_SaveStateReplicationApplier(
   }
 
   char* filename = GetStateFilename(vocbase);
-  LOG(TRACE) << "saving replication applier state to file '" << filename << "'";
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "saving replication applier state to file '" << filename << "'";
 
   if (!TRI_SaveJson(filename, json.get(), doSync)) {
     int res = TRI_errno();
@@ -849,6 +858,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
+  TRI_DestroyStateReplicationApplier(state);
   TRI_InitStateReplicationApplier(state);
   char* filename = GetStateFilename(vocbase);
 
@@ -856,7 +866,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  LOG(TRACE) << "looking for replication state file '" << filename << "'";
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "looking for replication state file '" << filename << "'";
 
   if (!TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -864,7 +874,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  LOG(TRACE) << "replication state file '" << filename << "' found";
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found";
 
   std::unique_ptr<TRI_json_t> json(
       TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
@@ -902,7 +912,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     ReadTick(json.get(), "safeResumeTick", &state->_safeResumeTick, true);
   }
 
-  LOG(TRACE) << "replication state file read successfully";
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file read successfully";
 
   return res;
 }
@@ -930,11 +940,12 @@ void TRI_InitConfigurationReplicationApplier(
   config->_includeSystem = true;
   config->_requireFromPresent = false;
   config->_verbose = false;
+  config->_incremental = false;
   config->_restrictType = "";
   config->_restrictCollections.clear();
   config->_connectionRetryWaitTime = 15 * 1000 * 1000;
   config->_initialSyncMaxWaitTime = 300 * 1000 * 1000;
-  config->_idleMinWaitTime = 500 * 1000;
+  config->_idleMinWaitTime = 1000 * 1000;
   config->_idleMaxWaitTime = 5 * 500 * 1000;
   config->_autoResyncRetries = 2;
 }
@@ -982,6 +993,7 @@ void TRI_CopyConfigurationReplicationApplier(
   dst->_includeSystem = src->_includeSystem;
   dst->_requireFromPresent = src->_requireFromPresent;
   dst->_verbose = src->_verbose;
+  dst->_incremental = src->_incremental;
   dst->_restrictType = src->_restrictType;
   dst->_restrictCollections = src->_restrictCollections;
   dst->_connectionRetryWaitTime = src->_connectionRetryWaitTime;
@@ -1080,12 +1092,13 @@ TRI_replication_applier_t::~TRI_replication_applier_t() {
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
-  LOG(TRACE) << "requesting replication applier start. initialTick: " << initialTick << ", useTick: " << useTick;
-
+int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
+                                     TRI_voc_tick_t barrierId) {
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "requesting replication applier start. initialTick: " << initialTick << ", useTick: " << useTick;
 
   // wait until previous applier thread is shut down
   while (!wait(10 * 1000))
@@ -1112,7 +1125,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
   }
 
   auto syncer = std::make_unique<arangodb::ContinuousSyncer>(
-      _server, _vocbase, &_configuration, initialTick, useTick);
+      _server, _vocbase, &_configuration, initialTick, useTick, barrierId);
 
   // reset error
   if (_state._lastError._msg != nullptr) {
@@ -1138,9 +1151,9 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
   syncer.release();
 
   if (useTick) {
-    LOG(INFO) << "started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "' from tick " << initialTick;
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "' from tick " << initialTick;
   } else {
-    LOG(INFO) << "re-started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "'";
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "re-started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "'";
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1220,12 +1233,10 @@ void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::stop(bool resetError) {
-  LOG(TRACE) << "requesting replication applier stop";
-
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
-
+  
   {
     WRITE_LOCKER(writeLocker, _statusLock);
 
@@ -1235,6 +1246,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
     if (!_state._active) {
       return TRI_ERROR_NO_ERROR;
     }
+  
     _state._active = false;
 
     setTermination(true);
@@ -1259,7 +1271,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
 
   setTermination(false);
 
-  LOG(INFO) << "stopped replication applier for database '" << _databaseName.c_str() << "'";
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for database '" << _databaseName.c_str() << "'";
 
   return res;
 }
@@ -1290,12 +1302,10 @@ int TRI_replication_applier_t::forget() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_replication_applier_t::shutdown() {
-  LOG(TRACE) << "requesting replication applier shutdown";
-
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
-
+  
   {
     WRITE_LOCKER(writeLocker, _statusLock);
 
@@ -1325,7 +1335,7 @@ int TRI_replication_applier_t::shutdown() {
 
   setTermination(false);
 
-  LOG(INFO) << "stopped replication applier for database '" << _databaseName.c_str() << "'";
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "shut down replication applier for database '" << _databaseName.c_str() << "'";
 
   return res;
 }
@@ -1340,7 +1350,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
   }
 
   if (sleepTime > 0) {
-    LOG(TRACE) << "replication applier going to sleep for " << sleepTime << " ns";
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "replication applier going to sleep for " << sleepTime << " ns";
 
     static uint64_t const SleepChunk = 500 * 1000;
 
@@ -1498,7 +1508,7 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
 
   // log error message
   if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG(ERR) << "replication applier error for database '" << _databaseName.c_str() << "': " << realMsg;
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error for database '" << _databaseName << "': " << realMsg;
   }
 
   _state._lastError._code = errorCode;

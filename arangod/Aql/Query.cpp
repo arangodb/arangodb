@@ -1269,9 +1269,11 @@ void Query::init() {
 
   _id = TRI_NextQueryIdVocBase(_vocbase);
 
+  TRI_ASSERT(_profile == nullptr);
   _profile = new Profile(this);
   enterState(INITIALIZATION);
 
+  TRI_ASSERT(_ast == nullptr);
   _ast = new Ast(this);
   _nodes.reserve(32);
   _strings.reserve(32);

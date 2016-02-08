@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 700 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function
@@ -170,6 +170,46 @@ function ahuacatlParseTestSuite () {
 
     testTooManyCollections : function () {
       assertParseError(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, "for x1 in y1 for x2 in y2 for x3 in y3 for x4 in y4 for x5 in y5 for x6 in y6 for x7 in y7 for x8 in y8 for x9 in y9 for x10 in y10 for x11 in y11 for x12 in y12 for x13 in y13 for x14 in y14 for x15 in y15 for x16 in y16 for x17 in y17 for x18 in y18 for x19 in y19 for x20 in y20 for x21 in y21 for x22 in y22 for x23 in y23 for x24 in y24 for x25 in y25 for x26 in y26 for x27 in y27 for x28 in y28 for x29 in y29 for x30 in y30 for x31 in y31 for x32 in y32 for x33 in y33 return x1");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test line numbers in parse errors
+////////////////////////////////////////////////////////////////////////////////
+
+    testLineNumbers : function () {
+      var queries = [
+        [ "RETURN 1 +", [ 1, 10 ] ],
+        [ "RETURN 1 + ", [ 1, 11 ] ],
+        [ "RETURN 1 + ", [ 1, 11 ] ],
+        [ "\nRETURN 1 + ", [ 2, 11 ] ],
+        [ "\r\nRETURN 1 + ", [ 2, 11 ] ],
+        [ "\n\n   RETURN 1 + ", [ 3, 14 ] ],
+        [ "\n// foo\n   RETURN 1 + ", [ 3, 14 ] ],
+        [ "\n/* foo \n\n bar */\n   RETURN 1 + ", [ 5, 14 ] ],
+        [ "RETURN \"\n\n\" + ", [ 3, 5 ] ],
+        [ "RETURN '\n\n' + ", [ 3, 5 ] ],
+        [ "RETURN \"\n\n", [ 3, 1 ] ],
+        [ "RETURN '\n\n", [ 3, 1 ] ],
+        [ "RETURN `ahaa\n\n", [ 3, 1 ] ],
+        [ "RETURN `ahaa\n\n", [ 3, 1 ] ],
+        [ "RETURN `ahaa\n\n ", [ 3, 2 ] ]
+      ];
+
+      queries.forEach(function(query) {
+        try {
+          AQL_EXECUTE(query[0]);
+          fail();
+        }
+        catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+          assertMatch(/at position \d+:\d+/, err.errorMessage);
+          var matches = err.errorMessage.match(/at position (\d+):(\d+)/);
+          var line = parseInt(matches[1], 10);
+          var column = parseInt(matches[2], 10);
+          assertEqual(query[1][0], line);
+          assertEqual(query[1][1], column);
+        }
+      });
     }
 
   };

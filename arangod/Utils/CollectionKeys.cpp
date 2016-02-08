@@ -317,6 +317,7 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
     }
 
     json.transfer(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
   }
 }
 

@@ -1,7 +1,7 @@
 /*
  * loop member variable declarations
  *
- * Copyright (c) 2007,2008,2009,2010,2011 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2009,2010,2011,2012,2013 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
@@ -43,6 +43,17 @@ VARx(ev_tstamp, now_floor) /* last time we refreshed rt_time */
 VARx(ev_tstamp, mn_now)    /* monotonic clock "now" */
 VARx(ev_tstamp, rtmn_diff) /* difference realtime - monotonic time */
 
+/* for reverse feeding of events */
+VARx(W *, rfeeds)
+VARx(int, rfeedmax)
+VARx(int, rfeedcnt)
+
+VAR (pendings, ANPENDING *pendings [NUMPRI])
+VAR (pendingmax, int pendingmax [NUMPRI])
+VAR (pendingcnt, int pendingcnt [NUMPRI])
+VARx(int, pendingpri) /* highest priority currently pending */
+VARx(ev_prepare, pending_w) /* dummy pending watcher */
+
 VARx(ev_tstamp, io_blocktime)
 VARx(ev_tstamp, timeout_blocktime)
 
@@ -58,19 +69,6 @@ VAR (backend_poll  , void (*backend_poll)(EV_P_ ev_tstamp timeout))
 VARx(ANFD *, anfds)
 VARx(int, anfdmax)
 
-VAR (pendings, ANPENDING *pendings [NUMPRI])
-VAR (pendingmax, int pendingmax [NUMPRI])
-VAR (pendingcnt, int pendingcnt [NUMPRI])
-VARx(ev_prepare, pending_w) /* dummy pending watcher */
-
-/* for reverse feeding of events */
-VARx(W *, rfeeds)
-VARx(int, rfeedmax)
-VARx(int, rfeedcnt)
-
-#if EV_USE_EVENTFD || EV_GENWRAP
-VARx(int, evfd)
-#endif
 VAR (evpipe, int evpipe [2])
 VARx(ev_io, pipe_w)
 VARx(EV_ATOMIC_T, pipe_write_wanted)
@@ -110,6 +108,7 @@ VARx(int, epoll_epermmax)
 #endif
 
 #if EV_USE_KQUEUE || EV_GENWRAP
+VARx(pid_t, kqueue_fd_pid)
 VARx(struct kevent *, kqueue_changes)
 VARx(int, kqueue_changemax)
 VARx(int, kqueue_changecnt)
@@ -195,9 +194,10 @@ VARx(unsigned int, loop_count) /* total number of loop iterations/blocks */
 VARx(unsigned int, loop_depth) /* #ev_run enters - #ev_run leaves */
 
 VARx(void *, userdata)
-VAR (release_cb, void (*release_cb)(EV_P))
-VAR (acquire_cb, void (*acquire_cb)(EV_P))
-VAR (invoke_cb , void (*invoke_cb) (EV_P))
+/* C++ doesn't support the ev_loop_callback typedef here. stinks. */
+VAR (release_cb, void (*release_cb)(EV_P) EV_THROW)
+VAR (acquire_cb, void (*acquire_cb)(EV_P) EV_THROW)
+VAR (invoke_cb , ev_loop_callback invoke_cb)
 #endif
 
 #undef VARx

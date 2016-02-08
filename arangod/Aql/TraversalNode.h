@@ -48,7 +48,7 @@ class SimpleTraverserExpression
         compareToNode(compareToNode),
         expression(nullptr) {}
 
-  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::basics::Json j);
+  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::basics::Json const& j);
 
   ~SimpleTraverserExpression();
 

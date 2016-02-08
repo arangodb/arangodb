@@ -2009,7 +2009,7 @@ function ReplicationApplierSuite () {
       assertEqual("", properties.restrictType);
       assertEqual([ ], properties.restrictCollections);
       assertEqual(15, properties.connectionRetryWaitTime);
-      assertEqual(0.5, properties.idleMinWaitTime);
+      assertEqual(1, properties.idleMinWaitTime);
       assertEqual(2.5, properties.idleMaxWaitTime);
       assertFalse(properties.autoResync);
       assertEqual(2, properties.autoResyncRetries);
@@ -2035,7 +2035,7 @@ function ReplicationApplierSuite () {
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
       assertEqual(15, properties.connectionRetryWaitTime);
-      assertEqual(0.5, properties.idleMinWaitTime);
+      assertEqual(1, properties.idleMinWaitTime);
       assertEqual(2.5, properties.idleMaxWaitTime);
       assertFalse(properties.autoResync);
       assertEqual(2, properties.autoResyncRetries);

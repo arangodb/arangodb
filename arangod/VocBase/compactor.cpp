@@ -544,7 +544,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
                            TRI_datafile_t* compactor) {
   size_t i;
 
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
 
   // remove the datafile from the list of datafiles
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
@@ -586,7 +586,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
 
 static int RemoveDatafile(TRI_document_collection_t* document,
                           TRI_datafile_t* df) {
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
 
   // remove the datafile from the list of datafiles
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
@@ -757,7 +757,7 @@ static void CompactifyDatafiles(
     return;
   }
 
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "compactify called for collection '" << document->_info.id() << "' for " << n << " datafiles of total size " << initial._targetSize;
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compactify called for collection '" << document->_info.id() << "' for " << n << " datafiles of total size " << initial._targetSize;
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
@@ -789,7 +789,7 @@ static void CompactifyDatafiles(
     auto compaction = toCompact[i];
     TRI_datafile_t* df = compaction._datafile;
 
-    LOG_TOPIC(TRACE, Logger::COMPACTOR) << "compacting datafile '" << df->getName(df) << "' into '" << compactor->getName(compactor) << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName(df) << "' into '" << compactor->getName(compactor) << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
     // if this is the first datafile in the list of datafiles, we can also
     // collect
@@ -972,7 +972,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     return false;
   }
 
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.namec_str() << "' for compaction opportunities";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.namec_str() << "' for compaction opportunities";
 
   size_t start = document->getNextCompactionStartIndex();
 
@@ -1015,7 +1015,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
         document->_datafileStatistics.get(df->_fid);
 
     if (dfi.numberUncollected > 0) {
-      LOG_TOPIC(TRACE, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.namec_str() << "' because it still has uncollected entries";
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.namec_str() << "' because it still has uncollected entries";
       start = i + 1;
       break;
     }
@@ -1057,23 +1057,32 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     }
 
     if (!doCompact) {
-      numAlive += (int64_t)dfi.numberAlive;
+      numAlive += static_cast<int64_t>(dfi.numberAlive);
       continue;
     }
 
     // remember for next compaction
     start = i + 1;
 
-    if (totalSize + (uint64_t)df->_maximalSize >= maxSize &&
-        !toCompact.empty()) {
-      // found enough files to compact
+    if (!toCompact.empty() && 
+        totalSize + (uint64_t)df->_maximalSize >= maxSize &&
+        (toCompact.size() != 1 || reason != ReasonDatafileSmall)) {
+      // found enough files to compact (in terms of cumulated size)
+      // there's one exception to this: if we're merging multiple datafiles, 
+      // then we don't stop at the first one even if the merge of file #1 and #2
+      // would be too big. if we wouldn't stop in this case, then file #1 would
+      // be selected for compaction over and over
+      // normally this case won't happen at all, it can occur however if one
+      // decreases the journalSize configuration for the collection afterwards, and
+      // there are already datafiles which are more than 3 times bigger than the
+      // new (smaller) journalSize value
       break;
     }
 
     TRI_ASSERT(reason != nullptr);
 
-    LOG_TOPIC(TRACE, Logger::COMPACTOR) << "found datafile eligible for compaction. fid: " << df->_fid << ", size: " << df->_maximalSize << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberShapes: " << dfi.numberShapes << ", numberAttributes: " << dfi.numberAttributes << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive << ", sizeShapes " << dfi.sizeShapes << ", sizeAttributes: " << dfi.sizeAttributes;
-    totalSize += (uint64_t)df->_maximalSize;
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->_fid << ", size: " << df->_maximalSize << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberShapes: " << dfi.numberShapes << ", numberAttributes: " << dfi.numberAttributes << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive << ", sizeShapes " << dfi.sizeShapes << ", sizeAttributes: " << dfi.sizeAttributes;
+    totalSize += static_cast<uint64_t>(df->_maximalSize);
 
     compaction_info_t compaction;
     compaction._datafile = df;
@@ -1108,7 +1117,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
       break;
     }
 
-    numAlive += (int64_t)dfi.numberAlive;
+    numAlive += static_cast<int64_t>(dfi.numberAlive);
   }
 
   // can now continue without the lock
@@ -1120,6 +1129,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
     // cleanup local variables
     document->setCompactionStatus(ReasonNothingToCompact);
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
 
@@ -1496,5 +1506,5 @@ void TRI_CompactorVocBase(void* data) {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::COMPACTOR) << "shutting down compactor thread";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "shutting down compactor thread";
 }

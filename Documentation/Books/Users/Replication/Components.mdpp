@@ -90,7 +90,7 @@ maximum tick values per logfile:
 
 Since ArangoDB 2.2, no special configuration is necessary for the replication logger.
 All operations are written to a server's write-ahead log, and the write-ahead log is 
-used in replication, too.
+used for replication, too.
 
 
 !SUBSECTION Replication Applier
@@ -200,10 +200,47 @@ Here is an example of the state after the replication applier terminated itself 
 **Note**: the state of a database's replication applier is queryable via the HTTP API, too. 
 Please refer to [HTTP Interface for Replication](../HttpReplications/README.md) for more details.
 
+!SUBSUBSECTION All-in-one setup
+
+To copy the initial data from the **slave** to the master and start the
+continuous replication, there is an all-in-one command *setupReplication*:
+
+```js
+require("@arangodb/replication").setupReplication(configuration);
+```
+
+The following example demonstrates how to use the command for setting up replication
+for the *_system* database. Note that it should be run on the slave and not the master:
+
+```js
+db._useDatabase("_system");
+require("@arangodb/replication").setupReplication({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "myuser",
+  password: "mypasswd",
+  verbose: false,
+  includeSystem: false,
+  incremental: true,
+  autoResync: true
+});
+```
+
+The command will return when the initial synchronization is finished and the continuous replication
+is started, or in case the initial synchronization has failed. 
+
+If the initial synchronization is successful, the command will store the given configuration on
+the slave. It also configures the continuous replication to start automatically if the slave is 
+restarted, i.e. *autoStart* is set to *true*.
+
+If the command is run while the slave's replication applier is already running, it will first
+stop the running applier, drop its configuration and do a resynchronization of data with the
+master. It will then use the provided configration, overwriting any previously existing replication
+configuration on the slave.
+
 !SUBSUBSECTION Starting and Stopping
 
-To start and stop the applier in the current database, the *start* and *stop* commands can 
-be used:
+To manually start and stop the applier in the current database, the *start* and *stop* commands 
+can be used like this:
 
 ```js
 require("@arangodb/replication").applier.start(<tick>);
@@ -241,7 +278,7 @@ is certainty that there are no ongoing transactions on the master.
 !SUBSUBSECTION Configuration
 
 To configure the replication applier of a specific database, use the *properties* command. Using 
-it without any arguments will return the current configuration:
+it without any arguments will return the applier's current configuration:
 
 ```js
 require("@arangodb/replication").applier.properties();
