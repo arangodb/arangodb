@@ -43,6 +43,25 @@ size_t const VelocyCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 M
 size_t const VelocyCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
 size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
+typedef struct
+{
+  unsigned int x : 1; // minimum 1 bit
+} uint1_t;
+
+typedef struct 
+{
+  unsigned int y: 31; // minimum 31 bits
+} uint31_t;
+
+struct Vstream {
+  uint32_t length;
+  uint31_t chunk; //use .x to access value
+  uint1_t isFirstChunk; //use .y to access value
+  uint64_t messageId;
+  Builder s1;
+  Builder s2;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
@@ -629,3 +648,4 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
   // start output
   fillWriteBuffer();
 }
+
