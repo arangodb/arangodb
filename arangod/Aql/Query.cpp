@@ -77,11 +77,13 @@ static std::string StateNames[] = {
   "instantiating plan",     // PLAN_INSTANTIATION
   "optimizing plan",        // PLAN_OPTIMIZATION
   "executing",              // EXECUTION
-  "finalizing"              // FINALIZATION
+  "finalizing",             // FINALIZATION
+
+  "invalid"                 // INVALID STATE
 };
 
 // make sure the state strings and the actual states match
-static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(ExecutionState::INVALID_STATE), 
+static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(ExecutionState::INVALID_STATE) + 1, 
               "invalid number of ExecutionState values");
 
 // -----------------------------------------------------------------------------
