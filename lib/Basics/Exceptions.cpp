@@ -66,15 +66,7 @@ Exception::Exception (int code,
     _line(line),
     _code(code) {
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
-  }
-#endif
-#endif
+  appendLocation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,15 +107,7 @@ Exception::Exception (int code,
     _line(line),
     _code(code) {
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
-  }
-#endif
-#endif
+  appendLocation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,15 +124,7 @@ Exception::Exception (int code,
     _line(line),
     _code(code) {
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
-  }
-#endif
-#endif
+  appendLocation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,6 +140,26 @@ Exception::~Exception () throw () {
 
 const char* Exception::what () const throw () {
   return _errorMessage.c_str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append original error location to message
+////////////////////////////////////////////////////////////////////////////////
+
+void Exception::appendLocation () {
+  if (_code == TRI_ERROR_INTERNAL) {
+    _errorMessage += std::string(" (location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
+#endif
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +208,6 @@ std::string Exception::FillFormatExceptionString (char const* format, ...) {
 
   return std::string(buffer);
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
