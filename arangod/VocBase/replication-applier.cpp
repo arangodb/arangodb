@@ -1469,7 +1469,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(TRI_VERSION));
-  builder.add("serverId", VPackValue(TRI_StringUInt64(TRI_GetIdServer())));
+  builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
   builder.close();  // server
 
   if (config._endpoint != nullptr) {
