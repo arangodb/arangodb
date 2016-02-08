@@ -128,6 +128,50 @@ void VelocyCommTask::handleResponse(GeneralResponse* response) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieve object from Slice(VPack) and return as string
+////////////////////////////////////////////////////////////////////////////////
+
+string getValue(arangodb::velocypack::Slice s) {
+  string result;
+  arangodb::velocypack::ValueLength len;
+  switch(s.type()) {
+    case arangodb::velocypack::ValueType::String  :try{
+                                                    result = s.getString(len);
+                                                  }catch(Exception const& e){
+                                                    LOG_ERROR("String Parse error: '%s'", e.what());
+                                                  }
+                                                 break;
+    case arangodb::velocypack::ValueType::Double :try{
+                                                    result = std::string(s.getDouble(), len);
+                                                  }catch(Exception const& e){
+                                                    LOG_ERROR("Double Parse error: '%s'", e.what());
+                                                  }
+                                                 break;
+    case arangodb::velocypack::ValueType::Int  : try{
+                                                  result = std::string(s.getInt(), len);
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Int Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    case arangodb::velocypack::ValueType::UInt : try{
+                                                  result = std::string(s.getUInt(), len);
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    case arangodb::velocypack::ValueType::Bool : try{
+                                                  result = std::string(s.getBool(), len);
+                                                 }catch(Exception const& e){
+                                                  LOG_ERROR("Boolean Parse error: '%s'", e.what());
+                                                 }
+                                                 break;
+    default : result = "";
+              break;
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -510,81 +554,78 @@ void VelocyCommTask::setupDone() {
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-// void VelocyCommTask::addResponse(VelocyResponse* response) {
+void VelocyCommTask::addResponse(VelocyResponse* response) {
 
-//   if (!_origin.empty()) {
+  if (!_origin.empty()) {
 
-//     LOG_TRACE("handling CORS response");
+    LOG_TRACE("handling CORS response");
 
-//     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
-//                         "etag, content-encoding, content-length, location, "
-//                         "server, x-arango-errors, x-arango-async-id");
+    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
+                        "etag, content-encoding, content-length, location, "
+                        "server, x-arango-errors, x-arango-async-id");
 
-//     // send back original value of "Origin" header
-//     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"),
-//                         _origin);
+    // send back original value of "Origin" header
+    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"),
+                        _origin);
 
-//     // send back "Access-Control-Allow-Credentials" header
-//     response->setHeader(
-//         TRI_CHAR_LENGTH_PAIR("access-control-allow-credentials"),
-//         (_denyCredentials ? "false" : "true"));
-//   }
-//   // CORS request handling EOF
+    // send back "Access-Control-Allow-Credentials" header
+    response->setHeader(
+        TRI_CHAR_LENGTH_PAIR("access-control-allow-credentials"),
+        (_denyCredentials ? "false" : "true"));
+  }
 
-//   // set "connection" header
-//   // keep-alive is the default
-//   response->setHeader(TRI_CHAR_LENGTH_PAIR("connection"),
-//                       (_closeRequested ? "Close" : "Keep-Alive"));
+  response->setHeader(TRI_CHAR_LENGTH_PAIR("connection"),
+                      (_closeRequested ? "Close" : "Keep-Alive"));
 
-//   size_t const responseBodyLength = response->bodySize();
+  size_t const responseBodyLength = response->bodySize();
 
-//   if (_requestType == GeneralRequest::VSTREAM_REQUEST_HEAD) {
-//     // clear body if this is an VSTREAM HEAD request
-//     // HEAD must not return a body
-//     response->headResponse(responseBodyLength);
-//   }
+  if (_requestType == GeneralRequest::VSTREAM_REQUEST_HEAD) {
 
-//   // reserve a buffer with some spare capacity
-//   auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE,
-//                                                responseBodyLength + 128);
+    response->headResponse(responseBodyLength);
+  }
 
-//   // write header
-//   response->writeHeader(buffer.get());
+  // reserve a buffer with some spare capacity
+  auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE,
+                                               responseBodyLength + 128);
 
-//   // write body
-//   if (_requestType != GeneralRequest::VSTREAM_REQUEST_HEAD) {
-//     if (_isChunked) {
-//       if (0 != responseBodyLength) {
-//         buffer->appendHex(response->body().length());
-//         buffer->appendText(response->body());
-//       }
-//     } else {
-//       buffer->appendText(response->body());
-//     }
-//   }
+  // write header
+  response->writeHeader(buffer.get());
 
-//   _writeBuffers.push_back(buffer.get());
-//   auto b = buffer.release();
+  // @TODO : Need to revaluate this, behavior is not same as Http should be VelocyPack instead
+  // // write body
+  // if (_requestType != GeneralRequest::VSTREAM_REQUEST_HEAD) {
+  //   if (_isChunked) {
+  //     if (0 != responseBodyLength) {
+  //       buffer->appendHex(response->body().length());
+  //       buffer->appendText(response->body());
+  //     }
+  //   } else {
+  //     buffer->appendText(response->body());
+  //   }
+  // }
 
-//   LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
+  _writeBuffers.push_back(buffer.get());
+  auto b = buffer.release();
 
-//   // clear body
-//   response->body().clear();
+  LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
 
-//   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
+  // clear body
+  response->body().clear();
 
-//   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+  double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 
-//   // disable the following statement to prevent excessive logging of incoming
-//   // requests
-//   LOG_USAGE(
-//       ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
-//       _connectionInfo.clientAddress.c_str(),
-//       GeneralRequest::translateMethod(_requestType).c_str(),
-//       GeneralRequest::translateVersion(_httpVersion).c_str(),
-//       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
-//       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-//   // start output
-//   fillWriteBuffer();
-// }
+  // disable the following statement to prevent excessive logging of incoming
+  // requests
+  LOG_USAGE(
+      ",\"velocystream-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+      _connectionInfo.clientAddress.c_str(),
+      GeneralRequest::translateMethod(_requestType).c_str(),
+      GeneralRequest::translateVersion(_httpVersion).c_str(),
+      (int)response->responseCode(), (unsigned long long)_originalBodyLength,
+      (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+
+  // start output
+  fillWriteBuffer();
+}
