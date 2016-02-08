@@ -57,16 +57,33 @@
     },
 
     setFiltersForQuery: function(bindVars) {
+      var self = this;
+
       if (this.filters.length === 0) {
         return "";
       }
-      var query = " FILTER",
+      var query = " FILTER", res = '',
       parts = _.map(this.filters, function(f, i) {
-        var res = " x.`";
+        if (f.op === 'IN') {
+          res = ' ';
+        }
+        else {
+          res = " x.`";
+        }
         res += f.attr;
-        res += "` ";
+        if (f.op !== 'IN') {
+          res += "` ";
+        }
+        else {
+          res += " ";
+        }
         res += f.op;
-        res += " @param";
+        if (f.op === 'IN') {
+          res += " x.@param";
+        }
+        else {
+          res += " @param";
+        }
         res += i;
         bindVars["param" + i] = f.val;
         return res;
