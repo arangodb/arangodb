@@ -201,7 +201,6 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     }
     arangodb::JsonCursor* cursor = cursors->createFromVelocyPack(
         builder, batchSize, extra, ttl, count, queryResult.cached);
-    queryResult.json = nullptr;
 
     try {
       _response->body().appendChar('{');
