@@ -292,8 +292,8 @@ target_link_libraries(
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO}
     ${LIBEV_LIBS}
-    ${V8_LIBRARIES} # need this for rest::Version
-    #${ICU_LIBRARIES}
+    ${V8_LIBS} # need this for rest::Version
+    ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}

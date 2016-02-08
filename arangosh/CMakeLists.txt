@@ -43,7 +43,8 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
     ArangoShell/ArangoClient.cpp
     Benchmark/arangob.cpp
-)
+    )
+
 target_link_libraries(
     ${BIN_ARANGOB}
     ${LIB_ARANGO_CLIENT}
@@ -53,11 +54,12 @@ target_link_libraries(
     ${LINENOISE_LIBS}
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
-    ${AR_V8_LIBS}
-    ${AR_ICU_LIBS}
-    ${CMAKE_THREAD_LIBS_INIT} 
-)
+    ${V8_LIBS}
+    ${ICU_LIBS}
+    ${CMAKE_THREAD_LIBS_INIT}
+    )
 
+  
 ################################################################################
 ### @brief install arangob binary
 ################################################################################
@@ -101,8 +103,8 @@ target_link_libraries(
     ${BIN_ARANGODUMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    #${ICU_LIBRARIES}
-    ${V8_LIBRARIES}
+    ${ICU_LIBS}
+    ${V8_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
@@ -154,7 +156,8 @@ target_link_libraries(
     ${BIN_ARANGOIMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBRARIES}
+    ${ICU_LIBS}
+    ${V8_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
@@ -205,8 +208,8 @@ target_link_libraries(
     ${BIN_ARANGORESTORE}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    #${ICU_LIBRARIES}
-    ${V8_LIBRARIES}
+    ${ICU_LIBS}
+    ${V8_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
@@ -260,8 +263,8 @@ target_link_libraries(
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    #${ICU_LIBRARIES}
-    ${V8_LIBRARIES}
+    ${ICU_LIBS}
+    ${V8_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
