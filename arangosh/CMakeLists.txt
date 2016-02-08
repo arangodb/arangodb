@@ -103,8 +103,8 @@ target_link_libraries(
     ${BIN_ARANGODUMP}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
     ${V8_LIBS}
+    ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
@@ -263,8 +263,8 @@ target_link_libraries(
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
     ${V8_LIBS}
+    ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
