@@ -70,11 +70,15 @@ endif()
 
 
 include(ExternalProject)
+set (V8_BUILD_COMMAND make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}" CXX="${CMAKE_CXX_COMPILER}")
+if (DARWIN)
+  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND}"  CXXFLAGS=-stdlib=libc++)
+endif()
 ExternalProject_Add(v8_build
-    SOURCE_DIR          "${V8_DIR}"
-    BUILD_IN_SOURCE     TRUE
-    BUILD_COMMAND       make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}" CXX="${CMAKE_CXX_COMPILER}" CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++
-    INSTALL_COMMAND     ""
+  SOURCE_DIR          "${V8_DIR}"
+  BUILD_IN_SOURCE     TRUE
+  BUILD_COMMAND       ${V8_BUILD_COMMAND}
+  INSTALL_COMMAND     ""
 )
 
 ## V8
