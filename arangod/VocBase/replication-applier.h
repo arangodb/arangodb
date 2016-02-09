@@ -68,6 +68,9 @@ class TRI_replication_applier_configuration_t {
   std::unordered_map<std::string, bool> _restrictCollections;
 
  public:
+  TRI_replication_applier_configuration_t(TRI_replication_applier_configuration_t const&) = delete;
+  TRI_replication_applier_configuration_t& operator=(TRI_replication_applier_configuration_t const&) = delete;
+
   TRI_replication_applier_configuration_t() {}
 
   ~TRI_replication_applier_configuration_t() { freeInternalStrings(); }

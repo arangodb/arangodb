@@ -75,6 +75,9 @@ v3.0.0 (XXXX-XX-XX)
 
 * added WorkMonitor to inspect server threads
 
+* when downloading a Foxx service from the web interface the suggested filename
+  now takes the form $name@$version.zip instead of simply "app.zip"
+
 
 v2.8.2 (XXXX-XX-XX)
 -------------------
