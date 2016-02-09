@@ -38,7 +38,7 @@
 #include <velocypack/vpack.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace rest {
@@ -503,13 +503,13 @@ class GeneralRequest {
   /// @brief parses the velocystream header
   //////////////////////////////////////////////////////////////////////////////
 
-  void parseHeader(velocypack::Builder, size_t);
+  void parseHeader(arangodb::velocypack::Builder, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get value from vpack and return as string.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getValue(velocypack::Slice);
+  std::string getValueVstream(arangodb::velocypack::Slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the full url of the request

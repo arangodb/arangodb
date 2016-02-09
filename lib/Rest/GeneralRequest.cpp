@@ -33,6 +33,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace std;
@@ -705,36 +706,36 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
 
      if(StringUtils::tolower(it.key.getString(len)) == "requestType") {
     
-        _type = getRequestType(getValue(it.value).c_str(), getValue(it.value).size());
+        _type = getRequestType(getValueVstream(it.value).c_str(), getValueVstream(it.value).size());
     
      } else if(StringUtils::tolower(it.key.getString(len)) == "version") {
     
-        if(StringUtils::tolower(getValue(it.value)) == "vstream_unknown"){
+        if(StringUtils::tolower(getValueVstream(it.value)) == "vstream_unknown"){
           _version = VSTREAM_UNKNOWN;
-        } else if(StringUtils::tolower(getValue(it.value)) == "vstream_1_0"){
+        } else if(StringUtils::tolower(getValueVstream(it.value)) == "vstream_1_0"){
           _version = VSTREAM_1_0;   
         }
       
      } else if(StringUtils::tolower(it.key.getString(len)) == "database"){
 
-        if(!getValue(it.value).empty()){
-          _databaseName = getValue(it.value);
+        if(!getValueVstream(it.value).empty()){
+          _databaseName = getValueVstream(it.value);
         } else{
           _databaseName = "_system";
         }  
 
      }else if(StringUtils::tolower(it.key.getString(len)) == "request"){
 
-        if(!getValue(it.value).empty()){
-          _requestPath = getValue(it.value).c_str();
+        if(!getValueVstream(it.value).empty()){
+          _requestPath = getValueVstream(it.value).c_str();
         } else{
           _requestPath = "";
         }  
 
      } else if(StringUtils::tolower(it.key.getString(len)) == "fullUrl") { 
 
-        if(!getValue(it.value).empty()){
-          _fullUrl = getValue(it.value);
+        if(!getValueVstream(it.value).empty()){
+          _fullUrl = getValueVstream(it.value);
         } else{
           _fullUrl = "";
         }
@@ -747,23 +748,23 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
           if( it.value.isArray()){
 
             for(int i = 0; i < it.value.length(); i++){
-              setArrayValue((char *)it.key.copyString().c_str(), it.key.byteSize(), getValue(it.value).c_str());
+              setArrayValue((char *)it.key.copyString().c_str(), it.key.byteSize(), getValueVstream(it.value).c_str());
             } 
 
           } else {
-            _values.insert(it.key.getString(len), std::string(getValue(it.value), len).c_str());
+            _values.insert(it.key.getString(len), std::string(getValueVstream(it.value), len).c_str());
           } 
         }  
 
      }else if(StringUtils::tolower(it.key.getString(len)) == "meta") {
 
         for (auto const& it : velocypack::ObjectIterator(s.get("meta"))) {
-            if(!getValue(it.value).empty()){
-              setHeader(it.key.getString(len), it.key.byteSize(), getValue(it.value).c_str());
+            if(!getValueVstream(it.value).empty()){
+              setHeader(it.key.getString(len), it.key.byteSize(), getValueVstream(it.value).c_str());
             }
         }
      } else{
-        setHeader(it.key.getString(len), it.key.byteSize(), getValue(it.value).c_str());
+        setHeader(it.key.getString(len), it.key.byteSize(), getValueVstream(it.value).c_str());
      } 
   }
 }
@@ -1110,7 +1111,7 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 /// @brief retrieve object from Slice(VPack) and return as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string getValue(arangodb::velocypack::Slice s) {
+string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
   string result;
   arangodb::velocypack::ValueLength len;
   switch(s.type()) {
