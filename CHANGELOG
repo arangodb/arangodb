@@ -1,4 +1,4 @@
-v2.8.3 (????-??-??)
+v2.8.3 (XXXX-XX-XX)
 -------------------
 
 * Foxx Model event listeners defined on the model are now correctly invoked by
