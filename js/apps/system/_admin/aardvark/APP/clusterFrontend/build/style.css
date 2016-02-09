@@ -5288,6 +5288,7 @@ div.dropdownImport {
     margin-top: 5px; }
 
 select.filterSelect {
+  color: #0000ff;
   margin-left: 10px;
   margin-right: 10px;
   width: 100px; }
