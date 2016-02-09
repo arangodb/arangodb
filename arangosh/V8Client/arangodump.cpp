@@ -1108,9 +1108,16 @@ static int RunClusterDump(std::string& errorMsg) {
       // Iterate over the Map of shardId to server list
       for (auto const it : VPackObjectIterator(shards)) {
         TRI_ASSERT(it.key.isString());
-        TRI_ASSERT(it.value.isArray());
-        TRI_ASSERT(it.value[0].isString());
+
         std::string shardName = it.key.copyString();
+
+        if (! it.value.isArray() || it.value.length() == 0 || !it.value[0].isString()) {
+          TRI_CLOSE(fd);
+          errorMsg = "unexpected value for 'shards' attribute";
+
+          return TRI_ERROR_BAD_PARAMETER;
+        }
+
         std::string DBserver = it.value[0].copyString();
 
         if (Progress) {
