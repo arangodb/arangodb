@@ -91,19 +91,19 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 
 bool ServerJob::execute() {
   // default to system database
-  TRI_vocbase_t* vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  TRI_vocbase_t* const vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == nullptr) {
     // database is gone
     return false;
   }
 
+  TRI_DEFER(TRI_ReleaseVocBase(vocbase));
+
   ApplicationV8::V8Context* context =
       _applicationV8->enterContext(vocbase, true);
 
   if (context == nullptr) {
-    TRI_ReleaseDatabaseServer(_server, vocbase);
     return false;
   }
 
@@ -127,12 +127,7 @@ bool ServerJob::execute() {
   } catch (...) {
   }
 
-  // get the pointer to the last used vocbase
-  TRI_GET_GLOBALS();
-  void* orig = v8g->_vocbase;
-
   _applicationV8->exitContext(context);
-  TRI_ReleaseDatabaseServer(_server, static_cast<TRI_vocbase_t*>(orig));
 
   return ok;
 }

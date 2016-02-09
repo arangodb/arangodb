@@ -1,7 +1,7 @@
 /*
  * libevent compatibility header, only core events supported
  *
- * Copyright (c) 2007,2008,2010 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2010,2012 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
@@ -75,6 +75,8 @@ struct event_base;
 #define EVLIST_INTERNAL 0x10
 #define EVLIST_INIT     0x80
 
+typedef void (*event_callback_fn)(int, short, void *);
+
 struct event
 {
   /* libev watchers we map onto */
@@ -86,7 +88,7 @@ struct event
 
   /* compatibility slots */
   struct event_base *ev_base;
-  void (*ev_callback)(int, short, void *arg);
+  event_callback_fn ev_callback;
   void *ev_arg;
   int ev_fd;
   int ev_pri;
@@ -95,9 +97,12 @@ struct event
   short ev_events;
 };
 
+event_callback_fn event_get_callback (const struct event *ev);
+
 #define EV_READ                    EV_READ
 #define EV_WRITE                   EV_WRITE
 #define EV_PERSIST                 0x10
+#define EV_ET                      0x20 /* nop */
 
 #define EVENT_SIGNAL(ev)           ((int) (ev)->ev_fd)
 #define EVENT_FD(ev)               ((int) (ev)->ev_fd)
@@ -152,6 +157,8 @@ int event_pending (struct event *ev, short, struct timeval *tv);
 int event_priority_init (int npri);
 int event_priority_set (struct event *ev, int pri);
 
+struct event_base *event_base_new (void);
+const char *event_base_get_method (const struct event_base *);
 int event_base_set (struct event_base *base, struct event *ev);
 int event_base_loop (struct event_base *base, int);
 int event_base_loopexit (struct event_base *base, struct timeval *tv);

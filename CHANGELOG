@@ -1,9 +1,54 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
-* removed configure option `--enable-logger`
+* allow to set print.limitString to configure the number of characters
+  to output before truncating
 
-* removed startup option `--log.source-filter`
+* make logging configurable per log "topic"
+
+  `--log.level <level>` sets the global log level to <level>, e.g. `info`,
+  `debug`, `trace`.
+
+  `--log.level topic=<level>` sets the log level for a specific topic.
+  Currently, the following topics exist: `collector`, `compactor`, `mmap`,
+  `performance`, `queries`, and `requests`. `performance` and `requests` are
+  set to FATAL by default. `queries` is set to info. All others are
+  set to the global level by default.
+
+  The new log option `--log.output <definition>` allows directing the global
+  or per-topic log output to different outputs. The output definition
+  "<definition>" can be one of
+
+    "-" for stdin
+    "+" for stderr
+    "syslog://<syslog-facility>"
+    "syslog://<syslog-facility>/<application-name>"
+    "file://<relative-path>"
+
+  The option can be specified multiple times in order to configure the output
+  for different log topics. To set up a per-topic output configuration, use
+  `--log.output <topic>=<definition>`, e.g.
+
+    queries=file://queries.txt
+
+  logs all queries to the file "queries.txt".
+
+* the option `--log.requests-file` is now deprecated. Instead use
+
+    `--log.level requests=info`
+    `--log.output requests=file://requests.txt`
+
+* the option `--log.facility` is now deprecated. Instead use
+
+    `--log.output requests=syslog://facility`
+
+* the option `--log.performance` is now deprecated. Instead use
+
+    `--log.level performance=trace`
+
+* removed option `--log.source-filter`
+
+* removed configure option `--enable-logger`
 
 * change collection directory names to include a random id component at the end
 
@@ -16,7 +61,7 @@ v3.0.0 (XXXX-XX-XX)
 * removed mostly unused internal spin-lock implementation
 
 * removed support for pre-Windows 7-style locks. This removes compatibility with
-  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or 
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or
   Windows 2008R2 (e.g. Windows 2008).
 
 * changed names of sub-threads started by arangod
@@ -30,9 +75,73 @@ v3.0.0 (XXXX-XX-XX)
 
 * added WorkMonitor to inspect server threads
 
+* when downloading a Foxx service from the web interface the suggested filename
+  now takes the form $name@$version.zip instead of simply "app.zip"
+
 
 v2.8.2 (XXXX-XX-XX)
 -------------------
+
+* the continuous replication applier will now prevent the master's WAL logfiles
+  from being removed if they are still needed by the applier on the slave. This
+  should help slaves that suffered from masters garbage collection WAL logfiles
+  which would have been needed by the slave later.
+
+  The initial synchronization will block removal of still needed WAL logfiles
+  on the master for 10 minutes initially, and will extend this period when further
+  requests are made to the master. Initial synchronization hands over its handle
+  for blocking logfile removal to the continuous replication when started via
+  the *setupReplication* function. In this case, continuous replication will
+  extend the logfile removal blocking period for the required WAL logfiles when 
+  the slave makes additional requests.
+
+  All handles that block logfile removal will time out automatically after at
+  most 5 minutes should a master not be contacted by the slave anymore (e.g. in
+  case the slave's replication is turned off, the slaves loses the connection
+  to the master or the slave goes down).
+
+* added all-in-one function *setupReplication* to synchronize data from master 
+  to slave and start the continuous replication:
+
+      require("@arangodb/replication").setupReplication(configuration);
+
+  The command will return when the initial synchronization is finished and the 
+  continuous replication has been started, or in case the initial synchronization 
+  has failed. 
+
+  If the initial synchronization is successful, the command will store the given 
+  configuration on the slave. It also configures the continuous replication to start 
+  automatically if the slave is restarted, i.e. *autoStart* is set to *true*.
+
+  If the command is run while the slave's replication applier is already running, 
+  it will first stop the running applier, drop its configuration and do a 
+  resynchronization of data with the master. It will then use the provided configration, 
+  overwriting any previously existing replication configuration on the slave.
+
+  The following example demonstrates how to use the command for setting up replication
+  for the *_system* database. Note that it should be run on the slave and not the
+  master:
+
+      db._useDatabase("_system");
+      require("@arangodb/replication").setupReplication({
+        endpoint: "tcp://master.domain.org:8529",
+        username: "myuser",
+        password: "mypasswd",
+        verbose: false,
+        includeSystem: false,
+        incremental: true,
+        autoResync: true
+      });
+
+* the *sync* and *syncCollection* functions now always start the data synchronization
+  as an asynchronous server job. The call to *sync* or *syncCollection* will block
+  until synchronization is either complete or has failed with an error. The functions
+  will automatically poll the slave periodically for status updates.
+
+  The main benefit is that the connection to the slave does not need to stay open
+  permanently and is thus not affected by timeout issues. Additionally the caller does 
+  not need to query the synchronization status from the slave manually as this is
+  now performed automatically by these functions.
 
 * fixed undefined behavior when explaining some types of AQL traversals, fixed
   display of some types of traversals in AQL explain output
@@ -363,7 +472,7 @@ v2.8.0-alpha1 (2015-12-03)
     ArangoShell like this:
 
         /* starts initial synchronization */
-        var replication = require("org/arangodb/replication");
+        var replication = require("@arangodb/replication");
         var id = replication.sync({
           endpoint: "tcp://master.domain.org:8529",
           username: "myuser",
@@ -380,7 +489,6 @@ v2.8.0-alpha1 (2015-12-03)
 
 
 * fixed non-deterministic query results in some cluster queries
->>>>>>> 181db60b494097080cc1fac0a50895794eb91a57
 
 * fixed issue #1589
 

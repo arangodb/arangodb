@@ -876,11 +876,13 @@ char* TRI_DecodeHexString(char const* source, size_t sourceLen,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
-  unsigned char* dst;
-
-  dst = static_cast<unsigned char*>(
+  unsigned char* dst = static_cast<unsigned char*>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, SHA256_DIGEST_LENGTH, false));
   *dstLen = SHA256_DIGEST_LENGTH;
+
+  if (dst == nullptr) {
+    return nullptr;
+  }
 
   SHA256((unsigned char const*)source, sourceLen, dst);
 
@@ -893,20 +895,17 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
 
 char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
                                 size_t inLength, size_t* outLength,
-                                bool appendNewline) {
-  char* buffer;
-  char* qtr;
-  char const* ptr;
-  char const* end;
-
-  buffer = static_cast<char*>(
+                                bool appendNewline, bool truncate) {
+  char* buffer = static_cast<char*>(
       TRI_Allocate(zone, (4 * inLength) + 1 + (appendNewline ? 1 : 0), false));
 
   if (buffer == nullptr) {
     return nullptr;
   }
 
-  qtr = buffer;
+  char* qtr = buffer;
+  char const* ptr;
+  char const* end;
 
   for (ptr = in, end = ptr + inLength; ptr < end; ptr++, qtr++) {
     uint8_t n;
@@ -946,7 +945,11 @@ char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
   }
 
   *qtr = '\0';
-  *outLength = (size_t)(qtr - buffer);
+  *outLength = static_cast<size_t>(qtr - buffer);
+
+  if (!truncate) {
+    return buffer;
+  }
 
   qtr = static_cast<char*>(TRI_Allocate(zone, (*outLength) + 1, false));
 

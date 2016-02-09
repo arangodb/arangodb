@@ -61,15 +61,4 @@
     description: "The configuration for the template.",
     type: Configuration
   });
-
-  controller.get("/download/:file", function(req, res) {
-    res.json(false);
-    /*
-    var fileName = req.params("file"),
-        path = fs.join(fs.getTempPath(), "downloads", fileName);
-    res.set("Content-Type", "application/octet-stream");
-    res.set("Content-Disposition", "attachment; filename=app.zip");
-    res.body = fs.readFileSync(path);
-    */
-  });
 }());

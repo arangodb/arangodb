@@ -10,26 +10,14 @@ else
   PS='/'
 fi;
 
-LOGFILE="out${PS}log-$PID"
+ulimit -n 2048
 
 export PORT=`expr 1024 + $RANDOM`
-declare -a ARGS
+export ETCD_NONO_WAL_SYNC=1
 
-echo Logfile is in ${LOGFILE}
-
-bin/arangosh \
+exec bin/arangosh \
   -c etc${PS}relative${PS}arangosh.conf \
   --server.endpoint tcp://127.0.0.1:${PORT} \
   --javascript.execute UnitTests${PS}unittest.js \
   -- \
   "$@"
-
-if test $? -eq 0; then
-  echo "removing ${LOGFILE}"
-  rm -rf ${LOGFILE}
-else
-  echo "failed - don't remove ${LOGFILE} - here's the logfile:"
-  cat ${LOGFILE}
-fi
-
-echo Server has terminated.

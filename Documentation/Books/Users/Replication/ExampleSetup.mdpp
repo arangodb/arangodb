@@ -12,10 +12,53 @@ The goal is to have all data from the database *_system* on master *tcp://master
 be replicated to the database *_system* on the slave *tcp://slave.domain.org:8530*.
 
 On the **master**, nothing special needs to be done, as all write operations will automatically be
-logged in the master's write-ahead log.
+logged in the master's write-ahead log (WAL).
 
-To start replication on the **slave**, make sure there currently is no replication applier running 
-in the slave's *_system* database:
+!SECTION All-in-one setup
+
+To make the replication copy the initial data from the **master** to the **slave** and start the
+continuous replication on the **slave**, there is an all-in-one command:
+
+```js
+require("@arangodb/replication").setupReplication(configuration);
+```
+
+The following example demonstrates how to use the command for setting up replication
+for the *_system* database. Note that it should be run on the **slave** and not the
+**master**:
+
+```js
+db._useDatabase("_system");
+require("@arangodb/replication").setupReplication({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "myuser",
+  password: "mypasswd",
+  verbose: false,
+  includeSystem: false,
+  incremental: true,
+  autoResync: true
+});
+```
+
+The command will return when the initial synchronization is finished and the continuous replication
+has been started, or in case the initial synchronization has failed. 
+
+If the initial synchronization is successful, the command will store the given configuration on
+the slave. It also configures the continuous replication to start automatically if the slave is 
+restarted, i.e. *autoStart* is set to *true*.
+
+If the command is run while the slave's replication applier is already running, it will first
+stop the running applier, drop its configuration and do a resynchronization of data with the
+**master**. It will then use the provided configration, overwriting any previously existing replication
+configuration on the **slave**.
+
+
+!SECTION Initial synchronization
+
+The initial synchronization and continuous replication applier can also be started separately.
+To start replication on the **slave**, make sure there currently is no replication applier running.
+
+The following commands stop a running applier in the slave's *_system* database:
 
 ```js
 db._useDatabase("_system");
@@ -25,10 +68,9 @@ require("@arangodb/replication").applier.stop();
 The *stop* operation will terminate any replication activity in the _system database on the slave.
 
 
-!SECTION Initial synchronization
-
-After that, we perform an initial sync of the slave with data from the master. To do this,
-execute the following commands on the slave:
+After that, the initial synchronization can be run. It will copy the collections from the **master**
+to the **slave**, overwriting existing data. To run the initial synchronization, execute the following 
+commands on the **slave**:
 
 ```js
 db._useDatabase("_system");
@@ -40,16 +82,16 @@ require("@arangodb/replication").sync({
 });
 ```
 
-Username and password only need to be specified when the master server requires authentication.
+Username and password only need to be specified when the **master** requires authentication.
 To check what the synchronization is currently doing, supply set the *verbose* option to *true*.
 If set, the synchronization will create log messages with the current synchronization status.
 
-**Warning**: The sync command will replace data in the slave database with data from the master 
-database! Only execute these commands if you have verified you are on the correct server, in the
-correct database!
+**Warning**: The *sync* command will replace data in the **slave** database with data from the 
+**master** database! Only execute these commands if you have verified you are on the correct server, 
+in the correct database!
 
 The sync operation will return an attribute named *lastLogTick* which we'll need to note. The
-last log tick will be used as the starting point for any subsequent replication activity. Let's
+last log tick will be used as the starting point for subsequent replication activity. Let's
 assume we got the following last log tick:
 
 ```js
@@ -59,15 +101,49 @@ assume we got the following last log tick:
 }
 ```
 
+!SECTION Initial synchronization from the ArangoShell
+
+The initial synchronization via the *sync* command may take a long time to complete. The shell
+will block until the slave has completed the initial synchronization or until an error occurs.
+By default, the *sync* command in the ArangoShell will poll the slave for a status update every
+10 seconds.
+
+Optionally the *sync* command can be made non-blocking by setting its *async* option to true.
+In this case, the *sync command* will return instantly with an id string, and the initial 
+synchronization will run detached on the master. To fetch the current status of the *sync* 
+progress from the ArangoShell, the *getSyncResult* function can be used as follows:
+
+```js
+db._useDatabase("_system");
+var replication = require("@arangodb/replication");
+
+/* run command in async mode */
+var id = replication.sync({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "myuser",
+  password: "mypasswd",
+  async: true
+});
+
+/* now query the status of our operation */
+print(replication.getSyncResult(id));
+```
+
+*getSyncResult* will return *false* as long as the synchronization is not complete, and return the
+synchronization result otherwise.
+
+
 !SECTION Continuous synchronization
 
-Now, we could start the replication applier in the slave database using the last log tick.
-However, there is one thing to consider: replication on the slave will be running until the 
-slave gets shut down. When the slave server gets restarted, replication will be turned off again. 
+When the initial synchronization is finished, the continuous replication applier can be started using
+the last log tick provided by the *sync* command. Before starting it, there is at least one 
+configuration option to consider: replication on the **slave** will be running until the 
+**slave** gets shut down. When the slave server gets restarted, replication will be turned off again. 
 To change this, we first need to configure the slave's replication applier and set its
 *autoStart* attribute.
 
-Here's the command to configure the replication applier with several options:
+Here's the command to configure the replication applier with several options, including the
+*autoStart* attribute:
 
 ```js
 db._useDatabase("_system");
@@ -151,30 +227,4 @@ a write lock on the collections involved in the transaction.
 
 You may also want to check the master and slave states via the HTTP APIs 
 (see [HTTP Interface for Replication](../HttpReplications/README.md)).
-
-
-!SECTION Initial synchronization from the ArangoShell
-
-The *sync* may take a long time to complete. If it's called from the ArangoShell, the connection
-may time out, which will effectively discard the result of the *sync* operation. Therefore in the
-ArangoShell, the optional *async* attribute can be used to start the synchronization as a background 
-process on the slave. If the *async* attribute is set to *true*, the call to *sync* will return 
-almost instantly with an id string. Using this id string, the status of the sync job on the slave 
-can be queried using the *getSyncResult* function as follows:
-
-```js
-db._useDatabase("_system");
-var replication = require("@arangodb/replication");
-var id = replication.sync({
-  endpoint: "tcp://master.domain.org:8529",
-  username: "myuser",
-  password: "mypasswd",
-  async: true
-});
-
-print(replication.getSyncResult(id));
-```
-
-*getSyncResult* will return *false* as long as the synchronization is not complete, and return the
-synchronization result otherwise.
 

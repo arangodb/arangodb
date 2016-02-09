@@ -39,6 +39,8 @@
 #endif
 #endif
 
+using namespace arangodb;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
 /// the string is a comma-separated list of point names
@@ -90,7 +92,7 @@ static char* MakeValue(char const* value) {
 void TRI_SegfaultDebugging(char const* message) {
   LOG(WARN) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
-  TRI_ShutdownLogging(true);
+  Logger::shutdown(true);
 
 // and now crash
 #ifndef __APPLE__
@@ -386,6 +388,11 @@ void TRI_PrintBacktrace() {
   std::string out;
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());
+#endif
+#if TRI_HAVE_PSTACK
+  char buf[64];
+  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  system(buf);
 #endif
 #endif
 }

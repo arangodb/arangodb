@@ -38,6 +38,7 @@ var cluster = require("@arangodb/cluster");
 var joi = require("joi");
 var util = require("util");
 var internal = require("internal");
+var contentDisposition = require('content-disposition');
 var notifications = require("@arangodb/configuration").notifications;
 var db = require("@arangodb").db;
 var foxxInstallKey = joi.string().required().description(
@@ -246,7 +247,7 @@ controller.get("/query/download/:user", function(req, res) {
   var result = db._users.byExample({"user": user}).toArray()[0];
 
   res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", "attachment; filename=queries.json");
+  res.set("Content-Disposition", contentDisposition('queries.json'));
 
   if (result === null || result === undefined) {
     res.json([]);
@@ -278,7 +279,7 @@ controller.get("/query/result/download/:query", function(req, res) {
 
   var result = db._query(parsedQuery.query, parsedQuery.bindVars).toArray();
   res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", "attachment; filename=results.json");
+  res.set("Content-Disposition", contentDisposition('results.json'));
   res.json(result);
 
 }).summary("Download the result of a query")

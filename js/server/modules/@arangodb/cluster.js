@@ -350,7 +350,6 @@ function getLocalCollections () {
 
 function createLocalDatabases (plannedDatabases) {
   var ourselves = global.ArangoServerState.id();
-
   var createDatabaseAgency = function (payload) {
     global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
                      payload);

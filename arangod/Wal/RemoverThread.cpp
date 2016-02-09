@@ -34,7 +34,7 @@ using namespace arangodb::wal;
 /// @brief wait interval for the remover thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t const RemoverThread::Interval = 500000;
+uint64_t const RemoverThread::Interval = 2000000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the remover thread
@@ -76,6 +76,8 @@ void RemoverThread::stop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RemoverThread::run() {
+  int64_t iterations = 0;
+
   while (true) {
     int stop = (int)_stop;
     bool worked = false;
@@ -83,6 +85,11 @@ void RemoverThread::run() {
     try {
       if (stop == 0) {
         worked = _logfileManager->removeLogfiles();
+
+        if (++iterations == 5) {
+          iterations = 0;
+          _logfileManager->collectLogfileBarriers();
+        }
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();

@@ -285,6 +285,153 @@ ServerState::RoleEnum ServerState::getRole() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to register with a role
+////////////////////////////////////////////////////////////////////////////////
+bool ServerState::registerWithRole(ServerState::RoleEnum role) {
+  if (!getId().empty()) {
+    LOG(INFO) << "Registering with role and localinfo. Supplied id is being ignored";
+    return false;
+  }
+
+  AgencyComm comm;
+  AgencyCommResult result;
+  // mop: hmm...why is it below target? :S
+  result = comm.getValues("Target/MapLocalToID/" + StringUtils::urlEncode(_localInfo), false);
+
+  std::string id;
+  if (!result.successful()) {
+    LOG(DEBUG) << "Determining id from localinfo failed. Continuing with registering ourselves for the first time";
+    id = createIdForRole(comm, role);
+  } else {
+    result.parse("", false);
+
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
+      result._values.begin();
+    
+    if (it != result._values.end()) {
+      VPackSlice slice = (*it).second._vpack->slice();
+      id = slice.copyString();
+    }
+  }
+  
+  const std::string agencyKey = roleToAgencyKey(role);
+  const std::string planKey = "Plan/" + agencyKey + "/" + id;
+  const std::string currentKey = "Current/" + agencyKey + "/" + id;
+  
+  VPackSlice plan;
+  result = comm.getValues(planKey, false);
+  if (!result.successful()) {
+    // mop: hmm ... we are registered but not part of the Plan :O
+    // create a plan for ourselves :)
+    VPackBuilder builder;
+    builder.add(VPackValue("none"));
+    
+    plan = builder.slice();
+
+    comm.setValue(planKey, plan, 0.0);
+    if (!result.successful()) {
+      LOG(ERR) << "Couldn't create plan " << result.errorMessage();
+      return false;
+    }
+  } else {
+    result.parse("", false);
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
+      result._values.begin();
+    
+    if (it != result._values.end()) {
+      plan = (*it).second._vpack->slice();
+    }
+  }
+  
+  result =
+      comm.setValue(currentKey, plan, 0.0);
+  
+  if (!result.successful()) {
+    LOG(ERR) << "Could not talk to agency! " << result.errorMessage();
+    return false;
+  }
+  
+  _id = id;
+  storeRole(role);
+  
+  LOG(DEBUG) << "We successfully announced ourselves as " << roleToString(role) << " and our id is " << id;
+  
+  return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the key for a role in the agency
+//////////////////////////////////////////////////////////////////////////////
+std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
+  switch (role) {
+    case ROLE_PRIMARY:
+      return "DBServers";
+    case ROLE_COORDINATOR:
+      return "Coordinators";
+
+    case ROLE_SECONDARY:
+    case ROLE_UNDEFINED:
+    case ROLE_SINGLE: {}
+  }
+  return "INVALID_CLUSTER_ROLE";
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an id for a specified role
+//////////////////////////////////////////////////////////////////////////////
+std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum role) {
+  const std::string agencyKey = roleToAgencyKey(role);
+  
+  std::map<std::string, AgencyCommResultEntry>::const_iterator it;
+  const std::string serverIdPrefix = agencyKey.substr(0, agencyKey.length() - 1);
+  std::string id;
+
+  VPackBuilder builder;
+  builder.add(VPackValue("\"none\""));
+
+  VPackSlice idValue = builder.slice();
+  AgencyCommResult createResult; 
+  do {
+    AgencyCommResult result = comm.getValues("Plan/" + agencyKey, true);
+    if (!result.successful()) {
+      LOG(FATAL) << "Couldn't fetch Plan/" + agencyKey + " from agency. Agency is not initialized?";
+      FATAL_ERROR_EXIT();
+    }
+
+    result.parse("Plan/" + agencyKey + "/", false);
+    // mop: it is not our first run. wait a bit. 
+    if (!id.empty()) {
+      sleep(1);
+    }
+
+    size_t idCounter = 1;
+    do {
+      id = serverIdPrefix + std::to_string(idCounter);
+      it = result._values.find(id);
+
+      LOG(TRACE) << id << " found in existing keys: " << (it != result._values.end());
+      idCounter++;
+    } while (it != result._values.end());
+
+    createResult = comm.casValue("Plan/" + agencyKey + "/" + id, idValue, false, 0.0, 0.0);
+  } while(!createResult.successful());
+  
+  VPackBuilder localIdBuilder;
+  localIdBuilder.add(VPackValue(id));
+
+  VPackSlice localIdValue = localIdBuilder.slice();
+
+  AgencyCommResult mapResult = comm.setValue("Target/MapLocalToID/" + StringUtils::urlEncode(_localInfo), localIdValue, 0.0);
+  if (!mapResult.successful()) {
+    LOG(FATAL) << "Couldn't register Id as localId";
+    FATAL_ERROR_EXIT();
+  }
+   
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set the server role
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -34,10 +34,18 @@ const functionsDocumentation = {
   "boost": "boost test suites",
   "config": "checks the config file parsing",
   "dump": "dump tests",
+  "dump_authentication": "dump tests with authentication",
+  "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
+  "http_replication": "http replication tests",
   "http_server": "http server tests",
   "importing": "import tests",
+  "recovery": "run recovery tests",
+  "replication_ongoing": "replication ongoing tests",
+  "replication_static": "replication static tests",
+  "replication_sync": "replication sync tests",
   "shell_client": "shell client tests",
+  "shell_replication": "shell replication tests",
   "shell_server": "shell server tests",
   "shell_server_aql": "AQL tests in the server",
   "shell_server_only": "server specific tests",
@@ -61,7 +69,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
-  '   - `skipAuth : testing authentication will be skipped.',
+  '   - `skipAuth : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
@@ -92,10 +100,10 @@ const optionsDocumentation = [
   '',
   '   - benchargs : additional commandline arguments to arangob',
   '',
-  '   - `valgrind`: if set to true the arangods are run with the valgrind',
-  '     memory checker',
+  '   - `valgrind`: if set the programs are run with the valgrind',
+  '     memory checker; should point to the valgrind executable',
   '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
-  '   - `valgrindargs`: list of commandline parameters to add to valgrind',
+  '   - `valgrindArgs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
@@ -106,6 +114,7 @@ const optionsDocumentation = [
 const optionsDefaults = {
   "cleanup": true,
   "cluster": false,
+  "clusterNodes": 2,
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
@@ -118,6 +127,7 @@ const optionsDefaults = {
   "loopSleepWhen": 1,
   "onlyNightly": false,
   "password": "",
+  "replication": false,
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": false,
@@ -128,13 +138,15 @@ const optionsDefaults = {
   "skipNightly": true,
   "skipNondeterministic": false,
   "skipRanges": false,
+  "skipSsl": false,
   "skipTimeCritical": false,
   "test": undefined,
   "username": "root",
   "valgrind": false,
   "valgrindXmlFileBase": "",
-  "valgrindargs": [],
-  "writeXmlReport": true,
+  "valgrindArgs": [],
+  "valgrindHosts": false,
+  "writeXmlReport": true
 };
 
 const _ = require("lodash");
@@ -158,6 +170,19 @@ const Kickstarter = require("@arangodb/cluster").Kickstarter;
 
 let cleanupDirectories = [];
 let serverCrashed = false;
+
+const makeResults = function(testname) {
+  return function(status, message) {
+    let results = {};
+    results[testname] = {
+      status: status
+    };
+    if (message) {
+      results[testname].message = message;
+    }
+    return results;
+  };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level directory
@@ -304,6 +329,10 @@ function readImportantLogLines(logPath) {
 /// # and know the PID plus the process name for later use.
 /// kernel.core_uses_pid = 1
 /// kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+///
+/// If you set coreDirectory to empty, this behavior is changed: The core file
+/// expected to be named simply "core" and should exist in the current
+/// directory.
 ////////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
@@ -315,7 +344,12 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
   command += "echo quit;";
   command += "sleep 2";
   command += ") | gdb " + storeArangodPath + " ";
-  command += options.coreDirectory + "/*core*" + pid + '*';
+
+  if (options.coreDirectory === "") {
+    command += "core";
+  } else {
+    command += options.coreDirectory + "/*core*" + pid + '*';
+  }
 
   const args = ['-c', command];
   print(JSON.stringify(args));
@@ -359,57 +393,72 @@ function analyzeCoreDumpWindows(instanceInfo) {
 /// @brief checks of an instance is still alive
 ////////////////////////////////////////////////////////////////////////////////
 
-function checkInstanceAlive(instanceInfo, options) {
-  if (options.cluster === false) {
-    if (instanceInfo.hasOwnProperty('exitStatus')) {
-      return false;
-    }
-
-    const res = statusExternal(instanceInfo.pid, false);
-    const ret = res.status === "RUNNING";
-
-    if (!ret) {
-      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-      print(instanceInfo);
-
-      if (res.hasOwnProperty('signal') &&
-        ((res.signal === 11) ||
-          (res.signal === 6) ||
-          // Windows sometimes has random numbers in signal...
-          (require("internal").platform.substr(0, 3) === 'win')
-        )
-      ) {
-        const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
-
-        print("Core dump written; copying arangod to " +
-          instanceInfo.tmpDataDir + " for later analysis.");
-
-        res.gdbHint = "Run debugger with 'gdb " +
-          storeArangodPath + " " + options.coreDirectory +
-          "/core*" + instanceInfo.pid.pid + "*'";
-
-        if (require("internal").platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(instanceInfo.monitor, true);
-          analyzeCoreDumpWindows(instanceInfo);
-        } else {
-          fs.copyFile("bin/arangod", storeArangodPath);
-          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
-        }
-      }
-
-      instanceInfo.exitStatus = res;
-    }
-
-    if (!ret) {
-      print("marking crashy");
-      serverCrashed = true;
-    }
-
-    return ret;
+function checkInstanceAliveSingleServer(instanceInfo, options) {
+  if (instanceInfo.hasOwnProperty('exitStatus')) {
+    return false;
   }
 
-  // cluster tests
+  const res = statusExternal(instanceInfo.pid, false);
+  const ret = res.status === "RUNNING";
+
+  if (!ret) {
+    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+    print(instanceInfo);
+
+    if (res.hasOwnProperty('signal') &&
+      ((res.signal === 11) ||
+        (res.signal === 6) ||
+        // Windows sometimes has random numbers in signal...
+        (require("internal").platform.substr(0, 3) === 'win')
+      )
+    ) {
+      const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+
+      print("Core dump written; copying arangod to " +
+        instanceInfo.tmpDataDir + " for later analysis.");
+
+      let corePath = (options.coreDirectory === "") ?
+        "core" :
+        options.coreDirectory + "/core*" + instanceInfo.pid.pid + "*'";
+
+      res.gdbHint = "Run debugger with 'gdb " +
+        storeArangodPath + " " + corePath;
+
+      if (require("internal").platform.substr(0, 3) === 'win') {
+        // Windows: wait for procdump to do its job...
+        statusExternal(instanceInfo.monitor, true);
+        analyzeCoreDumpWindows(instanceInfo);
+      } else {
+        fs.copyFile("bin/arangod", storeArangodPath);
+        analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
+      }
+    }
+
+    instanceInfo.exitStatus = res;
+  }
+
+  if (!ret) {
+    print("marking crashy");
+    serverCrashed = true;
+  }
+
+  return ret;
+}
+
+function checkRemoteInstance(pid, wait, options) {
+  const debug = options.debug || false;
+  const p = JSON.stringify(pid);
+  const res = JSON.parse(arango.PUT("/_admin/execute",
+    `return require("internal").statusExternal(${p}, ${wait});`));
+
+  if (debug) {
+    print(`status of remote process ${p}: ${res.status}`);
+  }
+
+  return res;
+}
+
+function checkInstanceAliveCluster(instanceInfo, options) {
   let clusterFit = true;
 
   for (let part in instanceInfo.kickstarter.runInfo) {
@@ -417,7 +466,7 @@ function checkInstanceAlive(instanceInfo, options) {
       for (let pid in instanceInfo.kickstarter.runInfo[part].pids) {
         if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
           const checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
-          const ress = statusExternal(checkpid, false);
+          const ress = checkRemoteInstance(checkpid, false, options);
 
           if (ress.hasOwnProperty('signal') &&
             ((ress.signal === 11) || (ress.signal === 6))) {
@@ -432,7 +481,7 @@ function checkInstanceAlive(instanceInfo, options) {
 
             if (require("internal").platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
-              statusExternal(instanceInfo.monitor, true);
+              checkRemoteInstance(instanceInfo.monitor, true, options);
               analyzeCoreDumpWindows(instanceInfo);
             } else {
               fs.copyFile("bin/arangod", storeArangodPath);
@@ -454,6 +503,14 @@ function checkInstanceAlive(instanceInfo, options) {
     serverCrashed = true;
     return false;
   }
+}
+
+function checkInstanceAlive(instanceInfo, options) {
+  if (options.cluster === false) {
+    return checkInstanceAliveSingleServer(instanceInfo, options);
+  }
+
+  return checkInstanceAliveCluster(instanceInfo, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,7 +602,7 @@ function makePathGeneric(path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a remote command using /_admin/execute
+/// @brief runs a remote unittest file using /_admin/execute
 ////////////////////////////////////////////////////////////////////////////////
 
 function runThere(options, instanceInfo, file) {
@@ -564,7 +621,7 @@ function runThere(options, instanceInfo, file) {
     httpOptions.method = "POST";
     httpOptions.timeout = 3600;
 
-    if (typeof(options.valgrind) === 'string') {
+    if (options.valgrind) {
       httpOptions.timeout *= 2;
     }
 
@@ -603,12 +660,14 @@ function runThere(options, instanceInfo, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function performTests(options, testList, testname) {
-  let instanceInfo = startInstance("tcp", options, [], testname);
+  let instanceInfo = startInstance("tcp", options, {}, testname);
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      setup: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -876,6 +935,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
   let rc = executeAndWait(arangosh, toArgv(args));
 
   let result;
+
   try {
     result = JSON.parse(fs.read("testresult.json"));
   } catch (x) {
@@ -1023,7 +1083,7 @@ function shutdownInstance(instanceInfo, options) {
               if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
                 (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
                 print("Server " + serverState + " shut down with:\n" +
-                      yaml.safeDump(rc.results[i].serverStates[serverState]));
+                  yaml.safeDump(rc.results[i].serverStates[serverState]));
 
                 if (!serverCrashed) {
                   print("marking run as crashy");
@@ -1055,7 +1115,7 @@ function shutdownInstance(instanceInfo, options) {
         if (instanceInfo.exitStatus.status === "RUNNING") {
           ++count;
 
-          if (typeof(options.valgrind) === 'string') {
+          if (options.valgrind) {
             wait(1);
             continue;
           }
@@ -1166,35 +1226,46 @@ function startDispatcher(instanceInfo) {
 /// protocol must be one of ["tcp", "ssl", "unix"]
 ////////////////////////////////////////////////////////////////////////////////
 
-function startInstance(protocol, options, addArgs, testname, tmpDir) {
-  const startTime = time();
-  const topDir = findTopDir();
+function startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+  addArgs, testname, appDir, tmpDataDir) {
+  startDispatcher(instanceInfo, options);
 
-  let instanceInfo = {};
-  instanceInfo.topDir = topDir;
-  instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
+  const clusterNodes = options.clusterNodes;
 
-  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-  const appDir = fs.join(tmpDataDir, "apps");
+  let extraArgs = makeArgsArangod(options, appDir);
+  extraArgs = _.extend(extraArgs, optionsExtraArgs);
 
-  fs.makeDirectoryRecursive(tmpDataDir);
-  instanceInfo.tmpDataDir = tmpDataDir;
-
-  let optionsExtraArgs = {};
-
-  if (typeof(options.extraargs) === 'object') {
-    optionsExtraArgs = options.extraargs;
+  if (addArgs !== undefined) {
+    extraArgs = _.extend(extraArgs, addArgs);
   }
 
-  let valgrindopts = {};
+  const dispatcher = {
+    "endpoint": "tcp://127.0.0.1:",
+    "arangodExtraArgs": toArgv(extraArgs),
+    "username": "root",
+    "password": ""
+  };
 
-  if (typeof(options.valgrindargs) === 'object') {
-    valgrindopts = options.valgrindargs;
+  print("Temporary cluster data and logs are in", tmpDataDir);
+
+  let runInValgrind = "";
+  let testfn = "";
+
+  if (options.valgrind) {
+    runInValgrind = options.valgrind;
+
+    testfn = options.valgrindXmlFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    testfn += "cluster";
   }
 
   let valgrindHosts = '';
 
-  if (typeof(options.valgrindHosts) === 'object') {
+  if (options.valgrindHosts) {
     if (options.valgrindHosts.Coordinator === true) {
       valgrindHosts += 'Coordinator';
     }
@@ -1204,142 +1275,167 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     }
   }
 
-  let dispatcher;
-  let endpoint;
+  let valgrindOpts = {};
 
-  // cluster mode
+  if (options.valgrindArgs) {
+    valgrindOpts = options.valgrindArgs;
+  }
+
+  let plan = new Planner({
+    "numberOfDBservers": clusterNodes,
+    "numberOfCoordinators": 1,
+    "dispatchers": {
+      "me": dispatcher
+    },
+    "dataPath": tmpDataDir,
+    "logPath": tmpDataDir,
+    "useSSLonCoordinators": protocol === "ssl",
+    "valgrind": runInValgrind,
+    "valgrindOpts": toArgv(valgrindOpts, true),
+    "valgrindXmlFileBase": testfn,
+    "valgrindTestname": testname,
+    "valgrindHosts": valgrindHosts,
+    "extremeVerbosity": options.extremeVerbosity
+  });
+
+  instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
+
+  let rc = instanceInfo.kickstarter.launch();
+
+  if (rc.error) {
+    print("Cluster startup failed: " + rc.errorMessage);
+    return false;
+  }
+
+  let runInfo = instanceInfo.kickstarter.runInfo;
+  let j = runInfo.length - 1;
+
+  while (j > 0 && runInfo[j].isStartServers === undefined) {
+    --j;
+  }
+
+  if ((runInfo.length === 0) || (runInfo[0].error === true)) {
+    let error = new Error();
+    error.errorMessage = yaml.safeDump(runInfo);
+    throw error;
+  }
+
+  let roles = runInfo[j].roles;
+  let endpoints = runInfo[j].endpoints;
+  let pos = roles.indexOf("COORDINATOR");
+
+  instanceInfo.endpoint = endpoints[pos];
+
+  return true;
+}
+
+function valgrindArgsSingleServer(options, testname, run) {
+  let valgrindOpts = {};
+
+  if (options.valgrindArgs) {
+    valgrindOpts = options.valgrindArgs;
+  }
+
+  let testfn = options.valgrindXmlFileBase;
+
+  if (testfn.length > 0) {
+    testfn += '_';
+  }
+
+  testfn += testname;
+
+  valgrindOpts["xml-file"] = testfn + '.%p.xml';
+  valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
+
+  return toArgv(valgrindOpts, true).concat([run]);
+}
+
+function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+  addArgs, testname, appDir, tmpDataDir) {
+  const port = findFreePort();
+  instanceInfo.port = port;
+
+  const endpoint = protocol + "://127.0.0.1:" + port;
+  instanceInfo.endpoint = endpoint;
+
+  let td = fs.join(tmpDataDir, "data");
+  fs.makeDirectoryRecursive(td);
+
+  let args = makeArgsArangod(options, appDir);
+  args["server.endpoint"] = endpoint;
+  args["database.directory"] = td;
+  args["log.file"] = fs.join(tmpDataDir, "log");
+
+  if (protocol === "ssl") {
+    args["server.keyfile"] = fs.join("UnitTests", "server.pem");
+  }
+
+  args = _.extend(args, optionsExtraArgs);
+
+  if (addArgs !== undefined) {
+    args = _.extend(args, addArgs);
+  }
+
+  const run = fs.join("bin", "arangod");
+
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, testname, run);
+    const newargs = valgrindArgs.concat(toArgv(args));
+
+    instanceInfo.pid = executeExternal(options.valgrind, newargs);
+  } else {
+    instanceInfo.pid = executeExternal(run, toArgv(args));
+  }
+
+  return true;
+}
+
+function startInstance(protocol, options, addArgs, testname, tmpDir) {
+  const startTime = time();
+  const topDir = findTopDir();
+
+  let instanceInfo = {};
+  instanceInfo.topDir = topDir;
+
+  // create temporary directories
+  instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
+
+  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
+  const appDir = fs.join(tmpDataDir, "apps");
+
+  fs.makeDirectoryRecursive(tmpDataDir);
+  instanceInfo.tmpDataDir = tmpDataDir;
+
+  // build extra / valgrind arguments
+  let optionsExtraArgs = {};
+
+  if (typeof(options.extraArgs) === 'object') {
+    optionsExtraArgs = options.extraArgs;
+  }
+
+  // startup in cluster mode
+  let res = false;
+
   if (options.cluster) {
-    startDispatcher(instanceInfo, options);
-
-    let clusterNodes = 2;
-
-    if (options.clusterNodes) {
-      clusterNodes = options.clusterNodes;
-    }
-
-    let extraargs = makeArgsArangod(options, appDir);
-    extraargs = _.extend(extraargs, optionsExtraArgs);
-
-    if (addArgs !== undefined) {
-      extraargs = _.extend(extraargs, addArgs);
-    }
-
-    dispatcher = {
-      "endpoint": "tcp://127.0.0.1:",
-      "arangodExtraArgs": toArgv(extraargs),
-      "username": "root",
-      "password": ""
-    };
-
-    print("Temporary cluster data and logs are in", tmpDataDir);
-
-    let runInValgrind = "";
-    let valgrindXmlFileBase = "";
-
-    if (typeof(options.valgrind) === 'string') {
-      runInValgrind = options.valgrind;
-      valgrindXmlFileBase = options.valgrindXmlFileBase;
-    }
-
-    let plan = new Planner({
-      "numberOfDBservers": clusterNodes,
-      "numberOfCoordinators": 1,
-      "dispatchers": {
-        "me": dispatcher
-      },
-      "dataPath": tmpDataDir,
-      "logPath": tmpDataDir,
-      "useSSLonCoordinators": protocol === "ssl",
-      "valgrind": runInValgrind,
-      "valgrindopts": toArgv(valgrindopts, true),
-      "valgrindXmlFileBase": valgrindXmlFileBase + '_cluster',
-      "valgrindTestname": testname,
-      "valgrindHosts": valgrindHosts,
-      "extremeVerbosity": options.extremeVerbosity
-    });
-
-    instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
-
-    let rc = instanceInfo.kickstarter.launch();
-
-    if (rc.error) {
-      print("Cluster startup failed: " + rc.errorMessage);
-      return false;
-    }
-
-    let runInfo = instanceInfo.kickstarter.runInfo;
-    let j = runInfo.length - 1;
-
-    while (j > 0 && runInfo[j].isStartServers === undefined) {
-      --j;
-    }
-
-    if ((runInfo.length === 0) || (runInfo[0].error === true)) {
-      let error = new Error();
-      error.errorMessage = yaml.safeDump(runInfo);
-      throw error;
-    }
-
-    let roles = runInfo[j].roles;
-    let endpoints = runInfo[j].endpoints;
-    let pos = roles.indexOf("Coordinator");
-
-    endpoint = endpoints[pos];
+    res = startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+      addArgs, testname, appDir, tmpDataDir);
   }
 
   // single instance mode
   else {
-    const port = findFreePort();
-    instanceInfo.port = port;
-    endpoint = protocol + "://127.0.0.1:" + port;
+    res = startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+      addArgs, testname, appDir, tmpDataDir);
+  }
 
-    let td = fs.join(tmpDataDir, "data");
-    fs.makeDirectoryRecursive(td);
-
-    let args = makeArgsArangod(options, appDir);
-    args["server.endpoint"] = endpoint;
-    args["database.directory"] = td;
-    args["log.file"] = fs.join(tmpDataDir, "log");
-
-    if (protocol === "ssl") {
-      args["server.keyfile"] = fs.join("UnitTests", "server.pem");
-    }
-
-    args = _.extend(args, optionsExtraArgs);
-
-    if (addArgs !== undefined) {
-      args = _.extend(args, addArgs);
-    }
-
-    if (typeof(options.valgrind) === 'string') {
-      const run = fs.join("bin", "arangod");
-      let testfn = options.valgrindXmlFileBase;
-
-      if (testfn.length > 0) {
-        testfn += '_';
-      }
-
-      testfn += testname;
-
-      valgrindopts["xml-file"] = testfn + '.%p.xml';
-      valgrindopts["log-file"] = testfn + '.%p.valgrind.log';
-
-      // Sequence: Valgrind arguments; binary to run; options to binary:
-      const newargs = toArgv(valgrindopts, true).concat([run]).concat(toArgv(args));
-      const cmdline = options.valgrind;
-
-      instanceInfo.pid = executeExternal(cmdline, newargs);
-    } else {
-      instanceInfo.pid = executeExternal(fs.join("bin", "arangod"), toArgv(args));
-    }
+  if (!res) {
+    return false;
   }
 
   // wait until the server/coordinator is up:
   let count = 0;
-  const url = endpointToURL(endpoint);
 
+  const url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.url = url;
-  instanceInfo.endpoint = endpoint;
 
   while (true) {
     wait(0.5, false);
@@ -1396,9 +1492,9 @@ function rubyTests(options, ssl) {
   let instanceInfo;
 
   if (ssl) {
-    instanceInfo = startInstance("ssl", options, [], "ssl_server");
+    instanceInfo = startInstance("ssl", options, {}, "ssl_server");
   } else {
-    instanceInfo = startInstance("tcp", options, [], "http_server");
+    instanceInfo = startInstance("tcp", options, {}, "http_server");
   }
 
   if (instanceInfo === false) {
@@ -1616,6 +1712,14 @@ function findTests() {
         return fs.join(makePathUnix("js/server/perftests"), x);
       }).sort();
 
+  testsCases.replication = _.filter(fs.list(makePathUnix("js/common/tests/replication")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/common/tests/replication"), x);
+    }).sort();
+
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
 
@@ -1628,68 +1732,70 @@ function findTests() {
 
 function filterTestcaseByOptions(testname, options, whichFilter) {
   if (options.hasOwnProperty('test') && (typeof(options.test) !== 'undefined')) {
-    whichFilter.filter = "testcase";
+    whichFilter.filter = 'testcase';
     return testname === options.test;
   }
 
-  if ((testname.indexOf("-cluster") !== -1) && !options.cluster) {
-    whichFilter.filter = 'noncluster';
-    return false;
-  }
-
-  if (testname.indexOf("-noncluster") !== -1 && options.cluster) {
-    whichFilter.filter = 'cluster';
-    return false;
-  }
-
-  if (testname.indexOf("-timecritical") !== -1 && options.skipTimeCritical) {
-    whichFilter.filter = 'timecritical';
-    return false;
-  }
-
-  if (testname.indexOf("-nightly") !== -1 && options.skipNightly && !options.onlyNightly) {
-    whichFilter.filter = 'skip nightly';
-    return false;
-  }
-
-  if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
-    whichFilter.filter = 'geo';
-    return false;
-  }
-
-  if (testname.indexOf("-nondeterministic") !== -1 && options.skipNondeterministic) {
-    whichFilter.filter = 'nondeterministic';
-    return false;
-  }
-
-  if (testname.indexOf("-graph") !== -1 && options.skipGraph) {
-    whichFilter.filter = 'graph';
-    return false;
-  }
-
-  if (testname.indexOf("-disabled") !== -1) {
-    whichFilter.filter = 'disabled';
-    return false;
-  }
-
-  if (testname.indexOf("replication") !== -1) {
+  if (options.replication) {
+    whichFilter.filter = 'replication';
+    return testname.indexOf('replication') !== -1;
+  } else if (testname.indexOf('replication') !== -1) {
     whichFilter.filter = 'replication';
     return false;
   }
 
-  if ((testname.indexOf("-memoryintense") !== -1) && options.skipMemoryIntense) {
+  if ((testname.indexOf('-cluster') !== -1) && !options.cluster) {
+    whichFilter.filter = 'noncluster';
+    return false;
+  }
+
+  if (testname.indexOf('-noncluster') !== -1 && options.cluster) {
+    whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
+    whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf('-nightly') !== -1 && options.skipNightly && !options.onlyNightly) {
+    whichFilter.filter = 'skip nightly';
+    return false;
+  }
+
+  if (testname.indexOf('-geo') !== -1 && options.skipGeo) {
+    whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf('-nondeterministic') !== -1 && options.skipNondeterministic) {
+    whichFilter.filter = 'nondeterministic';
+    return false;
+  }
+
+  if (testname.indexOf('-graph') !== -1 && options.skipGraph) {
+    whichFilter.filter = 'graph';
+    return false;
+  }
+
+  if (testname.indexOf('-disabled') !== -1) {
+    whichFilter.filter = 'disabled';
+    return false;
+  }
+
+  if ((testname.indexOf('-memoryintense') !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
     return false;
   }
 
-  if (testname.indexOf("-nightly") === -1 && options.onlyNightly) {
+  if (testname.indexOf('-nightly') === -1 && options.onlyNightly) {
     whichFilter.filter = 'only nightly';
     return false;
   }
 
-  if ((testname.indexOf("-novalgrind") !== -1) &&
-    (typeof(options.valgrind) === 'string')) {
-    whichFilter.filter = "skip in valgrind";
+  if ((testname.indexOf('-novalgrind') !== -1) && options.valgrind) {
+    whichFilter.filter = 'skip in valgrind';
     return false;
   }
 
@@ -1708,6 +1814,8 @@ let allTests = [
   "boost",
   "config",
   "dump",
+  "dump_authentication",
+  "dfdb",
   "http_server",
   "importing",
   "shell_client",
@@ -1729,7 +1837,6 @@ const internalMembers = [
   "failed",
   "total",
   "crashed",
-  "all_ok",
   "ok",
   "message",
   "suiteName"
@@ -1772,7 +1879,8 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (1): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+      "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
     ++failed;
   }
@@ -1792,7 +1900,8 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] = "didn't get expected return code (0): \n" +
+    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+      "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
 
     ++failed;
@@ -1904,17 +2013,24 @@ const benchTodos = [{
 testFuncs.arangob = function(options) {
   if (options.skipArangoB === true) {
     print("skipping Benchmark tests!");
-    return {};
+    return {
+      arangob: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("arangob tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "arangob");
+  let instanceInfo = startInstance("tcp", options, {}, "arangob");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      arangob: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -1999,7 +2115,12 @@ testFuncs.authentication = function(options) {
   if (options.skipAuth === true) {
     print("skipping Authentication tests!");
 
-    return {};
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("Authentication tests...");
@@ -2010,14 +2131,16 @@ testFuncs.authentication = function(options) {
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      authentication: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
   let results = {};
 
-  results.auth = runInArangosh(options, instanceInfo,
+  results.authentication = runInArangosh(options, instanceInfo,
     fs.join("js", "client", "tests", "auth.js"));
 
   print("Shutting down...");
@@ -2080,7 +2203,12 @@ function checkBodyForJsonToParse(request) {
 testFuncs.authentication_parameters = function(options) {
   if (options.skipAuth === true) {
     print("skipping Authentication with parameters tests!");
-    return {};
+    return {
+      authentication_parameters: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   print("Authentication with parameters tests...");
@@ -2090,7 +2218,7 @@ testFuncs.authentication_parameters = function(options) {
     returnBodyOnError: true
   };
 
-  if (typeof(options.valgrind) === 'string') {
+  if (options.valgrind) {
     downloadOptions.timeout = 300;
   }
 
@@ -2104,7 +2232,7 @@ testFuncs.authentication_parameters = function(options) {
 
     if (instanceInfo === false) {
       return {
-        authentication: {
+        authentication_parameters: {
           status: false,
           total: 1,
           failed: 1,
@@ -2189,16 +2317,34 @@ testFuncs.authentication_parameters = function(options) {
 
 testFuncs.boost = function(options) {
   const topDir = findTopDir();
+  const args = ["--show_progress"];
+
   let results = {};
 
   if (!options.skipBoost) {
-    results.basics = executeAndWait(fs.join(topDir,
-      "UnitTests", "basics_suite"), ["--show_progress"]);
+    const run = fs.join(topDir, "UnitTests", "basics_suite");
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
+      const newargs = valgrindArgs.concat(args);
+
+      results.basics = executeAndWait(options.valgrind, newargs);
+    } else {
+      results.basics = executeAndWait(run, args);
+    }
   }
 
   if (!options.skipGeo) {
-    results.geo_suite = executeAndWait(
-      fs.join(topDir, "UnitTests", "geo_suite"), ["--show_progress"]);
+    const run = fs.join(topDir, "UnitTests", "geo_suite");
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
+      const newargs = valgrindArgs.concat(args);
+
+      results.geo_suite = executeAndWait(options.valgrind, newargs);
+    } else {
+      results.geo_suite = executeAndWait(run, args);
+    }
   }
 
   return results;
@@ -2210,7 +2356,12 @@ testFuncs.boost = function(options) {
 
 testFuncs.config = function(options) {
   if (options.skipConfig) {
-    return {};
+    return {
+      config: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   let results = {
@@ -2246,7 +2397,16 @@ testFuncs.config = function(options) {
       "flatCommands": ["--help"]
     };
 
-    results.absolut[test] = executeAndWait(fs.join(topDir, "bin", test), toArgv(args));
+    const run = fs.join(topDir, "bin", test);
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
+      const newargs = valgrindArgs.concat(toArgv(args));
+
+      results.absolut[test] = executeAndWait(options.valgrind, newargs);
+    } else {
+      results.absolut[test] = executeAndWait(run, toArgv(args));
+    }
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -2271,6 +2431,17 @@ testFuncs.config = function(options) {
       "flatCommands": ["--help"]
     };
 
+    const run = fs.join(topDir, "bin", test);
+
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
+      const newargs = valgrindArgs.concat(toArgv(args));
+
+      results.relative[test] = executeAndWait(options.valgrind, newargs);
+    } else {
+      results.relative[test] = executeAndWait(run, toArgv(args));
+    }
+
     results.relative[test] = executeAndWait(fs.join(topDir, "bin", test),
       toArgv(args));
 
@@ -2283,6 +2454,31 @@ testFuncs.config = function(options) {
     print("Args for (relative) [" + test + "]:");
     print(yaml.safeDump(args));
     print("Result: " + results.relative[test].status);
+  }
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: dfdb
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.dfdb = function(options) {
+  const topDir = findTopDir();
+  const dataDir = fs.getTempFile();
+  const args = ["-c", "etc/relative/arango-dfdb.conf", "--no-server", dataDir];
+
+  let results = {};
+
+  const run = fs.join(topDir, "bin", "arangod");
+
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", run);
+    const newargs = valgrindArgs.concat(args);
+
+    results.dfdb = executeAndWait(options.valgrind, newargs);
+  } else {
+    results.dfdb = executeAndWait(run, args);
   }
 
   return results;
@@ -2303,12 +2499,14 @@ testFuncs.dump = function(options) {
 
   print("dump tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "dump");
+  let instanceInfo = startInstance("tcp", options, {}, "dump");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      dump: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2325,13 +2523,15 @@ testFuncs.dump = function(options) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
       "UnitTestsDumpSrc");
 
-    if (checkInstanceAlive(instanceInfo, options)) {
+    if (checkInstanceAlive(instanceInfo, options) &&
+      (results.dump.status === true)) {
       print(Date() + ": Dump and Restore - restore");
 
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
-      if (checkInstanceAlive(instanceInfo, options)) {
+      if (checkInstanceAlive(instanceInfo, options) &&
+        (results.restore.status === true)) {
         print(Date() + ": Dump and Restore - dump after restore");
 
         results.test = runInArangosh(options, instanceInfo,
@@ -2339,11 +2539,112 @@ testFuncs.dump = function(options) {
             "server.database": "UnitTestsDumpDst"
           });
 
-        if (checkInstanceAlive(instanceInfo, options)) {
+        if (checkInstanceAlive(instanceInfo, options) &&
+          (results.test.status === true)) {
           print(Date() + ": Dump and Restore - teardown");
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown" + cluster + ".js"));
+        }
+      }
+    }
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
+
+  if ((!options.skipLogAnalysis) &&
+    instanceInfo.hasOwnProperty('importantLogLines') &&
+    Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" +
+      yaml.safeDump(instanceInfo.importantLogLines));
+  }
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: dump_authentication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.dump_authentication = function(options) {
+  if (options.cluster) {
+    if (options.extremeVerbosity) {
+      print("Skipped because of cluster.");
+    }
+
+    return {
+      "dump_authentication": {
+        "status": true,
+        "message": "skipped because of cluster",
+        "skipped": true
+      }
+    };
+  }
+
+  print("dump_authentication tests...");
+
+  const auth = {
+    "server.disable-authentication": "false"
+  };
+
+  print(JSON.stringify(auth));
+
+  let instanceInfo = startInstance("tcp", options, auth, "dump_authentication");
+
+  if (instanceInfo === false) {
+    return {
+      "dump_authentication": {
+        status: false,
+        message: "failed to start server!"
+      }
+    };
+  }
+
+  print(Date() + ": Setting up");
+
+  let results = {};
+  results.setup = runInArangosh(options, instanceInfo,
+    makePathUnix("js/server/tests/dump/dump-authentication-setup.js"),
+    auth);
+
+  if (checkInstanceAlive(instanceInfo, options) &&
+    (results.setup.status === true)) {
+    print(Date() + ": Dump and Restore - dump");
+
+    let authOpts = {
+      username: "foobaruser",
+      password: "foobarpasswd"
+    };
+
+    _.defaults(authOpts, options);
+
+    results.dump = runArangoDumpRestore(authOpts, instanceInfo, "dump",
+      "UnitTestsDumpSrc");
+
+    if (checkInstanceAlive(instanceInfo, options) &&
+      (results.dump.status === true)) {
+      print(Date() + ": Dump and Restore - restore");
+
+      results.restore = runArangoDumpRestore(authOpts, instanceInfo, "restore",
+        "UnitTestsDumpDst");
+
+      if (checkInstanceAlive(instanceInfo, options) &&
+        (results.restore.status === true)) {
+        print(Date() + ": Dump and Restore - dump after restore");
+
+        results.test = runInArangosh(authOpts, instanceInfo,
+          makePathUnix("js/server/tests/dump/dump-authentication.js"), {
+            "server.database": "UnitTestsDumpDst"
+          });
+
+        if (checkInstanceAlive(instanceInfo, options) &&
+          (results.test.status === true)) {
+          print(Date() + ": Dump and Restore - teardown");
+
+          results.tearDown = runInArangosh(options, instanceInfo,
+            makePathUnix("js/server/tests/dump/dump-teardown.js"), auth);
         }
       }
     }
@@ -2370,12 +2671,14 @@ testFuncs.dump = function(options) {
 testFuncs.foxx_manager = function(options) {
   print("foxx_manager tests...");
 
-  let instanceInfo = startInstance("tcp", options, [], "foxx_manager");
+  let instanceInfo = startInstance("tcp", options, {}, "foxx_manager");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      foxx_manager: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2403,6 +2706,19 @@ testFuncs.foxx_manager = function(options) {
   }
 
   return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: http replication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.http_replication = function(options) {
+  var opts = {
+    "replication": true
+  };
+  _.defaults(opts, options);
+
+  return rubyTests(opts, false);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2516,12 +2832,14 @@ testFuncs.importing = function(options) {
     };
   }
 
-  let instanceInfo = startInstance("tcp", options, [], "importing");
+  let instanceInfo = startInstance("tcp", options, {}, "importing");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      "importing": {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2572,18 +2890,331 @@ testFuncs.importing = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: recovery
+////////////////////////////////////////////////////////////////////////////////
+
+function runArangodRecovery(instanceInfo, options, script, setup) {
+  if (!instanceInfo.tmpDataDir) {
+    let td = fs.join(fs.getTempFile(), "data");
+    fs.makeDirectoryRecursive(td);
+
+    instanceInfo.tmpDataDir = td;
+  }
+
+  if (!instanceInfo.recoveryArgs) {
+    let args = makeArgsArangod(options);
+    args["server.threads"] = 1;
+    args["wal.reserve-logfiles"] = 1;
+    args["database.directory"] = instanceInfo.tmpDataDir;
+
+    instanceInfo.recoveryArgv = toArgv(args).concat(["--no-server"]);
+  }
+
+  let argv = instanceInfo.recoveryArgv;
+
+  if (setup) {
+    argv = argv.concat([
+      "--log.level", "fatal",
+      "--javascript.script-parameter", "setup"
+    ]);
+  } else {
+    argv = argv.concat([
+      "--log.level", "info",
+      "--wal.ignore-logfile-errors", "true",
+      "--javascript.script-parameter", "recovery"
+    ]);
+  }
+
+  argv = argv.concat([
+    "--javascript.script",
+    fs.join(".", "js", "server", "tests", "recovery", script + ".js")
+  ]);
+
+  instanceInfo.pid = executeAndWait(fs.join("bin", "arangod"), argv);
+}
+
+const recoveryTests = [
+  "disk-full-logfile",
+  "disk-full-logfile-data",
+  "disk-full-datafile",
+  "disk-full-datafile",
+  "collection-drop-recreate",
+  "create-with-temp",
+  "create-with-temp-old",
+  "create-collection-fail",
+  "create-database-fail",
+  "empty-datafiles",
+  "flush-drop-database-and-fail",
+  "drop-database-flush-and-fail",
+  "create-databases",
+  "recreate-databases",
+  "drop-databases",
+  "create-and-drop-databases",
+  "drop-database-and-fail",
+  "flush-drop-database-and-fail",
+  "collection-rename-recreate",
+  "collection-rename-recreate-flush",
+  "collection-unload",
+  "resume-recovery-multi-flush",
+  "resume-recovery-simple",
+  "resume-recovery-all",
+  "resume-recovery-other",
+  "resume-recovery",
+  "foxx-directories",
+  "collection-rename",
+  "collection-properties",
+  "empty-logfiles",
+  "many-logs",
+  "multiple-logs",
+  "collection-recreate",
+  "drop-indexes",
+  "create-indexes",
+  "create-collections",
+  "recreate-collection",
+  "drop-single-collection",
+  "drop-collections",
+  "collections-reuse",
+  "collections-different-attributes",
+  "indexes-hash",
+  "indexes-sparse-hash",
+  "indexes-skiplist",
+  "indexes-sparse-skiplist",
+  "indexes-geo",
+  "edges",
+  "cap-constraint",
+  "indexes",
+  "many-inserts",
+  "many-updates",
+  "wait-for-sync",
+  "attributes",
+  "no-journal",
+  "write-throttling",
+  "collector-oom",
+  "transaction-no-abort",
+  "transaction-no-commit",
+  "multi-database-durability",
+  "disk-full-no-collection-journal",
+  "no-shutdown-info-with-flush",
+  "no-shutdown-info-no-flush",
+  "no-shutdown-info-multiple-logs",
+  "insert-update-remove",
+  "insert-update-remove-distance",
+  "big-transaction-durability",
+  "transaction-durability",
+  "transaction-durability-multiple",
+  "corrupt-wal-marker-multiple",
+  "corrupt-wal-marker-single"
+];
+
+testFuncs.recovery = function(options) {
+  let results = {};
+  let status = true;
+
+  for (let i = 0; i < recoveryTests.length; ++i) {
+    let test = recoveryTests[i];
+    let instanceInfo = {};
+
+    runArangodRecovery(instanceInfo, options, test, true);
+
+    runArangodRecovery(instanceInfo, options, test, false);
+
+    if (instanceInfo.tmpDataDir) {
+      fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
+    }
+
+    results[test] = instanceInfo.pid;
+
+    if (!results[test].status) {
+      status = false;
+    }
+  }
+
+  results.status = status;
+
+  return {
+    recovery: results
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_ongoing
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_ongoing = function(options) {
+  const mr = makeResults('replication_ongoing');
+
+  let master = startInstance("tcp", options, {}, "master_ongoing");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_ongoing");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.unit-tests",
+    "./js/server/tests/replication/replication-ongoing.js",
+    slave.endpoint
+  ]);
+
+  let results;
+
+  if (!res.status) {
+    results = mr(false, "replication-ongoing.js failed");
+  } else {
+    results = mr(true);
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_static
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_static = function(options) {
+  const mr = makeResults('replication_static');
+
+  let master = startInstance("tcp", options, {
+    "server.disable-authentication": "false"
+  }, "master_static");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_static");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.execute-string",
+    "var users = require('@arangodb/users'); " +
+    "users.save('replicator-user', 'replicator-password', true); " +
+    "users.reload();"
+  ]);
+
+  let results;
+
+  if (res.status) {
+    res = runArangoshCmd(options, master, {}, [
+      "--javascript.unit-tests",
+      "./js/server/tests/replication/replication-static.js",
+      slave.endpoint
+    ]);
+
+    if (res.status) {
+      results = mr(true);
+    } else {
+      results = mr(false, "replication-static.js failed");
+    }
+  } else {
+    results = mr(false, "cannot create users");
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: replication_sync
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.replication_sync = function(options) {
+  const mr = makeResults('replication_sync');
+  let master = startInstance("tcp", options, {}, "master_sync");
+
+  if (master === false) {
+    return mr(false, "failed to start master!");
+  }
+
+  let slave = startInstance("tcp", options, {}, "slave_sync");
+
+  if (slave === false) {
+    shutdownInstance(master, options);
+    return mr(false, "failed to start slave!");
+  }
+
+  let res = runArangoshCmd(options, master, {}, [
+    "--javascript.execute-string",
+    "var users = require('@arangodb/users'); " +
+    "users.save('replicator-user', 'replicator-password', true); " +
+    "users.reload();"
+  ]);
+
+  let results;
+
+  if (res.status) {
+    res = runArangoshCmd(options, master, {}, [
+      "--javascript.unit-tests",
+      "./js/server/tests/replication/replication-sync.js",
+      slave.endpoint
+    ]);
+
+    if (res.status) {
+      results = mr(true);
+    } else {
+      results = mr(false, "replication-sync.js failed");
+    }
+  } else {
+    results = mr(false, "cannot create users");
+  }
+
+  print("Shutting down...");
+  shutdownInstance(slave, options);
+  shutdownInstance(master, options);
+  print("done.");
+
+  return results;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: shell_replication
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.shell_replication = function(options) {
+  findTests();
+
+  var opts = {
+    "replication": true
+  };
+  _.defaults(opts, options);
+
+  return performTests(opts, testsCases.replication, 'shell_replication');
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief TEST: shell client
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_client = function(options) {
   findTests();
 
-  let instanceInfo = startInstance("tcp", options, [], "shell_client");
+  let instanceInfo = startInstance("tcp", options, {}, "shell_client");
 
   if (instanceInfo === false) {
     return {
-      status: false,
-      message: "failed to start server!"
+      shell_client: {
+        status: false,
+        message: "failed to start server!"
+      }
     };
   }
 
@@ -2671,7 +3302,12 @@ testFuncs.shell_server_aql = function(options) {
     }
   }
 
-  return "skipped";
+  return {
+    shell_server_aql: {
+      status: true,
+      skipped: true
+    }
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2714,8 +3350,10 @@ function single_usage(testsuite, list) {
   print(" where <testfilename> is one from the list above.");
 
   return {
-    status: false,
-    message: "No test specified!"
+    usage: {
+      status: false,
+      message: "No test specified!"
+    }
   };
 }
 
@@ -2723,12 +3361,14 @@ testFuncs.single_client = function(options) {
   options.writeXmlReport = false;
 
   if (options.test !== undefined) {
-    let instanceInfo = startInstance("tcp", options, [], "single_client");
+    let instanceInfo = startInstance("tcp", options, {}, "single_client");
 
     if (instanceInfo === false) {
       return {
-        status: false,
-        message: "failed to start server!"
+        single_client: {
+          status: false,
+          message: "failed to start server!"
+        }
       };
     }
 
@@ -2770,53 +3410,55 @@ testFuncs.single_client = function(options) {
 testFuncs.single_server = function(options) {
   options.writeXmlReport = false;
 
-  if (options.test !== undefined) {
-    let instanceInfo = startInstance("tcp", options, [], "single_server");
+  if (options.test === undefined) {
+    findTests();
+    return single_usage("server", testsCases.server);
+  }
 
-    if (instanceInfo === false) {
-      return {
+  let instanceInfo = startInstance("tcp", options, {}, "single_server");
+
+  if (instanceInfo === false) {
+    return {
+      single_server: {
         status: false,
         message: "failed to start server!"
-      };
-    }
-
-    const te = options.test;
-
-    print("\n" + Date() + " arangod: Trying", te, "...");
-
-    let result = {};
-    let reply = runThere(options, instanceInfo, makePathGeneric(te));
-
-    if (reply.hasOwnProperty('status')) {
-      result[te] = reply;
-
-      if (result[te].status === false) {
-        options.cleanup = false;
       }
-    }
+    };
+  }
 
-    print("Shutting down...");
+  const te = options.test;
+
+  print("\n" + Date() + " arangod: Trying", te, "...");
+
+  let result = {};
+  let reply = runThere(options, instanceInfo, makePathGeneric(te));
+
+  if (reply.hasOwnProperty('status')) {
+    result[te] = reply;
 
     if (result[te].status === false) {
       options.cleanup = false;
     }
-
-    shutdownInstance(instanceInfo, options);
-
-    print("done.");
-
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      Object.keys(instanceInfo.importantLogLines).length > 0) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
-    return result;
-  } else {
-    findTests();
-    return single_usage("server", testsCases.server);
   }
+
+  print("Shutting down...");
+
+  if (result[te].status === false) {
+    options.cleanup = false;
+  }
+
+  shutdownInstance(instanceInfo, options);
+
+  print("done.");
+
+  if ((!options.skipLogAnalysis) &&
+    instanceInfo.hasOwnProperty('importantLogLines') &&
+    Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" +
+      yaml.safeDump(instanceInfo.importantLogLines));
+  }
+
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2824,8 +3466,13 @@ testFuncs.single_server = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.ssl_server = function(options) {
-  if (options.hasOwnProperty('skipSsl')) {
-    return {};
+  if (options.skipSsl) {
+    return {
+      ssl_server: {
+        status: true,
+        skipped: true
+      }
+    };
   }
 
   return rubyTests(options, true);
@@ -2865,9 +3512,17 @@ testFuncs.upgrade = function(options) {
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
+  const run = fs.join("bin", "arangod");
   const argv = toArgv(args).concat(["--upgrade"]);
 
-  result.upgrade.first = executeAndWait(fs.join("bin", "arangod"), argv);
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const newargs = valgrindArgs.concat(argv);
+
+    result.upgrade.first = executeAndWait(options.valgrind, newargs);
+  } else {
+    result.upgrade.first = executeAndWait(run, argv);
+  }
 
   if (result.upgrade.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
@@ -2875,7 +3530,15 @@ testFuncs.upgrade = function(options) {
   }
 
   ++result.upgrade.total;
-  result.upgrade.second = executeAndWait(fs.join("bin", "arangod"), argv);
+
+  if (options.valgrind) {
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const newargs = valgrindArgs.concat(argv);
+
+    result.upgrade.second = executeAndWait(options.valgrind, newargs);
+  } else {
+    result.upgrade.second = executeAndWait(run, argv);
+  }
 
   cleanupDirectories.push(tmpDataDir);
 
@@ -2902,6 +3565,31 @@ testFuncs.stress_crud = function(options) {
 `;
 
   return runStressTest(options, command, "stress_crud");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief STRESS TEST: stress_killing
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.stress_killing = function(options) {
+  const duration = options.duration;
+
+  let opts = {
+    concurrency: 4
+  };
+
+  _.defaults(opts, options);
+
+  const command = `
+    const stressCrud = require("./js/server/tests/stress/killingQueries");
+
+    stressCrud.killingParallel({
+      duration: ${duration},
+      gnuplot: true
+    });
+`;
+
+  return runStressTest(opts, command, "stress_killing");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3020,9 +3708,9 @@ function unitTestPrettyPrintResults(r) {
       print(fail);
     }
 
-    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
 
-    if (r.all_ok !== true) {
+    if (r.status !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
 
@@ -3097,8 +3785,7 @@ function unitTest(which, options) {
     print('FATAL: "which" is undefined\n');
 
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3114,9 +3801,11 @@ function unitTest(which, options) {
   // running all tests
   if (which === "all") {
     for (let n = 0; n < allTests.length; n++) {
-      print("Executing test", allTests[n], "with options", options);
+      const currentTest = allTests[n];
 
-      results[allTests[n]] = thisReply = testFuncs[allTests[n]](options);
+      print("Executing test", currentTest, "with options", options);
+
+      results[currentTest] = thisReply = testFuncs[currentTest](options);
       ok = true;
 
       for (let i in thisReply) {
@@ -3132,11 +3821,9 @@ function unitTest(which, options) {
       if (!ok) {
         allok = false;
       }
-
-      results.all_ok = allok;
     }
 
-    results.all_ok = allok;
+    results.status = allok;
     results.crashed = serverCrashed;
 
     if (allok) {
@@ -3146,10 +3833,11 @@ function unitTest(which, options) {
         yaml.safeDump(cleanupDirectories));
     }
 
+    yaml.safeDump(results);
+
     if (jsonReply === true) {
       return results;
     } else {
-      unitTestPrettyPrintResults(results);
       return allok;
     }
   }
@@ -3165,9 +3853,9 @@ function unitTest(which, options) {
     });
 
     print(line);
+
     return {
-      ok: false,
-      all_ok: false
+      status: false
     };
   }
 
@@ -3182,38 +3870,35 @@ function unitTest(which, options) {
     ok = true;
 
     for (let i in thisReply) {
-      if (thisReply.hasOwnProperty(i) &&
-        (which !== "single" || i !== "test")) {
-
+      if (thisReply.hasOwnProperty(i)) {
         if (thisReply[i].status !== true) {
           ok = false;
-          allok = false;
         }
       }
     }
 
-    thisReply.ok = ok;
-    results.all_ok = ok;
+    thisReply.status = ok;
+    results.status = ok;
     results.crashed = serverCrashed;
 
-    if (allok) {
+    if (ok) {
       cleanupDBDirectories(options);
     } else {
       print("since some tests weren't successfully, not cleaning up: \n" +
         yaml.safeDump(cleanupDirectories));
     }
 
+    yaml.safeDump(results);
+
     if (jsonReply === true) {
       return results;
     } else {
-      unitTestPrettyPrintResults(results);
-      return allok;
+      return ok;
     }
   }
 
   return {
-    ok: false,
-    all_ok: false
+    status: false
   };
 }
 

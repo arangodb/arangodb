@@ -64,8 +64,6 @@
 #include <iosfwd>
 #include <sstream>
 
-static inline bool TRI_ShutdownLogging(bool) { return true; }  // TODO(fc) remove
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal number of log topics
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,6 +272,7 @@ class Logger {
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
+  static LogTopic REPLICATION;
   static LogTopic REQUESTS;
 
  public:
