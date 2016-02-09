@@ -79,7 +79,14 @@ v3.0.0 (XXXX-XX-XX)
   now takes the form $name@$version.zip instead of simply "app.zip"
 
 
-v2.8.2 (XXXX-XX-XX)
+v2.8.3 (XXXX-XX-XX)
+-------------------
+
+* Foxx Model event listeners defined on the model are now correctly invoked by
+  the Repository methods (issue #1665)
+
+
+v2.8.2 (2016-02-09)
 -------------------
 
 * the continuous replication applier will now prevent the master's WAL logfiles
