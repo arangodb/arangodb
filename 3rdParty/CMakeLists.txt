@@ -67,7 +67,7 @@ endif()
 
 
 include(ExternalProject)
-set (V8_BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -f Makefile-v8 strictaliasing=off
+set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
   CXX="${CMAKE_CXX_COMPILER}") 
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
