@@ -183,6 +183,13 @@ function ReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      connectToSlave();
+      try {
+        replication.applier.stop();
+        replication.applier.forget();
+      }
+      catch (err) {
+      }
       connectToMaster();
 
       db._drop(cn);
@@ -203,6 +210,7 @@ function ReplicationSuite () {
 
       connectToSlave();
       replication.applier.stop();
+      replication.applier.forget();
       db._drop(cn);
       db._drop(cn2);
       db._drop("_test");
@@ -223,7 +231,6 @@ function ReplicationSuite () {
         replication.applier.properties(configuration);
       }
       catch (err) {
-        require("internal").print(err);
         assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
       }
     },
