@@ -6398,20 +6398,47 @@ AqlValue$ Functions::EdgesVPack(arangodb::aql::Query* query,
 AqlValue Functions::Round(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
-size_t const n = parameters.size();
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RoundVPack(query, trx, tmp));
+#else
+  size_t const n = parameters.size();
 
-if (n != 1) {
-  THROW_ARANGO_EXCEPTION_PARAMS(
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
-      (int)1);
-}
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
+        (int)1);
+  }
 
-Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
   bool unused = false;
   double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = floor(input + 0.5);  // Rounds down for < x.4999 and up for > x.50000
   return AqlValue(new Json(input));
+#endif
+}
+
+AqlValue$ Functions::RoundVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
+        (int)1);
+  }
+
+  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool unused = false;
+  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
+
+  input = floor(input + 0.5);  // Rounds down for < x.4999 and up for > x.50000
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(input));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6421,6 +6448,10 @@ Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 AqlValue Functions::Abs(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(AbsVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -6435,6 +6466,29 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
   double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = std::abs(input);
   return AqlValue(new Json(input));
+#endif
+}
+
+AqlValue$ Functions::AbsVPack(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ABS", (int)1,
+        (int)1);
+  }
+
+  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool unused = false;
+  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
+
+  input = std::abs(input);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(input));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6444,6 +6498,10 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
 AqlValue Functions::Ceil(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(CeilVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -6458,6 +6516,29 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
   double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = ceil(input);
   return AqlValue(new Json(input));
+#endif
+}
+
+AqlValue$ Functions::CeilVPack(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CEIL", (int)1,
+        (int)1);
+  }
+
+  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool unused = false;
+  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
+
+  input = ceil(input);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(input));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6467,6 +6548,10 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
 AqlValue Functions::Floor(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(FloorVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -6481,6 +6566,29 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
   double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = floor(input);
   return AqlValue(new Json(input));
+#endif
+}
+
+AqlValue$ Functions::FloorVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLOOR", (int)1,
+        (int)1);
+  }
+
+  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool unused = false;
+  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
+
+  input = floor(input);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(input));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6490,6 +6598,10 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
 AqlValue Functions::Sqrt(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(SqrtVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -6507,6 +6619,32 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
   return AqlValue(new Json(input));
+#endif
+}
+
+AqlValue$ Functions::SqrtVPack(arangodb::aql::Query* query,
+                               arangodb::AqlTransaction* trx,
+                               VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SQRT", (int)1,
+        (int)1);
+  }
+
+  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  bool unused = false;
+  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
+  input = sqrt(input);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (std::isnan(input)) {
+    b->add(VPackValue(VPackValueType::Null));
+  } else {
+    b->add(VPackValue(input));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6516,6 +6654,10 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
 AqlValue Functions::Pow(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(PowVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 2) {
@@ -6535,6 +6677,34 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
   return AqlValue(new Json(base));
+#endif
+}
+
+AqlValue$ Functions::PowVPack(arangodb::aql::Query* query,
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POW", (int)2,
+        (int)2);
+  }
+
+  VPackSlice baseSlice = ExtractFunctionParameter(trx, parameters, 0);
+  VPackSlice expSlice = ExtractFunctionParameter(trx, parameters, 1);
+
+  bool unused = false;
+  double base = arangodb::basics::VelocyPackHelper::toDouble(baseSlice, unused);
+  double exp = arangodb::basics::VelocyPackHelper::toDouble(expSlice, unused);
+  base = pow(base, exp);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (std::isnan(base) || !std::isfinite(base)) {
+    b->add(VPackValue(VPackValueType::Null));
+  } else {
+    b->add(VPackValue(base));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6544,6 +6714,10 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
 AqlValue Functions::Rand(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RandVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 0) {
@@ -6555,6 +6729,25 @@ AqlValue Functions::Rand(arangodb::aql::Query* query,
   // This Random functionality is not too good yet...
   double output = static_cast<double>(std::rand()) / RAND_MAX;
   return AqlValue(new Json(output));
+#endif
+}
+
+AqlValue$ Functions::RandVPack(arangodb::aql::Query* query,
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RAND", (int)0,
+        (int)0);
+  }
+
+  // This Random functionality is not too good yet...
+  double output = static_cast<double>(std::rand()) / RAND_MAX;
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(output));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

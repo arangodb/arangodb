@@ -334,6 +334,20 @@ struct Functions {
                                  VPackFunctionParameters const&);
   static AqlValue$ EdgesVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                               VPackFunctionParameters const&);
+  static AqlValue$ RoundVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ AbsVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ CeilVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ FloorVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ SqrtVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ PowVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ RandVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
 };
 }
 }
