@@ -443,3 +443,59 @@ VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs,
                                      bool nullMeansRemove, bool mergeObjects) {
   return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
 }
+
+double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
+  TRI_ASSERT(!slice.isNone());
+
+  failed = false;
+  switch (slice.type()) {
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0.0;
+    case VPackValueType::Bool:
+      return (slice.getBoolean() ? 1.0 : 0.0);
+    case VPackValueType::Double:
+    case VPackValueType::Int:
+    case VPackValueType::UInt:
+    case VPackValueType::SmallInt:
+      return slice.getNumericValue<double>();
+    case VPackValueType::String:
+    {
+      std::string tmp = slice.copyString();
+      try {
+        // try converting string to number
+        return std::stod(tmp);
+      } catch (...) {
+        if (tmp.empty()) {
+          return 0.0;
+        }
+        // conversion failed
+      }
+      break;
+    }
+    case VPackValueType::Array:
+    {
+      VPackValueLength const n = slice.length();
+
+      if (n == 0) {
+        return 0.0;
+      } else if (n == 1) {
+        return VelocyPackHelper::toDouble(slice.at(0), failed);
+      }
+      break;
+    }
+    case VPackValueType::Object:
+    case VPackValueType::UTCDate:
+    case VPackValueType::External:
+    case VPackValueType::MinKey:
+    case VPackValueType::MaxKey:
+    case VPackValueType::Binary:
+    case VPackValueType::BCD:
+    case VPackValueType::Custom:
+      break;
+  }
+
+  failed = true;
+  return 0.0;
+}
+
