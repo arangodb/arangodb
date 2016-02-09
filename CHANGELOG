@@ -85,6 +85,9 @@ v2.8.3 (XXXX-XX-XX)
 * Foxx Model event listeners defined on the model are now correctly invoked by
   the Repository methods (issue #1665)
 
+* Deleting a Foxx service in the frontend should now always succeed even if the
+  files no longer exist on the file system (issue #1358)
+
 
 v2.8.2 (2016-02-09)
 -------------------
