@@ -44,6 +44,7 @@
   var highlightAuto = require("highlight.js").highlightAuto;
   var docu = require("./lib/swagger").Swagger;
   var underscore = require("lodash");
+  var contentDisposition = require('content-disposition');
   var mountPoint = {
     type: joi.string().required().description(
       "The mount point of the app. Has to be url-encoded."
@@ -349,7 +350,7 @@
     var dir = fs.join(fs.makeAbsolute(app.root), app.path);
     var zipPath = fmUtils.zipDirectory(dir);
     res.set("Content-Type", "application/octet-stream");
-    res.set("Content-Disposition", "attachment; filename=app.zip");
+    res.set("Content-Disposition", contentDisposition(`${app.name}@${app.version}.zip`));
     res.body = fs.readFileSync(zipPath);
   })
   .queryParam("mount", mountPoint);
