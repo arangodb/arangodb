@@ -64,27 +64,39 @@
       }
       var query = " FILTER", res = '',
       parts = _.map(this.filters, function(f, i) {
-        if (f.op === 'IN' || f.op === 'NOT IN') {
-          res = ' ';
+        if (f.op === 'LIKE') {
+          res = " " + f.op + "(x.`" + f.attr + "`, @param";
+          res += i;
+          res += ")";
         }
         else {
-          res = " x.`";
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res = ' ';
+          }
+          else {
+            res = " x.`";
+          }
+
+          res += f.attr;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += " ";
+          }
+          else {
+            res += "` ";
+          }
+
+          res += f.op;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += " x.@param";
+          }
+          else {
+            res += " @param";
+          }
+          res += i;
         }
-        res += f.attr;
-        if (f.op === 'IN' || f.op === 'NOT IN') {
-          res += " ";
-        }
-        else {
-          res += "` ";
-        }
-        res += f.op;
-        if (f.op === 'IN' || f.op === 'NOT IN') {
-          res += " x.@param";
-        }
-        else {
-          res += " @param";
-        }
-        res += i;
+
         bindVars["param" + i] = f.val;
         return res;
       });

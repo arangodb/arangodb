@@ -175,6 +175,10 @@ exports.inserter = function(opts) {
         ++failures;
       }
     }
+
+    if (Date.now() > end) {
+      break;
+    }
   }
 
   r.update(runId, {
@@ -260,6 +264,10 @@ exports.updater = function(opts) {
         print(err);
         ++failures;
       }
+    }
+
+    if (Date.now() > end) {
+      break;
     }
   }
 
@@ -347,6 +355,10 @@ exports.remover = function(opts) {
         ++failures;
       }
     }
+
+    if (Date.now() > end) {
+      break;
+    }
   }
 
   r.update(runId, {
@@ -425,6 +437,10 @@ exports.killer = function(opts) {
         }
       }
     });
+
+    if (Date.now() > end) {
+      break;
+    }
 
     internal.wait(Math.random() * 0.1, false);
   }
