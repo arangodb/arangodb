@@ -164,7 +164,7 @@ bool VelocyCommTask::processRead() {
 	      RequestStatisticsAgent::acquire();
 
 	      _newRequest = false;
-	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
+	      _vstreamVersion = GeneralRequest::VSTREAM_UNKNOWN;
 	      _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
 	      _fullUrl = "";
 	      _denyCredentials = false;
@@ -216,7 +216,7 @@ bool VelocyCommTask::processRead() {
 
       _request->setClientTaskId(_taskId);
 
-      // check HTTP protocol version
+      // check VSTREAM protocol version
       _vstreamVersion = _request->protocolVersion();
 
       // Currently we have aonly Vstream version 1.0 available
@@ -277,7 +277,7 @@ bool VelocyCommTask::processRead() {
 
       requestStatisticsAgentSetRequestType(_requestType);
 
-      // handle different HTTP methods
+      // handle different VSTREAM methods
       switch (_requestType) {
         case GeneralRequest::VSTREAM_REQUEST_GET:
         case GeneralRequest::VSTREAM_REQUEST_DELETE:
@@ -289,7 +289,7 @@ bool VelocyCommTask::processRead() {
         case GeneralRequest::VSTREAM_REQUEST_CRED:
         case GeneralRequest::VSTREAM_REQUEST_REGISTER:
         case GeneralRequest::VSTREAM_REQUEST_STATUS:{
-          // technically, sending a body for an HTTP DELETE request is not
+          // technically, sending a body for an VSTREAM DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
               (_requestType == GeneralRequest::VSTREAM_REQUEST_POST ||
@@ -300,10 +300,6 @@ bool VelocyCommTask::processRead() {
                _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
                _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
                _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
-
-          if (!checkContentLength(expectContentLength)) {
-            return false;
-          }
 
         if(!_isFirstChunk){ 
           if (_readBufferVstream.byteSize() == 0) {
@@ -346,7 +342,7 @@ bool VelocyCommTask::processRead() {
       if (scheduler != nullptr && !scheduler->isActive()) {
         LOG_TRACE("cannot serve request - server is inactive");
 
-        HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE,
+        GeneralResponse response(GeneralResponse::VSTREAM_SERVICE_UNAVAILABLE,
                               getCompatibility());
 
         resetState(true);
@@ -488,7 +484,7 @@ bool VelocyCommTask::processRead() {
 /// @brief sends more chunked data
 ////////////////////////////////////////////////////////////////////////////////
 
-void VelocyCommTask::sendChunk(arangodb::velocypack::Builder* buffer) {
+void VelocyCommTask::sendChunk(arangodb::velocypack::Builder buffer) {
   if (_isChunked) {
     TRI_ASSERT(buffer != nullptr);
 
@@ -505,7 +501,7 @@ void VelocyCommTask::sendChunk(arangodb::velocypack::Builder* buffer) {
 /// @brief chunking is finished
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::finishedChunked() {
+void VelocyCommTask::finishedChunked() {
   auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE, 6);
 
   _writeBuffers.push_back(buffer.get());
@@ -599,7 +595,7 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
       ",\"velocystream-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
       _connectionInfo.clientAddress.c_str(),
       GeneralRequest::translateMethod(_requestType).c_str(),
-      GeneralRequest::translateVersion(_httpVersion).c_str(),
+      GeneralRequest::translateVersion(_vstreamVersion).c_str(),
       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
 
@@ -607,3 +603,329 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
   fillWriteBuffer();
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the write buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::fillWriteBuffer() {
+  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
+    StringBuffer* buffer = _writeBuffers.front();
+    _writeBuffers.pop_front();
+
+    TRI_ASSERT(buffer != nullptr);
+
+    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+    _writeBuffersStats.pop_front();
+
+    setWriteBuffer(buffer, statistics);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles CORS options
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::processCorsOptions(uint32_t compatibility) {
+  std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT, REGISTER";
+
+  GeneralResponse response(GeneralResponse::VSTREAM_OK, compatibility);
+
+  response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
+
+  if (!_origin.empty()) {
+    LOG_TRACE("got CORS preflight request");
+    std::string const allowHeaders =
+        StringUtils::trim(_request->header("access-control-request-headers"));
+
+    // send back which VSTREAM methods are allowed for the resource
+    // we'll allow all
+    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-methods"),
+                       allowedMethods);
+
+    if (!allowHeaders.empty()) {
+      response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
+                         allowHeaders);
+      LOG_TRACE("client requested validation of the following headers: %s",
+                allowHeaders.c_str());
+    }
+    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-max-age"), "1800");
+  }
+
+  clearRequest();
+  handleResponse(&response);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief processes a request
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::processRequest(uint32_t compatibility) {
+
+  bool found;
+  std::string const& acceptEncoding =
+      _request->header("accept-encoding", found);
+
+  if (found) {
+    if (acceptEncoding.find("deflate") != std::string::npos) {
+      _acceptDeflate = true;
+    }
+  }
+
+  std::string const& asyncExecution = _request->header("x-arango-async", found);
+
+  WorkItem::uptr<VstreamHandler> handler(
+      _server->handlerFactory()->createHandler(_request));
+
+  if (handler == nullptr) {
+    LOG_TRACE("no handler is known, giving up");
+
+    GeneralResponse response(GeneralResponse::VSTREAM_NOT_FOUND, compatibility);
+
+    clearRequest();
+    handleResponse(&response);
+
+    return;
+  }
+
+  handler->setTaskId(_taskId, _loop);
+
+
+  _request = nullptr;
+  RequestStatisticsAgent::transfer(handler.get());
+
+
+  bool ok = false;
+
+  if (found && (asyncExecution == "true" || asyncExecution == "store")) {
+    requestStatisticsAgentSetAsync();
+    uint64_t jobId = 0;
+
+    if (asyncExecution == "store") {
+
+      ok = _server->handleRequestAsync(handler, &jobId);
+    } else {
+
+      ok = _server->handleRequestAsync(handler, nullptr);
+    }
+
+    if (ok) {
+      GeneralResponse response(GeneralResponse::VSTREAM_ACCEPTED, compatibility);
+
+      if (jobId > 0) {
+
+        response.setHeader(TRI_CHAR_LENGTH_PAIR("x-arango-async-id"),
+                           StringUtils::itoa(jobId));
+      }
+
+      handleResponse(&response);
+
+      return;
+    }
+  }
+
+  else {
+    ok = _server->handleRequest(this, handler);
+  }
+
+  if (!ok) {
+    GeneralResponse response(GeneralResponse::VSTREAM_SERVER_ERROR, compatibility);
+    handleResponse(&response);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the request object
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::clearRequest() {
+  delete _request;
+  _request = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resets the internal state
+///
+/// this method can be called to clean up when the request handling aborts
+/// prematurely
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocyCommTask::resetState(bool close) {
+  size_t const COMPACT_EVERY = 500;
+
+  if (close) {
+    clearRequest();
+
+    _requestPending = false;
+    _closeRequested = true;
+
+    _readPosition = 0;
+    _bodyPosition = 0;
+    _bodyLength = 0;
+  } else {
+    _requestPending = true;
+
+    bool compact = false;
+
+    if (_sinceCompactification > COMPACT_EVERY) {
+      compact = true;
+    } else if (_readBuffer->length() > MaximalPipelineSize) {
+      compact = true;
+    }
+
+    if (compact) {
+      _readBuffer->erase_front(_bodyPosition + _bodyLength);
+
+      _sinceCompactification = 0;
+      _readPosition = 0;
+    } else {
+      _readPosition = _bodyPosition + _bodyLength;
+    }
+
+    _bodyPosition = 0;
+    _bodyLength = 0;
+  }
+
+  _newRequest = true;
+  _readRequestBody = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decides whether or not we should send back a www-authenticate header
+////////////////////////////////////////////////////////////////////////////////
+
+bool VelocyCommTask::sendWwwAuthenticateHeader() const {
+  bool found;
+  _request->header("x-omit-www-authenticate", found);
+
+  return !found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get request compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+int32_t VelocyCommTask::getCompatibility() const {
+  if (_request != nullptr) {
+    return _request->compatibility();
+  }
+
+  return GeneralRequest::MinCompatibility;
+}
+
+
+bool VelocyCommTask::setup(Scheduler* scheduler, EventLoop loop) {
+  bool ok = SocketTask::setup(scheduler, loop);
+
+  if (!ok) {
+    return false;
+  }
+
+  _scheduler = scheduler;
+  _loop = loop;
+  
+  setupDone();
+
+  return true;
+}
+
+void VelocyCommTask::cleanup() { SocketTask::cleanup(); }
+
+bool VelocyCommTask::handleEvent(EventToken token, EventType events) {
+  bool result = SocketTask::handleEvent(token, events);
+
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
+  }
+
+  return result;
+}
+
+
+void VelocyCommTask::signalTask(TaskData* data) {
+  // data response
+  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
+    data->transfer(this);
+    handleResponse(data->_response.get());
+    processRead();
+  }
+
+  // data chunk
+  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
+    size_t len = data->_data.size();
+
+    if (0 == len) {
+      finishedChunked();
+    } else {
+      arangodb::velocypack::Builder buffer;
+
+      TRI_ASSERT(buffer != arangodb::velocypack::ValueType::Null);
+      buffer.add(Value(ValueType::Object));
+      buffer.add(Value(len));
+      buffer.add(Value(data->_data.c_str()));
+      buffer.close();
+      sendChunk(buffer); // Create a sendChunk() overloaded function for velocypack::Builder Object.
+    }
+  }
+
+  // do not know, what to do - give up
+  else {
+    _scheduler->destroyTask(this);
+  }
+}
+
+bool VelocyCommTask::handleRead() {
+  bool res = true;
+
+  if (!_setupDone.load(std::memory_order_relaxed)) {
+    return res;
+  }
+
+  if (!_closeRequested) {
+    res = fillReadBuffer();
+
+    while (processRead()) {
+      if (_closeRequested) {
+        break;
+      }
+    }
+  } else {
+    _clientClosed = true;
+  }
+
+  if (_clientClosed) {
+    res = false;
+    _server->handleCommunicationClosed(this);
+  } else if (!res) {
+    _clientClosed = true;
+    _server->handleCommunicationFailure(this);
+  }
+
+  return res;
+}
+
+
+void VelocyCommTask::completedWriteBuffer() {
+  _writeBuffer = nullptr;
+  _writeLength = 0;
+
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+    _writeBufferStatistics = nullptr;
+  }
+
+  fillWriteBuffer();
+
+  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
+      _writeBuffers.empty() && !_isChunked) {
+    _clientClosed = true;
+    _server->handleCommunicationClosed(this);
+  }
+}
+
+void VelocyCommTask::handleTimeout() {
+  _clientClosed = true;
+  _server->handleCommunicationClosed(this);
+}
