@@ -1,3 +1,10 @@
+v2.7.7 (????-??-??)
+-------------------
+
+* Foxx Model event listeners defined on the model are now correctly invoked by
+  the Repository methods (issue #1665)
+
+
 v2.7.6 (2016-01-30)
 -------------------
 
