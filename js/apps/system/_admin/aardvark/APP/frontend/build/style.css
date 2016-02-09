@@ -5278,6 +5278,7 @@ div.dropdownImport {
     margin-top: 5px; }
 
 select.filterSelect {
+  color: #00f;
   margin-left: 10px;
   margin-right: 10px;
   width: 100px; }
@@ -7950,7 +7951,7 @@ main {
   .arangoDataTable tr {
     cursor: pointer; }
   .arangoDataTable td {
-    padding: 10px 18px !important; }
+    padding: 8px 18px !important; }
   .arangoDataTable .key {
     font-weight: 100;
     margin-top: 4px;
@@ -7984,7 +7985,7 @@ table.arangoDataTable tr.odd {
   display: none; }
 
 #documentsTableID_wrapper {
-  min-height: 513px !important;
+  min-height: 480px !important;
   padding-bottom: 0 !important; }
   #documentsTableID_wrapper .fg-toolbar {
     visibility: hidden; }

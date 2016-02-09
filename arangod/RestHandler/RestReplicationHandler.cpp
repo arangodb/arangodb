@@ -3486,6 +3486,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   int res =
       TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
+  config.freeInternalStrings();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
     return;

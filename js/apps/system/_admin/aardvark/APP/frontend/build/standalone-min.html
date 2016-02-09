@@ -812,6 +812,9 @@ if (list.length > 0) {
            <option value="&lt;=">&lt;=</option>
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
+           <option value="LIKE">LIKE</option>
+           <option value="IN">IN</option>
+           <option value="NOT IN">NOT IN</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
        <button id="resetView" class="button-warning btn-old-padding">Reset</button>
@@ -1630,7 +1633,7 @@ if (list.length > 0) {
             <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=filesize(figuresData.journalSize)%>
+                <%=prettyBytes(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -1723,7 +1726,7 @@ if (list.length > 0) {
             <th class="modal-text">Datafiles</th>
             <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.datafiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -1737,7 +1740,7 @@ if (list.length > 0) {
             <th class="modal-text">Journals</th>
             <th class="modal-text"><%=figuresData.figures.journals.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.journals.fileSize)%>
+            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -1748,7 +1751,7 @@ if (list.length > 0) {
             <th class="modal-text">Compactors</th>
             <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.compactors.fileSize)%>
+            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -1759,7 +1762,7 @@ if (list.length > 0) {
             <th class="modal-text">Shape files</th>
             <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -1770,7 +1773,7 @@ if (list.length > 0) {
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.indexes.size)%>
+            <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -1831,7 +1834,7 @@ if (list.length > 0) {
             <th class="modal-text">Alive</th>
             <th class="modal-text"><%=figuresData.figures.alive.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.alive.size)%>
+            <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -1844,7 +1847,7 @@ if (list.length > 0) {
             <th class="modal-text">Dead</th>
             <th class="modal-text"><%=figuresData.figures.dead.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.dead.size)%>
+            <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
@@ -2605,12 +2608,13 @@ var cutByResolution = function (str) {
     odd = !odd;
     });
   %>
-</tbody></script><script id="testView.ejs" type="text/template"><h1>Text File Reader</h1>
-    <div>
-          Select a text file: 
-                <input type="file" id="fileInput">
-                    </div>
-                        <pre id="fileDisplayArea"><pre></script><script id="userBarView.ejs" type="text/template"><ul class="navlist" id="userBarUl">
+</tbody></script><script id="testView.ejs" type="text/template"><div class="headerBar">
+    <a class="arangoHeader">Test</a>
+  </div>
+
+  <div id="testContent" class="test-content-id innerContent">
+    <div id="graph-container"></div>
+  </div></script><script id="userBarView.ejs" type="text/template"><ul class="navlist" id="userBarUl">
 
   <li class="dropdown user-menu userImg">
     <a href="#" class="tab userImg" id="user" >
@@ -2755,4 +2759,4 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1452528228639"></script><script src="libs.js?version=1452528228639"></script><script src="app.js?version=1452528228639"></script></body></html>
+  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1455026760724"></script><script src="libs.js?version=1455026760724"></script><script src="app.js?version=1455026760724"></script></body></html>

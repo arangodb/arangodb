@@ -68,6 +68,9 @@ class TRI_replication_applier_configuration_t {
   std::unordered_map<std::string, bool> _restrictCollections;
 
  public:
+  TRI_replication_applier_configuration_t(TRI_replication_applier_configuration_t const&) = delete;
+  TRI_replication_applier_configuration_t& operator=(TRI_replication_applier_configuration_t const&) = delete;
+
   TRI_replication_applier_configuration_t() {}
 
   ~TRI_replication_applier_configuration_t() { freeInternalStrings(); }
@@ -230,6 +233,14 @@ class TRI_replication_applier_t {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief increase the starts counter
+  //////////////////////////////////////////////////////////////////////////////
+
+  void started() {
+    ++_starts;
+  }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -240,6 +251,7 @@ class TRI_replication_applier_t {
 
  private:
   std::string _databaseName;
+  std::atomic<uint64_t> _starts;
 
  public:
   TRI_server_t* _server;
