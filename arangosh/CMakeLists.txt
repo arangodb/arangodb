@@ -216,6 +216,7 @@ target_link_libraries(
     ${OPENSSL_LIBRARIES}
     ${MSVC_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${CMAKE_DL_LIBS}
 )
 
 ################################################################################
