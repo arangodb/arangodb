@@ -20,7 +20,7 @@
             <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=filesize(figuresData.journalSize)%>
+                <%=prettyBytes(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -113,7 +113,7 @@
             <th class="modal-text">Datafiles</th>
             <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.datafiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -127,7 +127,7 @@
             <th class="modal-text">Journals</th>
             <th class="modal-text"><%=figuresData.figures.journals.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.journals.fileSize)%>
+            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -138,7 +138,7 @@
             <th class="modal-text">Compactors</th>
             <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.compactors.fileSize)%>
+            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -149,7 +149,7 @@
             <th class="modal-text">Shape files</th>
             <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -160,7 +160,7 @@
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.indexes.size)%>
+            <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -221,7 +221,7 @@
             <th class="modal-text">Alive</th>
             <th class="modal-text"><%=figuresData.figures.alive.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.alive.size)%>
+            <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -234,7 +234,7 @@
             <th class="modal-text">Dead</th>
             <th class="modal-text"><%=figuresData.figures.dead.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.dead.size)%>
+            <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
