@@ -10,6 +10,8 @@ var aqlfunctions = require("@arangodb/aql/functions");
 To register a function, the fully qualified function name plus the
 function code must be specified.
 
+The [HTTP Interface](../HttpAqlUserFunctions/README.md) also offers User Functions management.
+
 !SUBSECTION Registering an AQL user function
 
 `aqlfunctions.register(name, code, isDeterministic)`
