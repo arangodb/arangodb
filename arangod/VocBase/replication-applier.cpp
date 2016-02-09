@@ -125,6 +125,11 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   // read the database name
   TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
+    
+  if (config->_database != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
+    config->_database = nullptr;
+  }
 
   if (!TRI_IsStringJson(value)) {
     config->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
@@ -138,6 +143,10 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   value = TRI_LookupObjectJson(json.get(), "username");
 
   if (TRI_IsStringJson(value)) {
+    if (config->_username != nullptr) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
+      config->_username = nullptr;
+    }
     config->_username =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                             value->_value._string.length - 1);
@@ -146,6 +155,10 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   value = TRI_LookupObjectJson(json.get(), "password");
 
   if (TRI_IsStringJson(value)) {
+    if (config->_password != nullptr) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config->_password);
+      config->_password = nullptr;
+    }
     config->_password =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                             value->_value._string.length - 1);
@@ -298,6 +311,11 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
     // we haven't found an endpoint. now don't let the start fail but continue
     config->_autoStart = false;
   } else {
+    if (config->_endpoint != nullptr) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
+      config->_endpoint = nullptr;
+    }
+
     config->_endpoint =
         TRI_DuplicateString(TRI_CORE_MEM_ZONE, value->_value._string.data,
                             value->_value._string.length - 1);
@@ -1075,6 +1093,7 @@ int TRI_SaveConfigurationReplicationApplier(
 TRI_replication_applier_t::TRI_replication_applier_t(TRI_server_t* server,
                                                      TRI_vocbase_t* vocbase)
     : _databaseName(vocbase->_name),
+      _starts(0),
       _server(server),
       _vocbase(vocbase),
       _terminateThread(false) {}
@@ -1133,6 +1152,9 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
     _state._lastError._msg = nullptr;
   }
 
+  // save previous counter value
+  uint64_t oldStarts = _starts.load();
+
   _state._lastError._code = TRI_ERROR_NO_ERROR;
 
   TRI_GetTimeStampReplication(_state._lastError._time,
@@ -1149,6 +1171,11 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
   }
 
   syncer.release();
+
+  uint64_t iterations = 0;
+  while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
+    usleep(20000);
+  }
 
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << "started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "' from tick " << initialTick;
