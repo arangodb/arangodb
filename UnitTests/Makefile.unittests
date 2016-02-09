@@ -525,6 +525,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-events-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-repository-events-auto-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
