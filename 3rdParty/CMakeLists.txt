@@ -97,11 +97,11 @@ import_target(v8_snapshot v8_build "${V8_DIR}/include"
 
 ## ICU
 # include include paths
-add_library(icu_header INTERFACE)
-target_include_directories(icu_header INTERFACE
-  "${V8_DIR}/third_party/icu/source/common"
-  "${V8_DIR}/third_party/icu/source/io"
-  "${V8_DIR}/third_party/icu/source/i18n") 
+#add_library(icu_header INTERFACE)
+#target_include_directories(icu_header INTERFACE
+#  "${V8_DIR}/third_party/icu/source/common"
+#  "${V8_DIR}/third_party/icu/source/io"
+#  "${V8_DIR}/third_party/icu/source/i18n") 
 
 import_target(icu_uc v8_build
   "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
