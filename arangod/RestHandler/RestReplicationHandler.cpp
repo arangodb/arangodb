@@ -3481,3 +3481,4 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   generateResult(HttpResponse::OK, b.slice());
 }
+

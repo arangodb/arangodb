@@ -1003,9 +1003,8 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
   /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in asynchronous "fire-and-forget"
-  /// way. The method fails silently, if the follower information has
-  /// since been dropped (see `dropFollowerInfo` below).
+  /// the agency under `/Current` but in an asynchronous "fire-and-forget"
+  /// way.
   //////////////////////////////////////////////////////////////////////////////
 
   void remove(ServerID const& s);
