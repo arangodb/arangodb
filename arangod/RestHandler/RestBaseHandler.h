@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralResponse.h"
 
 #include <velocypack/Slice.h>
@@ -39,7 +39,7 @@ namespace admin {
 /// @brief default handler for error handling and json in-/output
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestBaseHandler : public rest::HttpHandler {
+class RestBaseHandler : public rest::GeneralHandler {
   
  public:
 

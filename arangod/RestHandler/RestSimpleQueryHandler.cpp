@@ -43,7 +43,7 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
 
 
 
-HttpHandler::status_t RestSimpleQueryHandler::execute() {
+GeneralHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

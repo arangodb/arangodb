@@ -37,7 +37,7 @@ RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request)
 bool RestQueryCacheHandler::isDirect() const { return false; }
 
 
-HttpHandler::status_t RestQueryCacheHandler::execute() {
+GeneralHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

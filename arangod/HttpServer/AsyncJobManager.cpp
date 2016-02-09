@@ -26,7 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpServerJob.h"
 
 using namespace arangodb::basics;

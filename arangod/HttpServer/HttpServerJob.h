@@ -33,7 +33,7 @@
 
 namespace arangodb {
 namespace rest {
-class HttpHandler;
+class GeneralHandler;
 class HttpServer;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ class HttpServerJob : public Job {
   /// @brief constructs a new server job
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServerJob(HttpServer*, arangodb::WorkItem::uptr<HttpHandler>&,
+  HttpServerJob(HttpServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
                 bool isAsync = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -65,7 +65,7 @@ class HttpServerJob : public Job {
   /// @brief returns the underlying handler
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandler* handler() const { return _handler.get(); }
+  GeneralHandler* handler() const { return _handler.get(); }
 
   
  public:
@@ -96,7 +96,7 @@ class HttpServerJob : public Job {
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::WorkItem::uptr<HttpHandler> _handler;
+  arangodb::WorkItem::uptr<GeneralHandler> _handler;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief work description we need to destroy

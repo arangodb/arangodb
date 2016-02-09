@@ -49,7 +49,7 @@ RestJobHandler::RestJobHandler(GeneralRequest* request,
 bool RestJobHandler::isDirect() const { return true; }
 
 
-HttpHandler::status_t RestJobHandler::execute() {
+GeneralHandler::status_t RestJobHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

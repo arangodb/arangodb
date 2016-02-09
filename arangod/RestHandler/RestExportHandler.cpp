@@ -46,7 +46,7 @@ RestExportHandler::RestExportHandler(GeneralRequest* request)
 
 
 
-HttpHandler::status_t RestExportHandler::execute() {
+GeneralHandler::status_t RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");

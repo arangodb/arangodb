@@ -27,7 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Scheduler/Scheduler.h"
@@ -811,7 +811,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   std::string const& asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
-  WorkItem::uptr<HttpHandler> handler(
+  WorkItem::uptr<GeneralHandler> handler(
       _server->handlerFactory()->createHandler(_request));
 
   if (handler == nullptr) {

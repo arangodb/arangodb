@@ -29,12 +29,12 @@ using namespace arangodb::rest;
 
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request)
-    : HttpHandler(request) {}
+    : GeneralHandler(request) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
+GeneralHandler::status_t RestPleaseUpgradeHandler::execute() {
   createResponse(GeneralResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 

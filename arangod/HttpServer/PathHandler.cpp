@@ -41,7 +41,7 @@ namespace rest {
 // -----------------------------------------------------------------------------
 
 PathHandler::PathHandler(GeneralRequest* request, Options const* options)
-    : HttpHandler(request),
+    : GeneralHandler(request),
       path(options->path),
       contentType(options->contentType),
       allowSymbolicLink(options->allowSymbolicLink),
@@ -61,7 +61,7 @@ PathHandler::PathHandler(GeneralRequest* request, Options const* options)
 // Handler methods
 // -----------------------------------------------------------------------------
 
-HttpHandler::status_t PathHandler::execute() {
+GeneralHandler::status_t PathHandler::execute() {
   static std::string const allowed =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 

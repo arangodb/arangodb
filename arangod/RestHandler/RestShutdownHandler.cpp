@@ -45,7 +45,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestShutdownHandler::execute() {
+GeneralHandler::status_t RestShutdownHandler::execute() {
   _applicationServer->beginShutdown();
 
   try {

@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_HANDLER_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -40,15 +40,16 @@ class Dispatcher;
 class HttpHandlerFactory;
 class GeneralRequest;
 class HttpServer;
+class VelocyServer;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief abstract class for http/vstream handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
-  HttpHandler(HttpHandler const&) = delete;
-  HttpHandler& operator=(HttpHandler const&) = delete;
+class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
+  GeneralHandler(GeneralHandler const&) = delete;
+  GeneralHandler& operator=(GeneralHandler const&) = delete;
 
   
  public:
@@ -59,14 +60,14 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// responsibility to destroy them both. See also the two steal methods.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit HttpHandler(GeneralRequest*);
+  explicit GeneralHandler(GeneralRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a handler
   //////////////////////////////////////////////////////////////////////////////
 
  protected:
-  ~HttpHandler();
+  ~GeneralHandler();
 
   
  public:
@@ -136,7 +137,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief adds a response
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void addResponse(HttpHandler*);
+  virtual void addResponse(GeneralHandler*);
 
   
  public:
@@ -163,6 +164,8 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   //////////////////////////////////////////////////////////////////////////////
 
   status_t executeFull();
+
+  status_t executeFullVstream();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the server object
@@ -202,6 +205,11 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   void createResponse(GeneralResponse::HttpResponseCode);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create a new VSTREAM response
+  //////////////////////////////////////////////////////////////////////////////
+
+  void createResponse(GeneralResponse::VstreamResponseCode);
   
  protected:
   //////////////////////////////////////////////////////////////////////////////

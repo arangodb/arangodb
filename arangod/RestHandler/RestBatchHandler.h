@@ -77,7 +77,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   
  public:
 
-  HttpHandler::status_t execute();
+  GeneralHandler::status_t execute();
 
   
  private:

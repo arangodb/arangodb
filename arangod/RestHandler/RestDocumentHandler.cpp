@@ -43,7 +43,7 @@ RestDocumentHandler::RestDocumentHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 
-HttpHandler::status_t RestDocumentHandler::execute() {
+GeneralHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

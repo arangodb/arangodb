@@ -35,7 +35,7 @@ using namespace arangodb::rest;
 RestEdgesHandler::RestEdgesHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-HttpHandler::status_t RestEdgesHandler::execute() {
+GeneralHandler::status_t RestEdgesHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

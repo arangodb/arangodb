@@ -22,14 +22,14 @@
 
 #include "WorkMonitorHandler.h"
 
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 using arangodb::rest::GeneralRequest;
-using arangodb::rest::HttpHandler;
+using arangodb::rest::GeneralHandler;
 
 
 WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request)
@@ -41,7 +41,7 @@ bool WorkMonitorHandler::isDirect() const { return true; }
 
 #include <iostream>
 
-HttpHandler::status_t WorkMonitorHandler::execute() {
+GeneralHandler::status_t WorkMonitorHandler::execute() {
   WorkMonitor::requestWorkOverview(_taskId);
   return status_t(HANDLER_ASYNC);
 }

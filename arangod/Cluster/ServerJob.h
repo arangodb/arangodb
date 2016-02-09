@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Dispatcher/Job.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 
 struct TRI_server_t;
 

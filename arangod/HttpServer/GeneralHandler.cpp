@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandler.h"
+#include "GeneralHandler.h"
 
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
@@ -44,7 +44,7 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::HttpHandler(GeneralRequest* request)
+GeneralHandler::GeneralHandler(GeneralRequest* request)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
       _taskId(0),
       _request(request),
@@ -55,7 +55,7 @@ HttpHandler::HttpHandler(GeneralRequest* request)
 /// @brief destructs a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::~HttpHandler() {
+GeneralHandler::~GeneralHandler() {
   delete _request;
   delete _response;
 }
@@ -65,7 +65,7 @@ HttpHandler::~HttpHandler() {
 /// @brief returns the queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpHandler::queue() const {
+size_t GeneralHandler::queue() const {
   bool found;
   char const* queue = _request->header("x-arango-queue", found);
 
@@ -86,25 +86,25 @@ size_t HttpHandler::queue() const {
 /// @brief prepares for execution
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::prepareExecute() {}
+void GeneralHandler::prepareExecute() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalize the execution
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::finalizeExecute() {}
+void GeneralHandler::finalizeExecute() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to cancel an execution
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandler::cancel() { return false; }
+bool GeneralHandler::cancel() { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::addResponse(HttpHandler*) {
+void GeneralHandler::addResponse(GeneralHandler*) {
   // nothing by default
 }
 
@@ -112,19 +112,19 @@ void HttpHandler::addResponse(HttpHandler*) {
 /// @brief returns the id of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpHandler::taskId() const { return _taskId; }
+uint64_t GeneralHandler::taskId() const { return _taskId; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns the event loop of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-EventLoop HttpHandler::eventLoop() const { return _loop; }
+EventLoop GeneralHandler::eventLoop() const { return _loop; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief sets the id of the underlying task or 0 to dettach
 //////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::setTaskId(uint64_t id, EventLoop loop) {
+void GeneralHandler::setTaskId(uint64_t id, EventLoop loop) {
   _taskId = id;
   _loop = loop;
 }
@@ -133,8 +133,8 @@ void HttpHandler::setTaskId(uint64_t id, EventLoop loop) {
 /// @brief execution cycle including error handling and prepare
 //////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t HttpHandler::executeFull() {
-  HttpHandler::status_t status(HttpHandler::HANDLER_FAILED);
+GeneralHandler::status_t GeneralHandler::executeFull() {
+  GeneralHandler::status_t status(GeneralHandler::HANDLER_FAILED);
 
   requestStatisticsAgentSetRequestStart();
 
@@ -192,23 +192,85 @@ HttpHandler::status_t HttpHandler::executeFull() {
   return status;
 }
 
+//// @TODO: Check for a way to remove this method
+
+GeneralHandler::status_t GeneralHandler::executeFullVstream() {
+  GeneralHandler::status_t status(GeneralHandler::HANDLER_FAILED);
+
+  requestStatisticsAgentSetRequestStart();
+
+  try {
+    prepareExecute();
+
+    try {
+      status = execute();
+    } catch (Exception const& ex) {
+      requestStatisticsAgentSetExecuteError();
+      handleError(ex);
+    } catch (std::bad_alloc const& ex) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+      handleError(err);
+    } catch (std::exception const& ex) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+      handleError(err);
+    } catch (...) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+      handleError(err);
+    }
+
+    finalizeExecute();
+
+    if (status._status != HANDLER_ASYNC && _response == nullptr) {
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
+                    __FILE__, __LINE__);
+
+      handleError(err);
+    }
+  } catch (Exception const& ex) {
+    status = HANDLER_FAILED;
+    requestStatisticsAgentSetExecuteError();
+    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+  } catch (std::exception const& ex) {
+    status = HANDLER_FAILED;
+    requestStatisticsAgentSetExecuteError();
+    LOG_ERROR("caught exception: %s", ex.what());
+  } catch (...) {
+    status = HANDLER_FAILED;
+    requestStatisticsAgentSetExecuteError();
+    LOG_ERROR("caught exception");
+  }
+
+  if (status._status != HANDLER_ASYNC && _response == nullptr) {
+    _response = new GeneralResponse(GeneralResponse::VSTREAM_SERVER_ERROR,
+                                 GeneralRequest::MinCompatibility);
+  }
+
+  requestStatisticsAgentSetRequestEnd();
+
+  return status;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the server object
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::setServer(HttpHandlerFactory* server) { _server = server; }
+void GeneralHandler::setServer(HttpHandlerFactory* server) { _server = server; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the request
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest const* HttpHandler::getRequest() const { return _request; }
+GeneralRequest const* GeneralHandler::getRequest() const { return _request; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the request
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest* HttpHandler::stealRequest() {
+GeneralRequest* GeneralHandler::stealRequest() {
   GeneralRequest* tmp = _request;
   _request = nullptr;
   return tmp;
@@ -218,13 +280,13 @@ GeneralRequest* HttpHandler::stealRequest() {
 /// @brief returns the response
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse* HttpHandler::getResponse() const { return _response; }
+GeneralResponse* GeneralHandler::getResponse() const { return _response; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the response
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse* HttpHandler::stealResponse() {
+GeneralResponse* GeneralHandler::stealResponse() {
   GeneralResponse* tmp = _response;
   _response = nullptr;
   return tmp;
@@ -235,7 +297,7 @@ GeneralResponse* HttpHandler::stealResponse() {
 /// @brief create a new HTTP response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::createResponse(GeneralResponse::HttpResponseCode code) {
+void GeneralHandler::createResponse(GeneralResponse::HttpResponseCode code) {
   // avoid having multiple responses. this would be a memleak
   if (_response != nullptr) {
     delete _response;
@@ -254,4 +316,26 @@ void HttpHandler::createResponse(GeneralResponse::HttpResponseCode code) {
   _response = new GeneralResponse(code, apiCompatibility);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new VSTREAM response
+/// @TODO: Check for a way to remove this method
+////////////////////////////////////////////////////////////////////////////////
 
+void GeneralHandler::createResponse(GeneralResponse::VstreamResponseCode code) {
+  // avoid having multiple responses. this would be a memleak
+  if (_response != nullptr) {
+    delete _response;
+    _response = nullptr;
+  }
+
+  int32_t apiCompatibility;
+
+  if (_request != nullptr) {
+    apiCompatibility = _request->compatibility();
+  } else {
+    apiCompatibility = GeneralRequest::MinCompatibility;
+  }
+
+  // create a "standard" (standalone) Http response
+  _response = new GeneralResponse(code, apiCompatibility);
+}

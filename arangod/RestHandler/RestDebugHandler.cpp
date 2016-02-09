@@ -47,7 +47,7 @@ RestDebugHandler::RestDebugHandler(GeneralRequest* request)
 bool RestDebugHandler::isDirect() const { return false; }
 
 
-HttpHandler::status_t RestDebugHandler::execute() {
+GeneralHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
   size_t const len = _request->suffix().size();

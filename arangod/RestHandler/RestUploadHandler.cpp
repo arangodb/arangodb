@@ -41,7 +41,7 @@ RestUploadHandler::~RestUploadHandler() {}
 
 
 
-HttpHandler::status_t RestUploadHandler::execute() {
+GeneralHandler::status_t RestUploadHandler::execute() {
   // extract the request type
   const GeneralRequest::RequestType type = _request->requestType();
 
@@ -49,7 +49,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
     generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status_t(GeneralHandler::HANDLER_DONE);
   }
 
   char* filename = nullptr;
@@ -60,7 +60,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
       TRI_ERROR_NO_ERROR) {
     errorMessage = "could not generate temp file: " + errorMessage;
     generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
-    return status_t(HttpHandler::HANDLER_FAILED);
+    return status_t(GeneralHandler::HANDLER_FAILED);
   }
 
   char* relative = TRI_GetFilename(filename);
@@ -83,7 +83,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
         generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                       "invalid multipart request");
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status_t(GeneralHandler::HANDLER_FAILED);
       }
     }
   }
@@ -96,7 +96,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "could not save file");
-    return status_t(HttpHandler::HANDLER_FAILED);
+    return status_t(GeneralHandler::HANDLER_FAILED);
   }
 
   char* fullName = TRI_Concatenate2File("uploads", relative);
@@ -116,7 +116,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
 
   generateResult(GeneralResponse::CREATED, s);
   // success
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status_t(GeneralHandler::HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

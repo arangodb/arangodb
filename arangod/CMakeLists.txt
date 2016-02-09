@@ -148,7 +148,7 @@ add_executable(
     HttpServer/ApplicationEndpointServer.cpp
     HttpServer/AsyncJobManager.cpp
     HttpServer/HttpCommTask.cpp
-    HttpServer/HttpHandler.cpp
+    HttpServer/GeneralHandler.cpp
     HttpServer/HttpHandlerFactory.cpp
     HttpServer/HttpListenTask.cpp
     HttpServer/HttpServer.cpp

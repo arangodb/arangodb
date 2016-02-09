@@ -45,7 +45,7 @@ RestActionHandler::RestActionHandler(GeneralRequest* request,
 bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
 
-HttpHandler::status_t RestActionHandler::execute() {
+GeneralHandler::status_t RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path

@@ -45,7 +45,7 @@ RestShardHandler::RestShardHandler(arangodb::rest::GeneralRequest* request,
 bool RestShardHandler::isDirect() const { return true; }
 
 
-arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
+arangodb::rest::GeneralHandler::status_t RestShardHandler::execute() {
 // Deactivated to allow for asynchronous cluster internal communication
 // between two DBservers. 30.7.2014 Max.
 #if 0

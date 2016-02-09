@@ -24,7 +24,7 @@
 #include "Basics/WorkMonitor.h"
 
 #include "Basics/StringBuffer.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
 
@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 /// @brief pushes a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushHandler(HttpHandler* handler) {
+void WorkMonitor::pushHandler(GeneralHandler* handler) {
   TRI_ASSERT(handler != nullptr);
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   desc->_data.handler = handler;
@@ -52,7 +52,7 @@ void WorkMonitor::pushHandler(HttpHandler* handler) {
 /// @brief pops and releases a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::popHandler(HttpHandler* handler, bool free) {
+WorkDescription* WorkMonitor::popHandler(GeneralHandler* handler, bool free) {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
@@ -87,7 +87,7 @@ void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
-  HttpHandler* handler = desc->_data.handler;
+  GeneralHandler* handler = desc->_data.handler;
   const GeneralRequest* request = handler->getRequest();
 
   b->add("type", VPackValue("http-handler"));
@@ -144,11 +144,11 @@ void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
   Scheduler::SCHEDULER->signalTask(answer);
 }
 
-HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
+HandlerWorkStack::HandlerWorkStack(GeneralHandler* handler) : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
 
-HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
+HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<GeneralHandler>& handler) {
   _handler = handler.release();
   WorkMonitor::pushHandler(_handler);
 }

@@ -31,7 +31,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/HttpServerJob.h"
 #include "Rest/EndpointList.h"
@@ -200,7 +200,7 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
+bool HttpServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
@@ -242,7 +242,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpServer::handleRequest(HttpCommTask* task,
-                               WorkItem::uptr<HttpHandler>& handler) {
+                               WorkItem::uptr<GeneralHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
     HandlerWorkStack work(handler);
@@ -293,16 +293,16 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::handleRequestDirectly(HttpCommTask* task,
-                                       HttpHandler* handler) {
-  HttpHandler::status_t status = handler->executeFull();
+                                       GeneralHandler* handler) {
+  GeneralHandler::status_t status = handler->executeFull();
 
   switch (status._status) {
-    case HttpHandler::HANDLER_FAILED:
-    case HttpHandler::HANDLER_DONE:
+    case GeneralHandler::HANDLER_FAILED:
+    case GeneralHandler::HANDLER_DONE:
       task->handleResponse(handler->getResponse());
       break;
 
-    case HttpHandler::HANDLER_ASYNC:
+    case GeneralHandler::HANDLER_ASYNC:
       // do nothing, just wait
       break;
   }

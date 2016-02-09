@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/SslInterface.h"
 
@@ -41,9 +41,9 @@ sig_atomic_t MaintenanceMode = 0;
 
 
 namespace {
-class MaintenanceHandler : public HttpHandler {
+class MaintenanceHandler : public GeneralHandler {
  public:
-  explicit MaintenanceHandler(GeneralRequest* request) : HttpHandler(request){};
+  explicit MaintenanceHandler(GeneralRequest* request) : GeneralHandler(request){};
 
   bool isDirect() const override { return true; };
 
@@ -196,7 +196,7 @@ GeneralRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
+GeneralHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }
@@ -277,7 +277,7 @@ HttpHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
   // no match
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      HttpHandler* notFoundHandler = _notFound(request, data);
+      GeneralHandler* notFoundHandler = _notFound(request, data);
       notFoundHandler->setServer(this);
 
       return notFoundHandler;
@@ -297,7 +297,7 @@ HttpHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
   }
 
   LOG_TRACE("found handler for path '%s'", path.c_str());
-  HttpHandler* handler = i->second(request, data);
+  GeneralHandler* handler = i->second(request, data);
 
   handler->setServer(this);
 

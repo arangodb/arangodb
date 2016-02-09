@@ -28,7 +28,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
 #include "Scheduler/TaskManager.h"
 
@@ -170,14 +170,14 @@ class HttpServer : protected TaskManager {
   /// @brief creates a job for asynchronous execution
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequestAsync(arangodb::WorkItem::uptr<HttpHandler>&,
+  bool handleRequestAsync(arangodb::WorkItem::uptr<GeneralHandler>&,
                           uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes the handler directly or add it to the queue
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<HttpHandler>&);
+  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
 
   
  protected:
@@ -186,7 +186,7 @@ class HttpServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   struct handler_task_job_t {
-    HttpHandler* _handler;
+    GeneralHandler* _handler;
     HttpCommTask* _task;
     HttpServerJob* _job;
   };
@@ -203,13 +203,13 @@ class HttpServer : protected TaskManager {
   /// @brief handle request directly
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleRequestDirectly(HttpCommTask* task, HttpHandler* handler);
+  void handleRequestDirectly(HttpCommTask* task, GeneralHandler* handler);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerHandler(HttpHandler* handler, HttpCommTask* task);
+  void registerHandler(GeneralHandler* handler, HttpCommTask* task);
 
   
  protected:

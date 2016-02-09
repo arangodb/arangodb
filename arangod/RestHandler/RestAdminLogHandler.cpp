@@ -69,7 +69,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_admin_modules_flush
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestAdminLogHandler::execute() {
+GeneralHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
     generateError(GeneralResponse::FORBIDDEN,

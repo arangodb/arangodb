@@ -53,7 +53,7 @@ RestSimpleHandler::RestSimpleHandler(
 
 
 
-HttpHandler::status_t RestSimpleHandler::execute() {
+GeneralHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
   GeneralRequest::RequestType type = _request->requestType();
 

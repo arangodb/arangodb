@@ -30,7 +30,7 @@
 
 namespace arangodb {
 namespace rest {
-class HttpHandler;
+class GeneralHandler;
 }
 }
 
@@ -63,7 +63,7 @@ struct WorkDescription {
 
     char text[256];
     arangodb::basics::Thread* thread;
-    arangodb::rest::HttpHandler* handler;
+    arangodb::rest::GeneralHandler* handler;
   } _data;
 
   WorkDescription* _prev;
@@ -137,13 +137,13 @@ class WorkMonitor : public arangodb::basics::Thread {
   /// @brief pushes a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushHandler(arangodb::rest::HttpHandler*);
+  static void pushHandler(arangodb::rest::GeneralHandler*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pops and releases a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static WorkDescription* popHandler(arangodb::rest::HttpHandler*, bool free);
+  static WorkDescription* popHandler(arangodb::rest::GeneralHandler*, bool free);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler deleter
@@ -189,7 +189,7 @@ class WorkMonitor : public arangodb::basics::Thread {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for HttpHandler
+/// @brief auto push and pop for GeneralHandler
 ////////////////////////////////////////////////////////////////////////////////
 
 class HandlerWorkStack {
@@ -198,10 +198,10 @@ class HandlerWorkStack {
 
  public:
 
-  explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
+  explicit HandlerWorkStack(arangodb::rest::GeneralHandler*);
 
 
-  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
+  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::GeneralHandler>&);
 
 
   ~HandlerWorkStack();
@@ -211,14 +211,14 @@ class HandlerWorkStack {
   /// @brief returns the handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* handler() const { return _handler; }
+  arangodb::rest::GeneralHandler* handler() const { return _handler; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* _handler;
+  arangodb::rest::GeneralHandler* _handler;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,7 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpServer.h"
 #include "Scheduler/Scheduler.h"
 
@@ -42,7 +42,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServerJob::HttpServerJob(HttpServer* server,
-                             WorkItem::uptr<HttpHandler>& handler, bool isAsync)
+                             WorkItem::uptr<GeneralHandler>& handler, bool isAsync)
     : Job("HttpServerJob"),
       _server(server),
       _workDesc(nullptr),

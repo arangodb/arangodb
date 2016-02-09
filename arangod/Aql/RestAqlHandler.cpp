@@ -539,7 +539,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 /// @brief executes the handler
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
+arangodb::rest::GeneralHandler::status_t RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
   // arangodb::rest::GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<

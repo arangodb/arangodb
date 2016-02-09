@@ -50,7 +50,7 @@ RestCursorHandler::RestCursorHandler(
       _query(nullptr),
       _queryKilled(false) {}
 
-HttpHandler::status_t RestCursorHandler::execute() {
+GeneralHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
   GeneralRequest::RequestType type = _request->requestType();
 

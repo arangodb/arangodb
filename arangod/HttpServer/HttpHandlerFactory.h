@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace rest {
 struct ConnectionInfo;
-class HttpHandler;
+class GeneralHandler;
 class GeneralRequest;
 class GeneralResponse;
 
@@ -50,7 +50,7 @@ class HttpHandlerFactory {
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef HttpHandler GeneralHandler;
+  typedef GeneralHandler GeneralHandler;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request
@@ -68,7 +68,7 @@ class HttpHandlerFactory {
   /// @brief handler creator
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef HttpHandler* (*create_fptr)(GeneralRequest*, void*);
+  typedef GeneralHandler* (*create_fptr)(GeneralRequest*, void*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief context handler
@@ -140,7 +140,7 @@ class HttpHandlerFactory {
   /// @brief creates a new handler
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandler* createHandler(GeneralRequest*);
+  GeneralHandler* createHandler(GeneralRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a path and constructor to the factory
