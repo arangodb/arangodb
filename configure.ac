@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  ArangoDB GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([ArangoDB GmbH], [2.8.1], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
+AC_INIT([ArangoDB GmbH], [2.8.2], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
 
 CURRENT_DIR=`pwd`
 

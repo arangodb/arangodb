@@ -1,4 +1,4 @@
-v2.8.2 (XXXX-XX-XX)
+v2.8.2 (2016-02-09)
 -------------------
 
 * the continuous replication applier will now prevent the master's WAL logfiles

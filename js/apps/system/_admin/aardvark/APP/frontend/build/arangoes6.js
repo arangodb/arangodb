@@ -3795,8 +3795,13 @@ ArangoCollection.prototype.revision = function () {
 
 ArangoCollection.prototype.drop = function () {
   var requestResult = this._database._connection.DELETE(this._baseurl());
-
-  arangosh.checkRequestResult(requestResult);
+  
+  if (requestResult !== null
+      && requestResult.error === true
+      && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    // check error in case we got anything else but "collection not found"
+    arangosh.checkRequestResult(requestResult);
+  }
 
   this._status = ArangoCollection.STATUS_DELETED;
 
@@ -3810,6 +3815,7 @@ ArangoCollection.prototype.drop = function () {
       if (collection instanceof ArangoCollection) {
         if (collection.name() === this.name()) {
           delete database[name];
+          break;
         }
       }
     }
@@ -6949,12 +6955,21 @@ logger.firstTick = function () {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (initialTick) {
+applier.start = function (initialTick, barrierId) {
   var db = internal.db;
   var append = "";
 
   if (initialTick !== undefined) {
     append = "?from=" + encodeURIComponent(initialTick);
+  }
+  if (barrierId !== undefined) {
+    if (append === "") {
+      append += "?";
+    }
+    else {
+      append += "&";
+    }
+    append += "barrierId=" + encodeURIComponent(barrierId);
   }
 
   var requestResult = db._connection.PUT("/_api/replication/applier-start" + append, "");
@@ -7028,58 +7043,119 @@ applier.properties = function (config) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for fetching the result of an async job
+////////////////////////////////////////////////////////////////////////////////
+
+var waitForResult = function (config, id) {
+  const db = internal.db;
+
+  if (!config.hasOwnProperty("progress")) {
+    config.progress = true;
+  }
+    
+  internal.sleep(1);
+  var iterations = 0;
+    
+  while (true) {
+    const jobResult = db._connection.PUT("/_api/job/" + encodeURIComponent(id), "");
+    arangosh.checkRequestResult(jobResult);
+
+    if (jobResult.code !== 204) {
+      return jobResult;
+    }
+
+    ++iterations;
+
+    if (iterations < 6) {
+      internal.sleep(2);
+    }
+    else {
+      internal.sleep(3);
+    }
+
+    if (config.progress && iterations % 3 === 0) {
+      try {
+        var progress = applier.state().state.progress;
+        var msg = progress.time + ": " + progress.message;
+
+        internal.print("still sychronizing... last received status: " + msg);
+      }
+      catch (err) {
+      }
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var sync = function (config) {
-  var db = internal.db;
+var sync = function(config) {
+  const db = internal.db;
 
-  var body = JSON.stringify(config || { });
-  var requestResult;
-  if (config.async) {
-    var headers = { "X-Arango-Async" : "store" };
-    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
-  }
-  else {
-    requestResult = db._connection.PUT("/_api/replication/sync", body);
-  }
+  const body = JSON.stringify(config || {});
+  const headers = {
+    "X-Arango-Async": "store"
+  };
 
+  const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
   arangosh.checkRequestResult(requestResult);
+
+
   if (config.async) {
     return requestResult.headers["x-arango-async-id"];
   }
 
-  return requestResult;
+  return waitForResult(config, requestResult.headers["x-arango-async-id"]);
 };
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint, for
 /// a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
 var syncCollection = function (collection, config) {
-  var db = internal.db;
-
-  config = config || { };
+  config = config || {};
   config.restrictType = "include";
-  config.restrictCollections = [ collection ];
+  config.restrictCollections = [collection];
   config.includeSystem = true;
-  var body = JSON.stringify(config);
-  var requestResult;
-  if (config.async) {
-    var headers = { "X-Arango-Async" : "store" };
-    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+
+  return sync(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the replication (all-in-one function for initial
+/// synchronization and continuous replication)
+////////////////////////////////////////////////////////////////////////////////
+
+var setupReplication = function(config) {
+  config = config || { };
+  if (! config.hasOwnProperty('autoStart')) {
+    config.autoStart = true;
   }
-  else {
-    requestResult = db._connection.PUT("/_api/replication/sync", body);
+  if (! config.hasOwnProperty('includeSystem')) {
+    config.includeSystem = true;
+  }
+  if (! config.hasOwnProperty('verbose')) {
+    config.verbose = false;
   }
 
+  const db = internal.db;
+
+  const body = JSON.stringify(config);
+  const headers = {
+    "X-Arango-Async": "store"
+  };
+    
+  const requestResult = db._connection.PUT_RAW("/_api/replication/make-slave", body, headers);
   arangosh.checkRequestResult(requestResult);
+
+
   if (config.async) {
     return requestResult.headers["x-arango-async-id"];
   }
-
-  return requestResult;
+   
+  return waitForResult(config, requestResult.headers["x-arango-async-id"]);
 };
 
 var getSyncResult = function (id) {
@@ -7117,6 +7193,7 @@ exports.logger          = logger;
 exports.applier         = applier;
 exports.sync            = sync;
 exports.syncCollection  = syncCollection;
+exports.setupReplication = setupReplication;
 exports.getSyncResult   = getSyncResult;
 exports.serverId        = serverId;
 
@@ -9164,7 +9241,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph;
+          var edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });
@@ -9185,7 +9262,7 @@ function processQuery (query, explain) {
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+                 "   " + annotation("/* " + node.aggregationOptions.method + " */");
       case "CollectNode":
         var collect = keyword("COLLECT") + " " + 
           node.groups.map(function(node) {
