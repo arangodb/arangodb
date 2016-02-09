@@ -1,6 +1,5 @@
 #add_subdirectory(boost)
 #add_subdirectory(etcd)
-#add_subdirectory(libev)
 #add_subdirectory(linenoise-ng)
 #add_subdirectory(valgrind)
 #add_subdirectory(velocypack)
@@ -9,13 +8,11 @@
 include(ExternalProject)
 
 macro(import_target tname tdep tinclude tpath)
-    add_library(${tname} STATIC IMPORTED GLOBAL)
-    add_dependencies(${tname} ${tdep})
-    set_target_properties(${tname} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES
-            "${tinclude}"
-        IMPORTED_LOCATION
-            "${tpath}"
+  add_library(${tname} STATIC IMPORTED GLOBAL)
+  add_dependencies(${tname} ${tdep})
+  set_target_properties(${tname} PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${tinclude}"
+    IMPORTED_LOCATION "${tpath}"
     )
 endmacro()
 
@@ -56,33 +53,33 @@ import_target(ev ev_build
 ### V8 and ICU
 
 if(UNIX)
-    set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
-    set(V8_PLATFORM "native")
-    set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
-    set(ICU_BIN_DIR "${V8_BIN_DIR}")
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-      set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
-      set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
-    endif()
+  set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
+  set(V8_PLATFORM "native")
+  set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
+  set(ICU_BIN_DIR "${V8_BIN_DIR}")
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
+    set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
+  endif()
 else()
-    message(ERROR "Not implemented for your OS")
+  message(ERROR "Not implemented for your OS")
 endif()
 
 
 include(ExternalProject)
-set (V8_BUILD_COMMAND make -j8 -f Makefile-v8 strictaliasing=off snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}" CXX="${CMAKE_CXX_COMPILER}")
+set (V8_BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -f Makefile-v8 strictaliasing=off
+  snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
+  CXX="${CMAKE_CXX_COMPILER}") 
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND}" CXXFLAGS=-stdlib=libc++)
+  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND}" CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
 endif()
-ExternalProject_Add(v8_build
-  SOURCE_DIR          "${V8_DIR}"
-  BUILD_IN_SOURCE     TRUE
-  BUILD_COMMAND       "${V8_BUILD_COMMAND}"
-  INSTALL_COMMAND     ""
-)
+ExternalProject_Add(v8_build SOURCE_DIR "${V8_DIR}"
+  BUILD_IN_SOURCE TRUE  BUILD_COMMAND "${V8_BUILD_COMMAND}" 
+  INSTALL_COMMAND "")
 
 ## V8
-import_target(v8_base v8_build "${V8_DIR}/include" "${V8_BIN_DIR}/libv8_base.a")
+import_target(v8_base v8_build "${V8_DIR}/include"
+  "${V8_BIN_DIR}/libv8_base.a") 
 
 import_target(v8_libbase v8_build "${V8_DIR}/include"
   "${V8_BIN_DIR}/libv8_libbase.a")
@@ -107,16 +104,16 @@ target_include_directories(icu_header INTERFACE
   "${V8_DIR}/third_party/icu/source/i18n") 
 
 import_target(icu_uc v8_build
-    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${ICU_BIN_DIR}/libicuuc.a"
+  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
+  "${ICU_BIN_DIR}/libicuuc.a"
 )
 
 import_target(icu_data v8_build
-    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${ICU_BIN_DIR}/libicudata.a"
-)
+  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
+  "${ICU_BIN_DIR}/libicudata.a"
+  )
 
 import_target(icu_i18n v8_build
-    "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-    "${ICU_BIN_DIR}/libicui18n.a"
-)
+  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
+  "${ICU_BIN_DIR}/libicui18n.a"
+  )

@@ -108,24 +108,24 @@ endif()
 ## Compiler flags --------------------------------------------------------------
 # GCC 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89 -g")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89 -g -O2")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -O2")
 endif ()
 if (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O2")
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set (CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES  "Intel")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   set (CMAKE_COMPILER_IS_INTEL 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES  "MSVC")
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   set (CMAKE_COMPILER_IS_INTEL 1)
 endif()
 
 # OSX
 if (APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -std=c++11")
   if (CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     add_definitions("-Wno-deprecated-declarations")
@@ -575,6 +575,7 @@ add_subdirectory(3rdParty)
 add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
+add_subdirectory(js)
 
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
