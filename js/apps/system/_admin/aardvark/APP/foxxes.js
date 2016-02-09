@@ -169,7 +169,8 @@
     var mount = validateMount(req);
     var runTeardown = req.parameters.teardown;
     var app = FoxxManager.uninstall(mount, {
-      teardown: runTeardown
+      teardown: runTeardown,
+      force: true
     });
     res.json({
       error: false,
