@@ -901,9 +901,8 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
-  size_t const n = node->numMembers();
 
-  TRI_ASSERT(n == 6);
+  TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createCollectOptions(node->getMember(0));
 
