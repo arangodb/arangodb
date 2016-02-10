@@ -244,9 +244,6 @@
       }
       if (!this.workMonitorCollection) {
         this.workMonitorCollection = new window.WorkMonitorCollection();
-        this.workMonitorCollection.fetch({
-          async: false
-        });
       }
       if (!this.workMonitorView) {
         this.workMonitorView = new window.workMonitorView({

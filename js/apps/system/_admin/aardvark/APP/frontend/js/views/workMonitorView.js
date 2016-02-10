@@ -29,9 +29,16 @@
     },
 
     render: function() {
+
+      var self = this;
+
       this.$el.html(this.template.render({}));
-      this.parseTableData();
-      $(this.id).append(this.table.render({content: this.tableDescription}));
+      this.collection.fetch({
+        success: function() {
+          self.parseTableData();
+          $(self.id).append(self.table.render({content: self.tableDescription}));
+        }
+      });
     },
 
     parseTableData: function() {
@@ -44,7 +51,6 @@
           var parent = model.get('parent');
           if (parent) {
             try {
-              console.log(parent);
 
               self.tableDescription.rows.push([
                 model.get('type'),
