@@ -39,7 +39,7 @@ class HttpCommTask;
 class GeneralHandler;
 class GeneralRequest;
 class GeneralResponse;
-class HttpServer;
+class GeneralServer;
 class HttpServerJob;
 
 
@@ -57,7 +57,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief constructs a new task
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpCommTask(HttpServer*, TRI_socket_t, const ConnectionInfo&,
+  HttpCommTask(GeneralServer*, TRI_socket_t, const ConnectionInfo&,
                double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -196,7 +196,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief the underlying server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer* const _server;
+  GeneralServer* const _server;
 
   
  private:

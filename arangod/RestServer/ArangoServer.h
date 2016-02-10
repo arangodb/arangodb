@@ -51,7 +51,7 @@ class ApplicationScheduler;
 class AsyncJobManager;
 class Dispatcher;
 class GeneralHandlerFactory;
-class HttpServer;
+class GeneralServer;
 class HttpsServer;
 }
 

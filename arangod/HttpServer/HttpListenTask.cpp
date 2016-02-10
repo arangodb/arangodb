@@ -24,7 +24,7 @@
 
 #include "HttpListenTask.h"
 
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 
 using namespace arangodb::rest;
 
@@ -34,7 +34,7 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpListenTask::HttpListenTask(HttpServer* server, Endpoint* endpoint)
+HttpListenTask::HttpListenTask(GeneralServer* server, Endpoint* endpoint)
     : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
 

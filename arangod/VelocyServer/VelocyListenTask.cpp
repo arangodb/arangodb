@@ -23,7 +23,7 @@
 
 #include "VelocyListenTask.h"
 
-#include "VelocyServer/VelocyServer.h"
+#include "VelocyServer/GeneralServer.h"
 
 using namespace arangodb::rest;
 
@@ -33,7 +33,7 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-VelocyListenTask::VelocyListenTask(VelocyServer* server, Endpoint* endpoint)
+VelocyListenTask::VelocyListenTask(GeneralServer* server, Endpoint* endpoint)
     : Task("VelocyListenTask"), ListenTask(endpoint), _server(server) {}
 
 

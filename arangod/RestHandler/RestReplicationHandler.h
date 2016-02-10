@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"

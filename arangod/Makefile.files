@@ -108,7 +108,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/HttpServer/GeneralHandler.cpp \
 	arangod/HttpServer/GeneralHandlerFactory.cpp \
 	arangod/HttpServer/HttpListenTask.cpp \
-	arangod/HttpServer/HttpServer.cpp \
+	arangod/HttpServer/GeneralServer.cpp \
 	arangod/HttpServer/HttpServerJob.cpp \
 	arangod/HttpServer/HttpsCommTask.cpp \
 	arangod/HttpServer/HttpsServer.cpp \

@@ -39,7 +39,7 @@ namespace rest {
 class ApplicationDispatcher;
 class ApplicationScheduler;
 class AsyncJobManager;
-class HttpServer;
+class GeneralServer;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief all constructed servers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<HttpServer*> _servers;
+  std::vector<GeneralServer*> _servers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server basepath

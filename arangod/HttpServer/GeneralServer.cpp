@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServer.h"
+#include "GeneralServer.h"
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -46,7 +46,7 @@ using namespace arangodb::rest;
 /// @brief destroys an endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
+int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
   std::unique_ptr<TaskData> taskData(new TaskData());
 
   taskData->_taskId = taskId;
@@ -63,7 +63,7 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
+GeneralServer::GeneralServer(Scheduler* scheduler, Dispatcher* dispatcher,
                        GeneralHandlerFactory* handlerFactory,
                        AsyncJobManager* jobManager, double keepAliveTimeout)
     : _scheduler(scheduler),
@@ -79,13 +79,13 @@ HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::~HttpServer() { stopListening(); }
+GeneralServer::~GeneralServer() { stopListening(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
+HttpCommTask* GeneralServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
 }
@@ -94,7 +94,7 @@ HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
 /// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::setEndpointList(EndpointList const* list) {
+void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
 }
 
@@ -102,7 +102,7 @@ void HttpServer::setEndpointList(EndpointList const* list) {
 /// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::startListening() {
+void GeneralServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
@@ -126,7 +126,7 @@ void HttpServer::startListening() {
 /// @brief stops listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stopListening() {
+void GeneralServer::stopListening() {
   for (auto& task : _listenTasks) {
     _scheduler->destroyTask(task);
   }
@@ -138,7 +138,7 @@ void HttpServer::stopListening() {
 /// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stop() {
+void GeneralServer::stop() {
   while (true) {
     HttpCommTask* task = nullptr;
 
@@ -161,7 +161,7 @@ void HttpServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
+void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
   HttpCommTask* task = createCommTask(s, info);
 
   try {
@@ -182,7 +182,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
+void GeneralServer::handleCommunicationClosed(HttpCommTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
@@ -191,7 +191,7 @@ void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
+void GeneralServer::handleCommunicationFailure(HttpCommTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
@@ -200,7 +200,7 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
+bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
@@ -241,7 +241,7 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest(HttpCommTask* task,
+bool GeneralServer::handleRequest(HttpCommTask* task,
                                WorkItem::uptr<GeneralHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
@@ -265,7 +265,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::openEndpoint(Endpoint* endpoint) {
+bool GeneralServer::openEndpoint(Endpoint* endpoint) {
   ListenTask* task = new HttpListenTask(this, endpoint);
 
   // ...................................................................
@@ -292,7 +292,7 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleRequestDirectly(HttpCommTask* task,
+void GeneralServer::handleRequestDirectly(HttpCommTask* task,
                                        GeneralHandler* handler) {
   GeneralHandler::status_t status = handler->executeFull();
 

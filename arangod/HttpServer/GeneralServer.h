@@ -49,9 +49,9 @@ class ListenTask;
 /// @brief general server
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpServer : protected TaskManager {
-  HttpServer(HttpServer const&) = delete;
-  HttpServer const& operator=(HttpServer const&) = delete;
+class GeneralServer : protected TaskManager {
+  GeneralServer(GeneralServer const&) = delete;
+  GeneralServer const& operator=(GeneralServer const&) = delete;
 
   
  public:
@@ -67,14 +67,14 @@ class HttpServer : protected TaskManager {
   /// @brief constructs a new general server with dispatcher and job manager
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
+  GeneralServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
              double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a general server
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~HttpServer();
+  virtual ~GeneralServer();
 
   
  public:

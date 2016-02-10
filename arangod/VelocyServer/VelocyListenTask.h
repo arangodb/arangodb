@@ -30,7 +30,7 @@
 
 namespace arangodb {
 namespace rest {
-class VelocyServer;
+class GeneralServer;
 class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ class VelocyListenTask : public ListenTask {
   /// @brief listen to given port
   //////////////////////////////////////////////////////////////////////////////
 
-  VelocyListenTask(VelocyServer* server, Endpoint* endpoint);
+  VelocyListenTask(GeneralServer* server, Endpoint* endpoint);
 
   
  protected:
@@ -60,7 +60,7 @@ class VelocyListenTask : public ListenTask {
   /// @brief underlying general server
   //////////////////////////////////////////////////////////////////////////////
 
-  VelocyServer* _server;
+  GeneralServer* _server;
 };
 }
 }

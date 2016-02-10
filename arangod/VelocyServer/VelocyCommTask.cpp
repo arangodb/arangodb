@@ -28,7 +28,7 @@
 #include "Basics/logging.h"
 #include "VelocyServer/VelocyHandler.h"
 #include "VelocyServer/VelocyHandlerFactory.h"
-#include "VelocyServer/VelocyServer.h"
+#include "VelocyServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
@@ -66,7 +66,7 @@ size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 G
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-VelocyCommTask::VelocyCommTask(VelocyServer* server, TRI_socket_t socket,
+VelocyCommTask::VelocyCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
     : Task("VelocyCommTask"),
       SocketTask(socket, keepAliveTimeout),

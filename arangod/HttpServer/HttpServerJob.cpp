@@ -30,7 +30,7 @@
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/GeneralHandler.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
@@ -41,7 +41,7 @@ using namespace std;
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::HttpServerJob(HttpServer* server,
+HttpServerJob::HttpServerJob(GeneralServer* server,
                              WorkItem::uptr<GeneralHandler>& handler, bool isAsync)
     : Job("HttpServerJob"),
       _server(server),

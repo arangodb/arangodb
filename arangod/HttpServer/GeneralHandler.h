@@ -39,7 +39,7 @@ namespace rest {
 class Dispatcher;
 class GeneralHandlerFactory;
 class GeneralRequest;
-class HttpServer;
+class GeneralServer;
 class VelocyServer;
 
 

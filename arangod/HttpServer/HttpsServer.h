@@ -24,7 +24,7 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTPS_SERVER_H
 #define ARANGOD_HTTP_SERVER_HTTPS_SERVER_H 1
 
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 
 #include <openssl/ssl.h>
 
@@ -36,7 +36,7 @@ namespace rest {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpsServer : public HttpServer {
+class HttpsServer : public GeneralServer {
   
  public:
   //////////////////////////////////////////////////////////////////////////////

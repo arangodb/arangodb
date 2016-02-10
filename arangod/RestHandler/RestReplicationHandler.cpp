@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"

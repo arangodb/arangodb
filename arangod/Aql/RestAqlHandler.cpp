@@ -28,7 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "HttpServer/GeneralHandlerFactory.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"

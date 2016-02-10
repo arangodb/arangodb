@@ -29,7 +29,7 @@
 #include "Basics/logging.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/GeneralHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
@@ -49,7 +49,7 @@ size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
+HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
     : Task("HttpCommTask"),
       SocketTask(socket, keepAliveTimeout),

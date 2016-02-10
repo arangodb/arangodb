@@ -34,7 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/GeneralHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Rest/Version.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -135,10 +135,10 @@ bool ApplicationEndpointServer::buildServers() {
   TRI_ASSERT(_handlerFactory != nullptr);
   TRI_ASSERT(_applicationScheduler->scheduler() != nullptr);
 
-  HttpServer* server;
+  GeneralServer* server;
 
   // unencrypted endpoints
-  server = new HttpServer(_applicationScheduler->scheduler(),
+  server = new GeneralServer(_applicationScheduler->scheduler(),
                           _applicationDispatcher->dispatcher(), _handlerFactory,
                           _jobManager, _keepAliveTimeout);
 

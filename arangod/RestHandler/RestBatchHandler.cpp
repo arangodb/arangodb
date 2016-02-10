@@ -26,7 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "HttpServer/GeneralHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Rest/GeneralRequest.h"
 
 using namespace arangodb;

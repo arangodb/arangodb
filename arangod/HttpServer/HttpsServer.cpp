@@ -37,7 +37,7 @@ HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
                          GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
-    : HttpServer(scheduler, dispatcher, handlerFactory, jobManager,
+    : GeneralServer(scheduler, dispatcher, handlerFactory, jobManager,
                  keepAliveTimeout),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),

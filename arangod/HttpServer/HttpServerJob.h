@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace rest {
 class GeneralHandler;
-class HttpServer;
+class GeneralServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
@@ -50,7 +50,7 @@ class HttpServerJob : public Job {
   /// @brief constructs a new server job
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServerJob(HttpServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
+  HttpServerJob(GeneralServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
                 bool isAsync = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ class HttpServerJob : public Job {
   /// @brief general server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer* _server;
+  GeneralServer* _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler

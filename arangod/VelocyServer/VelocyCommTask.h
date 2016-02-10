@@ -38,7 +38,7 @@ class VelocyCommTask;
 class VelocyHandler;
 class GeneralRequest;
 class GeneralResponse;
-class VelocyServer;
+class GeneralServer;
 class VelocyServerJob;
 
 
@@ -56,7 +56,7 @@ class VelocyCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief constructs a new task
   //////////////////////////////////////////////////////////////////////////////
 
-  VelocyCommTask(VelocyServer*, TRI_socket_t, const ConnectionInfo&,
+  VelocyCommTask(GeneralServer*, TRI_socket_t, const ConnectionInfo&,
                double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ class VelocyCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief the underlying server
   //////////////////////////////////////////////////////////////////////////////
 
-  VelocyServer* const _server;
+  GeneralServer* const _server;
 
   
  private:

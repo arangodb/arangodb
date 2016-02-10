@@ -34,7 +34,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
@@ -1138,7 +1138,7 @@ static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_Utf8ValueNFC data(TRI_UNKNOWN_MEM_ZONE, args[1]);
 
-  int res = HttpServer::sendChunk(id, *data);
+  int res = GeneralServer::sendChunk(id, *data);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_TASK_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot send chunk");
