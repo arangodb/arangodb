@@ -6,7 +6,7 @@ arangosh&gt; graph._edges({type: <span class="hljs-string">"married"</span>}).to
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"566076690"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"566709832"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   }, 
@@ -14,7 +14,7 @@ arangosh&gt; graph._edges({type: <span class="hljs-string">"married"</span>}).to
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlyAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"566535442"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"567168584"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   } 
