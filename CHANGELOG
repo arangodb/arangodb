@@ -88,6 +88,9 @@ v2.8.3 (XXXX-XX-XX)
 * Deleting a Foxx service in the frontend should now always succeed even if the
   files no longer exist on the file system (issue #1358)
 
+* Routing actions loaded from the database no longer throw exceptions when
+  trying to load other modules using "require"
+
 
 v2.8.2 (2016-02-09)
 -------------------
