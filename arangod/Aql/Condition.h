@@ -294,6 +294,13 @@ class Condition {
                                     std::vector<Index const*>&,
                                     SortCondition const*);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the attributes for a sub-condition that are const
+  /// (i.e. compared with equality)
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes (Variable const*, bool);
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort ORs for the same attribute so they are in ascending value
