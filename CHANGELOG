@@ -1,6 +1,12 @@
 v2.8.3 (XXXX-XX-XX)
 -------------------
 
+* fixed AQL filter condition collapsing for deeply-nested cases, potentially
+  enabling usage of indexes in some dedicated cases
+
+* added parentheses in AQL explain command output to correctly display precedence
+  of logical and arithmetic operators
+
 * Foxx Model event listeners defined on the model are now correctly invoked by
   the Repository methods (issue #1665)
 
