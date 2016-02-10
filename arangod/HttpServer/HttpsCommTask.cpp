@@ -119,9 +119,6 @@ bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
   ERR_clear_error();
   SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
-  // accept might need writes
-  _scheduler->startSocketEvents(_writeWatcher);
-
   return true;
 }
 
@@ -141,7 +138,12 @@ bool HttpsCommTask::handleEvent (EventToken token,
       result = trySSLAccept();
     }
 
-    if (! result) {
+    if (result) {
+      _scheduler->startSocketEvents(_readWatcher);
+      _scheduler->stopSocketEvents(_writeWatcher);
+
+    }
+    else {
       // status is somehow invalid. we got here even though no accept was ever successful
       _clientClosed = true;
       // this will remove the corresponding chunkedTask from the global list
@@ -165,7 +167,7 @@ bool HttpsCommTask::handleEvent (EventToken token,
   // handle normal socket operation
   bool result = HttpCommTask::handleEvent(token, revents);
 
-  // warning: if _clientClosed is true here, the task (this) is already deleted!
+  // warning: if result is false here, the task (this) is already deleted!
 
   // we might need to start listing for writes (even we only want to READ)
   if (result && ! _clientClosed) {
@@ -239,9 +241,6 @@ bool HttpsCommTask::trySSLAccept () {
     LOG_DEBUG("established SSL connection");
     _accepted = true;
 
-    // accept done, remove write events
-    _scheduler->stopSocketEvents(_writeWatcher);
-
     return true;
   }
 
@@ -257,9 +256,13 @@ bool HttpsCommTask::trySSLAccept () {
   int err = SSL_get_error(_ssl, res);
 
   if (err == SSL_ERROR_WANT_READ) {
+    _scheduler->startSocketEvents(_readWatcher);
+    _scheduler->stopSocketEvents(_writeWatcher);
     return true;
   }
   else if (err == SSL_ERROR_WANT_WRITE) {
+    _scheduler->stopSocketEvents(_readWatcher);
+    _scheduler->startSocketEvents(_writeWatcher);
     return true;
   }
       
@@ -445,6 +448,14 @@ bool HttpsCommTask::trySSLWrite () {
 
   // we might have a new write buffer
   _scheduler->sendAsync(SocketTask::_asyncWatcher);
+
+  // we might have a new write buffer or none at all
+  if (_writeBuffer == nullptr) {
+    _scheduler->stopSocketEvents(_writeWatcher);
+  }
+  else {
+    _scheduler->startSocketEvents(_writeWatcher);
+  }
 
   return true;
 }
