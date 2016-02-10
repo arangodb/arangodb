@@ -25,7 +25,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/GeneralRequest.h"
 

@@ -106,7 +106,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/HttpServer/AsyncJobManager.cpp \
 	arangod/HttpServer/HttpCommTask.cpp \
 	arangod/HttpServer/GeneralHandler.cpp \
-	arangod/HttpServer/HttpHandlerFactory.cpp \
+	arangod/HttpServer/GeneralHandlerFactory.cpp \
 	arangod/HttpServer/HttpListenTask.cpp \
 	arangod/HttpServer/HttpServer.cpp \
 	arangod/HttpServer/HttpServerJob.cpp \

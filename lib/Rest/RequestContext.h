@@ -74,7 +74,7 @@ class RequestContext {
   /// @brief authenticate user (vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  // virtual GeneralResponse::VstreamResponseCode authenticateVstream() = 0;
+  virtual GeneralResponse::VstreamResponseCode authenticateVstream() = 0;
   
  protected:
   //////////////////////////////////////////////////////////////////////////////

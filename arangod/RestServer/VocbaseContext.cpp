@@ -366,4 +366,6 @@ GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
   return GeneralResponse::OK;
 }
 
-
+// @TODO:Create authenticateVStream method
+GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
+}

@@ -33,7 +33,7 @@
 #include "Basics/ssl-helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Rest/Version.h"
@@ -66,7 +66,7 @@ ApplicationEndpointServer::ApplicationEndpointServer(
     ApplicationScheduler* applicationScheduler,
     ApplicationDispatcher* applicationDispatcher, AsyncJobManager* jobManager,
     std::string const& authenticationRealm,
-    HttpHandlerFactory::context_fptr setContext, void* contextData)
+    GeneralHandlerFactory::context_fptr setContext, void* contextData)
     : ApplicationFeature("EndpointServer"),
       _applicationServer(applicationServer),
       _applicationScheduler(applicationScheduler),
@@ -354,7 +354,7 @@ bool ApplicationEndpointServer::prepare() {
   _endpointList.dump();
 
   _handlerFactory =
-      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
+      new GeneralHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
   LOG_DEBUG("using default API compatibility: %ld",

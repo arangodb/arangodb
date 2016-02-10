@@ -64,7 +64,7 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                       HttpHandlerFactory* handlerFactory,
+                       GeneralHandlerFactory* handlerFactory,
                        AsyncJobManager* jobManager, double keepAliveTimeout)
     : _scheduler(scheduler),
       _dispatcher(dispatcher),

@@ -28,7 +28,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
 #include "HttpServer/GeneralHandler.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Scheduler/Scheduler.h"
 

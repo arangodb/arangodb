@@ -169,7 +169,7 @@ GeneralResponse::VstreamResponseCode GeneralHandlerFactory::authenticateRequestV
 
   TRI_ASSERT(context != nullptr);
 
-  return context->authenticate();
+  return context->authenticateVstream();
 }
 
 

@@ -51,7 +51,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
@@ -122,7 +122,7 @@ static std::string ToString(std::vector<T> const& v) {
 /// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
+void ArangoServer::defineHandlers(GeneralHandlerFactory* factory) {
   // First the "_api" handlers:
 
   // add an upgrade warning
@@ -1063,12 +1063,12 @@ int ArangoServer::startupServer() {
 
   if (startServer) {
     // start with enabled maintenance mode
-    HttpHandlerFactory::setMaintenance(true);
+    GeneralHandlerFactory::setMaintenance(true);
 
     // create the server
     _applicationEndpointServer->buildServers();
 
-    HttpHandlerFactory* handlerFactory =
+    GeneralHandlerFactory* handlerFactory =
         _applicationEndpointServer->getHandlerFactory();
 
     defineHandlers(handlerFactory);
@@ -1383,7 +1383,7 @@ void ArangoServer::waitForHeartbeat() {
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   // disabled maintenance mode
   waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
+  GeneralHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
   _applicationServer->wait();
@@ -1407,7 +1407,7 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
 
   // disabled maintenance mode
   waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
+  GeneralHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
   _applicationServer->wait();

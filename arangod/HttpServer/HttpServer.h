@@ -41,7 +41,7 @@ class Dispatcher;
 class EndpointList;
 class HttpServerJob;
 class HttpCommTask;
-class HttpHandlerFactory;
+class GeneralHandlerFactory;
 class Job;
 class ListenTask;
 
@@ -67,7 +67,7 @@ class HttpServer : protected TaskManager {
   /// @brief constructs a new general server with dispatcher and job manager
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
+  HttpServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
              double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ class HttpServer : protected TaskManager {
   /// @brief return the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* handlerFactory() const { return _handlerFactory; }
+  GeneralHandlerFactory* handlerFactory() const { return _handlerFactory; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds the endpoint list
@@ -229,7 +229,7 @@ class HttpServer : protected TaskManager {
   /// @brief the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _handlerFactory;
+  GeneralHandlerFactory* _handlerFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the job manager

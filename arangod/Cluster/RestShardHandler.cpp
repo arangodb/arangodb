@@ -27,7 +27,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 

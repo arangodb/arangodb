@@ -258,7 +258,7 @@ GeneralHandler::status_t GeneralHandler::executeFullVstream() {
 /// @brief register the server object
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralHandler::setServer(HttpHandlerFactory* server) { _server = server; }
+void GeneralHandler::setServer(GeneralHandlerFactory* server) { _server = server; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the request

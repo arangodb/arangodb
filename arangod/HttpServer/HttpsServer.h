@@ -43,7 +43,7 @@ class HttpsServer : public HttpServer {
   /// @brief constructs a new http server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpsServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
+  HttpsServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
               double keepAliveTimeout, SSL_CTX*);
 
 

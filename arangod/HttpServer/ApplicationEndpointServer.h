@@ -31,7 +31,7 @@
 #include <openssl/ssl.h>
 
 #include "Rest/EndpointList.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 
 
 namespace arangodb {
@@ -57,7 +57,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   ApplicationEndpointServer(ApplicationServer*, ApplicationScheduler*,
                             ApplicationDispatcher*, AsyncJobManager*,
                             std::string const&,
-                            HttpHandlerFactory::context_fptr, void*);
+                            GeneralHandlerFactory::context_fptr, void*);
 
 
   ~ApplicationEndpointServer();
@@ -74,7 +74,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief get the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* getHandlerFactory() const { return _handlerFactory; }
+  GeneralHandlerFactory* getHandlerFactory() const { return _handlerFactory; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the server basepath
@@ -169,7 +169,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief set context callback function
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory::context_fptr _setContext;
+  GeneralHandlerFactory::context_fptr _setContext;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief context data passed to callback functions
@@ -181,7 +181,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _handlerFactory;
+  GeneralHandlerFactory* _handlerFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all constructed servers

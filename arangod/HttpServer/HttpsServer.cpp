@@ -34,7 +34,7 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                         HttpHandlerFactory* handlerFactory,
+                         GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
     : HttpServer(scheduler, dispatcher, handlerFactory, jobManager,

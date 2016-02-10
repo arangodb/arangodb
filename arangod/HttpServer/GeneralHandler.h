@@ -37,7 +37,7 @@
 namespace arangodb {
 namespace rest {
 class Dispatcher;
-class HttpHandlerFactory;
+class GeneralHandlerFactory;
 class GeneralRequest;
 class HttpServer;
 class VelocyServer;
@@ -171,7 +171,7 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
   /// @brief register the server object
   //////////////////////////////////////////////////////////////////////////////
 
-  void setServer(HttpHandlerFactory* server);
+  void setServer(GeneralHandlerFactory* server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the request
@@ -246,7 +246,7 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
   /// @brief the server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _server;
+  GeneralHandlerFactory* _server;
 };
 }
 }

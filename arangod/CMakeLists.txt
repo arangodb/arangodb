@@ -149,7 +149,7 @@ add_executable(
     HttpServer/AsyncJobManager.cpp
     HttpServer/HttpCommTask.cpp
     HttpServer/GeneralHandler.cpp
-    HttpServer/HttpHandlerFactory.cpp
+    HttpServer/GeneralHandlerFactory.cpp
     HttpServer/HttpListenTask.cpp
     HttpServer/HttpServer.cpp
     HttpServer/HttpServerJob.cpp
