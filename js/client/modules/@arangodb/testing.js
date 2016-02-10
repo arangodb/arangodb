@@ -130,7 +130,7 @@ const optionsDefaults = {
   "replication": false,
   "skipAql": false,
   "skipArangoB": false,
-  "skipArangoBNonConnKeepAlive": false,
+  "skipArangoBNonConnKeepAlive": true,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -1807,7 +1807,6 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 let allTests = [
-  "arangob",
   "arangosh",
   "authentication",
   "authentication_parameters",
@@ -1822,7 +1821,8 @@ let allTests = [
   "shell_server",
   "shell_server_aql",
   "ssl_server",
-  "upgrade"
+  "upgrade",
+  "arangob"
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
