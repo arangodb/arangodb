@@ -1481,7 +1481,11 @@ AstNode* Condition::collapse (AstNode const* node) {
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
 
-    if (sub->type == node->type) {
+    bool const isSame = (node->type == sub->type) || 
+      (node->type == NODE_TYPE_OPERATOR_NARY_OR && sub->type == NODE_TYPE_OPERATOR_BINARY_OR) ||
+      (node->type == NODE_TYPE_OPERATOR_NARY_AND && sub->type == NODE_TYPE_OPERATOR_BINARY_AND);
+
+    if (isSame) {
       // merge
       for (size_t j = 0; j < sub->numMembers(); ++j) {
         newOperator->addMember(sub->getMemberUnchecked(j));
@@ -1533,7 +1537,8 @@ AstNode* Condition::transformNode (AstNode* node) {
           sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
       }
-      else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+               sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         mustCollapse = true;
       }
     }
@@ -1595,7 +1600,7 @@ AstNode* Condition::transformNode (AstNode* node) {
         }
       }
 
-      node = newOperator;
+      node = transformNode(newOperator);
     }
 
     if (mustCollapse) {
