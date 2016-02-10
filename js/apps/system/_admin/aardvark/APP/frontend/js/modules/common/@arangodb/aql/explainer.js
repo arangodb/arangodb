@@ -598,19 +598,19 @@ function processQuery (query, explain) {
       case "array compare <=":
         return binaryOperator(node, "<=");
       case "logical or":
-        return binaryOperator(node, "||");
+        return "(" + binaryOperator(node, "||") + ")";
       case "logical and":
-        return binaryOperator(node, "&&");
+        return "(" + binaryOperator(node, "&&") + ")";
       case "ternary":
         return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
       case "n-ary or":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ") + ")";
         }
         return "";
       case "n-ary and":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ") + ")";
         }
         return "";
       default: 
