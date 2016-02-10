@@ -29,7 +29,7 @@ const internal = require('internal');
 const pluck = require('@arangodb/util').pluck;
 
 const TEMPLATES = [
-  'main', 'model', 'router', 'setup', 'teardown', 'test'
+  'main', 'dcModel', 'ecModel', 'dcRouter', 'ecRouter', 'setup', 'teardown', 'test'
 ].reduce(function (obj, name) {
   obj[name] = _.template(fs.read(fs.join(
     internal.startupPath,
@@ -41,9 +41,19 @@ const TEMPLATES = [
 
 
 exports.generate = function (opts) {
-  const names = generateNames(opts.collectionNames);
+  const dcNames = generateNames(opts.documentCollections);
+  const ecNames = generateNames(opts.edgeCollections);
   const files = [];
   const folders = [];
+
+  for (const names1 of dcNames) {
+    for (const names2 of ecNames) {
+      assert(
+        names1.routerFile !== names2.routerFile,
+        `Collection names ${names1.collection} and ${names2.collection} are indistinguishable`
+      );
+    }
+  }
 
   const manifest = JSON.stringify({
     name: opts.name,
@@ -62,22 +72,37 @@ exports.generate = function (opts) {
     tests: 'test/**/*.js'
   }, null, 4);
   files.push({name: 'manifest.json', content: manifest});
-  const main = TEMPLATES.main({routePaths: pluck(names, 'routerFile')});
+  const main = TEMPLATES.main({routePaths: [].concat(
+    pluck(dcNames, 'routerFile'),
+    pluck(ecNames, 'routerFile')
+  )});
   files.push({name: 'main.js', content: main});
 
   folders.push('routes');
   folders.push('models');
-  names.forEach(function (names) {
-    const router = TEMPLATES.router(names);
-    const model = TEMPLATES.model(names);
+  dcNames.forEach(function (names) {
+    const router = TEMPLATES.dcRouter(names);
+    const model = TEMPLATES.dcModel(names);
+    files.push({name: fs.join('routes', `${names.routerFile}.js`), content: router});
+    files.push({name: fs.join('models', `${names.modelFile}.js`), content: model});
+  });
+  ecNames.forEach(function (names) {
+    const router = TEMPLATES.ecRouter(names);
+    const model = TEMPLATES.ecModel(names);
     files.push({name: fs.join('routes', `${names.routerFile}.js`), content: router});
     files.push({name: fs.join('models', `${names.modelFile}.js`), content: model});
   });
 
   folders.push('scripts');
-  const setup = TEMPLATES.setup({collections: pluck(names, 'collection')});
+  const setup = TEMPLATES.setup({
+    documentCollections: pluck(dcNames, 'collection'),
+    edgeCollections: pluck(ecNames, 'collection')
+  });
   files.push({name: fs.join('scripts', 'setup.js'), content: setup});
-  const teardown = TEMPLATES.teardown({collections: pluck(names, 'collection')});
+  const teardown = TEMPLATES.teardown({collections: [].concat(
+    pluck(dcNames, 'collection'),
+    pluck(ecNames, 'collection')
+  )});
   files.push({name: fs.join('scripts', 'teardown.js'), content: teardown});
 
   const test = TEMPLATES.test({});

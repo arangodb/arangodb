@@ -547,7 +547,8 @@ function installAppFromGenerator(targetPath, options) {
   options.author = options.author || 'Author';
   options.description = options.description || '';
   options.license = options.license || 'Apache 2';
-  options.collectionNames = options.collectionNames || [];
+  options.documentCollections = options.documentCollections || [];
+  options.edgeCollections = options.edgeCollections || [];
   if (typeof options.name !== 'string') {
     invalidOptions.push('options.name has to be a string.');
   }
@@ -560,8 +561,11 @@ function installAppFromGenerator(targetPath, options) {
   if (typeof options.license !== 'string') {
     invalidOptions.push('options.license has to be a string.');
   }
-  if (!Array.isArray(options.collectionNames)) {
-    invalidOptions.push('options.collectionNames has to be an array.');
+  if (!Array.isArray(options.documentCollections)) {
+    invalidOptions.push('options.documentCollections has to be an array.');
+  }
+  if (!Array.isArray(options.edgeCollections)) {
+    invalidOptions.push('options.edgeCollections has to be an array.');
   }
   if (invalidOptions.length > 0) {
     throw new ArangoError({
