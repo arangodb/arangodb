@@ -42,10 +42,11 @@
       this.tableView.setRemoveClick(this.remove.bind(this));
     },
 
-    setCollectionId : function (colid, pageid) {
+    setCollectionId : function (colid, page) {
       this.collection.setCollection(colid);
+      this.collection.setPage(page);
       var type = arangoHelper.collectionApiType(colid);
-      this.pageid = pageid;
+      this.page = page;
       this.type = type;
 
       this.checkCollectionState();
