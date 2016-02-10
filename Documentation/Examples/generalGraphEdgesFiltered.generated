@@ -3,18 +3,18 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph._edges({type: <span class="hljs-string">"married"</span>}).toArray();
 [ 
   { 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1375083218"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"566076690"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   }, 
   { 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlyAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1375541970"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"566535442"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   } 
