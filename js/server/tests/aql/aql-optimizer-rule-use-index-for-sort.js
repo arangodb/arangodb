@@ -151,6 +151,57 @@ function optimizerRuleTestSuite() {
       skiplist = null;
     },
 
+    testRuleOptimizeWhenEqComparison : function () {
+      // skiplist: a, b
+      // skiplist: d
+      // hash: c
+      // hash: y,z
+      skiplist.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      
+      var queries = [ 
+        [ "FOR v IN " + colName + " FILTER v.u == 1 SORT v.u RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.c RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.z RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.c == 1 SORT v.f RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.z RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 SORT v.y RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.y RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.z == 1 SORT v.z RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.y RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.z RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.y, v.z RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.y == 1 && v.z == 1 SORT v.z, v.y RETURN 1", false ], // not supported yet
+        [ "FOR v IN " + colName + " FILTER v.d == 1 SORT v.d RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.d == 1 && v.e == 1 SORT v.d RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.d == 1 SORT v.e RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 SORT v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.a, v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b, v.a RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", false ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", false ]
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0]);
+        if (query[1]) {
+          assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
+          hasNoSortNode(result);
+        }
+        else {
+          assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
+          hasSortNode(result);
+        }
+      });
+    },
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has no effect
     ////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +213,7 @@ function optimizerRuleTestSuite() {
         ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
         ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]", true],
         ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
-        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],// this will throw...
+        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],
         ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]", true],
         // TODO: limit blocks sort atm.
         ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", false],
@@ -371,7 +422,7 @@ function optimizerRuleTestSuite() {
       hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and use-index-range
-      //    use-index-range superseedes use-index-for-sort
+      //    use-index-range supersedes use-index-for-sort
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
 
@@ -417,7 +468,8 @@ function optimizerRuleTestSuite() {
     /// @brief test in detail that an index range fullfills everything the sort does, 
     //   and thus the sort is removed.
     ////////////////////////////////////////////////////////////////////////////////
-    testRangeSuperseedsSort: function () {
+
+    testRangeSupersedesSort: function () {
 
       var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN [v.a, v.b, v.c]";
 
@@ -496,7 +548,8 @@ function optimizerRuleTestSuite() {
     /// @brief test in detail that an index range fullfills everything the sort does, 
     //   and thus the sort is removed; multi-dimensional indexes are utilized.
     ////////////////////////////////////////////////////////////////////////////////
-    testRangeSuperseedsSort2: function () {
+
+    testRangeSupersedesSort2: function () {
 
       var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN [v.a, v.b, v.c]";
       var XPresult;
