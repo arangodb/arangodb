@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandlerFactory.h"
+#include "GeneralHandlerFactory.h"
 
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
@@ -64,7 +64,7 @@ class MaintenanceHandler : public GeneralHandler {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
+GeneralHandlerFactory::GeneralHandlerFactory(std::string const& authenticationRealm,
                                        int32_t minCompatibility,
                                        bool allowMethodOverride,
                                        context_fptr setContext,
@@ -80,7 +80,7 @@ HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
 /// @brief clones a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
+GeneralHandlerFactory::GeneralHandlerFactory(GeneralHandlerFactory const& that)
     : _authenticationRealm(that._authenticationRealm),
       _minCompatibility(that._minCompatibility),
       _allowMethodOverride(that._allowMethodOverride),
@@ -95,8 +95,8 @@ HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
 /// @brief copies a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory& HttpHandlerFactory::operator=(
-    HttpHandlerFactory const& that) {
+GeneralHandlerFactory& GeneralHandlerFactory::operator=(
+    GeneralHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm;
     _minCompatibility = that._minCompatibility;
@@ -116,14 +116,14 @@ HttpHandlerFactory& HttpHandlerFactory::operator=(
 /// @brief destructs a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::~HttpHandlerFactory() {}
+GeneralHandlerFactory::~GeneralHandlerFactory() {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::setMaintenance(bool value) {
+void GeneralHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
 
@@ -134,7 +134,7 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
+GeneralResponse::HttpResponseCode GeneralHandlerFactory::authenticateRequest(
     GeneralRequest* request) {
   auto context = request->getRequestContext();
 
@@ -152,10 +152,32 @@ GeneralResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief authenticates a new request (vstream)
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralResponse::VstreamResponseCode GeneralHandlerFactory::authenticateRequestVstream(
+    GeneralRequest* request) {
+  auto context = request->getRequestContext();
+
+  if (context == nullptr) {
+    if (!setRequestContext(request)) {
+      return GeneralResponse::VSTREAM_NOT_FOUND;
+    }
+
+    context = request->getRequestContext();
+  }
+
+  TRI_ASSERT(context != nullptr);
+
+  return context->authenticate();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext(GeneralRequest* request) {
+bool GeneralHandlerFactory::setRequestContext(GeneralRequest* request) {
   return _setContext(request, _setContextData);
 }
 
@@ -163,7 +185,7 @@ bool HttpHandlerFactory::setRequestContext(GeneralRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpHandlerFactory::authenticationRealm(GeneralRequest* request) const {
+std::string GeneralHandlerFactory::authenticationRealm(GeneralRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -180,7 +202,7 @@ std::string HttpHandlerFactory::authenticationRealm(GeneralRequest* request) con
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
+GeneralRequest* GeneralHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
   GeneralRequest* request = new GeneralRequest(info, ptr, length, _minCompatibility,
                                          _allowMethodOverride);
@@ -196,7 +218,7 @@ GeneralRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
+GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }
@@ -308,7 +330,7 @@ GeneralHandler* HttpHandlerFactory::createHandler(GeneralRequest* request) {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
+void GeneralHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -318,7 +340,7 @@ void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
+void GeneralHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
                                           void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -329,7 +351,7 @@ void HttpHandlerFactory::addPrefixHandler(std::string const& path, create_fptr f
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
+void GeneralHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }
 
