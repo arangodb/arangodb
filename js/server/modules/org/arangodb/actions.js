@@ -33,6 +33,7 @@
 module.isSystem = true;
 
 var internal = require("internal");
+var Module = require("module");
 
 var fs = require("fs");
 var util = require("util");
@@ -125,44 +126,34 @@ function notImplementedFunction (route, message) {
 /// @brief creates a callback for a callback action given as string
 ////////////////////////////////////////////////////////////////////////////////
 
-function createCallbackActionCallbackString (callback, foxxModule, route) {
+function createCallbackFromActionCallbackString (callback, parentModule, route) {
   'use strict';
 
-  var args = {
-    module: module.root,
-    require: function (path) {
-      return foxxModule.require(path);
-    }
-  };
+  var actionModule = new Module(route.name, parentModule);
 
-  var keys = Object.keys(args);
-  var content = "return (" + callback + ");";
-  var script = Function.apply(null, keys.concat(content));
-  var fn = internal.executeScript("(" + script + ")", undefined, route);
-
-  if (fn) {
-    return fn.apply(null, keys.map(function (key) {
-      return args[key];
-    }));
+  try {
+    actionModule._compile(`module.exports = ${callback}`, route.name);
+  } catch (e) {
+    return notImplementedFunction(route, util.format(
+      "could not generate callback for '%s'",
+      callback
+    ));
   }
 
-  return notImplementedFunction(route, util.format(
-    "could not generate callback for '%s'",
-    callback
-  ));
+  return actionModule.exports;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a callback for a callback action given as string
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionCallbackString (route, action, foxxModule) {
+function lookupCallbackActionCallbackString (route, action, actionModule) {
   'use strict';
 
   var func;
 
   try {
-    func = createCallbackActionCallbackString(action.callback, foxxModule, route);
+    func = createCallbackFromActionCallbackString(action.callback, actionModule, route);
   }
   catch (err) {
     func = errorFunction(route, util.format(
@@ -182,11 +173,11 @@ function lookupCallbackActionCallbackString (route, action, foxxModule) {
 /// @brief looks up a callback for a callback action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionCallback (route, action, foxxModule) {
+function lookupCallbackActionCallback (route, action, actionModule) {
   'use strict';
 
   if (typeof action.callback === 'string') {
-    return lookupCallbackActionCallbackString(route, action, foxxModule);
+    return lookupCallbackActionCallbackString(route, action, actionModule);
   }
 
   if (typeof action.callback === 'function') {
@@ -211,11 +202,11 @@ function lookupCallbackActionCallback (route, action, foxxModule) {
 /// @brief returns module or error function
 ////////////////////////////////////////////////////////////////////////////////
 
-function requireModule (name, route) {
+function requireModule (name, route, parentModule) {
   'use strict';
 
   try {
-    return { module: require(name) };
+    return { module: parentModule.require(name) };
   }
   catch (err) {
     if (err instanceof internal.ArangoError && err.errorNum === internal.errors.ERROR_MODULE_NOT_FOUND.code) {
@@ -257,14 +248,14 @@ function moduleFunction (actionModule, name, route) {
 /// @brief looks up a callback for a module action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionDo (route, action) {
+function lookupCallbackActionDo (route, action, parentModule) {
   'use strict';
 
   var path = action['do'].split("/");
   var funcName = path.pop();
   var moduleName = path.join("/");
 
-  var actionModule = requireModule(moduleName, route);
+  var actionModule = requireModule(moduleName, route, parentModule);
 
   // module not found or load error
   if (typeof actionModule === 'function') {
@@ -323,10 +314,10 @@ function createCallbackActionController (actionModule, route) {
 /// @brief looks up a callback for a controller action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionController (route, action) {
+function lookupCallbackActionController (route, action, parentModule) {
   'use strict';
 
-  var actionModule = requireModule(action.controller, route);
+  var actionModule = requireModule(action.controller, route, parentModule);
 
   if (typeof actionModule === 'function') {
     return {
@@ -347,7 +338,7 @@ function lookupCallbackActionController (route, action) {
 /// @brief looks up a callback for a prefix controller action
 ////////////////////////////////////////////////////////////////////////////////
 
-function lookupCallbackActionPrefixController (route, action) {
+function lookupCallbackActionPrefixController (route, action, parentModule) {
   'use strict';
 
   var prefix = action.prefixController;
@@ -367,7 +358,7 @@ function lookupCallbackActionPrefixController (route, action) {
       }
 
       // load module
-      var actionModule = requireModule(path, route);
+      var actionModule = requireModule(path, route, parentModule);
 
       if (typeof actionModule === 'function') {
         actionModule(req, res, options, next);
@@ -409,7 +400,7 @@ function lookupCallbackAction (route, action, context) {
   // .............................................................................
 
   if (action.hasOwnProperty('do')) {
-    return lookupCallbackActionDo(route, action);
+    return lookupCallbackActionDo(route, action, context.module);
   }
 
   // .............................................................................
@@ -417,7 +408,7 @@ function lookupCallbackAction (route, action, context) {
   // .............................................................................
 
   if (action.hasOwnProperty('controller')) {
-    return lookupCallbackActionController(route, action);
+    return lookupCallbackActionController(route, action, context.module);
   }
 
   // .............................................................................
@@ -425,7 +416,7 @@ function lookupCallbackAction (route, action, context) {
   // .............................................................................
 
   if (action.hasOwnProperty('prefixController')) {
-    return lookupCallbackActionPrefixController(route, action);
+    return lookupCallbackActionPrefixController(route, action, context.module);
   }
 
   return null;
@@ -807,17 +798,10 @@ function analyseRoutes (storage, routes) {
   var urlPrefix = routes.urlPrefix || "";
 
   // use normal root module or app context
-  var appContext;
+  var appContext = routes.appContext || {
+    module: new Module(routes.name || 'anonymous')
+  };
 
-  if (routes.hasOwnProperty('appContext')) {
-    appContext = routes.appContext;
-  }
-  else {
-    appContext = {
-      module: module.root
-    };
-  }
-  
   // install the routes
   var keys = [ 'routes', 'middleware' ];
 
@@ -865,16 +849,9 @@ function buildRoutingTree (routes) {
       else {
 
         // use normal root module or app context
-        var appContext;
-
-        if (route.hasOwnProperty('appContext')) {
-          appContext = routes.appContext;
-        }
-        else {
-          appContext = {
-            module: module.root
-          };
-        }
+        var appContext = routes.appContext || {
+          module: new Module(route.name || 'anonymous')
+        };
 
         installRoute(storage.routes, route, "", appContext);
       }
