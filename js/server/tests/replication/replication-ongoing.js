@@ -137,10 +137,6 @@ function ReplicationSuite() {
     connectToMaster();
     masterFunc2(state);
 
-    if (typeof applierConfiguration === 'object') {
-      console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
-    }
-
     applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
     applierConfiguration.username = "root";
