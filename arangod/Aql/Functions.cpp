@@ -6908,6 +6908,10 @@ AqlValue$ Functions::PushVPack(arangodb::aql::Query* query,
 AqlValue Functions::Pop(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(PopVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -6932,6 +6936,43 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
   RegisterWarning(query, "POP",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::PopVPack(arangodb::aql::Query* query,
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POP", (int)1,
+        (int)1);
+  }
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (list.isNull()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (list.isArray()) {
+    try {
+      VPackArrayBuilder guard(b.get());
+      auto iterator = VPackArrayIterator(list);
+      while (!iterator.isLast()) {
+        b->add(iterator.value());
+        iterator.next();
+      }
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  } else {
+    RegisterWarning(query, "POP",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    b->add(VPackValue(VPackValueType::Null));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6941,6 +6982,10 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
 AqlValue Functions::Append(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(AppendVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -6984,6 +7029,54 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     list.add(toPush.copy());
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+#endif
+}
+
+AqlValue$ Functions::AppendVPack(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "APPEND", (int)2,
+        (int)3);
+  }
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+  VPackSlice toAppend = ExtractFunctionParameter(trx, parameters, 1);
+
+  if (toAppend.isNull()) {
+    return AqlValue$(list);
+  }
+
+  bool unique = false;
+  if (n == 3) {
+    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
+    unique = ValueToBoolean(uniqueSlice);
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  {
+    VPackArrayBuilder guard(b.get());
+    bool isNull = list.isNull();
+    if (!isNull) {
+      TRI_ASSERT(list.isArray());
+      for (auto const& it : VPackArrayIterator(list)) {
+        b->add(it);
+      }
+    }
+    if (!toAppend.isArray()) {
+      if (!unique || !ListContainsElement(list, toAppend)) {
+        b->add(toAppend);
+      }
+    } else {
+      for (auto const& it : VPackArrayIterator(toAppend)) {
+        if (!unique || !ListContainsElement(list, it)) {
+          b->add(it);
+        }
+      }
+    }
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
