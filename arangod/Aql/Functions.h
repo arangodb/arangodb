@@ -360,6 +360,20 @@ struct Functions {
                             VPackFunctionParameters const&);
   static AqlValue$ AppendVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                                VPackFunctionParameters const&);
+  static AqlValue$ UnshiftVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ ShiftVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ RemoveValueVPack(arangodb::aql::Query*,
+                                    arangodb::AqlTransaction*,
+                                    VPackFunctionParameters const&);
+  static AqlValue$ RemoveValuesVPack(arangodb::aql::Query*,
+                                     arangodb::AqlTransaction*,
+                                     VPackFunctionParameters const&);
+  static AqlValue$ RemoveNthVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction*,
+                                  VPackFunctionParameters const&);
 };
 }
 }

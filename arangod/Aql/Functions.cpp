@@ -6793,7 +6793,7 @@ AqlValue Functions::FirstList(arangodb::aql::Query* query,
                               FunctionParameters const& parameters) {
 #ifdef TMPUSEVPACK
   auto tmp = transformParameters(parameters, trx);
-  return AqlValue(RandVPack(query, trx, tmp));
+  return AqlValue(FirstListVPack(query, trx, tmp));
 #else
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -7057,8 +7057,7 @@ AqlValue$ Functions::AppendVPack(arangodb::aql::Query* query,
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   {
     VPackArrayBuilder guard(b.get());
-    bool isNull = list.isNull();
-    if (!isNull) {
+    if (!list.isNull()) {
       TRI_ASSERT(list.isArray());
       for (auto const& it : VPackArrayIterator(list)) {
         b->add(it);
@@ -7086,6 +7085,10 @@ AqlValue$ Functions::AppendVPack(arangodb::aql::Query* query,
 AqlValue Functions::Unshift(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(UnshiftVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7127,6 +7130,50 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 
   RegisterInvalidArgumentWarning(query, "UNSHIFT");
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::UnshiftVPack(arangodb::aql::Query* query,
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNSHIFT", (int)2,
+        (int)3);
+  }
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isNull() && !list.isArray()) {
+    RegisterInvalidArgumentWarning(query, "UNSHIFT");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  VPackSlice toAppend = ExtractFunctionParameter(trx, parameters, 1);
+  bool unique = false;
+  if (n == 3) {
+    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
+    unique = ValueToBoolean(uniqueSlice);
+  }
+
+  if (unique && list.isArray() && ListContainsElement(list, toAppend)) {
+    // Short circuit, nothing to do return list
+    return AqlValue$(list);
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  {
+    VPackArrayBuilder guard(b.get());
+    b->add(toAppend);
+    if (list.isArray()) {
+      for (auto const& it : VPackArrayIterator(list)) {
+        b->add(it);
+      }
+    }
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7136,6 +7183,10 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 AqlValue Functions::Shift(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(ShiftVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -7160,6 +7211,45 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
 
   RegisterInvalidArgumentWarning(query, "SHIFT");
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::ShiftVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SHIFT", (int)1,
+        (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+  if (list.isNull()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  if (!list.isArray()) {
+    RegisterInvalidArgumentWarning(query, "SHIFT");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  {
+    VPackArrayBuilder guard(b.get());
+    if (list.length() > 0) {
+      auto iterator = VPackArrayIterator(list);
+      // This jumps over the first element
+      while(iterator.next()) {
+        b->add(iterator.value());
+      }
+    }
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7169,6 +7259,10 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
 AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
                                 arangodb::AqlTransaction* trx,
                                 FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RemoveValueVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7212,6 +7306,67 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
 
   RegisterInvalidArgumentWarning(query, "REMOVE_VALUE");
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::RemoveValueVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUE",
+        (int)2, (int)3);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (list.isNull()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackArrayBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+
+  if (!list.isArray()) {
+    RegisterInvalidArgumentWarning(query, "REMOVE_VALUE");
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    bool useLimit = false;
+    size_t limit = static_cast<size_t>(list.length());
+
+    VPackSlice toRemove = ExtractFunctionParameter(trx, parameters, 1);
+    if (n == 3) {
+      VPackSlice limitSlice = ExtractFunctionParameter(trx, parameters, 2);
+      bool unused = false;
+      if (!limitSlice.isNull()) {
+        limit = static_cast<size_t>(ValueToNumber(limitSlice, unused));
+        useLimit = true;
+      }
+    }
+    for (auto const& it : VPackArrayIterator(list)) {
+      if (useLimit && limit == 0) {
+        // Just copy
+        b->add(it);
+        continue;
+      }
+      if (arangodb::basics::VelocyPackHelper::compare(toRemove, it, false) ==
+          0) {
+        --limit;
+        continue;
+      }
+      b->add(it);
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7221,6 +7376,10 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
 AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RemoveValuesVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7254,6 +7413,50 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 
   RegisterInvalidArgumentWarning(query, "REMOVE_VALUES");
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::RemoveValuesVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUES",
+        (int)2, (int)2);
+  }
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+  VPackSlice values = ExtractFunctionParameter(trx, parameters, 1);
+
+  if (values.isNull()) {
+    return AqlValue$(list);
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (list.isNull()) {
+    {
+      VPackArrayBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+
+  if (list.isArray() && values.isArray()) {
+    try {
+      VPackArrayBuilder guard(b.get());
+      for (auto const& it : VPackArrayIterator(list)) {
+        if (!ListContainsElement(values, it)) {
+          b->add(it);
+        }
+      }
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return AqlValue$(b.get());
+  }
+
+  RegisterInvalidArgumentWarning(query, "REMOVE_VALUES");
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7263,6 +7466,10 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RemoveNthVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7297,6 +7504,61 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
 
   RegisterInvalidArgumentWarning(query, "REMOVE_NTH");
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::RemoveNthVPack(arangodb::aql::Query* query,
+                                    arangodb::AqlTransaction* trx,
+                                    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_NTH", (int)2,
+        (int)2);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (list.isNull()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    {
+      VPackArrayBuilder guard(b.get());
+    }
+    return AqlValue$(b.get());
+  }
+
+  if (list.isArray()) {
+    double const count = static_cast<double>(list.length());
+    VPackSlice position = ExtractFunctionParameter(trx, parameters, 1);
+    bool unused = false;
+    double p = arangodb::basics::VelocyPackHelper::toDouble(position, unused);
+    if (p >= count || p < -count) {
+      return AqlValue$(list);
+    }
+    if (p < 0) {
+      p += count;
+    }
+    size_t cur = 0;
+    size_t target = static_cast<size_t>(p);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    try {
+      VPackArrayBuilder guard(b.get());
+      for (auto const& it : VPackArrayIterator(list)) {
+        if (cur != target) {
+          b->add(it);
+        }
+        cur++;
+      }
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return AqlValue$(b.get());
+  }
+
+  RegisterInvalidArgumentWarning(query, "REMOVE_NTH");
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
