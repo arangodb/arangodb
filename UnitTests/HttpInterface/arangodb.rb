@@ -1,7 +1,7 @@
 # coding: utf-8
 
 require 'rubygems'
-require 'httparty'
+require 'persistent_httparty'
 require 'json'
 require 'rspec'
 require 'rspec/expectations'
@@ -54,6 +54,7 @@ end
 
 class ArangoDB
   include HTTParty
+  persistent_connection_adapter
 
   if $ssl == '1'
     base_uri "https://#{$address}"
