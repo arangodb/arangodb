@@ -12,7 +12,6 @@ if (typeof internal.printBrowser === "function") {
 }
 
 var stringBuilder = {
-
   output: "",
 
   appendLine: function(line) {
@@ -47,6 +46,14 @@ function setColors (useSystemColors) {
 }
 
 /* colorizer and output helper functions */ 
+
+function bracketize (node, v) {
+  'use strict';
+  if (node && node.subNodes && node.subNodes.length > 1) {
+    return "(" + v + ")";
+  }
+  return v;
+}
 
 function attributeUncolored (v) {
   'use strict';
@@ -563,53 +570,53 @@ function processQuery (query, explain) {
       case "function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")";
       case "plus":
-        return binaryOperator(node, "+");
+        return "(" + binaryOperator(node, "+") + ")";
       case "minus":
-        return binaryOperator(node, "-");
+        return "(" + binaryOperator(node, "-") + ")";
       case "times":
-        return binaryOperator(node, "*");
+        return "(" + binaryOperator(node, "*") + ")";
       case "division":
-        return binaryOperator(node, "/");
+        return "(" + binaryOperator(node, "/") + ")";
       case "modulus":
-        return binaryOperator(node, "%");
+        return "(" + binaryOperator(node, "%") + ")";
       case "compare not in":
       case "array compare not in":
-        return binaryOperator(node, "not in");
+        return "(" + binaryOperator(node, "not in") + ")";
       case "compare in":
       case "array compare in":
-        return binaryOperator(node, "in");
+        return "(" + binaryOperator(node, "in") + ")";
       case "compare ==":
       case "array compare ==":
-        return binaryOperator(node, "==");
+        return "(" + binaryOperator(node, "==") + ")";
       case "compare !=":
       case "array compare !=":
-        return binaryOperator(node, "!=");
+        return "(" + binaryOperator(node, "!=") + ")";
       case "compare >":
       case "array compare >":
-        return binaryOperator(node, ">");
+        return "(" + binaryOperator(node, ">") + ")";
       case "compare >=":
       case "array compare >=":
-        return binaryOperator(node, ">=");
+        return "(" + binaryOperator(node, ">=") + ")";
       case "compare <":
       case "array compare <":
-        return binaryOperator(node, "<");
+        return "(" + binaryOperator(node, "<") + ")";
       case "compare <=":
       case "array compare <=":
-        return binaryOperator(node, "<=");
+        return "(" + binaryOperator(node, "<=") + ")";
       case "logical or":
         return "(" + binaryOperator(node, "||") + ")";
       case "logical and":
         return "(" + binaryOperator(node, "&&") + ")";
       case "ternary":
-        return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
+        return "(" + buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]) + ")";
       case "n-ary or":
         if (node.hasOwnProperty("subNodes")) {
-          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ") + ")";
+          return bracketize(node, node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || "));
         }
         return "";
       case "n-ary and":
         if (node.hasOwnProperty("subNodes")) {
-          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ") + ")";
+          return bracketize(node, node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && "));
         }
         return "";
       default: 
