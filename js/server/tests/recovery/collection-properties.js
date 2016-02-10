@@ -105,7 +105,6 @@ function recoverySuite () {
       c = db._collection("UnitTestsRecovery4");
       prop = c.properties();
       assertTrue(prop.waitForSync);
-      assertEqual(32 * 1024 * 1024, prop.journalSize);
       assertTrue(prop.doCompact);
       assertEqual(32, prop.indexBuckets);
     }
