@@ -348,6 +348,18 @@ struct Functions {
                             VPackFunctionParameters const&);
   static AqlValue$ RandVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
                              VPackFunctionParameters const&);
+  static AqlValue$ FirstDocumentVPack(arangodb::aql::Query*,
+                                      arangodb::AqlTransaction*,
+                                      VPackFunctionParameters const&);
+  static AqlValue$ FirstListVPack(arangodb::aql::Query*,
+                                  arangodb::AqlTransaction*,
+                                  VPackFunctionParameters const&);
+  static AqlValue$ PushVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                             VPackFunctionParameters const&);
+  static AqlValue$ PopVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                            VPackFunctionParameters const&);
+  static AqlValue$ AppendVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
 };
 }
 }
