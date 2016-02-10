@@ -1363,8 +1363,10 @@ void Condition::validateAst(AstNode const* node, int level) {
   }
 
   size_t const n = node->numMembers();
+
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
+
     if (level == 0) {
       TRI_ASSERT(sub->type == NODE_TYPE_OPERATOR_NARY_AND);
     } else {
@@ -1504,7 +1506,11 @@ AstNode* Condition::collapse(AstNode const* node) {
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
 
-    if (sub->type == node->type) {
+    bool const isSame = (node->type == sub->type) || 
+      (node->type == NODE_TYPE_OPERATOR_NARY_OR && sub->type == NODE_TYPE_OPERATOR_BINARY_OR) ||
+      (node->type == NODE_TYPE_OPERATOR_NARY_AND && sub->type == NODE_TYPE_OPERATOR_BINARY_AND);
+
+    if (isSame) {
       // merge
       for (size_t j = 0; j < sub->numMembers(); ++j) {
         newOperator->addMember(sub->getMemberUnchecked(j));
@@ -1525,7 +1531,7 @@ AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
   }
-
+  
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
       node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     // convert binary AND/OR into n-ary AND/OR
@@ -1545,7 +1551,7 @@ AstNode* Condition::transformNode(AstNode* node) {
     bool processChildren = false;
     bool mustCollapse = false;
     size_t const n = node->numMembers();
-
+  
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
       auto sub = transformNode(node->getMemberUnchecked(i));
@@ -1554,11 +1560,12 @@ AstNode* Condition::transformNode(AstNode* node) {
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
           sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
-      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+                 sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         mustCollapse = true;
       }
     }
-
+  
     if (processChildren) {
       // we found an AND with at least one OR child, e.g.
       //        AND
@@ -1576,8 +1583,7 @@ AstNode* Condition::transformNode(AstNode* node) {
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
-        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {  // || sub->type ==
-          // NODE_TYPE_OPERATOR_NARY_AND) {
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {  
           permutationStates.emplace_back(
               PermutationState(sub, sub->numMembers()));
         } else {
@@ -1618,7 +1624,7 @@ AstNode* Condition::transformNode(AstNode* node) {
         }
       }
 
-      node = newOperator;
+      node = transformNode(newOperator);
     }
 
     if (mustCollapse) {
@@ -1631,7 +1637,7 @@ AstNode* Condition::transformNode(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     size_t const n = node->numMembers();
     bool mustCollapse = false;
-
+  
     for (size_t i = 0; i < n; ++i) {
       auto sub = transformNode(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
@@ -1640,7 +1646,7 @@ AstNode* Condition::transformNode(AstNode* node) {
         mustCollapse = true;
       }
     }
-
+  
     if (mustCollapse) {
       node = collapse(node);
     }
