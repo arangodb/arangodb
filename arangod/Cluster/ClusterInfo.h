@@ -977,17 +977,11 @@ class ClusterInfo {
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
   std::mutex                                   _mutex;
-#if 0  
   TRI_document_collection_t*                   _docColl;
-#endif  
 
  public:
 
-#if 0
   FollowerInfo(TRI_document_collection_t* d) : _docColl(d) {}
-#else
-  FollowerInfo(TRI_document_collection_t*) {}
-#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
