@@ -622,7 +622,7 @@ v2.8.0-alpha1 (2015-12-03)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
-v2.7.6 (XXXX-XX-XX)
+v2.7.6 (2016-01-30)
 -------------------
 
 * detect more types of transaction deadlocks early
