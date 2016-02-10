@@ -162,27 +162,30 @@ class InitialSyncer : public Syncer {
                           std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief determine the number of documents in a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  int64_t getSize(TRI_vocbase_col_t*);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollectionDump(arangodb::Transaction*, std::string const&,
-                           struct TRI_transaction_collection_s*,
+  int handleCollectionDump(TRI_vocbase_col_t*, std::string const&,
                            std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollectionSync(std::string const&,
-                           SingleCollectionWriteTransaction<UINT64_MAX>&,
+  int handleCollectionSync(TRI_vocbase_col_t*, std::string const&,
                            std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSyncKeys(std::string const&, std::string const&,
-                     SingleCollectionWriteTransaction<UINT64_MAX>&,
+  int handleSyncKeys(TRI_vocbase_col_t*, std::string const&, std::string const&,
                      std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////

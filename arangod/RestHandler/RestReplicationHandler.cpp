@@ -3217,6 +3217,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   bool const incremental =
       VelocyPackHelper::getBooleanValue(body, "incremental", false);
+  bool const keepBarrier =
+      VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
 
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
@@ -3295,6 +3297,11 @@ void RestReplicationHandler::handleCommandSync() {
 
     auto tickString = std::to_string(syncer.getLastLogTick());
     result.add("lastLogTick", VPackValue(tickString));
+
+    if (keepBarrier) {
+      auto barrierId = std::to_string(syncer.stealBarrier());
+      result.add("barrierId", VPackValue(barrierId));
+    }
 
     result.close();  // base
     VPackSlice s = result.slice();
@@ -3479,6 +3486,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   int res =
       TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
+  config.freeInternalStrings();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
     return;
@@ -3498,12 +3507,21 @@ void RestReplicationHandler::handleCommandApplierStart() {
   char const* value = _request->value("from", found);
 
   TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
   if (found) {
     // query parameter "from" specified
     initialTick = (TRI_voc_tick_t)StringUtils::uint64(value);
+    useTick = true;
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, found, 0);
+  TRI_voc_tick_t barrierId = 0;
+  value = _request->value("barrierId", found);
+  if (found) {
+    // query parameter "barrierId" specified
+    barrierId = (TRI_voc_tick_t) StringUtils::uint64(value);
+  }
+
+  int res = _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||

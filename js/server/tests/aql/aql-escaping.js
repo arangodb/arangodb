@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, escaping
@@ -54,12 +54,124 @@ function ahuacatlEscapingTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test comment length
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLongComment : function () {
+      var value = "";
+      for (var i = 0; i < 10000; ++i) {
+        value += "blablabla ";
+      }
+      assertEqual(100000, value.length);
+
+      // multi-line comment
+      var actual = getQueryResults("LET foo = /* " + value + " */ 'bar' RETURN /* " + value + " */ foo");
+      assertEqual([ "bar" ], actual);
+
+      // single-line comment
+      actual = getQueryResults("LET foo = // " + value + " \n 'bar' RETURN // " + value + "\n foo");
+      assertEqual([ "bar" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test identifier length
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLongIdentifierLength : function () {
+      var value = "";
+      for (var i = 0; i < 10000; ++i) {
+        value += "variable";
+      }
+      assertEqual(80000, value.length);
+
+      var actual = getQueryResults("LET " + value + " = 12345 RETURN " + value);
+      assertEqual([ 12345 ], actual);
+      // backticks
+      actual = getQueryResults("LET `" + value + "` = 12345 RETURN `" + value + "`");
+      assertEqual([ 12345 ], actual);
+      // forward ticks
+      actual = getQueryResults("LET ´" + value + "´ = 12345 RETURN ´" + value + "´");
+      assertEqual([ 12345 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string length
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLongReturnValue : function () {
+      var value = "";
+      for (var i = 0; i < 10000; ++i) {
+        value += "testvalue!";
+      }
+      assertEqual(100000, value.length);
+
+      var actual = getQueryResults("RETURN " + JSON.stringify(value));
+      assertEqual([ value ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind parameter length
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLongBindParameterValue : function () {
+      var value = "";
+      for (var i = 0; i < 10000; ++i) {
+        value += "testvalue!";
+      }
+      assertEqual(100000, value.length);
+
+      var actual = getQueryResults("RETURN @what", { what: value });
+      assertEqual([ value ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test token processing
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTokens : function () {
+      var queries = [
+        "LET `foo` = [ '1', \"2\", \"3\" ] RETURN ´foo´",
+        "LET ´foo´ = [ \"1\", '2', '3' ] RETURN `foo`",
+        "   \n\nLET \n\n\r\n´foo´\r\n\t =\t [\t \"1\"\r, \n'2',\t \"3\"\r\n ] \t RETURN\n\n `foo`  \r\n", 
+        "   \n\nLET \n\n\r\nfoo\r\n\t =\t [\t '1'  \r, \n\"2\"  , \t '3'\r\n ] \tRETURN  \n\nfoo \r\n" 
+      ];
+
+      queries.forEach(function(query) {
+        var actual = AQL_PARSE(query);
+        var nodes = actual.ast[0].subNodes;
+        assertEqual("let", nodes[0].type);
+        assertEqual("variable", nodes[0].subNodes[0].type);
+        assertEqual("foo", nodes[0].subNodes[0].name);
+
+        assertEqual("array", nodes[0].subNodes[1].type);
+        assertEqual("value", nodes[0].subNodes[1].subNodes[0].type);
+        assertEqual("1", nodes[0].subNodes[1].subNodes[0].value);
+        assertEqual("string", typeof nodes[0].subNodes[1].subNodes[0].value);
+        assertEqual("value", nodes[0].subNodes[1].subNodes[1].type);
+        assertEqual("2", nodes[0].subNodes[1].subNodes[1].value);
+        assertEqual("string", typeof nodes[0].subNodes[1].subNodes[1].value);
+        assertEqual("value", nodes[0].subNodes[1].subNodes[2].type);
+        assertEqual("3", nodes[0].subNodes[1].subNodes[2].value);
+        assertEqual("string", typeof nodes[0].subNodes[1].subNodes[2].value);
+
+        assertEqual("return", nodes[1].type);
+        assertEqual("reference", nodes[1].subNodes[0].type);
+        assertEqual("foo", nodes[1].subNodes[0].name);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test simple name handling
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleName : function () {
       var expected = [ 1, 2, 3 ];
+      // backticks
       var actual = getQueryResults("FOR `x` IN [ 1, 2, 3 ] RETURN `x`");
+      assertEqual(expected, actual);
+
+      // forward ticks
+      actual = getQueryResults("FOR ´x´ IN [ 1, 2, 3 ] RETURN ´x´");
       assertEqual(expected, actual);
     },
 
@@ -73,7 +185,12 @@ function ahuacatlEscapingTestSuite () {
 
       for (var i in names) {
         if (names.hasOwnProperty(i)) {
+          // backticks
           var actual = getQueryResults("FOR `" + names[i] + "` IN [ 1, 2, 3 ] RETURN `" + names[i] + "`");
+          assertEqual(expected, actual);
+
+          // forward ticks
+          actual = getQueryResults("FOR ´" + names[i] + "´ IN [ 1, 2, 3 ] RETURN ´" + names[i] + "´");
           assertEqual(expected, actual);
         }
       }
@@ -85,7 +202,12 @@ function ahuacatlEscapingTestSuite () {
     
     testReservedNames2 : function () {
       var expected = [ { "let" : 1 }, { "collect" : 2 }, { "sort" : 3 } ];
+      // backticks
       var actual = getQueryResults("FOR `for` IN [ { \"let\" : 1 }, { \"collect\" : 2 }, { \"sort\" : 3 } ] RETURN `for`");
+      assertEqual(expected, actual);
+
+      // forward ticks
+      actual = getQueryResults("FOR ´for´ IN [ { \"let\" : 1 }, { \"collect\" : 2 }, { \"sort\" : 3 } ] RETURN `for`");
       assertEqual(expected, actual);
     },
 
@@ -97,6 +219,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("FOR `brown_fox` IN [ 1, 2, 3 ] RETURN `brown_fox`");
       assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR ´brown_fox´ IN [ 1, 2, 3 ] RETURN ´brown_fox´");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +231,9 @@ function ahuacatlEscapingTestSuite () {
     testPunctuationBackticks2 : function () {
       var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("FOR `brown_fox__1234_` IN [ 1, 2, 3 ] RETURN `brown_fox__1234_`");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR ´brown_fox__1234_´ IN [ 1, 2, 3 ] RETURN ´brown_fox__1234_´");
       assertEqual(expected, actual);
     },
 
@@ -117,6 +245,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1, 2, 3 ];
       var actual = getQueryResults("FOR `brown fox  1234_` IN [ 1, 2, 3 ] RETURN `brown fox  1234_`");
       assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR ´brown fox  1234_´ IN [ 1, 2, 3 ] RETURN ´brown fox  1234_´");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +257,9 @@ function ahuacatlEscapingTestSuite () {
     testPunctuationBackticks4 : function () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults("FOR r IN [ { \"a\" : 1, \"b\" : 1 }, { \"a\" : 2, \"b\" : 2 }, { \"a\" : 1, \"b\" : 3 } ] FILTER r.`a` == 1 RETURN r.`b`");
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR r IN [ { \"a\" : 1, \"b\" : 1 }, { \"a\" : 2, \"b\" : 2 }, { \"a\" : 1, \"b\" : 3 } ] FILTER r.´a´ == 1 RETURN r.´b´");
       assertEqual(expected, actual);
     },
 
@@ -137,6 +271,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults("FOR r IN [ { \"a fox\" : 1, \"b fox\" : 1 }, { \"a fox\" : 2, \"b fox\" : 2 }, { \"a fox\" : 1, \"b fox\" : 3 } ] FILTER r.`a fox` == 1 RETURN r.`b fox`");
       assertEqual(expected, actual);
+      
+      actual = getQueryResults("FOR r IN [ { \"a fox\" : 1, \"b fox\" : 1 }, { \"a fox\" : 2, \"b fox\" : 2 }, { \"a fox\" : 1, \"b fox\" : 3 } ] FILTER r.´a fox´ == 1 RETURN r.´b fox´");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +283,9 @@ function ahuacatlEscapingTestSuite () {
     testPunctuationBackticks6 : function () {
       var expected = { "a\r\nfox" : "jumped\nover\nit" };
       var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\r\nfox` == 'jumped\nover\nit' RETURN r"); 
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.´a\r\nfox´ == 'jumped\nover\nit' RETURN r"); 
       assertEqual([ expected ], actual);
     },
 
@@ -157,6 +297,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = { "a\r\nfox" : "jumped\nover\nit" };
       var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\r\nfox` == \"jumped\nover\nit\" RETURN r"); 
       assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.´a\r\nfox´ == \"jumped\nover\nit\" RETURN r"); 
+      assertEqual([ expected ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +309,9 @@ function ahuacatlEscapingTestSuite () {
     testPunctuationBackticks8 : function () {
       var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
       var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\\\\r\\\\nfox` == 'jumped\\\\nover\\\\nit' RETURN r"); 
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.´a\\\\r\\\\nfox´ == 'jumped\\\\nover\\\\nit' RETURN r"); 
       assertEqual([ expected ], actual);
     },
 
@@ -177,6 +323,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
       var actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.`a\\\\r\\\\nfox` == \"jumped\\\\nover\\\\nit\" RETURN r"); 
       assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ " + JSON.stringify(expected) + " ] FILTER r.´a\\\\r\\\\nfox´ == \"jumped\\\\nover\\\\nit\" RETURN r"); 
+      assertEqual([ expected ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,6 +336,9 @@ function ahuacatlEscapingTestSuite () {
       var expected = { "a\\r\\nfox" : "jumped\\nover\\nit" };
       var actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.`a\\\\r\\\\nfox` == @var2 RETURN r", { var1: expected, var2: expected["a\\r\\nfox"] }); 
       assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.´a\\\\r\\\\nfox´ == @var2 RETURN r", { var1: expected, var2: expected["a\\r\\nfox"] }); 
+      assertEqual([ expected ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,6 +348,9 @@ function ahuacatlEscapingTestSuite () {
     testPunctuationBackticks11 : function () {
       var expected = { "a\r\nfox" : "jumped\nover\nit" };
       var actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.`a\\r\\nfox` == @var2 RETURN r", { var1: expected, var2: expected["a\r\nfox"] }); 
+      assertEqual([ expected ], actual);
+      
+      actual = getQueryResults("FOR r IN [ @var1 ] FILTER r.´a\\r\\nfox´ == @var2 RETURN r", { var1: expected, var2: expected["a\r\nfox"] }); 
       assertEqual([ expected ], actual);
     },
 

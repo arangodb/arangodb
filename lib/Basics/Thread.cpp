@@ -75,7 +75,6 @@ void Thread::startThread(void* arg) {
 
   try {
     ptr->runMe();
-    ptr->cleanup();
   } catch (...) {
     WorkMonitor::popThread(ptr);
     throw;

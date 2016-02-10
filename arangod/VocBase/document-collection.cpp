@@ -1649,40 +1649,6 @@ static int OpenIteratorPrepareTransaction(open_iterator_state_t* state) {
 
 static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
   if (state->_tid != 0) {
-    if (state->_trxCollections > 1 && state->_trxPrepared) {
-      // multi-collection transaction...
-      // check if we have a coordinator entry in _trx
-      // if yes, then we'll recover the transaction, otherwise we'll abort it
-
-      if (state->_vocbase->_oldTransactions != nullptr &&
-          state->_vocbase->_oldTransactions->find(state->_tid) !=
-              state->_vocbase->_oldTransactions->end()) {
-        // we have found a coordinator entry
-        // otherwise we would have got TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND etc.
-        int res = TRI_ERROR_NO_ERROR;
-
-        LOG(INFO) << "recovering transaction " << state->_tid;
-        size_t const n = TRI_LengthVector(&state->_operations);
-
-        for (size_t i = 0; i < n; ++i) {
-          open_iterator_operation_t* operation =
-              static_cast<open_iterator_operation_t*>(
-                  TRI_AtVector(&state->_operations, i));
-
-          int r = OpenIteratorApplyOperation(state, operation);
-
-          if (r != TRI_ERROR_NO_ERROR) {
-            res = r;
-          }
-        }
-
-        OpenIteratorResetOperations(state);
-        return res;
-      }
-
-      // fall-through
-    }
-
     OpenIteratorNoteFailedTransaction(state);
 
     LOG(INFO) << "rolling back uncommitted transaction " << state->_tid;

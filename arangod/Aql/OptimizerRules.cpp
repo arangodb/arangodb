@@ -38,6 +38,7 @@
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/json-utilities.h"
 
 using namespace arangodb::aql;
@@ -71,7 +72,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
     // expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto inNode = filterExpression->nodeForModification();
+    auto const* inNode = filterExpression->node();
 
     TRI_ASSERT(inNode != nullptr);
 
@@ -204,10 +205,12 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
     }
 
-    // finally adjust the variable inside the IN calculation
-    inNode->changeMember(1, ast->createNodeReference(outVar));
+    AstNode* clone = ast->clone(inNode);
     // set sortedness bit for the IN operator
-    inNode->setBoolValue(true);
+    clone->setBoolValue(true);
+    // finally adjust the variable inside the IN calculation
+    clone->changeMember(1, ast->createNodeReference(outVar));
+    filterExpression->replaceNode(clone);
 
     modified = true;
   }
@@ -1703,7 +1706,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(), _variableDefinitions);
 
     if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
@@ -1723,8 +1726,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           continue;
         }
 
-        auto numCovered =
-            sortCondition.coveredAttributes(outVariable, index->fields);
+        size_t const numCovered =
+            sortCondition.coveredAttributes(outVariable, index->fields); 
 
         if (numCovered == 0) {
           continue;
@@ -1732,14 +1735,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         double estimatedCost = 0.0;
         if (!index->supportsSortCondition(
-                &sortCondition, outVariable,
+                &sortCondition, 
+                outVariable,
                 enumerateCollectionNode->collection()->count(),
                 estimatedCost)) {
           // should never happen
           TRI_ASSERT(false);
           continue;
         }
-
+ 
         if (bestIndex == nullptr || estimatedCost < bestCost) {
           bestIndex = index;
           bestCost = estimatedCost;
@@ -1788,6 +1792,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
+    TRI_ASSERT(cond != nullptr);
+          
+    Variable const* outVariable = indexNode->outVariable();
+    TRI_ASSERT(outVariable != nullptr);
 
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
@@ -1822,7 +1830,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     auto index = indexes[0];
     bool handled = false;
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !index->sparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
@@ -1833,11 +1841,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
-      Variable const* outVariable = indexNode->outVariable();
-      auto numCovered =
-          sortCondition.coveredAttributes(outVariable, index->fields);
+      size_t const numCovered =
+          sortCondition.coveredAttributes(outVariable, index->fields); 
 
-      if (numCovered == sortCondition.numAttributes()) {
+      if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
@@ -1860,11 +1867,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // now check if the index fields are the same as the sort condition
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-          Variable const* outVariable = indexNode->outVariable();
-          size_t coveredFields =
-              sortCondition.coveredAttributes(outVariable, index->fields);
+          size_t const numCovered = 
+              sortCondition.coveredAttributes(outVariable, index->fields); 
 
-          if (coveredFields == sortCondition.numAttributes() &&
+          if (numCovered == sortCondition.numAttributes() &&
+              sortCondition.isUnidirectional() &&
               (index->isSorted() ||
                index->fields.size() == sortCondition.numAttributes())) {
             // no need to sort

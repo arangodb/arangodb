@@ -415,7 +415,13 @@ std::pair<bool, bool> Condition::findIndexes(
         usedIndexes.emplace_back(sortIndex);
       }
 
-      return std::make_pair(false, true);
+      TRI_ASSERT(usedIndexes.size() == 1);
+
+      if (usedIndexes.back()->sparse) {
+        // cannot use a sparse index for sorting alone
+        usedIndexes.clear();
+      }
+      return std::make_pair(false, !usedIndexes.empty());
     }
 
     canUseForFilter &= canUseIndex.first;
@@ -449,6 +455,55 @@ bool Condition::indexSupportsSort(Index const* idx, Variable const* reference,
     estimatedCost = 0.0;
   }
   return false;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the attributes for a sub-condition that are const
+/// (i.e. compared with equality)
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes (Variable const* reference,
+                                                                                         bool includeNull) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+
+  if (_root == nullptr) {
+    return result;
+  }
+
+  size_t n = _root->numMembers();
+
+  if (n != 1) {
+    return result;
+  }
+
+  AstNode const* node = _root->getMember(0);
+  n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> parts;
+
+      auto lhs = member->getMember(0);
+      auto rhs = member->getMember(1);
+
+      if (lhs->isAttributeAccessForVariable(parts) &&
+          parts.first == reference) {
+        if (includeNull || (rhs->isConstant() && !rhs->isNullValue())) {
+          result.emplace_back(std::move(parts.second));
+        }
+      }
+      else if (rhs->isAttributeAccessForVariable(parts) &&
+               parts.first == reference) {
+        if (includeNull || (lhs->isConstant() && !lhs->isNullValue())) {
+          result.emplace_back(std::move(parts.second));
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +572,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode(
       // now check if the index fields are the same as the sort condition fields
       // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
       size_t coveredFields =
-          sortCondition->coveredAttributes(reference, idx->fields);
+          sortCondition->coveredAttributes(reference, idx->fields); 
 
       if (coveredFields == sortCondition->numAttributes() &&
           (idx->isSorted() ||

@@ -76,12 +76,21 @@ logger.firstTick = function() {
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-applier.start = function(initialTick) {
+applier.start = function(initialTick, barrierId) {
   var db = internal.db;
   var append = "";
 
   if (initialTick !== undefined) {
     append = "?from=" + encodeURIComponent(initialTick);
+  }
+  if (barrierId !== undefined) {
+    if (append === "") {
+      append += "?";
+    }
+    else {
+      append += "&";
+    }
+    append += "barrierId=" + encodeURIComponent(barrierId);
   }
 
   var requestResult = db._connection.PUT("/_api/replication/applier-start" + append, "");
@@ -150,6 +159,48 @@ applier.properties = function(config) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for fetching the result of an async job
+////////////////////////////////////////////////////////////////////////////////
+
+var waitForResult = function (config, id) {
+  const db = internal.db;
+
+  if (!config.hasOwnProperty("progress")) {
+    config.progress = true;
+  }
+    
+  internal.sleep(1);
+  var iterations = 0;
+    
+  while (true) {
+    const jobResult = db._connection.PUT("/_api/job/" + encodeURIComponent(id), "");
+    arangosh.checkRequestResult(jobResult);
+
+    if (jobResult.code !== 204) {
+      return jobResult;
+    }
+
+    ++iterations;
+    if (iterations < 6) {
+      internal.sleep(2);
+    }
+    else {
+      internal.sleep(3);
+    }
+
+    if (config.progress && iterations % 3 === 0) {
+      try {
+        var progress = applier.state().state.progress;
+        var msg = progress.time + ": " + progress.message;
+        internal.print("still sychronizing... last received status: " + msg);
+      }
+      catch (err) {
+      }
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,7 +211,7 @@ var sync = function(config) {
   const headers = {
     "X-Arango-Async": "store"
   };
-    
+
   const requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
   arangosh.checkRequestResult(requestResult);
 
@@ -168,26 +219,10 @@ var sync = function(config) {
   if (config.async) {
     return requestResult.headers["x-arango-async-id"];
   }
-   
-  let count = 0;
 
-  while (true) {
-    const jobResult = db._connection.PUT(
-      "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
-    arangosh.checkRequestResult(jobResult);
-
-    if (jobResult.code !== 204) {
-      return jobResult;
-    }
-
-    if (++count % 6 === 0) {
-      internal.print("still synchronizing, please wait...");
-    }
-
-    internal.sleep(5);
-  }
+  return waitForResult(config, requestResult.headers["x-arango-async-id"]);
 };
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint, for
 /// a single collection
@@ -234,23 +269,7 @@ var setupReplication = function(config) {
     return requestResult.headers["x-arango-async-id"];
   }
    
-  let count = 0;
-
-  while (true) {
-    const jobResult = db._connection.PUT(
-      "/_api/job/" + requestResult.headers["x-arango-async-id"], "");
-    arangosh.checkRequestResult(jobResult);
-
-    if (jobResult.code !== 204) {
-      return jobResult;
-    }
-
-    if (++count % 6 === 0) {
-      internal.print("still synchronizing, please wait...");
-    }
-
-    internal.sleep(5);
-  }
+  return waitForResult(config, requestResult.headers["x-arango-async-id"]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

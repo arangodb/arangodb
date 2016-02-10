@@ -1192,6 +1192,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
       if (it == varsUsedLater.end()) {
         auto it2 = varInfo.find(v->id);
+
+        if (it2 == varInfo.end()) {
+          // report an error here to prevent crashing
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " while planning registers"); 
+        }
+
+        // finally adjust the variable inside the IN calculation
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
         regsToClear.emplace(r);

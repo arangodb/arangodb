@@ -125,7 +125,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   // read the database name
   TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
-
+    
   if (!TRI_IsStringJson(value)) {
     config->_database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
   } else {
@@ -858,6 +858,7 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
+  TRI_DestroyStateReplicationApplier(state);
   TRI_InitStateReplicationApplier(state);
   char* filename = GetStateFilename(vocbase);
 
@@ -1074,6 +1075,7 @@ int TRI_SaveConfigurationReplicationApplier(
 TRI_replication_applier_t::TRI_replication_applier_t(TRI_server_t* server,
                                                      TRI_vocbase_t* vocbase)
     : _databaseName(vocbase->_name),
+      _starts(0),
       _server(server),
       _vocbase(vocbase),
       _terminateThread(false) {}
@@ -1132,6 +1134,9 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
     _state._lastError._msg = nullptr;
   }
 
+  // save previous counter value
+  uint64_t oldStarts = _starts.load();
+
   _state._lastError._code = TRI_ERROR_NO_ERROR;
 
   TRI_GetTimeStampReplication(_state._lastError._time,
@@ -1148,6 +1153,11 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
   }
 
   syncer.release();
+
+  uint64_t iterations = 0;
+  while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
+    usleep(20000);
+  }
 
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << "started replication applier for database '" << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint << "' from tick " << initialTick;
@@ -1468,7 +1478,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(TRI_VERSION));
-  builder.add("serverId", VPackValue(TRI_StringUInt64(TRI_GetIdServer())));
+  builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
   builder.close();  // server
 
   if (config._endpoint != nullptr) {

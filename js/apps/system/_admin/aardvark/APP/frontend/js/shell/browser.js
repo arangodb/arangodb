@@ -166,6 +166,10 @@ Module.prototype.define = function (path, definition) {
 
   // first get rid of any ".." and "."
   path = this.normalise(path);
+  var match = path.match(/(.+)\/index$/);
+  if (match) {
+    path = match[1];
+  }
 
   // check if you already know the module, return the exports
   if (! Module.prototype.moduleCache.hasOwnProperty(path)) {

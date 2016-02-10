@@ -100,6 +100,8 @@ class Exception : public virtual std::exception {
   std::string message() const throw();
   int code() const throw();
   void addToMessage(std::string const&);
+ private:
+  void appendLocation ();
 
  protected:
   std::string _errorMessage;

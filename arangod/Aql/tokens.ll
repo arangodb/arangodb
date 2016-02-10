@@ -6,6 +6,7 @@
 %option yylineno
 %option noyywrap nounput batch
 %x BACKTICK
+%x FORWARDTICK
 %x SINGLE_QUOTE
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
@@ -303,7 +304,7 @@ namespace arangodb {
 }
  
  /* ---------------------------------------------------------------------------
-  * literals
+  * identifiers
   * --------------------------------------------------------------------------- */
 
 ($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
@@ -330,18 +331,47 @@ namespace arangodb {
 
 <BACKTICK>\\. {
   /* character escaped by backslash */
-  BEGIN(BACKTICK);
 }
 
 <BACKTICK>\n {
   /* newline character inside backtick */
-  BEGIN(BACKTICK);
 }
 
 <BACKTICK>. {
   /* any character (except newline) inside backtick */
-  BEGIN(BACKTICK);
 }
+
+
+<INITIAL>´ {
+  /* string enclosed in forwardticks */
+  yyextra->marker(yyextra->queryString() + yyextra->offset());
+  BEGIN(FORWARDTICK);
+}
+
+<FORWARDTICK>´ {
+  /* end of forwardtick-enclosed string */
+  BEGIN(INITIAL);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 2, outLength);
+  yylval->strval.length = outLength;
+  return T_STRING;
+}
+
+<FORWARDTICK>\\. {
+  /* character escaped by backslash */
+}
+
+<FORWARDTICK>\n {
+  /* newline character inside forwardtick */
+}
+
+<FORWARDTICK>. {
+  /* any character (except newline) inside forwardtick */
+}
+
+ /* ---------------------------------------------------------------------------
+  * strings
+  * --------------------------------------------------------------------------- */
 
 <INITIAL>\" {
   yyextra->marker(yyextra->queryString() + yyextra->offset());
@@ -359,17 +389,14 @@ namespace arangodb {
 
 <DOUBLE_QUOTE>\\. {
   /* character escaped by backslash */
-  BEGIN(DOUBLE_QUOTE);
 }
 
 <DOUBLE_QUOTE>\n {
   /* newline character inside quote */
-  BEGIN(DOUBLE_QUOTE);
 }
 
 <DOUBLE_QUOTE>. {
   /* any character (except newline) inside quote */
-  BEGIN(DOUBLE_QUOTE);
 }
 
 <INITIAL>' {
@@ -388,18 +415,19 @@ namespace arangodb {
 
 <SINGLE_QUOTE>\\. {
   /* character escaped by backslash */
-  BEGIN(SINGLE_QUOTE);
 }
 
 <SINGLE_QUOTE>\n {
-  /* newline character inside quote */
-  BEGIN(SINGLE_QUOTE);
+  /* newline character inside quote */ 
 }
 
 <SINGLE_QUOTE>. {
   /* any character (except newline) inside quote */
-  BEGIN(SINGLE_QUOTE);
 }
+
+ /* ---------------------------------------------------------------------------
+  * number literals
+  * --------------------------------------------------------------------------- */
 
 (0|[1-9][0-9]*) {  
   /* a numeric integer value */
@@ -469,18 +497,23 @@ namespace arangodb {
 [\n] {
   yycolumn = 0;
 }
+ 
+ /* ---------------------------------------------------------------------------
+  * comments
+  * --------------------------------------------------------------------------- */
 
 <INITIAL>"//" {
   BEGIN(COMMENT_SINGLE);
 }
 
 <COMMENT_SINGLE>\n {
-  yylineno++;
+  /* line numbers are counted elsewhere already */
+  yycolumn = 0;
   BEGIN(INITIAL);
 }
 
 <COMMENT_SINGLE>[^\n]+ { 
-  // eat comment in chunks
+  /* everything else */
 }
 
 <INITIAL>"/*" {
@@ -500,8 +533,13 @@ namespace arangodb {
 }
 
 <COMMENT_MULTI>\n {
-  yylineno++;
+  /* line numbers are counted elsewhere already */
+  yycolumn = 0;
 }
+
+ /* ---------------------------------------------------------------------------
+  * special transformation for NOT IN to T_NIN
+  * --------------------------------------------------------------------------- */
 
 <NOT>(?i:IN) {
   /* T_NOT + T_IN => T_NIN */
@@ -509,13 +547,8 @@ namespace arangodb {
   return T_NIN;
 }
 
-<NOT>[\r\t ] {
+<NOT>[\r\t\n ] {
   /* ignore whitespace */
-}
-
-<NOT>\n {
-  /* count line numbers */
-  yylineno++;
 }
 
 <NOT>. {

@@ -24,7 +24,8 @@
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs"
+      "logs": "logs",
+      "test": "test"
     },
 
     initialize: function () {
@@ -223,6 +224,17 @@
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
+    },
+    
+    test: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.testView) {
+        this.testView = new window.testView({
+        });
+      }
+      this.testView.render();
     },
 
     queryManagement: function () {

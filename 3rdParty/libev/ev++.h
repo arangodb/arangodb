@@ -286,7 +286,7 @@ namespace ev {
     template<class K, void (K::*method)(int)>
     static void method_thunk (int revents, void *arg)
     {
-      static_cast<K *>(arg)->*method
+      (static_cast<K *>(arg)->*method)
         (revents);
     }
 
@@ -300,7 +300,7 @@ namespace ev {
     template<class K, void (K::*method)()>
     static void method_noargs_thunk (int revents, void *arg)
     {
-      static_cast<K *>(arg)->*method
+      (static_cast<K *>(arg)->*method)
         ();
     }
 
@@ -513,7 +513,7 @@ namespace ev {
 
     void feed_event (int revents) throw ()
     {
-      ev_feed_event (EV_A_ static_cast<const ev_watcher *>(this), revents);
+      ev_feed_event (EV_A_ static_cast<ev_watcher *>(this), revents);
     }
   };
 
@@ -552,12 +552,12 @@ namespace ev {
     return ev_embeddable_backends ();
   }
 
-  inline void set_allocator (void *(*cb)(void *ptr, long size)) throw ()
+  inline void set_allocator (void *(*cb)(void *ptr, long size) throw ()) throw ()
   {
     ev_set_allocator (cb);
   }
 
-  inline void set_syserr_cb (void (*cb)(const char *msg)) throw ()
+  inline void set_syserr_cb (void (*cb)(const char *msg) throw ()) throw ()
   {
     ev_set_syserr_cb (cb);
   }
@@ -575,7 +575,7 @@ namespace ev {
       }
   #endif
 
-  /* using a template here would require quite a bit more lines,
+  /* using a template here would require quite a few more lines,
    * so a macro solution was chosen */
   #define EV_BEGIN_WATCHER(cppstem,cstem)	                                        \
                                                                                         \
@@ -764,7 +764,7 @@ namespace ev {
 
   #if EV_EMBED_ENABLE
   EV_BEGIN_WATCHER (embed, embed)
-    void set (struct ev_loop *embedded_loop) throw ()
+    void set_embed (struct ev_loop *embedded_loop) throw ()
     {
       int active = is_active ();
       if (active) stop ();

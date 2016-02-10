@@ -447,18 +447,17 @@ Where to add new...
 
 generate
 --------
- - `make examples` - on top level to generate Documentation/Examples
- - `make examples FILTER_EXAMPLE=geoIndexSelect` will only produce one example - *geoIndexSelect*
- - `make examples FILTER_EXAMPLE='MOD.*'` will only produce the examples matching that regex; Note that
+ - `./scripts/generateExamples --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
+ - `./scripts/generateExamples --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
    examples with enumerations in their name may base on others in their series - so you should generate the whole group.
- - `make examples server.endpoint=tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
+ - `./scripts/generateExamples --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
    this does seriously cut down the execution time.
  - alternatively you can use generateExamples (i.e. on windows since the make target is not portable) like that:
     `./scripts/generateExamples
        --server.endpoint 'tcp://127.0.0.1:8529'
        --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe
        --onlyThisOne 'MOD.*'`
- - `make examples-inspect-file` generates a file where you can inspect all examples for readability.
+ - `./Documentation/Scripts/allExamples.sh` generates a file where you can inspect all examples for readability.
  - `make swagger` - on top level to generate the documentation interactively with the server; you may use
     [the swagger editor](https://github.com/swagger-api/swagger-editor) to revalidate whether
     *js/apps/system/_admin/aardvark/APP/api-docs.json* is accurate.

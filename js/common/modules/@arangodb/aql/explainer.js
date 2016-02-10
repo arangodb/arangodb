@@ -712,7 +712,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [ ];
         node.indexes.forEach(function (idx, i) {
-          var what = (idx.reverse ? "reverse " : "") + idx.type + " index scan";
+          var what = (node.reverse ? "reverse " : "") + idx.type + " index scan";
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }

@@ -1612,6 +1612,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(content, length),
                                          filename->ToString(), false);
+  
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     // restore old values for __dirname and __filename
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -1636,7 +1638,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }

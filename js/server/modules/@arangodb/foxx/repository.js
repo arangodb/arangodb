@@ -87,7 +87,8 @@ function Repository(collection, opts) {
 
   EventEmitter.call(this);
 
-  _.each(this.model, function (listener, eventName) {
+  Object.keys(this.model).forEach(function (eventName) {
+    const listener = this.model[eventName];
     if (EVENTS.indexOf(eventName) === -1 || typeof listener !== 'function') {
       return;
     }

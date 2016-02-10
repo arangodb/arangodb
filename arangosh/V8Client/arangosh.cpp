@@ -1518,8 +1518,27 @@ static std::string BuildPrompt() {
         result.push_back(c);
       } else if (c == 'd') {
         result.append(BaseClient.databaseName());
-      } else if (c == 'e') {
-        result.append(BaseClient.endpointString());
+      } else if (c == 'e' || c == 'E') {
+        std::string ep;
+
+        if (ClientConnection == nullptr) {
+          ep = "none";
+        } else {
+          ep = BaseClient.endpointString();
+        }
+
+        if (c == 'E') {
+          // replace protocol
+          if (ep.find("tcp://") == 0) {
+            ep = ep.substr(6);
+          } else if (ep.find("ssl://") == 0) {
+            ep = ep.substr(6);
+          } else if (ep.find("unix://") == 0) {
+            ep = ep.substr(7);
+          }
+        }
+
+        result.append(ep);
       } else if (c == 'u') {
         result.append(BaseClient.username());
       }
@@ -1569,12 +1588,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   while (true) {
     // set up prompts
-    std::string dynamicPrompt;
-    if (ClientConnection != nullptr) {
-      dynamicPrompt = BuildPrompt();
-    } else {
-      dynamicPrompt = "disconnected> ";
-    }
+    std::string dynamicPrompt = BuildPrompt();
 
     std::string goodPrompt;
     std::string badPrompt;
