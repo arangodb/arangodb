@@ -3110,80 +3110,154 @@ struct CommonNodeFinder {
 /// @brief auxilliary struct for the OR-to-IN conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-struct OrToInConverter {
-  std::vector<AstNode const*> valueNodes;
-  CommonNodeFinder finder;
-  AstNode const* commonNode = nullptr;
-  std::string commonName;
+struct OrSimplifier {
+  Ast* ast;
 
-  AstNode* buildInExpression(Ast* ast) {
-    // the list of comparison values
-    auto list = ast->createNodeArray();
-    for (auto& x : valueNodes) {
-      list->addMember(x);
+  explicit OrSimplifier(Ast* ast) : ast(ast) {}
+  
+  std::string stringifyNode(AstNode const* node) const {
+    try {
+      return node->toString();
     }
-
-    // return a new IN operator node
-    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
-                                         commonNode->clone(ast), list);
+    catch (...) {
+    }
+    return "";
   }
 
-  bool canConvertExpression(AstNode const* node) {
-    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode,
-                    commonName)) {
-      return canConvertExpressionWalker(node);
-    } else if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_IN, commonNode,
-                           commonName)) {
-      return canConvertExpressionWalker(node);
+  bool qualifies(AstNode const* node, std::string& attributeName) const {
+    if (node->isConstant()) {
+      return false;
     }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        node->type == NODE_TYPE_INDEXED_ACCESS ||
+        node->type == NODE_TYPE_REFERENCE) {
+      attributeName = stringifyNode(node);
+      return true;
+    }
+
     return false;
   }
 
-  bool canConvertExpressionWalker(AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (canConvertExpressionWalker(node->getMember(0)) &&
-              canConvertExpressionWalker(node->getMember(1)));
-    }
+  bool detect(AstNode const* node, bool preferRight, std::string& attributeName, AstNode const*& attr, AstNode const*& value) const {
+    attributeName.clear();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(rhs) && !canConvertExpressionWalker(lhs)) {
-        valueNodes.emplace_back(lhs);
-        return true;
+      if (!preferRight && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
+        }
       }
 
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs)) {
-        valueNodes.emplace_back(rhs);
-        return true;
+      if (qualifies(rhs, attributeName)) {
+        if (lhs->isDeterministic() && !lhs->canThrow()) {
+          attr = rhs;
+          value = lhs;
+          return true;
+        }
       }
-      // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs),
-      // then one of
-      // the equalities in the OR statement is of the form x == x
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      // fallthrough intentional
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs) &&
-          rhs->isArray()) {
-        size_t const n = rhs->numMembers();
-
-        for (size_t i = 0; i < n; ++i) {
-          valueNodes.emplace_back(rhs->getMemberUnchecked(i));
+      if (rhs->isArray() && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
         }
-        return true;
       }
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_REFERENCE ||
-               node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-               node->type == NODE_TYPE_INDEXED_ACCESS) {
-      // get a string representation of the node for comparisons
-      return (node->toString() == commonName);
+      // fallthrough intentional
     }
 
     return false;
+  }
+
+  AstNode* buildValues(AstNode const* attr, AstNode const* lhs, bool leftIsArray, AstNode const* rhs, bool rightIsArray) const {
+    auto values = ast->createNodeArray();
+    if (leftIsArray) {
+      size_t const n = lhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(lhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(lhs);
+    }
+    
+    if (rightIsArray) {
+      size_t const n = rhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(rhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(rhs);
+    }
+
+    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, attr, values);
+  }
+
+  AstNode* simplify(AstNode const* node) const {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+      
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // create a modified node
+        node = ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      if ((lhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) && 
+          (rhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN)) {
+        std::string leftName;
+        std::string rightName;
+        AstNode const* leftAttr = nullptr;
+        AstNode const* rightAttr = nullptr;
+        AstNode const* leftValue = nullptr;
+        AstNode const* rightValue = nullptr;
+
+        for (size_t i = 0; i < 4; ++i) {
+          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) && 
+              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) && 
+              leftName == rightName) {
+            return buildValues(leftAttr, leftValue, lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN, rightValue, rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN);
+          }
+        }
+      }
+
+      // return node as is
+      return const_cast<AstNode*>(node);
+    }
+    
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // return a modified node
+        return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      // fallthrough intentional
+    }
+      
+    return const_cast<AstNode*>(node);
   }
 };
 
@@ -3219,17 +3293,16 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
-    if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
-      continue;
-    }
+    
+    auto root = cn->expression()->node();
 
-    OrToInConverter converter;
-    if (converter.canConvertExpression(cn->expression()->node())) {
+    OrSimplifier simplifier(plan->getAst());
+    auto newRoot = simplifier.simplify(root);
+
+    if (newRoot != root) {
       ExecutionNode* newNode = nullptr;
-      auto inNode = converter.buildInExpression(plan->getAst());
-
-      Expression* expr = new Expression(plan->getAst(), inNode);
-
+      Expression* expr = new Expression(plan->getAst(), newRoot);
+      
       try {
         TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

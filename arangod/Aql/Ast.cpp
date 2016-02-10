@@ -1702,6 +1702,11 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return this->optimizeTernaryOperator(node);
     }
+    
+    // attribute access
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      return this->optimizeAttributeAccess(node);
+    }
 
     // passthru node
     if (node->type == NODE_TYPE_PASSTHRU) {
@@ -2668,6 +2673,42 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 
   // condition is always false, replace ternary operation with false part
   return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes an attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeAttributeAccess(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* what = node->getMember(0);
+
+  if (!what->isConstant()) {
+    return node;
+  }
+
+  if (what->type == NODE_TYPE_OBJECT) {
+    // accessing an attribute from an object
+    char const* name = node->getStringValue();
+    size_t const length = node->getStringLength();
+
+    size_t const n = what->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* member = what->getMember(0);
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+          member->getStringLength() == length &&
+          memcmp(name, member->getStringValue(), length) == 0) {
+        // found matching member
+        return member->getMember(0); 
+      }
+    }
+  }
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

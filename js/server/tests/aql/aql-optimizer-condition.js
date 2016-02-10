@@ -184,17 +184,13 @@ function optimizerConditionsTestSuite () {
       assertEqual("value", left.subNodes[0].subNodes[1].type);
       assertEqual(1, left.subNodes[0].subNodes[1].value);
 
-      assertEqual("logical or", left.subNodes[1].type);
+      assertEqual("compare in", left.subNodes[1].type);
       assertEqual(2, left.subNodes[1].subNodes.length);
-      assertEqual("compare ==", left.subNodes[1].subNodes[0].type);
-      assertEqual("attribute access", left.subNodes[1].subNodes[0].subNodes[0].type);
-      assertEqual("c", left.subNodes[1].subNodes[0].subNodes[0].name);
-      assertEqual("value", left.subNodes[1].subNodes[0].subNodes[1].type);
-      assertEqual("a", left.subNodes[1].subNodes[0].subNodes[1].value);
-
-      assertEqual("compare ==", left.subNodes[1].subNodes[1].type);
-      assertEqual("attribute access", left.subNodes[1].subNodes[1].subNodes[0].type);
-      assertEqual("c", left.subNodes[1].subNodes[1].subNodes[0].name);
+      assertEqual("attribute access", left.subNodes[1].subNodes[0].type);
+      assertEqual("c", left.subNodes[1].subNodes[0].name);
+      assertEqual("array", left.subNodes[1].subNodes[1].type);
+      assertEqual("value", left.subNodes[1].subNodes[1].subNodes[0].type);
+      assertEqual("a", left.subNodes[1].subNodes[1].subNodes[0].value);
       assertEqual("value", left.subNodes[1].subNodes[1].subNodes[1].type);
       assertEqual("b", left.subNodes[1].subNodes[1].subNodes[1].value);
 
