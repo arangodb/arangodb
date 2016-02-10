@@ -77,7 +77,7 @@ function main (argv) {
   // internal.print(JSON.stringify(args));
 
   var res = executeExternalAndWait(thePython, args);
-  if (res.exit != 0) {
+  if (res.exit !== 0) {
     print("parsing the examples failed - aborting!");
     print(res);
     return -1;
