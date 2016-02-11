@@ -1137,7 +1137,8 @@ static bool MustReplicateWalMarker(
     }
   }
   
-  if (dump->_restrictCollection > 0 && cid != dump->_restrictCollection) {
+  if (dump->_restrictCollection > 0 && 
+      (cid != dump->_restrictCollection && ! IsTransactionWalMarker(dump, marker))) {
     // restrict output to a single collection, but a different one
     return false;
   }
