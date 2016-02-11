@@ -30,7 +30,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangod
 ################################################################################
 
-include_directories(../3rdParty/velocypack/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(${V8_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
 
 if (MSVC)
   SET(ARANGO_MSVC
@@ -296,8 +298,9 @@ target_link_libraries(
     ${BT_LIBS}
     ${ZLIB_LIBS}
     ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${CMAKE_DL_LIBS}
     ${MSVC_LIBS}
 )
 

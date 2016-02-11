@@ -34,36 +34,44 @@ else ()
 
 endif ()
 
-include_directories(../3rdParty/linenoise-ng/include)
-include_directories(../3rdParty/linenoise-ng/src)
+# TODO # add vars to configure
+configure_file(Basics/local-configuration.h.in Basics/local-configuration.h COPYONLY)
+# Find includes in corresponding build directories
+# set(CMAKE_INCLUDE_CURRENT_DIR ON) # <- now done via include_directories in main file
+
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(${V8_INCLUDE_DIR})
+include_directories(${ICU_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
 add_definitions("-DTRI_HAVE_LINENOISE")
 
 SET(LIB_ARANGO_CONSOLE
-  ../3rdParty/linenoise-ng/src/ConvertUTF.cpp
-  ../3rdParty/linenoise-ng/src/linenoise.cpp
-  ../3rdParty/linenoise-ng/src/wcwidth.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
 )
 
-include_directories(../3rdParty/velocypack/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 
 SET(LIB_ARANGO_VPACK
-  ../3rdParty/velocypack/src/AttributeTranslator.cpp
-  ../3rdParty/velocypack/src/Builder.cpp
-  ../3rdParty/velocypack/src/Collection.cpp
-  ../3rdParty/velocypack/src/Dumper.cpp
-  ../3rdParty/velocypack/src/Exception.cpp
-  ../3rdParty/velocypack/src/HexDump.cpp
-  ../3rdParty/velocypack/src/Iterator.cpp
-  ../3rdParty/velocypack/src/Options.cpp
-  ../3rdParty/velocypack/src/Parser.cpp
-  ../3rdParty/velocypack/src/Slice.cpp
-  ../3rdParty/velocypack/src/ValueType.cpp
-  ../3rdParty/velocypack/src/Version.cpp
-  ../3rdParty/velocypack/src/asm-functions.cpp
-  ../3rdParty/velocypack/src/fasthash.cpp
-  ../3rdParty/velocypack/src/fpconv.cpp
-  ../3rdParty/velocypack/src/velocypack-common.cpp 
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fasthash.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp 
 )
 
 add_library(
@@ -149,6 +157,8 @@ add_library(
     Zip/unzip.cpp
     Zip/zip.cpp
 )
+target_link_libraries(${LIB_ARANGO} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
+
 
 ################################################################################
 ### @brief LIB_ARANGO_CLIENT
@@ -164,6 +174,7 @@ add_library(
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
 )
+target_link_libraries(${LIB_ARANGO_CLIENT} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
 
 ################################################################################
 ### @brief LIB_ARANGO_V8

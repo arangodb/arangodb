@@ -295,7 +295,7 @@ $(ARCHES): $(addprefix $$@.,$(DEFAULT_MODES))
 $(BUILDS): $(OUTDIR)/Makefile.$$@
 	@$(MAKE) -C "$(OUTDIR)" -f Makefile.$@ \
 	         BUILDTYPE=$(shell echo $(subst .,,$(suffix $@)) | \
-	                     python -c "print \
+	                     ${PYTHON_EXECUTABLE} -c "print \
 	                     raw_input().replace('opt', '').capitalize()") \
 	         builddir="$(shell pwd)/$(OUTDIR)/$@"
 
