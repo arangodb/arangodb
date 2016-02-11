@@ -63,16 +63,35 @@
     },
 
     unloadCollection: function () {
-      this.model.unloadCollection();
+
+      var unloadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be unloaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "unloading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "unloaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " unloaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.unloadCollection(unloadCollectionCallback);
       window.modalView.hide();
     },
 
     loadCollection: function () {
     
       var loadCollectionCallback = function(error) {
-
         if (error) {
-          arangoHelper.arangoError('Collection error');
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be loaded.');
         }
         else if (error === undefined) {
           this.model.set("status", "loading");
@@ -87,7 +106,6 @@
             arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
           }
         }
-
       }.bind(this);
 
       this.model.loadCollection(loadCollectionCallback);
