@@ -67,7 +67,15 @@ std::unordered_map<int,
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD), "ARITHMETIC_MODULUS"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND), "LOGICAL_AND"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR), "LOGICAL_OR"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "RELATIONAL_ARRAY_EQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "RELATIONAL_ARRAY_UNEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "RELATIONAL_ARRAY_GREATER"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "RELATIONAL_ARRAY_GREATEREQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "RELATIONAL_ARRAY_LESS"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "RELATIONAL_ARRAY_LESSEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "RELATIONAL_ARRAY_IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "RELATIONAL_ARRAY_NOT_IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-accessible functions
@@ -1023,7 +1031,7 @@ void Executor::generateCodeUnaryOperator(AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unary operator function not found");
   }
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
@@ -1046,7 +1054,7 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary operator function not found");
   }
 
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
@@ -1066,6 +1074,39 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
     generateCodeNode(node->getMember(0));
     _buffer->appendChar(',');
     generateCodeNode(node->getMember(1));
+  }
+
+  _buffer->appendChar(')');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a binary array operator
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto it = InternalFunctionNames.find(static_cast<int>(node->type));
+
+  if (it == InternalFunctionNames.end()) {
+    // no function found for the type of node
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary array function not found");
+  }
+
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
+  _buffer->appendText((*it).second);
+  _buffer->appendChar('(');
+
+  generateCodeNode(node->getMember(0));
+  _buffer->appendChar(',');
+  generateCodeNode(node->getMember(1));
+
+  AstNode const* quantifier = node->getMember(2);
+
+  if (quantifier->type == NODE_TYPE_QUANTIFIER) {
+    _buffer->appendChar(',');
+    _buffer->appendInteger(quantifier->getIntValue(true));
   }
 
   _buffer->appendChar(')');
@@ -1390,6 +1431,17 @@ void Executor::generateCodeNode(AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
       generateCodeBinaryOperator(node);
+      break;
+
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      generateCodeBinaryArrayOperator(node);
       break;
 
     case NODE_TYPE_OPERATOR_TERNARY:

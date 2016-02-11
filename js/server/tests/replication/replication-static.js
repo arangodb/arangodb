@@ -130,11 +130,6 @@ function ReplicationSuite() {
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
-    if (typeof applierConfiguration === 'object') {
-      console.log("using special applier configuration: " +
-        JSON.stringify(applierConfiguration));
-    }
-
     applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
     applierConfiguration.username = replicatorUser;

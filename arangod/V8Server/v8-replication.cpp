@@ -150,7 +150,7 @@ static void JS_LastLoggerReplication(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
 
-  TRI_replication_dump_t dump(vocbase, 0, true);
+  TRI_replication_dump_t dump(vocbase, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 

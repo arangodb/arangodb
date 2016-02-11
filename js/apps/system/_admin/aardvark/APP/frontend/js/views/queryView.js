@@ -201,7 +201,7 @@
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
-      [ 100, 250, 500, 1000, 2500, 5000, 10000 ].forEach(function (value) {
+      [ 100, 250, 500, 1000, 2500, 5000, 10000, "all" ].forEach(function (value) {
         sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
           '>' + _.escape(value) + ' results</option>');
@@ -690,9 +690,12 @@
         var sizeBox = $('#querySize');
         var data = {
           query: selectedText || inputEditor.getValue(),
-          batchSize: parseInt(sizeBox.val(), 10),
           id: "currentFrontendQuery"
         };
+
+        if (sizeBox.val() !== 'all') {
+          data.batchSize = parseInt(sizeBox.val(), 10);
+        }
 
         var bindVars = varsEditor.getValue();
 

@@ -886,13 +886,30 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     }
 
     for (auto const& id : VPackArrayIterator(slice)) {
-      if (id.isString()) {
+      if (!id.isString()) {
         generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");
         return;
       }
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
+  }
+ 
+  // extract collection
+  TRI_voc_cid_t cid = 0; 
+  value = _request->value("collection", found);
+
+  if (found) {
+    TRI_vocbase_col_t* c =
+        TRI_LookupCollectionByNameVocBase(_vocbase, value);
+
+    if (c == nullptr) {
+      generateError(HttpResponse::NOT_FOUND,
+                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return;
+    }
+
+    cid = c->_cid;
   }
       
   if (barrierId > 0) {
@@ -905,7 +922,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   try {
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
-                                includeSystem);
+                                includeSystem, cid);
 
     // and dump
     res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
@@ -1005,7 +1022,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   try {
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false, 0);
 
     // and dump
     res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1221,7 +1238,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     }
   }
 
-  const TRI_col_type_e type = static_cast<TRI_col_type_e>(
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
 
@@ -2959,7 +2976,7 @@ void RestReplicationHandler::handleCommandDump() {
 
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
-                                includeSystem);
+                                includeSystem, 0);
 
     res =
         TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks,

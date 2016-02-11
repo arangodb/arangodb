@@ -11,6 +11,7 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
+%x NOT
 
 %top{
 #include <stdint.h>
@@ -107,7 +108,7 @@ namespace arangodb {
 }
 
 (?i:NOT) {
-  return T_NOT;
+  BEGIN(NOT);
 }
 
 (?i:AND) {
@@ -534,6 +535,34 @@ namespace arangodb {
 <COMMENT_MULTI>\n {
   /* line numbers are counted elsewhere already */
   yycolumn = 0;
+}
+
+ /* ---------------------------------------------------------------------------
+  * special transformation for NOT IN to T_NIN
+  * --------------------------------------------------------------------------- */
+
+<NOT>(?i:IN) {
+  /* T_NOT + T_IN => T_NIN */
+  BEGIN(INITIAL);
+  return T_NIN;
+}
+
+<NOT>[\r\t\n ] {
+  /* ignore whitespace */
+}
+
+<NOT>. {
+  /* found something different to T_IN */
+  /* now push the character back into the input stream and return a T_NOT token */
+  BEGIN(INITIAL);
+  yyless(0);
+  return T_NOT;
+}
+
+<NOT><<EOF>> {
+  /* make sure that we still return a T_NOT when we reach the end of the input */
+  BEGIN(INITIAL);
+  return T_NOT;
 }
 
 
