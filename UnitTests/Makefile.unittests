@@ -42,7 +42,6 @@ unittests-brief: \
 	unittests-import \
 	unittests-upgrade \
 	unittests-dfdb \
-	unittests-foxx-manager \
 	unittests-authentication \
 	unittests-authentication-parameters
 
