@@ -3811,7 +3811,7 @@ function unitTest(cases, options) {
 
   _.defaults(options, optionsDefaults);
 
-  if (cases === undefined) {
+  if (cases === undefined || cases.length === 0) {
     printUsage();
 
     print('FATAL: "which" is undefined\n');
