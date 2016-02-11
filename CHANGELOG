@@ -12,19 +12,23 @@ v3.0.0 (XXXX-XX-XX)
 
   Examples:
 
-      [ 1, 2, 3 ] ANY == 2             // true
-      [ 1, 2, 3 ] ANY == 4             // false
-      [ 1, 2, 3 ] ANY > 0              // true
       [ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
       [ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
       [ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
       [ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
-      [ 1, 2, 3 ] ALL > 2              // false
-      [ 1, 2, 3 ] ALL > 0              // true
       [ 1, 2, 3 ] NONE IN [ 3 ]        // false
       [ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+      [ 1, 2, 3 ] ANY == 2             // true
+      [ 1, 2, 3 ] ANY == 4             // false
+      [ 1, 2, 3 ] ANY > 0              // true
+      [ 1, 2, 3 ] ANY <= 1             // true
+      [ 1, 2, 3 ] ALL > 2              // false
+      [ 1, 2, 3 ] ALL > 0              // true
+      [ 1, 2, 3 ] ALL >= 3             // false
       [ 1, 2, 3 ] NONE < 99            // false
       [ 1, 2, 3 ] NONE > 10            // true
+      ["foo", "bar"] ALL != "moo"      // true
+      ["foo", "bar"] NONE == "bar"     // false
 
 * improved AQL optimizer to remove unnecessary sort operations in more cases
 
@@ -112,6 +116,10 @@ v3.0.0 (XXXX-XX-XX)
 
 * when downloading a Foxx service from the web interface the suggested filename
   now takes the form $name@$version.zip instead of simply "app.zip"
+
+* the `@arangodb/request` response object now stores the parsed JSON response
+  body in a property `json` instead of `body` when the request was made using the
+  `json` option. The `body` instead contains the response body as a string.
 
 
 v2.8.3 (XXXX-XX-XX)

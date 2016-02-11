@@ -12,7 +12,7 @@ describe ArangoDB do
     @current = "#{@api}/current"
     @slow = "#{@api}/slow"
     @properties = "#{@api}/properties"
-    @query = "FOR x IN 1..5 LET y = SLEEP(1) RETURN x"
+    @query = "FOR x IN 1..5 LET y = SLEEP(2) RETURN x"
     @queryBody = JSON.dump({query: @query})
     @fastQuery = "FOR x IN 1..1 LET y = SLEEP(0.2) RETURN x"
     @fastQueryBody = JSON.dump({query: @fastQuery})

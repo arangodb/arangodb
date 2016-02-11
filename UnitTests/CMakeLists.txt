@@ -9,16 +9,6 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                   BOOST FRAMEWORK
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief BOOST unit-test framework
-################################################################################
-
-find_package(Boost COMPONENTS unit_test_framework)
-
-## -----------------------------------------------------------------------------
 ## --SECTION--                                                  TEST EXECUTABLES
 ## -----------------------------------------------------------------------------
 
@@ -68,9 +58,11 @@ target_link_libraries(
     ${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
     ${ICU_LIBS}
-    ${OPENSSL_LIBS}
+#    ${ICU_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()
@@ -93,9 +85,10 @@ target_link_libraries(
     ${TEST_GEO_SUITE}
     ${LIB_ARANGO}
     ${ICU_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()
