@@ -5,7 +5,6 @@ body {
   overflow: hidden;
   font-family: Roboto, Helvetica, sans-serif;
   background: #444444;
-  margin: 10px;
 }
 
 .book .book-header h1 a, .book .book-header h1 a:hover {
