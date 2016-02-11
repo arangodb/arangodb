@@ -274,8 +274,8 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     // set the endpoint
     info.endpoint = _endpoint->getSpecification();
     info.endpointType = _endpoint->getDomainType();
-
-    return handleConnected(connectionSocket, info);
+    // @TODO: if comes from velocystream port, make the thid argument(is Http) false
+    return handleConnected(connectionSocket, info, true); 
   }
 
   return true;

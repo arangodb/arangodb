@@ -87,7 +87,11 @@ GeneralServer::~GeneralServer() { stopListening(); }
 
 HttpCommTask* GeneralServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
-  return new HttpCommTask(this, s, info, _keepAliveTimeout);
+  if(_isHttp){
+    return new HttpCommTask(this, s, info, _keepAliveTimeout);
+  } else {
+    return new VelocyCommTask(this, s, info, _keepAliveTimeout);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +144,11 @@ void GeneralServer::stopListening() {
 
 void GeneralServer::stop() {
   while (true) {
-    HttpCommTask* task = nullptr;
+    if(_isHttp){
+      HttpCommTask* task = nullptr;
+    }else{
+      VelocyCommTask* task = nullptr;
+    }
 
     {
       MUTEX_LOCKER(_commTasksLock);
@@ -161,8 +169,13 @@ void GeneralServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
-  HttpCommTask* task = createCommTask(s, info);
+void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool isHttp) {
+  _isHttp = isHttp;
+  if(_isHttp){
+    HttpCommTask* task = createCommTask(s, info, _isHttp);
+  } else{
+    VelocyCommTask* task = createCommTask(s, info, _isHttp)
+  }  
 
   try {
     MUTEX_LOCKER(_commTasksLock);
@@ -187,11 +200,25 @@ void GeneralServer::handleCommunicationClosed(HttpCommTask* task) {
   _commTasks.erase(task);
 }
 
+//// Overloading for VelocyStream
+
+void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasks.erase(task);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralServer::handleCommunicationFailure(HttpCommTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasks.erase(task);
+}
+
+//// Overloading for VelocyStream
+
+void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
@@ -213,7 +240,7 @@ bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true);
+      std::make_unique<HttpServerJob>(this, handler, true); //@TODO: To be changed to GeneralServerJob
 
   // register the job with the job manager
   if (jobId != nullptr) {
@@ -261,6 +288,28 @@ bool GeneralServer::handleRequest(HttpCommTask* task,
   return res == TRI_ERROR_NO_ERROR;
 }
 
+// Overloading for VelocyStream
+
+bool GeneralServer::handleRequest(VelocyCommTask* task,
+                               WorkItem::uptr<GeneralHandler>& handler) {
+  // direct handlers
+  if (handler->isDirect()) {
+    HandlerWorkStack work(handler);
+    handleRequestDirectly(task, work.handler());
+
+    return true;
+  }
+
+  // use a dispatcher queue, handler belongs to the job
+  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
+
+  // add the job to the dispatcher
+  int res = _dispatcher->addJob(job);
+
+  // job is in queue now
+  return res == TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +338,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle request directly
+/// @brief handle request directly (Http)
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralServer::handleRequestDirectly(HttpCommTask* task,
@@ -303,6 +352,26 @@ void GeneralServer::handleRequestDirectly(HttpCommTask* task,
       break;
 
     case GeneralHandler::HANDLER_ASYNC:
+      // do nothing, just wait
+      break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle request directly (Vstream)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralServer::handleRequestDirectly(VelocyCommTask* task,
+                                       GeneralHandler* handler) {
+  GeneralHandler::status_t status = handler->executeFull();
+
+  switch (status._status) {
+    case GeneralHandler::VSTREAM_HANDLER_FAILED:
+    case GeneralHandler::VSTREAM_HANDLER_DONE:
+      task->handleResponse(handler->getResponse());
+      break;
+
+    case GeneralHandler::VSTREAM_HANDLER_ASYNC:
       // do nothing, just wait
       break;
   }
