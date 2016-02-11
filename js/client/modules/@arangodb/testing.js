@@ -179,21 +179,23 @@ const makeResults = function(testname) {
 
     let results = {
       status: status,
-      duration: duration
-    };
-
-    results[testname] = {
-      status: status,
-      duration: duration
+      duration: duration,
+      total: 1,
+      failed: status ? 0 : 1,
+      'testing.js': {
+        status: status,
+        duration: duration
+      }
     };
 
     if (message) {
-      results[testname].message = message;
+      results['testing.js'].message = message;
     }
 
-    return {
-      'testing.js': results
-    };
+    let full = {};
+    full[testname] = results;
+
+    return full;
   };
 };
 
@@ -3054,7 +3056,7 @@ testFuncs.recovery = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_ongoing = function(options) {
-  const mr = makeResults('replication_ongoing');
+  const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {}, "master_ongoing");
 
@@ -3096,7 +3098,7 @@ testFuncs.replication_ongoing = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_static = function(options) {
-  const mr = makeResults('replication_static');
+  const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {
     "server.disable-authentication": "false"
@@ -3812,7 +3814,7 @@ function unitTest(cases, options) {
     let which = cases[n];
 
     if (which === "all") {
-      caselist = caselist.conact(allTests);
+      caselist = caselist.concat(allTests);
     } else if (testFuncs.hasOwnProperty(which)) {
       caselist.push(which);
     } else {
