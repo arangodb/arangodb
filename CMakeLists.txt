@@ -531,6 +531,9 @@ else()
   message ("Boost unit test framework not found. Unit tests are disabled.")
 endif()
 
+# Tcmalloc ---------------------------------------------------------------------
+find_package(tcmalloc)
+
 # OpenSSL ----------------------------------------------------------------------
 #set (OPENSSL_USE_STATIC_LIBS "TRUE")
 find_package(OpenSSL REQUIRED)
