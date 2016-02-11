@@ -152,7 +152,7 @@ add_executable(
     HttpServer/GeneralHandlerFactory.cpp
     HttpServer/HttpListenTask.cpp
     HttpServer/GeneralServer.cpp
-    HttpServer/HttpServerJob.cpp
+    HttpServer/GeneralServerJob.cpp
     HttpServer/HttpsCommTask.cpp
     HttpServer/HttpsServer.cpp
     HttpServer/PathHandler.cpp

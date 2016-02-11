@@ -40,9 +40,9 @@ class GeneralServer;
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpServerJob : public Job {
-  HttpServerJob(HttpServerJob const&) = delete;
-  HttpServerJob& operator=(HttpServerJob const&) = delete;
+class GeneralServerJob : public Job {
+  GeneralServerJob(GeneralServerJob const&) = delete;
+  GeneralServerJob& operator=(GeneralServerJob const&) = delete;
 
   
  public:
@@ -50,14 +50,14 @@ class HttpServerJob : public Job {
   /// @brief constructs a new server job
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServerJob(GeneralServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
+  GeneralServerJob(GeneralServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
                 bool isAsync = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a server job
   //////////////////////////////////////////////////////////////////////////////
 
-  ~HttpServerJob();
+  ~GeneralServerJob();
 
   
  public:

@@ -30,7 +30,7 @@
 namespace arangodb {
 namespace rest {
 class AsyncCallbackContext;
-class HttpServerJob;
+class GeneralServerJob;
 class GeneralResponse;
 
 
@@ -182,7 +182,7 @@ class AsyncJobManager {
   /// @brief initializes an async job
   //////////////////////////////////////////////////////////////////////////////
 
-  void initAsyncJob(HttpServerJob*, char const*);
+  void initAsyncJob(GeneralServerJob*, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finishes the execution of an async job

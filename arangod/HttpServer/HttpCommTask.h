@@ -40,7 +40,7 @@ class GeneralHandler;
 class GeneralRequest;
 class GeneralResponse;
 class GeneralServer;
-class HttpServerJob;
+class GeneralServerJob;
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -33,7 +33,7 @@
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpListenTask.h"
-#include "HttpServer/HttpServerJob.h"
+#include "HttpServer/GeneralServerJob.h"
 #include "Rest/EndpointList.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
@@ -94,7 +94,8 @@ HttpCommTask* GeneralServer::createCommTask(TRI_socket_t s,
 
 // Overload for VelocyStream
 
-VelocyCommTask* GeneralServer::createCommTask(TRI_socket_t s, ConnectionInfo const &info, bool _isHttp) {
+VelocyCommTask* GeneralServer::createCommTask(TRI_socket_t s, 
+                                         ConnectionInfo const &info, bool _isHttp) {
   return new VelocyCommTask(this, s, info, _keepAliveTimeout);
 }
 
@@ -267,11 +268,11 @@ bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true); //@TODO: To be changed to GeneralServerJob
+      std::make_unique<GeneralServerJob>(this, handler, true); //@TODO: To be changed to GeneralServerJob
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    _jobManager->initAsyncJob(static_cast<HttpServerJob*>(job.get()), hdr);
+    _jobManager->initAsyncJob(static_cast<GeneralServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -306,7 +307,7 @@ bool GeneralServer::handleRequest(HttpCommTask* task,
   }
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
+  std::unique_ptr<Job> job = std::make_unique<GeneralServerJob>(this, handler);
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);
@@ -328,7 +329,7 @@ bool GeneralServer::handleRequest(VelocyCommTask* task,
   }
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
+  std::unique_ptr<Job> job = std::make_unique<GeneralServerJob>(this, handler);
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);

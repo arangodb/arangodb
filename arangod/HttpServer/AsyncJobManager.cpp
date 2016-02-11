@@ -27,7 +27,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "HttpServer/GeneralHandler.h"
-#include "HttpServer/HttpServerJob.h"
+#include "HttpServer/GeneralServerJob.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -273,7 +273,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
+void AsyncJobManager::initAsyncJob(GeneralServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {

@@ -40,7 +40,7 @@ namespace rest {
 class AsyncJobManager;
 class Dispatcher;
 class EndpointList;
-class HttpServerJob;
+class GeneralServerJob;
 class HttpCommTask;
 class VelocyCommTask;
 class GeneralHandlerFactory;
@@ -211,7 +211,7 @@ class GeneralServer : protected TaskManager {
   struct handler_task_job_t {
     GeneralHandler* _handler;
     HttpCommTask* _task;
-    HttpServerJob* _job;
+    GeneralServerJob* _job;
   };
 
   

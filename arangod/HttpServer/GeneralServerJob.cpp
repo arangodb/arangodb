@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServerJob.h"
+#include "GeneralServerJob.h"
 
 #include "Basics/WorkMonitor.h"
 #include "Basics/logging.h"
@@ -41,9 +41,9 @@ using namespace std;
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::HttpServerJob(GeneralServer* server,
+GeneralServerJob::GeneralServerJob(GeneralServer* server,
                              WorkItem::uptr<GeneralHandler>& handler, bool isAsync)
-    : Job("HttpServerJob"),
+    : Job("GeneralServerJob"),
       _server(server),
       _workDesc(nullptr),
       _isAsync(isAsync) {
@@ -54,17 +54,17 @@ HttpServerJob::HttpServerJob(GeneralServer* server,
 /// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::~HttpServerJob() {
+GeneralServerJob::~GeneralServerJob() {
   if (_workDesc != nullptr) {
     WorkMonitor::freeWorkDescription(_workDesc);
   }
 }
 
 
-size_t HttpServerJob::queue() const { return _handler->queue(); }
+size_t GeneralServerJob::queue() const { return _handler->queue(); }
 
 
-void HttpServerJob::work() {
+void GeneralServerJob::work() {
   TRI_ASSERT(_handler.get() != nullptr);
 
   LOG_TRACE("beginning job %p", (void*)this);
@@ -85,7 +85,7 @@ void HttpServerJob::work() {
       auto data = std::make_unique<TaskData>();
 
       data->_taskId = _handler->taskId();
-      data->_loop = _handler->eventLoop();
+      data-> _loop = _handler->eventLoop();
       data->_type = TaskData::TASK_DATA_RESPONSE;
       data->_response.reset(_handler->stealResponse());
 
@@ -104,15 +104,15 @@ void HttpServerJob::work() {
 }
 
 
-bool HttpServerJob::cancel() { return _handler->cancel(); }
+bool GeneralServerJob::cancel() { return _handler->cancel(); }
 
 
-void HttpServerJob::cleanup(DispatcherQueue* queue) {
+void GeneralServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
 
-void HttpServerJob::handleError(arangodb::basics::Exception const& ex) {
+void GeneralServerJob::handleError(arangodb::basics::Exception const& ex) {
   _handler->handleError(ex);
 }
