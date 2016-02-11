@@ -86,6 +86,12 @@ function resultsToXml(results, baseName, cluster) {
           }
 
           let xml = buildXml();
+          let total = 0;
+
+          if (current.hasOwnProperty('total')) {
+            total = current.total;
+          }
+
           let failuresFound = 0;
 
           if (current.hasOwnProperty('failed')) {
@@ -95,8 +101,8 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
+            tests: total,
             name: clprefix + runName,
-            tests: current.total,
             time: current.duration
           });
 
