@@ -842,7 +842,7 @@ bool VelocyCommTask::handleEvent(EventToken token, EventType events) {
 }
 
 
-void VelocyCommTask::signalTask(TaskData* data) {
+void HttpCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
     data->transfer(this);
@@ -857,14 +857,16 @@ void VelocyCommTask::signalTask(TaskData* data) {
     if (0 == len) {
       finishedChunked();
     } else {
-      arangodb::velocypack::Builder buffer;
+      StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
 
-      TRI_ASSERT(buffer != arangodb::velocypack::ValueType::Null);
-      buffer.add(Value(ValueType::Object));
-      buffer.add(Value(len));
-      buffer.add(Value(data->_data.c_str()));
-      buffer.close();
-      sendChunk(buffer); // Create a sendChunk() overloaded function for velocypack::Builder Object.
+      TRI_ASSERT(buffer != nullptr);
+
+      buffer->appendHex(len);
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+      buffer->appendText(data->_data.c_str(), len);
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+
+      sendChunk(buffer);
     }
   }
 
