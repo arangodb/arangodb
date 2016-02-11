@@ -85,7 +85,7 @@ class ListenTask : virtual public Task {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual bool handleConnected(TRI_socket_t socket,
-                               ConnectionInfo const& info) = 0;
+                               ConnectionInfo const& info, bool isHttp) = 0;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

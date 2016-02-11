@@ -37,6 +37,7 @@
 #include "Rest/EndpointList.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
+#include "VelocyServer/VelocyCommTask.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -73,6 +74,7 @@ GeneralServer::GeneralServer(Scheduler* scheduler, Dispatcher* dispatcher,
       _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
+      _commTasksVstream(),
       _keepAliveTimeout(keepAliveTimeout) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,11 +89,13 @@ GeneralServer::~GeneralServer() { stopListening(); }
 
 HttpCommTask* GeneralServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
-  if(_isHttp){
-    return new HttpCommTask(this, s, info, _keepAliveTimeout);
-  } else {
-    return new VelocyCommTask(this, s, info, _keepAliveTimeout);
-  }
+  return new HttpCommTask(this, s, info, _keepAliveTimeout);
+}
+
+// Overload for VelocyStream
+
+VelocyCommTask* GeneralServer::createCommTask(TRI_socket_t s, ConnectionInfo const &info, bool _isHttp) {
+  return new VelocyCommTask(this, s, info, _keepAliveTimeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,22 +150,33 @@ void GeneralServer::stop() {
   while (true) {
     if(_isHttp){
       HttpCommTask* task = nullptr;
-    }else{
-      VelocyCommTask* task = nullptr;
-    }
+      {
+          MUTEX_LOCKER(_commTasksLock);
 
-    {
-      MUTEX_LOCKER(_commTasksLock);
+        if (_commTasks.empty()) {
+          break;
+        }
 
-      if (_commTasks.empty()) {
-        break;
+        task = *_commTasks.begin();
+        _commTasks.erase(task);
       }
 
-      task = *_commTasks.begin();
-      _commTasks.erase(task);
-    }
+      _scheduler->destroyTask(task);
+    }else{
+      VelocyCommTask* task_v = nullptr;
+      {
+          MUTEX_LOCKER(_commTasksLock);
 
-    _scheduler->destroyTask(task);
+        if (_commTasksVstream.empty()) {
+          break;
+        }
+
+        task_v = *_commTasksVstream.begin();
+        _commTasksVstream.erase(task_v);
+      }
+
+      _scheduler->destroyTask(task_v);
+    }
   }
 }
 
@@ -172,23 +187,35 @@ void GeneralServer::stop() {
 void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool isHttp) {
   _isHttp = isHttp;
   if(_isHttp){
-    HttpCommTask* task = createCommTask(s, info, _isHttp);
+    HttpCommTask* task = createCommTask(s, info);
+    try {
+      MUTEX_LOCKER(_commTasksLock);
+      _commTasks.emplace(task);
+    } catch (...) {
+      // destroy the task to prevent a leak
+      deleteTask(task);
+      throw;
+    }
+
+    // registers the task and get the number of the scheduler thread
+    ssize_t n;
+    _scheduler->registerTask(task, &n);
+
   } else{
-    VelocyCommTask* task = createCommTask(s, info, _isHttp)
+    VelocyCommTask* task_v = createCommTask(s, info, _isHttp);
+    try {
+      MUTEX_LOCKER(_commTasksLock);
+      _commTasksVstream.emplace(task_v);
+    } catch (...) {
+      // destroy the task to prevent a leak
+      deleteTask(task_v);
+      throw;
+    }
+
+    // registers the task and get the number of the scheduler thread
+    ssize_t n;
+    _scheduler->registerTask(task_v, &n);
   }  
-
-  try {
-    MUTEX_LOCKER(_commTasksLock);
-    _commTasks.emplace(task);
-  } catch (...) {
-    // destroy the task to prevent a leak
-    deleteTask(task);
-    throw;
-  }
-
-  // registers the task and get the number of the scheduler thread
-  ssize_t n;
-  _scheduler->registerTask(task, &n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +231,7 @@ void GeneralServer::handleCommunicationClosed(HttpCommTask* task) {
 
 void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
   MUTEX_LOCKER(_commTasksLock);
-  _commTasks.erase(task);
+  _commTasksVstream.erase(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +247,7 @@ void GeneralServer::handleCommunicationFailure(HttpCommTask* task) {
 
 void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
   MUTEX_LOCKER(_commTasksLock);
-  _commTasks.erase(task);
+  _commTasksVstream.erase(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,12 +393,12 @@ void GeneralServer::handleRequestDirectly(VelocyCommTask* task,
   GeneralHandler::status_t status = handler->executeFull();
 
   switch (status._status) {
-    case GeneralHandler::VSTREAM_HANDLER_FAILED:
-    case GeneralHandler::VSTREAM_HANDLER_DONE:
+    case GeneralHandler::HANDLER_FAILED:
+    case GeneralHandler::HANDLER_DONE:
       task->handleResponse(handler->getResponse());
       break;
 
-    case GeneralHandler::VSTREAM_HANDLER_ASYNC:
+    case GeneralHandler::HANDLER_ASYNC:
       // do nothing, just wait
       break;
   }

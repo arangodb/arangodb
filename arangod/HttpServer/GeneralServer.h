@@ -23,14 +23,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
 
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
 #include "Scheduler/TaskManager.h"
+#include "VelocyServer/VelocyCommTask.h"
 
 
 namespace arangodb {
@@ -41,6 +42,7 @@ class Dispatcher;
 class EndpointList;
 class HttpServerJob;
 class HttpCommTask;
+class VelocyCommTask;
 class GeneralHandlerFactory;
 class Job;
 class ListenTask;
@@ -79,10 +81,19 @@ class GeneralServer : protected TaskManager {
   
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the protocol
+  /// @brief returns the protocol @TODO: Change it to conditional argument
   //////////////////////////////////////////////////////////////////////////////
 
   virtual char const* protocol() const { return "http"; }
+
+  //   virtual char const* protocol() const { 
+  //   if(_isHttp) {
+  //     return "http";
+  //   } else{
+  //     return "vstream"
+  //   }  
+  // }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the encryption to be used
@@ -98,6 +109,7 @@ class GeneralServer : protected TaskManager {
 
   virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
+  virtual VelocyCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&, bool);
   
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -160,11 +172,19 @@ class GeneralServer : protected TaskManager {
 
   void handleCommunicationClosed(HttpCommTask*);
 
+  // Overloading for VelocyServer
+
+  void handleCommunicationClosed(VelocyCommTask*);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection failure
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommunicationFailure(HttpCommTask*);
+
+  // Overloading for VelocyServer
+
+  void handleCommunicationFailure(VelocyCommTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a job for asynchronous execution
@@ -179,6 +199,9 @@ class GeneralServer : protected TaskManager {
 
   bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
 
+  // Overloading for VelocyStream
+
+  bool handleRequest(VelocyCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
   
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -204,6 +227,10 @@ class GeneralServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleRequestDirectly(HttpCommTask* task, GeneralHandler* handler);
+
+  // Overloading for VelocyStream
+
+  void handleRequestDirectly(VelocyCommTask* task, GeneralHandler* handler);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a task
@@ -256,10 +283,16 @@ class GeneralServer : protected TaskManager {
   arangodb::basics::Mutex _commTasksLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief active comm tasks
+  /// @brief active comm tasks(Http)
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_set<HttpCommTask*> _commTasks;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief active comm tasks(VelocyStream)
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<VelocyCommTask*> _commTasksVstream;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief to judge whether the request received is Http or VelocyStream

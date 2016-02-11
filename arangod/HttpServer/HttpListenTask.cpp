@@ -40,8 +40,8 @@ HttpListenTask::HttpListenTask(GeneralServer* server, Endpoint* endpoint)
 
 
 bool HttpListenTask::handleConnected(TRI_socket_t s,
-                                     const ConnectionInfo& info) {
-  _server->handleConnected(s, info);
+                                     const ConnectionInfo& info, bool _isHttp) {
+  _server->handleConnected(s, info, _isHttp);
   return true;
 }
 
