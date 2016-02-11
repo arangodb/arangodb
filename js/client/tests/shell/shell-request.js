@@ -117,8 +117,8 @@ function RequestSuite () {
       var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300});
       expect(res).to.be.a(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(res.body).to.be.an('object');
-      var obj = res.body;
+      expect(res.json).to.be.an('object');
+      var obj = res.json;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(body);
@@ -134,8 +134,8 @@ function RequestSuite () {
       var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300});
       expect(res).to.be.a(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      expect(res.body).to.be.an('object');
-      var obj = res.body;
+      expect(res.json).to.be.an('object');
+      var obj = res.json;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(body);
@@ -237,7 +237,7 @@ function RequestSuite () {
       var url = buildUrl('/_admin/aardvark/standalone.html', false);
       var res = request.get(url, {json: true, timeout: 300});
       expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
+      expect(res.json).to.be(undefined);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,8 +307,8 @@ function RequestSuite () {
       };
       var res = request.post(buildUrl(path), {body: reqBody, json: true, timeout: 300});
       expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.an('object');
-      var obj = res.body;
+      expect(res.json).to.be.an('object');
+      var obj = res.json;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(reqBody);

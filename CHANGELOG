@@ -113,6 +113,10 @@ v3.0.0 (XXXX-XX-XX)
 * when downloading a Foxx service from the web interface the suggested filename
   now takes the form $name@$version.zip instead of simply "app.zip"
 
+* the `@arangodb/request` response object now stores the parsed JSON response
+  body in a property `json` instead of `body` when the request was made using the
+  `json` option. The `body` instead contains the response body as a string.
+
 
 v2.8.3 (XXXX-XX-XX)
 -------------------
