@@ -144,25 +144,25 @@
       });
     },
 
-    loadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Loading collection...");
+    loadCollection: function (callback) {
+
       $.ajax({
         async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
-          self.set("status", "loaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
           window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          window.progressView.hide();
+          callback(true);
         }
       });
+
+      callback();
+
     },
 
     unloadCollection: function () {

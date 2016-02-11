@@ -68,7 +68,29 @@
     },
 
     loadCollection: function () {
-      this.model.loadCollection();
+    
+      var loadCollectionCallback = function(error) {
+
+        if (error) {
+          arangoHelper.arangoError('Collection error');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "loading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "loaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
+          }
+        }
+
+      }.bind(this);
+
+      this.model.loadCollection(loadCollectionCallback);
       window.modalView.hide();
     },
 
