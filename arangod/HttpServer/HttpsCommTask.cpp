@@ -84,7 +84,8 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   _connectionInfo.sslContext = _ssl;
 
   if (_ssl == nullptr) {
-    LOG(DEBUG) << "cannot build new SSL connection: " << arangodb::basics::lastSSLError().c_str();
+    LOG(DEBUG) << "cannot build new SSL connection: "
+               << arangodb::basics::lastSSLError().c_str();
 
     shutdownSsl(false);
     return false;  // terminate ourselves, ssl is nullptr
@@ -97,9 +98,6 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
   // with the file descriptor
   ERR_clear_error();
   SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_commSocket));
-
-  // accept might need writes
-  _scheduler->startSocketEvents(_writeWatcher);
 
   return true;
 }
@@ -115,14 +113,14 @@ bool HttpsCommTask::handleEvent(EventToken token, EventType revents) {
       result = trySSLAccept();
     }
 
-    if (!result) {
+    if (result) {
+      _scheduler->startSocketEvents(_readWatcher);
+      _scheduler->stopSocketEvents(_writeWatcher);
+    } else {
       // status is somehow invalid. we got here even though no accept was ever
       // successful
       _clientClosed = true;
-      // this will remove the corresponding chunkedTask from the global list
-      // if we would leave it in there, then the server may crash on shutdown
       _server->handleCommunicationFailure(this);
-
       _scheduler->destroyTask(this);
     }
 
@@ -198,16 +196,13 @@ bool HttpsCommTask::trySSLAccept() {
   if (res == 1) {
     LOG(DEBUG) << "established SSL connection";
     _accepted = true;
-
-    // accept done, remove write events
-    _scheduler->stopSocketEvents(_writeWatcher);
-
     return true;
   }
 
   // shutdown of connection
   if (res == 0) {
-    LOG(DEBUG) << "SSL_accept failed: " << arangodb::basics::lastSSLError().c_str();
+    LOG(DEBUG) << "SSL_accept failed: "
+               << arangodb::basics::lastSSLError().c_str();
 
     shutdownSsl(false);
     return false;
@@ -217,12 +212,17 @@ bool HttpsCommTask::trySSLAccept() {
   int err = SSL_get_error(_ssl, res);
 
   if (err == SSL_ERROR_WANT_READ) {
+    _scheduler->startSocketEvents(_readWatcher);
+    _scheduler->stopSocketEvents(_writeWatcher);
     return true;
   } else if (err == SSL_ERROR_WANT_WRITE) {
+    _scheduler->stopSocketEvents(_readWatcher);
+    _scheduler->startSocketEvents(_writeWatcher);
     return true;
   }
 
-  LOG(TRACE) << "error in SSL handshake: " << arangodb::basics::lastSSLError().c_str();
+  LOG(TRACE) << "error in SSL handshake: "
+             << arangodb::basics::lastSSLError().c_str();
 
   shutdownSsl(false);
   return false;
@@ -247,7 +247,9 @@ again:
         return true;
 
       case SSL_ERROR_SSL:
-        LOG(DEBUG) << "received SSL error (bytes read " << nr << ", socket " << TRI_get_fd_or_handle_of_socket(_commSocket) << "): " << arangodb::basics::lastSSLError().c_str();
+        LOG(DEBUG) << "received SSL error (bytes read " << nr << ", socket "
+                   << TRI_get_fd_or_handle_of_socket(_commSocket)
+                   << "): " << arangodb::basics::lastSSLError().c_str();
 
         shutdownSsl(false);
         return false;
@@ -275,18 +277,22 @@ again:
 
       case SSL_ERROR_SYSCALL:
         if (res != 0) {
-          LOG(DEBUG) << "SSL_read returned syscall error with: " << arangodb::basics::lastSSLError().c_str();
+          LOG(DEBUG) << "SSL_read returned syscall error with: "
+                     << arangodb::basics::lastSSLError().c_str();
         } else if (nr == 0) {
-          LOG(DEBUG) << "SSL_read returned syscall error because an EOF was received";
+          LOG(DEBUG)
+              << "SSL_read returned syscall error because an EOF was received";
         } else {
-          LOG(DEBUG) << "SSL_read return syscall error: " << errno << ": " << strerror(errno);
+          LOG(DEBUG) << "SSL_read return syscall error: " << errno << ": "
+                     << strerror(errno);
         }
 
         shutdownSsl(false);
         return false;
 
       default:
-        LOG(DEBUG) << "received error with " << res << " and " << nr << ": " << arangodb::basics::lastSSLError().c_str();
+        LOG(DEBUG) << "received error with " << res << " and " << nr << ": "
+                   << arangodb::basics::lastSSLError().c_str();
 
         shutdownSsl(false);
         return false;
@@ -356,18 +362,22 @@ bool HttpsCommTask::trySSLWrite() {
 
         case SSL_ERROR_SYSCALL:
           if (res != 0) {
-            LOG(DEBUG) << "SSL_write returned syscall error with: " << arangodb::basics::lastSSLError().c_str();
+            LOG(DEBUG) << "SSL_write returned syscall error with: "
+                       << arangodb::basics::lastSSLError().c_str();
           } else if (nr == 0) {
-            LOG(DEBUG) << "SSL_write returned syscall error because an EOF was received";
+            LOG(DEBUG) << "SSL_write returned syscall error because an EOF was "
+                          "received";
           } else {
-            LOG(DEBUG) << "SSL_write return syscall error: " << errno << ": " << strerror(errno);
+            LOG(DEBUG) << "SSL_write return syscall error: " << errno << ": "
+                       << strerror(errno);
           }
 
           shutdownSsl(false);
           return false;
 
         default:
-          LOG(DEBUG) << "received error with " << res << " and " << nr << ": " << arangodb::basics::lastSSLError().c_str();
+          LOG(DEBUG) << "received error with " << res << " and " << nr << ": "
+                     << arangodb::basics::lastSSLError().c_str();
 
           shutdownSsl(false);
           return false;
@@ -392,7 +402,13 @@ bool HttpsCommTask::trySSLWrite() {
     return false;
   }
 
-  // we might have a new write buffer
+  // we might have a new write buffer or none at all
+  if (_writeBuffer == nullptr) {
+    _scheduler->stopSocketEvents(_writeWatcher);
+  } else {
+    _scheduler->startSocketEvents(_writeWatcher);
+  }
+
   return true;
 }
 
@@ -420,14 +436,16 @@ void HttpsCommTask::shutdownSsl(bool initShutdown) {
           int err = SSL_get_error(_ssl, res);
 
           if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-            LOG(DEBUG) << "received shutdown error with " << res << ", " << err << ": " << arangodb::basics::lastSSLError().c_str();
+            LOG(DEBUG) << "received shutdown error with " << res << ", " << err
+                       << ": " << arangodb::basics::lastSSLError().c_str();
             break;
           }
         }
       }
 
       if (!ok) {
-        LOG(DEBUG) << "cannot complete SSL shutdown in socket " << TRI_get_fd_or_handle_of_socket(_commSocket);
+        LOG(DEBUG) << "cannot complete SSL shutdown in socket "
+                   << TRI_get_fd_or_handle_of_socket(_commSocket);
       }
     } else {
       ERR_clear_error();

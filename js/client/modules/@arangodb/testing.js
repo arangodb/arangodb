@@ -130,7 +130,7 @@ const optionsDefaults = {
   "replication": false,
   "skipAql": false,
   "skipArangoB": false,
-  "skipArangoBNonConnKeepAlive": false,
+  "skipArangoBNonConnKeepAlive": true,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -172,15 +172,30 @@ let cleanupDirectories = [];
 let serverCrashed = false;
 
 const makeResults = function(testname) {
+  const startTime = time();
+
   return function(status, message) {
-    let results = {};
-    results[testname] = {
-      status: status
+    let duration = time() - startTime;
+
+    let results = {
+      status: status,
+      duration: duration,
+      total: 1,
+      failed: status ? 0 : 1,
+      'testing.js': {
+        status: status,
+        duration: duration
+      }
     };
+
     if (message) {
-      results[testname].message = message;
+      results['testing.js'].message = message;
     }
-    return results;
+
+    let full = {};
+    full[testname] = results;
+
+    return full;
   };
 };
 
@@ -1807,7 +1822,6 @@ function filterTestcaseByOptions(testname, options, whichFilter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 let allTests = [
-  "arangob",
   "arangosh",
   "authentication",
   "authentication_parameters",
@@ -1822,7 +1836,8 @@ let allTests = [
   "shell_server",
   "shell_server_aql",
   "ssl_server",
-  "upgrade"
+  "upgrade",
+  "arangob"
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3041,7 +3056,7 @@ testFuncs.recovery = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_ongoing = function(options) {
-  const mr = makeResults('replication_ongoing');
+  const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {}, "master_ongoing");
 
@@ -3083,7 +3098,7 @@ testFuncs.replication_ongoing = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_static = function(options) {
-  const mr = makeResults('replication_static');
+  const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {
     "server.disable-authentication": "false"
@@ -3138,7 +3153,7 @@ testFuncs.replication_static = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.replication_sync = function(options) {
-  const mr = makeResults('replication_sync');
+  const mr = makeResults('replication');
   let master = startInstance("tcp", options, {}, "master_sync");
 
   if (master === false) {
@@ -3730,7 +3745,7 @@ function unitTestPrettyPrintResults(r) {
 
 function printUsage() {
   print();
-  print("Usage: UnitTest( which, options )");
+  print("Usage: UnitTest([which, ...], options)");
   print();
   print('       where "which" is one of:\n');
 
@@ -3772,14 +3787,14 @@ function printUsage() {
 ///  Empty will give you a complete list.
 ////////////////////////////////////////////////////////////////////////////////
 
-function unitTest(which, options) {
+function unitTest(cases, options) {
   if (typeof options !== "object") {
     options = {};
   }
 
   _.defaults(options, optionsDefaults);
 
-  if (which === undefined) {
+  if (cases === undefined) {
     printUsage();
 
     print('FATAL: "which" is undefined\n');
@@ -3792,121 +3807,86 @@ function unitTest(which, options) {
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 
-  let allok = true;
-  let ok = false;
+  // tests to run
+  let caselist = [];
 
+  for (let n = 0; n < cases.length; ++n) {
+    let which = cases[n];
+
+    if (which === "all") {
+      caselist = caselist.concat(allTests);
+    } else if (testFuncs.hasOwnProperty(which)) {
+      caselist.push(which);
+    } else {
+      let line = "Unknown test '" + which + "'\nKnown tests are: ";
+      let sep = "";
+
+      Object.keys(testFuncs).map(function(key) {
+        line += sep + key;
+        sep = ", ";
+      });
+
+      print(line);
+
+      return {
+        status: false
+      };
+    }
+  }
+
+  let globalStatus = true;
   let results = {};
-  let thisReply;
 
   // running all tests
-  if (which === "all") {
-    for (let n = 0; n < allTests.length; n++) {
-      const currentTest = allTests[n];
+  for (let n = 0; n < caselist.length; ++n) {
+    const currentTest = caselist[n];
 
-      print("Executing test", currentTest, "with options", options);
+    print("Executing test", currentTest, "with options", options);
 
-      results[currentTest] = thisReply = testFuncs[currentTest](options);
-      ok = true;
+    let result = testFuncs[currentTest](options);
+    results[currentTest] = result;
 
-      for (let i in thisReply) {
-        if (thisReply.hasOwnProperty(i)) {
-          if (thisReply[i].status !== true) {
-            ok = false;
-          }
-        }
-      }
+    let status = true;
 
-      thisReply.ok = ok;
-
-      if (!ok) {
-        allok = false;
-      }
-    }
-
-    results.status = allok;
-    results.crashed = serverCrashed;
-
-    if (allok) {
-      cleanupDBDirectories(options);
-    } else {
-      print("since some tests weren't successfully, not cleaning up: \n" +
-        yaml.safeDump(cleanupDirectories));
-    }
-
-    yaml.safeDump(results);
-
-    if (jsonReply === true) {
-      return results;
-    } else {
-      return allok;
-    }
-  }
-
-  // unknown test
-  else if (!testFuncs.hasOwnProperty(which)) {
-    let line = "Unknown test '" + which + "'\nKnown tests are: ";
-    let sep = "";
-
-    Object.keys(testFuncs).map(function(key) {
-      line += sep + key;
-      sep = ", ";
-    });
-
-    print(line);
-
-    return {
-      status: false
-    };
-  }
-
-  // test found in testFuncs
-  else {
-    results[which] = thisReply = testFuncs[which](options);
-
-    if (options.extremeVerbosity) {
-      print("Test result:", yaml.safeDump(results));
-    }
-
-    ok = true;
-
-    for (let i in thisReply) {
-      if (thisReply.hasOwnProperty(i)) {
-        if (thisReply[i].status !== true) {
-          ok = false;
+    for (let i in result) {
+      if (result.hasOwnProperty(i)) {
+        if (result[i].status !== true) {
+          status = false;
         }
       }
     }
 
-    thisReply.status = ok;
-    results.status = ok;
-    results.crashed = serverCrashed;
+    result.status = status;
 
-    if (ok) {
-      cleanupDBDirectories(options);
-    } else {
-      print("since some tests weren't successfully, not cleaning up: \n" +
-        yaml.safeDump(cleanupDirectories));
-    }
-
-    yaml.safeDump(results);
-
-    if (jsonReply === true) {
-      return results;
-    } else {
-      return ok;
+    if (!status) {
+      globalStatus = false;
     }
   }
 
-  return {
-    status: false
-  };
+  results.status = globalStatus;
+  results.crashed = serverCrashed;
+
+  if (globalStatus) {
+    cleanupDBDirectories(options);
+  } else {
+    print("since some tests weren't successfully, not cleaning up: \n" +
+      yaml.safeDump(cleanupDirectories));
+  }
+
+  yaml.safeDump(results);
+
+  if (jsonReply === true) {
+    return results;
+  } else {
+    return globalStatus;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exports
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.UnitTest = unitTest;
+exports.unitTest = unitTest;
 
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;

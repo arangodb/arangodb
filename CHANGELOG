@@ -1,7 +1,42 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
-* allow to set print.limitString to configure the number of characters
+* added AQL array comparison operators 
+
+  All AQL comparison operators now lso exist in an array variant. In the 
+  array variant, the operator is prefixed with one of the keywords *ALL*, *ANY*
+  or *NONE*. Using one of these keywords changes the operator behavior to
+  execute the comparison operation for all, any, or none of its left hand 
+  argument values. It is therefore expected that the left hand argument
+  of an array operator is an array.
+
+  Examples:
+
+      [ 1, 2, 3 ] ANY == 2             // true
+      [ 1, 2, 3 ] ANY == 4             // false
+      [ 1, 2, 3 ] ANY > 0              // true
+      [ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
+      [ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
+      [ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
+      [ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
+      [ 1, 2, 3 ] ALL > 2              // false
+      [ 1, 2, 3 ] ALL > 0              // true
+      [ 1, 2, 3 ] NONE IN [ 3 ]        // false
+      [ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+      [ 1, 2, 3 ] NONE < 99            // false
+      [ 1, 2, 3 ] NONE > 10            // true
+
+* improved AQL optimizer to remove unnecessary sort operations in more cases
+
+* allow enclosing AQL identifiers in forward ticks in addition to using
+  backward ticks
+
+  This allows convenient writing of AQL queries in JavaScript template strings 
+  (that is itself delimited with backticks), e.g.
+
+      var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
+
+* allow to set `print.limitString` to configure the number of characters
   to output before truncating
 
 * make logging configurable per log "topic"
@@ -82,11 +117,20 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.3 (XXXX-XX-XX)
 -------------------
 
+* fixed AQL filter condition collapsing for deeply-nested cases, potentially
+  enabling usage of indexes in some dedicated cases
+
+* added parentheses in AQL explain command output to correctly display precedence
+  of logical and arithmetic operators
+
 * Foxx Model event listeners defined on the model are now correctly invoked by
   the Repository methods (issue #1665)
 
 * Deleting a Foxx service in the frontend should now always succeed even if the
   files no longer exist on the file system (issue #1358)
+
+* Routing actions loaded from the database no longer throw exceptions when
+  trying to load other modules using "require"
 
 
 v2.8.2 (2016-02-09)
@@ -619,7 +663,7 @@ v2.8.0-alpha1 (2015-12-03)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
-v2.7.6 (XXXX-XX-XX)
+v2.7.6 (2016-01-30)
 -------------------
 
 * detect more types of transaction deadlocks early

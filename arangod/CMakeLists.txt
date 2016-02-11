@@ -104,6 +104,7 @@ add_executable(
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp
     Aql/Parser.cpp
+    Aql/Quantifier.cpp
     Aql/Query.cpp
     Aql/QueryCache.cpp
     Aql/QueryList.cpp

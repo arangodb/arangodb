@@ -816,12 +816,12 @@ LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
-  MUTEX_LOCKER(guard, LogTopicNamesLock);
-
   std::vector<std::pair<std::string, LogLevel>> levels;
 
-  for (auto topic : LogTopicNames) {
-    levels.emplace_back(make_pair(topic.first, topic.second->level()));
+  MUTEX_LOCKER(guard, LogTopicNamesLock);
+
+  for (auto const& topic : LogTopicNames) {
+    levels.emplace_back(std::make_pair(topic.first, topic.second->level()));
   }
 
   return levels;
