@@ -95,13 +95,21 @@
 
     createModalHotkeys: function() {
       //submit modal
+      $(this.el).unbind('keydown');
+      $(this.el).unbind('return');
       $(this.el).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("input", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body input').unbind('keydown');
+      $('.modal-body input').unbind('return');
+      $(".modal-body input", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("select", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body select').unbind('keydown');
+      $('.modal-body select').unbind('return');
+      $(".modal-body select", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },
