@@ -16,6 +16,10 @@ v2.8.3 (XXXX-XX-XX)
 * Routing actions loaded from the database no longer throw exceptions when
   trying to load other modules using "require"
 
+* The `org/arangodb/request` response object now sets a property `json` to the
+  parsed JSON response body in addition to overwriting the `body` property when
+  the request was made using the `json` option.
+
 
 v2.8.2 (2016-02-09)
 -------------------
