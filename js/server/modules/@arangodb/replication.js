@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
 
 var logger  = { };
 var applier = { };
@@ -173,10 +174,30 @@ function serverId () {
   return internal.serverId();
 }
 
-exports.logger           = logger;
-exports.applier          = applier;
-exports.sync             = sync;
-exports.syncCollection   = syncCollection;
-exports.setupReplication = setupReplication;
-exports.serverId         = serverId;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finishes off a synchronization of a single collection
+/// `collection` is the name of a collection on the other server that should
+/// have been synchronized using syncCollection (incremental or not) 
+/// recently. `from` is the tick as a string of that synchronization.
+/// `config` can contain the following attributes:
+///   - "endpoint": endpoint of the other server
+/// If one ensures that there is a read transaction ongoing on that collection
+/// on the other server, then this function is guaranteed to bring the two
+/// collections in perfect sync, until that read transaction is aborted.
+////////////////////////////////////////////////////////////////////////////////
 
+function syncCollectionFinalize(collection, from, config) {
+  var url = endpointToURL(config.endpoint) + "/_api/replication/logger-follow"
+            + "?from=";
+
+  while (true) {
+  }
+}
+
+exports.logger                 = logger;
+exports.applier                = applier;
+exports.sync                   = sync;
+exports.syncCollection         = syncCollection;
+exports.setupReplication       = setupReplication;
+exports.serverId               = serverId;
+exports.syncCollectionFinalize = syncCollectionFinalize;

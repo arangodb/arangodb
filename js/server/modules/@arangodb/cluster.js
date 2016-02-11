@@ -56,9 +56,10 @@ function getUUID () {
 function startReadingQuery (endpoint, collName, timeout) {
   var uuid = getUUID();
   console.info("Have uuid", uuid);
-  var query = {"query": `FOR x IN ${collName}
+  var query = {"query": `LET t=SLEEP(${timeout})
+                         FOR x IN ${collName}
                          LIMIT 1
-                         RETURN "${uuid}" + SLEEP(${timeout})`};
+                         RETURN "${uuid}" + t`};
   console.info("Have query:", JSON.stringify(query));
   var url = endpointToURL(endpoint);
   console.info("Have url:", url);
@@ -116,6 +117,9 @@ function startReadingQuery (endpoint, collName, timeout) {
 function cancelReadingQuery (endpoint, queryid) {
   var url = endpointToURL(endpoint) + "/_api/query/" + queryid;
   var r = download(url, "", { method: "DELETE" });
+  if (r.code !== 200) {
+    console.error("CancelReadingQuery: error", r);
+  }
   return r.code === 200;
 }
 
@@ -889,7 +893,7 @@ function cleanupCurrentCollections (plannedCollections) {
 /// replicated shards)
 ////////////////////////////////////////////////////////////////////////////////
 
-function synchroniseLocalFollowerCollections (plannedCollections) {
+function synchronizeLocalFollowerCollections (plannedCollections) {
   var ourselves = global.ArangoServerState.id();
 
   var db = require("internal").db;
@@ -1026,7 +1030,7 @@ function handleCollectionChanges (plan) {
     createLocalCollections(plannedCollections, plan["Plan/Version"]);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
-    synchroniseLocalFollowerCollections(plannedCollections);
+    synchronizeLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
