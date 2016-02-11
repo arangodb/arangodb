@@ -69,7 +69,7 @@ endif()
 include(ExternalProject)
 set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
-  CXX="${CMAKE_CXX_COMPILER}") 
+  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}) 
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND}" CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
 endif()

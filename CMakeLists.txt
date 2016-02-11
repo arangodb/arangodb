@@ -545,6 +545,10 @@ find_package (FLEX)
 # GO ---------------------------------------------------------------------------
 find_package(Go 1.2)
 
+# Python
+find_package(PythonInterp 2)
+set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+
 # zlib -------------------------------------------------------------------------
 set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
 
@@ -744,4 +748,3 @@ endif ()
 
 # Finally: user cpack
 include(CPack)
-
