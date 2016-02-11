@@ -42,10 +42,10 @@ struct TRI_vocbase_t;
 class TRI_replication_applier_configuration_t {
   // leftover from struct
  public:
-  char* _endpoint;
-  char* _database;
-  char* _username;
-  char* _password;
+  std::string _endpoint;
+  std::string _database;
+  std::string _username;
+  std::string _password;
   double _requestTimeout;
   double _connectTimeout;
   uint64_t _ignoreErrors;
@@ -71,15 +71,27 @@ class TRI_replication_applier_configuration_t {
   TRI_replication_applier_configuration_t(TRI_replication_applier_configuration_t const&) = delete;
   TRI_replication_applier_configuration_t& operator=(TRI_replication_applier_configuration_t const&) = delete;
 
-  TRI_replication_applier_configuration_t() {}
+  TRI_replication_applier_configuration_t();
 
-  ~TRI_replication_applier_configuration_t() { freeInternalStrings(); }
+  ~TRI_replication_applier_configuration_t() {}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief frees all internal CORE_MEM_ZONE strings
+  /// @brief copy an applier configuration
   //////////////////////////////////////////////////////////////////////////////
 
-  void freeInternalStrings();
+  void update(TRI_replication_applier_configuration_t const*);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reset the configuration to defaults
+  //////////////////////////////////////////////////////////////////////////////
+
+  void reset();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a JSON representation of the replication applier configuration
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_json_t* toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a VelocyPack representation
@@ -329,21 +341,6 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t*);
 
 int TRI_LoadStateReplicationApplier(TRI_vocbase_t*,
                                     TRI_replication_applier_state_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize an apply configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitConfigurationReplicationApplier(
-    TRI_replication_applier_configuration_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy an apply configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CopyConfigurationReplicationApplier(
-    TRI_replication_applier_configuration_t const*,
-    TRI_replication_applier_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application configuration file

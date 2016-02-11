@@ -70,20 +70,19 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierUpdateTime(0),
       _barrierTtl(600) {
 
-  if (configuration->_database != nullptr) {
-    // use name from configuration
-    _databaseName = std::string(configuration->_database);
-  } else {
+  if (configuration->_database.empty()) {
     // use name of current database
     _databaseName = std::string(vocbase->_name);
+  } else {
+    // use name from configuration
+    _databaseName = configuration->_database;
   }
 
   // get our own server-id
   _localServerId = TRI_GetIdServer();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  TRI_InitConfigurationReplicationApplier(&_configuration);
-  TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
+  _configuration.update(configuration);
 
   _masterInfo._endpoint = configuration->_endpoint;
 
@@ -101,16 +100,8 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
                                      _configuration._requestTimeout, false);
 
       if (_client != nullptr) {
-        std::string username;
-        std::string password;
-
-        if (_configuration._username != nullptr) {
-          username = std::string(_configuration._username);
-        }
-
-        if (_configuration._password != nullptr) {
-          password = std::string(_configuration._password);
-        }
+        std::string username = _configuration._username;
+        std::string password = _configuration._password;
 
         _client->setUserNamePassword("/", username, password);
         _client->setLocationRewriter(this, &rewriteLocation);
