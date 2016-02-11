@@ -450,7 +450,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -505,7 +504,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -560,7 +558,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -617,7 +614,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -672,7 +668,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -727,7 +722,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -782,7 +776,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -837,7 +830,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -894,7 +886,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -949,7 +940,6 @@ function optimizerIndexesMultiTestSuite () {
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
