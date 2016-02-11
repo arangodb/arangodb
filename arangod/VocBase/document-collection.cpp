@@ -4703,6 +4703,8 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 int TRI_ReadShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     const TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr, bool lock) {
+
+TRI_ASSERT(false);  
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
@@ -4746,6 +4748,8 @@ int TRI_RemoveShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
+
+TRI_ASSERT(false);  
   bool const freeMarker = (marker == nullptr);
   rid = GetRevisionId(rid);
 
@@ -4855,6 +4859,8 @@ int TRI_InsertShapedJsonDocumentCollection(
     TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
     TRI_document_edge_t const* edge, bool lock, bool forceSync,
     bool isRestore) {
+
+TRI_ASSERT(false);
   bool const freeMarker = (marker == nullptr);
 
   TRI_ASSERT(mptr != nullptr);
@@ -4888,8 +4894,11 @@ int TRI_InsertShapedJsonDocumentCollection(
     keyString = key;
   }
 
+  // TODO: Fix hash calculation
+  VPackBuilder builder;
+  builder.add(VPackValue(keyString));
   uint64_t const hash = document->primaryIndex()->calculateHash(
-      trx, keyString.c_str(), keyString.size());
+      trx, builder.data());
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -4988,6 +4997,8 @@ int TRI_UpdateShapedJsonDocumentCollection(
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
   bool const freeMarker = (marker == nullptr);
 
+TRI_ASSERT(false);  
+
   rid = GetRevisionId(rid);
 
   TRI_ASSERT(key != nullptr);
@@ -5085,6 +5096,53 @@ int TRI_UpdateShapedJsonDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads an element from the document collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
+                                    TRI_doc_mptr_copy_t* mptr, bool lock) {
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  builder.close();
+
+  VPackSlice slice = builder.slice();
+
+  {
+    TRI_IF_FAILURE("ReadDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    CollectionReadLocker collectionLocker(this, lock);
+
+    TRI_doc_mptr_t* header;
+    int res = lookupDocument(trx, &slice, nullptr /* policy */, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    // we found a document, now copy it over
+    *mptr = *header;
+  }
+
+  TRI_ASSERT(mptr->getDataPtr() !=
+             nullptr);  // PROTECTED by trx in trxCollection
+  // TRI_ASSERT(mptr->_rid > 0);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5095,10 +5153,8 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
   mptr->setDataPtr(nullptr);
 
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
-  std::string const keyString(key.copyString());  // TODO: use slice.hash()
-  uint64_t const hash = primaryIndex()->calculateHash(
-      trx, keyString.c_str(), keyString.size());  // TODO: remove here
-
+  uint64_t const hash = key.hash();
+  
   std::unique_ptr<arangodb::wal::Marker> marker(
       createVPackInsertMarker(trx, slice));
 
@@ -5139,8 +5195,8 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     // update the header we got
     void* mem = operation.marker->mem();
     header->_rid = 0;         // TODO: fix revision id
-    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
     header->_hash = hash;
+    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
     // insert into indexes
     res = insertDocument(trx, header, operation, mptr, waitForSync);
@@ -5182,11 +5238,10 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     // test what happens if no marker can be created
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
+  
   std::unique_ptr<arangodb::wal::Marker> marker(
       createVPackRemoveMarker(trx, slice));
 
-  TRI_doc_mptr_t* header;
   int res;
   TRI_voc_tick_t markerTick = 0;
   {
@@ -5201,6 +5256,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
         trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
         0 /*rid*/);  // TODO: fix rid
 
+    TRI_doc_mptr_t* header;
     res = lookupDocument(trx, slice, policy, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -5237,7 +5293,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
+  
     res = TRI_AddOperationTransaction(trx->getInternals(), operation,
                                       waitForSync);
 
@@ -5247,7 +5303,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       markerTick = operation.tick;
     }
   }
-
+  
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
@@ -5286,21 +5342,14 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
 int TRI_document_collection_t::lookupDocument(
     arangodb::Transaction* trx, VPackSlice const* slice,
     TRI_doc_update_policy_t const* policy, TRI_doc_mptr_t*& header) {
+  
   VPackSlice key = slice->get(TRI_VOC_ATTRIBUTE_KEY);
-
+  
   if (!key.isString()) {
     return TRI_ERROR_INTERNAL;
   }
-
-  // we need to have a null-terminated string for lookup, so copy the
-  // key from the slice to local memory
-  char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
-  uint64_t length;
-  char const* p = key.getString(length);
-  memcpy(&buffer[0], p, length);
-  buffer[length] = '\0';
-
-  header = primaryIndex()->lookupKey(trx, &buffer[0]);
+    
+  header = primaryIndex()->lookupKey(trx, key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -5449,7 +5498,7 @@ int TRI_document_collection_t::deletePrimaryIndex(
 
   auto found = primaryIndex()->removeKey(
       trx,
-      TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN INDEX, PROTECTED by RUNTIME
+      VPackSlice(header->vpack()).get(TRI_VOC_ATTRIBUTE_KEY));  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;

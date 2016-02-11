@@ -40,6 +40,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-wrapshapedjson.h"
+#include "V8Server/V8VPackWrapper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
@@ -880,17 +881,21 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t total = 0;
   std::vector<TRI_doc_mptr_copy_t> docs;
 
+  TRI_voc_cid_t cid = col->_cid;
+
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+                                          col->_vocbase, cid);
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+  
+  auto ditch = trx.orderDitch(trx.trxCollection());
+  TRI_ASSERT(ditch != nullptr);
 
   res = trx.read(docs, skip, limit, total);
-  TRI_ASSERT(docs.empty() || trx.hasDitch());
 
   res = trx.finish(res);
 
@@ -908,8 +913,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING("documents"), documents);
 
   for (uint64_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> doc =
-        WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
+    v8::Handle<v8::Value> doc = V8VPackWrapper::wrap(isolate, &trx, cid, ditch, static_cast<TRI_df_marker_t const*>(docs[i].getDataPtr()));
+//    v8::Handle<v8::Value> doc = TRI_VPackToV8(isolate, VPackSlice(docs[i].vpack()));
+//        WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
     if (doc.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();

@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
-
+  
 // returns a type name for a marker
 char const* MarkerHelper::typeName(MarkerType type) {
   switch (type) {
@@ -135,44 +135,3 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderMeta const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDocumentPreface const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDocument const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDatabase const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderCollection const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderIndex const* marker) {
-  stream << "[Marker " << MarkerHelper::typeName(marker->type())
-         << ", size: " << marker->length() << "]";
-  return stream;
-}

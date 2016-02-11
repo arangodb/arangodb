@@ -1106,90 +1106,17 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
-    char* oldmarker = static_cast<char*>(operation.marker->mem());
-    auto oldm = reinterpret_cast<arangodb::wal::document_marker_t*>(oldmarker);
-    if ((oldm->_type == TRI_WAL_MARKER_DOCUMENT ||
-         oldm->_type == TRI_WAL_MARKER_EDGE) &&
-        !arangodb::wal::LogfileManager::instance()
-             ->suppressShapeInformation()) {
-      // In this case we have to take care of the legend, we know that the
-      // marker does not have a legend so far, so first try to get away
-      // with this:
-      // (Note that the latter also works for edges!
-      TRI_voc_cid_t cid = oldm->_collectionId;
-      TRI_shape_sid_t sid = oldm->_shape;
-      void* oldLegend;
-      arangodb::wal::SlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-              oldmarker, operation.marker->size(), false, cid, sid, 0,
-              oldLegend);
-      if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
-        // Oh dear, we have to build a legend and patch the marker:
-        arangodb::basics::JsonLegend legend(
-            document->getShaper());  // PROTECTED by trx
-        int res = legend.addShape(sid, oldmarker + oldm->_offsetJson,
-                                  oldm->_size - oldm->_offsetJson);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        } else {
-          sizeChanged =
-              legend.getSize() - (oldm->_offsetJson - oldm->_offsetLegend);
-          TRI_voc_size_t newMarkerSize =
-              (TRI_voc_size_t)(oldm->_size + sizeChanged);
-
-          // Now construct the new marker on the heap:
-          char* newmarker = new char[newMarkerSize];
-          memcpy(newmarker, oldmarker, oldm->_offsetLegend);
-          legend.dump(newmarker + oldm->_offsetLegend);
-          memcpy(newmarker + oldm->_offsetLegend + legend.getSize(),
-                 oldmarker + oldm->_offsetJson,
-                 oldm->_size - oldm->_offsetJson);
-
-          // And fix its entries:
-          auto newm =
-              reinterpret_cast<arangodb::wal::document_marker_t*>(newmarker);
-          newm->_size = newMarkerSize;
-          newm->_offsetJson =
-              (uint32_t)(oldm->_offsetLegend + legend.getSize());
-          arangodb::wal::SlotInfoCopy slotInfo2 =
-              arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-                  newmarker, newMarkerSize, false, cid, sid,
-                  newm->_offsetLegend, oldLegend);
-          delete[] newmarker;
-          if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
-            return slotInfo2.errorCode;
-          }
-          fid = slotInfo2.logfileId;
-          position = slotInfo2.mem;
-          operation.tick = slotInfo2.tick;
-        }
-      } else if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        return slotInfo.errorCode;
-      } else {
-        int64_t* legendPtr =
-            reinterpret_cast<int64_t*>(oldmarker + oldm->_offsetLegend);
-        *legendPtr = reinterpret_cast<char*>(oldLegend) -
-                     reinterpret_cast<char*>(legendPtr);
-        // This means that we can find the old legend relative to
-        // the new position in the same WAL file.
-        operation.tick = slotInfo.tick;
-        fid = slotInfo.logfileId;
-        position = slotInfo.mem;
-      }
-
-    } else {
-      // No document or edge marker, just append it to the WAL:
-      arangodb::wal::SlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-              operation.marker->mem(), operation.marker->size(), false);
-      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        // some error occurred
-        return slotInfo.errorCode;
-      }
-      operation.tick = slotInfo.tick;
-      fid = slotInfo.logfileId;
-      position = slotInfo.mem;
+    // No document or edge marker, just append it to the WAL:
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(
+            operation.marker->mem(), operation.marker->size(), false);
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // some error occurred
+      return slotInfo.errorCode;
     }
+    operation.tick = slotInfo.tick;
+    fid = slotInfo.logfileId;
+    position = slotInfo.mem;
   } else {
     // this is an envelope marker that has been written to the logfiles before
     // avoid writing it again!

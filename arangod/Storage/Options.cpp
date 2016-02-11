@@ -21,17 +21,51 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Storage/Options.h"
+#include "Options.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/AttributeTranslator.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+  
+static std::unique_ptr<VPackAttributeTranslator> translator;
+static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
+static std::unique_ptr<VPackOptions> options;
+
+
+void StorageOptions::initialize() {
+  LOG(INFO) << "initializing vpack";
+  translator.reset(new VPackAttributeTranslator);
+/*
+  // these attribute names will be translated into short integer values
+  translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
+  translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
+  translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
+  translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
+  translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
+*/
+  translator->seal();
+
+  options.reset(new VPackOptions);
+//  options->attributeTranslator = translator.get();
+}
+
+VPackAttributeTranslator* StorageOptions::getTranslator() {
+  return translator.get();
+}
+
+VPackOptions* StorageOptions::getOptions() {
+  return options.get();
+}
+
+/*
 
 // global options used when converting JSON into a document
 VPackOptions StorageOptions::JsonToDocumentTemplate;
@@ -196,3 +230,4 @@ VPackCustomTypeHandler* StorageOptions::createCustomHandler(
     arangodb::CollectionNameResolver const* resolver) {
   return new CustomTypeHandlerImpl(resolver);
 }
+*/

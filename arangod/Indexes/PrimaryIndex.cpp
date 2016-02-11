@@ -25,14 +25,20 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
-static inline uint64_t HashKey(void* userData, char const* key) {
-  return TRI_FnvHashString(key);
+static inline uint64_t HashKey(void* userData, uint8_t const* key) {
+  return VPackSlice(key).hash();
 }
 
 static inline uint64_t HashElement(void* userData,
@@ -44,11 +50,16 @@ static inline uint64_t HashElement(void* userData,
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement(void* userData, char const* key,
+static bool IsEqualKeyElement(void* userData, uint8_t const* key,
                               uint64_t const hash,
                               TRI_doc_mptr_t const* element) {
-  return (hash == element->_hash &&
-          strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0);
+  if (hash != element->_hash) {
+    return false;
+  }
+  
+  VPackSlice slice(key);
+  VPackSlice other(element->vpack());
+  return other.get(TRI_VOC_ATTRIBUTE_KEY).equals(slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,9 +68,14 @@ static bool IsEqualKeyElement(void* userData, char const* key,
 
 static bool IsEqualElementElement(void* userData, TRI_doc_mptr_t const* left,
                                   TRI_doc_mptr_t const* right) {
-  return left->_hash == right->_hash &&
-         strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) ==
-             0;
+  if (left->_hash != right->_hash) {
+    return false;
+  }
+
+  VPackSlice l(left->vpack());
+  VPackSlice r(right->vpack());
+
+  return l.get(TRI_VOC_ATTRIBUTE_KEY).equals(r.get(TRI_VOC_ATTRIBUTE_KEY));
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
@@ -156,8 +172,19 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
+                                        VPackSlice const& slice) const {
+  return _primaryIndex->findByKey(trx, slice.begin());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an element given a key
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         char const* key) const {
-  return _primaryIndex->findByKey(trx, key);
+  VPackBuilder builder;
+  builder.add(VPackValue(key));
+  return _primaryIndex->findByKey(trx, builder.data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +196,9 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
 TRI_doc_mptr_t* PrimaryIndex::lookupKey(
     arangodb::Transaction* trx, char const* key,
     arangodb::basics::BucketPosition& position, uint64_t& hash) const {
-  return _primaryIndex->findByKey(trx, key, position, hash);
+  VPackBuilder builder;
+  builder.add(VPackValue(key));
+  return _primaryIndex->findByKey(trx, builder.data(), position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +275,18 @@ int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_doc_mptr_t* header,
 
 TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::Transaction* trx,
                                         char const* key) {
-  return _primaryIndex->removeByKey(trx, key);
+  VPackBuilder builder;
+  builder.add(VPackValue(key));
+  return _primaryIndex->removeByKey(trx, builder.data());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an key/element from the index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::Transaction* trx,
+                                        VPackSlice const& slice) {
+  return _primaryIndex->removeByKey(trx, slice.begin());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,13 +298,13 @@ int PrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
 }
 
 uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
-                                     char const* key) {
-  return HashKey(trx, key);
+                                     VPackSlice const& slice) {
+  return slice.hash();
 }
 
 uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
-                                     char const* key, size_t length) {
-  return TRI_FnvHashPointer(static_cast<void const*>(key), length);
+                                     uint8_t const* key) {
+  return HashKey(trx, key);
 }
 
 void PrimaryIndex::invokeOnAllElements(

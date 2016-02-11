@@ -655,6 +655,10 @@ class Slice {
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const;
 
+  static bool equals(uint8_t const* left, uint8_t const* right) {
+    return Slice(left).equals(Slice(right));
+  }
+
   std::string toJson() const;
   std::string toString() const;
   std::string hexType() const;

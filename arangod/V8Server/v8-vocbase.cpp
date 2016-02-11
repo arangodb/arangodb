@@ -53,6 +53,7 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-wrapshapedjson.h"
 #include "V8Server/V8Traverser.h"
+#include "V8Server/V8VPackWrapper.h"
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
@@ -3764,6 +3765,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
                                ft->GetFunction());
 
   TRI_InitV8ShapedJson(isolate, context, threadNumber, v8g);
+
+  arangodb::V8VPackWrapper::initialize(isolate, context, v8g);
 
   TRI_InitV8cursor(context, v8g);
 

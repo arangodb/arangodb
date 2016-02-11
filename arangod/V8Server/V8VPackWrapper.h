@@ -21,27 +21,48 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TransactionContext.h"
-#include "Storage/Options.h"
+#ifndef ARANGOD_V8_SERVER_V8_VPACK_WRAPPER_H
+#define ARANGOD_V8_SERVER_V8_VPACK_WRAPPER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "V8/v8-globals.h"
+#include "VocBase/voc-types.h"
+
+#include <v8.h>
+
+struct TRI_df_marker_s;
+struct TRI_doc_mptr_t;
+struct TRI_document_collection_t;
+
+namespace arangodb {
+class DocumentDitch;
+class Transaction;
+
+namespace V8VPackWrapper {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the context
+/// @brief wraps a VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-TransactionContext::TransactionContext() {}
+v8::Handle<v8::Value> wrap(v8::Isolate*, arangodb::Transaction*,
+                           TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
+                           struct TRI_df_marker_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the context
+/// @brief wraps a VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-TransactionContext::~TransactionContext() {}
-  
+v8::Handle<v8::Value> wrap(v8::Isolate*, arangodb::Transaction*,
+                           TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
+                           struct TRI_doc_mptr_t const*);
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the vpack options
+/// @brief generate the VPack object template
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackOptions const* TransactionContext::getVPackOptions() const {
-  return StorageOptions::getOptions(); 
+void initialize(v8::Isolate*, v8::Handle<v8::Context>, TRI_v8_global_t*);
+
 }
+}
+
+#endif

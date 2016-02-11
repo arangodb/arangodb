@@ -26,38 +26,24 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/AttributeTranslator.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
-namespace velocypack {
-class AttributeTranslator;
-struct AttributeExcludeHandler;
-struct CustomTypeHandler;
-struct Options;
+
+namespace StorageOptions {
+  void initialize();
+
+  VPackAttributeTranslator* getTranslator();
+  VPackOptions* getOptions();
+  
+  VPackOptions* getDocumentToJsonTemplate();
+  VPackOptions* getJsonToDocumentTemplate();
+  VPackOptions* getNonDocumentTemplate();
+//  VPackCustomTypeHandler* createCustomHandler(
+//      arangodb::CollectionNameResolver const*);
 }
-class CollectionNameResolver;
-
-class StorageOptions {
- public:
-  StorageOptions();
-  ~StorageOptions();
-
-  StorageOptions(StorageOptions const&) = delete;
-  StorageOptions& operator=(StorageOptions const&) = delete;
-
-  static arangodb::velocypack::Options getDocumentToJsonTemplate();
-  static arangodb::velocypack::Options getJsonToDocumentTemplate();
-  static arangodb::velocypack::Options getNonDocumentTemplate();
-  static arangodb::velocypack::CustomTypeHandler* createCustomHandler(
-      arangodb::CollectionNameResolver const*);
-
- private:
-  std::unique_ptr<arangodb::velocypack::AttributeTranslator> _translator;
-  std::unique_ptr<arangodb::velocypack::AttributeExcludeHandler>
-      _excludeHandler;
-
-  static arangodb::velocypack::Options JsonToDocumentTemplate;
-  static arangodb::velocypack::Options DocumentToJsonTemplate;
-  static arangodb::velocypack::Options NonDocumentTemplate;
-};
 }
 
 #endif

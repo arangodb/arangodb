@@ -31,6 +31,9 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -71,7 +74,7 @@ class PrimaryIndex final : public Index {
   ~PrimaryIndex();
 
  private:
-  typedef arangodb::basics::AssocUnique<char const, TRI_doc_mptr_t>
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
       TRI_PrimaryIndex_t;
 
  public:
@@ -99,6 +102,9 @@ class PrimaryIndex final : public Index {
 
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
+
+  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*,
+                            VPackSlice const&) const;
 
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
 
@@ -157,11 +163,13 @@ class PrimaryIndex final : public Index {
 
   TRI_doc_mptr_t* removeKey(arangodb::Transaction*, char const*);
 
+  TRI_doc_mptr_t* removeKey(arangodb::Transaction* trx,
+                            VPackSlice const&);
+
   int resize(arangodb::Transaction*, size_t);
 
-  static uint64_t calculateHash(arangodb::Transaction*, char const*);
-
-  static uint64_t calculateHash(arangodb::Transaction*, char const*, size_t);
+  static uint64_t calculateHash(arangodb::Transaction*, VPackSlice const&);
+  static uint64_t calculateHash(arangodb::Transaction*, uint8_t const*);
 
   void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
 

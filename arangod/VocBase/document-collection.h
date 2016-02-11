@@ -111,6 +111,20 @@ struct TRI_doc_mptr_t {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void setDataPtr(void const* d) { _dataptr = d; }
+  
+
+  inline uint8_t const* vpack() const { 
+    TRI_df_marker_t const* marker =
+        static_cast<TRI_df_marker_t const*>(_dataptr);
+
+    if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+      return reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24; // TODO: FIX hard-coded value
+    }
+
+    TRI_ASSERT(false);
+    return 0;
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the beginning of the shaped json stored in the
@@ -320,6 +334,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
 
+  int read(arangodb::Transaction*, std::string const&,
+           TRI_doc_mptr_copy_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_mptr_copy_t*, bool, bool);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const*,

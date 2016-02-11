@@ -30,9 +30,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/TransactionContext.h"
 
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_transaction_s;
 
 namespace arangodb {
@@ -57,12 +54,6 @@ class StandaloneTransactionContext final : public TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
 
   CollectionNameResolver const* getResolver() const override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the vpack options
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackOptions const* getVPackOptions() const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the parent transaction (none in our case)
@@ -95,11 +86,6 @@ class StandaloneTransactionContext final : public TransactionContext {
 
   CollectionNameResolver* _resolver;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the options for vpack
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackOptions _options;
 };
 }
 

@@ -26,6 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
+#include "Storage/Options.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -331,6 +335,8 @@ class MarkerAccessorDocument : public T {
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
 
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getOptions()); }
+
   static uint64_t staticLength() { return 8; }
 };
 
@@ -408,13 +414,15 @@ class MarkerAccessorStructural : public T {
   uint8_t* versionedVPackValue() const { return MarkerReader::payload() + 8; }
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
+  
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getOptions()); }
 
   static uint64_t staticLength() { return 0; }
 };
 
 template <typename T>
 class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
-  /* this is a marker accessor for database.
+  /* this is a marker accessor for databases.
      its layout is:
 
      BaseMarker      base (16 or 24 bytes)
@@ -489,54 +497,5 @@ class MarkerWriterIndex : public MarkerReaderIndex {
 }
 
 std::ostream& operator<<(std::ostream&, arangodb::MarkerReader const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReader const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderMeta const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderMeta const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&,
-                         arangodb::MarkerReaderDocumentPreface const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDocumentPreface const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderDocument const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDocument const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderDatabase const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderDatabase const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&,
-                         arangodb::MarkerReaderCollection const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderCollection const& marker) {
-  return operator<<(stream, &marker);
-}
-
-std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderIndex const*);
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::MarkerReaderIndex const& marker) {
-  return operator<<(stream, &marker);
-}
 
 #endif

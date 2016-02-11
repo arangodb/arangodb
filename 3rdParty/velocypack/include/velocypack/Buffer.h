@@ -78,7 +78,7 @@ class Buffer {
           delete[] _buffer;
         }
         _buffer = buffer;
-        _alloc = that.pos;
+        _alloc = that._pos;
       }
 
       _pos = that._pos;

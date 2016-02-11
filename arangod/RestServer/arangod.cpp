@@ -24,6 +24,8 @@
 #include "Basics/Common.h"
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
+#include "Storage/Options.h"
+
 #include <signal.h>
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -91,6 +93,8 @@ int main(int argc, char* argv[]) {
   // initialize sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALIZE(argc, argv);
+
+  arangodb::StorageOptions::initialize();
 
   if (startAsService) {
     TRI_StartService(argc, argv);

@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_V8_SERVER_V8_WRAPSHAPEDJSON_H
 #define ARANGOD_V8_SERVER_V8_WRAPSHAPEDJSON_H 1
+
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 #include "VocBase/server.h"

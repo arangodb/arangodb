@@ -510,11 +510,11 @@ class Transaction {
     if (orderDitch(trxCollection) == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+      
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
     try {
-      return TRI_ReadShapedJsonDocumentCollection(
-          this, trxCollection, (TRI_voc_key_t)key.c_str(), mptr,
-          !isLocked(trxCollection, TRI_TRANSACTION_READ));
+      return document->read(this, key, mptr, !isLocked(trxCollection, TRI_TRANSACTION_READ));
     } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {

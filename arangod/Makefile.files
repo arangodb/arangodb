@@ -188,6 +188,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/V8QueueJob.cpp \
 	arangod/V8Server/V8TimerTask.cpp \
 	arangod/V8Server/V8Traverser.cpp \
+	arangod/V8Server/V8VPackWrapper.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-collection.cpp \
 	arangod/V8Server/v8-collection-util.cpp \

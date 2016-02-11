@@ -1090,7 +1090,7 @@ static int AddSystemAttributes(Transaction* trx, TRI_voc_cid_t cid,
       return res;
     }
   }
-
+/*
   // now add _id attribute
   uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID,
                            VPackValuePair(9ULL, VPackValueType::Custom));
@@ -1102,8 +1102,102 @@ static int AddSystemAttributes(Transaction* trx, TRI_voc_cid_t cid,
                   VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf1;
   arangodb::velocypack::storeUInt64(p, tick);
-
+*/
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document and returns it
+////////////////////////////////////////////////////////////////////////////////
+
+static void DocumentVocbaseVPack(
+    bool useCollection, v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // first and only argument should be a document idenfifier
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
+  }
+
+  std::unique_ptr<char[]> key;
+  TRI_voc_rid_t rid;
+  TRI_vocbase_t* vocbase;
+  TRI_vocbase_col_t const* col = nullptr;
+
+  if (useCollection) {
+    // called as db.collection.document()
+    col =
+        TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+    if (col == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+    }
+
+    vocbase = col->_vocbase;
+  } else {
+    // called as db._document()
+    vocbase = GetContextVocBase(isolate);
+  }
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  V8ResolverGuard resolver(vocbase);
+  int err = ParseDocumentOrDocumentHandle(
+      isolate, vocbase, resolver.getResolver(), col, key, rid, args[0]);
+
+  LocalCollectionGuard g(useCollection ? nullptr
+                                       : const_cast<TRI_vocbase_col_t*>(col));
+
+  if (key.get() == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  if (err != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(err);
+  }
+
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
+
+  if (ServerState::instance()->isCoordinator()) {
+    DocumentVocbaseColCoordinator(col, args, true);
+    return;
+  }
+
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
+                                          vocbase, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.read(&mptr, key.get());
+  res = trx.finish(res);
+
+  TRI_ASSERT(trx.hasDitch());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, VPackSlice(mptr.vpack()));
+
+  if (rid != 0 && mptr._rid != rid) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_CONFLICT,
+                                   "revision not found");
+  }
+
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1204,7 +1298,7 @@ static void InsertVocbaseVPack(
     TRI_V8_RETURN_TRUE();
   }
 
-  std::string key = TRI_EXTRACT_MARKER_KEY(&trx, &mptr);  // PROTECTED by trx here
+  std::string key = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(_IdKey);
@@ -1213,8 +1307,8 @@ static void InsertVocbaseVPack(
   result->Set(
       _IdKey,
       V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), key));
-  result->Set(_RevKey,
-              V8RevisionId(isolate, TRI_EXTRACT_MARKER_RID(&trx, &mptr)));
+//  result->Set(_RevKey,
+//              V8RevisionId(isolate, TRI_EXTRACT_MARKER_RID(&trx, &mptr)));
   result->Set(_KeyKey, TRI_V8_STD_STRING(key));
 
   TRI_V8_RETURN(result);
@@ -1757,6 +1851,7 @@ static void RemoveVocbaseVPack(
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(TRI_VOC_ATTRIBUTE_KEY,
               VPackValue(reinterpret_cast<char*>(key.get())));
+  /*
   if (rid != 0) {
     // now add _rev attribute
     uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_REV,
@@ -1764,6 +1859,7 @@ static void RemoveVocbaseVPack(
     *p++ = 0xf1;
     arangodb::velocypack::storeUInt64(p, rid);
   }
+  */
 
   builder.close();
 
@@ -1805,6 +1901,17 @@ static void JS_DocumentVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   DocumentVocbaseCol(true, args);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock documentsCollectionName
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_DocumentVocbaseVPack(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  DocumentVocbaseVPack(true, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -4075,17 +4182,19 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_DatafilesVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
+//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
+//                       JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
-                       JS_DocumentVocbaseCol);
+                       JS_DocumentVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
                        JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"),
                        JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"),
                        JS_FiguresVocbaseCol);
+//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
+//                       JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
-                       JS_InsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insertv"),
                        JS_InsertVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
                        JS_LoadVocbaseCol);
@@ -4097,9 +4206,9 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_PlanIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),
                        JS_PropertiesVocbaseCol);
+//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
+//                       JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
-                       JS_RemoveVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("removev"),
                        JS_RemoveVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("revision"),
                        JS_RevisionVocbaseCol);
@@ -4111,7 +4220,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(
       isolate, rt, TRI_V8_ASCII_STRING("save"),
-      JS_InsertVocbaseCol);  // note: save is now an alias for insert
+      JS_InsertVocbaseVPack);  // note: save is now an alias for insert
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"),
                        JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"),
