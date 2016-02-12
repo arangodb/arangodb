@@ -53,10 +53,6 @@ set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
-# Tests
-set(TEST_BASICS_SUITE basics_suite)
-set(TEST_GEO_SUITE    geo_suite)
-
 # Google V8 engine including ICU
 set(V8_VERSION        4.3.61)
 
@@ -521,7 +517,7 @@ endif ()
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
-# libnoise ---------------------------------------------------------------------
+# linenoise --------------------------------------------------------------------
 set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 
 # Boost ------------------------------------------------------------------------
@@ -534,9 +530,6 @@ if (${Boost_FOUND})
 else()
   message ("Boost unit test framework not found. Unit tests are disabled.")
 endif()
-
-# Tcmalloc ---------------------------------------------------------------------
-find_package(tcmalloc)
 
 # OpenSSL ----------------------------------------------------------------------
 #set (OPENSSL_USE_STATIC_LIBS "TRUE")
@@ -615,6 +608,10 @@ else ()
   install_readme(LICENSE share/doc/arangodb LICENSE)
   install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb LICENSES-OTHER-COMPONENTS.md)
 endif ()
+
+# Tests
+set(TEST_BASICS_SUITE basics_suite)
+set(TEST_GEO_SUITE    geo_suite)
 
 # Enable testing ---------------------------------------------------------------
 enable_testing()
