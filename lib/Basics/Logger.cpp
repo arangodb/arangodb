@@ -42,6 +42,7 @@
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -214,10 +215,8 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, bool fatal2stderr,
 
     if (fd < 0) {
       std::cerr << "cannot write to file '" << filename << "'" << std::endl;
-      _filename = "+";
-      _fd.store(STDERR_FILENO);
-    } else {
-      _fd.store(fd);
+
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
     }
   }
 }
@@ -451,6 +450,79 @@ std::string LogAppenderSyslog::details() {
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build an appender object
+////////////////////////////////////////////////////////////////////////////////
+
+static LogAppender* buildAppender(std::string const& output, bool fatal2stderr, 
+                                  std::string const& contentFilter,
+                                  std::unordered_set<std::string>& existingAppenders) {
+  // first handle syslog-logging
+#ifdef TRI_ENABLE_SYSLOG
+  if (StringUtils::isPrefix(output, "syslog://")) {
+    auto s = StringUtils::split(output.substr(9), '/');
+
+    if (s.size() < 1 || s.size() > 2) {
+      LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
+               << "'syslog://facility/identifier'";
+      return nullptr;
+    }
+
+    if (s.size() == 1) {
+      return new LogAppenderSyslog(s[0], "", contentFilter);
+    }
+    return new LogAppenderSyslog(s[0], s[1], contentFilter);
+  }
+#endif
+ 
+  // everything else must be file-based logging 
+  std::string filename;
+  if (output == "-" || output == "+") {
+    filename = output;
+  } else if (StringUtils::isPrefix(output, "file://")) {
+    filename = output.substr(7);
+  } else {
+    LOG(ERR) << "unknown logger output '" << output << "'";
+    return nullptr;
+  }
+
+  // helper function to prevent duplicate output filenames
+  auto hasAppender = [&existingAppenders](std::string const& filename) {
+    if (existingAppenders.find(filename) != existingAppenders.end()) {
+      return true;
+    }
+    // treat stderr and stdout as one output filename
+    if (filename == "-" && 
+        existingAppenders.find("+") != existingAppenders.end()) {
+      return true;
+    }
+    if (filename == "+" && 
+        existingAppenders.find("-") != existingAppenders.end()) {
+      return true;
+    }
+    return false;
+  };
+  
+  if (hasAppender(filename)) {
+    // already have an appender for the same output
+    return nullptr;
+  }
+
+  try {
+    std::unique_ptr<LogAppender> appender(new LogAppenderFile(filename, fatal2stderr, contentFilter));
+    existingAppenders.emplace(filename);
+    return appender.release();
+  }
+  catch (...) {
+    // cannot open file for logging
+    // try falling back to stderr instead
+    if (hasAppender("-")) {
+      return nullptr;
+    }
+    return buildAppender("-", fatal2stderr, contentFilter, existingAppenders);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RingBuffer
@@ -726,7 +798,8 @@ std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::addAppender(std::string const& definition, bool fatal2stderr,
-                         std::string const& filter) {
+                         std::string const& filter,
+                         std::unordered_set<std::string>& existingAppenders) {
   std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
@@ -767,42 +840,19 @@ void Logger::addAppender(std::string const& definition, bool fatal2stderr,
 
     topic = it->second;
   }
+ 
+  std::unique_ptr<LogAppender> appender(buildAppender(output, f2s, contentFilter, existingAppenders)); 
 
-  std::unique_ptr<LogAppender> appender;
-
-  if (output == "-") {
-    appender.reset(new LogAppenderFile("-", f2s, contentFilter));
-  } else if (output == "+") {
-    appender.reset(new LogAppenderFile("+", f2s, contentFilter));
-  } else if (StringUtils::isPrefix(output, "file://")) {
-    auto filename = output.substr(7);
-
-    appender.reset(new LogAppenderFile(filename, f2s, contentFilter));
-#ifdef TRI_ENABLE_SYSLOG
-  } else if (StringUtils::isPrefix(output, "syslog://")) {
-    auto s = StringUtils::split(output.substr(9), '/');
-
-    if (s.size() < 1 || s.size() > 2) {
-      LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
-               << "'syslog://facility/identifier'";
-      return;
-    }
-
-    if (s.size() == 1) {
-      appender.reset(new LogAppenderSyslog(s[0], "", contentFilter));
-    } else {
-      appender.reset(new LogAppenderSyslog(s[0], s[1], contentFilter));
-    }
-#endif
-  } else {
-    LOG(ERR) << "unknown output '" << output << "'";
+  if (appender == nullptr) {
+    // cannot open appender or already have an appender for the channel
     return;
   }
 
   size_t n = topic == nullptr ? MAX_LOG_TOPICS : topic->id();
 
   MUTEX_LOCKER(guard, AppendersLock);
-  Appenders[n].emplace_back(appender.release());
+  Appenders[n].emplace_back(appender.get());
+  appender.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
