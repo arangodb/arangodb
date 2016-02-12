@@ -91,43 +91,41 @@
       return data2;
     },
 
-  createIndex: function (postParameter) {
-      var returnVal = false;
+    createIndex: function (postParameter, callback) {
 
+        $.ajax({
+            cache: false,
+            type: "POST",
+            url: "/_api/index?collection="+ this.get("id"),
+            data: JSON.stringify(postParameter),
+            contentType: "application/json",
+            processData: false,
+            async: true,
+            success: function() {
+              callback(false);
+            },
+            error: function(data) {
+              callback(true, data);
+            }
+        });
+        callback();
+    },
+
+    deleteIndex: function (id, callback) {
       $.ajax({
           cache: false,
-          type: "POST",
-          url: "/_api/index?collection="+ this.get("id"),
-          data: JSON.stringify(postParameter),
-          contentType: "application/json",
-          processData: false,
+          type: 'DELETE',
+          url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
           async: false,
-          success: function() {
-            returnVal = true;
+          success: function () {
+            callback(false);
           },
-          error: function(data) {
-            returnVal = data;
+          error: function (data) {
+            callback(true, data);
           }
       });
-      return returnVal;
-  },
-
-      deleteIndex: function (id) {
-          var returnval = false;
-          $.ajax({
-              cache: false,
-              type: 'DELETE',
-              url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-              async: false,
-              success: function () {
-                returnval = true;
-              },
-              error: function () {
-                returnval = false;
-              }
-          });
-          return returnval;
-      },
+      callback();
+    },
 
     truncateCollection: function () {
       $.ajax({
@@ -194,8 +192,9 @@
         },
         error: function(data) {
           try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
+            console.log("error");
+            //var parsed = JSON.parse(data.responseText);
+            //result = parsed.errorMessage;
           }
           catch (e) {
             result = false;

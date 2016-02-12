@@ -44,7 +44,6 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${V8_INCLUDE_DIR})
 include_directories(${ICU_INCLUDE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
-add_definitions("-DTRI_HAVE_LINENOISE")
 
 SET(LIB_ARANGO_CONSOLE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp

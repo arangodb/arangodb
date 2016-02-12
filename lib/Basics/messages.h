@@ -49,13 +49,14 @@
 #define TRI_BYE_MESSAGE_RU "До свидания!"
 #define TRI_BYE_MESSAGE_SV "Adjö!"
 #define TRI_BYE_MESSAGE_PT "Até Breve!"
+#define TRI_BYE_MESSAGE_FA "\u062E\u062F\u0627\u062D\u0627\u0641\u0638!"
 
 #define TRI_BYE_MESSAGE                                                 \
   TRI_BYE_MESSAGE_CH                                                    \
   " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE " " TRI_BYE_MESSAGE_EN  \
-  " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES " " TRI_BYE_MESSAGE_FR  \
+  " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES " " TRI_BYE_MESSAGE_GR  \
   "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL \
-  " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_GR " " TRI_BYE_MESSAGE_JP  \
-  " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT
+  " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_FR " " TRI_BYE_MESSAGE_JP  \
+  " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT " " TRI_BYE_MESSAGE_FA
 
 #endif

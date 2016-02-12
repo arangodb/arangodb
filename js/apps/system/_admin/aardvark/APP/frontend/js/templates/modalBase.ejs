@@ -8,8 +8,42 @@
    </div>
    <%}%>
 
+    <% if (tabBar) { %>
+      <div class="modal-tabbar">
+        <ul id="infoTab" class="nav nav-tabs">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <li class="active"><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <%} else {%>
+              <li><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </ul>
+      </div>
+    <%}%>
+
     <div class="modal-body">
+
+      <% if (tabBar) { %>
+        <div class="tab-content">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <div class="tab-pane tab-pane-modal active" id="<%=value%>">
+              </div>
+            <%} else {%>
+              <div class="tab-pane tab-pane-modal" id="<%=value%>">
+              </div>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </div>
+      <%}%>
+
     </div>
+
     <% if (!hideFooter) { %>
     <div class="modal-footer">
       <%
