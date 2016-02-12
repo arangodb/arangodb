@@ -34,6 +34,7 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # ArangoDB needs c++11
 set(CMAKE_CXX_STANDARD 11)
+include (CheckCXX11Features)
 
 # Need threads
 find_package(Threads REQUIRED)
