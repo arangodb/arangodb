@@ -65,16 +65,16 @@ else()
   message(ERROR "Not implemented for your OS")
 endif()
 
-
 include(ExternalProject)
 set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
-  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}) 
+  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+  CXXFLAGS=${CMAKE_CXX_FLAGS})
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND}" CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
+  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++")
 endif()
 ExternalProject_Add(v8_build SOURCE_DIR "${V8_DIR}"
-  BUILD_IN_SOURCE TRUE  BUILD_COMMAND "${V8_BUILD_COMMAND}" 
+  BUILD_IN_SOURCE TRUE BUILD_COMMAND "${V8_BUILD_COMMAND}" 
   INSTALL_COMMAND "")
 
 ## V8
@@ -86,7 +86,6 @@ import_target(v8_libbase v8_build "${V8_DIR}/include"
 
 import_target(v8_libplatform v8_build "${V8_DIR}/include"
   "${V8_BIN_DIR}/libv8_libplatform.a") 
-
 
 import_target(v8_nosnapshot v8_build "${V8_DIR}/include"
   "${V8_BIN_DIR}/libv8_nosnapshot.a") 
