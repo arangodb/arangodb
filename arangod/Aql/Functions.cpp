@@ -493,6 +493,9 @@ static void AppendAsString(arangodb::basics::StringBuffer& buffer,
       break;
     }
   }
+
+  // make it null-terminated for all c-string-related functions
+  buffer.appendChar('\0');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
