@@ -37,7 +37,6 @@ using namespace arangodb;
   
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
-static std::unique_ptr<VPackCustomTypeHandler> customLengthHandler;
 static std::unique_ptr<VPackOptions> defaultOptions;
 static std::unique_ptr<VPackOptions> insertOptions;
 
@@ -66,24 +65,6 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
 };
 
 
-// custom type value handler, used for determining the length of the _id attribute
-struct CustomIdLengthHandler : public VPackCustomTypeHandler {
-  void toJson(VPackSlice const&, VPackDumper*,
-              VPackSlice const&) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  VPackValueLength byteSize(VPackSlice const& value) {
-    if (value.head() != 0xf0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid custom type");
-    }
-    
-    // _id
-    return 1 + 8;  // 0xf0 + 8 bytes for collection id
-  }
-};
-
 // custom type value handler, used for deciphering the _id attribute
 struct CustomIdTypeHandler : public VPackCustomTypeHandler {
   explicit CustomIdTypeHandler(TRI_vocbase_t* vocbase)
@@ -107,7 +88,7 @@ struct CustomIdTypeHandler : public VPackCustomTypeHandler {
   }
 
   void toJson(VPackSlice const& value, VPackDumper* dumper,
-              VPackSlice const& base) {
+              VPackSlice const& base) override final {
     if (value.head() != 0xf0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid custom type");
@@ -134,16 +115,6 @@ struct CustomIdTypeHandler : public VPackCustomTypeHandler {
     dumper->appendString(&buffer[0], len + 1 + keyLength);
   }
 
-  VPackValueLength byteSize(VPackSlice const& value) {
-    if (value.head() != 0xf0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid custom type");
-    }
-    
-    // _id
-    return 1 + 8;  // 0xf0 + 8 bytes for collection id
-  }
-
   TRI_vocbase_t* vocbase;
   CollectionNameResolver* resolver;
   bool ownsResolver;
@@ -163,11 +134,11 @@ void StorageOptions::initialize() {
   translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
 
   translator->seal();
+
+  VPackSlice::attributeTranslator = translator.get();
   
   // initialize system attribute exclude handler    
   excludeHandler.reset(new SystemAttributeExcludeHandler);
-
-  customLengthHandler.reset(new CustomIdLengthHandler);
 
   // initialize default options
   defaultOptions.reset(new VPackOptions);
@@ -181,7 +152,7 @@ void StorageOptions::initialize() {
   insertOptions->checkAttributeUniqueness = true;
   insertOptions->sortAttributeNames = true; 
   insertOptions->attributeTranslator = translator.get();
-  insertOptions->customTypeHandler = customLengthHandler.get();
+  insertOptions->customTypeHandler = nullptr;
   insertOptions->attributeExcludeHandler = excludeHandler.get();
 }
 

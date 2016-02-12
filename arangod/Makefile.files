@@ -179,7 +179,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/ShapedJsonTransformer.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
-	arangod/Utils/TransactionContext.cpp \
 	arangod/Utils/V8TransactionContext.cpp \
 	arangod/Utils/WorkMonitorArangod.cpp \
 	arangod/V8Server/ApplicationV8.cpp \

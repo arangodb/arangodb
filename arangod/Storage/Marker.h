@@ -83,13 +83,14 @@ struct MarkerHelper {
 
   template <typename T>
   static inline T readNumber(uint8_t const* source, uint32_t length) {
-    T result = 0;
+    T value = 0;
+    uint64_t x = 0;
     uint8_t const* end = source + length;
     do {
-      result <<= 8;
-      result += static_cast<T>(*source++);
+      value += static_cast<T>(*source++) << x;
+      x += 8;
     } while (source < end);
-    return result;
+    return value;
   }
 
   template <typename T>

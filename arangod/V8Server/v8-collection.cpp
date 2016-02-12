@@ -29,6 +29,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Storage/Marker.h"
 #include "Storage/Options.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
@@ -1094,8 +1095,8 @@ static int AddSystemAttributes(Transaction* trx, TRI_voc_cid_t cid,
   // add _id attribute
   uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID,
                            VPackValuePair(9ULL, VPackValueType::Custom));
-  *p++ = 0xf0;
-  arangodb::velocypack::storeUInt64(p, cid);
+  *p++ = 0xf3;
+  MarkerHelper::storeNumber<uint64_t>(p, cid, sizeof(uint64_t));
 
   // add _rev attribute
   builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(tick)));

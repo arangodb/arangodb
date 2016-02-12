@@ -24,6 +24,7 @@
 #include "V8VPackWrapper.h"
 #include "Basics/conversions.h"
 #include "Basics/Logger.h"
+#include "Storage/Marker.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -31,6 +32,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/KeyGenerator.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -63,6 +65,32 @@ static int const SLOT_DITCH = 2;
 static inline VPackSlice VPackFromMarker(TRI_df_marker_t const* marker) {
   uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24; // TODO: remove hard-coded value
   return VPackSlice(ptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add the _id attribute to an object
+////////////////////////////////////////////////////////////////////////////////
+  
+static void AddCollectionId(v8::Isolate* isolate, v8::Handle<v8::Object> self,
+                            arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
+  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
+
+  VPackSlice slice = VPackFromMarker(marker);
+ 
+  // extract cid from marker 
+  VPackSlice id = slice.get(TRI_VOC_ATTRIBUTE_ID);
+  uint64_t cid = MarkerHelper::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+
+  VPackValueLength keyLength;
+  char const* key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength); 
+  TRI_ASSERT(key != nullptr);
+
+  size_t len = trx->resolver()->getCollectionName(buffer, cid);
+  buffer[len] = '/';
+  memcpy(buffer + len + 1,  key, keyLength);
+  
+  self->ForceSet(TRI_V8_STRING(TRI_VOC_ATTRIBUTE_ID), 
+                 TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,6 +216,10 @@ static void MapGetNamedVPack(
     std::string const key(*str, (size_t)str.length());
 
     if (key.empty()) {
+      TRI_V8_RETURN(v8::Handle<v8::Value>());
+    }
+    
+    if (key == TRI_VOC_ATTRIBUTE_ID) {
       TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
 
@@ -404,8 +436,12 @@ v8::Handle<v8::Value> V8VPackWrapper::wrap(v8::Isolate* isolate, arangodb::Trans
   if (doCopy) {
     // we'll create a full copy of the slice
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    
+ 
     CopyAttributes(isolate, result, marker, nullptr);
+    
+    // copy value of _id
+    AddCollectionId(isolate, result, trx, marker);
+    
     return result;
   }
 
@@ -451,6 +487,8 @@ v8::Handle<v8::Value> V8VPackWrapper::wrap(v8::Isolate* isolate, arangodb::Trans
 
     result->SetInternalField(SLOT_DITCH, myDitch);
   }
+    
+  AddCollectionId(isolate, result, trx, marker);
 
   return result;
 }
