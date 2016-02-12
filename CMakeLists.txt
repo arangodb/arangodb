@@ -169,6 +169,10 @@ endif ()
 # Architecture
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
+include (VcMacros)
+include (OptimizeForArchitecture)
+OptimizeForArchitecture()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 
 # Enable Backtrace -------------------------------------------------------------
 option(USE_BACKTRACE "whether we should try to generate c-level stacktraces"
