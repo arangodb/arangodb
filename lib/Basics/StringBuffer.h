@@ -482,6 +482,11 @@ namespace triagens {
           _buffer._len        = other->_len;
         }
 
+        void ensureNullTerminated () {
+          TRI_AppendCharStringBuffer(&_buffer, '\0');
+          --_buffer._current;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                    STRING AND CHARACTER APPENDERS
 // -----------------------------------------------------------------------------
