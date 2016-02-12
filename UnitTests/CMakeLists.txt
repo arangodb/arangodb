@@ -53,7 +53,7 @@ add_executable(
     Basics/StringUtilsTest.cpp
     ../lib/Basics/WorkMonitorDummy.cpp
 )
-
+add_dependencies(${TEST_BASICS_SUITE} v8_build)
 target_link_libraries(
     ${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
@@ -79,7 +79,7 @@ add_executable(
     ../lib/Basics/WorkMonitorDummy.cpp
     ../arangod/GeoIndex/GeoIndex.cpp
 )
-
+add_dependencies(${TEST_GEO_SUITE} v8_build)
 target_link_libraries(
     ${TEST_GEO_SUITE}
     ${LIB_ARANGO}
