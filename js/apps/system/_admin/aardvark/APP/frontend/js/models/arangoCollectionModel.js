@@ -144,46 +144,37 @@
       });
     },
 
-    loadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Loading collection...");
+    loadCollection: function (callback) {
+
       $.ajax({
         async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
-          self.set("status", "loaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
-    unloadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Unloading collection...");
+    unloadCollection: function (callback) {
       $.ajax({
         async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
         success: function () {
-          self.set("status", "unloaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
     renameCollection: function (name) {

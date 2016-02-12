@@ -53,10 +53,6 @@ set(BIN_ARANGOIMP     arangoimp)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
-# Tests
-set(TEST_BASICS_SUITE basics_suite)
-set(TEST_GEO_SUITE    geo_suite)
-
 # Google V8 engine including ICU
 set(V8_VERSION        4.3.61)
 
@@ -169,6 +165,10 @@ endif ()
 # Architecture
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
+include (VcMacros)
+include (OptimizeForArchitecture)
+OptimizeForArchitecture()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 
 # Enable Backtrace -------------------------------------------------------------
 option(USE_BACKTRACE "whether we should try to generate c-level stacktraces"
@@ -517,8 +517,10 @@ endif ()
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
-# libnoise ---------------------------------------------------------------------
+# linenoise --------------------------------------------------------------------
 set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
+option(USE_LINENOISE "User linenoise for editing command lines and command line histories" ON)
+
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
@@ -535,6 +537,14 @@ endif()
 #set (OPENSSL_USE_STATIC_LIBS "TRUE")
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
+if (OPENSSL_VERSION)
+  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
+  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
+  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+  if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
+    add_definitions(-DOPENSSL_NO_SSL2)
+  endif()				
+endif()
 
 # BISON&FLEX -------------------------------------------------------------------
 find_package (BISON)
@@ -600,6 +610,10 @@ else ()
   install_readme(LICENSE share/doc/arangodb LICENSE)
   install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb LICENSES-OTHER-COMPONENTS.md)
 endif ()
+
+# Tests
+set(TEST_BASICS_SUITE basics_suite)
+set(TEST_GEO_SUITE    geo_suite)
 
 # Enable testing ---------------------------------------------------------------
 enable_testing()
