@@ -148,7 +148,6 @@ add_library(
     Rest/InitializeRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
-    Utilities/DummyShell.cpp
     Utilities/LineEditor.cpp
     Utilities/ScriptLoader.cpp
     Utilities/ShellBase.cpp

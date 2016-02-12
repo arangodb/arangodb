@@ -26,11 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Utilities/Completer.h"
-#include "Utilities/DummyShell.h"
-
-#if defined(TRI_HAVE_LINENOISE)
 #include "Utilities/LinenoiseShell.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,18 +37,7 @@ using namespace arangodb::basics;
 
 ShellBase* ShellBase::buildShell(std::string const& history,
                                  Completer* completer) {
-  // no keyboard input. use low-level shell without fancy color codes
-  // and with proper pipe handling
-
-  if (!isatty(STDIN_FILENO)) {
-    return new DummyShell(history, completer);
-  } else {
-#if defined(TRI_HAVE_LINENOISE)
-    return new LinenoiseShell(history, completer);
-#else
-    return new DummyShell(history, completer);  // last resort!
-#endif
-  }
+  return new LinenoiseShell(history, completer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
