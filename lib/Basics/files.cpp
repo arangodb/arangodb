@@ -1156,17 +1156,15 @@ int TRI_CreateLockFile(char const* filename) {
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
-  TRI_CLOSE(fd);
+  
+  struct flock lock;
 
-  // try to open pid file
-  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
-
-  if (fd < 0) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
+  lock.l_start = 0;
+  lock.l_len = 0;
+  lock.l_type = F_WRLCK;
+  lock.l_whence = SEEK_SET;
   // try to lock pid file
-  rv = flock(fd, LOCK_EX);
+  rv = fcntl(fd, F_SETLK, &lock);
 
   if (rv == -1) {
     int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1237,19 +1235,20 @@ int TRI_VerifyLockFile(char const* filename) {
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
-  TRI_CLOSE(fd);
-
   if (n < 0) {
+    TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   // pid too long
   if (n == sizeof(buffer)) {
+    TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   // file empty
   if (n == 0) {
+    TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1257,26 +1256,29 @@ int TRI_VerifyLockFile(char const* filename) {
   int res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_pid_t pid = fc;
 
   if (kill(pid, 0) == -1) {
+    TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
+  struct flock lock;
 
-  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+  lock.l_start = 0;
+  lock.l_len = 0;
+  lock.l_type = F_WRLCK;
+  lock.l_whence = SEEK_SET;
+  // try to lock pid file
+  int canLock = fcntl(fd, F_SETLK, &lock);  // Exclusive (write) lock
 
-  if (fd < 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int canLock = flock(fd, LOCK_EX | LOCK_NB);
-
-  // file was not yet be locked
+  // file was not yet locken; could be locked
   if (canLock == 0) {
-    flock(fd, LOCK_UN);
+    lock.l_type = F_UNLCK;
+    fcntl(fd, F_GETLK, &lock);
     TRI_CLOSE(fd);
 
     return TRI_ERROR_NO_ERROR;
@@ -1286,7 +1288,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
   TRI_CLOSE(fd);
 
-  LOG(WARN) << "flock on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
+  LOG(WARN) << "fcntl on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -1337,7 +1339,14 @@ int TRI_DestroyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int res = flock(fd, LOCK_UN);
+  struct flock lock;
+
+  lock.l_start = 0;
+  lock.l_len = 0;
+  lock.l_type = F_UNLCK;
+  lock.l_whence = SEEK_SET;
+  // relesae the lock
+  int res = fcntl(fd, F_GETLK, &lock);
   TRI_CLOSE(fd);
 
   if (res == 0) {

@@ -613,16 +613,11 @@ else ()
   install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb LICENSES-OTHER-COMPONENTS.md)
 endif ()
 
-# Tests
+# Tests -----------------------------------------------------------------------
 set(TEST_BASICS_SUITE basics_suite)
-set(TEST_GEO_SUITE    geo_suite)
-
-# Enable testing ---------------------------------------------------------------
+set(TEST_GEO_SUITE geo_suite)
 enable_testing()
-
-# Test definitions -------------------------------------------------------------
 add_subdirectory(UnitTests)
-
 
 # Build package ----------------------------------------------------------------
 # Posible options are:
