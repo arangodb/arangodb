@@ -447,7 +447,6 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-env.js \
-               @top_srcdir@/js/common/tests/shell-foxx-manager-install-spec.js \
                @top_srcdir@/js/common/tests/shell-general-graph.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
@@ -461,20 +460,17 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-statement-encoding-noncluster.js \
                @top_srcdir@/js/common/tests/shell-statement-noncluster.js \
                @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
-               @top_srcdir@/js/common/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
                @top_srcdir@/js/common/tests/shell-cap-constraint.js \
-               @top_srcdir@/js/common/tests/shell-cap-constraint-timecritical.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-hash-index-noncluster.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
-               @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
+               @top_srcdir@/js/common/tests/shell-graph.js
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
@@ -482,10 +478,8 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js \
-               @top_srcdir@/js/server/tests/shell-collection-not-loaded-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-wal-noncluster-memoryintense.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
-               @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \
@@ -504,7 +498,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
-               @top_srcdir@/js/server/tests/shell-skiplist-rm-performance-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-skiplist-correctness.js
 
 SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
