@@ -58,7 +58,6 @@ target_link_libraries(
     ${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
     ${ICU_LIBS}
-#    ${ICU_LIBS}
     ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
