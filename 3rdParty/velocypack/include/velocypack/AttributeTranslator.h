@@ -33,6 +33,7 @@
 #include <memory>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -69,6 +70,30 @@ class AttributeTranslator {
   std::unordered_map<std::string, uint8_t const*> _keyToId;
   std::unordered_map<uint64_t, uint8_t const*> _idToKey;
   size_t _count;
+};
+
+class AttributeTranslatorScope {
+ private:
+  AttributeTranslatorScope(AttributeTranslatorScope const&) = delete;
+  AttributeTranslatorScope& operator= (AttributeTranslatorScope const&) = delete;
+
+ public:
+  explicit AttributeTranslatorScope(AttributeTranslator* translator)
+      : _old(Slice::attributeTranslator) {
+    Slice::attributeTranslator = translator;
+  }
+
+  ~AttributeTranslatorScope() {
+    revert();
+  }
+
+  // prematurely revert the change
+  void revert() {
+    Slice::attributeTranslator = _old;
+  }
+
+ private:
+   AttributeTranslator* _old;
 };
 
 }  // namespace arangodb::velocypack

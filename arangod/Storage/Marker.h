@@ -335,7 +335,7 @@ class MarkerAccessorDocument : public T {
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
 
-  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getOptions()); }
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getDefaultOptions()); }
 
   static uint64_t staticLength() { return 8; }
 };
@@ -415,7 +415,7 @@ class MarkerAccessorStructural : public T {
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
   
-  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getOptions()); }
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getDefaultOptions()); }
 
   static uint64_t staticLength() { return 0; }
 };

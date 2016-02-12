@@ -23,12 +23,12 @@
 
 #include "Options.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,57 +37,26 @@ using namespace arangodb;
   
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
-static std::unique_ptr<VPackOptions> options;
+static std::unique_ptr<VPackCustomTypeHandler> customLengthHandler;
+static std::unique_ptr<VPackOptions> defaultOptions;
+static std::unique_ptr<VPackOptions> insertOptions;
 
-
-void StorageOptions::initialize() {
-  translator.reset(new VPackAttributeTranslator);
-/*
-  // these attribute names will be translated into short integer values
-  translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
-  translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
-  translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
-  translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
-  translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
-*/
-  translator->seal();
-
-  options.reset(new VPackOptions);
-//  options->attributeTranslator = translator.get();
-}
-
-VPackAttributeTranslator* StorageOptions::getTranslator() {
-  return translator.get();
-}
-
-VPackOptions* StorageOptions::getOptions() {
-  return options.get();
-}
-
-/*
-
-// global options used when converting JSON into a document
-VPackOptions StorageOptions::JsonToDocumentTemplate;
-// global options used when converting documents into JSON
-VPackOptions StorageOptions::DocumentToJsonTemplate;
-// global options used for other conversions
-VPackOptions StorageOptions::NonDocumentTemplate;
-
-struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
+// attribute exclude handler for skipping over system attributes
+struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
   bool shouldExclude(VPackSlice const& key, int nesting) override final {
     VPackValueLength keyLength;
     char const* p = key.getString(keyLength);
 
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5) {
+    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
       // keep attribute
       return true;
     }
 
-    if ((keyLength == 3 && memcmp(p, "_id", keyLength) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", keyLength) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", keyLength) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", keyLength) == 0)) {
-      // exclude these attribute
+    // exclude these attributes (but not _key!)
+    if ((keyLength == 3 && memcmp(p, TRI_VOC_ATTRIBUTE_ID, keyLength) == 0) ||
+        (keyLength == 4 && memcmp(p, TRI_VOC_ATTRIBUTE_REV, keyLength) == 0) ||
+        (keyLength == 3 && memcmp(p, TRI_VOC_ATTRIBUTE_TO, keyLength) == 0) ||
+        (keyLength == 5 && memcmp(p, TRI_VOC_ATTRIBUTE_FROM, keyLength) == 0)) {
       return true;
     }
 
@@ -96,89 +65,139 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
   }
 };
 
-struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
-  explicit CustomTypeHandlerImpl(
-      arangodb::CollectionNameResolver const* resolver)
-      : resolver(resolver) {}
 
-  void toJson(VPackSlice const& value, VPackDumper* dumper,
-              VPackSlice const& base) {
-    if (value.head() == 0xf0) {
-      // _id
-      if (!base.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid value type");
-      }
-      uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
-      char buffer[512];  // This is enough for collection name + _key
-      size_t len = resolver->getCollectionName(&buffer[0], cid);
-      buffer[len] = '/';
-      VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
-
-      VPackValueLength keyLength;
-      char const* p = key.getString(keyLength);
-      if (p == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid _key value");
-      }
-      memcpy(&buffer[len + 1], p, keyLength);
-      dumper->appendString(&buffer[0], len + 1 + keyLength);
-      return;
-    }
-
-    if (value.head() == 0xf1) {
-      // _rev
-      dumper->sink()->push_back('"');
-      dumper->appendUInt(arangodb::velocypack::readUInt64(value.start() + 1));
-      dumper->sink()->push_back('"');
-      return;
-    }
-
-    if (value.head() == 0xf2) {
-      // _from, _to
-      // TODO
-      return;
-    }
-
-    throw "unknown type!";
+// custom type value handler, used for determining the length of the _id attribute
+struct CustomIdLengthHandler : public VPackCustomTypeHandler {
+  void toJson(VPackSlice const&, VPackDumper*,
+              VPackSlice const&) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   VPackValueLength byteSize(VPackSlice const& value) {
-    if (value.head() == 0xf0) {
-      // _id
-      return 1 + 8;  // 0xf0 + 8 bytes for collection id
+    if (value.head() != 0xf0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid custom type");
     }
-
-    if (value.head() == 0xf1) {
-      // _rev
-      return 1 + 8;  // 0xf1 + 8 bytes for tick value
-    }
-
-    if (value.head() == 0xf2) {
-      // _from, _to
-      // TODO!!
-      return 1;
-    }
-
-    throw "unknown type!";
+    
+    // _id
+    return 1 + 8;  // 0xf0 + 8 bytes for collection id
   }
-
-  arangodb::CollectionNameResolver const* resolver;
-  TRI_voc_cid_t cid;
 };
 
-StorageOptions::StorageOptions()
-    : _translator(new VPackAttributeTranslator),
-      _excludeHandler(new ExcludeHandlerImpl) {
+// custom type value handler, used for deciphering the _id attribute
+struct CustomIdTypeHandler : public VPackCustomTypeHandler {
+  explicit CustomIdTypeHandler(TRI_vocbase_t* vocbase)
+      : vocbase(vocbase), resolver(nullptr), ownsResolver(false) {}
+  
+  CustomIdTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver* resolver)
+      : vocbase(vocbase), resolver(resolver), ownsResolver(false) {}
+
+  ~CustomIdTypeHandler() { 
+    if (ownsResolver) {
+      delete resolver; 
+    }
+  }
+
+  CollectionNameResolver* getResolver() {
+    if (resolver == nullptr) {
+      resolver = new CollectionNameResolver(vocbase);
+      ownsResolver = true;
+    }
+    return resolver;
+  }
+
+  void toJson(VPackSlice const& value, VPackDumper* dumper,
+              VPackSlice const& base) {
+    if (value.head() != 0xf0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid custom type");
+    }
+
+    // _id
+    if (!base.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid value type");
+    }
+    uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
+    char buffer[512];  // This is enough for collection name + _key
+    size_t len = getResolver()->getCollectionName(&buffer[0], cid);
+    buffer[len] = '/';
+    VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    VPackValueLength keyLength;
+    char const* p = key.getString(keyLength);
+    if (p == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid _key value");
+    }
+    memcpy(&buffer[len + 1], p, keyLength);
+    dumper->appendString(&buffer[0], len + 1 + keyLength);
+  }
+
+  VPackValueLength byteSize(VPackSlice const& value) {
+    if (value.head() != 0xf0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid custom type");
+    }
+    
+    // _id
+    return 1 + 8;  // 0xf0 + 8 bytes for collection id
+  }
+
+  TRI_vocbase_t* vocbase;
+  CollectionNameResolver* resolver;
+  bool ownsResolver;
+};
+
+
+// initialize global vpack options
+void StorageOptions::initialize() {
+  // initialize translator
+  translator.reset(new VPackAttributeTranslator);
+
   // these attribute names will be translated into short integer values
-  _translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
-  _translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
-  _translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
-  _translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
-  _translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
+  translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
+  translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
+  translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
+  translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
+  translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
 
-  _translator->seal();
+  translator->seal();
+  
+  // initialize system attribute exclude handler    
+  excludeHandler.reset(new SystemAttributeExcludeHandler);
 
+  customLengthHandler.reset(new CustomIdLengthHandler);
+
+  // initialize default options
+  defaultOptions.reset(new VPackOptions);
+  defaultOptions->attributeTranslator = nullptr;
+  defaultOptions->customTypeHandler = nullptr;
+  
+  // initialize options for inserting documents
+  insertOptions.reset(new VPackOptions);
+  insertOptions->buildUnindexedArrays = false;
+  insertOptions->buildUnindexedObjects = false;
+  insertOptions->checkAttributeUniqueness = true;
+  insertOptions->sortAttributeNames = true; 
+  insertOptions->attributeTranslator = translator.get();
+  insertOptions->customTypeHandler = customLengthHandler.get();
+  insertOptions->attributeExcludeHandler = excludeHandler.get();
+}
+
+VPackAttributeTranslator const* StorageOptions::getTranslator() {
+  return translator.get();
+}
+
+VPackOptions const* StorageOptions::getDefaultOptions() {
+  return defaultOptions.get();
+}
+
+VPackOptions const* StorageOptions::getInsertOptions() {
+  return insertOptions.get();
+}
+
+/*
   // set options for JSON to document conversion
   JsonToDocumentTemplate.buildUnindexedArrays = false;
   JsonToDocumentTemplate.buildUnindexedObjects = false;
@@ -209,24 +228,4 @@ StorageOptions::StorageOptions()
   NonDocumentTemplate.escapeForwardSlashes = true;
   NonDocumentTemplate.unsupportedTypeBehavior =
       VPackOptions::FailOnUnsupportedType;
-}
-
-StorageOptions::~StorageOptions() {}
-
-VPackOptions StorageOptions::getDocumentToJsonTemplate() {
-  return DocumentToJsonTemplate;
-}
-
-VPackOptions StorageOptions::getJsonToDocumentTemplate() {
-  return JsonToDocumentTemplate;
-}
-
-VPackOptions StorageOptions::getNonDocumentTemplate() {
-  return NonDocumentTemplate;
-}
-
-VPackCustomTypeHandler* StorageOptions::createCustomHandler(
-    arangodb::CollectionNameResolver const* resolver) {
-  return new CustomTypeHandlerImpl(resolver);
-}
 */

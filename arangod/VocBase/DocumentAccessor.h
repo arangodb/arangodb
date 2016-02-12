@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Storage/Options.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"
@@ -102,7 +103,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(b));
     return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
   }
 
@@ -133,7 +134,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(b));
     VPackSlice value = slice.get(TRI_VOC_ATTRIBUTE_REV);
     return arangodb::velocypack::readUInt64(value.start() + 1);
   }
@@ -168,7 +169,7 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(b));
     VPackValueLength len;
     char const* p = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(len);
     if (len != strlen(key)) {
@@ -198,13 +199,13 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
       rm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto lb = reinterpret_cast<char const*>(lm) +
               sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice ls(reinterpret_cast<uint8_t const*>(lb), trx->vpackOptions());
+    VPackSlice ls(reinterpret_cast<uint8_t const*>(lb));
     VPackValueLength llen;
     char const* p = ls.get(TRI_VOC_ATTRIBUTE_KEY).getString(llen);
 
     auto rb = reinterpret_cast<char const*>(rm) +
               sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice rs(reinterpret_cast<uint8_t const*>(rb), trx->vpackOptions());
+    VPackSlice rs(reinterpret_cast<uint8_t const*>(rb));
     VPackValueLength rlen;
     char const* q = rs.get(TRI_VOC_ATTRIBUTE_KEY).getString(rlen);
 

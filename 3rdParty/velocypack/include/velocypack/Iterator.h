@@ -71,7 +71,7 @@ class ArrayIterator {
   ArrayIterator& operator++() {
     ++_position;
     if (_position <= _size && _current != nullptr) {
-      _current += Slice(_current, _slice.options).byteSize();
+      _current += Slice(_current).byteSize();
     } else {
       _current = nullptr;
     }
@@ -91,7 +91,7 @@ class ArrayIterator {
 
   Slice operator*() const {
     if (_current != nullptr) {
-      return Slice(_current, _slice.options);
+      return Slice(_current);
     }
     return _slice.at(_position);
   }
@@ -181,9 +181,9 @@ class ObjectIterator {
     ++_position;
     if (_position <= _size && _current != nullptr) {
       // skip over key
-      _current += Slice(_current, _slice.options).byteSize();
+      _current += Slice(_current).byteSize();
       // skip over value
-      _current += Slice(_current, _slice.options).byteSize();
+      _current += Slice(_current).byteSize();
     } else {
       _current = nullptr;
     }
@@ -203,8 +203,8 @@ class ObjectIterator {
 
   ObjectPair operator*() const {
     if (_current != nullptr) {
-      Slice key = Slice(_current, _slice.options);
-      return ObjectPair(key, Slice(_current + key.byteSize(), _slice.options));
+      Slice key = Slice(_current);
+      return ObjectPair(key, Slice(_current + key.byteSize()));
     }
     return ObjectPair(_slice.keyAt(_position), _slice.valueAt(_position));
   }
@@ -232,7 +232,7 @@ class ObjectIterator {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
-      return Slice(_current, _slice.options);
+      return Slice(_current);
     }
     return _slice.keyAt(_position);
   }
@@ -242,8 +242,8 @@ class ObjectIterator {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
-      Slice key = Slice(_current, _slice.options);
-      return Slice(_current + key.byteSize(), _slice.options);
+      Slice key = Slice(_current);
+      return Slice(_current + key.byteSize());
     }
     return _slice.valueAt(_position);
   }

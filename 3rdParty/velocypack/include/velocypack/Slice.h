@@ -47,6 +47,7 @@ namespace velocypack {
 // forward for fasthash64 function declared elsewhere
 uint64_t fasthash64(void const*, size_t, uint64_t);
 
+class AttributeTranslator;
 class SliceScope;
 
 class Slice {
@@ -59,43 +60,17 @@ class Slice {
   uint8_t const* _start;
 
  public:
-  Options const* options;
+
+  static AttributeTranslator* attributeTranslator;
 
   // constructor for an empty Value of type None
-  Slice() : Slice("\x00", &Options::Defaults) {}
+  Slice() : Slice("\x00") {}
 
-  explicit Slice(uint8_t const* start,
-                 Options const* options = &Options::Defaults)
-      : _start(start), options(options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
+  explicit Slice(uint8_t const* start)
+      : _start(start) {}
 
-  explicit Slice(char const* start, Options const* options = &Options::Defaults)
-      : _start(reinterpret_cast<uint8_t const*>(start)), options(options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
-
-  Slice(Slice const& other) : _start(other._start), options(other.options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
-
-  Slice(Slice&& other) : _start(other._start), options(other.options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
-
-  Slice& operator=(Slice const& other) {
-    _start = other._start;
-    options = other.options;
-    VELOCYPACK_ASSERT(options != nullptr);
-    return *this;
-  }
-
-  Slice& operator=(Slice&& other) {
-    _start = other._start;
-    options = other.options;
-    VELOCYPACK_ASSERT(options != nullptr);
-    return *this;
-  }
+  explicit Slice(char const* start)
+      : _start(reinterpret_cast<uint8_t const*>(start)) {}
 
   // creates a Slice from Json and adds it to a scope
   static Slice fromJson(SliceScope& scope, std::string const& json,
@@ -281,7 +256,7 @@ class Slice {
     // find number of items
     if (h <= 0x05) {  // No offset table or length, need to compute:
       ValueLength firstSubOffset = findDataOffset(h);
-      Slice first(_start + firstSubOffset, options);
+      Slice first(_start + firstSubOffset);
       return (end - firstSubOffset) / first.byteSize();
     } else if (offsetSize < 8) {
       return readInteger<ValueLength>(_start + offsetSize + 1, offsetSize);
@@ -322,7 +297,7 @@ class Slice {
     }
 
     Slice key = getNthKey(index, false);
-    return Slice(key.start() + key.byteSize(), options);
+    return Slice(key.start() + key.byteSize());
   }
 
   // look for the specified attribute path inside an Object
@@ -334,7 +309,7 @@ class Slice {
     }
 
     // use ourselves as the starting point
-    Slice last = Slice(start(), options);
+    Slice last = Slice(start());
     for (size_t i = 0; i < attributes.size(); ++i) {
       // fetch subattribute
       last = last.get(attributes[i]);
@@ -636,11 +611,41 @@ class Slice {
       }
 
       case ValueType::Custom: {
-        if (options->customTypeHandler == nullptr) {
-          throw Exception(Exception::NeedCustomTypeHandler);
-        }
+        auto const h = head();
+        switch (h) {
+          case 0xf0: return 1 + 1;
+          case 0xf1: return 1 + 2;
+          case 0xf2: return 1 + 4;
+          case 0xf3: return 1 + 8;
 
-        return options->customTypeHandler->byteSize(*this);
+          case 0xf4: 
+          case 0xf5: 
+          case 0xf6: {
+            return 1 + readInteger<ValueLength>(_start + 1, 1);
+          }
+
+          case 0xf7: 
+          case 0xf8: 
+          case 0xf9:  {
+            return 1 + readInteger<ValueLength>(_start + 1, 2);
+          }
+          
+          case 0xfa: 
+          case 0xfb: 
+          case 0xfc: {
+            return 1 + readInteger<ValueLength>(_start + 1, 4);
+          }
+          
+          case 0xfd: 
+          case 0xfe: 
+          case 0xff: {
+            return 1 + readInteger<ValueLength>(_start + 1, 8);
+          }
+
+          default: {
+            // fallthrough intentional
+          }
+        }
       }
     }
 
@@ -659,8 +664,8 @@ class Slice {
     return Slice(left).equals(Slice(right));
   }
 
-  std::string toJson() const;
-  std::string toString() const;
+  std::string toJson(Options const* options = &Options::Defaults) const;
+  std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
 
  private:
@@ -743,8 +748,7 @@ class SliceScope {
   SliceScope();
   ~SliceScope();
 
-  Slice add(uint8_t const* data, ValueLength size,
-            Options const* options = &Options::Defaults);
+  Slice add(uint8_t const* data, ValueLength size);
 
  private:
   std::vector<uint8_t*> _allocations;

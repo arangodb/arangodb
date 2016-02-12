@@ -61,7 +61,8 @@ static int const SLOT_DITCH = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline VPackSlice VPackFromMarker(TRI_df_marker_t const* marker) {
-  return VPackSlice(reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24); // TODO: remove hard-coded value
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24; // TODO: remove hard-coded value
+  return VPackSlice(ptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +109,7 @@ static void CopyAttributes(v8::Isolate* isolate, v8::Handle<v8::Object> self,
                            TRI_df_marker_t const* marker,
                            char const* excludeAttribute = nullptr) {
 
-  VPackSlice slice(VPackFromMarker(marker));
+  auto slice = VPackFromMarker(marker);
 
   VPackObjectIterator it(slice);
   while (it.valid()) {
@@ -143,7 +144,7 @@ static void KeysOfVPack(v8::PropertyCallbackInfo<v8::Array> const& args) {
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
     
-  VPackSlice slice(VPackFromMarker(marker));
+  auto slice = VPackFromMarker(marker);
   std::vector<std::string> keys(VPackCollection::keys(slice));
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(keys.size()));
@@ -190,7 +191,7 @@ static void MapGetNamedVPack(
       TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
 
-    VPackSlice slice(VPackFromMarker(marker));
+    auto slice = VPackFromMarker(marker);
 
     TRI_V8_RETURN(TRI_VPackToV8(isolate, slice.get(key)));
   } catch (...) {
@@ -322,7 +323,7 @@ static void PropertyQueryVPack(
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }
 
-    VPackSlice slice(VPackFromMarker(marker));
+    auto slice = VPackFromMarker(marker);
 
     if (!slice.hasKey(key)) {
       // key not found

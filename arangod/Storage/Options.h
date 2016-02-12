@@ -35,14 +35,9 @@ namespace arangodb {
 namespace StorageOptions {
   void initialize();
 
-  VPackAttributeTranslator* getTranslator();
-  VPackOptions* getOptions();
-  
-  VPackOptions* getDocumentToJsonTemplate();
-  VPackOptions* getJsonToDocumentTemplate();
-  VPackOptions* getNonDocumentTemplate();
-//  VPackCustomTypeHandler* createCustomHandler(
-//      arangodb::CollectionNameResolver const*);
+  VPackAttributeTranslator const* getTranslator();
+  VPackOptions const* getDefaultOptions();
+  VPackOptions const* getInsertOptions();
 }
 }
 

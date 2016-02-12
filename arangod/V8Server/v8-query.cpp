@@ -914,8 +914,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (uint64_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> doc = V8VPackWrapper::wrap(isolate, &trx, cid, ditch, static_cast<TRI_df_marker_t const*>(docs[i].getDataPtr()));
-//    v8::Handle<v8::Value> doc = TRI_VPackToV8(isolate, VPackSlice(docs[i].vpack()));
-//        WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
     if (doc.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();

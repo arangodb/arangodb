@@ -38,10 +38,3 @@ TransactionContext::TransactionContext() {}
 
 TransactionContext::~TransactionContext() {}
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the vpack options
-////////////////////////////////////////////////////////////////////////////////
-
-VPackOptions const* TransactionContext::getVPackOptions() const {
-  return StorageOptions::getOptions(); 
-}

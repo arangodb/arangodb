@@ -1069,11 +1069,11 @@ static int AddSystemAttributes(Transaction* trx, TRI_voc_cid_t cid,
                                TRI_document_collection_t* document,
                                VPackBuilder& builder) {
   // generate a new tick value
-  uint64_t const tick = TRI_NewTickServer();
+  TRI_voc_tick_t const tick = TRI_NewTickServer();
 
   if (!builder.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
     // "_key" attribute not present in object
-    std::string const keyString = document->_keyGenerator->generate(tick);
+    std::string keyString = document->_keyGenerator->generate(tick);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString));
   } else {
     // "_key" attribute is present in object
@@ -1090,19 +1090,16 @@ static int AddSystemAttributes(Transaction* trx, TRI_voc_cid_t cid,
       return res;
     }
   }
-/*
-  // now add _id attribute
+
+  // add _id attribute
   uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID,
                            VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf0;
   arangodb::velocypack::storeUInt64(p, cid);
 
-  // now add _rev attribute
-  p = builder.add(TRI_VOC_ATTRIBUTE_REV,
-                  VPackValuePair(9ULL, VPackValueType::Custom));
-  *p++ = 0xf1;
-  arangodb::velocypack::storeUInt64(p, tick);
-*/
+  // add _rev attribute
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(tick)));
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1236,6 +1233,8 @@ static void InsertVocbaseVPack(
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  
+  VPackOptions const* vpackOptions = StorageOptions::getInsertOptions();
 
   // load collection
   SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true),
@@ -1247,7 +1246,7 @@ static void InsertVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackBuilder builder(trx.vpackOptions());
+  VPackBuilder builder(vpackOptions);
   res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1257,8 +1256,7 @@ static void InsertVocbaseVPack(
   TRI_document_collection_t* document = trx.documentCollection();
 
   // the AddSystemAttributes() needs the collection already loaded because it
-  // references the
-  // collection's key generator
+  // references the collection's key generator
   res = AddSystemAttributes(&trx, col->_cid, document, builder);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1298,18 +1296,13 @@ static void InsertVocbaseVPack(
     TRI_V8_RETURN_TRUE();
   }
 
+  VPackSlice vpack(mptr.vpack());
   std::string key = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  TRI_GET_GLOBAL_STRING(_IdKey);
-  TRI_GET_GLOBAL_STRING(_RevKey);
-  TRI_GET_GLOBAL_STRING(_KeyKey);
-  result->Set(
-      _IdKey,
-      V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), key));
-//  result->Set(_RevKey,
-//              V8RevisionId(isolate, TRI_EXTRACT_MARKER_RID(&trx, &mptr)));
-  result->Set(_KeyKey, TRI_V8_STD_STRING(key));
+  result->ForceSet(TRI_V8_STRING(TRI_VOC_ATTRIBUTE_ID), V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), key));
+  result->ForceSet(TRI_V8_STRING(TRI_VOC_ATTRIBUTE_REV), TRI_V8_STD_STRING(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
+  result->ForceSet(TRI_V8_STRING(TRI_VOC_ATTRIBUTE_KEY), TRI_V8_STD_STRING(key));
 
   TRI_V8_RETURN(result);
 }
@@ -1844,9 +1837,7 @@ static void RemoveVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackOptions vpackOptions = trx.copyVPackOptions();
-  vpackOptions.attributeExcludeHandler = nullptr;
-  VPackBuilder builder(&vpackOptions);
+  VPackBuilder builder(StorageOptions::getDefaultOptions());
 
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(TRI_VOC_ATTRIBUTE_KEY,

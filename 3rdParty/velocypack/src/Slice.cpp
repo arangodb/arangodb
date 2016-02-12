@@ -38,6 +38,8 @@
 
 using namespace arangodb::velocypack;
 using VT = arangodb::velocypack::ValueType;
+  
+AttributeTranslator* Slice::attributeTranslator = nullptr;
 
 VT const Slice::TypeMap[256] = {
     /* 0x00 */ VT::None,     /* 0x01 */ VT::Array,
@@ -220,7 +222,7 @@ Slice Slice::fromJson(SliceScope& scope, std::string const& json,
   parser.parse(json);
 
   Builder const& b = parser.builder();  // don't copy Builder contents here
-  return scope.add(b.start(), b.size(), options);
+  return scope.add(b.start(), b.size());
 }
 
 // translates an integer key into a string
@@ -230,12 +232,11 @@ Slice Slice::translate() const {
                     "Cannot translate key of this type");
   }
   uint64_t id = getUInt();
-
-  if (options->attributeTranslator == nullptr) {
+  if (attributeTranslator == nullptr) {
     throw Exception(Exception::NeedAttributeTranslator);
   }
 
-  return Slice(options->attributeTranslator->translate(id), options);
+  return Slice(attributeTranslator->translate(id));
 }
 
 // check if two Slices are equal on the binary level
@@ -254,7 +255,7 @@ bool Slice::equals(Slice const& other) const {
                  arangodb::velocypack::checkOverflow(size)) == 0);
 }
 
-std::string Slice::toJson() const {
+std::string Slice::toJson(Options const* options) const {
   std::string buffer;
   StringSink sink(&buffer);
   Dumper dumper(&sink, options);
@@ -262,7 +263,7 @@ std::string Slice::toJson() const {
   return buffer;
 }
 
-std::string Slice::toString() const {
+std::string Slice::toString(Options const* options) const {
   // copy options and set prettyPrint in copy
   Options prettyOptions = *options;
   prettyOptions.prettyPrint = true;
@@ -311,16 +312,16 @@ Slice Slice::get(std::string const& attribute) const {
       dataOffset = findDataOffset(h);
     }
 
-    Slice key = Slice(_start + dataOffset, options);
+    Slice key = Slice(_start + dataOffset);
 
     if (key.isString() && key.isEqualString(attribute)) {
-      return Slice(key.start() + key.byteSize(), options);
+      return Slice(key.start() + key.byteSize());
     }
 
     if (key.isSmallInt() || key.isUInt()) {
       // translate key
       if (key.translate().isEqualString(attribute)) {
-        return Slice(key.start() + key.byteSize(), options);
+        return Slice(key.start() + key.byteSize());
       }
     }
 
@@ -460,7 +461,7 @@ Slice Slice::getFromCompactObject(std::string const& attribute) const {
   while (it.valid()) {
     Slice key = it.key();
     if (key.makeKey().isEqualString(attribute)) {
-      return Slice(key.start() + key.byteSize(), options);
+      return Slice(key.start() + key.byteSize());
     }
 
     it.next();
@@ -493,7 +494,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   // find the number of items
   ValueLength n;
   if (h <= 0x05) {  // No offset table or length, need to compute:
-    Slice first(_start + dataOffset, options);
+    Slice first(_start + dataOffset);
     n = (end - dataOffset) / first.byteSize();
   } else if (offsetSize < 8) {
     n = readInteger<ValueLength>(_start + 1 + offsetSize, offsetSize);
@@ -514,8 +515,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     if (dataOffset == 0) {
       dataOffset = findDataOffset(h);
     }
-    Slice firstItem(_start + dataOffset, options);
-    return dataOffset + index * firstItem.byteSize();
+    return dataOffset + index * Slice(_start + dataOffset).byteSize();
   }
 
   ValueLength const ieBase =
@@ -527,14 +527,14 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
 Slice Slice::getNth(ValueLength index) const {
   VELOCYPACK_ASSERT(type() == ValueType::Array);
 
-  return Slice(_start + getNthOffset(index), options);
+  return Slice(_start + getNthOffset(index));
 }
 
 // extract the nth member from an Object
 Slice Slice::getNthKey(ValueLength index, bool translate) const {
   VELOCYPACK_ASSERT(type() == ValueType::Object);
 
-  Slice s(_start + getNthOffset(index), options);
+  Slice s(_start + getNthOffset(index));
 
   if (translate) {
     return s.makeKey();
@@ -568,10 +568,9 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
   ValueLength current = 0;
   while (current != index) {
     uint8_t const* s = _start + offset;
-    Slice key = Slice(s, options);
-    offset += key.byteSize();
+    offset += Slice(s).byteSize();
     if (h == 0x14) {
-      Slice value = Slice(_start + offset, options);
+      Slice value = Slice(_start + offset);
       offset += value.byteSize();
     }
     ++current;
@@ -585,8 +584,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
                                    ValueLength n) const {
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize),
-              options);
+    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
 
     if (key.isString()) {
       if (!key.isEqualString(attribute)) {
@@ -603,7 +601,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
     }
 
     // key is identical. now return value
-    return Slice(key.start() + key.byteSize(), options);
+    return Slice(key.start() + key.byteSize());
   }
 
   // nothing found
@@ -624,8 +622,7 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
     ValueLength index = l + ((r - l) / 2);
 
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize),
-              options);
+    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
 
     int res;
     if (key.isString()) {
@@ -640,7 +637,7 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
 
     if (res == 0) {
       // found
-      return Slice(key.start() + key.byteSize(), options);
+      return Slice(key.start() + key.byteSize());
     }
 
     if (res > 0) {
@@ -665,15 +662,12 @@ SliceScope::~SliceScope() {
   }
 }
 
-Slice SliceScope::add(uint8_t const* data, ValueLength size,
-                      Options const* options) {
+Slice SliceScope::add(uint8_t const* data, ValueLength size) {
   size_t const s = checkOverflow(size);
   std::unique_ptr<uint8_t[]> copy(new uint8_t[s]);
   memcpy(copy.get(), data, s);
   _allocations.push_back(copy.get());
-  uint8_t const* start = copy.release();
-
-  return Slice(start, options);
+  return Slice(copy.release());
 }
 
 std::ostream& operator<<(std::ostream& stream, Slice const* slice) {
@@ -687,5 +681,4 @@ std::ostream& operator<<(std::ostream& stream, Slice const& slice) {
 }
 
 static_assert(sizeof(arangodb::velocypack::Slice) ==
-                  sizeof(void*) + sizeof(void*),
-              "Slice has an unexpected size");
+              sizeof(void*), "Slice has an unexpected size");

@@ -49,7 +49,6 @@ struct CustomTypeHandler {
 
   virtual void toJson(Slice const& value, Dumper* dumper,
                       Slice const& base) = 0;
-  virtual ValueLength byteSize(Slice const& value) = 0;
 };
 
 struct Options {

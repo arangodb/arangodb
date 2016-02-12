@@ -67,8 +67,7 @@ void Builder::doActualSort(std::vector<SortEntry>& entries) {
   });
 };
 
-uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len,
-                                     Options const* options) {
+uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
   uint8_t const b = *base;
   if (b >= 0x40 && b <= 0xbe) {
     // short UTF-8 string
@@ -86,13 +85,11 @@ uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len,
   }
 
   // translate attribute name
-  Slice s(base, options);
-  return findAttrName(s.makeKey().start(), len, options);
+  return findAttrName(Slice(base).makeKey().start(), len);
 }
 
 void Builder::sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets,
-                                   Options const* options) {
+                                   std::vector<ValueLength>& offsets) {
   auto cmp = [&](ValueLength a, ValueLength b) -> bool {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
@@ -104,8 +101,8 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
     } else {
       uint64_t lena;
       uint64_t lenb;
-      aa = findAttrName(aa, lena, options);
-      bb = findAttrName(bb, lenb, options);
+      aa = findAttrName(aa, lena);
+      bb = findAttrName(bb, lenb);
       uint64_t m = (std::min)(lena, lenb);
       int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
@@ -115,8 +112,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets,
-                                  Options const* options) {
+                                  std::vector<ValueLength>& offsets) {
 // on some platforms we can use a thread-local vector
 #if __llvm__ == 1
   // nono thread local
@@ -134,7 +130,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
-    e.nameStart = findAttrName(objBase + e.offset, e.nameSize, options);
+    e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
     entries.push_back(e);
   }
   VELOCYPACK_ASSERT(entries.size() == n);
@@ -147,12 +143,11 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 }
 
 void Builder::sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets,
-                              Options const* options) {
+                              std::vector<ValueLength>& offsets) {
   if (offsets.size() > 32) {
-    sortObjectIndexLong(objBase, offsets, options);
+    sortObjectIndexLong(objBase, offsets);
   } else {
-    sortObjectIndexShort(objBase, offsets, options);
+    sortObjectIndexShort(objBase, offsets);
   }
 }
 
@@ -325,7 +320,7 @@ Builder& Builder::close() {
       if (!options->sortAttributeNames) {
         _start[tos] = 0x0f;  // unsorted
       } else if (index.size() >= 2 && options->sortAttributeNames) {
-        sortObjectIndex(_start + tos, index, options);
+        sortObjectIndex(_start + tos, index);
       }
     }
     for (size_t i = 0; i < index.size(); i++) {
@@ -373,7 +368,7 @@ Builder& Builder::close() {
   if (options->checkAttributeUniqueness && index.size() > 1 &&
       _start[tos] >= 0x0b) {
     // check uniqueness of attribute names
-    checkAttributeUniqueness(Slice(_start + tos, options));
+    checkAttributeUniqueness(Slice(_start + tos));
   }
 
   // Now the array or object is complete, we pop a ValueLength
@@ -397,7 +392,7 @@ bool Builder::hasKey(std::string const& key) const {
     return false;
   }
   for (size_t i = 0; i < index.size(); ++i) {
-    Slice s(_start + tos + index[i], options);
+    Slice s(_start + tos + index[i]);
     if (s.makeKey().isEqualString(key)) {
       return true;
     }
@@ -419,9 +414,9 @@ Slice Builder::getKey(std::string const& key) const {
     return Slice();
   }
   for (size_t i = 0; i < index.size(); ++i) {
-    Slice s(_start + tos + index[i], options);
+    Slice s(_start + tos + index[i]);
     if (s.makeKey().isEqualString(key)) {
-      return Slice(s.start() + s.byteSize(), options);
+      return Slice(s.start() + s.byteSize());
     }
   }
   return Slice();

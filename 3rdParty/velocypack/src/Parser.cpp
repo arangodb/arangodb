@@ -478,14 +478,14 @@ void Parser::parseObject() {
     } else {
       parseString();
       if (options->attributeExcludeHandler->shouldExclude(
-              Slice(_b->_start + lastPos, options), _nesting)) {
+              Slice(_b->_start + lastPos), _nesting)) {
         excludeAttribute = true;
       }
     }
 
     if (!excludeAttribute && options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
-      Slice key(_b->_start + lastPos, options);
+      Slice key(_b->_start + lastPos);
 
       if (key.isString()) {
         ValueLength keyLength;
@@ -498,7 +498,7 @@ void Parser::parseObject() {
           // and simply overwrite the existing key with the numeric translation
           // id
           _b->_pos = lastPos;
-          _b->addUInt(Slice(translated, options).getUInt());
+          _b->addUInt(Slice(translated).getUInt());
         }
       }
     }
