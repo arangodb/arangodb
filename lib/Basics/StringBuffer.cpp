@@ -801,17 +801,13 @@ int TRI_AppendUrlEncodedStringStringBuffer(TRI_string_buffer_t* self,
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   size_t len = strlen(src);
-  int res;
-
-  char const* end;
-
-  res = Reserve(self, len * 3);
+  int res = Reserve(self, len * 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  end = src + len;
+  char const* end = src + len;
 
   for (; src < end; ++src) {
     if ('0' <= *src && *src <= '9') {
