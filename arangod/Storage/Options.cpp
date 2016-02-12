@@ -41,7 +41,6 @@ static std::unique_ptr<VPackOptions> options;
 
 
 void StorageOptions::initialize() {
-  LOG(INFO) << "initializing vpack";
   translator.reset(new VPackAttributeTranslator);
 /*
   // these attribute names will be translated into short integer values
