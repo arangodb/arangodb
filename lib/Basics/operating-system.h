@@ -762,8 +762,6 @@
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_HAVE_LINENOISE 1
-
 #define YY_NO_UNISTD_H 1
 
 #define TRI_WIN32_CONSOLE 1

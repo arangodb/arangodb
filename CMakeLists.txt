@@ -519,10 +519,6 @@ endif ()
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
-# linenoise --------------------------------------------------------------------
-set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
-option(USE_LINENOISE "User linenoise for editing command lines and command line histories" ON)
-
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
