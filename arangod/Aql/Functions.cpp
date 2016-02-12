@@ -429,6 +429,9 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
       break;
     }
   }
+
+  // make it null-terminated for all c-string-related functions
+  buffer.appendChar('\0');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

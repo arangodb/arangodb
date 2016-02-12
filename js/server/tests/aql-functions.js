@@ -3419,6 +3419,7 @@ function ahuacatlFunctionsTestSuite () {
         [ { a: 1, b: 2, c: 3 }, [ "a", "b", "c" ], [ 1, 2, 3 ] ], 
         [ { foo: "baz", bar: "foo", baz: "bar" }, [ "foo", "bar", "baz" ], [ "baz", "foo", "bar" ] ],
         [ { a: null, b: false, c: true, d: 42, e: 2.5, f: "test", g: [], h: [ "test1", "test2" ], i : { something: "else", more: "less" } }, [ "a", "b", "c", "d", "e", "f", "g", "h", "i" ], [ null, false, true, 42, 2.5, "test", [ ], [ "test1", "test2" ], { something: "else", more: "less" } ] ],
+        [ { a11111: "value", b222: "value", c: "value" }, [ "a11111", "b222", "c" ], [ "value", "value", "value" ] ]
       ];
 
       values.forEach(function (value) {
@@ -3432,6 +3433,23 @@ function ahuacatlFunctionsTestSuite () {
         actual = getQueryResults("RETURN NOOPT(V8(ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")))");
         assertEqual(value[0], actual[0], value);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zip function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testZipSubquery : function () {
+      // Opt
+      var query = "LET value = (FOR i IN 1..3 RETURN 'value') RETURN ZIP([ 'a11111', 'b222', 'c' ], value)";
+      var actual = getQueryResults(query);
+      assertEqual({ a11111: "value", b222: "value", c: "value" }, actual[0]);
+      // No opt / No v8
+      query = "LET value = (FOR i IN 1..3 RETURN 'value') RETURN NOOPT(ZIP([ 'a11111', 'b222', 'c' ], value))";
+      assertEqual({ a11111: "value", b222: "value", c: "value" }, actual[0]);
+      // No opt / v8
+      query = "LET value = (FOR i IN 1..3 RETURN 'value') RETURN NOOPT(V8(ZIP([ 'a11111', 'b222', 'c' ], value)))";
+      assertEqual({ a11111: "value", b222: "value", c: "value" }, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
