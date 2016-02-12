@@ -51,31 +51,10 @@ size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
 HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
-    : Task("HttpCommTask"),
-      SocketTask(socket, keepAliveTimeout),
-      _connectionInfo(info),
-      _server(server),
-      _writeBuffers(),
-      _writeBuffersStats(),
-      _readPosition(0),
-      _bodyPosition(0),
-      _bodyLength(0),
-      _requestPending(false),
-      _closeRequested(false),
-      _readRequestBody(false),
-      _denyCredentials(false),
-      _acceptDeflate(false),
-      _newRequest(true),
-      _isChunked(false),
-      _request(nullptr),
-      _httpVersion(GeneralRequest::HTTP_UNKNOWN),
-      _requestType(GeneralRequest::HTTP_REQUEST_ILLEGAL),
-      _fullUrl(),
-      _origin(),
-      _startPosition(0),
-      _sinceCompactification(0),
-      _originalBodyLength(0),
-      _setupDone(false) {
+    :ArangoTask(server, socket, info, keepAliveTimeout, GeneralRequest::HTTP_UNKNOWN, 
+      GeneralRequest::HTTP_REQUEST_ILLEGAL, "HttpCommTask"),
+    _readPosition(0),
+    _bodyPosition(0) {
   LOG_TRACE(
       "connection established, client %d, server ip %s, server port %d, client "
       "ip %s, client port %d",
@@ -578,14 +557,6 @@ void HttpCommTask::finishedChunked() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task set up complete
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::setupDone() {
-  _setupDone.store(true, std::memory_order_relaxed);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -734,24 +705,6 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the write buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handles CORS options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -872,14 +825,70 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the request object
-////////////////////////////////////////////////////////////////////////////////
+bool HttpCommTask::handleEvent(EventToken token, EventType events) {
+  bool result = SocketTask::handleEvent(token, events);
 
-void HttpCommTask::clearRequest() {
-  delete _request;
-  _request = nullptr;
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
+  }
+
+  return result;
 }
+
+
+void HttpCommTask::completedWriteBuffer() {
+  _writeBuffer = nullptr;
+  _writeLength = 0;
+
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+    _writeBufferStatistics = nullptr;
+  }
+
+  fillWriteBuffer();
+
+  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
+      _writeBuffers.empty() && !_isChunked) {
+    _clientClosed = true;
+    _server->handleCommunicationClosed(this);
+  }
+}
+
+bool HttpCommTask::handleRead() {
+  bool res = true;
+
+  if (!_setupDone.load(std::memory_order_relaxed)) {
+    return res;
+  }
+
+  if (!_closeRequested) {
+    res = fillReadBuffer();
+
+    // process as much data as we got
+    while (processRead()) {
+      if (_closeRequested) {
+        break;
+      }
+    }
+  } else {
+    // if we don't close here, the scheduler thread may fall into a
+    // busy wait state, consuming 100% CPU!
+    _clientClosed = true;
+  }
+
+  if (_clientClosed) {
+    res = false;
+    _server->handleCommunicationClosed(this);
+  } else if (!res) {
+    _clientClosed = true;
+    _server->handleCommunicationFailure(this);
+  }
+
+  return res;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets the internal state
@@ -888,7 +897,7 @@ void HttpCommTask::clearRequest() {
 /// prematurely
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::resetState(bool close) {
+void resetState(bool close) {
   size_t const COMPACT_EVERY = 500;
 
   if (close) {
@@ -926,154 +935,4 @@ void HttpCommTask::resetState(bool close) {
 
   _newRequest = true;
   _readRequestBody = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decides whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpCommTask::sendWwwAuthenticateHeader() const {
-  bool found;
-  _request->header("x-omit-www-authenticate", found);
-
-  return !found;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get request compatibility
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t HttpCommTask::getCompatibility() const {
-  if (_request != nullptr) {
-    return _request->compatibility();
-  }
-
-  return GeneralRequest::MinCompatibility;
-}
-
-
-
-bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
-  bool ok = SocketTask::setup(scheduler, loop);
-
-  if (!ok) {
-    return false;
-  }
-
-  _scheduler = scheduler;
-  _loop = loop;
-  
-  setupDone();
-
-  return true;
-}
-
-
-void HttpCommTask::cleanup() { SocketTask::cleanup(); }
-
-
-bool HttpCommTask::handleEvent(EventToken token, EventType events) {
-  bool result = SocketTask::handleEvent(token, events);
-
-  if (_clientClosed) {
-    _scheduler->destroyTask(this);
-  }
-
-  return result;
-}
-
-
-void HttpCommTask::signalTask(TaskData* data) {
-  // data response
-  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
-    handleResponse(data->_response.get());
-    processRead();
-  }
-
-  // data chunk
-  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
-    size_t len = data->_data.size();
-
-    if (0 == len) {
-      finishedChunked();
-    } else {
-      StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-      TRI_ASSERT(buffer != nullptr);
-
-      buffer->appendHex(len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-      buffer->appendText(data->_data.c_str(), len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-      sendChunk(buffer);
-    }
-  }
-
-  // do not know, what to do - give up
-  else {
-    _scheduler->destroyTask(this);
-  }
-}
-
-
-bool HttpCommTask::handleRead() {
-  bool res = true;
-
-  if (!_setupDone.load(std::memory_order_relaxed)) {
-    return res;
-  }
-
-  if (!_closeRequested) {
-    res = fillReadBuffer();
-
-    // process as much data as we got
-    while (processRead()) {
-      if (_closeRequested) {
-        break;
-      }
-    }
-  } else {
-    // if we don't close here, the scheduler thread may fall into a
-    // busy wait state, consuming 100% CPU!
-    _clientClosed = true;
-  }
-
-  if (_clientClosed) {
-    res = false;
-    _server->handleCommunicationClosed(this);
-  } else if (!res) {
-    _clientClosed = true;
-    _server->handleCommunicationFailure(this);
-  }
-
-  return res;
-}
-
-
-void HttpCommTask::completedWriteBuffer() {
-  _writeBuffer = nullptr;
-  _writeLength = 0;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  }
-
-  fillWriteBuffer();
-
-  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-      _writeBuffers.empty() && !_isChunked) {
-    _clientClosed = true;
-    _server->handleCommunicationClosed(this);
-  }
-}
-
-
-void HttpCommTask::handleTimeout() {
-  _clientClosed = true;
-  _server->handleCommunicationClosed(this);
 }

@@ -43,25 +43,6 @@ size_t const VelocyCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 M
 size_t const VelocyCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
 size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
-// typedef struct // @TODO: Remove this
-// {
-//   unsigned int x : 1; // minimum 1 bit
-// } uint1_t;
-
-// typedef struct 
-// {
-//   unsigned int y: 31; // minimum 31 bits
-// } uint31_t;
-
-// struct Vstream {
-//   uint32_t length;
-//   uint31_t chunk; //use .x to access value
-//   uint1_t isFirstChunk; //use .y to access value
-//   uint64_t messageId;
-//   Builder s1;
-//   Builder s2;
-// };
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,18 +465,18 @@ bool VelocyCommTask::processRead() {
 /// @brief sends more chunked data
 ////////////////////////////////////////////////////////////////////////////////
 
-void VelocyCommTask::sendChunk(arangodb::velocypack::Builder buffer) {
-  if (_isChunked) {
-    TRI_ASSERT(buffer != nullptr);
+// void VelocyCommTask::sendChunk(arangodb::velocypack::Builder buffer) {
+//   if (_isChunked) {
+//     TRI_ASSERT(buffer != nullptr);
 
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(nullptr);
+//     _writeBuffers.push_back(buffer);
+//     _writeBuffersStats.push_back(nullptr);
 
-    fillWriteBuffer();
-  } else {
-    delete buffer;
-  }
-}
+//     fillWriteBuffer();
+//   } else {
+//     delete buffer;
+//   }
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunking is finished
@@ -513,14 +494,6 @@ void VelocyCommTask::finishedChunked() {
 
   fillWriteBuffer();
   processRead();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief task set up complete
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyCommTask::setupDone() {
-  _setupDone.store(true, std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -601,25 +574,6 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
 
   // start output
   fillWriteBuffer();
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the write buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyCommTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -732,202 +686,4 @@ void VelocyCommTask::processRequest(uint32_t compatibility) {
     GeneralResponse response(GeneralResponse::VSTREAM_SERVER_ERROR, compatibility);
     handleResponse(&response);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the request object
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyCommTask::clearRequest() {
-  delete _request;
-  _request = nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resets the internal state
-///
-/// this method can be called to clean up when the request handling aborts
-/// prematurely
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyCommTask::resetState(bool close) {
-  size_t const COMPACT_EVERY = 500;
-
-  if (close) {
-    clearRequest();
-
-    _requestPending = false;
-    _closeRequested = true;
-
-    _readPosition = 0;
-    _bodyPosition = 0;
-    _bodyLength = 0;
-  } else {
-    _requestPending = true;
-
-    bool compact = false;
-
-    if (_sinceCompactification > COMPACT_EVERY) {
-      compact = true;
-    } else if (_readBuffer->length() > MaximalPipelineSize) {
-      compact = true;
-    }
-
-    if (compact) {
-      _readBuffer->erase_front(_bodyPosition + _bodyLength);
-
-      _sinceCompactification = 0;
-      _readPosition = 0;
-    } else {
-      _readPosition = _bodyPosition + _bodyLength;
-    }
-
-    _bodyPosition = 0;
-    _bodyLength = 0;
-  }
-
-  _newRequest = true;
-  _readRequestBody = false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decides whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-bool VelocyCommTask::sendWwwAuthenticateHeader() const {
-  bool found;
-  _request->header("x-omit-www-authenticate", found);
-
-  return !found;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get request compatibility
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t VelocyCommTask::getCompatibility() const {
-  if (_request != nullptr) {
-    return _request->compatibility();
-  }
-
-  return GeneralRequest::MinCompatibility;
-}
-
-
-bool VelocyCommTask::setup(Scheduler* scheduler, EventLoop loop) {
-  bool ok = SocketTask::setup(scheduler, loop);
-
-  if (!ok) {
-    return false;
-  }
-
-  _scheduler = scheduler;
-  _loop = loop;
-  
-  setupDone();
-
-  return true;
-}
-
-void VelocyCommTask::cleanup() { SocketTask::cleanup(); }
-
-bool VelocyCommTask::handleEvent(EventToken token, EventType events) {
-  bool result = SocketTask::handleEvent(token, events);
-
-  if (_clientClosed) {
-    _scheduler->destroyTask(this);
-  }
-
-  return result;
-}
-
-
-void HttpCommTask::signalTask(TaskData* data) {
-  // data response
-  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
-    handleResponse(data->_response.get());
-    processRead();
-  }
-
-  // data chunk
-  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
-    size_t len = data->_data.size();
-
-    if (0 == len) {
-      finishedChunked();
-    } else {
-      StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-      TRI_ASSERT(buffer != nullptr);
-
-      buffer->appendHex(len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-      buffer->appendText(data->_data.c_str(), len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-      sendChunk(buffer);
-    }
-  }
-
-  // do not know, what to do - give up
-  else {
-    _scheduler->destroyTask(this);
-  }
-}
-
-bool VelocyCommTask::handleRead() {
-  bool res = true;
-
-  if (!_setupDone.load(std::memory_order_relaxed)) {
-    return res;
-  }
-
-  if (!_closeRequested) {
-    res = fillReadBuffer();
-
-    while (processRead()) {
-      if (_closeRequested) {
-        break;
-      }
-    }
-  } else {
-    _clientClosed = true;
-  }
-
-  if (_clientClosed) {
-    res = false;
-    _server->handleCommunicationClosed(this);
-  } else if (!res) {
-    _clientClosed = true;
-    _server->handleCommunicationFailure(this);
-  }
-
-  return res;
-}
-
-
-void VelocyCommTask::completedWriteBuffer() {
-  _writeBuffer = nullptr;
-  _writeLength = 0;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  }
-
-  fillWriteBuffer();
-
-  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-      _writeBuffers.empty() && !_isChunked) {
-    _clientClosed = true;
-    _server->handleCommunicationClosed(this);
-  }
-}
-
-void VelocyCommTask::handleTimeout() {
-  _clientClosed = true;
-  _server->handleCommunicationClosed(this);
 }

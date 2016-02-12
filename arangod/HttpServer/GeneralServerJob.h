@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_JOB_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
 #include "Dispatcher/Job.h"
 
