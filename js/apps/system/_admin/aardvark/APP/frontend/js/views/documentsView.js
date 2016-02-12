@@ -68,7 +68,6 @@
       "click #collectionNext"      : "nextCollection",
       "click #filterCollection"    : "filterCollection",
       "click #markDocuments"       : "editDocuments",
-      "click #indexCollection"     : "indexCollection",
       "click #importCollection"    : "importCollection",
       "click #exportCollection"    : "exportCollection",
       "click #filterSend"          : "sendFilter",
@@ -89,13 +88,6 @@
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
       "click #exportDocuments"     : "startDownload",
-      "change #newIndexType"       : "selectIndexType",
-      "click #createIndex"         : "createIndex",
-      "click .deleteIndex"         : "prepDeleteIndex",
-      "click #confirmDeleteIndexBtn"    : "deleteIndex",
-      "click #documentsToolbar ul"      : "resetIndexForms",
-      "click #indexHeader #addIndex"    : "toggleNewIndexView",
-      "click #indexHeader #cancelIndex" : "toggleNewIndexView",
       "change #documentSize"            : "setPagesize",
       "change #docsSort"                : "setSorting"
     },
@@ -142,11 +134,7 @@
         }
       }
     },
-    toggleNewIndexView: function () {
-      $('#indexEditView').toggle("fast");
-      $('#newIndexView').toggle("fast");
-      this.resetIndexForms();
-    },
+
     nop: function(event) {
       event.stopPropagation();
     },
@@ -266,7 +254,6 @@
     //need to make following functions automatically!
 
     editDocuments: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       this.markFilterToggle();
@@ -274,13 +261,11 @@
       this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').slideToggle(200);
       $('#exportHeader').hide();
     },
 
     filterCollection : function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -288,7 +273,6 @@
       this.markFilterToggle();
       this.activeFilter = true;
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
       $('#exportHeader').hide();
       $('#filterHeader').slideToggle(200);
@@ -303,7 +287,6 @@
     },
 
     exportCollection: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#filterHeader').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -312,38 +295,19 @@
       this.markFilterToggle();
       $('#exportHeader').slideToggle(200);
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#filterHeader').hide();
       $('#editHeader').hide();
     },
 
     importCollection: function () {
       this.markFilterToggle();
-      $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
       this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
-      $('#exportHeader').hide();
-    },
-
-    indexCollection: function () {
-      this.markFilterToggle();
-      $('#importCollection').removeClass('activated');
-      $('#exportCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated');
-      this.changeEditMode(false);
-      $('#indexCollection').toggleClass('activated');
-      $('#newIndexView').hide();
-      $('#indexEditView').show();
-      $('#indexHeader').slideToggle(200);
-      $('#importHeader').hide();
-      $('#editHeader').hide();
-      $('#filterHeader').hide();
       $('#exportHeader').hide();
     },
 
@@ -910,7 +874,6 @@
         this.collection.collectionID
       );
 
-      this.getIndex();
       this.breadcrumb();
 
       this.checkCollectionState();
@@ -973,182 +936,7 @@
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );
-    },
-
-    resetIndexForms: function () {
-      $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
-      this.selectIndexType();
-    },
-    stringToArray: function (fieldString) {
-      var fields = [];
-      fieldString.split(',').forEach(function(field){
-        field = field.replace(/(^\s+|\s+$)/g,'');
-        if (field !== '') {
-          fields.push(field);
-        }
-      });
-      return fields;
-    },
-    createIndex: function () {
-      //e.preventDefault();
-      var self = this;
-      var indexType = $('#newIndexType').val();
-      var result;
-      var postParameter = {};
-      var fields;
-      var unique;
-      var sparse;
-
-      switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-          postParameter = {
-            type: 'cap',
-            size: size,
-            byteSize: byteSize
-          };
-          break;
-        case 'Geo':
-          //HANDLE ARRAY building
-          fields = $('#newGeoFields').val();
-          var geoJson = self.checkboxToValue('#newGeoJson');
-          var constraint = self.checkboxToValue('#newGeoConstraint');
-          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
-          postParameter = {
-            type: 'geo',
-            fields: self.stringToArray(fields),
-            geoJson: geoJson,
-            constraint: constraint,
-            ignoreNull: ignoreNull
-          };
-          break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-        case 'Fulltext':
-          fields = ($('#newFulltextFields').val());
-          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
-          postParameter = {
-            type: 'fulltext',
-            fields: self.stringToArray(fields),
-            minLength: minLength
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-      }
-      result = self.collectionModel.createIndex(postParameter);
-      if (result === true) {
-        $('#collectionEditIndexTable tbody tr').remove();
-        self.getIndex();
-        self.toggleNewIndexView();
-        self.resetIndexForms();
-      }
-      else {
-        if (result.responseText) {
-          var message = JSON.parse(result.responseText);
-          arangoHelper.arangoError("Document error", message.errorMessage);
-        }
-        else {
-          arangoHelper.arangoError("Document error", "Could not create index.");
-        }
-      }
-    },
-
-    prepDeleteIndex: function (e) {
-      this.lastTarget = e;
-      this.lastId = $(this.lastTarget.currentTarget).
-                    parent().
-                    parent().
-                    first().
-                    children().
-                    first().
-                    text();
-      $("#indexDeleteModal").modal('show');
-    },
-    deleteIndex: function () {
-      var result = this.collectionModel.deleteIndex(this.lastId);
-      if (result === true) {
-        $(this.lastTarget.currentTarget).parent().parent().remove();
-      }
-      else {
-        arangoHelper.arangoError("Could not delete index");
-      }
-      $("#indexDeleteModal").modal('hide');
-    },
-    selectIndexType: function () {
-      $('.newIndexClass').hide();
-      var type = $('#newIndexType').val();
-      $('#newIndexType'+type).show();
-    },
-    checkboxToValue: function (id) {
-      return $(id).prop('checked');
-    },
-    getIndex: function () {
-      this.index = this.collectionModel.getIndex();
-      var cssClass = 'collectionInfoTh modal-text';
-      if (this.index) {
-        var fieldString = '';
-        var actionString = '';
-
-        $.each(this.index.indexes, function(k, v) {
-          if (v.type === 'primary' || v.type === 'edge') {
-            actionString = '<span class="icon_arangodb_locked" ' +
-              'data-original-title="No action"></span>';
-          }
-          else {
-            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
-              'data-original-title="Delete index" title="Delete index"></span>';
-          }
-
-          if (v.fields !== undefined) {
-            fieldString = v.fields.join(", ");
-          }
-
-          //cut index id
-          var position = v.id.indexOf('/');
-          var indexId = v.id.substr(position + 1, v.id.length);
-          var selectivity = (
-            v.hasOwnProperty("selectivityEstimate") ? 
-            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-            "n/a"
-          );
-          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-
-          $('#collectionEditIndexTable').append(
-            '<tr>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
-            '</tr>'
-          );
-        });
-
-        arangoHelper.fixTooltips("deleteIndex", "left");
-      }
     }
+
   });
 }());
