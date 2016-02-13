@@ -981,7 +981,8 @@ class FollowerInfo {
 
  public:
 
-  FollowerInfo(TRI_document_collection_t* d) : _docColl(d) {}
+  FollowerInfo(TRI_document_collection_t* d) 
+    : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.

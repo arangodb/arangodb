@@ -316,7 +316,6 @@ static void JS_SynchronizeReplication(
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);
-  syncer.setShardFollower(shardFollower);
 
   int res = TRI_ERROR_NO_ERROR;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

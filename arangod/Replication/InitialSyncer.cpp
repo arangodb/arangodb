@@ -790,24 +790,6 @@ int InitialSyncer::handleCollectionDump(
 
     if (!checkMore || fromTick == 0) {
       // done
-      if (!_shardFollower.empty()) {
-        // Tell the server to put us into the follower list:
-        LOG(INFO) << "Tell the leader to put us into the follower list...";
-        std::string const shardFollowerUrl = BaseUrl + "/addShardFollower";
-        std::string const body = "{\"id\": \"" +
-                                 ServerState::instance()->getId() + "\"}";
-        response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                        shardFollowerUrl,
-                                        body.c_str(), body.size()));
-        if (response == nullptr || !response->isComplete()) {
-          LOG(ERR) << "Could not add us as shard follower with leader: "
-                   << "could not connect.";
-        } else if (response->wasHttpError()) {
-          LOG(ERR) << "Could not add us as shard follower with leader: "
-                   << response->getHttpReturnCode() << ": "
-                   << response->getHttpReturnMessage();
-        }
-      }
       return res;
     }
 

@@ -2538,31 +2538,31 @@ VPackBuilder newShardEntry (VPackSlice oldValue,
         newValue.add(it.key);
         newValue.add(it.value);
       }
-      newValue.add(VPackValue("servers"));
-      if (servers.isArray() && servers.length() > 0) {
-        VPackArrayBuilder bb(&newValue);
-        newValue.add(servers[0]);
-        VPackArrayIterator it(servers);
-        bool done = false;
-        for (++it; it.valid(); ++it) {
-          if ((*it).isEqualString(sid)) {
-            if (add) {
-              newValue.add(*it);
-              done = true;
-            }
-          } else {
+    }
+    newValue.add(VPackValue("servers"));
+    if (servers.isArray() && servers.length() > 0) {
+      VPackArrayBuilder bb(&newValue);
+      newValue.add(servers[0]);
+      VPackArrayIterator it(servers);
+      bool done = false;
+      for (++it; it.valid(); ++it) {
+        if ((*it).isEqualString(sid)) {
+          if (add) {
             newValue.add(*it);
+            done = true;
           }
+        } else {
+          newValue.add(*it);
         }
-        if (add && !done) {
-          newValue.add(VPackValue(sid));
-        }
-      } else {
-        VPackArrayBuilder bb(&newValue);
-        newValue.add(VPackValue(ServerState::instance()->getId()));
-        if (add) {
-          newValue.add(VPackValue(sid));
-        }
+      }
+      if (add && !done) {
+        newValue.add(VPackValue(sid));
+      }
+    } else {
+      VPackArrayBuilder bb(&newValue);
+      newValue.add(VPackValue(ServerState::instance()->getId()));
+      if (add) {
+        newValue.add(VPackValue(sid));
       }
     }
   }

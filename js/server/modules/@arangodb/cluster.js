@@ -36,7 +36,7 @@ var PortFinder = require("@arangodb/cluster/planner").PortFinder;
 var Planner = require("@arangodb/cluster/planner").Planner;
 var Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
 var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
-var download = require("internal").download;
+var request = require("@arangodb/request").request;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a unique identifier
@@ -55,34 +55,27 @@ function getUUID () {
 
 function startReadingQuery (endpoint, collName, timeout) {
   var uuid = getUUID();
-  console.info("Have uuid", uuid);
   var query = {"query": `LET t=SLEEP(${timeout})
                          FOR x IN ${collName}
                          LIMIT 1
                          RETURN "${uuid}" + t`};
-  console.info("Have query:", JSON.stringify(query));
   var url = endpointToURL(endpoint);
-  console.info("Have url:", url);
-  var r = download(url + "/_api/cursor", JSON.stringify(query),
-                   { method: "POST", headers: {"x-arango-async": true} });
-  console.info("After download: ", r);
-  if (r.code !== 202) {
-    console.error("Murks1:", r);
+  var r = request({ url: url + "/_api/cursor", body: JSON.stringify(query),
+                    method: "POST", headers:  {"x-arango-async": true} });
+  if (r.status !== 202) {
+    console.error("startReadingQuery: Could not start read transaction for shard", collName, r);
     return false;
   }
   var count = 0;
   while (true) {
-    console.info("Here we are1");
     count += 1;
     if (count > 500) {
-      console.error("giving up");
+      console.error("startReadingQuery: Read transaction did not begin. Giving up");
       return false;
     }
     require("internal").wait(0.2);
-    console.info("Here we are");
-    r = download(url + "/_api/query/current");
-    console.info("Queries:", r);
-    if (r.code !== 200) {
+    r = request({ url: url + "/_api/query/current", method: "GET" });
+    if (r.status !== 200) {
       console.error("startReadingQuery: Bad response from /_api/query/current",
                     r);
       continue;
@@ -106,7 +99,7 @@ function startReadingQuery (endpoint, collName, timeout) {
         break;
       }
     }
-    console.error("Did not find query.");
+    console.error("startReadingQuery: Did not find query.");
   }
 }
 
@@ -116,11 +109,28 @@ function startReadingQuery (endpoint, collName, timeout) {
 
 function cancelReadingQuery (endpoint, queryid) {
   var url = endpointToURL(endpoint) + "/_api/query/" + queryid;
-  var r = download(url, "", { method: "DELETE" });
-  if (r.code !== 200) {
+  var r = request({url, method: "DELETE" });
+  if (r.status !== 200) {
     console.error("CancelReadingQuery: error", r);
+    return false;
   }
-  return r.code === 200;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tell leader that we are in sync
+////////////////////////////////////////////////////////////////////////////////
+
+function addShardFollower(endpoint, shard) {
+  console.info("addShardFollower: tell the leader to put us into the follower list...");
+  var url = endpointToURL(endpoint) + "/_api/replication/addFollower";
+  var body = {followerId: ArangoServerState.id(), shard };
+  var r = request({url, body: JSON.stringify(body), method: "PUT"});
+  if (r.status !== 200) {
+    console.error("addShardFollower: could not add us to the leader's follower list.", r);
+    return false;
+  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -889,7 +899,7 @@ function cleanupCurrentCollections (plannedCollections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief synchronise collections for which we are followers (synchronously
+/// @brief synchronize collections for which we are followers (synchronously
 /// replicated shards)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -960,7 +970,7 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                                            collection, shard);
                     }
                     if (inCurrent.servers.indexOf(ourselves) === -1) {
-                      // we not in there - must synchronise this shard from
+                      // we not in there - must synchronize this shard from
                       // the leader
                       console.info("trying to synchronize local shard '%s/%s' for central '%s/%s'",
                                    database,
@@ -971,24 +981,32 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                         var ep = ArangoClusterInfo.getServerEndpoint(
                               inCurrent.servers[0]);
                         // First once without a read transaction:
-                        console.log("Hallo1");
-                        rep.syncCollection(shard, 
+                        var sy = rep.syncCollection(shard, 
                           { endpoint: ep, incremental: true });
-                        console.log("Hallo2");
                         // Now start a read transaction to stop writes:
                         var queryid = startReadingQuery(ep, shard, 300);
-                        console.log("Hallo3");
-                        rep.syncCollection(shard, 
-                          { endpoint: ep, incremental: true,
-                            shardFollower: ArangoServerState.id() });
-                        console.log("Hallo4");
-                        if (cancelReadingQuery(ep, queryid)) {
+                        var ok = false;
+                        try {
+                          var sy2 = rep.syncCollectionFinalize(
+                            shard, sy.collections[0].id, sy.lastLogTick, 
+                            { endpoint: ep });
+                          if (sy2.error) {
+                            console.error("Could not synchronize shard", shard,
+                                          sy2);
+                          }
+                          ok = addShardFollower(ep, shard);
+                        }
+                        finally {
+                          if (!cancelReadingQuery(ep, queryid)) {
+                            console.error("Read transaction has timed out for shard", shard);
+                            ok = false;
+                          }
+                        }
+                        if (ok) {
                           console.info("Synchronization worked for shard", shard);
+                        } else {
+                          throw "Did not work.";  // just to log below in catch
                         }
-                        else {
-                          console.error("Read transaction has timed out for shard", shard);
-                        }
-                        console.log("Hallo5");
                       }
                       catch (err2) {
                         console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
