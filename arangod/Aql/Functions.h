@@ -400,6 +400,11 @@ struct Functions {
   static AqlValue$ PercentileVPack(arangodb::aql::Query*,
                                    arangodb::AqlTransaction*,
                                    VPackFunctionParameters const&);
+  static AqlValue$ RangeVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                              VPackFunctionParameters const&);
+  static AqlValue$ PositionVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
 };
 }
 }

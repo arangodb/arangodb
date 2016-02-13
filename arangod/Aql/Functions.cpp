@@ -8404,6 +8404,10 @@ AqlValue$ Functions::PercentileVPack(
 AqlValue Functions::Range(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(RangeVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n != 2 && n != 3) {
@@ -8458,6 +8462,73 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
     }
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+#endif
+}
+
+AqlValue$ Functions::RangeVPack(arangodb::aql::Query* query,
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RANGE", (int)2,
+        (int)3);
+  }
+
+  VPackSlice const leftSlice = ExtractFunctionParameter(trx, parameters, 0);
+  VPackSlice const rightSlice = ExtractFunctionParameter(trx, parameters, 1);
+
+  bool unused = true;
+  double from = ValueToNumber(leftSlice, unused);
+  double to = ValueToNumber(rightSlice, unused);
+
+  double step = 0.0;
+  if (n == 3) {
+    VPackSlice const stepSlice = ExtractFunctionParameter(trx, parameters, 2);
+    if (!stepSlice.isNull()) {
+      step = ValueToNumber(stepSlice, unused);
+    } else {
+      // no step specified
+      if (from <= to) {
+        step = 1.0;
+      } else {
+        step = -1.0;
+      }
+    }
+  } else {
+    // no step specified
+    if (from <= to) {
+      step = 1.0;
+    } else {
+      step = -1.0;
+    }
+  }
+
+  if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
+    RegisterWarning(query, "RANGE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+    if (step < 0.0 && to <= from) {
+      for (; from >= to; from += step) {
+        b->add(VPackValue(from));
+      }
+    } else {
+      for (; from <= to; from += step) {
+        b->add(VPackValue(from));
+      }
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8467,6 +8538,10 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
 AqlValue Functions::Position(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(PositionVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -8503,6 +8578,60 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
     return AqlValue(new Json(-1));
   }
   return AqlValue(new Json(false));
+#endif
+}
+
+AqlValue$ Functions::PositionVPack(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POSITION", (int)2,
+        (int)3);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "POSITION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  bool returnIndex = false;
+  if (n == 3) {
+    VPackSlice returnIndexSlice = ExtractFunctionParameter(trx, parameters, 2);
+    returnIndex = ValueToBoolean(returnIndexSlice);
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (list.length() > 0) {
+    VPackSlice searchValue = ExtractFunctionParameter(trx, parameters, 1);
+
+    size_t index;
+    if (ListContainsElement(list, searchValue, index)) {
+      if (returnIndex) {
+        b->add(VPackValue(index));
+      } else {
+        b->add(VPackValue(true));
+      }
+    } else {
+      if (returnIndex) {
+        b->add(VPackValue(-1));
+      } else {
+        b->add(VPackValue(false));
+      }
+    }
+  } else {
+    if (returnIndex) {
+      b->add(VPackValue(-1));
+    } else {
+      b->add(VPackValue(false));
+    }
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
