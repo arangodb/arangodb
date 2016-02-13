@@ -8955,9 +8955,13 @@ AqlValue$ Functions::FulltextVPack(arangodb::aql::Query* query,
 /// @brief function IS_SAME_COLLECTION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsSameCollection (arangodb::aql::Query* query,
-                                      arangodb::AqlTransaction* trx,
-                                      FunctionParameters const& parameters) {
+AqlValue Functions::IsSameCollection(arangodb::aql::Query* query,
+                                     arangodb::AqlTransaction* trx,
+                                     FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(IsSameCollectionVPack(query, trx, tmp));
+#else
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION", (int) 2, (int) 2);
   }
@@ -8994,5 +8998,55 @@ AqlValue Functions::IsSameCollection (arangodb::aql::Query* query,
 
   RegisterWarning(query, "IS_SAME_COLLECTION", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(new Json(Json::Null));
+#endif
+}
+
+AqlValue$ Functions::IsSameCollectionVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  if (parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION",
+        (int)2, (int)2);
+  }
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
+  }
+
+  std::string colName = collectionSlice.copyString();
+
+  VPackSlice value = ExtractFunctionParameter(trx, parameters, 1);
+  std::string identifier;
+
+  if (value.isObject() && value.hasKey(TRI_VOC_ATTRIBUTE_ID)) {
+    identifier = arangodb::basics::VelocyPackHelper::getStringValue(
+        value, TRI_VOC_ATTRIBUTE_ID, "");
+  } else if (value.isString()) {
+    identifier = value.copyString();
+  }
+
+  if (!identifier.empty()) {
+    size_t pos = identifier.find('/');
+
+    if (pos != std::string::npos) {
+      bool const same = (colName == identifier.substr(0, pos));
+
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(same));
+      return AqlValue$(b.get());
+    }
+
+    // fallthrough intentional
+  }
+
+  RegisterWarning(query, "IS_SAME_COLLECTION",
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
 }
 

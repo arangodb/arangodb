@@ -408,6 +408,9 @@ struct Functions {
   static AqlValue$ FulltextVPack(arangodb::aql::Query*,
                                  arangodb::AqlTransaction*,
                                  VPackFunctionParameters const&);
+  static AqlValue$ IsSameCollectionVPack(arangodb::aql::Query*,
+                                         arangodb::AqlTransaction*,
+                                         VPackFunctionParameters const&);
 };
 }
 }
