@@ -178,8 +178,11 @@ AC_PROG_RANLIB
 
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+AX_COMPILER_VENDOR
 
-
+if test "$ax_cv_c_compiler_vendor" == "gnu"; then
+  echo "GNU"
+fi
 dnl ----------------------------------------------------------------------------
 dnl bits
 dnl ----------------------------------------------------------------------------
@@ -611,27 +614,9 @@ AC_MSG_NOTICE([-----------------------------------------------------------------
 AC_MSG_NOTICE([CHECKING FOR CONSOLE SUPPORT])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-CONSOLE_CPPFLAGS=""
-
-AC_ARG_ENABLE(console,
-  AS_HELP_STRING([--enable-console], [enable console support (default: linenoise)]),
-  tr_CONSOLE="$enableval",
-  tr_CONSOLE="linenoise"
-)
-
-if test "$tr_CONSOLE" = "dummy"; then
-  LIB_INFO="$LIB_INFO|CONSOLE: dummy"
-elif test "$tr_CONSOLE" = "linenoise"; then
-  LIB_INFO="$LIB_INFO|CONSOLE: linenoise"
-  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src -DTRI_HAVE_LINENOISE"
-fi
-
-LIB_INFO="$LIB_INFO|CONSOLE_CPPFLAGS: ${CONSOLE_CPPFLAGS}"
-LIB_INFO="$LIB_INFO|."
+CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src"
 
 AC_SUBST(CONSOLE_CPPFLAGS)
-
-AM_CONDITIONAL(ENABLE_LINENOISE, test "x$tr_CONSOLE" = xlinenoise)
 
 dnl ----------------------------------------------------------------------------
 dnl tcmalloc

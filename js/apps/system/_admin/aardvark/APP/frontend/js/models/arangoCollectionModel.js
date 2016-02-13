@@ -91,43 +91,41 @@
       return data2;
     },
 
-  createIndex: function (postParameter) {
-      var returnVal = false;
+    createIndex: function (postParameter, callback) {
 
+        $.ajax({
+            cache: false,
+            type: "POST",
+            url: "/_api/index?collection="+ this.get("id"),
+            data: JSON.stringify(postParameter),
+            contentType: "application/json",
+            processData: false,
+            async: true,
+            success: function() {
+              callback(false);
+            },
+            error: function(data) {
+              callback(true, data);
+            }
+        });
+        callback();
+    },
+
+    deleteIndex: function (id, callback) {
       $.ajax({
           cache: false,
-          type: "POST",
-          url: "/_api/index?collection="+ this.get("id"),
-          data: JSON.stringify(postParameter),
-          contentType: "application/json",
-          processData: false,
+          type: 'DELETE',
+          url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
           async: false,
-          success: function() {
-            returnVal = true;
+          success: function () {
+            callback(false);
           },
-          error: function(data) {
-            returnVal = data;
+          error: function (data) {
+            callback(true, data);
           }
       });
-      return returnVal;
-  },
-
-      deleteIndex: function (id) {
-          var returnval = false;
-          $.ajax({
-              cache: false,
-              type: 'DELETE',
-              url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-              async: false,
-              success: function () {
-                returnval = true;
-              },
-              error: function () {
-                returnval = false;
-              }
-          });
-          return returnval;
-      },
+      callback();
+    },
 
     truncateCollection: function () {
       $.ajax({
@@ -144,46 +142,37 @@
       });
     },
 
-    loadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Loading collection...");
+    loadCollection: function (callback) {
+
       $.ajax({
         async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
-          self.set("status", "loaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
-    unloadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Unloading collection...");
+    unloadCollection: function (callback) {
       $.ajax({
         async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
         success: function () {
-          self.set("status", "unloaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
     renameCollection: function (name) {
@@ -203,8 +192,9 @@
         },
         error: function(data) {
           try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
+            console.log("error");
+            //var parsed = JSON.parse(data.responseText);
+            //result = parsed.errorMessage;
           }
           catch (e) {
             result = false;

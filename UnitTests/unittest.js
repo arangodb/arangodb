@@ -79,6 +79,7 @@ function resultsToXml(results, baseName, cluster) {
 
       for (let runName in run) {
         if (isSignificant(run, runName)) {
+          const xmlName = clprefix + resultName + "_" + runName;
           const current = run[runName];
 
           if (current.skipped) {
@@ -86,6 +87,12 @@ function resultsToXml(results, baseName, cluster) {
           }
 
           let xml = buildXml();
+          let total = 0;
+
+          if (current.hasOwnProperty('total')) {
+            total = current.total;
+          }
+
           let failuresFound = 0;
 
           if (current.hasOwnProperty('failed')) {
@@ -95,8 +102,8 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
-            name: clprefix + runName,
-            tests: current.total,
+            tests: total,
+            name: xmlName,
             time: current.duration
           });
 
@@ -121,7 +128,7 @@ function resultsToXml(results, baseName, cluster) {
 
           if (!current.status) {
             xml.elem("testcase", {
-              name: 'all tests in ' + clprefix + runName,
+              name: 'all tests in ' + xmlName,
               time: current.duration
             }, false);
 
@@ -135,8 +142,7 @@ function resultsToXml(results, baseName, cluster) {
 
           xml.elem("/testsuite");
 
-          const fn = makePathGeneric(baseName + clprefix +
-            resultName + '_' + runName + ".xml").join('_');
+          const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
 
           fs.write("out/" + fn, xml.join(""));
         }

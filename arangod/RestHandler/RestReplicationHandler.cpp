@@ -3058,20 +3058,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   // initialize some defaults to copy from
   TRI_replication_applier_configuration_t defaults;
-  TRI_InitConfigurationReplicationApplier(&defaults);
 
   // initialize target configuration
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
-  config._endpoint =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3272,15 +3266,10 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
 
@@ -3364,12 +3353,10 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
   {
     READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(
-        &_vocbase->_replicationApplier->_configuration, &config);
+    config.update(&_vocbase->_replicationApplier->_configuration);
   }
   try {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
@@ -3387,7 +3374,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
   bool success;
   VPackOptions options;
@@ -3402,48 +3388,26 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 
   {
     READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(
-        &_vocbase->_replicationApplier->_configuration, &config);
+    config.update(&_vocbase->_replicationApplier->_configuration);
   }
 
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (!endpoint.empty()) {
-    if (config._endpoint != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
-    }
-    config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
-                                           endpoint.size());
+    config._endpoint = endpoint;
   }
 
-  std::string database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
-  if (config._database != nullptr) {
-    // free old value
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
-  }
-  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
-                                         database.length());
+  config._database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {
-    if (config._username != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
-    }
-    std::string tmp = username.copyString();
-    config._username =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._username = username.copyString();
   }
 
   VPackSlice const password = body.get("password");
   if (password.isString()) {
-    if (config._password != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
-    }
-    std::string tmp = password.copyString();
-    config._password =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._password = password.copyString();
   }
 
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3512,8 +3476,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 
   int res =
       TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
-
-  config.freeInternalStrings();
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);

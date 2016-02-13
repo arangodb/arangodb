@@ -176,20 +176,37 @@ const makeResults = function(testname) {
 
   return function(status, message) {
     let duration = time() - startTime;
+    let results;
 
-    let results = {
-      status: status,
-      duration: duration,
-      total: 1,
-      failed: status ? 0 : 1,
-      'testing.js': {
+    if (status) {
+      let result;
+
+      try {
+        result = JSON.parse(fs.read("testresult.json"));
+
+        if ((typeof result[0] === 'object') &&
+          result[0].hasOwnProperty('status')) {
+          results = result[0];
+        }
+
+      } catch (x) {}
+    }
+
+    if (results === undefined) {
+      results = {
         status: status,
-        duration: duration
-      }
-    };
+        duration: duration,
+        total: 1,
+        failed: status ? 0 : 1,
+        'testing.js': {
+          status: status,
+          duration: duration
+        }
+      };
 
-    if (message) {
-      results['testing.js'].message = message;
+      if (message) {
+        results['testing.js'].message = message;
+      }
     }
 
     let full = {};
@@ -3794,7 +3811,7 @@ function unitTest(cases, options) {
 
   _.defaults(options, optionsDefaults);
 
-  if (cases === undefined) {
+  if (cases === undefined || cases.length === 0) {
     printUsage();
 
     print('FATAL: "which" is undefined\n');

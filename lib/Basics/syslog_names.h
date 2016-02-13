@@ -51,10 +51,14 @@ CODE prioritynames[] =
 CODE facilitynames[] =
   {
     { "auth", LOG_AUTH },
+    #ifdef LOG_AUTHPRIV
     { "authpriv", LOG_AUTHPRIV },
+    #endif
     { "cron", LOG_CRON },
     { "daemon", LOG_DAEMON },
+    #ifdef LOG_FTP
     { "ftp", LOG_FTP },
+    #endif
     { "kern", LOG_KERN },
     { "lpr", LOG_LPR },
     { "mail", LOG_MAIL },
