@@ -8090,6 +8090,10 @@ AqlValue$ Functions::StdDevPopulationVPack(
 AqlValue Functions::Median(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(MedianVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -8120,6 +8124,51 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
     return AqlValue(new Json((values[midpoint - 1] + values[midpoint]) / 2));
   }
   return AqlValue(new Json(values[midpoint]));
+#endif
+}
+
+AqlValue$ Functions::MedianVPack(arangodb::aql::Query* query,
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MEDIAN", (int)1,
+        (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::vector<double> values;
+  if (!SortNumberList(list, values)) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (values.empty()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  size_t const l = values.size();
+  size_t midpoint = l / 2;
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (l % 2 == 0) {
+    b->add(VPackValue((values[midpoint - 1] + values[midpoint]) / 2));
+  } else {
+    b->add(VPackValue(values[midpoint]));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8129,6 +8178,10 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
 AqlValue Functions::Percentile(arangodb::aql::Query* query,
                                arangodb::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(PercentileVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -8224,6 +8277,124 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
   return AqlValue(new Json(values[static_cast<size_t>(pos) - 1]));
+#endif
+}
+
+AqlValue$ Functions::PercentileVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PERCENTILE", (int)2,
+        (int)3);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  VPackSlice border = ExtractFunctionParameter(trx, parameters, 1);
+
+  if (!border.isNumber()) {
+    RegisterWarning(query, "PERCENTILE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  bool unused = false;
+  double p = ValueToNumber(border, unused);
+  if (p <= 0 || p > 100) {
+    RegisterWarning(query, "PERCENTILE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  bool useInterpolation = false;
+
+  if (n == 3) {
+    VPackSlice methodSlice = ExtractFunctionParameter(trx, parameters, 2);
+    if (!methodSlice.isString()) {
+      RegisterWarning(query, "PERCENTILE",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+    std::string method = methodSlice.copyString();
+    if (method == "interpolation") {
+      useInterpolation = true;
+    } else if (method == "rank") {
+      useInterpolation = false;
+    } else {
+      RegisterWarning(query, "PERCENTILE",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+      b->add(VPackValue(VPackValueType::Null));
+      return AqlValue$(b.get());
+    }
+  }
+
+  std::vector<double> values;
+  if (!SortNumberList(list, values)) {
+    RegisterWarning(query, "PERCENTILE",
+                    TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (values.empty()) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+  size_t l = values.size();
+  if (l == 1) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(values[0]));
+    return AqlValue$(b.get());
+  }
+
+  TRI_ASSERT(l > 1);
+
+  if (useInterpolation) {
+    double idx = p * (l + 1) / 100;
+    double pos = floor(idx);
+
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    if (pos >= l) {
+      b->add(VPackValue(values[l - 1]));
+    } else if (pos <= 0) {
+      b->add(VPackValue(VPackValueType::Null));
+    } else {
+      double delta = idx - pos;
+      b->add(VPackValue(delta * (values[static_cast<size_t>(pos)] -
+                                 values[static_cast<size_t>(pos) - 1]) +
+                        values[static_cast<size_t>(pos) - 1]));
+    }
+    return AqlValue$(b.get());
+  }
+  double idx = p * l / 100;
+  double pos = ceil(idx);
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  if (pos >= l) {
+    b->add(VPackValue(values[l - 1]));
+  } else if (pos <= 0) {
+    b->add(VPackValue(VPackValueType::Null));
+  } else {
+    b->add(VPackValue(values[static_cast<size_t>(pos) - 1]));
+  }
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

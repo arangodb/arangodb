@@ -395,6 +395,11 @@ struct Functions {
   static AqlValue$ StdDevPopulationVPack(arangodb::aql::Query*,
                                          arangodb::AqlTransaction*,
                                          VPackFunctionParameters const&);
+  static AqlValue$ MedianVPack(arangodb::aql::Query*, arangodb::AqlTransaction*,
+                               VPackFunctionParameters const&);
+  static AqlValue$ PercentileVPack(arangodb::aql::Query*,
+                                   arangodb::AqlTransaction*,
+                                   VPackFunctionParameters const&);
 };
 }
 }
