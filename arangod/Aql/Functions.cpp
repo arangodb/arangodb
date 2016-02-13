@@ -7568,6 +7568,10 @@ AqlValue$ Functions::RemoveNthVPack(arangodb::aql::Query* query,
 AqlValue Functions::NotNull(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(NotNullVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
     Json element = ExtractFunctionParameter(trx, parameters, i, false);
@@ -7576,7 +7580,24 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
     }
   }
   return AqlValue(new Json(Json::Null));
+#endif
 }
+
+AqlValue$ Functions::NotNullVPack(arangodb::aql::Query* query,
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
+    if (!element.isNull()) {
+      return AqlValue$(element);
+    }
+  }
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(VPackValueType::Null));
+  return AqlValue$(b.get());
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function CURRENT_DATABASE
@@ -7585,6 +7606,10 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
 AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
                                     arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(CurrentDatabaseVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 0) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7592,6 +7617,21 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
         (int)0, (int)0);
   }
   return AqlValue(new Json(query->vocbase()->_name));
+#endif
+}
+
+AqlValue$ Functions::CurrentDatabaseVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CURRENT_DATABASE",
+        (int)0, (int)0);
+  }
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(query->vocbase()->_name));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7601,6 +7641,10 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
 AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
                                     arangodb::AqlTransaction* trx,
                                     FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(CollectionCountVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7650,6 +7694,62 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(static_cast<double>(document->size())));
+#endif
+}
+
+AqlValue$ Functions::CollectionCountVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "COLLECTION_COUNT",
+        (int)1, (int)1);
+  }
+
+  VPackSlice element = ExtractFunctionParameter(trx, parameters, 0);
+  if (!element.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
+  }
+
+  std::string const colName =
+      basics::VelocyPackHelper::getStringValue(element, "");
+
+  auto resolver = trx->resolver();
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'", colName.c_str());
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(document->size()));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

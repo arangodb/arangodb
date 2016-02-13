@@ -374,6 +374,15 @@ struct Functions {
   static AqlValue$ RemoveNthVPack(arangodb::aql::Query*,
                                   arangodb::AqlTransaction*,
                                   VPackFunctionParameters const&);
+  static AqlValue$ NotNullVPack(arangodb::aql::Query*,
+                                arangodb::AqlTransaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue$ CurrentDatabaseVPack(arangodb::aql::Query*,
+                                        arangodb::AqlTransaction*,
+                                        VPackFunctionParameters const&);
+  static AqlValue$ CollectionCountVPack(arangodb::aql::Query*,
+                                        arangodb::AqlTransaction*,
+                                        VPackFunctionParameters const&);
 };
 }
 }
