@@ -8641,6 +8641,10 @@ AqlValue$ Functions::PositionVPack(arangodb::aql::Query* query,
 AqlValue Functions::Fulltext(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(FulltextVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
 
   if (n < 3 || n > 4) {
@@ -8793,6 +8797,158 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     TRI_FreeResultFulltextIndex(queryResult);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+#endif
+}
+
+AqlValue$ Functions::FulltextVPack(arangodb::aql::Query* query,
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || n > 4) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FULLTEXT", (int)3,
+        (int)4);
+  }
+
+  auto resolver = trx->resolver();
+
+  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!collectionSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+
+  std::string colName = collectionSlice.copyString();
+
+  VPackSlice attribute = ExtractFunctionParameter(trx, parameters, 1);
+
+  if (!attribute.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+
+  std::string attributeName = attribute.copyString();
+
+  VPackSlice queryString = ExtractFunctionParameter(trx, parameters, 2);
+
+  if (!queryString.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+
+  std::string queryValue = queryString.copyString();
+
+  size_t maxResults = 0;  // 0 means "all results"
+  if (n >= 4) {
+    VPackSlice limit = ExtractFunctionParameter(trx, parameters, 3);
+    if (!limit.isNull() && !limit.isNumber()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    } else if (limit.isNumber()) {
+      int64_t value = limit.getNumericValue<int64_t>();
+      if (value > 0) {
+        maxResults = static_cast<size_t>(value);
+      }
+    }
+  }
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(), true, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'", colName.c_str());
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  arangodb::Index* index = nullptr;
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> const search(
+      {{arangodb::basics::AttributeName(attributeName, false)}});
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      // test if index is on the correct field
+      if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
+                                                       false)) {
+        // match!
+        index = idx;
+        break;
+      }
+    }
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+                                  colName.c_str());
+  }
+
+  if (trx->orderDitch(collection) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_fulltext_query_t* ft =
+      TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
+
+  if (ft == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  bool isSubstringQuery = false;
+  int res =
+      TRI_ParseQueryFulltextIndex(ft, queryValue.c_str(), &isSubstringQuery);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeQueryFulltextIndex(ft);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(index);
+  // note: the following call will free "ft"!
+  TRI_fulltext_result_t* queryResult =
+      TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);
+
+  if (queryResult == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  auto shaper = collection->_collection->_collection->getShaper();
+  size_t const numResults = queryResult->_numDocuments;
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  try {
+    VPackArrayBuilder guard(b.get());
+
+    for (size_t i = 0; i < numResults; ++i) {
+      ExpandShapedJson(shaper, resolver, cid,
+                       (TRI_doc_mptr_t const*)queryResult->_documents[i], *b);
+    }
+  } catch (...) {
+    TRI_FreeResultFulltextIndex(queryResult);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  TRI_FreeResultFulltextIndex(queryResult);
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

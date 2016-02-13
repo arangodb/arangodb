@@ -405,6 +405,9 @@ struct Functions {
   static AqlValue$ PositionVPack(arangodb::aql::Query*,
                                  arangodb::AqlTransaction*,
                                  VPackFunctionParameters const&);
+  static AqlValue$ FulltextVPack(arangodb::aql::Query*,
+                                 arangodb::AqlTransaction*,
+                                 VPackFunctionParameters const&);
 };
 }
 }
