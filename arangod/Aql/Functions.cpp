@@ -680,7 +680,6 @@ static bool Variance(Json const& values, double& value, size_t& count) {
   return true;
 }
 
-#if 0
 static bool Variance(VPackSlice const& values, double& value, size_t& count) {
   TRI_ASSERT(values.isArray());
   value = 0.0;
@@ -701,7 +700,6 @@ static bool Variance(VPackSlice const& values, double& value, size_t& count) {
   }
   return true;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Sorts the given list of Numbers in ASC order.
@@ -732,7 +730,6 @@ static bool SortNumberList(Json const& values, std::vector<double>& result) {
 ///        Returns false if the list contains non-number values.
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
 static bool SortNumberList(VPackSlice const& values,
                            std::vector<double>& result) {
   TRI_ASSERT(values.isArray());
@@ -749,7 +746,6 @@ static bool SortNumberList(VPackSlice const& values,
   std::sort(result.begin(), result.end());
   return true;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expands a shaped Json
@@ -7759,6 +7755,10 @@ AqlValue$ Functions::CollectionCountVPack(
 AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
                                    arangodb::AqlTransaction* trx,
                                    FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(VarianceSampleVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7787,6 +7787,48 @@ AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(value / (count - 1)));
+#endif
+}
+
+AqlValue$ Functions::VarianceSampleVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "VARIANCE_SAMPLE",
+        (int)1, (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "VARIANCE_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (!Variance(list, value, count)) {
+    RegisterWarning(query, "VARIANCE_SAMPLE",
+                    TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (count < 2) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(value / (count - 1)));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7796,6 +7838,10 @@ AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
 AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
                                        arangodb::AqlTransaction* trx,
                                        FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(VariancePopulationVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7825,7 +7871,51 @@ AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(value / count));
+#endif
 }
+
+AqlValue$ Functions::VariancePopulationVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+        "VARIANCE_POPULATION", (int)1, (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "VARIANCE_POPULATION",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (!Variance(list, value, count)) {
+    RegisterWarning(query, "VARIANCE_POPULATION",
+                    TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (count < 1) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(value / count));
+  return AqlValue$(b.get());
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function STDDEV_SAMPLE
@@ -7834,6 +7924,10 @@ AqlValue Functions::VariancePopulation(arangodb::aql::Query* query,
 AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(StdDevSampleVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7862,6 +7956,48 @@ AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(sqrt(value / (count - 1))));
+#endif
+}
+
+AqlValue$ Functions::StdDevSampleVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_SAMPLE",
+        (int)1, (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (!Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_SAMPLE",
+                    TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (count < 2) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(sqrt(value / (count - 1) )));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7871,6 +8007,10 @@ AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
 AqlValue Functions::StdDevPopulation(arangodb::aql::Query* query,
                                      arangodb::AqlTransaction* trx,
                                      FunctionParameters const& parameters) {
+#ifdef TMPUSEVPACK
+  auto tmp = transformParameters(parameters, trx);
+  return AqlValue(StdDevPopulationVPack(query, trx, tmp));
+#else
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -7899,6 +8039,48 @@ AqlValue Functions::StdDevPopulation(arangodb::aql::Query* query,
   }
 
   return AqlValue(new Json(sqrt(value / count)));
+#endif
+}
+
+AqlValue$ Functions::StdDevPopulationVPack(
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
+    VPackFunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_POPULATION",
+        (int)1, (int)1);
+  }
+
+  VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
+
+  if (!list.isArray()) {
+    RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (!Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_POPULATION",
+                    TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  if (count < 1) {
+    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+    b->add(VPackValue(VPackValueType::Null));
+    return AqlValue$(b.get());
+  }
+
+  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  b->add(VPackValue(sqrt(value / count)));
+  return AqlValue$(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

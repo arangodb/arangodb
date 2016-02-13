@@ -383,6 +383,18 @@ struct Functions {
   static AqlValue$ CollectionCountVPack(arangodb::aql::Query*,
                                         arangodb::AqlTransaction*,
                                         VPackFunctionParameters const&);
+  static AqlValue$ VarianceSampleVPack(arangodb::aql::Query*,
+                                       arangodb::AqlTransaction*,
+                                       VPackFunctionParameters const&);
+  static AqlValue$ VariancePopulationVPack(arangodb::aql::Query*,
+                                           arangodb::AqlTransaction*,
+                                           VPackFunctionParameters const&);
+  static AqlValue$ StdDevSampleVPack(arangodb::aql::Query*,
+                                     arangodb::AqlTransaction*,
+                                     VPackFunctionParameters const&);
+  static AqlValue$ StdDevPopulationVPack(arangodb::aql::Query*,
+                                         arangodb::AqlTransaction*,
+                                         VPackFunctionParameters const&);
 };
 }
 }
