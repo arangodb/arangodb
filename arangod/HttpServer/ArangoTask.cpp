@@ -135,6 +135,25 @@ void ArangoTask::sendChunk(StringBuffer* buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief chunking is finished
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoTask::finishedChunked() {
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6);
+  buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
+
+  _writeBuffers.push_back(buffer.get());
+  buffer.release();
+  _writeBuffersStats.push_back(nullptr);
+
+  _isChunked = false;
+  _requestPending = false;
+
+  fillWriteBuffer();
+  processRead();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief task set up complete
 ////////////////////////////////////////////////////////////////////////////////
 

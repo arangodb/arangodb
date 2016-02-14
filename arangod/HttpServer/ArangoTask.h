@@ -76,7 +76,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief chunking is finished
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void finishedChunked();
+    void finishedChunked();
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief task set up complete

@@ -66,7 +66,7 @@ void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
 
 
 
-HttpCommTask* HttpsServer::createCommTask(TRI_socket_t s,
+ArangoTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           const ConnectionInfo& info) {
   return new HttpsCommTask(this, s, info, _keepAliveTimeout, _ctx,
                            _verificationMode, _verificationCallback);

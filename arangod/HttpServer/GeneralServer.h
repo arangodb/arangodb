@@ -30,6 +30,7 @@
 #include "Basics/SpinLock.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
+
 #include "HttpServer/ArangoTask.h"
 #include "Scheduler/TaskManager.h"
 #include "VelocyServer/VelocyCommTask.h"
@@ -43,6 +44,7 @@ class Dispatcher;
 class EndpointList;
 class GeneralServerJob;
 class HttpCommTask;
+class ArangoTask;
 class VelocyCommTask;
 class GeneralHandlerFactory;
 class Job;
@@ -108,7 +110,7 @@ class GeneralServer : protected TaskManager {
   /// @brief generates a suitable communication task
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
+  virtual ArangoTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
   virtual VelocyCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&, bool);
   
@@ -171,29 +173,29 @@ class GeneralServer : protected TaskManager {
   /// @brief handles a connection close
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationClosed(HttpCommTask*);
+  void handleCommunicationClosed(ArangoTask*);
 
   // Overloading for VelocyServer
 
-  void handleCommunicationClosed(VelocyCommTask*);
+  // void handleCommunicationClosed(VelocyCommTask*);
 
-  // Trial purpose @TODO remove it
+  // // Trial purpose @TODO remove it
 
-  void handleCommunicationClosed(ArangoTask*);
+  // void handleCommunicationClosed(ArangoTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection failure
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationFailure(HttpCommTask*);
-
-  // Overloading for VelocyServer
-
-  void handleCommunicationFailure(VelocyCommTask*);
-
-  // Overloading for VelocyServer
-
   void handleCommunicationFailure(ArangoTask*);
+
+  // Overloading for VelocyServer
+
+  // void handleCommunicationFailure(VelocyCommTask*);
+
+  // // Overloading for VelocyServer
+
+  // void handleCommunicationFailure(ArangoTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a job for asynchronous execution
@@ -206,7 +208,7 @@ class GeneralServer : protected TaskManager {
   /// @brief executes the handler directly or add it to the queue
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
+  bool handleRequest(ArangoTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
 
   // Overloading for VelocyStream
 
@@ -219,7 +221,7 @@ class GeneralServer : protected TaskManager {
 
   struct handler_task_job_t {
     GeneralHandler* _handler;
-    HttpCommTask* _task;
+    ArangoTask* _task;
     GeneralServerJob* _job;
   };
 
@@ -235,7 +237,7 @@ class GeneralServer : protected TaskManager {
   /// @brief handle request directly
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleRequestDirectly(HttpCommTask* task, GeneralHandler* handler);
+  void handleRequestDirectly(ArangoTask* task, GeneralHandler* handler);
 
   // Overloading for VelocyStream
 
@@ -245,7 +247,7 @@ class GeneralServer : protected TaskManager {
   /// @brief registers a task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerHandler(GeneralHandler* handler, HttpCommTask* task);
+  void registerHandler(GeneralHandler* handler, ArangoTask* task);
 
   
  protected:
@@ -295,7 +297,7 @@ class GeneralServer : protected TaskManager {
   /// @brief active comm tasks(Http)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_set<HttpCommTask*> _commTasks;
+  std::unordered_set<ArangoTask*> _commTasks;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief active comm tasks(VelocyStream)

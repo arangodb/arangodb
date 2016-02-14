@@ -74,7 +74,7 @@ class HttpsServer : public GeneralServer {
   }
 
 
-  HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
+  ArangoTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
 
   
  private:

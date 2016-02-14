@@ -32,6 +32,7 @@
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/ArangoTask.h"
+#include "HttpServer/ArangoTask.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/GeneralServerJob.h"
@@ -88,7 +89,7 @@ GeneralServer::~GeneralServer() { stopListening(); }
 /// @brief generates a suitable communication task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask* GeneralServer::createCommTask(TRI_socket_t s,
+ArangoTask* GeneralServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
 }
@@ -151,7 +152,7 @@ void GeneralServer::stopListening() {
 void GeneralServer::stop() {
   while (true) {
     if(_isHttp){
-      HttpCommTask* task = nullptr;
+      ArangoTask* task = nullptr;
       {
           MUTEX_LOCKER(_commTasksLock);
 
@@ -189,7 +190,7 @@ void GeneralServer::stop() {
 void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool isHttp) {
   _isHttp = isHttp;
   if(_isHttp){
-    HttpCommTask* task = createCommTask(s, info);
+    ArangoTask* task = createCommTask(s, info);
     try {
       MUTEX_LOCKER(_commTasksLock);
       _commTasks.emplace(task);
@@ -224,45 +225,45 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleCommunicationClosed(HttpCommTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
-  _commTasks.erase(task);
-}
-
-//// Overloading for VelocyStream
-
-void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
-  _commTasksVstream.erase(task);
-}
-
-// Trial purpose @TODO remove it
-
 void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
 
+//// Overloading for VelocyStream
+
+// void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
+//   MUTEX_LOCKER(_commTasksLock);
+//   _commTasksVstream.erase(task);
+// }
+
+// Trial purpose @TODO remove it
+
+// void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
+//   MUTEX_LOCKER(_commTasksLock);
+//   _commTasks.erase(task);
+// }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleCommunicationFailure(HttpCommTask* task) {
+void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
 
 //// Overloading for VelocyStream
 
-void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
-  _commTasksVstream.erase(task);
-}
+// void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
+//   MUTEX_LOCKER(_commTasksLock);
+//   _commTasksVstream.erase(task);
+// }
 
-void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
-  _commTasksVstream.erase(task);
-}
+// void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
+//   MUTEX_LOCKER(_commTasksLock);
+//   _commTasksVstream.erase(task);
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a job for asynchronous execution (using the dispatcher)
@@ -309,7 +310,7 @@ bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralServer::handleRequest(HttpCommTask* task,
+bool GeneralServer::handleRequest(ArangoTask* task,
                                WorkItem::uptr<GeneralHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
@@ -382,7 +383,7 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly (Http)
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleRequestDirectly(HttpCommTask* task,
+void GeneralServer::handleRequestDirectly(ArangoTask* task,
                                        GeneralHandler* handler) {
   GeneralHandler::status_t status = handler->executeFull();
 
