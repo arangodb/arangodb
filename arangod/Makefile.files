@@ -103,6 +103,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/HttpServer/ApplicationEndpointServer.cpp \
+	arangod/HttpServer/ArangoTask.cpp \
 	arangod/HttpServer/AsyncJobManager.cpp \
 	arangod/HttpServer/HttpCommTask.cpp \
 	arangod/HttpServer/GeneralHandler.cpp \

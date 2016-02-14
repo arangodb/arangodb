@@ -20,8 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_ARANGO_TASK_H
-#define LIB_REST_ARANGO_TASK_H 1
+#ifndef ARANGOD_HTTP_SERVER_ARANGO_TASK_H
+#define ARANGOD_HTTP_SERVER_ARANGO_TASK_H 1
 
 #include "Scheduler/SocketTask.h"
 
@@ -48,7 +48,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     ArangoTask(GeneralServer*, TRI_socket_t, const ConnectionInfo&,
                  double keepAliveTimeout);
 
-    virtual ~base();
+    ~ArangoTask();
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief handles response
