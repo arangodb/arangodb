@@ -548,7 +548,7 @@
         if (error) {
           arangoHelper.arangoError("Could not delete index");
         }
-      }
+      };
 
       $("#indexDeleteModal").modal('hide');
       this.model.deleteIndex(this.lastId, callback);
