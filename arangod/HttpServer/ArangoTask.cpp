@@ -43,7 +43,7 @@ size_t const ArangoTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
 size_t const ArangoTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
 ArangoTask::ArangoTask(GeneralServer* server, TRI_socket_t socket,
-                           ConnectionInfo const& info, double keepAliveTimeout, string task, 
+                           ConnectionInfo const& info, double keepAliveTimeout, std::string task, 
                            	GeneralRequest::ProtocolVersion	version, GeneralRequest::RequestType request)
 		: Task(task),
 		  SocketTask(socket, keepAliveTimeout),
@@ -64,7 +64,6 @@ ArangoTask::ArangoTask(GeneralServer* server, TRI_socket_t socket,
 	      _requestType(GeneralRequest::HTTP_REQUEST_ILLEGAL),
 	      _fullUrl(),
 	      _origin(),
-	      _startPosition(0),
 	      _sinceCompactification(0),
 	      _originalBodyLength(0),
 	      _setupDone(false) {

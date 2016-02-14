@@ -57,8 +57,8 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
       _server(server),
       _writeBuffers(),
       _writeBuffersStats(),
-      _readPosition(0),
-      _bodyPosition(0),
+      _readPosition(0),////
+      _bodyPosition(0),////
       _bodyLength(0),
       _requestPending(false),
       _closeRequested(false),
@@ -72,7 +72,7 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
       _requestType(GeneralRequest::HTTP_REQUEST_ILLEGAL),
       _fullUrl(),
       _origin(),
-      _startPosition(0),
+      _startPosition(0), /////
       _sinceCompactification(0),
       _originalBodyLength(0),
       _setupDone(false) {

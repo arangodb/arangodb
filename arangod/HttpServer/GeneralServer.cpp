@@ -31,6 +31,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
+#include "HttpServer/ArangoTask.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/GeneralServerJob.h"
@@ -235,6 +236,13 @@ void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
   _commTasksVstream.erase(task);
 }
 
+// Trial purpose @TODO remove it
+
+void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasks.erase(task);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,6 +255,11 @@ void GeneralServer::handleCommunicationFailure(HttpCommTask* task) {
 //// Overloading for VelocyStream
 
 void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
+  _commTasksVstream.erase(task);
+}
+
+void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasksVstream.erase(task);
 }

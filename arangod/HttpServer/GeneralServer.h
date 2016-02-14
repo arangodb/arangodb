@@ -30,6 +30,7 @@
 #include "Basics/SpinLock.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
+#include "HttpServer/ArangoTask.h"
 #include "Scheduler/TaskManager.h"
 #include "VelocyServer/VelocyCommTask.h"
 
@@ -176,6 +177,10 @@ class GeneralServer : protected TaskManager {
 
   void handleCommunicationClosed(VelocyCommTask*);
 
+  // Trial purpose @TODO remove it
+
+  void handleCommunicationClosed(ArangoTask*);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection failure
   //////////////////////////////////////////////////////////////////////////////
@@ -185,6 +190,10 @@ class GeneralServer : protected TaskManager {
   // Overloading for VelocyServer
 
   void handleCommunicationFailure(VelocyCommTask*);
+
+  // Overloading for VelocyServer
+
+  void handleCommunicationFailure(ArangoTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a job for asynchronous execution

@@ -29,6 +29,8 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/WorkItem.h"
 
+#include <deque>
+
 namespace arangodb {
 namespace rest {
 class ArangoTask;  
@@ -46,7 +48,8 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     //////////////////////////////////////////////////////////////////////////////
 
     ArangoTask(GeneralServer*, TRI_socket_t, const ConnectionInfo&,
-                 double keepAliveTimeout);
+                 double keepAliveTimeout, std::string task,  GeneralRequest::ProtocolVersion version,
+                 GeneralRequest::RequestType request);
 
     ~ArangoTask();
 
