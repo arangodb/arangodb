@@ -410,7 +410,7 @@ function validateManifestFile(filename) {
   try {
     mf = JSON.parse(fs.read(filename));
   } catch (e) {
-    const error = ArangoError({
+    const error = new ArangoError({
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
       errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
       + '\nFile: ' + filename
@@ -422,7 +422,7 @@ function validateManifestFile(filename) {
   try {
     checkManifest(filename, mf);
   } catch (e) {
-    const error = ArangoError({
+    const error = new ArangoError({
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
       errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
       + '\nFile: ' + filename
