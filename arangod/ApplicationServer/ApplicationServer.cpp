@@ -224,11 +224,11 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     } else {
       bool regularOut = false;
 
-      for (auto definition : _logOutput) {
+      for (auto const& definition : _logOutput) {
         regularOut = regularOut || definition == "+" || definition == "-";
       }
 
-      for (auto definition : outputs) {
+      for (auto const& definition : outputs) {
         regularOut = regularOut || definition == "+" || definition == "-";
       }
 
@@ -245,8 +245,10 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
 
   Logger::setLogLevel(levels);
 
-  for (auto definition : outputs) {
-    Logger::addAppender(definition, !ttyLogger, _logContentFilter);
+  std::unordered_set<std::string> filenames;
+
+  for (auto const& definition : outputs) {
+    Logger::addAppender(definition, !ttyLogger, _logContentFilter, filenames);
   }
 }
 

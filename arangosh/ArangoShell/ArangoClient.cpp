@@ -346,11 +346,12 @@ void ArangoClient::parse(ProgramOptions& options,
   Logger::setShowLineNumber(false);
   Logger::setShowThreadIdentifier(false);
 
+  std::unordered_set<std::string> existingAppenders;
   if (_logOutput.empty()) {
-    Logger::addAppender("-", true, "");
+    Logger::addAppender("-", true, "", existingAppenders);
   } else {
     for (auto& definition : _logOutput) {
-      Logger::addAppender(definition, true, "");
+      Logger::addAppender(definition, true, "", existingAppenders);
     }
   }
 
