@@ -40,6 +40,146 @@
 #endif
 
 // -----------------------------------------------------------------------------
+// --Section--                                                           solaris
+// -----------------------------------------------------------------------------
+
+#ifdef __sun
+
+#define TRI_PLATFORM "solaris"
+
+#define TRI_UNDEF_ERR 1
+
+#define TRI_HAVE_PSTACK 1
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enabled features
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ENABLE_SYSLOG 1
+#define TRI_ENABLE_SYSLOG_STRINGS 1
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief available include files
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_HAVE_DIRENT_H 1
+#define TRI_HAVE_FORK 1
+#define TRI_HAVE_GETRLIMIT 1
+#define TRI_HAVE_LIMITS_H 1
+#define TRI_HAVE_SCHED_H 1
+#define TRI_HAVE_SIGNAL_H 1
+#define TRI_HAVE_STDBOOL_H 1
+#define TRI_HAVE_TERMIOS_H 1
+#define TRI_HAVE_UNISTD_H 1
+#define TRI_HAVE_POLL_H 1
+
+#define TRI_HAVE_SYS_FILE_H 1
+#define TRI_HAVE_SYS_IOCTL_H 1
+#define TRI_HAVE_SYS_RESOURCE_H 1
+#define TRI_HAVE_SYS_TIME_H 1
+#define TRI_HAVE_SYS_TYPES_H 1
+#define TRI_HAVE_SYS_WAIT_H 1
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief available functions
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_HAVE_GETGRGID 1
+#define TRI_HAVE_GETGRNAM 1
+#define TRI_HAVE_GETPPID 1
+#define TRI_HAVE_GETPWNAM 1
+#define TRI_HAVE_GETPWUID 1
+#define TRI_HAVE_GETRUSAGE 1
+#define TRI_GETRUSAGE_MAXRSS_UNIT 1024
+#define TRI_HAVE_GETTIMEOFDAY 1
+#define TRI_HAVE_GMTIME_R 1
+#define TRI_HAVE_LOCALTIME_R 1
+#define TRI_HAVE_SETGID 1
+#define TRI_HAVE_SETUID 1
+#define TRI_HAVE_STRTOLL 1
+#define TRI_HAVE_STRTOULL 1
+
+#define TRI_srandom srand
+#define TRI_random rand
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief available features
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_HAVE_POSIX 1
+
+#define TRI_HAVE_SC_PHYS_PAGES 1
+#define TRI_HAVE_LINUX_PROC 1
+#define TRI_HAVE_LINUX_SOCKETS 1
+#define TRI_HAVE_POSIX_SPIN 1
+#define TRI_HAVE_POSIX_THREADS 1
+#define TRI_HAVE_POSIX_MMAP 1
+#define TRI_HAVE_POSIX_PWD_GRP 1
+
+#define TRI_HAVE_ANONYMOUS_MMAP 1
+
+#define TRI_MISSING_MEMRCHR 1
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief files
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DIR_SEPARATOR_CHAR '/'
+#define TRI_DIR_SEPARATOR_STR "/"
+
+#define TRI_O_CLOEXEC O_CLOEXEC
+
+#define TRI_CHDIR chdir
+#define TRI_CLOSE close
+#define TRI_CREATE(a, b, c) open((a), (b), (c))
+#define TRI_GETCWD getcwd
+#define TRI_LSEEK lseek
+#define TRI_MKDIR(a, b) mkdir((a), (b))
+#define TRI_OPEN(a, b) open((a), (b))
+#define TRI_READ read
+#define TRI_RMDIR rmdir
+#define TRI_UNLINK unlink
+#define TRI_WRITE write
+#define TRI_STAT stat
+#define TRI_FSTAT fstat
+#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
+
+#define TRI_write_t size_t
+#define TRI_read_t size_t
+#define TRI_lseek_t off_t
+#define TRI_stat_t struct stat
+
+#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_SYSTEM_ERROR() \
+  {}
+#define TRI_ERRORBUF \
+  {}
+#define TRI_GET_ERRORBUF strerror(errno)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sockets
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_CONNECT_AI_FLAGS AI_PASSIVE | AI_NUMERICSERV | AI_ALL
+
+#define TRI_INVALID_SOCKET -1
+
+#define TRI_CLOSE_SOCKET TRI_closesocket
+#define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
+#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user and group types
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_uid_t uid_t
+#define TRI_gid_t gid_t
+
+#endif
+
+
+// -----------------------------------------------------------------------------
 // --Section--                                                             apple
 // -----------------------------------------------------------------------------
 
@@ -547,10 +687,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // ..............................................................................
-// Visual Studio 2013 does not support noexcept
+// Visual Studio 2013 does not support noexcept, higher versions do
 // ..............................................................................
 
+// Is noexcept supported?
+#if defined(_MSC_FULL_VER) && _MSC_FULL_VER >= 180021114
+#else
 #define noexcept throw()
+#endif
 
 // ..............................................................................
 // This directive below suppresses warnings about 'inline'
@@ -621,8 +765,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_HAVE_LINENOISE 1
 
 #define YY_NO_UNISTD_H 1
 

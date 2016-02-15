@@ -423,7 +423,12 @@ ArangoCollection.prototype.revision = function () {
 ArangoCollection.prototype.drop = function () {
   var requestResult = this._database._connection.DELETE(this._baseurl());
 
-  arangosh.checkRequestResult(requestResult);
+  if (requestResult !== null
+      && requestResult.error === true
+      && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+      // check error in case we got anything else but "collection not found"
+     arangosh.checkRequestResult(requestResult);
+  }
 
   this._status = ArangoCollection.STATUS_DELETED;
 

@@ -35,12 +35,13 @@ the queue asynchronously, decoupling the client requests and the actual work.
 This allows for much higher throughput than if clients would wait for the server's
 response. The downside is that the response that is sent to the client is always the
 same (a generic HTTP 202) and clients cannot make a decision based on the actual
-operation's result. In fact, the operation might have not even been executed at the
+operation's result at this point. In fact, the operation might have not even been executed at the
 time the generic response has reached the client. Clients can thus not rely on their
 requests having been processed successfully.
 
 The asynchronous task queue on the server is not persisted, meaning not-yet processed
-tasks from the queue might be lost in case of a crash.
+tasks from the queue will be lost in case of a crash. However, the client will
+not know whether they were processed or not.
 
 Clients should thus not send the extra header when they have strict durability 
 requirements or if they rely on result of the sent operation for further actions.
@@ -50,15 +51,16 @@ The maximum number of queued tasks is determined by the startup option
 the server will reject the request with an HTTP 500 error.
 
 Finally, please note that it is not possible to cancel such a
-non-blocking request after the fact. If you need to cancel requests,
+fire and forget job, since you won't get any handle to identify it later on.
+If you need to cancel requests,
 use [Async Execution and later Result Retrieval](#async-execution-and-later-result-retrieval) 
 and [HttpJobPutCancel](#managing-async-results-via-http) below.
 
 !SUBSUBSECTION Async Execution and later Result Retrieval 
 
 By adding the HTTP header *x-arango-async: store* to a request, clients can instruct
-the ArangoDB server to execute the operation asynchronously as [above](#fire-and-forget)
-"above", but also store the operation result in memory for a later retrieval. The
+the ArangoDB server to execute the operation asynchronously as [above](#fire-and-forget),
+but also store the operation result in memory for a later retrieval. The
 server will return a job id in the HTTP response header *x-arango-async-id*. The client
 can use this id in conjunction with the HTTP API at */_api/job*, which is described in
 detail in this manual.
@@ -82,7 +84,7 @@ It is thus a client responsibility to store only as many results as needed and t
 available results as soon as possible, or at least to clean up not fetched results
 from time to time.
 
-The job queue and the results are kept in memory only on the server, so they might be
+The job queue and the results are kept in memory only on the server, so they will be
 lost in case of a crash.
 
 !SUBSUBSECTION Canceling asynchronous jobs

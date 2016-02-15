@@ -9,6 +9,7 @@
 ################################################################################
 
 BUILT_SOURCES += @LIBEV_LIBS@
+LIBEV_FLAGS = @LIBEV_FLAGS@
 
 @LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
@@ -21,7 +22,7 @@ BUILT_SOURCES += @LIBEV_LIBS@
 
 	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
 	cd @top_srcdir@/3rdParty/libev/BUILD && CC="$(CC)" CFLAGS="" ../configure --disable-shared
-	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE) CFLAGS="-D EV_CHILD_ENABLE=0"
+	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE) CFLAGS="-D EV_CHILD_ENABLE=0 $(LIBEV_FLAGS)"
 
 	touch @srcdir@/.libev-build-@TRI_BITS@
 

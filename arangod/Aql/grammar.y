@@ -11,6 +11,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
+#include "Aql/Quantifier.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 %}
@@ -208,6 +209,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_NOT "not operator"
 %token T_AND "and operator"
 %token T_OR "or operator"
+%token T_NIN "not in operator"
 
 %token T_EQ "== operator"
 %token T_NE "!= operator"
@@ -253,6 +255,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %nonassoc T_INTO
 %left T_OR 
 %left T_AND
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_EQ T_NE 
 %left T_IN T_NIN 
 %left T_LT T_GT T_LE T_GE
@@ -319,6 +322,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <strval> variable_name;
 %type <node> numeric_value;
 %type <intval> update_or_replace;
+%type <node> quantifier;
 
 
 /* define start token of language */
@@ -866,6 +870,18 @@ upsert_statement:
     }
   ;
 
+quantifier: 
+    T_ALL {
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::ALL);
+    }
+  | T_ANY {
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::ANY);
+    }
+  | T_NONE {
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::NONE);
+    }
+  ;
+
 distinct_expression:
     T_DISTINCT {
       auto const scopeType = parser->ast()->scopes()->type();
@@ -989,8 +1005,32 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NOT T_IN expression %prec T_NIN {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
+  | expression T_NIN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
+    }
+  | expression quantifier T_EQ expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $4, $2);
+    }
+  | expression quantifier T_NE expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, $1, $4, $2);
+    }
+  | expression quantifier T_LT expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, $1, $4, $2);
+    }
+  | expression quantifier T_GT expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, $1, $4, $2);
+    } 
+  | expression quantifier T_LE expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, $1, $4, $2);
+    }
+  | expression quantifier T_GE expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, $1, $4, $2);
+    }
+  | expression quantifier T_IN expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $4, $2);
+    }
+  | expression quantifier T_NIN expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
     }
   ;
 
@@ -1225,8 +1265,7 @@ graph_subject:
       node->addMember($1);
       $$ = parser->ast()->createNodeCollectionList(node);
     }
-  | graph_collection T_COMMA 
-    {
+  | graph_collection T_COMMA { 
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
       node->addMember($1);
@@ -1255,10 +1294,10 @@ graph_direction:
     T_OUTBOUND {
       $$ = 2;
     }
-    | T_INBOUND {
+  | T_INBOUND {
       $$ = 1;
     }
-    | T_ANY {
+  | T_ANY {
       $$ = 0; 
     }
   ;
@@ -1267,7 +1306,7 @@ graph_direction_steps:
     graph_direction {
       $$ = parser->ast()->createNodeDirection($1, 1);
     }
-    | expression graph_direction {
+  | expression graph_direction %prec T_OUTBOUND {
       $$ = parser->ast()->createNodeDirection($2, $1);
     }
   ;

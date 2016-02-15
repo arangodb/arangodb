@@ -74,9 +74,14 @@ function main (argv) {
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  internal.print(JSON.stringify(args));
+  // internal.print(JSON.stringify(args));
 
   var res = executeExternalAndWait(thePython, args);
+  if (res.exit !== 0) {
+    print("parsing the examples failed - aborting!");
+    print(res);
+    return -1;
+  }
 
   if (startServer) {
     // We use the PortFinder to find a free port for our subinstance,

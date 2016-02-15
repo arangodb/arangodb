@@ -471,21 +471,21 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   for (size_t i = 0; i < base->_datafiles._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_datafiles._buffer[i]);
 
-    info->_datafileSize += (int64_t)df->_maximalSize;
+    info->_datafileSize += (int64_t)df->_initSize;
     ++info->_numberDatafiles;
   }
 
   for (size_t i = 0; i < base->_journals._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_journals._buffer[i]);
 
-    info->_journalfileSize += (int64_t)df->_maximalSize;
+    info->_journalfileSize += (int64_t)df->_initSize;
     ++info->_numberJournalfiles;
   }
 
   for (size_t i = 0; i < base->_compactors._length; ++i) {
     auto df = static_cast<TRI_datafile_t const*>(base->_compactors._buffer[i]);
 
-    info->_compactorfileSize += (int64_t)df->_maximalSize;
+    info->_compactorfileSize += (int64_t)df->_initSize;
     ++info->_numberCompactorfiles;
   }
 
@@ -1649,40 +1649,6 @@ static int OpenIteratorPrepareTransaction(open_iterator_state_t* state) {
 
 static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
   if (state->_tid != 0) {
-    if (state->_trxCollections > 1 && state->_trxPrepared) {
-      // multi-collection transaction...
-      // check if we have a coordinator entry in _trx
-      // if yes, then we'll recover the transaction, otherwise we'll abort it
-
-      if (state->_vocbase->_oldTransactions != nullptr &&
-          state->_vocbase->_oldTransactions->find(state->_tid) !=
-              state->_vocbase->_oldTransactions->end()) {
-        // we have found a coordinator entry
-        // otherwise we would have got TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND etc.
-        int res = TRI_ERROR_NO_ERROR;
-
-        LOG(INFO) << "recovering transaction " << state->_tid;
-        size_t const n = TRI_LengthVector(&state->_operations);
-
-        for (size_t i = 0; i < n; ++i) {
-          open_iterator_operation_t* operation =
-              static_cast<open_iterator_operation_t*>(
-                  TRI_AtVector(&state->_operations, i));
-
-          int r = OpenIteratorApplyOperation(state, operation);
-
-          if (r != TRI_ERROR_NO_ERROR) {
-            res = r;
-          }
-        }
-
-        OpenIteratorResetOperations(state);
-        return res;
-      }
-
-      // fall-through
-    }
-
     OpenIteratorNoteFailedTransaction(state);
 
     LOG(INFO) << "rolling back uncommitted transaction " << state->_tid;

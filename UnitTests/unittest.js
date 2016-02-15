@@ -79,6 +79,7 @@ function resultsToXml(results, baseName, cluster) {
 
       for (let runName in run) {
         if (isSignificant(run, runName)) {
+          const xmlName = clprefix + resultName + "_" + runName;
           const current = run[runName];
 
           if (current.skipped) {
@@ -86,7 +87,13 @@ function resultsToXml(results, baseName, cluster) {
           }
 
           let xml = buildXml();
-          let failuresFound = "";
+          let total = 0;
+
+          if (current.hasOwnProperty('total')) {
+            total = current.total;
+          }
+
+          let failuresFound = 0;
 
           if (current.hasOwnProperty('failed')) {
             failuresFound = current.failed;
@@ -95,16 +102,15 @@ function resultsToXml(results, baseName, cluster) {
           xml.elem("testsuite", {
             errors: 0,
             failures: failuresFound,
-            name: clprefix + runName,
-            tests: current.total,
+            tests: total,
+            name: xmlName,
             time: current.duration
           });
 
           for (let oneTestName in current) {
             if (isSignificant(current, oneTestName)) {
               const oneTest = current[oneTestName];
-              const result = oneTest.status || false;
-              const success = (typeof(result) === 'boolean') ? result : false;
+              const success = (oneTest.status === true);
 
               xml.elem("testcase", {
                 name: clprefix + oneTestName,
@@ -122,7 +128,7 @@ function resultsToXml(results, baseName, cluster) {
 
           if (!current.status) {
             xml.elem("testcase", {
-              name: 'all tests in ' + clprefix + runName,
+              name: 'all tests in ' + xmlName,
               time: current.duration
             }, false);
 
@@ -136,8 +142,7 @@ function resultsToXml(results, baseName, cluster) {
 
           xml.elem("/testsuite");
 
-          const fn = makePathGeneric(baseName + clprefix +
-            resultName + '_' + runName + ".xml").join('_');
+          const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
 
           fs.write("out/" + fn, xml.join(""));
         }
@@ -151,15 +156,32 @@ function resultsToXml(results, baseName, cluster) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(argv) {
-  const test = argv[0];
+  start_pretty_print();
+
+  // parse arguments
+  let cases = [];
   let options = {};
 
-  if (argv.length >= 2) {
+  while (argv.length >= 1) {
+    if (argv[0].slice(0, 1) === '{') {
+      break;
+    }
+
+    if (argv[0].slice(0, 1) === '-') {
+      break;
+    }
+
+    cases.push(argv[0]);
+    argv = argv.slice(1);
+  }
+
+  // convert arguments
+  if (argv.length >= 1) {
     try {
-      if (argv[1].slice(0, 1) === '{') {
-        options = JSON.parse(argv[1]);
+      if (argv[0].slice(0, 1) === '{') {
+        options = JSON.parse(argv[0]);
       } else {
-        options = internal.parseArgv(argv, 1);
+        options = internal.parseArgv(argv, 0);
       }
     } catch (x) {
       print("failed to parse the json options: " + x.message);
@@ -167,17 +189,17 @@ function main(argv) {
     }
   }
 
+  // force json reply
   options.jsonReply = true;
 
+  // create output directory
   fs.makeDirectoryRecursive("out");
-
-  start_pretty_print();
 
   // run the test and store the result
   let r = {};
 
   try {
-    r = UnitTest.UnitTest(test, options) || {};
+    r = UnitTest.unitTest(cases, options) || {};
   } catch (x) {
     print("caught exception during test execution!");
 
@@ -196,16 +218,24 @@ function main(argv) {
   }
 
   _.defaults(r, {
-    all_ok: false,
+    status: false,
     crashed: true
   });
 
   // whether or not there was an error 
-  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.all_ok));
+  fs.write("out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
 
   if (options.writeXmlReport) {
-    fs.write("out/UNITTEST_RESULT.json", inspect(r));
-    fs.write("out/UNITTEST_RESULT_CRASHED.txt", String(r.crashed));
+    let j;
+
+    try {
+      j = JSON.stringify(r);
+    } catch (err) {
+      j = inspect(r);
+    }
+
+    fs.write("out/UNITTEST_RESULT.json", j);
+    fs.write("out/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
 
     try {
       resultsToXml(r,
@@ -214,17 +244,13 @@ function main(argv) {
       print("exception while serializing status xml!");
       print(x.message);
       print(x.stack);
-      print(JSON.stringify(r));
+      print(inspect(r));
     }
   }
 
   UnitTest.unitTestPrettyPrintResults(r);
 
-  if (r.hasOwnProperty("crashed") && r.crashed) {
-    return -1;
-  }
-
-  return 0;
+  return r.crashed ? -1 : 0;
 }
 
 main(ARGUMENTS);

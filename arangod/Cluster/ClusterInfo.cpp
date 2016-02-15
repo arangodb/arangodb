@@ -33,8 +33,11 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
@@ -2513,25 +2516,118 @@ std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief change JSON under
+/// Current/Collection/<DB-name>/<Collection-ID>/<shard-ID>
+/// to add or remove a serverID, if add flag is true, the entry is added
+/// (if it is not yet there), otherwise the entry is removed (if it was
+/// there).
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder newShardEntry (VPackSlice oldValue,
+                            ServerID const& sid,
+                            bool add) {
+  VPackBuilder newValue;
+  VPackSlice servers;
+  {
+    VPackObjectBuilder b(&newValue);
+    // Now need to find the `servers` attribute, which is a list:
+    for (auto const& it : VPackObjectIterator(oldValue)) {
+      if (it.key.isEqualString("servers")) {
+        servers = it.value;
+      } else {
+        newValue.add(it.key);
+        newValue.add(it.value);
+      }
+    }
+    newValue.add(VPackValue("servers"));
+    if (servers.isArray() && servers.length() > 0) {
+      VPackArrayBuilder bb(&newValue);
+      newValue.add(servers[0]);
+      VPackArrayIterator it(servers);
+      bool done = false;
+      for (++it; it.valid(); ++it) {
+        if ((*it).isEqualString(sid)) {
+          if (add) {
+            newValue.add(*it);
+            done = true;
+          }
+        } else {
+          newValue.add(*it);
+        }
+      }
+      if (add && !done) {
+        newValue.add(VPackValue(sid));
+      }
+    } else {
+      VPackArrayBuilder bb(&newValue);
+      newValue.add(VPackValue(ServerState::instance()->getId()));
+      if (add) {
+        newValue.add(VPackValue(sid));
+      }
+    }
+  }
+  return newValue;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
 /// of the "get-in-sync" capabilities. This reports to the agency under
 /// `/Current` but in asynchronous "fire-and-forget" way.
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::add(ServerID const& s) {
+void FollowerInfo::add(ServerID const& sid) {
   std::lock_guard<std::mutex> lock(_mutex);
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
-  v->push_back(s);  // add a single entry
+  v->push_back(sid);  // add a single entry
   _followers = v;   // will cast to std::vector<ServerID> const
-  // Now tell the agency:
-  // Path is
+  // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  // do { 
-  //   Get value, 
-  //   add follower
-  //   Casvalue
-  // } until geklappt
+  std::string path = "Current/Collections/";
+  path += _docColl->_vocbase->_name;
+  path += "/";
+  path += std::to_string(_docColl->_info.planId());
+  path += "/";
+  path += _docColl->_info.name();
+  AgencyComm ac;
+  double startTime = TRI_microtime();
+  bool success = false;
+  do {
+    AgencyCommResult res = ac.getValues(path, false);
+    if (res.successful()) {
+      if (res.parse("", false)) {
+        auto it = res._values.begin();
+        if (it != res._values.end() && it->first == path) {
+          VPackSlice oldValue = it->second._vpack->slice();
+          auto newValue = newShardEntry(oldValue, sid, true);
+          AgencyCommResult res2 = ac.casValue(path, oldValue, newValue.slice(),
+              0, 0);
+          if (res2.successful()) {
+            success = true;
+            break;  //
+          } else {
+            LOG(WARN) << "FollowerInfo::add, could not cas key " << path;
+          }
+        } else {
+          LOG(ERR) << "FollowerInfo::add, did not find key " << path 
+                   << " in agency.";
+        }
+      } else {
+        LOG(ERR) << "FollowerInfo::add, could not parse " << path 
+                 << " in agency.";
+      }
+    } else {
+      LOG(ERR) << "FollowerInfo::add, could not read " << path
+               << " in agency.";
+    }
+    usleep(500000);
+  } while (TRI_microtime() < startTime + 30);
+  if (! success) {
+    LOG(ERR) << "FollowerInfo::add, timeout in agency operation for key "
+             << path;
+
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2542,23 +2638,61 @@ void FollowerInfo::add(ServerID const& s) {
 /// since been dropped (see `dropFollowerInfo` below).
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::remove(ServerID const& s) {
+void FollowerInfo::remove(ServerID const& sid) {
   std::lock_guard<std::mutex> lock(_mutex);
   auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followers->size() - 1);
   for (auto const& i : *_followers) {
-    if (i != s) {
+    if (i != sid) {
       v->push_back(i);
     }
   }
   _followers = v;  // will cast to std::vector<ServerID> const
-  // Now tell the agency:
-  // Path is
+  // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  // do { 
-  //   Get value, 
-  //   remove follower
-  //   Casvalue
-  // } until geklappt
+  std::string path = "Current/Collections/";
+  path += _docColl->_vocbase->_name;
+  path += "/";
+  path += std::to_string(_docColl->_info.planId());
+  path += "/";
+  path += _docColl->_info.name();
+  AgencyComm ac;
+  double startTime = TRI_microtime();
+  bool success = false;
+  do {
+    AgencyCommResult res = ac.getValues(path, false);
+    if (res.successful()) {
+      if (res.parse("", false)) {
+        auto it = res._values.begin();
+        if (it != res._values.end() && it->first == path) {
+          VPackSlice oldValue = it->second._vpack->slice();
+          auto newValue = newShardEntry(oldValue, sid, false);
+          AgencyCommResult res2 = ac.casValue(path, oldValue, newValue.slice(),
+              0, 0);
+          if (res2.successful()) {
+            success = true;
+            break;  //
+          } else {
+            LOG(WARN) << "FollowerInfo::remove, could not cas key " << path;
+          }
+        } else {
+          LOG(ERR) << "FollowerInfo::remove, did not find key " << path 
+                   << " in agency.";
+        }
+      } else {
+        LOG(ERR) << "FollowerInfo::remove, could not parse " << path 
+                 << " in agency.";
+      }
+    } else {
+      LOG(ERR) << "FollowerInfo::remove, could not read " << path
+               << " in agency.";
+    }
+    usleep(500000);
+  } while (TRI_microtime() < startTime + 30);
+  if (! success) {
+    LOG(ERR) << "FollowerInfo::remove, timeout in agency operation for key "
+             << path;
+
+  }
 }
 

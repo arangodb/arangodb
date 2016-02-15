@@ -67,12 +67,14 @@ static std::string StateNames[] = {
     "instantiating plan",  // PLAN_INSTANTIATION
     "optimizing plan",     // PLAN_OPTIMIZATION
     "executing",           // EXECUTION
-    "finalizing"           // FINALIZATION
+    "finalizing",          // FINALIZATION
+
+    "invalid"              // INVALID
 };
 
 // make sure the state strings and the actual states match
 static_assert(sizeof(StateNames) / sizeof(std::string) ==
-                  static_cast<size_t>(ExecutionState::INVALID_STATE),
+                  static_cast<size_t>(ExecutionState::INVALID_STATE) + 1,
               "invalid number of ExecutionState values");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1269,9 +1271,11 @@ void Query::init() {
 
   _id = TRI_NextQueryIdVocBase(_vocbase);
 
+  TRI_ASSERT(_profile == nullptr);
   _profile = new Profile(this);
   enterState(INITIALIZATION);
 
+  TRI_ASSERT(_ast == nullptr);
   _ast = new Ast(this);
   _nodes.reserve(32);
   _strings.reserve(32);

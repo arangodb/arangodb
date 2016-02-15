@@ -652,7 +652,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) 
+  LOG_TOPIC(INFO, Logger::REQUESTS) 
       << "\"http-request\",\"" << _connectionInfo.clientAddress 
       << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_httpVersion) << "\"," 

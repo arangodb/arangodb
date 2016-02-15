@@ -22,21 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
+#include <iostream>
+
 #include "ArangoShell/ArangoClient.h"
-#include "Basics/init.h"
 #include "Basics/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/init.h"
 #include "Basics/random.h"
-#include "Rest/Endpoint.h"
-#include "Rest/InitializeRest.h"
+#include "Basics/terminal-utils.h"
+#include "Basics/tri-strings.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
+#include "Rest/Endpoint.h"
+#include "Rest/InitializeRest.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -268,7 +274,7 @@ int main(int argc, char* argv[]) {
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
 
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 

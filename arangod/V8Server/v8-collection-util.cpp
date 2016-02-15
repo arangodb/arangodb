@@ -123,7 +123,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
 // find the persistent handle
 #if TRI_ENABLE_MAINTAINER_MODE
   auto const& it = v8g->JSCollections.find(collection);
-  TRI_ASSERT(it != v8g->JSCollections.end())
+  TRI_ASSERT(it != v8g->JSCollections.end());
 #endif
 
   // dispose and clear the persistent handle

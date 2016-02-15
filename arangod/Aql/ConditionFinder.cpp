@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ConditionFinder.h"
+#include "ConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
@@ -153,7 +153,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       std::unique_ptr<SortCondition> sortCondition;
       if (!en->isInInnerLoop()) {
         // we cannot optimize away a sort if we're in an inner loop ourselves
-        sortCondition.reset(new SortCondition(_sorts, _variableDefinitions));
+        sortCondition.reset(new SortCondition(_sorts, condition->getConstAttributes(node->outVariable(), false), _variableDefinitions));
       } else {
         sortCondition.reset(new SortCondition);
       }

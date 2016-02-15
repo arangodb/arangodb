@@ -192,7 +192,16 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_DIRECTION = 61,
   NODE_TYPE_OPERATOR_NARY_AND = 62,
   NODE_TYPE_OPERATOR_NARY_OR = 63,
-  NODE_TYPE_AGGREGATIONS = 64
+  NODE_TYPE_AGGREGATIONS = 64,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ = 65,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_NE = 66,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_LT = 67,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_LE = 68,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_GT = 69,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_GE = 70,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_IN = 71,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN = 72,
+  NODE_TYPE_QUANTIFIER = 73
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -620,6 +629,12 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isComparisonOperator() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not a node is an array comparison operator
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isArrayComparisonOperator() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a node (and its subnodes) may throw a runtime

@@ -499,3 +499,16 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   return 0.0;
 }
 
+arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
+  VPackSlice const& slice) {
+  size_t const cutoff = 100;
+  std::string sliceStr(slice.toJson());
+  bool longer = sliceStr.size() > cutoff;
+  if (longer) {
+    logger << sliceStr.substr(cutoff) << "...";
+  }
+  else {
+    logger << sliceStr;
+  }
+  return logger;
+}

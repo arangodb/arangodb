@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Quantifier.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -292,7 +293,10 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.arraySize();
 
-  if (n > 3 && (node->getBoolValue() || node->getMember(1)->isSorted())) {
+  if (n > 3 && 
+      (node->getMember(1)->isSorted() ||
+      ((node->type == NODE_TYPE_OPERATOR_BINARY_IN || 
+        node->type == NODE_TYPE_OPERATOR_BINARY_NIN) && node->getBoolValue()))) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -500,6 +504,16 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return executeSimpleExpressionComparison(node, trx, argv, startPos, vars,
                                                regs);
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      return executeSimpleExpressionArrayComparison(node, trx, argv, startPos, vars,
+                                                    regs);
     case NODE_TYPE_OPERATOR_TERNARY:
       return executeSimpleExpressionTernary(node, trx, argv, startPos, vars,
                                             regs);
@@ -1044,6 +1058,132 @@ AqlValue Expression::executeSimpleExpressionComparison(
       msg.append("' in executeSimpleExpression()");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Expression::executeSimpleExpressionArrayComparison(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs) {
+  TRI_document_collection_t const* leftCollection = nullptr;
+  AqlValue left =
+      executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv,
+                              startPos, vars, regs, false);
+  TRI_document_collection_t const* rightCollection = nullptr;
+  AqlValue right =
+      executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv,
+                              startPos, vars, regs, false);
+
+  if (!left.isArray()) {
+    // left operand must be an array
+    left.destroy();
+    right.destroy();
+    // do not throw, but return "false" instead
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+  }
+  
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // IN and NOT IN
+    if (!right.isArray()) {
+      // right operand must be a list, otherwise we return false
+      left.destroy();
+      right.destroy();
+      // do not throw, but return "false" instead
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+    }
+  }
+
+  size_t const n = left.arraySize();
+  std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
+
+  TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
+ 
+  // for equality and non-equality we can use a binary comparison
+  bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+                            node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
+
+  bool overallResult = true;
+  size_t matches = 0;
+  size_t numLeft = n;
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto leftItem = left.extractArrayMember(trx, leftCollection, static_cast<int64_t>(i), false);
+    AqlValue leftItemValue(&leftItem);
+    bool result;
+
+    // IN and NOT IN
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+      result =
+          findInArray(leftItemValue, right, nullptr, rightCollection, trx, node);
+    
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+        // revert the result in case of a NOT IN
+        result = !result;
+      }
+    }
+    else {
+      // other operators
+      int compareResult = AqlValue::Compare(trx, leftItemValue, nullptr,
+                                            right, rightCollection, compareUtf8);
+
+      result = false;
+      switch (node->type) {
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+          result = (compareResult == 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+          result = (compareResult != 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+          result = (compareResult < 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+          result = (compareResult <= 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+          result = (compareResult > 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+          result = (compareResult >= 0);
+          break;
+        default:
+          TRI_ASSERT(false);
+      }
+    }
+    
+    --numLeft;
+      
+    if (result) {
+      ++matches;
+      if (matches > requiredMatches.second) {
+        // too many matches
+        overallResult = false;
+        break;
+      }
+      if (matches >= requiredMatches.first && matches + numLeft <= requiredMatches.second) {
+        // enough matches
+        overallResult = true;
+        break;
+      }
+    }
+    else {
+      if (matches + numLeft < requiredMatches.first) {
+        // too few matches
+        overallResult = false;
+        break;
+      }
+    }
+  }
+      
+  left.destroy();
+  right.destroy();
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, overallResult ? &TrueJson : &FalseJson, Json::NOFREE));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

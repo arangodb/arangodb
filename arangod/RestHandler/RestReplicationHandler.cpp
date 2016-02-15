@@ -116,6 +116,11 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
+    } else if (command == "barrier") {
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
+      handleCommandBarrier();
     } else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -250,6 +255,16 @@ HttpHandler::status_t RestReplicationHandler::execute() {
                       TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
       } else {
         handleCommandClusterInventory();
+      }
+    } else if (command == "addFollower") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(HttpResponse::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandAddFollower();
       }
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -503,14 +518,6 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_batch_replication
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_batch_replication
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_delete_batch_replication
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -594,6 +601,135 @@ void RestReplicationHandler::handleCommandBatch() {
       createResponse(HttpResponse::NO_CONTENT);
     } else {
       generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  // we get here if anything above is invalid
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add or remove a WAL logfile barrier
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandBarrier() {
+  // extract the request type
+  HttpRequest::HttpRequestType const type = _request->requestType();
+  std::vector<std::string> const& suffix = _request->suffix();
+  size_t const len = suffix.size();
+
+  TRI_ASSERT(len >= 1);
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    // create a new barrier
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+
+    if (minTick == 0) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid tick value");
+      return;
+    }
+
+    TRI_voc_tick_t id = arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick, ttl);
+
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Object));
+      std::string const idString(std::to_string(id));
+      b.add("id", VPackValue(idString));
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+    // extend an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
+
+    if (input == nullptr) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid JSON");
+      return;
+    }
+
+    // extract ttl
+    double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
+    
+    TRI_voc_tick_t minTick = 0;
+    auto v = TRI_LookupObjectJson(input.get(), "tick");
+
+    if (TRI_IsStringJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
+    }
+    else if (TRI_IsNumberJson(v)) {
+      minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
+    }
+    
+    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(id, ttl, minTick)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+    // delete an existing barrier
+    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+
+    if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
+      createResponse(HttpResponse::NO_CONTENT);
+    } else {
+      int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    return;
+  }
+  
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    // fetch all barriers
+    auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
+
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Array));
+      for (auto& it : ids) {
+        b.add(VPackValue(std::to_string(it)));
+      }
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }
@@ -707,6 +843,13 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
+  
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = 0;
+  value = _request->value("barrier", found);
+  if (found) {
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
 
   bool includeSystem = true;
   value = _request->value("includeSystem", found);
@@ -743,7 +886,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     }
 
     for (auto const& id : VPackArrayIterator(slice)) {
-      if (id.isString()) {
+      if (!id.isString()) {
         generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");
         return;
@@ -751,13 +894,35 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
+ 
+  // extract collection
+  TRI_voc_cid_t cid = 0; 
+  value = _request->value("collection", found);
+
+  if (found) {
+    TRI_vocbase_col_t* c =
+        TRI_LookupCollectionByNameVocBase(_vocbase, value);
+
+    if (c == nullptr) {
+      generateError(HttpResponse::NOT_FOUND,
+                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return;
+    }
+
+    cid = c->_cid;
+  }
+      
+  if (barrierId > 0) {
+    // extend the WAL logfile barrier
+    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(barrierId, 180, tickStart);
+  }
 
   int res = TRI_ERROR_NO_ERROR;
 
   try {
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
-                                includeSystem);
+                                includeSystem, cid);
 
     // and dump
     res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
@@ -857,7 +1022,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   try {
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false, 0);
 
     // and dump
     res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1073,7 +1238,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     }
   }
 
-  const TRI_col_type_e type = static_cast<TRI_col_type_e>(
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", (int)TRI_COL_TYPE_DOCUMENT));
 
@@ -2811,7 +2976,7 @@ void RestReplicationHandler::handleCommandDump() {
 
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
-                                includeSystem);
+                                includeSystem, 0);
 
     res =
         TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks,
@@ -2893,20 +3058,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   // initialize some defaults to copy from
   TRI_replication_applier_configuration_t defaults;
-  TRI_InitConfigurationReplicationApplier(&defaults);
 
   // initialize target configuration
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
-  config._endpoint =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -2928,6 +3087,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                                          defaults._autoResync);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", defaults._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -2991,6 +3152,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
+  TRI_voc_tick_t barrierId = 0;
   std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
@@ -3000,6 +3162,9 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
     try {
       res = syncer.run(errorMsg, false);
+
+      // steal the barrier from the syncer
+      barrierId = syncer.stealBarrier();
     } catch (...) {
       errorMsg = "caught an exception";
       res = TRI_ERROR_INTERNAL;
@@ -3020,7 +3185,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res = _vocbase->_replicationApplier->start(lastLogTick, true);
+  res = _vocbase->_replicationApplier->start(lastLogTick, true, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
@@ -3073,6 +3238,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   bool const incremental =
       VelocyPackHelper::getBooleanValue(body, "incremental", false);
+  bool const keepBarrier =
+      VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
 
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
@@ -3099,15 +3266,10 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password =
-      TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
 
@@ -3152,6 +3314,11 @@ void RestReplicationHandler::handleCommandSync() {
     auto tickString = std::to_string(syncer.getLastLogTick());
     result.add("lastLogTick", VPackValue(tickString));
 
+    if (keepBarrier) {
+      auto barrierId = std::to_string(syncer.stealBarrier());
+      result.add("barrierId", VPackValue(barrierId));
+    }
+
     result.close();  // base
     VPackSlice s = result.slice();
     generateResult(s);
@@ -3186,12 +3353,10 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
   {
     READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(
-        &_vocbase->_replicationApplier->_configuration, &config);
+    config.update(&_vocbase->_replicationApplier->_configuration);
   }
   try {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
@@ -3209,7 +3374,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
 
   bool success;
   VPackOptions options;
@@ -3224,48 +3388,26 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 
   {
     READ_LOCKER(readLocker, _vocbase->_replicationApplier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(
-        &_vocbase->_replicationApplier->_configuration, &config);
+    config.update(&_vocbase->_replicationApplier->_configuration);
   }
 
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (!endpoint.empty()) {
-    if (config._endpoint != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._endpoint);
-    }
-    config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
-                                           endpoint.size());
+    config._endpoint = endpoint;
   }
 
-  std::string database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
-  if (config._database != nullptr) {
-    // free old value
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
-  }
-  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
-                                         database.length());
+  config._database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {
-    if (config._username != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
-    }
-    std::string tmp = username.copyString();
-    config._username =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._username = username.copyString();
   }
 
   VPackSlice const password = body.get("password");
   if (password.isString()) {
-    if (config._password != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
-    }
-    std::string tmp = password.copyString();
-    config._password =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
+    config._password = password.copyString();
   }
 
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3290,6 +3432,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       body, "includeSystem", config._includeSystem);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", config._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", config._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
@@ -3352,12 +3496,21 @@ void RestReplicationHandler::handleCommandApplierStart() {
   char const* value = _request->value("from", found);
 
   TRI_voc_tick_t initialTick = 0;
+  bool useTick = false;
   if (found) {
     // query parameter "from" specified
     initialTick = (TRI_voc_tick_t)StringUtils::uint64(value);
+    useTick = true;
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, found);
+  TRI_voc_tick_t barrierId = 0;
+  value = _request->value("barrierId", found);
+  if (found) {
+    // query parameter "barrierId" specified
+    barrierId = (TRI_voc_tick_t) StringUtils::uint64(value);
+  }
+
+  int res = _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
@@ -3422,3 +3575,53 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
   handleCommandApplierGetState();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a follower of a shard to the list of followers
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandAddFollower() {
+  VPackOptions options;
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody 
+      = parseVelocyPackBody(&options, success);
+  if (!success) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attributes 'followerId' and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+  
+  // find and load collection given by name or identifier
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, shard.copyString());
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "could not start transaction");
+    return;
+  }
+
+  TRI_document_collection_t* docColl = trx.documentCollection();
+  TRI_ASSERT(docColl != nullptr);
+  docColl->followers()->add(followerId.copyString());
+
+  VPackBuilder b;
+  { VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(HttpResponse::OK, b.slice());
+}
+

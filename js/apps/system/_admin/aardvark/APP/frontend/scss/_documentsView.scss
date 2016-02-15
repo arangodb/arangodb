@@ -59,11 +59,33 @@
   }
 }
 
+#collectionEditIndexTable {
+  thead {
+    border-bottom: 1px solid $c-grey;
+  }
+}
+
+.newIndexClass {
+  table {
+    margin-bottom: 60px;
+  }
+}
+
 .index-button-bar {
+  bottom: 0;
+  margin-bottom: 15px;
+  margin-right: 17px;
   margin-top: 15px;
+  position: absolute;
+  right: 0;
 
   button {
+    float: right;
     margin-left: 0;
+  }
+
+  #cancelIndex {
+    margin-right: 13px;
   }
 }
 

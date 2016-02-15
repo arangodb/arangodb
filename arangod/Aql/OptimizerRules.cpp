@@ -38,6 +38,7 @@
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/json-utilities.h"
 
 using namespace arangodb::aql;
@@ -71,7 +72,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
     // expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto inNode = filterExpression->nodeForModification();
+    auto const* inNode = filterExpression->node();
 
     TRI_ASSERT(inNode != nullptr);
 
@@ -204,10 +205,12 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
     }
 
-    // finally adjust the variable inside the IN calculation
-    inNode->changeMember(1, ast->createNodeReference(outVar));
+    AstNode* clone = ast->clone(inNode);
     // set sortedness bit for the IN operator
-    inNode->setBoolValue(true);
+    clone->setBoolValue(true);
+    // finally adjust the variable inside the IN calculation
+    clone->changeMember(1, ast->createNodeReference(outVar));
+    filterExpression->replaceNode(clone);
 
     modified = true;
   }
@@ -1703,7 +1706,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(), _variableDefinitions);
 
     if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
@@ -1723,8 +1726,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           continue;
         }
 
-        auto numCovered =
-            sortCondition.coveredAttributes(outVariable, index->fields);
+        size_t const numCovered =
+            sortCondition.coveredAttributes(outVariable, index->fields); 
 
         if (numCovered == 0) {
           continue;
@@ -1732,14 +1735,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         double estimatedCost = 0.0;
         if (!index->supportsSortCondition(
-                &sortCondition, outVariable,
+                &sortCondition, 
+                outVariable,
                 enumerateCollectionNode->collection()->count(),
                 estimatedCost)) {
           // should never happen
           TRI_ASSERT(false);
           continue;
         }
-
+ 
         if (bestIndex == nullptr || estimatedCost < bestCost) {
           bestIndex = index;
           bestCost = estimatedCost;
@@ -1788,6 +1792,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
+    TRI_ASSERT(cond != nullptr);
+          
+    Variable const* outVariable = indexNode->outVariable();
+    TRI_ASSERT(outVariable != nullptr);
 
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
@@ -1822,7 +1830,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     auto index = indexes[0];
     bool handled = false;
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !index->sparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
@@ -1833,11 +1841,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
-      Variable const* outVariable = indexNode->outVariable();
-      auto numCovered =
-          sortCondition.coveredAttributes(outVariable, index->fields);
+      size_t const numCovered =
+          sortCondition.coveredAttributes(outVariable, index->fields); 
 
-      if (numCovered == sortCondition.numAttributes()) {
+      if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
@@ -1860,11 +1867,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // now check if the index fields are the same as the sort condition
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-          Variable const* outVariable = indexNode->outVariable();
-          size_t coveredFields =
-              sortCondition.coveredAttributes(outVariable, index->fields);
+          size_t const numCovered = 
+              sortCondition.coveredAttributes(outVariable, index->fields); 
 
-          if (coveredFields == sortCondition.numAttributes() &&
+          if (numCovered == sortCondition.numAttributes() &&
+              sortCondition.isUnidirectional() &&
               (index->isSorted() ||
                index->fields.size() == sortCondition.numAttributes())) {
             // no need to sort
@@ -3103,80 +3110,154 @@ struct CommonNodeFinder {
 /// @brief auxilliary struct for the OR-to-IN conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-struct OrToInConverter {
-  std::vector<AstNode const*> valueNodes;
-  CommonNodeFinder finder;
-  AstNode const* commonNode = nullptr;
-  std::string commonName;
+struct OrSimplifier {
+  Ast* ast;
 
-  AstNode* buildInExpression(Ast* ast) {
-    // the list of comparison values
-    auto list = ast->createNodeArray();
-    for (auto& x : valueNodes) {
-      list->addMember(x);
+  explicit OrSimplifier(Ast* ast) : ast(ast) {}
+  
+  std::string stringifyNode(AstNode const* node) const {
+    try {
+      return node->toString();
     }
-
-    // return a new IN operator node
-    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
-                                         commonNode->clone(ast), list);
+    catch (...) {
+    }
+    return "";
   }
 
-  bool canConvertExpression(AstNode const* node) {
-    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode,
-                    commonName)) {
-      return canConvertExpressionWalker(node);
-    } else if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_IN, commonNode,
-                           commonName)) {
-      return canConvertExpressionWalker(node);
+  bool qualifies(AstNode const* node, std::string& attributeName) const {
+    if (node->isConstant()) {
+      return false;
     }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        node->type == NODE_TYPE_INDEXED_ACCESS ||
+        node->type == NODE_TYPE_REFERENCE) {
+      attributeName = stringifyNode(node);
+      return true;
+    }
+
     return false;
   }
 
-  bool canConvertExpressionWalker(AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (canConvertExpressionWalker(node->getMember(0)) &&
-              canConvertExpressionWalker(node->getMember(1)));
-    }
+  bool detect(AstNode const* node, bool preferRight, std::string& attributeName, AstNode const*& attr, AstNode const*& value) const {
+    attributeName.clear();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(rhs) && !canConvertExpressionWalker(lhs)) {
-        valueNodes.emplace_back(lhs);
-        return true;
+      if (!preferRight && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
+        }
       }
 
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs)) {
-        valueNodes.emplace_back(rhs);
-        return true;
+      if (qualifies(rhs, attributeName)) {
+        if (lhs->isDeterministic() && !lhs->canThrow()) {
+          attr = rhs;
+          value = lhs;
+          return true;
+        }
       }
-      // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs),
-      // then one of
-      // the equalities in the OR statement is of the form x == x
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      // fallthrough intentional
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs) &&
-          rhs->isArray()) {
-        size_t const n = rhs->numMembers();
-
-        for (size_t i = 0; i < n; ++i) {
-          valueNodes.emplace_back(rhs->getMemberUnchecked(i));
+      if (rhs->isArray() && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
         }
-        return true;
       }
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_REFERENCE ||
-               node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-               node->type == NODE_TYPE_INDEXED_ACCESS) {
-      // get a string representation of the node for comparisons
-      return (node->toString() == commonName);
+      // fallthrough intentional
     }
 
     return false;
+  }
+
+  AstNode* buildValues(AstNode const* attr, AstNode const* lhs, bool leftIsArray, AstNode const* rhs, bool rightIsArray) const {
+    auto values = ast->createNodeArray();
+    if (leftIsArray) {
+      size_t const n = lhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(lhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(lhs);
+    }
+    
+    if (rightIsArray) {
+      size_t const n = rhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(rhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(rhs);
+    }
+
+    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, attr, values);
+  }
+
+  AstNode* simplify(AstNode const* node) const {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+      
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // create a modified node
+        node = ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      if ((lhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) && 
+          (rhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN)) {
+        std::string leftName;
+        std::string rightName;
+        AstNode const* leftAttr = nullptr;
+        AstNode const* rightAttr = nullptr;
+        AstNode const* leftValue = nullptr;
+        AstNode const* rightValue = nullptr;
+
+        for (size_t i = 0; i < 4; ++i) {
+          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) && 
+              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) && 
+              leftName == rightName) {
+            return buildValues(leftAttr, leftValue, lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN, rightValue, rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN);
+          }
+        }
+      }
+
+      // return node as is
+      return const_cast<AstNode*>(node);
+    }
+    
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // return a modified node
+        return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      // fallthrough intentional
+    }
+      
+    return const_cast<AstNode*>(node);
   }
 };
 
@@ -3212,17 +3293,16 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
-    if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
-      continue;
-    }
+    
+    auto root = cn->expression()->node();
 
-    OrToInConverter converter;
-    if (converter.canConvertExpression(cn->expression()->node())) {
+    OrSimplifier simplifier(plan->getAst());
+    auto newRoot = simplifier.simplify(root);
+
+    if (newRoot != root) {
       ExecutionNode* newNode = nullptr;
-      auto inNode = converter.buildInExpression(plan->getAst());
-
-      Expression* expr = new Expression(plan->getAst(), inNode);
-
+      Expression* expr = new Expression(plan->getAst(), newRoot);
+      
       try {
         TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

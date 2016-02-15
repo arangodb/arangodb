@@ -132,6 +132,11 @@
 * GITHUB: https://github.com/jshttp/content-disposition
 * License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
 
+#### dedent
+
+* GITHUB: https://github.com/dmnd/dedent
+* License: [MIT License](https://github.com/dmnd/dedent/blob/master/LICENSE)
+
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js
@@ -295,11 +300,10 @@
 * Project Home: http://www.embeddedjs.com
 * License: [MIT License](http://www.embeddedjs.com/) under Highlights
 
-#### filesize.js
+#### prettyBytes.js
 
-* Project Home: http://filesizejs.com/
-* GITHUB: https://github.com/avoidwork/filesize.js
-* License: [BSD-style 3-Clause License](https://github.com/avoidwork/filesize.js/blob/master/LICENSE)
+* GITHUB: https://github.com/sindresorhus/pretty-bytes
+* License: [MIT License](https://github.com/sindresorhus/pretty-bytes/blob/master/license)
 
 #### Jasmine
 

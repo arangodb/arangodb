@@ -37,7 +37,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/levenshtein.cpp \
 	lib/Basics/locks-posix.cpp \
-	lib/Basics/logging.cpp \
 	lib/Basics/Logger.cpp \
 	lib/Basics/memory-map-posix.cpp \
 	lib/Basics/memory.cpp \
@@ -86,7 +85,6 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/InitializeRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
-	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellBase.cpp \
@@ -94,15 +92,11 @@ lib_libarango_a_SOURCES = \
 	lib/Zip/unzip.cpp \
 	lib/Zip/zip.cpp
 
-if ENABLE_LINENOISE
-
 lib_libarango_a_SOURCES += \
 	3rdParty/linenoise-ng/src/linenoise.cpp \
 	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
 	3rdParty/linenoise-ng/src/wcwidth.cpp \
 	lib/Utilities/LinenoiseShell.cpp
-
-endif
 
 lib_libarango_a_SOURCES += \
 	3rdParty/velocypack/src/AttributeTranslator.cpp \
