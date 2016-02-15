@@ -3859,7 +3859,7 @@ AqlValue$ Functions::UniqueVPack(arangodb::aql::Query* query,
     return AqlValue$(b.get());
   }
 
-  std::unordered_set<VPackSlice const,
+  std::unordered_set<VPackSlice,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
@@ -3966,7 +3966,7 @@ AqlValue$ Functions::SortedUniqueVPack(
     return AqlValue$(b.get());
   }
 
-  std::set<VPackSlice const, arangodb::basics::VelocyPackHelper::VPackLess<true>> values;
+  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>> values;
   for (auto const& it : VPackArrayIterator(value)) {
     if (!it.isNone()) {
       values.insert(it);
@@ -4210,7 +4210,7 @@ AqlValue$ Functions::UnionDistinctVPack(arangodb::aql::Query* query,
         (int)2, (int)Function::MaxArguments);
   }
 
-  std::unordered_set<VPackSlice const,
+  std::unordered_set<VPackSlice,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
@@ -4392,7 +4392,7 @@ AqlValue$ Functions::IntersectionVPack(arangodb::aql::Query* query,
         (int)2, (int)Function::MaxArguments);
   }
 
-  std::unordered_map<VPackSlice const, size_t,
+  std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
