@@ -162,7 +162,7 @@
             },
             error: function(data) {
               window.progressView.hide();
-              arangoHelper.arangoNotification(
+              arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
               );
             }
@@ -170,7 +170,7 @@
         },
         error: function(data) {
           window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not move selected documents.");
+          arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
       });
     },
@@ -253,7 +253,7 @@
         },
         error: function(data) {
           window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not fetch requested documents.");
+          arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
         }
       });
     },
