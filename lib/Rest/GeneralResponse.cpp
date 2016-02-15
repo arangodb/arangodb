@@ -339,6 +339,8 @@ GeneralResponse::VstreamResponseCode GeneralResponse::responseCodeVstream(
 
     case 400:
       return VSTREAM_BAD;
+    case 401:
+      return VSTREAM_UNAUTHORIZED;  
     case 403:
       return VSTREAM_FORBIDDEN;
     case 404:
@@ -367,6 +369,8 @@ GeneralResponse::VstreamResponseCode GeneralResponse::responseCodeVstream(
       return VSTREAM_PRECONDITION_REQUIRED;
     case 429:
       return VSTREAM_TOO_MANY_REQUESTS;
+    case 431:
+      return VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE;  
     case 451:
       return VSTREAM_UNAVAILABLE_FOR_LEGAL_REASONS;
 
@@ -570,8 +574,13 @@ GeneralResponse::GeneralResponse(VstreamResponseCode code, uint32_t apiCompatibi
       _isChunked(false),
       _headers(6),
       _body(TRI_UNKNOWN_MEM_ZONE),
+      _bodyVpack(),
       _bodySize(0),
       _freeables() {
+      // arangodb::velocypack::Builder b;
+      // b(arangodb::velocypack::ValueType(velocypack::ValueType::Int))(TRI_UNKNOWN_MEM_ZONE)();
+      // _bodyVpack(b),
+
   if (!HideProductHeader) {
     _headers.insert(TRI_CHAR_LENGTH_PAIR("server"), "ArangoDB");
   }
@@ -975,11 +984,29 @@ GeneralResponse* GeneralResponse::swap() {
   return response;
 }
 
+// GeneralResponse* GeneralResponse::swapVpack() {
+//   GeneralResponse* response = new GeneralResponse(_code, _apiCompatibility);
+
+//   response->_headers.swap(&_headers);
+//   response->_bodyVpack.swap(&_bodyVpack);
+//   response->_freeables.swap(_freeables);
+
+//   bool isHeadResponse = response->_isHeadResponse;
+//   response->_isHeadResponse = _isHeadResponse;
+//   _isHeadResponse = isHeadResponse;
+
+//   size_t bodySize = response->_bodySize;
+//   response->_bodySize = _bodySize;
+//   _bodySize = bodySize;
+
+//   return response;
+// }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes the header (velocystream)
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack::Builder vobject) {
+arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack::Builder* vobject) {
 
   arangodb::velocypack::Builder b; // { VPackObjectBuilder bb(&b, "parameter");//   b.add("a", Value("1");// }  
   basics::Dictionary<char const*>::KeyValue const* begin;
@@ -1022,13 +1049,13 @@ arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack:
       if (_isHeadResponse) {
         b.add("Content-Size: ", arangodb::velocypack::Value(_bodySize));
       }else{
-        b.add("Content-Size: ", arangodb::velocypack::Value(_body.length()));
+        b.add("Content-Size: ", arangodb::velocypack::Value(arangodb::velocypack::Slice(_bodyVpack.start()).byteSize()));
       }
     } else {
       if (_isHeadResponse) {
         b.add("content-size: ", arangodb::velocypack::Value(_bodySize));
       }else{
-        b.add("content-size: ", arangodb::velocypack::Value(_body.length()))
+        b.add("content-size: ", arangodb::velocypack::Value(arangodb::velocypack::Slice(_bodyVpack.start()).byteSize()))
         ;
       }
     }
@@ -1155,7 +1182,7 @@ void GeneralResponse::writeHeader(StringBuffer* output) {
       // been a GET.
       output->appendInteger(_bodySize);
     } else {
-      output->appendInteger(_body.length());
+      output->appendInteger(arangodb::velocypack::Slice(_bodyVpack.start()).byteSize());
     }
 
     output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -1171,7 +1198,7 @@ size_t GeneralResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  return _body.length();
+  return arangodb::velocypack::Slice(_bodyVpack.start()).byteSize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1180,12 +1207,24 @@ size_t GeneralResponse::bodySize() const {
 
 StringBuffer& GeneralResponse::body() { return _body; }
 
+arangodb::velocypack::Builder& GeneralResponse::bodyVpack(){return _bodyVpack;}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates a head response
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralResponse::headResponse(size_t size) {
   _body.clear();
+  _isHeadResponse = true;
+  _bodySize = size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates a head response (VelocyPack)
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralResponse::headResponseVpack(size_t size) {
+  _bodyVpack.clear();
   _isHeadResponse = true;
   _bodySize = size;
 }

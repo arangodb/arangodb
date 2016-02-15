@@ -26,22 +26,25 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
-#include "VelocyServer/VelocyHandler.h"
-#include "VelocyServer/VelocyHandlerFactory.h"
-#include "VelocyServer/GeneralServer.h"
+#include "HttpServer/ArangoTask.h" 
+#include "VelocyServer/VelocyCommTask.h"
+#include "HttpServer/GeneralHandlerFactory.h"
+// #include "VelocyServer/VelocyHandlerFactory.h"
+#include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static initializers
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief static initializers
+// ////////////////////////////////////////////////////////////////////////////////
 
-size_t const VelocyCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
-size_t const VelocyCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
+// size_t const VelocyCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
+// size_t const VelocyCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
+// size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
@@ -49,82 +52,12 @@ size_t const VelocyCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 G
 
 VelocyCommTask::VelocyCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
-    : Task("VelocyCommTask"),
-      SocketTask(socket, keepAliveTimeout),
-      _connectionInfo(info),
-      _server(server),
-      _writeBuffers(),
-      _writeBuffersStats(),
-      _bodyLength(0),
-      _isfirstChunk(),
-      _requestPending(false),
-      _closeRequested(false),
-      _readRequestBody(false),
-      _denyCredentials(false),
-      _acceptDeflate(false),
-      _newRequest(true),
-      _isChunked(false),
-      _request(nullptr),
-      _vstreamVersion(GeneralRequest::VSTREAM_UNKNOWN),
-      _requestType(GeneralRequest::VSTREAM_REQUEST_ILLEGAL),
-      _fullUrl(),
-      _origin(),
-      _startPosition(0),
-      _sinceCompactification(0),
-      _originalBodyLength(0),
-      _setupDone(false) {
-  LOG_TRACE(
-      "connection established, client %d, server ip %s, server port %d, client "
-      "ip %s, client port %d",
-      (int)TRI_get_fd_or_handle_of_socket(socket),
-      _connectionInfo.serverAddress.c_str(), (int)_connectionInfo.serverPort,
-      _connectionInfo.clientAddress.c_str(), (int)_connectionInfo.clientPort);
-
-  // acquire a statistics entry and set the type to VelocyStream
-  ConnectionStatisticsAgent::acquire();
-  connectionStatisticsAgentSetStart();
+    : Task("VelocyCommTask"), 
+      ArangoTask(server, socket, info, keepAliveTimeout, "HttpCommTask", 
+                            GeneralRequest::VSTREAM_UNKNOWN, GeneralRequest::VSTREAM_REQUEST_ILLEGAL),
+      _isFirstChunk()
+    {
   // connectionStatisticsAgentSetHttp(); @TODO: find STAT / TRI_stat_t structure and add velocystream support to it
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a task
-////////////////////////////////////////////////////////////////////////////////
-
-VelocyCommTask::~VelocyCommTask() {
-  LOG_TRACE("connection closed, client %d",
-            (int)TRI_get_fd_or_handle_of_socket(_commSocket));
-
-  // free write buffers and statistics
-  for (auto& i : _writeBuffers) {
-    delete i;
-  }
-
-  for (auto& i : _writeBuffersStats) {
-    TRI_ReleaseRequestStatistics(i);
-  }
-
-  // free request
-  delete _request;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles response
-////////////////////////////////////////////////////////////////////////////////
-
-// @ TODO: remember to construct GeneralResponse that is Vpack specific 
-
-void VelocyCommTask::handleResponse(GeneralResponse* response) {
-  if (response->isChunked()) {
-    _requestPending = true;
-    _isChunked = true;
-  } else {
-    _requestPending = false;
-    _isChunked = false;
-  }
-
-  // @Change from HTTP: This addResponse is for Vpack building
-  addResponse(response);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +65,7 @@ void VelocyCommTask::handleResponse(GeneralResponse* response) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VelocyCommTask::processRead() {
-  if (_requestPending && _readBufferVstream == arangodb::velocypack::ValueType::Null) {
+  if (_requestPending && _readBuffer->c_str() == nullptr) {
     return false;
   }
   bool handleRequest = false;
@@ -145,7 +78,7 @@ bool VelocyCommTask::processRead() {
 	      RequestStatisticsAgent::acquire();
 
 	      _newRequest = false;
-	      _vstreamVersion = GeneralRequest::VSTREAM_UNKNOWN;
+	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
 	      _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
 	      _fullUrl = "";
 	      _denyCredentials = false;
@@ -156,12 +89,12 @@ bool VelocyCommTask::processRead() {
 
       requestStatisticsAgentSetReadStart();
 
-	    if (_isFirstChunk && _readBufferVstream.byteSize() > MaximalHeaderSize) {
+	    if (_isFirstChunk && _readBuffer->length() > MaximalHeaderSize) {
 	      LOG_WARNING("maximal header size is %d, request header size is %d",
-	                  (int)MaximalHeaderSize, (int)_readBufferVstream.byteSize());
+	                  (int)MaximalHeaderSize, (int)_readBuffer->length());
 
 	      // header is too large
-	      GeneralResponse response(VstreamResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
+	      GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
 	                            getCompatibility());
 
 	      resetState(true);
@@ -170,7 +103,7 @@ bool VelocyCommTask::processRead() {
 	      return false;
 	    }
 
-	if (_readBufferVstream != arangodb::velocypack::ValueType::Null) {
+	if (_readBuffer->c_str() == nullptr) {
 
 	  // @TODO: Create a new handler in HandlerFactory for VelocyStream
     /// insert _request here
@@ -185,7 +118,7 @@ bool VelocyCommTask::processRead() {
         LOG_ERROR("cannot generate request");
 
         // internal server error
-        GeneralResponse response(VstreamResponse::SERVER_ERROR, getCompatibility());
+        GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_SERVER_ERROR, getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know how to remove the body and then continue
@@ -198,10 +131,10 @@ bool VelocyCommTask::processRead() {
       _request->setClientTaskId(_taskId);
 
       // check VSTREAM protocol version
-      _vstreamVersion = _request->protocolVersion();
+      _httpVersion = _request->protocolVersion();
 
       // Currently we have aonly Vstream version 1.0 available
-      if (_vstreamVersion != GeneralRequest::VSTREAM_1_0) {
+      if (_httpVersion != GeneralRequest::VSTREAM_1_0) {
         GeneralResponse response(GeneralResponse::VSTREAM_VERSION_NOT_SUPPORTED,
                               getCompatibility());
 
@@ -217,7 +150,7 @@ bool VelocyCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        GeneralResponse response(VstreamResponse::REQUEST_URL_TOO_LONG,
+        GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_URI_TOO_LONG,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -263,7 +196,7 @@ bool VelocyCommTask::processRead() {
         case GeneralRequest::VSTREAM_REQUEST_GET:
         case GeneralRequest::VSTREAM_REQUEST_DELETE:
         case GeneralRequest::VSTREAM_REQUEST_HEAD:
-        case GeneralRequest::VSTEAM_REQUEST_OPTIONS:
+        case GeneralRequest::VSTREAM_REQUEST_OPTIONS:
         case GeneralRequest::VSTREAM_REQUEST_POST:
         case GeneralRequest::VSTREAM_REQUEST_PUT:
         case GeneralRequest::VSTREAM_REQUEST_PATCH: 
@@ -283,7 +216,7 @@ bool VelocyCommTask::processRead() {
                _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
 
         if(!_isFirstChunk){ 
-          if (_readBufferVstream.byteSize() == 0) {
+          if (_readBuffer->length() == 0) {
             handleRequest = true;
           }
         }  
@@ -295,7 +228,7 @@ bool VelocyCommTask::processRead() {
           LOG_WARNING( "got corrupted VELOCYSTREAM request ");
 
           // bad request, method not allowed
-          GeneralResponse response(VstreamResponse::METHOD_NOT_ALLOWED,
+          GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_METHOD_NOT_ALLOWED,
                                 getCompatibility());
 
           // we need to close the connection, because there is no way we
@@ -360,9 +293,9 @@ bool VelocyCommTask::processRead() {
   if (!_isFirstChunk) {
 
     // read "bodyLength" from read buffer and add this body to "GeneralRequest"
-    _request->setBody(_readBufferVstream, _readBufferVstream.byteSize());
+    _request->setBody(_readBuffer->c_str(), _readBuffer->length());
 
-    LOG_TRACE("%s", std::to_string(_readBufferVstream.byteSize()));
+    // LOG_TRACE("%s", std::to_string(_readBuffer->length()));
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -374,7 +307,7 @@ bool VelocyCommTask::processRead() {
   }
   if(!_isFirstChunk){
   	requestStatisticsAgentSetReadEnd();
-  	requestStatisticsAgentAddReceivedBytes(_readBufferVstream.byteSize());
+  	requestStatisticsAgentAddReceivedBytes(_readBuffer->length());
   }
   bool const isOptionsRequest =
       (_requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS);
@@ -404,10 +337,11 @@ bool VelocyCommTask::processRead() {
 
   auto const compatibility = _request->compatibility();
 
-  GeneralResponse::GeneralResponseCode authResult =
-      _server->handlerFactory()->authenticateRequest(_request); //@TODO: Create authentication handler for velocypack
+  GeneralResponse::VstreamResponseCode authResult = GeneralResponse::VSTREAM_OK;
 
-  if (authResult == GeneralResponse::OK || isOptionsRequest) {
+      // _server->handlerFactory()->authenticateRequestVstream(_request); //@TODO: Create authentication handler for velocypack
+
+  if (authResult == GeneralResponse::VSTREAM_OK || isOptionsRequest) {
     if (isOptionsRequest) {
       processCorsOptions(compatibility);
     } else {
@@ -416,39 +350,38 @@ bool VelocyCommTask::processRead() {
   }
 
     // not found
-  else if (authResult == VstreamResponse::NOT_FOUND) {
+  else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_NOT_FOUND) {
     GeneralResponse response(authResult, compatibility);
 
-    Builder b;                                                                                                         
-  	b.add(Value(ValueType::Object));                                                                                   
-  	b.add("error", Value("true"));                                                                              
-  	b.add("errorMessage", Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
-  	b.add("code:", Value(to_string((int)authResult)));                                                 
-  	b.add("errorNum", Value(to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
-  	b.close()
+    // arangodb::velocypack::Builder b;                                                                                                         
+  	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+  	response.bodyVpack().add("error", arangodb::velocypack::Value("true"));                                                                              
+  	response.bodyVpack().add("errorMessage", arangodb::velocypack::Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
+  	response.bodyVpack().add("code:", arangodb::velocypack::Value(std::to_string((int)authResult)));                                                 
+  	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
+  	response.bodyVpack().close();
 
     clearRequest();
-    handleResponse(&b); // Create a response for builder objects
+    handleResponse(&response); // Create a response for builder objects
   }
 
   // forbidden
-  else if (authResult == VstreamResponse::FORBIDDEN) {
-    VstreamResponse response(authResult, compatibility);
-    Builder b;                                                                                                         
-  	b.add(Value(ValueType::Object));                                                                                   
-  	b.add("error", Value("true"));                                                                              
-  	b.add("errorMessage", Value("change password")));                                                                                  
-  	b.add("code:", Value(to_string((int)authResult)));                                                 
-  	b.add("errorNum", Value(to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
-  	b.close()
+  else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_FORBIDDEN) {
+    GeneralResponse response(authResult, compatibility);
+    // arangodb::velocypack::Builder b;                                                                                                         
+  	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+  	response.bodyVpack().add("error", Value("true"));                                                                              
+  	response.bodyVpack().add("errorMessage", Value("change password"));                                                                                  
+  	response.bodyVpack().add("code:", Value(authResult));                                                 
+  	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
+  	response.bodyVpack().close();
 
     clearRequest();
-    handleResponse(&b);
+    handleResponse(&response
+      );
   } else{
-  	GeneralResponse response(VstreamResponse::UNAUTHORIZED, compatibility);
-    std::string const realm =
-        "basic realm=\"" +
-        _server->handlerFactory()->authenticationRealm(_request) + "\"";
+  	GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_UNAUTHORIZED, compatibility);
+    std::string const realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
     if (sendWwwAuthenticateHeader()) {
       response.setHeader(TRI_CHAR_LENGTH_PAIR("www-authenticate"),
@@ -479,28 +412,10 @@ bool VelocyCommTask::processRead() {
 // }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief chunking is finished
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyCommTask::finishedChunked() {
-  auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE, 6);
-
-  _writeBuffers.push_back(buffer.get());
-  buffer.release();
-  _writeBuffersStats.push_back(nullptr);
-
-  _isChunked = false;
-  _requestPending = false;
-
-  fillWriteBuffer();
-  processRead();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-void VelocyCommTask::addResponse(VelocyResponse* response) {
+void VelocyCommTask::addResponse(GeneralResponse* response) {
 
   if (!_origin.empty()) {
 
@@ -527,11 +442,11 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
 
   if (_requestType == GeneralRequest::VSTREAM_REQUEST_HEAD) {
 
-    response->headResponse(responseBodyLength);
+    response->headResponseVpack(responseBodyLength);
   }
 
   // reserve a buffer with some spare capacity
-  auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE,
+  auto buffer = std::make_unique<basics::StringBuffer*>(TRI_UNKNOWN_MEM_ZONE,
                                                responseBodyLength + 128);
 
   // write header
@@ -553,10 +468,10 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
-  LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
+  // LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
 
   // clear body
-  response->body().clear();
+  response->bodyVpack().clear();
 
   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 
@@ -568,7 +483,7 @@ void VelocyCommTask::addResponse(VelocyResponse* response) {
       ",\"velocystream-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
       _connectionInfo.clientAddress.c_str(),
       GeneralRequest::translateMethod(_requestType).c_str(),
-      GeneralRequest::translateVersion(_vstreamVersion).c_str(),
+      GeneralRequest::translateVersion(_httpVersion).c_str(),
       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
 
@@ -610,6 +525,11 @@ void VelocyCommTask::processCorsOptions(uint32_t compatibility) {
   handleResponse(&response);
 }
 
+////////////
+// @TODO: Works on checkContentLength
+////////////
+
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief processes a request
 ////////////////////////////////////////////////////////////////////////////////
@@ -628,7 +548,7 @@ void VelocyCommTask::processRequest(uint32_t compatibility) {
 
   std::string const& asyncExecution = _request->header("x-arango-async", found);
 
-  WorkItem::uptr<VstreamHandler> handler(
+  WorkItem::uptr<GeneralHandler> handler(
       _server->handlerFactory()->createHandler(_request));
 
   if (handler == nullptr) {
@@ -686,4 +606,16 @@ void VelocyCommTask::processRequest(uint32_t compatibility) {
     GeneralResponse response(GeneralResponse::VSTREAM_SERVER_ERROR, compatibility);
     handleResponse(&response);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get request compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+int32_t VelocyCommTask::getCompatibility() const {
+  if (_request != nullptr) {
+    return _request->compatibility();
+  }
+
+  return GeneralRequest::MinCompatibility;
 }

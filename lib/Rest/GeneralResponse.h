@@ -134,6 +134,7 @@ class GeneralResponse {
     VSTREAM_PERMANENT_REDIRECT = 308,
 
     VSTREAM_BAD = 400,
+    VSTREAM_UNAUTHORIZED = 401,
     VSTREAM_FORBIDDEN = 403,
     VSTREAM_NOT_FOUND = 404,
     VSTREAM_METHOD_NOT_ALLOWED = 405,
@@ -148,6 +149,7 @@ class GeneralResponse {
     VSTREAM_LOCKED = 423,
     VSTREAM_PRECONDITION_REQUIRED = 428,
     VSTREAM_TOO_MANY_REQUESTS = 429,
+    VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
     VSTREAM_UNAVAILABLE_FOR_LEGAL_REASONS = 451,
 
     VSTREAM_SERVER_ERROR = 500,
@@ -401,6 +403,10 @@ class GeneralResponse {
 
   GeneralResponse* swap();
 
+  // @TODO: Think its substitute
+
+  // GeneralResponse* swapVpack();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief writes the header
   ///
@@ -414,7 +420,7 @@ class GeneralResponse {
   /// @brief writes the header (Vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder writeHeader(arangodb::velocypack::Builder);
+  arangodb::velocypack::Builder writeHeader(arangodb::velocypack::Builder*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the size of the body
@@ -434,6 +440,10 @@ class GeneralResponse {
 
   basics::StringBuffer& body();
 
+  // Return VelocyPack arangodb @TODO: Substitute it (Create an abstract class for GeneralResponse.* and overload it to HttpResponse and VelocyResponse.*)
+
+  arangodb::velocypack::Builder& bodyVpack();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief indicates a head response
   ///
@@ -442,6 +452,8 @@ class GeneralResponse {
   //////////////////////////////////////////////////////////////////////////////
 
   void headResponse(size_t);
+
+  void headResponseVpack(size_t size);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handling status response's (Vstream)
@@ -518,6 +530,12 @@ class GeneralResponse {
   //////////////////////////////////////////////////////////////////////////////
 
   basics::StringBuffer _body;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief body
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::velocypack::Builder _bodyVpack;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief body size
