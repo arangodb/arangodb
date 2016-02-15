@@ -23,7 +23,7 @@
 
 #include "VelocyListenTask.h"
 
-#include "VelocyServer/GeneralServer.h"
+#include "HttpServer/GeneralServer.h"
 
 using namespace arangodb::rest;
 
@@ -40,7 +40,7 @@ VelocyListenTask::VelocyListenTask(GeneralServer* server, Endpoint* endpoint)
 
 bool VelocyListenTask::handleConnected(TRI_socket_t s,
                                      const ConnectionInfo& info) {
-  _server->handleConnected(s, info);
+  _server->handleConnected(s, info, false);
   return true;
 }
 

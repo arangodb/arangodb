@@ -115,6 +115,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/HttpServer/HttpsServer.cpp \
 	arangod/HttpServer/PathHandler.cpp \
 	arangod/VelocyServer/VelocyCommTask.cpp \
+	arangod/VelocyServer/VelocyListenTask.cpp \
 	arangod/Indexes/CapConstraint.cpp \
 	arangod/Indexes/EdgeIndex.cpp \
 	arangod/Indexes/FulltextIndex.cpp \
