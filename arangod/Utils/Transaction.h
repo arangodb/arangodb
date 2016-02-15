@@ -291,11 +291,11 @@ class Transaction {
   /// the documents without restarting the index scan at the begin
   //////////////////////////////////////////////////////////////////////////////
 
-  int readRandom(TRI_transaction_collection_t*,
-                 std::vector<TRI_doc_mptr_copy_t>&,
-                 arangodb::basics::BucketPosition&,
-                 arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-                 uint64_t&);
+  int any(TRI_transaction_collection_t*,
+          std::vector<TRI_doc_mptr_copy_t>&,
+          arangodb::basics::BucketPosition&,
+          arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
+          uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief delete a single document
@@ -326,7 +326,7 @@ class Transaction {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  int create(TRI_transaction_collection_t* trxCollection,
+  int insert(TRI_transaction_collection_t* trxCollection,
              TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
              void const* data, bool forceSync) {
     TRI_ASSERT(json != nullptr);
@@ -346,7 +346,7 @@ class Transaction {
       return TRI_ERROR_ARANGO_SHAPER_FAILED;
     }
 
-    res = create(trxCollection, key, 0, mptr, shaped, data, forceSync);
+    res = insert(trxCollection, key, 0, mptr, shaped, data, forceSync);
 
     TRI_FreeShapedJson(zone, shaped);
 
@@ -358,7 +358,7 @@ class Transaction {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  int create(TRI_transaction_collection_t* trxCollection,
+  int insert(TRI_transaction_collection_t* trxCollection,
              TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
              void const* data, bool forceSync) {
     std::unique_ptr<TRI_json_t> json(
@@ -368,7 +368,7 @@ class Transaction {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    return create(trxCollection, mptr, json.get(), data, forceSync);
+    return insert(trxCollection, mptr, json.get(), data, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -405,18 +405,18 @@ class Transaction {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  int readSingle(TRI_transaction_collection_t* trxCollection,
-                 TRI_doc_mptr_copy_t* mptr, std::string const& key) {
+  int document(TRI_transaction_collection_t* trxCollection,
+               TRI_doc_mptr_copy_t* mptr, std::string const& key) {
     TRI_ASSERT(mptr != nullptr);
 
     if (orderDitch(trxCollection) == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
       
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    TRI_document_collection_t* documentCol = trxCollection->_collection->_collection;
 
     try {
-      return document->read(this, key, mptr, !isLocked(trxCollection, TRI_TRANSACTION_READ));
+      return documentCol->read(this, key, mptr, !isLocked(trxCollection, TRI_TRANSACTION_READ));
     } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
     } catch (...) {
@@ -623,13 +623,13 @@ class Transaction {
   /// @brief read any (random) document
   //////////////////////////////////////////////////////////////////////////////
 
-  int readAny(TRI_transaction_collection_t*, TRI_doc_mptr_copy_t*);
+  int any(TRI_transaction_collection_t*, TRI_doc_mptr_copy_t*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all documents
   //////////////////////////////////////////////////////////////////////////////
 
-  int readAll(TRI_transaction_collection_t*, std::vector<std::string>&, bool);
+  int all(TRI_transaction_collection_t*, std::vector<std::string>&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read master pointers in order of insertion/update
@@ -713,7 +713,7 @@ class Transaction {
   /// @brief create a single document, using shaped json
   //////////////////////////////////////////////////////////////////////////////
 
-  inline int create(TRI_transaction_collection_t* trxCollection,
+  inline int insert(TRI_transaction_collection_t* trxCollection,
                     const TRI_voc_key_t key, TRI_voc_rid_t rid,
                     TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
                     void const* data, bool forceSync) {
@@ -764,8 +764,8 @@ class Transaction {
   /// @brief truncate a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int removeAll(TRI_transaction_collection_t* const trxCollection,
-                bool forceSync) {
+  int truncate(TRI_transaction_collection_t* const trxCollection,
+               bool forceSync) {
     std::vector<std::string> ids;
 
     if (orderDitch(trxCollection) == nullptr) {
@@ -774,7 +774,7 @@ class Transaction {
 
     TRI_ASSERT(isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
-    int res = readAll(trxCollection, ids, false);
+    int res = all(trxCollection, ids, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

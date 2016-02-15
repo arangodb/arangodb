@@ -1720,7 +1720,7 @@ static v8::Handle<v8::Value> VertexIdToData(
 
   TRI_doc_mptr_copy_t document;
 
-  int res = trx->readSingle(i->second.col, &document, vertexId.key);
+  int res = trx->document(i->second.col, &document, vertexId.key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     v8::EscapableHandleScope scope(isolate);

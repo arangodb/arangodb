@@ -186,26 +186,26 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief read any (random) document within a transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  inline int readRandom(TRI_doc_mptr_copy_t* mptr) {
+  inline int any(TRI_doc_mptr_copy_t* mptr) {
     TRI_ASSERT(mptr != nullptr);
-    return this->readAny(this->trxCollection(), mptr);
+    return Transaction::any(this->trxCollection(), mptr);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read a document within a transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  inline int read(TRI_doc_mptr_copy_t* mptr, std::string const& key) {
+  inline int document(TRI_doc_mptr_copy_t* mptr, std::string const& key) {
     TRI_ASSERT(mptr != nullptr);
-    return this->readSingle(this->trxCollection(), mptr, key);
+    return Transaction::document(this->trxCollection(), mptr, key);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all document ids within a transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int read(std::vector<std::string>& ids) {
-    return this->readAll(this->trxCollection(), ids, true);
+  int all(std::vector<std::string>& ids) {
+    return Transaction::all(this->trxCollection(), ids, true);
   }
 
   //////////////////////////////////////////////////////////////////////////////

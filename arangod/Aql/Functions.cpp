@@ -710,7 +710,7 @@ static Json ReadDocument(arangodb::AqlTransaction* trx,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, key);
+  int res = trx->document(collection, &mptr, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Json(Json::Null);
@@ -2517,7 +2517,7 @@ static Json VertexIdToJson(arangodb::AqlTransaction* trx,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, id.key);
+  int res = trx->document(collection, &mptr, id.key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -3346,7 +3346,7 @@ static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
 
   TRI_doc_mptr_copy_t mptr;
   if (parts.size() == 1) {
-    int res = trx->readSingle(collection, &mptr, parts[0]);
+    int res = trx->document(collection, &mptr, parts[0]);
     if (res != TRI_ERROR_NO_ERROR) {
       return Json(Json::Null);
     }
@@ -3355,7 +3355,7 @@ static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
       // Reqesting an _id that cannot be stored in this collection
       return Json(Json::Null);
     }
-    int res = trx->readSingle(collection, &mptr, parts[1]);
+    int res = trx->document(collection, &mptr, parts[1]);
     if (res != TRI_ERROR_NO_ERROR) {
       return Json(Json::Null);
     }
@@ -3397,7 +3397,7 @@ static Json getDocumentByIdentifier(arangodb::AqlTransaction* trx,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, parts[1]);
+  int res = trx->document(collection, &mptr, parts[1]);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Json(Json::Null);

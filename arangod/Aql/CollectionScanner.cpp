@@ -37,8 +37,8 @@ RandomCollectionScanner::RandomCollectionScanner(
 
 int RandomCollectionScanner::scan(std::vector<TRI_doc_mptr_copy_t>& docs,
                                   size_t batchSize) {
-  return trx->readRandom(trxCollection, docs, initialPosition, position,
-                         static_cast<uint64_t>(batchSize), step, totalCount);
+  return trx->any(trxCollection, docs, initialPosition, position,
+                  static_cast<uint64_t>(batchSize), step, totalCount);
 }
 
 int RandomCollectionScanner::forward(size_t batchSize, size_t& skipped) {

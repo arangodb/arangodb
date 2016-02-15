@@ -99,65 +99,11 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document within a transaction, using json
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createDocument(TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
-                     bool forceSync) {
-    TRI_ASSERT(json != nullptr);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    if (_numWrites++ > N) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-#endif
-
-    TRI_ASSERT(mptr != nullptr);
-
-    return this->create(this->trxCollection(), mptr, json, nullptr, forceSync);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document within a transaction, using VelocyPack
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createDocument(TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
-                     bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    if (_numWrites++ > N) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-#endif
-
-    TRI_ASSERT(mptr != nullptr);
-
-    return this->create(this->trxCollection(), mptr, slice, nullptr, forceSync);
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document within a transaction, using shaped json
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createDocument(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
-                     TRI_shaped_json_t const* shaped, bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    if (_numWrites++ > N) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-#endif
-
-    TRI_ASSERT(mptr != nullptr);
-
-    return this->create(this->trxCollection(), key, 0, mptr, shaped, nullptr,
-                        forceSync);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single edge within a transaction, using json
   //////////////////////////////////////////////////////////////////////////////
 
-  int createEdge(TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
-                 bool forceSync, void const* data) {
+  int insert(TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
+             bool forceSync, void const* data) {
     TRI_ASSERT(json != nullptr);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -168,15 +114,15 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     TRI_ASSERT(mptr != nullptr);
 
-    return this->create(this->trxCollection(), mptr, json, data, forceSync);
+    return Transaction::insert(this->trxCollection(), mptr, json, data, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single edge within a transaction, using VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  int createEdge(TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
-                 bool forceSync, void const* data) {
+  int insert(TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
+             bool forceSync, void const* data) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -185,16 +131,16 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     TRI_ASSERT(mptr != nullptr);
 
-    return this->create(this->trxCollection(), mptr, slice, data, forceSync);
+    return Transaction::insert(this->trxCollection(), mptr, slice, data, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single edge within a transaction, using shaped json
   //////////////////////////////////////////////////////////////////////////////
 
-  int createEdge(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
-                 TRI_shaped_json_t const* shaped, bool forceSync,
-                 void const* data) {
+  int insert(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
+             TRI_shaped_json_t const* shaped, bool forceSync,
+             void const* data) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -203,7 +149,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     TRI_ASSERT(mptr != nullptr);
 
-    return this->create(this->trxCollection(), key, 0, mptr, shaped, data,
+    return Transaction::insert(this->trxCollection(), key, 0, mptr, shaped, data,
                         forceSync);
   }
 
@@ -212,10 +158,10 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   /// using VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  int updateDocument(std::string const& key, TRI_doc_mptr_copy_t* mptr,
-                     VPackSlice const& slice, TRI_doc_update_policy_e policy,
-                     bool forceSync, TRI_voc_rid_t expectedRevision,
-                     TRI_voc_rid_t* actualRevision) {
+  int update(std::string const& key, TRI_doc_mptr_copy_t* mptr,
+             VPackSlice const& slice, TRI_doc_update_policy_e policy,
+             bool forceSync, TRI_voc_rid_t expectedRevision,
+             TRI_voc_rid_t* actualRevision) {
     std::unique_ptr<TRI_json_t> json(
         arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
 
@@ -223,8 +169,8 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    return updateDocument(key, mptr, json.get(), policy, forceSync,
-                          expectedRevision, actualRevision);
+    return this->update(key, mptr, json.get(), policy, forceSync,
+                        expectedRevision, actualRevision);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -232,10 +178,10 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   /// using json
   //////////////////////////////////////////////////////////////////////////////
 
-  int updateDocument(std::string const& key, TRI_doc_mptr_copy_t* mptr,
-                     TRI_json_t const* json, TRI_doc_update_policy_e policy,
-                     bool forceSync, TRI_voc_rid_t expectedRevision,
-                     TRI_voc_rid_t* actualRevision) {
+  int update(std::string const& key, TRI_doc_mptr_copy_t* mptr,
+             TRI_json_t const* json, TRI_doc_update_policy_e policy,
+             bool forceSync, TRI_voc_rid_t expectedRevision,
+             TRI_voc_rid_t* actualRevision) {
     TRI_ASSERT(json != nullptr);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -246,8 +192,8 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     TRI_ASSERT(mptr != nullptr);
 
-    return this->update(this->trxCollection(), key, 0, mptr, json, policy,
-                        expectedRevision, actualRevision, forceSync);
+    return Transaction::update(this->trxCollection(), key, 0, mptr, json, policy,
+                               expectedRevision, actualRevision, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -255,11 +201,11 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   /// using shaped json
   //////////////////////////////////////////////////////////////////////////////
 
-  int updateDocument(std::string const& key, TRI_doc_mptr_copy_t* mptr,
-                     TRI_shaped_json_t* const shaped,
-                     TRI_doc_update_policy_e policy, bool forceSync,
-                     TRI_voc_rid_t expectedRevision,
-                     TRI_voc_rid_t* actualRevision) {
+  int update(std::string const& key, TRI_doc_mptr_copy_t* mptr,
+             TRI_shaped_json_t* const shaped,
+             TRI_doc_update_policy_e policy, bool forceSync,
+             TRI_voc_rid_t expectedRevision,
+             TRI_voc_rid_t* actualRevision) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -268,25 +214,25 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     TRI_ASSERT(mptr != nullptr);
 
-    return this->update(this->trxCollection(), key, 0, mptr, shaped, policy,
-                        expectedRevision, actualRevision, forceSync);
+    return Transaction::update(this->trxCollection(), key, 0, mptr, shaped, policy,
+                               expectedRevision, actualRevision, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief delete a single document within a transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int deleteDocument(std::string const& key, TRI_doc_update_policy_e policy,
-                     bool forceSync, TRI_voc_rid_t expectedRevision,
-                     TRI_voc_rid_t* actualRevision) {
+  int remove(std::string const& key, TRI_doc_update_policy_e policy,
+             bool forceSync, TRI_voc_rid_t expectedRevision,
+             TRI_voc_rid_t* actualRevision) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
 #endif
 
-    return this->remove(this->trxCollection(), key, 0, policy, expectedRevision,
-                        actualRevision, forceSync);
+    return Transaction::remove(this->trxCollection(), key, 0, policy, expectedRevision,
+                               actualRevision, forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -299,7 +245,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
 #endif
-    return this->removeAll(this->trxCollection(), forceSync);
+    return Transaction::truncate(this->trxCollection(), forceSync);
   }
 
  private:

@@ -323,7 +323,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&nptr, a.getMarker());
         } else {
           // need to fetch the old document
-          errorCode = _trx->readSingle(trxCollection, &nptr, key);
+          errorCode = _trx->document(trxCollection, &nptr, key);
         }
       }
 
@@ -463,11 +463,11 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // edge
           edge._fromKey = (TRI_voc_key_t)from.c_str();
           edge._toKey = (TRI_voc_key_t)to.c_str();
-          errorCode = _trx->create(trxCollection, &mptr, json.json(), &edge,
+          errorCode = _trx->insert(trxCollection, &mptr, json.json(), &edge,
                                    ep->_options.waitForSync);
         } else {
           // document
-          errorCode = _trx->create(trxCollection, &mptr, json.json(), nullptr,
+          errorCode = _trx->insert(trxCollection, &mptr, json.json(), nullptr,
                                    ep->_options.waitForSync);
         }
 
@@ -593,7 +593,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&oldDocument, a.getMarker());
         } else {
           // "old" is no ShapedJson. now fetch old version from database
-          errorCode = _trx->readSingle(trxCollection, &oldDocument, key);
+          errorCode = _trx->document(trxCollection, &oldDocument, key);
         }
 
         if (!json.isObject()) {
@@ -889,12 +889,12 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                   edge._fromKey = (TRI_voc_key_t)from.c_str();
                   edge._toKey = (TRI_voc_key_t)to.c_str();
                   errorCode =
-                      _trx->create(trxCollection, &mptr, insertJson.json(),
+                      _trx->insert(trxCollection, &mptr, insertJson.json(),
                                    &edge, ep->_options.waitForSync);
                 } else {
                   // document
                   errorCode =
-                      _trx->create(trxCollection, &mptr, insertJson.json(),
+                      _trx->insert(trxCollection, &mptr, insertJson.json(),
                                    nullptr, ep->_options.waitForSync);
                 }
 
@@ -1019,7 +1019,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&nptr, a.getMarker());
         } else {
           // "old" is no ShapedJson. now fetch old version from database
-          readErrorCode = _trx->readSingle(trxCollection, &nptr, key);
+          readErrorCode = _trx->document(trxCollection, &nptr, key);
         }
       }
 

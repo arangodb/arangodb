@@ -132,20 +132,16 @@ int Transaction::abort() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::finish(int errorNum) {
-  int res;
-
   if (errorNum == TRI_ERROR_NO_ERROR) {
     // there was no previous error, so we'll commit
-    res = this->commit();
-  } else {
-    // there was a previous error, so we'll abort
-    this->abort();
-
-    // return original error number
-    res = errorNum;
+    return this->commit();
   }
+  
+  // there was a previous error, so we'll abort
+  this->abort();
 
-  return res;
+  // return original error number
+  return errorNum;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,12 +212,12 @@ int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
 /// the documents without restarting the index scan at the begin
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::readRandom(TRI_transaction_collection_t* trxCollection,
-                            std::vector<TRI_doc_mptr_copy_t>& docs,
-                            arangodb::basics::BucketPosition& initialPosition,
-                            arangodb::basics::BucketPosition& position,
-                            uint64_t batchSize, uint64_t& step,
-                            uint64_t& total) {
+int Transaction::any(TRI_transaction_collection_t* trxCollection,
+                     std::vector<TRI_doc_mptr_copy_t>& docs,
+                     arangodb::basics::BucketPosition& initialPosition,
+                     arangodb::basics::BucketPosition& position,
+                     uint64_t batchSize, uint64_t& step,
+                     uint64_t& total) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
   // READ-LOCK START
   int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -255,8 +251,8 @@ int Transaction::readRandom(TRI_transaction_collection_t* trxCollection,
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::readAny(TRI_transaction_collection_t* trxCollection,
-                         TRI_doc_mptr_copy_t* mptr) {
+int Transaction::any(TRI_transaction_collection_t* trxCollection,
+                     TRI_doc_mptr_copy_t* mptr) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
 
   // READ-LOCK START
@@ -287,8 +283,8 @@ int Transaction::readAny(TRI_transaction_collection_t* trxCollection,
 /// @brief read all documents
 ////////////////////////////////////////////////////////////////////////////////
 
-int Transaction::readAll(TRI_transaction_collection_t* trxCollection,
-                         std::vector<std::string>& ids, bool lock) {
+int Transaction::all(TRI_transaction_collection_t* trxCollection,
+                     std::vector<std::string>& ids, bool lock) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
 
   if (lock) {

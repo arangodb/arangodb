@@ -245,7 +245,7 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
 
   TRI_doc_mptr_copy_t vertex;
 
-  int res = it->second.trx->readSingle(it->second.col, &vertex, v.key);
+  int res = it->second.trx->document(it->second.col, &vertex, v.key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
@@ -741,7 +741,7 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
     }
   }
   TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, v.key);
+  int res = trx->document(collection, &mptr, v.key);
   ++_readDocuments;
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -824,7 +824,7 @@ bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
             }
           }
 
-          int res = _trx->readSingle(collection, &mptr, v.key);
+          int res = _trx->document(collection, &mptr, v.key);
           ++_readDocuments;
           if (res != TRI_ERROR_NO_ERROR) {
             if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -913,7 +913,7 @@ void DepthFirstTraverser::setStartVertex(
               }
             }
 
-            int res = _trx->readSingle(collection, &mptr, v.key);
+            int res = _trx->document(collection, &mptr, v.key);
             ++_readDocuments;
             if (res != TRI_ERROR_NO_ERROR) {
               // Vertex does not exist

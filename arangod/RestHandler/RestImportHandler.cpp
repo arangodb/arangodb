@@ -254,7 +254,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     int res2 = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
 
     if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-      res = trx.createEdge(&document, slice, waitForSync, &edge);
+      res = trx.insert(&document, slice, waitForSync, &edge);
     } else {
       res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
     }
@@ -267,7 +267,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
     }
   } else {
     // do not acquire an extra lock
-    res = trx.createDocument(&document, slice, waitForSync);
+    res = trx.insert(&document, slice, waitForSync, nullptr);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -286,7 +286,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         // update: first read existing document
         TRI_doc_mptr_copy_t previous;
-        int res2 = trx.read(&previous, keyString);
+        int res2 = trx.document(&previous, keyString);
 
         if (res2 == TRI_ERROR_NO_ERROR) {
           auto shaper =
@@ -308,9 +308,9 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
                 TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
 
             if (patchedJson != nullptr) {
-              res = trx.updateDocument(keyString, &document, patchedJson.get(),
-                                       TRI_DOC_UPDATE_LAST_WRITE, waitForSync,
-                                       0, nullptr);
+              res = trx.update(keyString, &document, patchedJson.get(),
+                               TRI_DOC_UPDATE_LAST_WRITE, waitForSync,
+                               0, nullptr);
             }
           }
 
@@ -320,9 +320,9 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
         }
       } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
         // replace
-        res = trx.updateDocument(keyString, &document, slice,
-                                 TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0,
-                                 nullptr);
+        res = trx.update(keyString, &document, slice,
+                         TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0,
+                         nullptr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           ++result._numUpdated;
