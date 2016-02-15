@@ -389,15 +389,27 @@
       });
 
       $('#infoTab a').bind('click', function(e) {
-        if ($(e.currentTarget).html() === 'Indices') {
-          $('.modal-footer .button-danger').hide();  
-          $('.modal-footer .button-success').hide();  
-          $('.modal-footer .button-notification').hide();  
+        if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
+
+          $('#newIndexView').hide();
+          $('#indexEditView').show();
+
+          $('#modal-dialog .modal-footer .button-danger').hide();  
+          $('#modal-dialog .modal-footer .button-success').hide();  
+          $('#modal-dialog .modal-footer .button-notification').hide();
+          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         }
-        else {
-          $('.modal-footer .button-danger').show();  
-          $('.modal-footer .button-success').show();  
-          $('.modal-footer .button-notification').show();  
+        if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
+          $('#modal-dialog .modal-footer .button-danger').show();  
+          $('#modal-dialog .modal-footer .button-success').show();  
+          $('#modal-dialog .modal-footer .button-notification').show();
+          var elem = $('.index-button-bar')[0]; 
+          var elem2 = $('.index-button-bar2')[0]; 
+          $('#addIndex').detach().appendTo(elem);
+          if ($('#cancelIndex').is(':visible')) {
+            $('#cancelIndex').detach().appendTo(elem2);
+            $('#createIndex').detach().appendTo(elem2);
+          }
         }
       });
 
@@ -609,13 +621,23 @@
     },
 
     toggleNewIndexView: function () {
+      var elem = $('.index-button-bar2')[0];
+      var elem2 = $('.index-button-bar')[0];
       if ($('#indexEditView').is(':visible')) {
         $('#indexEditView').hide();
         $('#newIndexView').show();
+        $('#addIndex').detach().appendTo(elem2);
+        $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
+
       }
       else {
+        console.log("toggle else");
         $('#indexEditView').show();
         $('#newIndexView').hide();
+        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#cancelIndex').detach().appendTo(elem);
+        $('#createIndex').detach().appendTo(elem);
       }
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
