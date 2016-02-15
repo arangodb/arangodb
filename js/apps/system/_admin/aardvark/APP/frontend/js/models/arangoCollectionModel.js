@@ -91,24 +91,40 @@
       return data2;
     },
 
+
     createIndex: function (postParameter, callback) {
 
-        $.ajax({
-            cache: false,
-            type: "POST",
-            url: "/_api/index?collection="+ this.get("id"),
-            data: JSON.stringify(postParameter),
-            contentType: "application/json",
-            processData: false,
-            async: true,
-            success: function() {
-              callback(false);
-            },
-            error: function(data) {
+      var self = this;
+
+      $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_api/index?collection="+ self.get("id"),
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          data: JSON.stringify(postParameter),
+          contentType: "application/json",
+          processData: false,
+          async: true,
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
               callback(true, data);
             }
-        });
-        callback();
+          },
+          error: function(data) {
+            callback(true, data);
+          }
+      });
+      callback();
     },
 
     deleteIndex: function (id, callback) {
