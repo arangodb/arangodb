@@ -810,13 +810,6 @@ typedef unsigned char bool;
 #endif
 
 // ...........................................................................
-// windows does not like the keyword inline -- but only if it uses the c
-// compiler weird. _inline should work for both I hope
-// ...........................................................................
-
-#define inline _inline
-
-// ...........................................................................
 // windows uses _alloca instead of alloca
 // ...........................................................................
 

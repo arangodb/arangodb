@@ -92,7 +92,7 @@ function startReadingQuery (endpoint, collName, timeout) {
       if (r[i].query.indexOf(uuid) !== -1) {
         // Bingo, found it: 
         if (r[i].state === "executing") {
-          console.info("OK");
+          console.info("startReadingQuery: OK");
           return r[i].id;
         }
         console.info("startReadingQuery: query found but not yet executing");
@@ -114,6 +114,22 @@ function cancelReadingQuery (endpoint, queryid) {
     console.error("CancelReadingQuery: error", r);
     return false;
   }
+  console.info("CancelReadingQuery: success");
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel barrier from sync
+////////////////////////////////////////////////////////////////////////////////
+
+function cancelBarrier (endpoint, barrierId) {
+  var url = endpointToURL(endpoint) + "/_api/replication/barrier/" + barrierId;
+  var r = request({url, method: "DELETE" });
+  if (r.status !== 200 && r.status !== 204) {
+    console.error("CancelBarrier: error", r);
+    return false;
+  }
+  console.info("cancelBarrier: success");
   return true;
 }
 
@@ -982,9 +998,15 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                               inCurrent.servers[0]);
                         // First once without a read transaction:
                         var sy = rep.syncCollection(shard, 
-                          { endpoint: ep, incremental: true });
+                          { endpoint: ep, incremental: true,
+                            keepBarrier: true });
                         // Now start a read transaction to stop writes:
-                        var queryid = startReadingQuery(ep, shard, 300);
+                        try {
+                          var queryid = startReadingQuery(ep, shard, 300);
+                        }
+                        finally {
+                          cancelBarrier(ep, sy.barrierId);
+                        }
                         var ok = false;
                         try {
                           var sy2 = rep.syncCollectionFinalize(
