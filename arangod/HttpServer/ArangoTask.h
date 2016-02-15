@@ -63,7 +63,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief reads data from the socket
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual bool processRead();
+    virtual bool processRead(){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief sends more chunked data
@@ -90,13 +90,13 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief reads data from the socket
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void addResponse(GeneralResponse*);
+    virtual void addResponse(GeneralResponse*){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// check the content-length header of a request and fail it is broken
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual bool checkContentLength(bool expectContentLength);
+    virtual bool checkContentLength(bool expectContentLength){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief fills the write buffer
@@ -108,13 +108,13 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief handles CORS options
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void processCorsOptions(uint32_t compatibility);
+    virtual void processCorsOptions(uint32_t compatibility){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief processes a request
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void processRequest(uint32_t compatibility);
+    virtual void processRequest(uint32_t compatibility){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief clears the request object
@@ -129,7 +129,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// prematurely
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void resetState(bool close);
+    virtual void resetState(bool close){};
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief decides whether or not we should send back a www-authenticate
@@ -142,7 +142,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief get request compatibility
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual int32_t getCompatibility() const;
+    virtual int32_t getCompatibility() const {};
 
     bool setup(Scheduler* scheduler, EventLoop loop) override;
 

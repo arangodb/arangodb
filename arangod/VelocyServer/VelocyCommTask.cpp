@@ -61,6 +61,26 @@ VelocyCommTask::VelocyCommTask(GeneralServer* server, TRI_socket_t socket,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a task
+////////////////////////////////////////////////////////////////////////////////
+
+VelocyCommTask::~VelocyCommTask() {
+  // LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+
+  // free write buffers and statistics
+  for (auto& i : _writeBuffers) {
+    delete i;
+  }
+
+  for (auto& i : _writeBuffersStats) {
+    TRI_ReleaseRequestStatistics(i);
+  }
+
+  // free request
+  delete _request;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
