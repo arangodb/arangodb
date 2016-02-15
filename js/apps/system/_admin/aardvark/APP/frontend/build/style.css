@@ -5487,6 +5487,9 @@ div.headerBar {
 .select2-drop-active {
   z-index: 9999999; }
 
+.modal-tabbar {
+  border-bottom: 1px solid #000; }
+
 .modal-body {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
@@ -5612,13 +5615,15 @@ div.headerBar {
   .modal-body select {
     width: 398px; }
   .modal-body .collectionTh {
-    height: 55px; }
+    height: 50px; }
   .modal-body .tab-content {
     min-height: 200px; }
     .modal-body .tab-content .tab-pane {
       border-top: 1px solid #666 !important;
       margin-left: 0 !important;
       padding-top: 10px; }
+    .modal-body .tab-content .tab-pane-modal {
+      border-top: none !important; }
     .modal-body .tab-content #appstore {
       max-height: 290px; }
   .modal-body .errorMessage {
@@ -5935,7 +5940,8 @@ div.headerBar {
   color: #fff !important;
   font-family: 'Open Sans',sans-serif !important;
   font-size: 10pt !important;
-  font-weight: 100 !important; }
+  font-weight: 100 !important;
+  z-index: 99999999; }
 
 .tooltip-inner {
   max-width: 300px !important;
@@ -8061,10 +8067,24 @@ table .sorting {
   position: relative;
   top: -3px !important; }
 
+#collectionEditIndexTable thead {
+  border-bottom: 1px solid #e5e5e5; }
+
+.newIndexClass table {
+  margin-bottom: 60px; }
+
 .index-button-bar {
-  margin-top: 15px; }
+  bottom: 0;
+  margin-bottom: 15px;
+  margin-right: 17px;
+  margin-top: 15px;
+  position: absolute;
+  right: 0; }
   .index-button-bar button {
+    float: right;
     margin-left: 0; }
+  .index-button-bar #cancelIndex {
+    margin-right: 13px; }
 
 .docsFirstCol, .docsSecCol, .docsThirdCol {
   border: 0 !important; }

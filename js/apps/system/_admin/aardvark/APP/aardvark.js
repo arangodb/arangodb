@@ -315,7 +315,82 @@ controller.post("/graph-examples/create/:name", function(req, res) {
 }).summary("Create a sample graph")
   .notes("This function executes the internal scripts to create one example graph.");
 
+ /** Store job id's in db
+ *
+ * Create a new job id entry in a specific system database with a given id.
+ *
+ */
 
+controller.post("/job", function(req, res) {
+
+  if (req.body().id && req.body().collection && req.body().type) {
+
+    //store id in _system
+    db.aardvark.save({
+      id: req.body().id,
+      collection: req.body().collection, 
+      type: req.body().type
+    });
+
+    res.json(true);
+  }
+  else {
+    res.json(false);
+  }
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Delete all jobs
+ *
+ * Delete an existing job id entry in a specific system database with a given id.
+ *
+ */
+
+controller.del("/job/", function(req, res) {
+
+  db.aardvark.truncate();
+  return res.json(true);
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Delete a job id
+ *
+ * Delete an existing job id entry in a specific system database with a given id.
+ *
+ */
+
+controller.del("/job/:id", function(req, res) {
+
+  var id = req.params("id");
+
+  if (id) {
+    db.aardvark.removeByExample({
+      id: id
+    }, true);
+    res.json(true);
+  }
+  else {
+    res.json(false);
+  }
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Return all job id's
+ *
+ * Return all job id's which are stored in a system database.
+ *
+ */
+
+controller.get("/job", function(req, res) {
+
+  var result = db.aardvark.all().toArray();
+  res.json(result);
+
+}).summary("Return all job ids.")
+  .notes("This function returns the job ids of all currently running jobs.");
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
