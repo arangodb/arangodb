@@ -445,8 +445,11 @@ void VelocyCommTask::addResponse(GeneralResponse* response) {
     response->headResponseVpack(responseBodyLength);
   }
 
+  // auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
+                                               // responseBodyLength + 128);
+
   // reserve a buffer with some spare capacity
-  auto buffer = std::make_unique<basics::StringBuffer*>(TRI_UNKNOWN_MEM_ZONE,
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
                                                responseBodyLength + 128);
 
   // write header
