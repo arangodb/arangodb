@@ -34,7 +34,9 @@
 #include "VocBase/Traverser.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Helpers.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
@@ -121,6 +123,59 @@ std::map<std::string, std::string> getForwardableRequestHeaders(
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a list of attributes have the same values in two vpack
+/// documents
+////////////////////////////////////////////////////////////////////////////////
+
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      VPackSlice const& oldValue, VPackSlice const& newValue,
+                      bool isPatch) {
+  if (!oldValue.isObject() || !newValue.isObject()) {
+    // expecting two objects. everything else is an error
+    return true;
+  }
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
+  std::vector<std::string> const& shardKeys = c->shardKeys();
+
+  for (size_t i = 0; i < shardKeys.size(); ++i) {
+    if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {
+      continue;
+    }
+
+    VPackSlice n = newValue.get(shardKeys[i]);
+
+    if (n.isNone() && isPatch) {
+      // attribute not set in patch document. this means no update
+      continue;
+    }
+   
+    // a temporary buffer to hold a null value 
+    char buffer[1];
+    VPackSlice nullValue = arangodb::velocypack::buildNullValue(&buffer[0], sizeof(buffer));
+
+    VPackSlice o = oldValue.get(shardKeys[i]);
+
+    if (o.isNone()) {
+      // if attribute is undefined, use "null" instead
+      o = nullValue;
+    }
+
+    if (n.isNone()) {
+      // if attribute is undefined, use "null" instead
+      n = nullValue;
+    }
+
+    if (! n.equals(o)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

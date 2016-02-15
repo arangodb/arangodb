@@ -33,6 +33,9 @@
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_json_t;
 
 namespace arangodb {
@@ -67,6 +70,15 @@ std::map<std::string, std::string> getForwardableRequestHeaders(
 bool shardKeysChanged(std::string const& dbname, std::string const& collname,
                       struct TRI_json_t const* oldJson,
                       struct TRI_json_t const* newJson, bool isPatch);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a list of attributes have the same values in two vpack
+/// documents
+////////////////////////////////////////////////////////////////////////////////
+
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      VPackSlice const& oldValue, VPackSlice const& newValue,
+                      bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users

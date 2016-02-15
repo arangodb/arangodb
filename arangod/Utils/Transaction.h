@@ -209,114 +209,31 @@ class Transaction {
   /// @brief opens the declared collections of the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int openCollections() {
-    if (_trx == nullptr) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    if (!_isReal) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
+  int openCollections();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief begin the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int begin() {
-    if (_trx == nullptr) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_RUNNING;
-      }
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
-
-    return res;
-  }
+  int begin();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief commit / finish the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int commit() {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      // transaction not created or not running
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_COMMITTED;
-      }
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_CommitTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
+  int commit();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int abort() {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      // transaction not created or not running
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_ABORTED;
-      }
-
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_AbortTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
+  int abort();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish a transaction (commit or abort), based on the previous state
   //////////////////////////////////////////////////////////////////////////////
 
-  int finish(int errorNum) {
-    int res;
-
-    if (errorNum == TRI_ERROR_NO_ERROR) {
-      // there was no previous error, so we'll commit
-      res = this->commit();
-    } else {
-      // there was a previous error, so we'll abort
-      this->abort();
-
-      // return original error number
-      res = errorNum;
-    }
-
-    return res;
-  }
+  int finish(int errorNum);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the transaction collection for a document collection
@@ -356,7 +273,7 @@ class Transaction {
 
     return trxCollection->_ditch;
   }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit and an internal
   /// offset into the primary index. this can be used for incremental access to
@@ -382,6 +299,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief delete a single document
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int remove(TRI_transaction_collection_t* trxCollection,
@@ -405,6 +323,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using JSON
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int create(TRI_transaction_collection_t* trxCollection,
@@ -436,6 +355,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using VelocyPack
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int create(TRI_transaction_collection_t* trxCollection,
@@ -453,6 +373,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a single document, using JSON
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int update(TRI_transaction_collection_t* trxCollection,
@@ -481,6 +402,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read a single document, identified by key
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int readSingle(TRI_transaction_collection_t* trxCollection,

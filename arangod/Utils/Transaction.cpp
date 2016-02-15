@@ -34,6 +34,119 @@ using namespace arangodb;
 
 thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens the declared collections of the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int Transaction::openCollections() {
+  if (_trx == nullptr) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  if (_setupState != TRI_ERROR_NO_ERROR) {
+    return _setupState;
+  }
+
+  if (!_isReal) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
+
+  return res;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int Transaction::begin() {
+  if (_trx == nullptr) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  if (_setupState != TRI_ERROR_NO_ERROR) {
+    return _setupState;
+  }
+
+  if (!_isReal) {
+    if (_nestingLevel == 0) {
+      _trx->_status = TRI_TRANSACTION_RUNNING;
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
+
+  return res;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief commit / finish the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int Transaction::commit() {
+  if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+    // transaction not created or not running
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  if (!_isReal) {
+    if (_nestingLevel == 0) {
+      _trx->_status = TRI_TRANSACTION_COMMITTED;
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_CommitTransaction(_trx, _nestingLevel);
+
+  return res;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+int Transaction::abort() {
+  if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+    // transaction not created or not running
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  if (!_isReal) {
+    if (_nestingLevel == 0) {
+      _trx->_status = TRI_TRANSACTION_ABORTED;
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_AbortTransaction(_trx, _nestingLevel);
+
+  return res;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finish a transaction (commit or abort), based on the previous state
+////////////////////////////////////////////////////////////////////////////////
+
+int Transaction::finish(int errorNum) {
+  int res;
+
+  if (errorNum == TRI_ERROR_NO_ERROR) {
+    // there was no previous error, so we'll commit
+    res = this->commit();
+  } else {
+    // there was a previous error, so we'll abort
+    this->abort();
+
+    // return original error number
+    res = errorNum;
+  }
+
+  return res;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read all master pointers, using skip and limit and an internal

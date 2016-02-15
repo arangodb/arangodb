@@ -79,7 +79,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   /// @brief end the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~SingleCollectionWriteTransaction() {}
+  ~SingleCollectionWriteTransaction() {}
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -133,6 +133,24 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
     return this->create(this->trxCollection(), mptr, slice, nullptr, forceSync);
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create a single document within a transaction, using shaped json
+  //////////////////////////////////////////////////////////////////////////////
+
+  int createDocument(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
+                     TRI_shaped_json_t const* shaped, bool forceSync) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    if (_numWrites++ > N) {
+      return TRI_ERROR_TRANSACTION_INTERNAL;
+    }
+#endif
+
+    TRI_ASSERT(mptr != nullptr);
+
+    return this->create(this->trxCollection(), key, 0, mptr, shaped, nullptr,
+                        forceSync);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single edge within a transaction, using json
@@ -168,24 +186,6 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
     TRI_ASSERT(mptr != nullptr);
 
     return this->create(this->trxCollection(), mptr, slice, data, forceSync);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document within a transaction, using shaped json
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createDocument(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
-                     TRI_shaped_json_t const* shaped, bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    if (_numWrites++ > N) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-#endif
-
-    TRI_ASSERT(mptr != nullptr);
-
-    return this->create(this->trxCollection(), key, 0, mptr, shaped, nullptr,
-                        forceSync);
   }
 
   //////////////////////////////////////////////////////////////////////////////

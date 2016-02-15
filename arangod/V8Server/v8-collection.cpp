@@ -567,8 +567,8 @@ static std::vector<std::string> GetCollectionNamesCluster(
 /// @brief looks up a document and returns whether it exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExistsVocbaseCol(bool useCollection,
-                             v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ExistsVocbaseVPack(bool useCollection,
+                               v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1312,8 +1312,8 @@ static void InsertVocbaseVPack(
 /// @brief updates (patches) a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static void UpdateVocbaseCol(bool useCollection,
-                             v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void UpdateVocbaseVPack(bool useCollection,
+                               v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   UpdateOptions options;
@@ -1379,8 +1379,7 @@ static void UpdateVocbaseCol(bool useCollection,
 
   if (useCollection) {
     // called as db.collection.update()
-    col =
-        TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+    col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
     if (col == nullptr) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1427,7 +1426,7 @@ static void UpdateVocbaseCol(bool useCollection,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[1]));
 
   if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
@@ -1438,7 +1437,6 @@ static void UpdateVocbaseCol(bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1450,12 +1448,10 @@ static void UpdateVocbaseCol(bool useCollection,
   res = trx.read(&mptr, key.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1470,7 +1466,6 @@ static void UpdateVocbaseCol(bool useCollection,
                                        &shaped);  // PROTECTED by trx here
 
   if (old == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1478,10 +1473,9 @@ static void UpdateVocbaseCol(bool useCollection,
     // compare attributes in shardKeys
     std::string const cidString = StringUtils::itoa(document->_info.planId());
 
-    if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
+    if (shardKeysChanged(col->_dbName, cidString, old, json.get(), true)) {
       TRI_FreeJson(document->getShaper()->memoryZone(),
                    old);  // PROTECTED by trx here
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       TRI_V8_THROW_EXCEPTION(
           TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
@@ -1489,9 +1483,8 @@ static void UpdateVocbaseCol(bool useCollection,
   }
 
   TRI_json_t* patchedJson = TRI_MergeJson(
-      TRI_UNKNOWN_MEM_ZONE, old, json, !options.keepNull, options.mergeObjects);
+      TRI_UNKNOWN_MEM_ZONE, old, json.get(), !options.keepNull, options.mergeObjects);
   TRI_FreeJson(zone, old);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (patchedJson == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1889,17 +1882,6 @@ static void RemoveVocbaseVPack(
 /// @brief was docuBlock documentsCollectionName
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DocumentVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  DocumentVocbaseCol(true, args);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionName
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DocumentVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1975,10 +1957,10 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief was docuBlock documentsCollectionExists
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExistsVocbaseCol(
+static void JS_ExistsVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return ExistsVocbaseCol(true, args);
+  return ExistsVocbaseVPack(true, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2561,17 +2543,6 @@ static void JS_PropertiesVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionRemove
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RemoveVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return RemoveVocbaseCol(true, args);
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_RemoveVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2792,10 +2763,10 @@ static void JS_RotateVocbaseCol(
 /// @brief was docuBlock documentsCollectionUpdate
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_UpdateVocbaseCol(
+static void JS_UpdateVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return UpdateVocbaseCol(true, args);
+  return UpdateVocbaseVPack(true, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3152,42 +3123,6 @@ static void InsertEdgeColCoordinator(
   }
   v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json.get());
   TRI_V8_RETURN(ret);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionInsert
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_InsertVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_vocbase_col_t* collection =
-      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    // coordinator case
-    if ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_DOCUMENT) {
-      InsertVocbaseColCoordinator(collection, 0, args);
-      return;
-    }
-
-    InsertEdgeColCoordinator(collection, 0, args);
-    return;
-  }
-
-  // single server case
-  if ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_DOCUMENT) {
-    InsertVocbaseCol(collection, 0, args);
-  } else {
-    InsertEdgeCol(collection, 0, args);
-  }
-  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3871,7 +3806,7 @@ static void JS_DocumentVocbase(
 
 static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return ExistsVocbaseCol(false, args);
+  return ExistsVocbaseVPack(false, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3891,7 +3826,7 @@ static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return UpdateVocbaseCol(false, args);
+  return UpdateVocbaseVPack(false, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -4174,18 +4109,14 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_DatafilesVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
-//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
-//                       JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
                        JS_DocumentVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
                        JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"),
-                       JS_ExistsVocbaseCol);
+                       JS_ExistsVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"),
                        JS_FiguresVocbaseCol);
-//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
-//                       JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
                        JS_InsertVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
@@ -4198,8 +4129,6 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_PlanIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),
                        JS_PropertiesVocbaseCol);
-//  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
-//                       JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
                        JS_RemoveVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("revision"),
@@ -4226,7 +4155,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unload"),
                        JS_UnloadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("update"),
-                       JS_UpdateVocbaseCol);
+                       JS_UpdateVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionVocbaseCol);
 
