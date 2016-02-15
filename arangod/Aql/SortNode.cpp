@@ -61,6 +61,30 @@ void SortNode::toJsonHelper(arangodb::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for SortNode
+////////////////////////////////////////////////////////////////////////////////
+
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add(VPackValue("elements"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& it : _elements) {
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("inVariable"));
+      it.first->toVelocyPack(nodes);
+      nodes.add("ascending", VPackValue(it.second));
+    }
+  }
+  nodes.add("stable", VPackValue(_stable));
+
+  // And close it:
+  nodes.close();
+}
+
 class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
  public:
   size_t _foundCalcNodes;

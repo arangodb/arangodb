@@ -76,6 +76,13 @@ class ModificationNode : public ExecutionNode {
   virtual void toJsonHelper(arangodb::basics::Json& json,
                             TRI_memory_zone_t* zone, bool) const override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                                  bool) const override;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the database
@@ -221,6 +228,13 @@ class RemoveNode : public ModificationNode {
                     bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
   //////////////////////////////////////////////////////////////////////////////
 
@@ -286,6 +300,13 @@ class InsertNode : public ModificationNode {
 
   void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -359,6 +380,13 @@ class UpdateNode : public ModificationNode {
 
   void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -449,6 +477,13 @@ class ReplaceNode : public ModificationNode {
 
   void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -545,6 +580,13 @@ class UpsertNode : public ModificationNode {
 
   void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
                     bool) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively

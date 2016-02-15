@@ -69,6 +69,27 @@ void RemoteNode::toJsonHelper(arangodb::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for RemoteNode
+////////////////////////////////////////////////////////////////////////////////
+
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+  nodes.add("server", VPackValue(_server));
+  nodes.add("ownName", VPackValue(_ownName));
+  nodes.add("queryId", VPackValue(_queryId));
+  nodes.add("isResponsibleForInitCursor",
+            VPackValue(_isResponsibleForInitCursor));
+
+  // And close it:
+  nodes.close();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,6 +134,20 @@ void ScatterNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for ScatterNode
+////////////////////////////////////////////////////////////////////////////////
+
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,6 +203,28 @@ void DistributeNode::toJsonHelper(arangodb::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for DistributedNode
+////////////////////////////////////////////////////////////////////////////////
+
+void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                        bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+  nodes.add("varId", VPackValue(static_cast<int>(_varId)));
+  nodes.add("alternativeVarId",
+            VPackValue(static_cast<int>(_alternativeVarId)));
+  nodes.add("createKeys", VPackValue(_createKeys));
+  nodes.add("allowKeyConversionToObject",
+            VPackValue(_allowKeyConversionToObject));
+
+  // And close it:
+  nodes.close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,6 +272,32 @@ void GatherNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for GatherNode
+////////////////////////////////////////////////////////////////////////////////
+
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+
+  nodes.add(VPackValue("elements"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& it : _elements) {
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("inVariable"));
+      it.first->toVelocyPack(nodes);
+      nodes.add("ascending", VPackValue(it.second));
+    }
+  }
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

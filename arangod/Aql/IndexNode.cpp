@@ -65,6 +65,35 @@ void IndexNode::toJsonHelper(arangodb::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for IndexNode
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  // Now put info about vocbase and cid in there
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+
+  nodes.add(VPackValue("indexes"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto& index : _indexes) {
+      index->toVelocyPack(nodes);
+    }
+  }
+  nodes.add(VPackValue("condition"));
+  _condition->toVelocyPack(nodes, verbose);
+  nodes.add("reverse", VPackValue(_reverse));
+
+  // And close it:
+  nodes.close();
+}
+
 ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   auto outVariable = _outVariable;

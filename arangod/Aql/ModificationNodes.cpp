@@ -68,6 +68,31 @@ void ModificationNode::toJsonHelper(arangodb::basics::Json& json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
+                                          bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(builder,
+                                           verbose);  // call base class method
+  // Now put info about vocbase and cid in there
+  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("collection", VPackValue(_collection->getName()));
+
+  // add out variables
+  if (_outVariableOld != nullptr) {
+    builder.add(VPackValue("outVariableOld"));
+    _outVariableOld->toVelocyPack(builder);
+  }
+  if (_outVariableNew != nullptr) {
+    builder.add(VPackValue("outVariableNew"));
+    _outVariableNew->toVelocyPack(builder);
+  }
+  builder.add(VPackValue("modificationFlags"));
+  _options.toVelocyPack(builder);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
@@ -110,6 +135,19 @@ void RemoveNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
+void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ModificationNode::toVelocyPackHelper(nodes, verbose);
+  nodes.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(nodes);
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +199,22 @@ void InsertNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ModificationNode::toVelocyPackHelper(nodes,
+                                       verbose);  // call base class method
+
+  // Now put info about vocbase and cid in there
+  nodes.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(nodes);
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +273,26 @@ void UpdateNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ModificationNode::toVelocyPackHelper(nodes, verbose);
+  
+  nodes.add(VPackValue("inDocVariable"));
+  _inDocVariable->toVelocyPack(nodes);
+
+  // inKeyVariable might be empty
+  if (_inKeyVariable != nullptr) {
+    nodes.add(VPackValue("inKeyVariable"));
+    _inKeyVariable->toVelocyPack(nodes);
+  }
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,6 +366,26 @@ void ReplaceNode::toJsonHelper(arangodb::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ModificationNode::toVelocyPackHelper(nodes, verbose);
+  
+  nodes.add(VPackValue("inDocVariable"));
+  _inDocVariable->toVelocyPack(nodes);
+
+  // inKeyVariable might be empty
+  if (_inKeyVariable != nullptr) {
+    nodes.add(VPackValue("inKeyVariable"));
+    _inKeyVariable->toVelocyPack(nodes);
+  }
+
+  // And close it:
+  nodes.close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -357,6 +451,26 @@ void UpsertNode::toJsonHelper(arangodb::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
+                              bool verbose) const {
+  ModificationNode::toVelocyPackHelper(nodes, verbose);
+
+  nodes.add(VPackValue("inDocVariable"));
+  _inDocVariable->toVelocyPack(nodes);
+  nodes.add(VPackValue("insertVariable"));
+  _insertVariable->toVelocyPack(nodes);
+  nodes.add(VPackValue("updateVariable"));
+  _updateVariable->toVelocyPack(nodes);
+  nodes.add("isReplace", VPackValue(_isReplace));
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

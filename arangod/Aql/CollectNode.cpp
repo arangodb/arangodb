@@ -127,6 +127,75 @@ void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for CollectNode
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  // group variables
+  nodes.add(VPackValue("groups"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& groupVariable : _groupVariables) {
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("outVariable"));
+      groupVariable.first->toVelocyPack(nodes);
+      nodes.add(VPackValue("inVariable"));
+      groupVariable.second->toVelocyPack(nodes);
+    }
+  }
+
+  // aggregate variables
+  nodes.add(VPackValue("aggregates"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& aggregateVariable : _aggregateVariables) {
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("outVariable"));
+      aggregateVariable.first->toVelocyPack(nodes);
+      nodes.add(VPackValue("inVariable"));
+      aggregateVariable.second.first->toVelocyPack(nodes);
+      nodes.add("type", VPackValue(aggregateVariable.second.second));
+    }
+  }
+
+  // expression variable might be empty
+  if (_expressionVariable != nullptr) {
+    nodes.add(VPackValue("expressionVariable"));
+    _expressionVariable->toVelocyPack(nodes);
+  }
+
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    nodes.add(VPackValue("outVariable"));
+    _outVariable->toVelocyPack(nodes);
+  }
+
+  if (!_keepVariables.empty()) {
+    nodes.add(VPackValue("keepVariables"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      for (auto const& it : _keepVariables) {
+        VPackObjectBuilder obj(&nodes);
+        nodes.add(VPackValue("variable"));
+        it->toVelocyPack(nodes);
+      }
+    }
+  }
+
+  nodes.add("count", VPackValue(_count));
+  nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
+  nodes.add("specialized", VPackValue(_specialized));
+  nodes.add(VPackValue("collectOptions"));
+  _options.toVelocyPack(nodes);
+
+  // And close it:
+  nodes.close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
