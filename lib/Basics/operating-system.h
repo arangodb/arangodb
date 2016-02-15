@@ -687,10 +687,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // ..............................................................................
-// Visual Studio 2013 does not support noexcept
+// Visual Studio 2013 does not support noexcept, higher versions do
 // ..............................................................................
 
+// Is noexcept supported?
+#if defined(_MSC_FULL_VER) && _MSC_FULL_VER >= 180021114
+#else
 #define noexcept throw()
+#endif
 
 // ..............................................................................
 // This directive below suppresses warnings about 'inline'
@@ -761,8 +765,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_HAVE_LINENOISE 1
 
 #define YY_NO_UNISTD_H 1
 

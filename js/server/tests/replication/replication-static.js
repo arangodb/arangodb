@@ -161,7 +161,7 @@ function ReplicationSuite() {
         console.log("waiting for slave to catch up");
         printed = true;
       }
-      internal.wait(1.0, false);
+      internal.wait(5.0, false);
     }
 
     db._flushCache();

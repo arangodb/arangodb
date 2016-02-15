@@ -977,17 +977,12 @@ class ClusterInfo {
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
   std::mutex                                   _mutex;
-#if 0  
   TRI_document_collection_t*                   _docColl;
-#endif  
 
  public:
 
-#if 0
-  FollowerInfo(TRI_document_collection_t* d) : _docColl(d) {}
-#else
-  FollowerInfo(TRI_document_collection_t*) {}
-#endif
+  FollowerInfo(TRI_document_collection_t* d) 
+    : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -1008,9 +1003,8 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
   /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in asynchronous "fire-and-forget"
-  /// way. The method fails silently, if the follower information has
-  /// since been dropped (see `dropFollowerInfo` below).
+  /// the agency under `/Current` but in an asynchronous "fire-and-forget"
+  /// way.
   //////////////////////////////////////////////////////////////////////////////
 
   void remove(ServerID const& s);

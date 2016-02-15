@@ -190,7 +190,7 @@
           self.set("name", name);
           result = true;
         },
-        error: function(data) {
+        error: function(/*data*/) {
           try {
             console.log("error");
             //var parsed = JSON.parse(data.responseText);

@@ -256,6 +256,16 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       } else {
         handleCommandClusterInventory();
       }
+    } else if (command == "addFollower") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(HttpResponse::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+      } else {
+        handleCommandAddFollower();
+      }
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid command");
@@ -3565,3 +3575,53 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
   handleCommandApplierGetState();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a follower of a shard to the list of followers
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandAddFollower() {
+  VPackOptions options;
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedBody 
+      = parseVelocyPackBody(&options, success);
+  if (!success) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+  VPackSlice const body = parsedBody->slice();
+  if (!body.isObject()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "body needs to be an object with attributes 'followerId' and 'shard'");
+    return;
+  }
+  VPackSlice const followerId = body.get("followerId");
+  VPackSlice const shard = body.get("shard");
+  if (!followerId.isString() || !shard.isString()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'followerId' and 'shard' attributes must be strings");
+    return;
+  }
+  
+  // find and load collection given by name or identifier
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, shard.copyString());
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "could not start transaction");
+    return;
+  }
+
+  TRI_document_collection_t* docColl = trx.documentCollection();
+  TRI_ASSERT(docColl != nullptr);
+  docColl->followers()->add(followerId.copyString());
+
+  VPackBuilder b;
+  { VPackObjectBuilder bb(&b);
+    b.add("error", VPackValue(false));
+  }
+
+  generateResult(HttpResponse::OK, b.slice());
+}
+

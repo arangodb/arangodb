@@ -34,6 +34,7 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # ArangoDB needs c++11
 set(CMAKE_CXX_STANDARD 11)
+include (CheckCXX11Features)
 
 # Need threads
 find_package(Threads REQUIRED)
@@ -235,6 +236,7 @@ if (USE_RELATIVE)
     set(TRI_SBINDIR_INSTALL "sbin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
+  add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
 else(USE_RELATIVE) 
   # etcd -------------------------------
   set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
@@ -254,6 +256,7 @@ else(USE_RELATIVE)
     file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
     STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
   endif()
+  
   add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
   # arango directories -----------------
   # /var
@@ -516,10 +519,6 @@ if (LIBEV_LIB_PATH)
 endif ()
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
-
-# linenoise --------------------------------------------------------------------
-set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
-option(USE_LINENOISE "User linenoise for editing command lines and command line histories" ON)
 
 
 # Boost ------------------------------------------------------------------------
