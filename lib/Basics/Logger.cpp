@@ -218,6 +218,8 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, bool fatal2stderr,
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
     }
+    
+    _fd.store(fd);
   }
 }
 
