@@ -793,8 +793,8 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
 static inline void ExpandShapedJson(
     VocShaper* shaper, CollectionNameResolver const* resolver,
     TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr, VPackBuilder& b,
-    bool keepTopLevelOpen = false,
-    std::unordered_set<std::string> const& forbidden = {}) {
+    bool keepTopLevelOpen,
+    std::unordered_set<std::string> const& forbidden) {
   b.add(VPackValue(VPackValueType::Object));
 
   TRI_df_marker_t const* marker =
@@ -921,8 +921,9 @@ static void ReadDocument(arangodb::AqlTransaction* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     result.add(VPackValue(VPackValueType::Null));
   } else {
+    std::unordered_set<std::string> unused;
     ExpandShapedJson(collection->_collection->_collection->getShaper(),
-                     resolver, cid, &mptr, result);
+                     resolver, cid, &mptr, result, false, unused);
   }
 }
 
@@ -1074,7 +1075,8 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     for (size_t i = 0; i < resultCount; ++i) {
       VPackObjectBuilder guard(&result);
       result.add(VPackValue("edge"));
-      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result);
+      std::unordered_set<std::string> unused;
+      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
       char const* targetKey = nullptr;
       TRI_voc_cid_t targetCid = 0;
 
@@ -1107,7 +1109,8 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     }
   } else {
     for (size_t i = 0; i < resultCount; ++i) {
-      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result);
+      std::unordered_set<std::string> unused;
+      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
     }
   }
 }
@@ -1295,8 +1298,9 @@ static void VertexIdToVPack(arangodb::AqlTransaction* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  std::unordered_set<std::string> unused;
   ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   id.cid, &mptr, b);
+                   id.cid, &mptr, b, false, unused);
 }
 
 
@@ -5844,8 +5848,9 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
     return;
   }
 
+  std::unordered_set<std::string> unused;
   ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   cid, &mptr, result);
+                   cid, &mptr, result, false, unused);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5885,8 +5890,9 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
     return;
   }
 
+  std::unordered_set<std::string> unused;
   ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   cid, &mptr, result);
+                   cid, &mptr, result, false, unused);
 }
 
 
@@ -8943,8 +8949,10 @@ AqlValue$ Functions::FulltextVPack(arangodb::aql::Query* query,
     VPackArrayBuilder guard(b.get());
 
     for (size_t i = 0; i < numResults; ++i) {
+      std::unordered_set<std::string> unused;
       ExpandShapedJson(shaper, resolver, cid,
-                       (TRI_doc_mptr_t const*)queryResult->_documents[i], *b);
+                       (TRI_doc_mptr_t const*)queryResult->_documents[i], *b,
+                       false, unused);
     }
   } catch (...) {
     TRI_FreeResultFulltextIndex(queryResult);
