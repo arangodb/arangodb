@@ -102,92 +102,138 @@ describe('Foxx Manager install', function() {
     it('with malformed controller file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
-    });
-
-    it('with malformed controller path', function() {
-      expect(function () {
-        FoxxManager.install(fs.join(basePath, 'malformed-controller-name'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        return true;
+      });
     });
 
     it('with malformed controller path', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-path'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
 
     it('with broken controller file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'broken-controller-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause');
+        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        return true;
+      });
     });
 
     it('with broken exports file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'broken-exports-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause');
+        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        return true;
+      });
     });
 
     it('with broken setup file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'broken-setup-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause');
+        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        return true;
+      });
     });
 
     it('with malformed exports file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        return true;
+      });
     });
 
     it('with malformed exports path', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-path'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')
+        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
 
     it('with malformed setup file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        return true;
+      });
     });
 
     it('with malformed setup path', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-path'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')
+        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
 
     it('with missing controller file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'missing-controller-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')
+        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
 
     it('with missing exports file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'missing-exports-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')
+        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
 
     it('with missing setup file', function() {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'missing-setup-file'), '/unittest/broken');
-      }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_SYS_ERROR.code);
+      }).to.throw(ArangoError).that.satisfies(function (err) {
+        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
+        expect(err).to.have.property('cause')
+        .that.is.an.instanceof(ArangoError)
+        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        return true;
+      });
     });
   });
 
