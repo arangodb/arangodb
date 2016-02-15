@@ -1131,7 +1131,7 @@ static void UnsetOrKeep(VPackSlice const& value,
   for (auto const& entry : VPackObjectIterator(value)) {
     TRI_ASSERT(entry.key.isString());
     std::string key = entry.key.copyString();
-    if (!(names.find(key) == names.end() ^ unset)) {
+    if (!((names.find(key) == names.end()) ^ unset)) {
       // not found and unset or found and keep 
       if (recursive && entry.value.isObject()) {
         result.add(entry.key); // Add the key
