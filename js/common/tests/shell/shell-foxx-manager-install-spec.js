@@ -104,7 +104,11 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -114,8 +118,12 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-controller-path'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause').that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -125,9 +133,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'broken-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause');
-        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
-        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause');
+          expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+          expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -137,9 +149,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'broken-exports-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause');
-        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
-        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause');
+          expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+          expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -149,9 +165,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'broken-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause');
-        expect(err.cause).not.to.be.an.instanceof(SyntaxError);
-        expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause');
+          expect(err.cause).not.to.be.an.instanceof(SyntaxError);
+          expect(err.cause).not.to.be.an.instanceof(ArangoError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -161,7 +181,12 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(SyntaxError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -171,9 +196,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-exports-path'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')
-        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -183,7 +212,12 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause').that.is.an.instanceof(SyntaxError);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(SyntaxError);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -193,9 +227,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'malformed-setup-path'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')
-        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -205,9 +243,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'missing-controller-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')
-        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -217,9 +259,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'missing-exports-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')
-        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
@@ -229,9 +275,13 @@ describe('Foxx Manager install', function() {
         FoxxManager.install(fs.join(basePath, 'missing-setup-file'), '/unittest/broken');
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        expect(err).to.have.property('cause')
-        .that.is.an.instanceof(ArangoError)
-        .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        if (require('@arangodb').isServer) {
+          expect(err).to.have.property('cause')
+          .that.is.an.instanceof(ArangoError)
+          .with.a.property('errorNum', errors.ERROR_SYS_ERROR.code);
+        } else {
+          expect(err).not.to.have.property('cause');
+        }
         return true;
       });
     });
