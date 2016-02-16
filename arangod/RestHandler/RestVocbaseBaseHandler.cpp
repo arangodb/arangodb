@@ -125,6 +125,48 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
+void RestVocbaseBaseHandler::generateSaved(
+    arangodb::OperationResult const& result,
+    std::string const& collectionName) {
+  VPackSlice slice = result.slice();
+  TRI_ASSERT(slice.isObject());
+
+  if (result.wasWaitForSync) {
+    createResponse(rest::HttpResponse::ACCEPTED);
+  } else {
+    createResponse(rest::HttpResponse::CREATED);
+  }
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("etag", 4, "\"" + slice.get("_rev").copyString() + "\"");
+
+  std::string escapedHandle(DocumentHelper::assembleDocumentId(
+      collectionName, slice.get("_key").copyString(), true));
+  if (_request->compatibility() < 10400L) {
+    // pre-1.4 location header (e.g. /_api/document/xyz)
+    _response->setHeader("location", 8,
+                         std::string(DOCUMENT_PATH + "/" + escapedHandle));
+  } else {
+    // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
+    if (type == TRI_COL_TYPE_EDGE) {
+      _response->setHeader("location", 8,
+                           std::string("/_db/" + _request->databaseName() +
+                                       EDGE_PATH + "/" + escapedHandle));
+    } else {
+      _response->setHeader("location", 8,
+                           std::string("/_db/" + _request->databaseName() +
+                                       DOCUMENT_PATH + "/" + escapedHandle));
+    }
+  }
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+  VPackDumper dumper(&buffer);
+  try {
+    dumper.dump(slice);
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
 ///

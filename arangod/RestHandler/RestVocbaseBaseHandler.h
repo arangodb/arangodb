@@ -164,6 +164,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   void generateSaved(arangodb::SingleCollectionWriteTransaction<1>& trx,
@@ -182,6 +183,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                 (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid,
                 type);  // PROTECTED by trx here
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates message for a saved document
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateSaved(arangodb::OperationResult const& result,
+                     std::string const& collectionName); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
