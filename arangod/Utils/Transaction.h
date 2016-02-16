@@ -425,7 +425,6 @@ class Transaction {
   /// @brief create one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult insert(std::string const& collectionName,
@@ -737,6 +736,16 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int setupState() { return _setupState; }
+
+ private:
+
+  OperationResult insertCoordinator(std::string const& collectionName,
+                                    VPackSlice const& value,
+                                    OperationOptions const& options);
+
+  OperationResult insertLocal(std::string const& collectionName,
+                              VPackSlice const& value,
+                              OperationOptions const& options);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

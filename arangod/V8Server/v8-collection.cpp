@@ -3270,13 +3270,6 @@ static void JS_InsertVocbaseVPack(
     options.waitForSync = ExtractWaitForSync(args, 2);
   }
 
-  // requirements for insert: 
-  // - must check input value type
-  //res = document->insert(&trx, &slice, &mptr,
-  //                       !trx.isLocked(document, TRI_TRANSACTION_WRITE),
-  //                       options.waitForSync);
-  // res = trx.finish(res);
-
   if (!args[0]->IsObject() || args[0]->IsArray()) {
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -3285,7 +3278,7 @@ static void JS_InsertVocbaseVPack(
   VPackOptions const* vpackOptions = StorageOptions::getInsertOptions();
   VPackBuilder builder(vpackOptions);
 
-  int res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
+  int res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), false);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

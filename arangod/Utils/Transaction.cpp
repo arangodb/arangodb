@@ -23,6 +23,13 @@
 
 #include "Utils/transactions.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Storage/Marker.h"
+#include "VocBase/KeyGenerator.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -404,5 +411,124 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
   this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create one or multiple documents in a collection
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::insert(std::string const& collectionName,
+                                    VPackSlice const& value,
+                                    OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    return insertCoordinator(collectionName, value, options);
+  }
+
+  return insertLocal(collectionName, value, options);
+}
+   
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create one or multiple documents in a collection, coordinator
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+/// TODO: implement this
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::insertCoordinator(std::string const& collectionName,
+                                               VPackSlice const& value,
+                                               OperationOptions const& options) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create one or multiple documents in a collection, local
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::insertLocal(std::string const& collectionName,
+                                         VPackSlice const& value,
+                                         OperationOptions const& options) {
+  
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+ 
+
+  // add missing attributes for document (_id, _rev, _key)
+  VPackBuilder merge;
+  merge.openObject();
+   
+  // generate a new tick value
+  TRI_voc_tick_t const tick = TRI_NewTickServer();
+
+  auto key = value.get(TRI_VOC_ATTRIBUTE_KEY);
+
+  if (key.isNone()) {
+    // "_key" attribute not present in object
+    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(document->_keyGenerator->generate(tick)));
+  } else if (!key.isString()) {
+    // "_key" present but wrong type
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  } else {
+    int res = document->_keyGenerator->validate(key.copyString(), false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // invalid key value
+      return OperationResult(res);
+    }
+  }
+  
+  // add _rev attribute
+  merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(tick)));
+
+  // add _id attribute
+  uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
+  *p++ = 0xf3; // custom type for _id
+  MarkerHelper::storeNumber<uint64_t>(p, cid, sizeof(uint64_t));
+
+  merge.close();
+
+  VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
+  VPackSlice insertSlice = toInsert.slice();
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = document->insert(this, &insertSlice, &mptr, !isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);
+  
+  VPackSlice vpack(mptr.vpack());
+  std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
+  builder.close();
+
+  return OperationResult(TRI_ERROR_NO_ERROR, builder.steal()); 
 }
 

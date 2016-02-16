@@ -26,14 +26,16 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
+#include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
 struct OperationResult {
-  OperationResult() : builder(), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  OperationResult() : buffer(), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  explicit OperationResult(int code) : buffer(), code(code), wasSynchronous(false) {}
+  OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), code(code), wasSynchronous(false) {}
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -44,11 +46,11 @@ struct OperationResult {
   }
 
   VPackSlice slice() const {
-    TRI_ASSERT(builder != nullptr); 
-    return builder->slice();
+    TRI_ASSERT(buffer != nullptr); 
+    return VPackSlice(buffer->data());
   }
 
-  std::shared_ptr<VPackBuilder> builder;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   int code;
   bool wasSynchronous;
 };
