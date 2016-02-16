@@ -103,6 +103,7 @@ bool RestDocumentHandler::createDocument() {
                       "?collection=<identifier>");
     return false;
   }
+  std::string collectionName(collection);
 
   bool const waitForSync = extractWaitForSync();
 
@@ -115,21 +116,12 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  VPackSlice body = parsedBody->slice();
 
-  if (!body.isObject()) {
-    generateTransactionError(collection,
-                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    return false;
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return createDocumentCoordinator(collection, waitForSync, body);
-  }
-
+  /* TODO
   if (!checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
+  */
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
@@ -146,30 +138,26 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
-    // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT
-    // collection
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    return false;
-  }
+  arangodb::OperationOptions opOptions;
+  opOptions.waitForSync = extractWaitForSync();
+  VPackSlice body = parsedBody->slice();
+  arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
-  TRI_voc_cid_t const cid = trx.cid();
-
-  TRI_doc_mptr_copy_t mptr;
-  res = trx.insert(trx.trxCollection(), &mptr, body, nullptr, waitForSync);
-  res = trx.finish(res);
+  // Will commit if no error occured.
+  // or abort if an error occured.
+  // result stays valid!
+  res = trx.finish(result.code);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+  
+  if (result.failed()) {
+    generateTransactionError(collection, result.code);
     return false;
   }
 
-  generateSaved(trx, cid, mptr);
-
+  generateSaved(result, collectionName);
   return true;
 }
 

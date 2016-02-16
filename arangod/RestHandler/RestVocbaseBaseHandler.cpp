@@ -26,12 +26,14 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -131,13 +133,16 @@ void RestVocbaseBaseHandler::generateSaved(
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject());
 
-  if (result.wasWaitForSync) {
+  if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::ACCEPTED);
   } else {
     createResponse(rest::HttpResponse::CREATED);
   }
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("etag", 4, "\"" + slice.get("_rev").copyString() + "\"");
+
+  // TODO This has to be replaced properly
+  TRI_col_type_e type = TRI_COL_TYPE_EDGE;
 
   std::string escapedHandle(DocumentHelper::assembleDocumentId(
       collectionName, slice.get("_key").copyString(), true));
