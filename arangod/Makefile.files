@@ -64,6 +64,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Optimizer.cpp \
 	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
+	arangod/Aql/Quantifier.cpp \
 	arangod/Aql/Query.cpp \
 	arangod/Aql/QueryCache.cpp \
 	arangod/Aql/QueryList.cpp \
@@ -224,7 +225,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \
-	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
 	arangod/VocBase/shape-accessor.cpp \
 	arangod/VocBase/shaped-json.cpp \

@@ -737,6 +737,17 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST quantifier node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeQuantifier(int64_t type) {
+  AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
+  node->setIntValue(type);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -760,6 +771,22 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
 
   // initialize sortedness information (currently used for the IN operator only)
   node->setBoolValue(false);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST binary array operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs,
+                                            AstNode const* rhs, AstNode const* quantifier) {
+  // re-use existing function
+  AstNode* node = createNodeBinaryOperator(type, lhs, rhs);
+  node->addMember(quantifier);
+  
+  TRI_ASSERT(node->isArrayComparisonOperator());
+  TRI_ASSERT(node->numMembers() == 3);
 
   return node;
 }
@@ -1675,6 +1702,11 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return this->optimizeTernaryOperator(node);
     }
+    
+    // attribute access
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      return this->optimizeAttributeAccess(node);
+    }
 
     // passthru node
     if (node->type == NODE_TYPE_PASSTHRU) {
@@ -1888,8 +1920,12 @@ AstNode* Ast::clone(AstNode const* node) {
     copy->setData(node->getData());
   } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
     copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_QUANTIFIER) {
+    copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+             type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // copy sortedness information
     copy->setBoolValue(node->getBoolValue());
   } else if (type == NODE_TYPE_ARRAY) {
@@ -2637,6 +2673,42 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 
   // condition is always false, replace ternary operation with false part
   return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes an attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeAttributeAccess(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* what = node->getMember(0);
+
+  if (!what->isConstant()) {
+    return node;
+  }
+
+  if (what->type == NODE_TYPE_OBJECT) {
+    // accessing an attribute from an object
+    char const* name = node->getStringValue();
+    size_t const length = node->getStringLength();
+
+    size_t const n = what->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* member = what->getMember(0);
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+          member->getStringLength() == length &&
+          memcmp(name, member->getStringValue(), length) == 0) {
+        // found matching member
+        return member->getMember(0); 
+      }
+    }
+  }
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

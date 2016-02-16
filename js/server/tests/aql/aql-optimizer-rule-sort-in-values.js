@@ -203,11 +203,14 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var numbers = [ ], strings = [ ], reversed = [ ];
-      for (var i = 1; i <= 100; ++i) {
+      var groups = [ ], numbers = [ ], strings = [ ], reversed = [ ], i;
+      for (i = 1; i <= 100; ++i) {
         numbers.push(i);
         strings.push("test" + i);
         reversed.push("test" + (101 - i));
+      }
+      for (i = 0; i < 10; ++i) {
+        groups.push(i);
       }
 
       var queries = [
@@ -223,7 +226,8 @@ function optimizerRuleTestSuite () {
         [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", numbers ], 
         [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", [ ] ], 
         [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", numbers ] 
+        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values COLLECT group = i % 10 RETURN group", groups ] 
       ];
 
       queries.forEach(function(query) {

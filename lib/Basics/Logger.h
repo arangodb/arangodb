@@ -169,7 +169,9 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LogLevel
 ////////////////////////////////////////////////////////////////////////////////
-
+#ifdef TRI_UNDEF_ERR
+#undef ERR
+#endif
 enum class LogLevel {
   DEFAULT = 0,
   FATAL = 1,
@@ -272,6 +274,7 @@ class Logger {
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
+  static LogTopic REPLICATION;
   static LogTopic REQUESTS;
 
  public:
@@ -329,7 +332,7 @@ class Logger {
   /// @brief creates a new appender
   //////////////////////////////////////////////////////////////////////////////
 
-  static void addAppender(std::string const&, bool, std::string const&);
+  static void addAppender(std::string const&, bool, std::string const&, std::unordered_set<std::string>&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determines the global log level
@@ -444,6 +447,7 @@ class Logger {
   static void flush();
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current log level
   //////////////////////////////////////////////////////////////////////////////

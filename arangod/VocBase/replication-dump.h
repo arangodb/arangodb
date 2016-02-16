@@ -41,13 +41,14 @@ class TRI_vocbase_col_t;
 
 struct TRI_replication_dump_t {
   TRI_replication_dump_t(TRI_vocbase_t* vocbase, size_t chunkSize,
-                         bool includeSystem)
+                         bool includeSystem, TRI_voc_cid_t restrictCollection)
       : _vocbase(vocbase),
         _buffer(nullptr),
         _chunkSize(chunkSize),
         _lastFoundTick(0),
         _lastSid(0),
         _lastShape(nullptr),
+        _restrictCollection(restrictCollection),
         _collectionNames(),
         _failed(false),
         _bufferFull(false),
@@ -79,6 +80,7 @@ struct TRI_replication_dump_t {
   TRI_voc_tick_t _lastFoundTick;
   TRI_shape_sid_t _lastSid;
   struct TRI_shape_s const* _lastShape;
+  TRI_voc_cid_t _restrictCollection;
   std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
   bool _failed;
   bool _bufferFull;

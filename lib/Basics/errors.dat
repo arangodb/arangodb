@@ -186,6 +186,7 @@ ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection"
 ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED,1475,"document not found or sharding attributes changed","Will be raised when a document with a given identifier or handle is unknown, or if the sharding attributes have been changed in a REPLACE operation in the cluster."
 ERROR_CLUSTER_COULD_NOT_DETERMINE_ID,1476,"could not determine my ID from my local info","Will be raised if a cluster server at startup could not determine its own ID from the local info provided."
+ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DBserver-only operation on a different type of node."
 
 ################################################################################
 ## ArangoDB query errors
@@ -357,13 +358,8 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 
 ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
 ERROR_INVALID_APPLICATION_MANIFEST,3001,"manifest file is invalid","The manifest file of this application is invalid."
-ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING,3002,"missing manifest attribute","The manifest file is incomplete. A required attribute is missing."
-ERROR_CANNOT_EXTRACT_APPLICATION_ROOT,3003,"unable to extract app root path","The root path of the application could not be found."
 ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
-ERROR_FAILED_TO_EXECUTE_SCRIPT,3005,"failed to execute script","The script provided contains errors."
-ERROR_SYNTAX_ERROR_IN_SCRIPT,3006,"syntax error in script"," contains a syntax error: "
 ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_NO_FOXX_FOUND,3008,"No foxx found at this location","No foxx found at this location"
 ERROR_APP_NOT_FOUND,3009,"App not found","No app found at this mountpoint"
 ERROR_APP_NEEDS_CONFIGURATION,3010,"App not configured","The app has to be configured before it can be used"
 
@@ -372,18 +368,7 @@ ERROR_APP_NEEDS_CONFIGURATION,3010,"App not configured","The app has to be confi
 ################################################################################
 
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
-ERROR_MODULE_SYNTAX_ERROR,3101,"syntax error in module","The module could not be parsed because of a syntax error."
-ERROR_MODULE_BAD_WRAPPER,3102,"failed to wrap module","The module wrapper could not be generated. This may indicate a problem with some of the names of the module's context variables."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
-ERROR_MODULE_UNKNOWN_FILE_TYPE,3110,"unknown file type","The module path resolves to a file of an unknown type."
-ERROR_MODULE_PATH_MUST_BE_ABSOLUTE,3111,"path must be absolute","The module path must be absolute."
-ERROR_MODULE_CAN_NOT_ESCAPE,3112,"cannot use '..' to escape top-level-directory","The relative module path can not escape the module's top-level directory."
-ERROR_MODULE_DRIVE_LETTER,3113,"drive local path is not supported","The module path contains a Windows drive letter, which is not supported."
-ERROR_MODULE_BAD_MODULE_ORIGIN,3120,"corrupted module origin","The module origin is invalid."
-ERROR_MODULE_BAD_PACKAGE_ORIGIN,3121,"corrupted package origin","The package origin is invalid."
-ERROR_MODULE_DOCUMENT_IS_EMPTY,3125,"no content","The module resolves to a document which is empty or malformed."
-ERROR_MODULE_MAIN_NOT_READABLE,3130,"cannot read main file","The module's main file is not readable."
-ERROR_MODULE_MAIN_NOT_JS,3131,"main file is not of type 'js'","The module's main file is not a JavaScript file."
 
 ################################################################################
 ## results, which are not errors
@@ -391,12 +376,6 @@ ERROR_MODULE_MAIN_NOT_JS,3131,"main file is not of type 'js'","The module's main
 
 RESULT_ELEMENT_EXISTS,10000,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_ELEMENT_NOT_FOUND,10001,"element not found in structure","Will be returned if the element was not found in the structure."
-
-################################################################################
-## foxx app update via github
-################################################################################
-
-ERROR_APP_ALREADY_EXISTS,20000,"newest version of app already installed","newest version of app already installed"
 
 ################################################################################
 ## dispatcher errors

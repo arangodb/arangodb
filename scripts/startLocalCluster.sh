@@ -36,12 +36,13 @@ echo Starting agency...
 ../bin/etcd-arango > /dev/null 2>&1 &
 cd ..
 sleep 1
-echo Initializing agency...
-bin/arangosh --javascript.execute scripts/init_agency.js > cluster/init_agency.log 2>&1
-echo Starting discovery...
-bin/arangosh --javascript.execute scripts/discover.js > cluster/discover.log 2>&1 &
 
 start() {
+    if [ "$1" == "dbserver" ]; then
+      ROLE="PRIMARY"
+    elif [ "$1" == "coordinator" ]; then
+      ROLE="COORDINATOR"
+    fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
@@ -51,13 +52,21 @@ start() {
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
+                --server.foxx-queues false \
                 --server.foxx-queues false \
                 > cluster/$PORT.stdout 2>&1 &
 }
 
 startTerminal() {
+    if [ "$1" == "dbserver" ]; then
+      ROLE="PRIMARY"
+    elif [ "$1" == "coordinator" ]; then
+      ROLE="COORDINATOR"
+    fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
@@ -67,13 +76,20 @@ startTerminal() {
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
                 --console &
 }
 
 startDebugger() {
+    if [ "$1" == "dbserver" ]; then
+      ROLE="PRIMARY"
+    elif [ "$1" == "coordinator" ]; then
+      ROLE="COORDINATOR"
+    fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
@@ -83,7 +99,9 @@ startDebugger() {
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false &
     xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb bin/arangod -p $! &

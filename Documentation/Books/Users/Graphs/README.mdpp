@@ -21,17 +21,17 @@ In queries you can define in which directions the edge relations may be followed
 
 !SUBSECTION Named Graphs
 Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
-They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
+They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
  - [AQL Graph Operations](../Aql/Graphs.md) with several flavors:
    - [AQL Graph traversals](../Aql/GraphTraversals.md) on both named and anonymous graphs
    - [AQL operations on named Graphs](../Aql/GraphOperations.md)
    - [AQL operations on raw vertex & edge collections](../Aql/GraphFunctions.md)
- - [the RESTful General Graph interface](../HttpGharial/README.md)
  - [The javascript General Graph implementation, as you may use it in FOXX Services](../GeneralGraphs/README.md)
-    * [Graph Management](../GeneralGraphs/Management.md)
-    * [Graph Functions](../GeneralGraphs/Functions.md)
-    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md)
+    * [Graph Management](../GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+    * [Graph Functions](../GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
+    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
+ - [the RESTful General Graph interface](../HttpGharial/README.md) used to implement graph management in client drivers
 
 !SUBSUBSECTION Manipulating collections of named graphs with regular document functions
 
@@ -144,7 +144,7 @@ This graph was designed to demonstrate filters in traversals. It has some labels
 ![traversal graph](traversal_graph.png)
 
 The example has all its vertices in the *circles* collection, and an *edges* edge collection to connect them.
-Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* always being false, *theTruth* always being true) and a label sorting *B* - *D* to the left side, *G* - *K* to the right side. Left and right side split into Paths - at *B* and *G* which are each direct neighbours of the root-node *A*. Starting from *A* the graph has a depth of 3 on all its paths.
+Circles have unique numeric labels. Edges have two boolean attributes (*theFalse* always being false, *theTruth* always being true) and a label sorting *B* - *D* to the left side, *G* - *K* to the right side. Left and right side split into Paths - at *B* and *G* which are each direct neighbours of the root-node *A*. Starting from *A* the graph has a depth of 3 on all its paths.
 
     @startDocuBlockInline graph_create_traversal_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_traversal_sample}
@@ -157,7 +157,7 @@ Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* 
     @endDocuBlock graph_create_traversal_sample
 
 !SUBSUBSECTION The World Graph
-The world contry graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
+The world country graph structures its nodes like that: world -> continent -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
     @startDocuBlockInline graph_create_world_sample
@@ -184,4 +184,4 @@ The above referenced chapters describe the various APIs of ArangoDBs graph engin
  - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/GraphExampleActorsAndMovies.html)
 
 !SUBSECTION Higher volume graph examples
-All of the above examples are rather small so they are easy cromprehensible and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/triAGENS/ArangoDB-Data/) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.
+All of the above examples are rather small so they are easier to comprehend and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/triAGENS/ArangoDB-Data/) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.

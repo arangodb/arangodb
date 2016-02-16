@@ -1124,9 +1124,10 @@ static bool MustReplicateWalMarker(
   if (dump->_vocbase->_id != GetDatabaseFromWalMarker(marker)) {
     return false;
   }
-
+  
   // finally check if the marker is for a collection that we want to ignore
   TRI_voc_cid_t cid = GetCollectionFromWalMarker(marker);
+
   if (cid != 0) {
     char const* name = NameFromCid(dump, cid);
 
@@ -1135,7 +1136,14 @@ static bool MustReplicateWalMarker(
       return false;
     }
   }
+  
+  if (dump->_restrictCollection > 0 && 
+      (cid != dump->_restrictCollection && ! IsTransactionWalMarker(dump, marker))) {
+    // restrict output to a single collection, but a different one
+    return false;
+  }
 
+  
   if (marker->_tick >= firstRegularTick) {
     return true;
   }

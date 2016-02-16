@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
+/*global window, exports, Backbone, EJS, _, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
   "use strict";
@@ -14,11 +14,11 @@
     initialize: function () {
       this.collectionsView = this.options.collectionsView;
     },
+
     events: {
       'click .iconSet.icon_arangodb_settings2': 'createEditPropertiesModal',
       'click .pull-left' : 'noop',
       'click .icon_arangodb_settings2' : 'editProperties',
-//      'click #editCollection' : 'editProperties',
       'click .spanInfo' : 'showProperties',
       'click': 'selectCollection'
     },
@@ -39,11 +39,6 @@
     showProperties: function(event) {
       event.stopPropagation();
       this.createInfoModal();
-/*
-      window.App.navigate(
-        "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
-      );
-*/
     },
 
     selectCollection: function(event) {
@@ -63,12 +58,52 @@
     },
 
     unloadCollection: function () {
-      this.model.unloadCollection();
+
+      var unloadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be unloaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "unloading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "unloaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " unloaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.unloadCollection(unloadCollectionCallback);
       window.modalView.hide();
     },
 
     loadCollection: function () {
-      this.model.loadCollection();
+    
+      var loadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be loaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "loading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "loaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.loadCollection(loadCollectionCallback);
       window.modalView.hide();
     },
 
@@ -261,7 +296,6 @@
         );
       }
 
-
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           "change-collection-id", "ID", this.model.get('id'), ""
@@ -312,12 +346,87 @@
         )
       );
 
+      var tabBar = ["General", "Indices"],
+      templates =  ["modalTable.ejs", "indicesView.ejs"];
+
       window.modalView.show(
-        "modalTable.ejs",
+        templates,
         "Modify Collection",
         buttons,
-        tableContent
+        tableContent, null, null,
+        this.events, null,
+        tabBar
       );
+      this.getIndex();
+      this.bindIndexEvents();
+    },
+
+    bindIndexEvents: function() {
+      this.unbindIndexEvents();
+      var self = this;
+
+      $('#indexEditView #addIndex').bind('click', function() {
+        self.toggleNewIndexView();
+
+        $('#cancelIndex').unbind('click');
+        $('#cancelIndex').bind('click', function() {
+          self.toggleNewIndexView();
+        });
+
+        $('#createIndex').unbind('click');
+        $('#createIndex').bind('click', function() {
+          self.createIndex();
+        });
+
+      });
+
+      $('#newIndexType').bind('change', function() {
+        self.selectIndexType();
+      });
+
+      $('.deleteIndex').bind('click', function(e) {
+        self.prepDeleteIndex(e);
+      });
+
+      $('#infoTab a').bind('click', function(e) {
+        if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
+
+          $('#newIndexView').hide();
+          $('#indexEditView').show();
+
+          $('#modal-dialog .modal-footer .button-danger').hide();  
+          $('#modal-dialog .modal-footer .button-success').hide();  
+          $('#modal-dialog .modal-footer .button-notification').hide();
+          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        }
+        if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
+          $('#modal-dialog .modal-footer .button-danger').show();  
+          $('#modal-dialog .modal-footer .button-success').show();  
+          $('#modal-dialog .modal-footer .button-notification').show();
+          var elem = $('.index-button-bar')[0]; 
+          var elem2 = $('.index-button-bar2')[0]; 
+          $('#addIndex').detach().appendTo(elem);
+          if ($('#cancelIndex').is(':visible')) {
+            $('#cancelIndex').detach().appendTo(elem2);
+            $('#createIndex').detach().appendTo(elem2);
+          }
+        }
+      });
+
+    },
+
+    unbindIndexEvents: function() {
+      $('#indexEditView #addIndex').unbind('click');
+      $('#newIndexType').unbind('change');
+      $('#infoTab a').unbind('click');
+      $('.deleteIndex').unbind('click');
+      /*
+      //$('#documentsToolbar ul').unbind('click');
+      this.markFilterToggle();
+      this.changeEditMode(false);
+     0Ads0asd0sd0f0asdf0sa0f
+      "click #documentsToolbar ul"    : "resetIndexForms"
+      */
     },
 
     createInfoModal: function() {
@@ -329,6 +438,225 @@
         buttons,
         tableContent
       );
+    },
+    //index functions
+    resetIndexForms: function () {
+      $('#indexHeader input').val('').prop("checked", false);
+      $('#newIndexType').val('Cap').prop('selected',true);
+      this.selectIndexType();
+    },
+
+    createIndex: function () {
+      //e.preventDefault();
+      var self = this;
+      var indexType = $('#newIndexType').val();
+      var result;
+      var postParameter = {};
+      var fields;
+      var unique;
+      var sparse;
+
+      switch (indexType) {
+        case 'Cap':
+          var size = parseInt($('#newCapSize').val(), 10) || 0;
+          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+          postParameter = {
+            type: 'cap',
+            size: size,
+            byteSize: byteSize
+          };
+          break;
+        case 'Geo':
+          //HANDLE ARRAY building
+          fields = $('#newGeoFields').val();
+          var geoJson = self.checkboxToValue('#newGeoJson');
+          var constraint = self.checkboxToValue('#newGeoConstraint');
+          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+          postParameter = {
+            type: 'geo',
+            fields: self.stringToArray(fields),
+            geoJson: geoJson,
+            constraint: constraint,
+            ignoreNull: ignoreNull
+          };
+          break;
+        case 'Hash':
+          fields = $('#newHashFields').val();
+          unique = self.checkboxToValue('#newHashUnique');
+          sparse = self.checkboxToValue('#newHashSparse');
+          postParameter = {
+            type: 'hash',
+            fields: self.stringToArray(fields),
+            unique: unique,
+            sparse: sparse
+          };
+          break;
+        case 'Fulltext':
+          fields = ($('#newFulltextFields').val());
+          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          postParameter = {
+            type: 'fulltext',
+            fields: self.stringToArray(fields),
+            minLength: minLength
+          };
+          break;
+        case 'Skiplist':
+          fields = $('#newSkiplistFields').val();
+          unique = self.checkboxToValue('#newSkiplistUnique');
+          sparse = self.checkboxToValue('#newSkiplistSparse');
+          postParameter = {
+            type: 'skiplist',
+            fields: self.stringToArray(fields),
+            unique: unique,
+            sparse: sparse
+          };
+          break;
+      }
+      var callback = function(error, msg){
+        
+        if (error) {
+          if (msg) {
+            var message = JSON.parse(msg.responseText);
+            arangoHelper.arangoError("Document error", message.errorMessage);
+          }
+          else {
+            arangoHelper.arangoError("Document error", "Could not create index.");
+          }
+        }
+      };
+
+      window.modalView.hide();
+      this.getIndex();
+      this.createEditPropertiesModal();
+      $($('#infoTab').children()[1]).find('a').click();
+      self.model.createIndex(postParameter, callback);
+    },
+
+    lastTarget: null,
+
+    prepDeleteIndex: function (e) {
+      var self = this;
+      this.lastTarget = e;
+
+      this.lastId = $(this.lastTarget.currentTarget).
+                    parent().
+                    parent().
+                    first().
+                    children().
+                    first().
+                    text();
+      window.modalView.hide();
+
+      //delete modal
+      $("#indexDeleteModal").modal('show');
+      $('#confirmDeleteIndexBtn').unbind('click');
+      $('#confirmDeleteIndexBtn').bind('click', function() {
+        self.deleteIndex();
+      });
+    },
+
+    deleteIndex: function () {
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Could not delete index");
+        }
+      };
+
+      $("#indexDeleteModal").modal('hide');
+      this.model.deleteIndex(this.lastId, callback);
+      this.createEditPropertiesModal();
+      $($('#infoTab').children()[1]).find('a').click();
+    },
+
+    selectIndexType: function () {
+      $('.newIndexClass').hide();
+      var type = $('#newIndexType').val();
+      $('#newIndexType'+type).show();
+    },
+
+    getIndex: function () {
+      this.index = this.model.getIndex();
+      var cssClass = 'collectionInfoTh modal-text';
+      if (this.index) {
+        var fieldString = '';
+        var actionString = '';
+
+        _.each(this.index.indexes, function(v) {
+          if (v.type === 'primary' || v.type === 'edge') {
+            actionString = '<span class="icon_arangodb_locked" ' +
+              'data-original-title="No action"></span>';
+          }
+          else {
+            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
+              'data-original-title="Delete index" title="Delete index"></span>';
+          }
+
+          if (v.fields !== undefined) {
+            fieldString = v.fields.join(", ");
+          }
+
+          //cut index id
+          var position = v.id.indexOf('/');
+          var indexId = v.id.substr(position + 1, v.id.length);
+          var selectivity = (
+            v.hasOwnProperty("selectivityEstimate") ? 
+            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
+            "n/a"
+          );
+          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
+
+          $('#collectionEditIndexTable').append(
+            '<tr>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
+            '</tr>'
+          );
+        });
+      }
+    },
+
+    toggleNewIndexView: function () {
+      var elem = $('.index-button-bar2')[0];
+      var elem2 = $('.index-button-bar')[0];
+      if ($('#indexEditView').is(':visible')) {
+        $('#indexEditView').hide();
+        $('#newIndexView').show();
+        $('#addIndex').detach().appendTo(elem2);
+        $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
+
+      }
+      else {
+        console.log("toggle else");
+        $('#indexEditView').show();
+        $('#newIndexView').hide();
+        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#cancelIndex').detach().appendTo(elem);
+        $('#createIndex').detach().appendTo(elem);
+      }
+
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
+      this.resetIndexForms();
+    },
+
+    stringToArray: function (fieldString) {
+      var fields = [];
+      fieldString.split(',').forEach(function(field){
+        field = field.replace(/(^\s+|\s+$)/g,'');
+        if (field !== '') {
+          fields.push(field);
+        }
+      });
+      return fields;
+    },
+
+    checkboxToValue: function (id) {
+      return $(id).prop('checked');
     }
 
   });

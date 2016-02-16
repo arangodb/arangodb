@@ -132,14 +132,21 @@ The maximum supported length of any name is 64 bytes. Names in AQL are always
 case-sensitive.
 
 Keywords must not be used as names. If a reserved keyword should be used as a
-name, the name must be enclosed in backticks. Enclosing a name in backticks
-makes it possible to use otherwise reserved keywords as names. An example for this is:
+name, the name must be enclosed in backticks or forward ticks. Enclosing a name in 
+backticks or forward ticks makes it possible to use otherwise reserved keywords 
+as names. An example for this is:
 
     FOR f IN `filter` 
       RETURN f.`sort`
 
 Due to the backticks, *filter* and *sort* are interpreted as names and not as
 keywords here.
+
+The example can alternatively written as:
+    
+    FOR f IN ´filter´ 
+      RETURN f.´sort´
+
 
 !SUBSUBSECTION Collection names
 

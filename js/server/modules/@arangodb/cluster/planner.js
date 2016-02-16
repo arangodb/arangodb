@@ -41,7 +41,7 @@ var PlannerLocalDefaults = {
   "startSecondaries"        : false,
   "numberOfCoordinators"    : 1,
   "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                               "Pit", "Pia", "Pablo" ],
+                               "Pit", "Pia", "Pablo", "Peggy" ],
   "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
                                "Claas", "Clemens", "Chris" ],
   "dataPath"                : "",   // means configured in dispatcher
@@ -57,7 +57,7 @@ var PlannerLocalDefaults = {
   "useSSLonDBservers"       : false,
   "useSSLonCoordinators"    : false,
   "valgrind"                : "",
-  "valgrindopts"            : [],
+  "valgrindOpts"            : [],
   "valgrindXmlFileBase"     : "",
   "valgrindTestname"        : "",
   "valgrindHosts"           : "",
@@ -437,68 +437,26 @@ Planner.prototype.makePlan = function() {
 
   // Set up agency data:
   var agencyData = this.agencyData = {};
-  var prefix = agencyData[config.agencyPrefix] = {};
-  var tmp;
-
-  // First the Target, we collect Launchers information at the same time:
-  tmp = prefix.Target = {};
-  tmp.Lock = '"UNLOCKED"';
-  tmp.Version = '"1"';
-  var dbs = tmp.DBServers = {};
-  tmp.MapLocalToEndpoint = {};  // will stay empty for now
-  var map = tmp.MapIDToEndpoint = {};
-  var s;
-  var ep;
+  var prefix = agencyData[config.agencyPrefix] = {Dispatcher: {}};
+  var endpoints = {};
+  var s, ep, tmp;
   for (i = 0; i < DBservers.length; i++) {
     s = DBservers[i];
-    dbs[s.id] = '"none"';
-    ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
-    ep = exchangeProtocol(ep, config.useSSLonDBservers);
-    map[s.id] = '"'+ep+'"';
-    launchers[s.dispatcher].DBservers.push(s.id);
-  }
-  var coo = tmp.Coordinators = {};
-  for (i = 0; i < coordinators.length; i++) {
-    s = coordinators[i];
-    coo[s.id] = '"none"';
     ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
     ep = exchangeProtocol(ep, config.useSSLonCoordinators);
-    map[s.id] = '"' + ep + '"';
+    endpoints[s.id] = ep;
+    launchers[s.dispatcher].DBservers.push(s.id);
+  }
+  for (i = 0; i < coordinators.length; i++) {
+    s = coordinators[i];
+    ep = exchangePort(dispatchers[s.dispatcher].endpoint,s.port);
+    ep = exchangeProtocol(ep, config.useSSLonCoordinators);
+    endpoints[s.id] = ep;
     launchers[s.dispatcher].Coordinators.push(s.id);
   }
-  tmp.Databases = { "_system" : '{"name":"_system", "id":"1"}' };
-  tmp.Collections = { "_system" : {} };
-
-  // Now Plan:
-  prefix.Plan = copy(tmp);
-  delete prefix.Plan.MapIDToEndpoint;
-
-  // Now Current:
-  prefix.Current = { "Lock"             : '"UNLOCKED"',
-                     "Version"          : '"1"',
-                     "DBservers"        : {},
-                     "Coordinators"     : {},
-                     "Databases"        : {"_system":{ "name": '"name"', "id": '"1"' }},
-                     "Collections"      : {"_system":{}},
-                     "NewServers"       : {},
-                     "ServersRegistered": {"Version":'"1"'},
-                     "ShardsCopied"     : {} };
-
-  // Now Sync:
-  prefix.Sync = { "ServerStates"       : {},
-                  "Problems"           : {},
-                  "LatestID"           : '"1"',
-                  "Commands"           : {},
-                  "HeartbeatIntervalMs": '5000',
-                  "UserVersion"        : '"1"' };
-  tmp = prefix.Sync.Commands;
-  for (i = 0; i < DBservers; i++) {
-    tmp[DBservers[i].id] = '"SERVE"';
-  }
-
   // Finally Launchers:
-  prefix.Launchers = objmap(launchers, JSON.stringify);
-
+  prefix.Dispatcher.Launchers = objmap(launchers, JSON.stringify);
+  prefix.Dispatcher.Endpoints = endpoints;
   // make commands
   tmp = this.commands = [];
   var tmp2,j;
@@ -514,7 +472,7 @@ Planner.prototype.makePlan = function() {
              "agentPath"           : config.agentPath,
              "onlyLocalhost"       : config.onlyLocalhost,
              "valgrind"            : config.valgrind,
-             "valgrindopts"        : config.valgrindopts,
+             "valgrindOpts"        : config.valgrindOpts,
              "valgrindXmlFileBase" : config.valgrindXmlFileBase,
              "valgrindTestname"    : config.valgrindXmlFileBase,
              "valgrindHosts"       : config.valgrindHosts,
@@ -551,7 +509,7 @@ Planner.prototype.makePlan = function() {
                 "useSSLonDBservers"      : config.useSSLonDBservers,
                 "useSSLonCoordinators"   : config.useSSLonCoordinators,
                 "valgrind"               : config.valgrind,
-                "valgrindopts"           : config.valgrindopts,
+                "valgrindOpts"           : config.valgrindOpts,
                 "valgrindXmlFileBase"    : config.valgrindXmlFileBase,
                 "valgrindTestname"       : config.valgrindTestname,
                 "valgrindHosts"          : config.valgrindHosts,

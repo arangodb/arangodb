@@ -13,7 +13,10 @@
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
     render: function () {
-      var dropdownVisible = false;
+
+      var dropdownVisible = false,
+      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+
       if ($('#collectionsDropdown').is(':visible')) {
         dropdownVisible = true;
       }

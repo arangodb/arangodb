@@ -158,7 +158,7 @@ function ErrorsSuite () {
         fail();
       }
       catch (err) {
-        assertEqual("[ArangoError " + e.code + ": " + e.message + "]", err.toString());
+        assertEqual("ArangoError " + e.code + ": " + e.message, err.toString());
       }
     },
 
@@ -174,13 +174,12 @@ function ErrorsSuite () {
         fail();
       }
       catch (err) {
-        assertEqual("[ArangoError " + e.code + ": " + e.message + ": did not find document]", err.toString());
+        assertEqual("ArangoError " + e.code + ": " + e.message + ": did not find document", err.toString());
       }
     }
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

@@ -75,6 +75,14 @@ class Expression {
   Expression(Ast*, arangodb::basics::Json const&);
 
   ~Expression();
+ 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief replace the root node
+  //////////////////////////////////////////////////////////////////////////////
+
+  inline void replaceNode (AstNode* node) {
+    _node = node;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying AST node
@@ -399,6 +407,14 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionComparison(
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionArrayComparison(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
       std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 

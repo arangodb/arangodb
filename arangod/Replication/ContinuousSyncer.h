@@ -50,7 +50,7 @@ class ContinuousSyncer : public Syncer {
  public:
   ContinuousSyncer(TRI_server_t*, TRI_vocbase_t*,
                    TRI_replication_applier_configuration_t const*,
-                   TRI_voc_tick_t, bool);
+                   TRI_voc_tick_t, bool, TRI_voc_tick_t);
 
   ~ContinuousSyncer();
 

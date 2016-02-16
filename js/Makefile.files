@@ -111,7 +111,7 @@ gitjslint:
 		exit 0; \
 	fi
 	for file in ` git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$$' | cut -d " " -f 3`; do \
-	        bin/arangosh --jslint $$file || exit 1; \
+	        bin/arangosh -c etc/relative/arangosh.conf --jslint $$file || exit 1; \
 	 done
 
 ################################################################################

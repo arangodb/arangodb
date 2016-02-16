@@ -78,7 +78,8 @@ struct TRI_doc_mptr_t {
         _next(nullptr),
         _dataptr(nullptr) {}
 
-  virtual ~TRI_doc_mptr_t() {}
+  // do NOT add virtual methods
+  ~TRI_doc_mptr_t() {}
 
   void clear() {
     _rid = 0;
@@ -169,19 +170,6 @@ struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
     copy(that);
     return *this;
   }
-
-  // Move semantics:
-
-  TRI_doc_mptr_copy_t(TRI_doc_mptr_copy_t&& that) { copy(that); }
-
-  TRI_doc_mptr_copy_t&& operator=(TRI_doc_mptr_copy_t&& that) {
-    copy(that);
-    return std::move(*this);
-  }
-
-  inline void const* getDataPtr() const { return _dataptr; }
-
-  inline void setDataPtr(void const* d) { _dataptr = d; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,6 +256,10 @@ struct TRI_document_collection_t : public TRI_collection_t {
 #else
   VocShaper* getShaper() const;
 #endif
+
+  std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
+    return _followers;
+  }
 
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();

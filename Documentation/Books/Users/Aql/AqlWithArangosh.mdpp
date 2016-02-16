@@ -207,7 +207,7 @@ To make the server return the total number of results, you may set the *count* a
 
 After executing this query, you can use the *count* method of the cursor to get the 
 number of total results from the result set:
-    
+
     @startDocuBlockInline 05_workWithAQL_statements10
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements10}
     ~var stmt = db._createStatement( { "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i", "count": true } );
@@ -217,7 +217,7 @@ number of total results from the result set:
     @endDocuBlock 05_workWithAQL_statements10
 
 Please note that the *count* method returns nothing if you did not specify the *count*
-attribute when creating the query. 
+attribute when creating the query.
 
 This is intentional so that the server may apply optimizations when executing the query and 
 construct the result set incrementally. Incremental creation of the result sets
@@ -233,4 +233,30 @@ This may change in the future. Future versions of ArangoDB may create result set
 on the server-side and may be able to apply optimizations if a result set is not fully fetched by 
 a client.
 
+
+!SUBSUBSECTION Using cursors to obtain additional information on internal timings
+
+Cursors can also optionally provide statistics of the internal execution phases. By default, they do not. 
+To get to know how long parsing, otpimisation, instanciation and execution took,
+make the server return that by setting the *profile* attribute to
+*true* when creating a statement:
+
+    @startDocuBlockInline 06_workWithAQL_statements11
+    @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statements11}
+    |stmt = db._createStatement( {
+    | "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i",
+      options: {"profile": true}} );
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 06_workWithAQL_statements11
+
+After executing this query, you can use the *getExtra()* method of the cursor to get the 
+produced statistics:
+
+    @startDocuBlockInline 06_workWithAQL_statements12
+    @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statements12}
+    ~var stmt = db._createStatement( { "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i", options: {"profile": true}} );
+    var c = stmt.execute();
+    c.getExtra();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 06_workWithAQL_statements12
 

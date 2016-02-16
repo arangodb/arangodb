@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Executor.h"
 #include "Aql/Function.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
@@ -87,7 +88,15 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), ">"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), ">="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "IN"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "NOT IN"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "NOT IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "array =="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "array !="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "array <"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "array <="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array >"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array >="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type names for AST nodes
@@ -159,7 +168,16 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_COLLECTION_LIST), "collection list"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND), "n-ary and"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR), "n-ary or"},
-    {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"}};
+    {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "array compare =="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "array compare !="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "array compare <"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "array compare <="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array compare >"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array compare >="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array compare in"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array compare not in"},
+    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief names for AST node value types
@@ -546,7 +564,9 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
-    case NODE_TYPE_OPERATOR_BINARY_NIN: {
+    case NODE_TYPE_OPERATOR_BINARY_NIN: 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN: 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
       setBoolValue(JsonHelper::getBooleanValue(json.json(), "sorted", false));
       break;
     }
@@ -555,6 +575,11 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       if (sorted) {
         setFlag(DETERMINED_SORTED, VALUE_SORTED);
       }
+      break;
+    }
+    case NODE_TYPE_QUANTIFIER: {
+      std::string const quantifier(JsonHelper::getStringValue(json.json(), "quantifier", ""));
+      setIntValue(Quantifier::FromString(quantifier));
       break;
     }
     case NODE_TYPE_OBJECT:
@@ -591,6 +616,12 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_OPERATOR_BINARY_LE:
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: 
     case NODE_TYPE_OPERATOR_TERNARY:
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
@@ -764,6 +795,15 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_ARRAY_LIMIT:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
 
@@ -1172,10 +1212,19 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     TRI_Insert3ObjectJson(
         zone, node, "sorted",
         TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, getBoolValue()));
+  }
+
+  if (type == NODE_TYPE_QUANTIFIER) {
+    std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+    TRI_Insert3ObjectJson(
+        zone, node, "quantifier",
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, quantifier.c_str(), quantifier.size()));
   }
 
   if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
@@ -1737,7 +1786,16 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN || type == NODE_TYPE_RANGE ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN || 
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN ||
+      type == NODE_TYPE_RANGE ||
       type == NODE_TYPE_INDEXED_ACCESS || type == NODE_TYPE_PASSTHRU) {
     // a logical operator is simple if its operands are simple
     // a comparison operator is simple if both bounds are simple
@@ -1848,6 +1906,21 @@ bool AstNode::isComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_GE ||
           type == NODE_TYPE_OPERATOR_BINARY_IN ||
           type == NODE_TYPE_OPERATOR_BINARY_NIN);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is an array comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isArrayComparisonOperator() const {
+  return (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2326,6 +2399,29 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
+  if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // not used by V8
+    TRI_ASSERT(numMembers() == 3);
+    auto it = Operators.find(type);
+    TRI_ASSERT(it != Operators.end());
+
+    getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(' ');
+    buffer->appendText(Quantifier::Stringify(getMember(2)->getIntValue(true)));
+    buffer->appendChar(' ');
+    buffer->appendText((*it).second);
+    buffer->appendChar(' ');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
@@ -2462,6 +2558,15 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
 
@@ -2605,6 +2710,15 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
   return ret;

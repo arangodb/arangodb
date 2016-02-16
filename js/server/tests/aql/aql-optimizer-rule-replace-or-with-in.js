@@ -429,13 +429,20 @@ function NewAqlReplaceORWithINTestSuite () {
 
       ruleIsNotUsed(query, {});
     },
+    
+    testDudCommonConstant3: function () {
+      var query = "LET x = NOOPT({a:1}) FOR v IN " + replace.name() 
+        + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
+
+      isRuleUsed(query, {});
+    },
 
     testDudAlwaysTrue: function () {
       var query = 
       "FOR x IN " + replace.name() 
       + " FILTER x.value == x.value || x.value == 2 || x.value == 3 SORT x.value RETURN x.value";
      
-      ruleIsNotUsed(query, {});
+      isRuleUsed(query, {});
       assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
 
     },
@@ -472,7 +479,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var query = 
         "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || 2 == x.val1 || 3 == x.val1 || 4 == x.val2 RETURN x";
 
-      ruleIsNotUsed(query, {});
+      isRuleUsed(query, {});
     },
 
     testDudDifferentAttributesWithBool1: function () {

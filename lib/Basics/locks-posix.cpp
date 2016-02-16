@@ -175,6 +175,7 @@ again:
     }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -194,6 +195,7 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not read-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not read-unlock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -244,6 +246,7 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
       LOG(ERR) << "rw-lock deadlock detected";
     }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not write-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not write-lock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -263,6 +266,7 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not write-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not write-unlock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -279,15 +283,7 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 
 void TRI_InitCondition(TRI_condition_t* cond) {
   pthread_cond_init(&cond->_cond, nullptr);
-
-  cond->_mutex = static_cast<pthread_mutex_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
-
-  if (cond->_mutex == nullptr) {
-    LOG(FATAL) << "could not allocate memory for condition variable mutex"; FATAL_ERROR_EXIT();
-  }
-
-  pthread_mutex_init(cond->_mutex, nullptr);
+  pthread_mutex_init(&cond->_mutex, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,8 +292,7 @@ void TRI_InitCondition(TRI_condition_t* cond) {
 
 void TRI_DestroyCondition(TRI_condition_t* cond) {
   pthread_cond_destroy(&cond->_cond);
-  pthread_mutex_destroy(cond->_mutex);
-  TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
+  pthread_mutex_destroy(&cond->_mutex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,6 +306,7 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not signal the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not signal the condition: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -328,6 +324,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not broadcast the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not broadcast the condition: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -341,10 +338,11 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition(TRI_condition_t* cond) {
-  int rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
+  int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not wait for the condition: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -374,7 +372,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   ts.tv_sec = ts.tv_sec + ((x - y) / 1000000000);
 
   // and wait
-  int rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
+  int rc = pthread_cond_timedwait(&cond->_cond, &cond->_mutex, &ts);
 
   if (rc != 0) {
     if (rc == ETIMEDOUT) {
@@ -382,6 +380,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
     }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not wait for the condition: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -395,10 +394,11 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockCondition(TRI_condition_t* cond) {
-  int rc = pthread_mutex_lock(cond->_mutex);
+  int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not lock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not lock the condition: " << strerror(rc); FATAL_ERROR_EXIT();
@@ -410,10 +410,11 @@ void TRI_LockCondition(TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition(TRI_condition_t* cond) {
-  int rc = pthread_mutex_unlock(cond->_mutex);
+  int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not unlock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
     LOG(FATAL) << "could not unlock the condition: " << strerror(rc); FATAL_ERROR_EXIT();

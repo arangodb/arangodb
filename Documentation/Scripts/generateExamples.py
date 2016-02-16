@@ -308,8 +308,8 @@ def generateArangoshOutput(testName):
     #print value[TESTLINES][0][2]
     #print type(value[TESTLINES][0][2])
     if (len(value[TESTLINES]) == 0) or (len(value[TESTLINES][0]) < 3):
-        print "blarg in " + testName
-        raise
+        print >> sys.stderr, "syntax error in %s - its empty! Maybe you've used to many pipes?" %(testName)
+        raise Exception
     try:
         print '''
 %s

@@ -107,8 +107,6 @@ char const* GlobalContextMethods::CodeWarmupExports =
 
 static std::string DeprecatedPath;
 
-static bool DeprecatedOption;
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +248,6 @@ ApplicationV8::ApplicationV8(TRI_server_t* server,
       _queryRegistry(queryRegistry),
       _startupPath(),
       _appPath(),
-      _devAppPath(),
       _useActions(true),
       _frontendVersionCheck(true),
       _gcInterval(1000),
@@ -792,7 +789,8 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
       res |= TRI_JoinThread(&vocbase->_cleanup);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
+        LOG(ERR) << "unable to join database threads for database '"
+                 << vocbase->_name << "'";
       }
     }
 
@@ -876,7 +874,8 @@ void ApplicationV8::versionCheck() {
     res |= TRI_JoinThread(&vocbase->_cleanup);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "unable to join database threads for database '" << vocbase->_name << "'";
+      LOG(ERR) << "unable to join database threads for database '"
+               << vocbase->_name << "'";
     }
   }
 
@@ -901,30 +900,25 @@ void ApplicationV8::prepareServer() {
 
 void ApplicationV8::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
-  options["Javascript Options:help-admin"](
-      "javascript.gc-interval", &_gcInterval,
-      "JavaScript request-based garbage collection interval (each x requests)")(
-      "javascript.gc-frequency", &_gcFrequency,
-      "JavaScript time-based garbage collection frequency (each x seconds)")(
-      "javascript.app-path", &_appPath, "directory for Foxx applications")(
-      "javascript.startup-directory", &_startupPath,
-      "path to the directory containing JavaScript startup scripts")(
-      "javascript.v8-options", &_v8Options, "options to pass to v8");
+  // clang-format off
 
-  options["Hidden Options"]("frontend-version-check", &_frontendVersionCheck,
-                            "show new versions in the frontend")(
-      "frontend-development-mode", &DeprecatedOption,
-      "only here for compatibility")(
-      "javascript.dev-app-path", &_devAppPath,
-      "directory for Foxx applications (development mode)")
+  options["Javascript Options:help-admin"]
+    ("javascript.gc-interval", &_gcInterval,
+     "JavaScript request-based garbage collection interval (each x requests)")
+    ("javascript.gc-frequency", &_gcFrequency,
+     "JavaScript time-based garbage collection frequency (each x seconds)")
+    ("javascript.app-path", &_appPath, "directory for Foxx applications")
+    ("javascript.startup-directory", &_startupPath,
+     "path to the directory containing JavaScript startup scripts")
+    ("javascript.v8-options", &_v8Options, "options to pass to v8")
+  ;
 
-      // deprecated options
-      ("javascript.action-directory", &DeprecatedPath,
-       "path to the JavaScript action directory (deprecated)")(
-          "javascript.modules-path", &DeprecatedPath,
-          "one or more directories separated by semi-colons (deprecated)")(
-          "javascript.package-path", &DeprecatedPath,
-          "one or more directories separated by semi-colons (deprecated)");
+  options["Hidden Options"]
+    ("frontend-version-check", &_frontendVersionCheck,
+     "show new versions in the frontend")
+  ;
+
+  // clang-format on
 }
 
 bool ApplicationV8::prepare() {
@@ -946,10 +940,6 @@ bool ApplicationV8::prepare() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
-    }
-
-    if (!_devAppPath.empty()) {
-      paths.push_back(std::string("dev application '" + _devAppPath + "'"));
     }
 
     LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ").c_str();
@@ -1263,9 +1253,6 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
       TRI_AddGlobalVariableVocbase(isolate, localContext,
                                    TRI_V8_ASCII_STRING("APP_PATH"),
                                    TRI_V8_STD_STRING(_appPath));
-      TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                   TRI_V8_ASCII_STRING("DEV_APP_PATH"),
-                                   TRI_V8_STD_STRING(_devAppPath));
       TRI_AddGlobalVariableVocbase(
           isolate, localContext, TRI_V8_ASCII_STRING("FE_VERSION_CHECK"),
           v8::Boolean::New(isolate, _frontendVersionCheck));

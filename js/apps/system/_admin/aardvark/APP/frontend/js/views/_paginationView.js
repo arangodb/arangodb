@@ -50,8 +50,15 @@
                     page: currentPage,
                     lastPage: totalPages,
                     click: function(i) {
+                      var split = window.location.hash.split("/");
+                      if (split[2] === 'documents') {
+                        options.page = i;
+                        window.location.hash = split[0] + "/" + split[1] + "/" + split[2] + "/" + i;
+                      }
+                      else {
                         self.jumpTo(i);
                         options.page = i;
+                      }
                     }
                 };
             target.html("");

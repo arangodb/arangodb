@@ -191,6 +191,7 @@ struct bit_hash : public std::unary_function<T, size_t> {};
   struct bit_equal_to<type> : public std::equal_to<type> {}; \
   template <>                                                \
   struct bit_hash<type> : public hash<type> {};
+V8_BASE_BIT_SPECIALIZE_TRIVIAL(char)
 V8_BASE_BIT_SPECIALIZE_TRIVIAL(signed char)
 V8_BASE_BIT_SPECIALIZE_TRIVIAL(unsigned char)
 V8_BASE_BIT_SPECIALIZE_TRIVIAL(short)           // NOLINT(runtime/int)

@@ -9,16 +9,6 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 include_directories(${PROJECT_SOURCE_DIR}/arangod)
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                   BOOST FRAMEWORK
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief BOOST unit-test framework
-################################################################################
-
-find_package(Boost COMPONENTS unit_test_framework)
-
-## -----------------------------------------------------------------------------
 ## --SECTION--                                                  TEST EXECUTABLES
 ## -----------------------------------------------------------------------------
 
@@ -63,14 +53,15 @@ add_executable(
     Basics/StringUtilsTest.cpp
     ../lib/Basics/WorkMonitorDummy.cpp
 )
-
+add_dependencies(${TEST_BASICS_SUITE} v8_build)
 target_link_libraries(
     ${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
     ${ICU_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()
@@ -88,14 +79,15 @@ add_executable(
     ../lib/Basics/WorkMonitorDummy.cpp
     ../arangod/GeoIndex/GeoIndex.cpp
 )
-
+add_dependencies(${TEST_GEO_SUITE} v8_build)
 target_link_libraries(
     ${TEST_GEO_SUITE}
     ${LIB_ARANGO}
     ${ICU_LIBS}
-    ${OPENSSL_LIBS}
+    ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 endif ()

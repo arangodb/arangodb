@@ -33,11 +33,16 @@
 #define prioritynames TRI_prioritynames
 #define facilitynames TRI_facilitynames
 #include <syslog.h>
+
+#ifdef TRI_ENABLE_SYSLOG_STRINGS
+#include "syslog_names.h"
+#endif
 #endif
 
 #include <boost/lockfree/queue.hpp>
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -210,11 +215,11 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, bool fatal2stderr,
 
     if (fd < 0) {
       std::cerr << "cannot write to file '" << filename << "'" << std::endl;
-      _filename = "+";
-      _fd.store(STDERR_FILENO);
-    } else {
-      _fd.store(fd);
+
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
     }
+    
+    _fd.store(fd);
   }
 }
 
@@ -227,7 +232,6 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   }
 
   if (level == LogLevel::FATAL && _fatal2stderr) {
-    MUTEX_LOCKER(guard, AppendersLock);
 
     // a fatal error. always print this on stderr, too.
     WriteStderr(level, message);
@@ -252,7 +256,7 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   size_t escapedLength;
   char* escaped =
       TRI_EscapeControlsCString(TRI_UNKNOWN_MEM_ZONE, message.c_str(),
-                                message.size(), &escapedLength, true);
+                                message.size(), &escapedLength, true, false);
 
   if (escaped != nullptr) {
     writeLogFile(fd, escaped, (ssize_t)escapedLength);
@@ -450,6 +454,79 @@ std::string LogAppenderSyslog::details() {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief build an appender object
+////////////////////////////////////////////////////////////////////////////////
+
+static LogAppender* buildAppender(std::string const& output, bool fatal2stderr, 
+                                  std::string const& contentFilter,
+                                  std::unordered_set<std::string>& existingAppenders) {
+  // first handle syslog-logging
+#ifdef TRI_ENABLE_SYSLOG
+  if (StringUtils::isPrefix(output, "syslog://")) {
+    auto s = StringUtils::split(output.substr(9), '/');
+
+    if (s.size() < 1 || s.size() > 2) {
+      LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
+               << "'syslog://facility/identifier'";
+      return nullptr;
+    }
+
+    if (s.size() == 1) {
+      return new LogAppenderSyslog(s[0], "", contentFilter);
+    }
+    return new LogAppenderSyslog(s[0], s[1], contentFilter);
+  }
+#endif
+ 
+  // everything else must be file-based logging 
+  std::string filename;
+  if (output == "-" || output == "+") {
+    filename = output;
+  } else if (StringUtils::isPrefix(output, "file://")) {
+    filename = output.substr(7);
+  } else {
+    LOG(ERR) << "unknown logger output '" << output << "'";
+    return nullptr;
+  }
+
+  // helper function to prevent duplicate output filenames
+  auto hasAppender = [&existingAppenders](std::string const& filename) {
+    if (existingAppenders.find(filename) != existingAppenders.end()) {
+      return true;
+    }
+    // treat stderr and stdout as one output filename
+    if (filename == "-" && 
+        existingAppenders.find("+") != existingAppenders.end()) {
+      return true;
+    }
+    if (filename == "+" && 
+        existingAppenders.find("-") != existingAppenders.end()) {
+      return true;
+    }
+    return false;
+  };
+  
+  if (hasAppender(filename)) {
+    // already have an appender for the same output
+    return nullptr;
+  }
+
+  try {
+    std::unique_ptr<LogAppender> appender(new LogAppenderFile(filename, fatal2stderr, contentFilter));
+    existingAppenders.emplace(filename);
+    return appender.release();
+  }
+  catch (...) {
+    // cannot open file for logging
+    // try falling back to stderr instead
+    if (hasAppender("-")) {
+      return nullptr;
+    }
+    return buildAppender("-", fatal2stderr, contentFilter, existingAppenders);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief RingBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -555,9 +632,6 @@ static void QueueMessage(char const* function, char const* file, long int line,
 
   std::stringstream out;
 
-  TRI_pid_t processId = TRI_CurrentProcessId();
-  uint64_t threadNumber = Thread::currentThreadNumber();
-
   // time prefix
   {
     char timePrefix[32];
@@ -589,7 +663,10 @@ static void QueueMessage(char const* function, char const* file, long int line,
   {
     char processPrefix[128];
 
+    TRI_pid_t processId = TRI_CurrentProcessId();
+
     if (ShowThreadIdentifier.load(std::memory_order_relaxed)) {
+      uint64_t threadNumber = Thread::currentThreadNumber();
       snprintf(processPrefix, sizeof(processPrefix), "[%llu-%llu] ",
                (unsigned long long)processId, (unsigned long long)threadNumber);
     } else {
@@ -604,22 +681,20 @@ static void QueueMessage(char const* function, char const* file, long int line,
   out << Logger::translateLogLevel(level) << " ";
 
   // check if we must display the line number
-  bool sln = ShowLineNumber.load(std::memory_order_relaxed);
-
-  // append the file and line
-  if (sln) {
+  if (ShowLineNumber.load(std::memory_order_relaxed)) {
+    // append the file and line
     out << "[" << file << ":" << line << "] ";
   }
 
   // generate the complete message
-  size_t offset = out.str().size();
   out << message;
   std::string const& m = out.str();
+  size_t offset = m.size() - message.size();
 
   // now either queue or output the message
   if (ThreadedLogging.load(std::memory_order_relaxed)) {
     auto msg = std::make_unique<LogMessage>(level, topicId,
-                                            std::move(out.str()), offset);
+                                            out.str(), offset);
 
     try {
       MessageQueue.push(msg.get());
@@ -708,6 +783,7 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance",
                              LogLevel::FATAL);  // suppress by default
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
+LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,7 +800,8 @@ std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::addAppender(std::string const& definition, bool fatal2stderr,
-                         std::string const& filter) {
+                         std::string const& filter,
+                         std::unordered_set<std::string>& existingAppenders) {
   std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
@@ -765,42 +842,19 @@ void Logger::addAppender(std::string const& definition, bool fatal2stderr,
 
     topic = it->second;
   }
+ 
+  std::unique_ptr<LogAppender> appender(buildAppender(output, f2s, contentFilter, existingAppenders)); 
 
-  std::unique_ptr<LogAppender> appender;
-
-  if (output == "-") {
-    appender.reset(new LogAppenderFile("-", f2s, contentFilter));
-  } else if (output == "+") {
-    appender.reset(new LogAppenderFile("+", f2s, contentFilter));
-  } else if (StringUtils::isPrefix(output, "file://")) {
-    auto filename = output.substr(7);
-
-    appender.reset(new LogAppenderFile(filename, f2s, contentFilter));
-#ifdef TRI_ENABLE_SYSLOG
-  } else if (StringUtils::isPrefix(output, "syslog://")) {
-    auto s = StringUtils::split(output.substr(9), '/');
-
-    if (s.size() < 1 || s.size() > 2) {
-      LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
-               << "'syslog://facility/identifier'";
-      return;
-    }
-
-    if (s.size() == 1) {
-      appender.reset(new LogAppenderSyslog(s[0], "", contentFilter));
-    } else {
-      appender.reset(new LogAppenderSyslog(s[0], s[1], contentFilter));
-    }
-#endif
-  } else {
-    LOG(ERR) << "unknown output '" << output << "'";
+  if (appender == nullptr) {
+    // cannot open appender or already have an appender for the channel
     return;
   }
 
   size_t n = topic == nullptr ? MAX_LOG_TOPICS : topic->id();
 
   MUTEX_LOCKER(guard, AppendersLock);
-  Appenders[n].emplace_back(appender.release());
+  Appenders[n].emplace_back(appender.get());
+  appender.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -814,12 +868,12 @@ LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
-  MUTEX_LOCKER(guard, LogTopicNamesLock);
-
   std::vector<std::pair<std::string, LogLevel>> levels;
 
-  for (auto topic : LogTopicNames) {
-    levels.emplace_back(make_pair(topic.first, topic.second->level()));
+  MUTEX_LOCKER(guard, LogTopicNamesLock);
+
+  for (auto const& topic : LogTopicNames) {
+    levels.emplace_back(std::make_pair(topic.first, topic.second->level()));
   }
 
   return levels;
@@ -921,7 +975,7 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
 
 void Logger::setOutputPrefix(std::string const& prefix) {
   char* outputPrefix =
-      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix.c_str());
+      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, prefix.c_str(), prefix.size());
 
   if (outputPrefix == nullptr) {
     return;
@@ -1127,23 +1181,6 @@ void Logger::shutdown(bool clearBuffers) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, prefix);
     }
   }
-
-#if 0
-  // and clear all logging buffers
-  if (clearBuffers) {
-    // cleanup output buffers
-    MUTEX_LOCKER(mutexLocker, BufferLock);
-
-    for (size_t i = 0; i < OUTPUT_LOG_LEVELS; i++) {
-      for (size_t j = 0; j < OUTPUT_BUFFER_SIZE; j++) {
-        if (BufferOutput[i][j]._text != nullptr) {
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, BufferOutput[i][j]._text);
-          BufferOutput[i][j]._text = nullptr;
-        }
-      }
-    }
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

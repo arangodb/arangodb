@@ -56,9 +56,9 @@ class Response {
       this.body = this.body.toString(encoding || 'utf-8');
       if (json) {
         try {
-          this.body = JSON.parse(this.body);
+          this.json = JSON.parse(this.body);
         } catch (e) {
-          // Do nothing.
+          this.json = undefined;
         }
       }
     }

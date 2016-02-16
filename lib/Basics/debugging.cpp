@@ -389,5 +389,10 @@ void TRI_PrintBacktrace() {
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());
 #endif
+#if TRI_HAVE_PSTACK
+  char buf[64];
+  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  system(buf);
+#endif
 #endif
 }

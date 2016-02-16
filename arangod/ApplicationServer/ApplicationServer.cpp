@@ -148,8 +148,6 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   Logger::shutdown(false);
   Logger::initialize(threaded);
 
-  std::string severity("human");
-
   if (_options.has("log.thread")) {
     _logThreadId = true;
   }
@@ -162,21 +160,10 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     _logLocalTime = true;
   }
 
-  if (_options.has("log.performance")) {
-    severity += ",performance";
-  }
-
   Logger::setUseLocalTime(_logLocalTime);
   Logger::setShowLineNumber(_logLineNumber);
   Logger::setOutputPrefix(_logPrefix);
   Logger::setShowThreadIdentifier(_logThreadId);
-
-// TODO(FC) fixme
-//  char const* contentFilter = nullptr;
-
-//  if (_options.has("log.content-filter")) {
-//    contentFilter = _logContentFilter.c_str();
-//  }
 
   std::vector<std::string> levels;
   std::vector<std::string> outputs;
@@ -196,6 +183,17 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
 
     levels.push_back("requests=info");
     outputs.push_back("requests=" + definition);
+  }
+
+// map deprecated option "log.facility" to "log.output"
+#ifdef TRI_ENABLE_SYSLOG
+  if (!_logFacility.empty()) {
+    outputs.push_back("syslog://" + _logFacility + "/" + _logApplicationName);
+  }
+#endif
+
+  if (_options.has("log.performance")) {
+    levels.push_back("requests=trace");
   }
 
   // map "log.file" to "log.output"
@@ -226,11 +224,11 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     } else {
       bool regularOut = false;
 
-      for (auto definition : _logOutput) {
+      for (auto const& definition : _logOutput) {
         regularOut = regularOut || definition == "+" || definition == "-";
       }
 
-      for (auto definition : outputs) {
+      for (auto const& definition : outputs) {
         regularOut = regularOut || definition == "+" || definition == "-";
       }
 
@@ -247,20 +245,11 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
 
   Logger::setLogLevel(levels);
 
-  for (auto definition : outputs) {
-    Logger::addAppender(definition, !ttyLogger, _logContentFilter);
-  }
+  std::unordered_set<std::string> filenames;
 
-// TODO(FC) fixme
-#if 0
-#ifdef TRI_ENABLE_SYSLOG
-  if (!_logFacility.empty()) {
-    TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
-                                _logFacility.c_str(), contentFilter,
-                                TRI_LOG_SEVERITY_UNKNOWN, false);
+  for (auto const& definition : outputs) {
+    Logger::addAppender(definition, !ttyLogger, _logContentFilter, filenames);
   }
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -782,11 +771,9 @@ void ApplicationServer::setupOptions(
 
   options["Logging Options:help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
-    ("log.facility", &_logFacility, "facility name for syslog (OS dependent)")
     ("log.content-filter", &_logContentFilter,
        "only log message containing the specified string (case-sensitive)")
     ("log.line-number", "always log file and line number")
-    ("log.performance", "log performance indicators")
     ("log.prefix", &_logPrefix, "prefix log")
     ("log.thread", "log the thread identifier")
     ("log.use-local-time", "use local dates and times in log messages")
@@ -795,16 +782,18 @@ void ApplicationServer::setupOptions(
 
   options["Hidden Options"]
     ("log", &_logLevel, "log level")
-    ("log.requests-file", &_logRequestsFile, "log requests to file (deprecated)")
-    ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
-    ("log.hostname", &DeprecatedParameter, "host name for syslog")
-    ("log.severity", &DeprecatedParameter, "log severities")
 #ifdef TRI_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
 #endif
 #ifdef TRI_HAVE_SETGID
     ("gid", &_gid, "switch to group-id after reading config files")
 #endif
+  ;
+
+  options["Hidden Options"]
+    ("log.performance", "log performance indicators (deprecated)")
+    ("log.requests-file", &_logRequestsFile, "log requests to file (deprecated)")
+    ("log.facility", &_logFacility, "facility name for syslog (deprecated)")
   ;
 
   // clang-format on

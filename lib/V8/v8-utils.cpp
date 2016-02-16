@@ -1612,6 +1612,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(content, length),
                                          filename->ToString(), false);
+  
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     // restore old values for __dirname and __filename
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -1636,7 +1638,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -3808,12 +3809,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
       l += std::string((size_t)(end - start + 1), '^');
 
       LOG(ERR) << "!" << l.c_str();
-    }
-
-    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
-
-    if (*stacktrace && stacktrace.length() > 0) {
-      LOG(ERR) << "stacktrace: " << *stacktrace;
     }
   }
 }
