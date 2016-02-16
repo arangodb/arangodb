@@ -1,6 +1,14 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* The order of AQL functions VALUES and KEYS has never been guaranteed and
+by accident it had the "correct" ordering when iteratoring over Objects that
+were not loaded from the database. This behaviour is now changed by
+introduction of VelocyPack and no ordering is guaranteed unless you specify
+the do sort parameter.
+
+* removed configure option `--enable-logger`
+
 * added AQL array comparison operators 
 
   All AQL comparison operators now lso exist in an array variant. In the 
@@ -294,7 +302,9 @@ v2.8.0-beta7 (2016-01-06)
       
       FOR doc IN collection
         COLLECT AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
-        RETURN { minAge, maxAge }
+        RETURN {
+  minAge, maxAge
+}
 
   Only specific expressions are allowed on the right-hand side of each `AGGREGATE` 
   assignment:

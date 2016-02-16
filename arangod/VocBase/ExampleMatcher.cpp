@@ -31,6 +31,9 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -231,6 +234,85 @@ void ExampleMatcher::fillExampleDefinition(
   }
 }
 
+void ExampleMatcher::fillExampleDefinition(
+    VPackSlice const& example, CollectionNameResolver const* resolver,
+    ExampleDefinition& def) {
+  if (example.isString()) {
+    // Example is an _id value
+    std::string tmp = example.copyString();
+    char const* _key = strchr(tmp.c_str(), '/');
+    if (_key != nullptr) {
+      _key += 1;
+      def._internal.insert(
+          std::make_pair(internalAttr::key, DocumentId(0, _key)));
+      return;
+    }
+    THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+  }
+  TRI_ASSERT(example.isObject());
+
+  size_t n = static_cast<size_t>(example.length());
+
+  def._pids.reserve(n);
+  def._values.reserve(n);
+
+  try {
+    for (auto const& it : VPackObjectIterator(example)) {
+      TRI_ASSERT(it.key.isString());
+      std::string key = it.key.copyString();
+      auto pid = _shaper->lookupAttributePathByName(key.c_str());
+      if (pid == 0) {
+        // Internal attributes do have pid == 0.
+        if (key.at(0) != '_') {
+          // no attribute path found. this means the result will be empty
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+        }
+        if (!it.value.isString()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+        }
+        std::string keyVal = it.value.copyString();
+        if (key == TRI_VOC_ATTRIBUTE_KEY) {
+          def._internal.insert(
+              std::make_pair(internalAttr::key, DocumentId(0, keyVal)));
+        } else if (key == TRI_VOC_ATTRIBUTE_REV) {
+          def._internal.insert(
+              std::make_pair(internalAttr::rev, DocumentId(0, keyVal)));
+        } else {
+          std::string colName = keyVal.substr(0, keyVal.find("/"));
+          keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
+          if (TRI_VOC_ATTRIBUTE_ID == key) {
+            def._internal.insert(std::make_pair(
+                internalAttr::id,
+                DocumentId(resolver->getCollectionId(colName), keyVal)));
+          } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
+            def._internal.insert(std::make_pair(
+                internalAttr::from,
+                DocumentId(resolver->getCollectionId(colName), keyVal)));
+          } else if (TRI_VOC_ATTRIBUTE_TO == key) {
+            def._internal.insert(std::make_pair(
+                internalAttr::to,
+                DocumentId(resolver->getCollectionId(colName), keyVal)));
+          } else {
+            // no attribute path found. this means the result will be empty
+            THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+          }
+        }
+      } else {
+        def._pids.push_back(pid);
+        auto value = TRI_ShapedJsonVelocyPack(_shaper, it.value, false);
+
+        if (value == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+        }
+        def._values.push_back(value);
+      }
+    }
+  } catch (std::bad_alloc const&) {
+    ExampleMatcher::cleanup();
+    throw;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a v8::Object example
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,6 +412,55 @@ ExampleMatcher::ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor using a VelocyPack object
+///        Note: allowStrings is used to define if strings in example-array
+///        should be matched to _id
+////////////////////////////////////////////////////////////////////////////////
+
+ExampleMatcher::ExampleMatcher(VPackSlice const& example, VocShaper* shaper,
+                               CollectionNameResolver const* resolver,
+                               bool allowStrings)
+    : _shaper(shaper) {
+  if (example.isObject() || example.isString()) {
+    ExampleDefinition def;
+    try {
+      ExampleMatcher::fillExampleDefinition(example, resolver, def);
+    } catch (...) {
+      CleanupShapes(def._values);
+      ExampleMatcher::cleanup();
+      throw;
+    }
+    definitions.emplace_back(std::move(def));
+  } else if (example.isArray()) {
+    for (auto const& e : VPackArrayIterator(example)) {
+      ExampleDefinition def;
+      if (!allowStrings && e.isString()) {
+        // We do not match strings in Array
+        continue;
+      }
+      try {
+        ExampleMatcher::fillExampleDefinition(e, resolver, def);
+        definitions.emplace_back(std::move(def));
+      } catch (arangodb::basics::Exception& e) {
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          CleanupShapes(def._values);
+          ExampleMatcher::cleanup();
+          throw;
+        }
+        // Result not found might happen. Ignore here because all other elemens
+        // might be matched.
+      }
+    }
+    if (definitions.empty()) {
+      // None of the given examples could ever match.
+      // Throw result not found so client can short circuit.
+      THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
+    }
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the given mptr matches the examples in this class

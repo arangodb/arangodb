@@ -38,6 +38,36 @@ class VelocyPackHelper {
   ~VelocyPackHelper() = delete;
 
  public:
+
+  struct VPackHash {
+    size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief equality comparator for VelocyPack values
+////////////////////////////////////////////////////////////////////////////////
+
+  struct VPackEqual {
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief less comparator for VelocyPack values
+////////////////////////////////////////////////////////////////////////////////
+
+  template <bool useUtf8>
+  struct VPackLess {
+    inline bool operator()(arangodb::velocypack::Slice const& lhs,
+                           arangodb::velocypack::Slice const& rhs) const {
+      return VelocyPackHelper::compare(lhs, rhs, useUtf8) < 0;
+    }
+  };
+
+  struct AttributeSorter {
+    bool operator()(std::string const& l, std::string const& r) const;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a numeric value
   //////////////////////////////////////////////////////////////////////////////
@@ -125,6 +155,22 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static int compare(VPackSlice const&, VPackSlice const&, bool);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Merges two VelocyPack Slices
+  //////////////////////////////////////////////////////////////////////////////
+
+  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
+                                             arangodb::velocypack::Slice const&,
+                                             bool, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Transforms any VelocyPack to a double value. The second parameter
+  ///        indicates if the transformation was successful.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double toDouble(VPackSlice const&, bool&);
 };
 }
 }

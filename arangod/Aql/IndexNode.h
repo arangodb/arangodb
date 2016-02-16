@@ -108,11 +108,11 @@ class IndexNode : public ExecutionNode {
   bool reverse() const { return _reverse; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively

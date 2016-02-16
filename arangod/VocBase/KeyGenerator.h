@@ -76,7 +76,7 @@ class KeyGenerator {
   static void Initialize();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the generator type from JSON
+  /// @brief get the generator type from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
   static GeneratorType generatorType(arangodb::velocypack::Slice const&);

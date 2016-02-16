@@ -30,6 +30,10 @@
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 class Transaction;
 }
 
@@ -114,6 +118,10 @@ struct BasicOptions {
                      std::string& errorMessage);
 
   void addEdgeFilter(arangodb::basics::Json const& example, VocShaper* shaper,
+                     TRI_voc_cid_t const& cid,
+                     arangodb::CollectionNameResolver const* resolver);
+
+  void addEdgeFilter(arangodb::velocypack::Slice const& example, VocShaper* shaper,
                      TRI_voc_cid_t const& cid,
                      arangodb::CollectionNameResolver const* resolver);
 

@@ -1285,11 +1285,88 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
-  std::unique_ptr<TRI_json_t> tmp(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-  if (tmp == nullptr) {
+  auto builder = std::make_shared<VPackBuilder>();
+  if (builder == nullptr) {
     return nullptr;
   }
-  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
+  toVelocyPackValue(*builder);
+  return builder;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief build a VelocyPack representation of the node value
+///        Can throw Out of Memory Error
+//////////////////////////////////////////////////////////////////////////////
+
+void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        builder.add(VPackValue(VPackValueType::Null));
+        break;
+      case VALUE_TYPE_BOOL:
+        builder.add(VPackValue(value.value._bool));
+        break;
+      case VALUE_TYPE_INT:
+        builder.add(VPackValue(static_cast<double>(value.value._int)));
+        break;
+      case VALUE_TYPE_DOUBLE:
+        builder.add(VPackValue(value.value._double));
+        break;
+      case VALUE_TYPE_STRING:
+        builder.add(VPackValue(std::string(value.value._string, value.length)));
+        break;
+    }
+    return;
+  }
+  if (type == NODE_TYPE_ARRAY) {
+    {
+      VPackArrayBuilder guard(&builder);
+      size_t const n = numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          member->toVelocyPackValue(builder);
+        }
+      }
+    }
+    return;
+  }
+
+  if (type == NODE_TYPE_OBJECT) {
+    {
+      size_t const n = numMembers();
+      VPackObjectBuilder guard(&builder);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          builder.add(VPackValue(member->getStringValue()));
+          member->getMember(0)->toVelocyPackValue(builder);
+        }
+      }
+    }
+    return;
+  }
+
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // TODO Could this be done more efficiently in the builder in place?
+    auto tmp = getMember(0)->toVelocyPackValue();
+    if (tmp != nullptr) {
+      VPackSlice slice = tmp->slice();
+      if (slice.isObject()) {
+        slice = slice.get(getStringValue());
+        if (!slice.isNone()) {
+          builder.add(slice);
+          return;
+        }
+      }
+      builder.add(VPackValue(VPackValueType::Null));
+    }
+  }
+
+  // Do not add anything.
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1297,8 +1374,93 @@ std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
-  std::unique_ptr<TRI_json_t> tmp(toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
+  auto builder = std::make_shared<VPackBuilder>();
+  if (builder == nullptr) {
+    return nullptr;
+  }
+  toVelocyPack(*builder, verbose);
+  return builder;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Create a VelocyPack representation of the node
+//////////////////////////////////////////////////////////////////////////////
+
+void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+  try {
+    VPackObjectBuilder guard(&builder);
+
+    // dump node type
+    builder.add("type", VPackValue(getTypeString()));
+    if (verbose) {
+      builder.add("typeID", VPackValue(static_cast<int>(type)));
+    }
+    if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
+        type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
+      // dump "name" of node
+      builder.add("name", VPackValue(getStringValue()));
+    }
+    if (type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(getData());
+      builder.add("name", VPackValue(func->externalName));
+      // arguments are exported via node members
+    }
+
+    if (type == NODE_TYPE_ARRAY && hasFlag(DETERMINED_SORTED)) {
+      // transport information about a node's sortedness
+      builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
+    }
+ 
+    if (type == NODE_TYPE_VALUE) {
+      // dump value of "value" node
+      builder.add(VPackValue("value"));
+      toVelocyPackValue(builder);
+
+      if (verbose) {
+        builder.add("vType", VPackValue(getValueTypeString()));
+        builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
+      }
+    }
+
+    if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+      builder.add("sorted", VPackValue(getBoolValue()));
+    }
+    if (type == NODE_TYPE_QUANTIFIER) {
+      std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+      builder.add("quantifier", VPackValue(quantifier));
+    }
+
+    if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(getData());
+
+      TRI_ASSERT(variable != nullptr);
+      builder.add("name", VPackValue(variable->name));
+      builder.add("id", VPackValue(static_cast<double>(variable->id)));
+    }
+
+    if (type == NODE_TYPE_EXPANSION) {
+      builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
+    }
+
+    // dump sub-nodes
+    size_t const n = members.size();
+    if (n > 0) {
+      builder.add(VPackValue("subNodes"));
+      VPackArrayBuilder guard(&builder);
+      for (size_t i = 0; i < n; ++i) {
+        AstNode* member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          member->toVelocyPack(builder, verbose);
+        }
+      }
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

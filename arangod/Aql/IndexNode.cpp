@@ -33,36 +33,32 @@ using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for IndexNode
+/// @brief toVelocyPack, for IndexNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexNode::toJsonHelper(arangodb::basics::Json& nodes,
-                             TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(
-      ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));
-  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
+void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
   // Now put info about vocbase and cid in there
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "outVariable", _outVariable->toJson());
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
 
-  arangodb::basics::Json indexes(arangodb::basics::Json::Array,
-                                 _indexes.size());
-  for (auto& index : _indexes) {
-    indexes.add(index->toJson());
+  nodes.add(VPackValue("indexes"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto& index : _indexes) {
+      index->toVelocyPack(nodes);
+    }
   }
+  nodes.add(VPackValue("condition"));
+  _condition->toVelocyPack(nodes, verbose);
+  nodes.add("reverse", VPackValue(_reverse));
 
-  json("indexes", indexes);
-  json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  json("reverse", arangodb::basics::Json(_reverse));
-
-  // And add it:
-  nodes(json);
+  // And close it:
+  nodes.close();
 }
 
 ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,

@@ -92,11 +92,11 @@ class RemoteNode : public ExecutionNode {
   NodeType getType() const override final { return REMOTE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -240,11 +240,11 @@ class ScatterNode : public ExecutionNode {
   NodeType getType() const override final { return SCATTER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -333,11 +333,11 @@ class DistributeNode : public ExecutionNode {
   NodeType getType() const override final { return DISTRIBUTE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -438,11 +438,11 @@ class GatherNode : public ExecutionNode {
   NodeType getType() const override final { return GATHER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
