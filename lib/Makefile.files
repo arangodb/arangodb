@@ -77,6 +77,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/WorkMonitor.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
+	lib/Rest/ArangoResponse.cpp \
 	lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp \
 	lib/Rest/EndpointIpV4.cpp \
