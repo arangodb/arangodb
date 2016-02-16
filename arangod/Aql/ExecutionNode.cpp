@@ -673,7 +673,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
   nodes.openObject();
   nodes.add("type", VPackValue(getTypeString()));
   if (verbose) {
-    nodes.add("typeId", VPackValue(static_cast<int>(getType())));
+    nodes.add("typeID", VPackValue(static_cast<int>(getType())));
   }
   nodes.add(VPackValue("dependencies")); // Open Key
   {
@@ -691,8 +691,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
   }
   nodes.add("id", VPackValue(static_cast<double>(id())));
   size_t nrItems = 0;
-  nodes.add("estimateCost", VPackValue(getCost(nrItems)));
-  nodes.add("estimateNrItems", VPackValue(nrItems));
+  nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
+  nodes.add("estimatedNrItems", VPackValue(nrItems));
 
   if (verbose) {
     nodes.add("depth", VPackValue(static_cast<double>(_depth)));
@@ -1266,7 +1266,7 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
-  nodes.add("collection", VPackValue(_random));
+  nodes.add("random", VPackValue(_random));
 
   // And close it:
   nodes.close();
