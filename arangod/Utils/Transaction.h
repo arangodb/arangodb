@@ -48,6 +48,17 @@
 
 namespace arangodb {
 
+struct OperationOptions {
+  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false) {}
+  bool waitForSync;
+  bool keepNull;
+  bool mergeObjects;
+};
+
+struct OperationResult {
+  int code;
+};
+
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;
 
@@ -276,6 +287,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int any(TRI_transaction_collection_t*, TRI_doc_mptr_copy_t*);
@@ -284,6 +296,7 @@ class Transaction {
   /// @brief read all master pointers, using skip and limit and an internal
   /// offset into the primary index. this can be used for incremental access to
   /// the documents without restarting the index scan at the begin
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int any(TRI_transaction_collection_t*,
@@ -294,12 +307,14 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all documents
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int all(TRI_transaction_collection_t*, std::vector<std::string>&, bool lock);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read master pointers in order of insertion/update
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int readOrdered(TRI_transaction_collection_t* trxCollection,
@@ -363,6 +378,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int readSlice(TRI_transaction_collection_t*,
@@ -373,6 +389,7 @@ class Transaction {
   /// @brief read all master pointers, using skip and limit and an internal
   /// offset into the primary index. this can be used for incremental access to
   /// the documents without restarting the index scan at the begin
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int readIncremental(TRI_transaction_collection_t*,
@@ -403,9 +420,19 @@ class Transaction {
       return TRI_ERROR_INTERNAL;
     }
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create one or multiple documents in a collection
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult insert(std::string const& collectionName,
+                         VPackSlice const& value,
+                         OperationOptions const& options);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using shaped json
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   inline int insert(TRI_transaction_collection_t* trxCollection,
@@ -478,6 +505,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a single document, using shaped json
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   inline int update(TRI_transaction_collection_t* const trxCollection,
@@ -537,6 +565,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update (replace!) a single document within a transaction,
   /// using VelocyPack
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int update(TRI_transaction_collection_t* trxCollection, 
@@ -581,6 +610,7 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief truncate a collection
+  /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   int truncate(TRI_transaction_collection_t* const trxCollection,
