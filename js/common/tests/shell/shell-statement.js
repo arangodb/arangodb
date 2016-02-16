@@ -497,7 +497,14 @@ function StatementSuite () {
       while (result.hasNext()) {
         var doc = result.next();
         assertEqual([ { b: 2 } ], doc.missing);
-        assertEqual([ { foo: { "old": "bar", "new": "baz" } }, { a: { "old" : 1, "new": 2 } } ], doc.changed);
+        var changed = doc.changed;
+        if (changed[0].hasOwnProperty("foo")) {
+          assertEqual({ foo: { "old": "bar", "new": "baz" } }, changed[0]);
+          assertEqual({ a: { "old" : 1, "new": 2 } }, doc.changed[1]);
+        } else {
+          assertEqual({ a: { "old" : 1, "new": 2 } }, changed[0]);
+          assertEqual({ foo: { "old": "bar", "new": "baz" } }, changed[1]);
+        }
         assertEqual([ { c: 3 } ], doc.added);
       }
     },

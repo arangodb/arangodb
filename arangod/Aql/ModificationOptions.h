@@ -51,6 +51,8 @@ struct ModificationOptions {
 
   void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+
   bool ignoreErrors;
   bool waitForSync;
   bool nullMeansRemove;
