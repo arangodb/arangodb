@@ -42,7 +42,58 @@ class ArangoResponse {
   ArangoResponse& operator=(ArangoResponse const&) = delete;
 
   public:
-  	enum ResponseCode {};
+  	enum ResponseCode {CONTINUE = 100,
+	  SWITCHING_PROTOCOLS = 101,
+	  PROCESSING = 102,
+
+	  OK = 200,
+	  CREATED = 201,
+	  ACCEPTED = 202,
+	  PARTIAL = 203,
+	  NO_CONTENT = 204,
+	  RESET_CONTENT = 205,
+	  PARTIAL_CONTENT = 206,
+
+	  MOVED_PERMANENTLY = 301,
+	  FOUND = 302,
+	  SEE_OTHER = 303,
+	  NOT_MODIFIED = 304,
+	  TEMPORARY_REDIRECT = 307,
+	  PERMANENT_REDIRECT = 308,
+
+	  BAD = 400,
+	  UNAUTHORIZED = 401,
+	  PAYMENT_REQUIRED = 402,
+	  FORBIDDEN = 403,
+	  NOT_FOUND = 404,
+	  METHOD_NOT_ALLOWED = 405,
+	  NOT_ACCEPTABLE = 406,
+	  REQUEST_TIMEOUT = 408,
+	  CONFLICT = 409,
+	  GONE = 410,
+	  LENGTH_REQUIRED = 411,
+	  PRECONDITION_FAILED = 412,
+	  REQUEST_ENTITY_TOO_LARGE = 413,
+	  REQUEST_URI_TOO_LONG = 414,
+	  UNSUPPORTED_MEDIA_TYPE = 415,
+	  REQUESTED_RANGE_NOT_SATISFIABLE = 416,
+	  EXPECTATION_FAILED = 417,
+	  I_AM_A_TEAPOT = 418,
+	  UNPROCESSABLE_ENTITY = 422,
+	  LOCKED = 423,
+	  PRECONDITION_REQUIRED = 428,
+	  TOO_MANY_REQUESTS = 429,
+	  REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
+	  UNAVAILABLE_FOR_LEGAL_REASONS = 451,
+
+	  SERVER_ERROR = 500,
+	  NOT_IMPLEMENTED = 501,
+	  BAD_GATEWAY = 502,
+	  SERVICE_UNAVAILABLE = 503,
+	  HTTP_VERSION_NOT_SUPPORTED = 505,
+	  BANDWIDTH_LIMIT_EXCEEDED = 509,
+	  NOT_EXTENDED = 510
+	};
 
   public:
 
@@ -59,34 +110,34 @@ class ArangoResponse {
   	bool isStatusResponse() const { return _isStatusResponse; }
 
   	//////////////////////////////////////////////////////////////////////////////
-  	/// @brief http/vstream response string
-  	///
-  	/// Converts the response code to a string suitable for delivering to a http/vstream
-  	/// client.
-  	//////////////////////////////////////////////////////////////////////////////
-
-  	virtual std::string responseString(ResponseCode){};
-
-  	//////////////////////////////////////////////////////////////////////////////
 	/// @brief get http/vstream response code from string
 	///
 	/// Converts the response code string to the internal code
 	//////////////////////////////////////////////////////////////////////////////
 
-  	virtual ResponseCode responseCode(std::string const& str){};
+  	ResponseCode responseCode(std::string const& str);
 
 
 	//////////////////////////////////////////////////////////////////////////////
 	/// @brief get http/vstream response code from integer error code
 	//////////////////////////////////////////////////////////////////////////////
 
-	virtual ResponseCode responseCode(int){};
+	static ResponseCode responseCode(int);
 
 	//////////////////////////////////////////////////////////////////////////////
 	/// @brief returns the response code
 	//////////////////////////////////////////////////////////////////////////////
 
 	ResponseCode responseCode() const;
+
+	//////////////////////////////////////////////////////////////////////////////
+  	/// @brief http/vstream response string
+  	///
+  	/// Converts the response code to a string suitable for delivering to a http/vstream
+  	/// client.
+  	//////////////////////////////////////////////////////////////////////////////
+
+  	std::string responseString(ResponseCode);
 
 	//////////////////////////////////////////////////////////////////////////////
 	/// @brief sets the response code

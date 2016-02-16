@@ -86,6 +86,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/EndpointUnixDomain.cpp \
 	lib/Rest/GeneralRequest.cpp \
 	lib/Rest/GeneralResponse.cpp \
+	lib/Rest/HttpResponse.cpp \
 	lib/Rest/InitializeRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
