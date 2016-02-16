@@ -609,7 +609,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       std::unique_ptr<TRI_json_t> tmp(arangodb::basics::VelocyPackHelper::velocyPackToJson(b.slice()));
 
       distributePlanToShard(coordTransactionID, info, collection, connectedId,
-                            shardId, tmp.get());
+                            shardId, tmp.release());
     }
 
     // fix collection
