@@ -104,13 +104,16 @@ endif()
 
 ## Compiler flags --------------------------------------------------------------
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+# Build types
+string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
+message (${CMAKE_BUILD_TYPE_TL})
+if(CMAKE_BUILD_TYPE_TL MATCHES debug)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-elseif(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
+elseif(CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
-elseif(CMAKE_BUILD_TYPE MATCHES Release)
+elseif(CMAKE_BUILD_TYPE_TL MATCHES release)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif() 
