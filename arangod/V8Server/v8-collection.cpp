@@ -31,6 +31,8 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
 #include "Storage/Options.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/V8TransactionContext.h"
@@ -3198,7 +3200,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief inserts a document, using a VPack marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InsertVocbaseVPack(
+static void JS_InsertVocbaseVPackOld(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -3227,6 +3229,94 @@ static void JS_InsertVocbaseVPack(
   } else {
     InsertEdgeCol(collection, 0, args);
   }
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document, using a VPack marker
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_InsertVocbaseVPack(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  uint32_t const argLength = args.Length();
+  TRI_GET_GLOBALS();
+
+  if (argLength < 1 || argLength > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+  }
+
+  OperationOptions options;
+
+  if (argLength > 1 && args[1]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
+    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
+    if (optionsObject->Has(WaitForSyncKey)) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+    }
+    TRI_GET_GLOBAL_STRING(SilentKey);
+    if (optionsObject->Has(SilentKey)) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
+    }
+  } else {
+    options.waitForSync = ExtractWaitForSync(args, 2);
+  }
+
+  // requirements for insert: 
+  // - must check input value type
+  //res = document->insert(&trx, &slice, &mptr,
+  //                       !trx.isLocked(document, TRI_TRANSACTION_WRITE),
+  //                       options.waitForSync);
+  // res = trx.finish(res);
+
+  if (!args[0]->IsObject() || args[0]->IsArray()) {
+    // invalid value type. must be a document
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  
+  VPackOptions const* vpackOptions = StorageOptions::getInsertOptions();
+  VPackBuilder builder(vpackOptions);
+
+  int res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  // load collection
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true),
+                                          collection->_vocbase, collection->_cid);
+
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  OperationResult result = trx.insert(collection->_name, builder.slice(), options);
+
+  res = trx.finish(result.code);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  if (options.silent) {
+    // no return value
+    TRI_V8_RETURN_TRUE();
+  }
+
+  VPackSlice resultSlice = result.slice();
+  
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
   TRI_V8_TRY_CATCH_END
 }
 

@@ -44,6 +44,7 @@ struct OperationResult {
   }
 
   VPackSlice slice() const {
+    TRI_ASSERT(builder != nullptr); 
     return builder->slice();
   }
 
