@@ -70,7 +70,7 @@ KeyGenerator::KeyGenerator(bool allowUserKeys)
 KeyGenerator::~KeyGenerator() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the generator type from JSON
+/// @brief get the generator type from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::GeneratorType KeyGenerator::generatorType(

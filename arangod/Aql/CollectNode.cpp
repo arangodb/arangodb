@@ -54,76 +54,72 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CollectNode
+/// @brief toVelocyPack, for CollectNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectNode::toJsonHelper(arangodb::basics::Json& nodes,
-                               TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
   // group variables
+  nodes.add(VPackValue("groups"));
   {
-    arangodb::basics::Json values(arangodb::basics::Json::Array,
-                                  _groupVariables.size());
-
+    VPackArrayBuilder guard(&nodes);
     for (auto const& groupVariable : _groupVariables) {
-      arangodb::basics::Json variable(arangodb::basics::Json::Object);
-      variable("outVariable", groupVariable.first->toJson())(
-          "inVariable", groupVariable.second->toJson());
-      values(variable);
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("outVariable"));
+      groupVariable.first->toVelocyPack(nodes);
+      nodes.add(VPackValue("inVariable"));
+      groupVariable.second->toVelocyPack(nodes);
     }
-    json("groups", values);
   }
 
   // aggregate variables
+  nodes.add(VPackValue("aggregates"));
   {
-    arangodb::basics::Json values(arangodb::basics::Json::Array,
-                                  _aggregateVariables.size());
-
+    VPackArrayBuilder guard(&nodes);
     for (auto const& aggregateVariable : _aggregateVariables) {
-      arangodb::basics::Json variable(arangodb::basics::Json::Object);
-      variable("outVariable", aggregateVariable.first->toJson())(
-          "inVariable", aggregateVariable.second.first->toJson());
-      variable("type", arangodb::basics::Json(aggregateVariable.second.second));
-      values(variable);
+      VPackObjectBuilder obj(&nodes);
+      nodes.add(VPackValue("outVariable"));
+      aggregateVariable.first->toVelocyPack(nodes);
+      nodes.add(VPackValue("inVariable"));
+      aggregateVariable.second.first->toVelocyPack(nodes);
+      nodes.add("type", VPackValue(aggregateVariable.second.second));
     }
-    json("aggregates", values);
   }
 
   // expression variable might be empty
   if (_expressionVariable != nullptr) {
-    json("expressionVariable", _expressionVariable->toJson());
+    nodes.add(VPackValue("expressionVariable"));
+    _expressionVariable->toVelocyPack(nodes);
   }
 
   // output variable might be empty
   if (_outVariable != nullptr) {
-    json("outVariable", _outVariable->toJson());
+    nodes.add(VPackValue("outVariable"));
+    _outVariable->toVelocyPack(nodes);
   }
 
   if (!_keepVariables.empty()) {
-    arangodb::basics::Json values(arangodb::basics::Json::Array,
-                                  _keepVariables.size());
-    for (auto it = _keepVariables.begin(); it != _keepVariables.end(); ++it) {
-      arangodb::basics::Json variable(arangodb::basics::Json::Object);
-      variable("variable", (*it)->toJson());
-      values(variable);
+    nodes.add(VPackValue("keepVariables"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      for (auto const& it : _keepVariables) {
+        VPackObjectBuilder obj(&nodes);
+        nodes.add(VPackValue("variable"));
+        it->toVelocyPack(nodes);
+      }
     }
-    json("keepVariables", values);
   }
 
-  json("count", arangodb::basics::Json(_count));
-  json("isDistinctCommand", arangodb::basics::Json(_isDistinctCommand));
-  json("specialized", arangodb::basics::Json(_specialized));
+  nodes.add("count", VPackValue(_count));
+  nodes.add("isDistinctCommand", VPackValue(_isDistinctCommand));
+  nodes.add("specialized", VPackValue(_specialized));
+  nodes.add(VPackValue("collectOptions"));
+  _options.toVelocyPack(nodes);
 
-  _options.toJson(json, zone);
-
-  // And add it:
-  nodes(json);
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

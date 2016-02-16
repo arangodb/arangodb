@@ -24,6 +24,8 @@
 #include "Graphs.h"
 #include "Basics/JsonHelper.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -77,6 +79,26 @@ arangodb::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
   }
 
   return json;
+}
+
+void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+  VPackObjectBuilder guard(&builder);
+
+  if (!_vertexColls.empty()) {
+    builder.add(VPackValue("vertexCollectionNames"));
+    VPackArrayBuilder guard2(&builder);
+    for (auto const& cn : _vertexColls) {
+      builder.add(VPackValue(cn));
+    }
+  }
+
+  if (!_edgeColls.empty()) {
+    builder.add(VPackValue("edgeCollectionNames"));
+    VPackArrayBuilder guard2(&builder);
+    for (auto const& cn : _edgeColls) {
+      builder.add(VPackValue(cn));
+    }
+  }
 }
 
 Graph::Graph(arangodb::basics::Json const& j) : _vertexColls(), _edgeColls() {

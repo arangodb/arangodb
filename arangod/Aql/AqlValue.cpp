@@ -37,6 +37,11 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
+AqlValue::AqlValue(AqlValue$ const& other) : _json(nullptr), _type(JSON) {
+  _json = new Json(TRI_UNKNOWN_MEM_ZONE, arangodb::basics::VelocyPackHelper::velocyPackToJson(other.slice()));
+  TRI_ASSERT(_json != nullptr);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is true
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,20 +728,165 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-// NOTE IMPORTANT: During the moving Process of shaped => VPACK
-// This function is slower than toJson().
-// It is just used for validation purposes of the callers
-std::shared_ptr<VPackBuffer<uint8_t>> AqlValue::toVelocyPack(
-    arangodb::AqlTransaction* trx, TRI_document_collection_t const* document,
-    bool copy) const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackBuilder const& data) {
+  TRI_ASSERT(data.isClosed());
+  VPackValueLength l = data.size();
+  if (l < 16) {
+    // Use internal
+    memcpy(_data.internal, data.data(), l);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  } else {
+    // Use external
+    _data.external = new VPackBuffer<uint8_t>(l);
+    memcpy(_data.external->data(), data.data(), l);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data){};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackSlice const& data) {
+  VPackValueLength l = data.byteSize();
+  if (l < 16) {
+    // Use internal
+    memcpy(_data.internal, data.start(), l);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  } else {
+    // Use external
+    _data.external = new VPackBuffer<uint8_t>(l);
+    memcpy(_data.external->data(), data.start(), l);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Copy Constructor.
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(AqlValue$ const& other) {
+  VPackSlice s = other.slice();
+  VPackValueLength length = s.byteSize();
+  if (other.type()) {
+    // Isse external
+    _data.external = new VPackBuffer<uint8_t>(length);
+    memcpy(_data.external->data(), other._data.external->data(), length);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  } else {
+    memcpy(_data.internal, other._data.internal, length);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  }
+}
+
+// Temporary constructor to transform an old AqlValue to a new VPackBased
+// AqlValue
+AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
+                     TRI_document_collection_t const* document) {
   VPackBuilder builder;
-  toVelocyPack(trx, document, copy, builder);
-  return builder.steal();
+  switch (other._type) {
+    case AqlValue::JSON: {
+      TRI_ASSERT(other._json != nullptr);
+      // TODO: Internal is still JSON. We always copy.
+      int res = arangodb::basics::JsonHelper::toVelocyPack(other._json->json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      break;
+    }
+    case AqlValue::SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(other._marker != nullptr);
+      auto shaper = document->getShaper();
+      Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
+                                      document->_info.id(), other._marker);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      break;
+    }
+    case AqlValue::DOCVEC: {
+      TRI_ASSERT(other._vector != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        for (auto const& current : *other._vector) {
+          size_t const n = current->size();
+          auto vecCollection = current->getDocumentCollection(0);
+          for (size_t i = 0; i < n; ++i) {
+            current->getValueReference(i, 0)
+                .toVelocyPack(trx, vecCollection, builder);
+          }
+        }
+      } catch (...) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      break;
+    }
+    case AqlValue::RANGE: {
+      // TODO Has to be replaced by VPackCustom Type
+      TRI_ASSERT(other._range != nullptr);
+      try {
+        VPackArrayBuilder b(&builder);
+        size_t const n = other._range->size();
+        for (size_t i = 0; i < n; ++i) {
+          builder.add(VPackValue(other._range->at(i)));
+        }
+      } catch (...) {
+      }
+      break;
+    }
+    case AqlValue::EMPTY: {
+      builder.add(VPackValue(VPackValueType::Null));
+      break;
+    }
+    default: {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+  }
+  VPackValueLength length = builder.size();
+  if (length < 16) {
+    // Small enough for local
+    // copy memory from the builder into the internal data.
+    memcpy(_data.internal, builder.data(), length);
+    _data.internal[15] = AqlValueType::INTERNAL; 
+  } else {
+    // We need a large external buffer
+    // TODO: Replace by SlimBuffer
+    _data.external = new VPackBuffer<uint8_t>(length);
+    memcpy(_data.external->data(), builder.data(), length);
+    _data.internal[15] = AqlValueType::EXTERNAL; 
+  }
+}
+
+AqlValue$::AqlValueType AqlValue$::type() const {
+  return static_cast<AqlValueType>(_data.internal[15]);
+}
+
+VPackSlice AqlValue$::slice() const {
+  if (type()) {
+    // Use External
+    return VPackSlice(_data.external->data());
+  } else {
+    return VPackSlice(_data.internal);
+  }
 }
 
 void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
                             TRI_document_collection_t const* document,
-                            bool copy, VPackBuilder& builder) const {
+                            VPackBuilder& builder) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -745,17 +895,19 @@ void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
+      break;
     }
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
       auto shaper = document->getShaper();
       Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
-                                                document->_info.id(), _marker);
+                                      document->_info.id(), _marker);
       int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
+      break;
     }
     case DOCVEC: {
       TRI_ASSERT(_vector != nullptr);
@@ -766,14 +918,16 @@ void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
           auto vecCollection = current->getDocumentCollection(0);
           for (size_t i = 0; i < n; ++i) {
             current->getValueReference(i, 0)
-                .toVelocyPack(trx, vecCollection, true, builder);
+                .toVelocyPack(trx, vecCollection, builder);
           }
         }
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
+      break;
     }
     case RANGE: {
+      // TODO Has to be replaced by VPackCustom Type
       TRI_ASSERT(_range != nullptr);
       try {
         VPackArrayBuilder b(&builder);
@@ -784,9 +938,11 @@ void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
+      break;
     }
     case EMPTY: {
       builder.add(VPackValue(VPackValueType::Null));
+      break;
     }
     default: {
         TRI_ASSERT(false);

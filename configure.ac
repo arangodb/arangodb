@@ -88,7 +88,8 @@ else:
    echo "Compiling V8 requires a python version 2; please adjust your " `which python`
    exit 1
 fi
-
+PYTHON_EXECUTABLE=`which python`
+AC_SUBST(PYTHON_EXECUTABLE)
 dnl ----------------------------------------------------------------------------
 dnl check for special OS like MacOS X or FreeBSD
 dnl ----------------------------------------------------------------------------
