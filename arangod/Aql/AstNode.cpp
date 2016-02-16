@@ -1315,7 +1315,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
         builder.add(VPackValue(value.value._double));
         break;
       case VALUE_TYPE_STRING:
-        builder.add(VPackValue(value.value._string));
+        builder.add(VPackValue(std::string(value.value._string, value.length)));
         break;
     }
     return;
