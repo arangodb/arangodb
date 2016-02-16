@@ -14,7 +14,8 @@
       status: "",
       type: "",
       isSystem: false,
-      picture: ""
+      picture: "",
+      locked: false
     },
 
     getProperties: function () {
@@ -132,14 +133,14 @@
           cache: false,
           type: 'DELETE',
           url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-          async: false,
+          async: true,
           success: function () {
             callback(false);
           },
           error: function (data) {
             callback(true, data);
           }
-      });
+        });
       callback();
     },
 

@@ -9,13 +9,51 @@
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
+    refreshRate: 2000,
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+    checkLockedCollections: function() {
+
+      var self = this,
+      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+
+      this.collection.each(function(model) {
+        model.set('locked', false);
+      });
+
+      _.each(lockedCollections, function(locked) {
+        var model = self.collection.findWhere({
+          id: locked.collection 
+        });
+        model.set('locked', true);
+        model.set('lockType', locked.type);
+      });
+
+      this.collection.each(function(model) {
+        if (model.get("locked")) {
+          $('#collection_' + model.get("name")).addClass('locked');
+        }
+        else {
+          $('#collection_' + model.get("name")).removeClass('locked');
+        }
+      });
+
+    },
+
+    initialize: function() {
+      var self = this;
+
+      window.setInterval(function() {
+        self.checkLockedCollections();
+      }, self.refreshRate);
+
+    },
+
     render: function () {
 
-      var dropdownVisible = false,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+      this.checkLockedCollections();
+      var dropdownVisible = false;
 
       if ($('#collectionsDropdown').is(':visible')) {
         dropdownVisible = true;
@@ -60,6 +98,7 @@
 
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+
 
       return this;
     },
@@ -287,7 +326,7 @@
       var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
-      if (returnobj.status !== true) {console.log(returnobj);
+      if (returnobj.status !== true) {
         arangoHelper.arangoError("Collection error", returnobj.errorMessage);
       }
       this.updateCollectionsView();

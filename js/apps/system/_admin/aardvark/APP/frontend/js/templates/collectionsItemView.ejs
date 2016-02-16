@@ -18,5 +18,11 @@
     </div>
   </span>
 </div>
-<h5 class="collectionName"><%= model.get('name') %></h5>
+
+<% if(model.get('lockType') === "index") { %>
+  <!-- <progress max="100" value="80"></progress>-->
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } else { %>
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } %>
 </script>
