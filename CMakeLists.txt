@@ -192,6 +192,13 @@ if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif()
 
+# Maintainer mode (Failure Tests) ----------------------------------------------
+option(USE_FAILURE_TESTS
+  "whether we want to have failure tests compiled in" OFF)
+if (USE_FAILURE_TESTS)
+  add_definitions("-DTRI_ENABLE_FAILURE_TESTS=1")
+endif()
+
 # Enable relative paths to binaries --------------------------------------------
 option(USE_RELATIVE "Do you want to have all path are relative to the binary" OFF)
 
