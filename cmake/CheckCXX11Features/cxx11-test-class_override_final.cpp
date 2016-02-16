@@ -22,6 +22,7 @@ int main(void)
 {
     base b;
     sub s;
+    sub2 t;
 
-    return (b.foo(2) * 2 == s.foo(2)) ? 0 : 1;
+    return (b.foo(2) * 2 == s.foo(2) && b.foo(2) * 2 == t.foo(2) ) ? 0 : 1;
 }
