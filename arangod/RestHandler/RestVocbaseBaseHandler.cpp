@@ -139,13 +139,13 @@ void RestVocbaseBaseHandler::generateSaved(
     createResponse(rest::HttpResponse::CREATED);
   }
   _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + slice.get("_rev").copyString() + "\"");
+  _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
 
   // TODO This has to be replaced properly
-  TRI_col_type_e type = TRI_COL_TYPE_EDGE;
+  TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
 
   std::string escapedHandle(DocumentHelper::assembleDocumentId(
-      collectionName, slice.get("_key").copyString(), true));
+      collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
   if (_request->compatibility() < 10400L) {
     // pre-1.4 location header (e.g. /_api/document/xyz)
     _response->setHeader("location", 8,
