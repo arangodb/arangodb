@@ -357,7 +357,12 @@
         this.events, null,
         tabBar
       );
-      this.getIndex();
+      if (this.model.get("status") === 'loaded') {
+        this.getIndex();
+      }
+      else {
+        $($('#infoTab').children()[1]).remove();
+      }
       this.bindIndexEvents();
     },
 
