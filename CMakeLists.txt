@@ -103,13 +103,25 @@ endif()
 # TODO: Exclude non-supported?
 
 ## Compiler flags --------------------------------------------------------------
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
+elseif(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+endif() 
+
 # GCC 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89 -g -O2")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -O2")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif ()
 if (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif ()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -122,7 +134,7 @@ endif()
 
 # OSX
 if (APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
   if (CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     add_definitions("-Wno-deprecated-declarations")
@@ -190,13 +202,6 @@ option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features" OFF)
 if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
-endif()
-
-# Maintainer mode (Failure Tests) ----------------------------------------------
-option(USE_FAILURE_TESTS
-  "whether we want to have failure tests compiled in" OFF)
-if (USE_FAILURE_TESTS)
-  add_definitions("-DTRI_ENABLE_FAILURE_TESTS=1")
 endif()
 
 # Enable relative paths to binaries --------------------------------------------
@@ -763,3 +768,4 @@ endif ()
 
 # Finally: user cpack
 include(CPack)
+
