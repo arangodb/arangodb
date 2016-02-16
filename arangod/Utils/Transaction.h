@@ -49,10 +49,11 @@
 namespace arangodb {
 
 struct OperationOptions {
-  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false) {}
+  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
   bool waitForSync;
   bool keepNull;
   bool mergeObjects;
+  bool silent;
 };
 
 struct OperationResult {
