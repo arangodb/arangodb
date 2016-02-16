@@ -47,27 +47,6 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-void ModificationNode::toJsonHelper(arangodb::basics::Json& json,
-                                    TRI_memory_zone_t* zone, bool) const {
-  // Now put info about vocbase and cid in there
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()));
-
-  // add out variables
-  if (_outVariableOld != nullptr) {
-    json("outVariableOld", _outVariableOld->toJson());
-  }
-  if (_outVariableNew != nullptr) {
-    json("outVariableNew", _outVariableNew->toJson());
-  }
-
-  _options.toJson(json, zone);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -119,28 +98,6 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-void RemoveNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("inVariable", _inVariable->toJson());
-
-  ModificationNode::toJsonHelper(json, zone, verbose);
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
 void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
   nodes.add(VPackValue("inVariable"));
@@ -178,28 +135,6 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-void InsertNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("inVariable", _inVariable->toJson());
-
-  ModificationNode::toJsonHelper(json, zone, verbose);
-
-  // And add it:
-  nodes(json);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
@@ -247,33 +182,6 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
           varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-void UpdateNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("inDocVariable", _inDocVariable->toJson());
-
-  ModificationNode::toJsonHelper(json, zone, verbose);
-
-  // inKeyVariable might be empty
-  if (_inKeyVariable != nullptr) {
-    json("inKeyVariable", _inKeyVariable->toJson());
-  }
-
-  // And add it:
-  nodes(json);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
@@ -339,33 +247,6 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
           varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-void ReplaceNode::toJsonHelper(arangodb::basics::Json& nodes,
-                               TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("inDocVariable", _inDocVariable->toJson());
-
-  ModificationNode::toJsonHelper(json, zone, verbose);
-
-  // inKeyVariable might be empty
-  if (_inKeyVariable != nullptr) {
-    json("inKeyVariable", _inKeyVariable->toJson());
-  }
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -428,30 +309,6 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _updateVariable(varFromJson(plan->getAst(), base, "updateVariable")),
       _isReplace(
           JsonHelper::checkAndGetBooleanValue(base.json(), "isReplace")) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-void UpsertNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  ModificationNode::toJsonHelper(json, zone, verbose);
-
-  json("inDocVariable", _inDocVariable->toJson());
-  json("insertVariable", _insertVariable->toJson());
-  json("updateVariable", _updateVariable->toJson());
-  json("isReplace", arangodb::basics::Json(_isReplace));
-
-  // And add it:
-  nodes(json);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack

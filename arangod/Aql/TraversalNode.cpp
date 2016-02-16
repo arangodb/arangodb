@@ -87,6 +87,25 @@ void SimpleTraverserExpression::toJson(arangodb::basics::Json& json,
       "compareTo", compareToNode->toJson(zone, true));
 }
 
+void SimpleTraverserExpression::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  auto op = arangodb::aql::AstNode::Operators.find(comparisonType);
+
+  if (op == arangodb::aql::AstNode::Operators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "invalid operator for simpleTraverserExpression");
+  }
+  std::string const operatorStr = op->second;
+  builder.add("isEdgeAccess", VPackValue(isEdgeAccess));
+  builder.add("comparisonTypeStr", VPackValue(operatorStr));
+  builder.add("comparisonType", VPackValue(comparisonType));
+  builder.add(VPackValue("varAccess"));
+  varAccess->toVelocyPack(builder, true);
+  builder.add(VPackValue("compareTo"));
+  compareToNode->toVelocyPack(builder, true);
+}
+
 static TRI_edge_direction_e parseDirection (AstNode const* node) {
   TRI_ASSERT(node->isIntValue());
   auto dirNum = node->getIntValue();
@@ -445,83 +464,81 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for TraversalNode
-////////////////////////////////////////////////////////////////////////////////
-
-void TraversalNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "minDepth", arangodb::basics::Json(static_cast<double>(_minDepth)))(
-      "maxDepth", arangodb::basics::Json(static_cast<double>(_maxDepth)))(
-      "graph", _graphJson.copy());
-
-  arangodb::basics::Json dirJson = arangodb::basics::Json(arangodb::basics::Json::Array, _directions.size());
-  for (auto const& d : _directions) {
-    dirJson.add(arangodb::basics::Json(static_cast<int32_t>(d)));
-  }
-  json("directions", dirJson);
-
-  // In variable
-  if (usesInVariable()) {
-    json("inVariable", inVariable()->toJson());
-  } else {
-    json("vertexId", arangodb::basics::Json(_vertexId));
-  }
-
-  if (_condition != nullptr) {
-    json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  }
-
-  if (_graphObj != nullptr) {
-    json("graphDefinition", _graphObj->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  }
-
-  // Out variables
-  if (usesVertexOutVariable()) {
-    json("vertexOutVariable", vertexOutVariable()->toJson());
-  }
-  if (usesEdgeOutVariable()) {
-    json("edgeOutVariable", edgeOutVariable()->toJson());
-  }
-  if (usesPathOutVariable()) {
-    json("pathOutVariable", pathOutVariable()->toJson());
-  }
-
-  if (!_expressions.empty()) {
-    arangodb::basics::Json expressionObject = arangodb::basics::Json(
-        arangodb::basics::Json::Object, _expressions.size());
-    for (auto const& map : _expressions) {
-      arangodb::basics::Json expressionArray = arangodb::basics::Json(
-          arangodb::basics::Json::Array, map.second.size());
-      for (auto const& x : map.second) {
-        arangodb::basics::Json exp(zone, arangodb::basics::Json::Object);
-        auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
-        if (tmp != nullptr) {
-          tmp->toJson(exp, zone);
-        }
-        expressionArray(exp);
-      }
-      expressionObject.set(std::to_string(map.first), expressionArray);
-    }
-    json("simpleExpressions", expressionObject);
-  }
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for TraversalNode
 ////////////////////////////////////////////////////////////////////////////////
 
 void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                        bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("minDepth", VPackValue(_minDepth));
+  nodes.add("maxDepth", VPackValue(_maxDepth));
+
+  {
+    // TODO Remove _graphJson
+    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(_graphJson.json());
+    nodes.add("graph", tmp->slice());
+  }
+  nodes.add(VPackValue("directions"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& d : _directions) {
+      nodes.add(VPackValue(d));
+    }
+  }
+
+  // In variable
+  if (usesInVariable()) {
+    nodes.add(VPackValue("inVariable"));
+    inVariable()->toVelocyPack(nodes);
+  } else {
+    nodes.add("vertexId", VPackValue(_vertexId));
+  }
+
+  if (_condition != nullptr) {
+    nodes.add(VPackValue("condition"));
+    _condition->toVelocyPack(nodes, verbose);
+  }
+
+  if (_graphObj != nullptr) {
+    nodes.add(VPackValue("graphDefinition"));
+    _graphObj->toVelocyPack(nodes, verbose);
+  }
+
+  // Out variables
+  if (usesVertexOutVariable()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (usesEdgeOutVariable()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
+  }
+  if (usesPathOutVariable()) {
+    nodes.add(VPackValue("pathOutVariable"));
+    pathOutVariable()->toVelocyPack(nodes);
+  }
+
+  if (!_expressions.empty()) {
+    nodes.add(VPackValue("simpleExpressions"));
+    VPackObjectBuilder guard(&nodes);
+    for (auto const& map : _expressions) {
+      nodes.add(VPackValue(std::to_string(map.first)));
+      VPackArrayBuilder guard2(&nodes);
+      for (auto const& x : map.second) {
+        VPackObjectBuilder guard3(&nodes);
+        auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
+        if (tmp != nullptr) {
+          tmp->toVelocyPack(nodes);
+        }
+      }
+    }
+  }
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

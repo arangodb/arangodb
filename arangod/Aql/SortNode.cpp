@@ -35,33 +35,6 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
     : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SortNode
-////////////////////////////////////////////////////////////////////////////////
-
-void SortNode::toJsonHelper(arangodb::basics::Json& nodes,
-                            TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-  arangodb::basics::Json values(arangodb::basics::Json::Array,
-                                _elements.size());
-  for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    arangodb::basics::Json element(arangodb::basics::Json::Object);
-    element("inVariable", (*it).first->toJson())(
-        "ascending", arangodb::basics::Json((*it).second));
-    values(element);
-  }
-  json("elements", values);
-  json("stable", arangodb::basics::Json(_stable));
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SortNode
 ////////////////////////////////////////////////////////////////////////////////
 

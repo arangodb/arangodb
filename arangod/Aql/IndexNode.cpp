@@ -33,39 +33,6 @@ using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for IndexNode
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexNode::toJsonHelper(arangodb::basics::Json& nodes,
-                             TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(
-      ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));
-  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "outVariable", _outVariable->toJson());
-
-  arangodb::basics::Json indexes(arangodb::basics::Json::Array,
-                                 _indexes.size());
-  for (auto& index : _indexes) {
-    indexes.add(index->toJson());
-  }
-
-  json("indexes", indexes);
-  json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
-  json("reverse", arangodb::basics::Json(_reverse));
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for IndexNode
 ////////////////////////////////////////////////////////////////////////////////
 

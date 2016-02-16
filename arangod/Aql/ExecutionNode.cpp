@@ -428,24 +428,6 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, export an ExecutionNode to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
-                                             bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json nodes =
-      arangodb::basics::Json(arangodb::basics::Json::Array, 10);
-  toJsonHelper(nodes, zone, verbose);
-
-  arangodb::basics::Json json =
-      arangodb::basics::Json(arangodb::basics::Json::Object, 1)("nodes", nodes);
-
-  return json;
-  LEAVE_BLOCK
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -671,122 +653,6 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
 
   return ast->variables()->createVariable(variableJson);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJsonHelper, for a generic node
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json ExecutionNode::toJsonHelperGeneric(
-    arangodb::basics::Json& nodes, TRI_memory_zone_t* zone,
-    bool verbose) const {
-  ENTER_BLOCK
-  size_t const n = _dependencies.size();
-  for (size_t i = 0; i < n; i++) {
-    _dependencies[i]->toJsonHelper(nodes, zone, verbose);
-  }
-
-  arangodb::basics::Json json(arangodb::basics::Json::Object, 5);
-  json("type", arangodb::basics::Json(getTypeString()));
-
-  if (verbose) {
-    json("typeID", arangodb::basics::Json(static_cast<int>(getType())));
-  }
-
-  arangodb::basics::Json deps(arangodb::basics::Json::Array, n);
-  for (size_t i = 0; i < n; i++) {
-    deps(arangodb::basics::Json(static_cast<double>(_dependencies[i]->id())));
-  }
-  json("dependencies", deps);
-
-  if (verbose) {
-    arangodb::basics::Json parents(arangodb::basics::Json::Array,
-                                   _parents.size());
-    for (size_t i = 0; i < _parents.size(); i++) {
-      parents(arangodb::basics::Json(static_cast<double>(_parents[i]->id())));
-    }
-    json("parents", parents);
-  }
-
-  json("id", arangodb::basics::Json(static_cast<double>(id())));
-  size_t nrItems = 0;
-  json("estimatedCost", arangodb::basics::Json(getCost(nrItems)));
-  json("estimatedNrItems",
-       arangodb::basics::Json(static_cast<double>(nrItems)));
-
-  if (verbose) {
-    json("depth", arangodb::basics::Json(static_cast<double>(_depth)));
-
-    if (_registerPlan) {
-      arangodb::basics::Json jsonVarInfoList(arangodb::basics::Json::Array,
-                                             _registerPlan->varInfo.size());
-      for (auto const& oneVarInfo : _registerPlan->varInfo) {
-        arangodb::basics::Json jsonOneVarInfoArray(
-            arangodb::basics::Json::Object, 2);
-        jsonOneVarInfoArray(
-            "VariableId",
-            arangodb::basics::Json(static_cast<double>(oneVarInfo.first)))(
-            "depth", arangodb::basics::Json(
-                         static_cast<double>(oneVarInfo.second.depth)))(
-            "RegisterId", arangodb::basics::Json(static_cast<double>(
-                              oneVarInfo.second.registerId)));
-        jsonVarInfoList(jsonOneVarInfoArray);
-      }
-      json("varInfoList", jsonVarInfoList);
-
-      arangodb::basics::Json jsonNRRegsList(arangodb::basics::Json::Array,
-                                            _registerPlan->nrRegs.size());
-      for (auto const& oneRegisterID : _registerPlan->nrRegs) {
-        jsonNRRegsList(
-            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
-      }
-      json("nrRegs", jsonNRRegsList);
-
-      arangodb::basics::Json jsonNRRegsHereList(
-          arangodb::basics::Json::Array, _registerPlan->nrRegsHere.size());
-      for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
-        jsonNRRegsHereList(
-            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
-      }
-      json("nrRegsHere", jsonNRRegsHereList);
-      json("totalNrRegs", arangodb::basics::Json(
-                              static_cast<double>(_registerPlan->totalNrRegs)));
-    } else {
-      json("varInfoList",
-           arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("nrRegs", arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("nrRegsHere", arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("totalNrRegs", arangodb::basics::Json(0.0));
-    }
-
-    arangodb::basics::Json jsonRegsToClearList(arangodb::basics::Json::Array,
-                                               _regsToClear.size());
-    for (auto const& oneRegisterID : _regsToClear) {
-      jsonRegsToClearList(
-          arangodb::basics::Json(static_cast<double>(oneRegisterID)));
-    }
-    json("regsToClear", jsonRegsToClearList);
-
-    arangodb::basics::Json jsonVarsUsedLaterList(arangodb::basics::Json::Array,
-                                                 _varsUsedLater.size());
-    for (auto const& oneVarUsedLater : _varsUsedLater) {
-      jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
-    }
-
-    json("varsUsedLater", jsonVarsUsedLaterList);
-
-    arangodb::basics::Json jsonvarsValidList(arangodb::basics::Json::Array,
-                                             _varsValid.size());
-    for (auto const& oneVarUsedLater : _varsValid) {
-      jsonvarsValidList.add(oneVarUsedLater->toJson());
-    }
-
-    json("varsValid", jsonvarsValidList);
-  }
-
-  return json;
-  LEAVE_BLOCK
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPackHelper, for a generic node
@@ -1351,21 +1217,6 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::basics::Json const& base)
     : ExecutionNode(plan, base) {}
 
-void SingletonNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1399,32 +1250,6 @@ EnumerateCollectionNode::EnumerateCollectionNode(
           JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
       _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateCollectionNode
-////////////////////////////////////////////////////////////////////////////////
-
-void EnumerateCollectionNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                           TRI_memory_zone_t* zone,
-                                           bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // Now put info about vocbase and cid in there
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "outVariable", _outVariable->toJson())("random",
-                                             arangodb::basics::Json(_random));
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for EnumerateCollectionNode
@@ -1491,27 +1316,6 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateListNode
-////////////////////////////////////////////////////////////////////////////////
-
-void EnumerateListNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                     TRI_memory_zone_t* zone,
-                                     bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  json("inVariable", _inVariable->toJson())("outVariable",
-                                            _outVariable->toJson());
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for EnumerateListNode
@@ -1622,28 +1426,6 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
           JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief toJson, for LimitNode
-////////////////////////////////////////////////////////////////////////////////
-
-void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
-                             TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  // Now put info about offset and limit in
-  json("offset", arangodb::basics::Json(static_cast<double>(_offset)))(
-      "limit", arangodb::basics::Json(static_cast<double>(_limit)))(
-      "fullCount", arangodb::basics::Json(_fullCount));
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // @brief toVelocyPack, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1683,36 +1465,6 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CalculationNode
-////////////////////////////////////////////////////////////////////////////////
-
-void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone,
-                                   bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-      "outVariable", _outVariable->toJson())(
-      "canThrow", arangodb::basics::Json(_expression->canThrow()));
-
-  if (_conditionVariable != nullptr) {
-    json("conditionVariable", _conditionVariable->toJson());
-  }
-
-  json("expressionType", arangodb::basics::Json(_expression->typeString()));
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for CalculationNode
@@ -1783,26 +1535,6 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _subquery(nullptr),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SubqueryNode
-////////////////////////////////////////////////////////////////////////////////
-
-void SubqueryNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  json("subquery", _subquery->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-      "outVariable", _outVariable->toJson());
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SubqueryNode
@@ -1999,26 +1731,6 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for FilterNode
-////////////////////////////////////////////////////////////////////////////////
-
-void FilterNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("inVariable", _inVariable->toJson());
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2074,27 +1786,6 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for ReturnNode
-////////////////////////////////////////////////////////////////////////////////
-
-void ReturnNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("inVariable", _inVariable->toJson());
-
-  // And add it:
-  nodes(json);
-  LEAVE_BLOCK
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2139,25 +1830,6 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
   ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
-  LEAVE_BLOCK
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for NoResultsNode
-////////////////////////////////////////////////////////////////////////////////
-
-void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  ENTER_BLOCK
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // And add it:
-  nodes(json);
   LEAVE_BLOCK
 }
 

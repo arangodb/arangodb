@@ -45,30 +45,6 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
           base.json(), "isResponsibleForInitCursor")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for RemoteNode
-////////////////////////////////////////////////////////////////////////////////
-
-void RemoteNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "server", arangodb::basics::Json(_server))(
-      "ownName", arangodb::basics::Json(_ownName))(
-      "queryId", arangodb::basics::Json(_queryId))(
-      "isResponsibleForInitCursor",
-      arangodb::basics::Json(_isResponsibleForInitCursor));
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for RemoteNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -118,25 +94,6 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
           JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for ScatterNode
-////////////////////////////////////////////////////////////////////////////////
-
-void ScatterNode::toJsonHelper(arangodb::basics::Json& nodes,
-                               TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()));
-
-  // And add it:
-  nodes(json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for ScatterNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,28 +137,6 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowKeyConversionToObject(JsonHelper::checkAndGetBooleanValue(
           base.json(), "allowKeyConversionToObject")) {}
 
-void DistributeNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "varId", arangodb::basics::Json(static_cast<int>(_varId)))(
-      "alternativeVarId",
-      arangodb::basics::Json(static_cast<int>(_alternativeVarId)))(
-      "createKeys", arangodb::basics::Json(_createKeys))(
-      "allowKeyConversionToObject",
-      arangodb::basics::Json(_allowKeyConversionToObject));
-
-  // And add it:
-  nodes(json);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for DistributedNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,35 +179,6 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for GatherNode
-////////////////////////////////////////////////////////////////////////////////
-
-void GatherNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()));
-
-  arangodb::basics::Json values(arangodb::basics::Json::Array,
-                                _elements.size());
-  for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    arangodb::basics::Json element(arangodb::basics::Json::Object);
-    element("inVariable", (*it).first->toJson())(
-        "ascending", arangodb::basics::Json((*it).second));
-    values(element);
-  }
-  json("elements", values);
-
-  // And add it:
-  nodes(json);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for GatherNode
