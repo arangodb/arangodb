@@ -62,8 +62,7 @@ class VelocyPackHelper {
                            arangodb::velocypack::Slice const& rhs) const {
       return VelocyPackHelper::compare(lhs, rhs, useUtf8) < 0;
     }
-};
-
+  };
 
   struct AttributeSorter {
     bool operator()(std::string const& l, std::string const& r) const;
