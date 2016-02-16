@@ -33,6 +33,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
@@ -48,10 +49,6 @@
 #include <velocypack/Options.h>
 
 namespace arangodb {
-
-struct OperationResult {
-  int code;
-};
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;

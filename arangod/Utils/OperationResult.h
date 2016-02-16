@@ -21,28 +21,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_OPERATION_OPTIONS_H
-#define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
+#ifndef ARANGOD_UTILS_OPERATION_RESULT_H
+#define ARANGOD_UTILS_OPERATION_RESULT_H 1
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
-// a struct for keeping document modification operations in transactions
-struct OperationOptions {
-  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
+struct OperationResult {
+  OperationResult() : builder(), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
 
-  // wait until the operation has been synced
-  bool waitForSync;
+  bool successful() const {
+    return code == TRI_ERROR_NO_ERROR;
+  }
+  
+  bool failed() const {
+    return !successful();
+  }
 
-  // keep null values on update (=true) or remove them (=false). only used for update operations
-  bool keepNull;
+  VPackSlice slice() const {
+    return builder->slice();
+  }
 
-  // merge objects. only used for update operations
-  bool mergeObjects;
-
-  // be silent. this will build smaller results and thus may speed up operations
-  bool silent;
+  std::shared_ptr<VPackBuilder> builder;
+  int code;
+  bool wasSynchronous;
 };
 
 }
