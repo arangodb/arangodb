@@ -176,7 +176,7 @@ describe ArangoDB do
       found.should eq(true)
       doc = ArangoDB.log_delete(@prefix, "#{@api}/" + id)
       doc.code.should eq(200)
-      sleep 1
+      sleep 5
       doc = ArangoDB.log_get("#{@prefix}-current", @current)
       found = contains_query doc.body, @query
       found.should eq(false)

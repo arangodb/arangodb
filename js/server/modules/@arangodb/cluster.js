@@ -1001,8 +1001,9 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                           { endpoint: ep, incremental: true,
                             keepBarrier: true });
                         // Now start a read transaction to stop writes:
+                        var queryid;
                         try {
-                          var queryid = startReadingQuery(ep, shard, 300);
+                          queryid = startReadingQuery(ep, shard, 300);
                         }
                         finally {
                           cancelBarrier(ep, sy.barrierId);

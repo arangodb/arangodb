@@ -29,8 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const Module = require('module');
-const ArangoError = require('@arangodb').ArangoError;
-const errors = require('@arangodb').errors;
 const runTests = require('@arangodb/mocha').run;
 const colors = require('internal').COLORS;
 
@@ -200,17 +198,6 @@ function run(filename, context) {
     });
   }
 
-  try {
-    module.load(filename);
-    return module.exports;
-  } catch(e) {
-    const err = new ArangoError({
-      errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-      errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
-      + '\nFile: ' + filename
-    });
-    err.stack = e.stack;
-    err.cause = e;
-    throw err;
-  }
+  module.load(filename);
+  return module.exports;
 }

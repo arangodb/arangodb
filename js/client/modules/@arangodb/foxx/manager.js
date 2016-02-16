@@ -701,13 +701,7 @@ var run = function (args) {
     return 0;
   }
   catch (err) {
-    if (err instanceof ArangoError) {
-      printf("%s\n", err.errorMessage);
-    }
-    else {
-      printf("%s\n", err.message);
-    }
-
+    arangodb.print(String(err));
     return 1;
   }
 };
