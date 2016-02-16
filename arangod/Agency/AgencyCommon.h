@@ -36,10 +36,11 @@ namespace consensus {
   template<class T> struct Config {
     T min_ping;
     T max_ping;
+    uint32_t id;
     std::vector<std::string> end_points;
     Config () : min_ping(.15), max_ping(.3) {};
-    Config (T min_p, T max_p, std::vector<std::string>& end_p) :
-      min_ping(min_p), max_ping(max_p), end_points(end_p) {}
+    Config (uint32_t i, T min_p, T max_p, std::vector<std::string>& end_p) :
+      id(i), min_ping(min_p), max_ping(max_p), end_points(end_p) {}
   }; 
   
 }}

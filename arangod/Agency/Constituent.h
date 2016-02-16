@@ -49,7 +49,7 @@ class Constituent : public arangodb::basics::Thread {
 public:
 
   enum mode_t {
-    LEADER, CANDIDATE, FOLLOWER
+    FOLLOWER, CANDIDATE, LEADER
   };
   typedef std::chrono::duration<double> duration_t;
   typedef uint64_t term_t;
@@ -95,10 +95,14 @@ public:
 
   void run();
 
-  void voteCallBack();
-
 private:
   
+  void becomeFollower ();
+
+  void becomeCadidate ();
+
+  void becomeLeader ();
+
   /**
    * @brief Call for vote (by leader or candidates after timeout)
    */

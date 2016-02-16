@@ -35,10 +35,11 @@ using namespace arangodb::rest;
 
 void Constituent::configure(Agent* agent) {
   _agent = agent;
+  _votes.resize(_agent->config().end_points.size());
 }
 
-Constituent::Constituent() : Thread("Constituent"), _term(0),
-    _gen(std::random_device()()), _mode(LEADER), _run(true), _agent(0) {}
+Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
+  _gen(std::random_device()()), _mode(CANDIDATE), _run(true), _agent(0) {}
 
 Constituent::~Constituent() {}
 
@@ -62,14 +63,28 @@ Constituent::mode_t Constituent::mode () const {
   return _mode;
 }
 
-bool Constituent::vote (id_t id, term_t term) {
-	LOG(WARN) << _id << "," << _term << " " << id << "," << term;
-	if (id == _id)
+void Constituent::becomeFollower() {
+  _votes.assign(_votes.size(),false); // void all votes
+  _mode = FOLLOWER;
+}
+
+void Constituent::becomeLeader() {
+
+}
+
+void Constituent::becomeCadidate() {
+
+}
+
+// Vote for the requester if and only if I am follower
+bool Constituent::vote(id_t id, term_t term) {
+	if (id == _id) { // Won't vote for myself
 		return false;
-	else {
-		if (term > _term) {
-			_state = FOLLOWER;
-			_term = term;
+	} else {
+	  if (term > _term) {  // Candidate with higher term: ALWAYS turn
+      if (_mode > FOLLOWER)
+        LOG(WARN) << "Cadidate with higher term. Becoming follower";
+	    becomeFollower ();
 			return true;
 		} else {
 			return false;
@@ -91,53 +106,69 @@ bool Constituent::leader() const {
 }
 
 void Constituent::callElection() {
+
+  _votes[_id] = true; // vote for myself
+  _term++;
   
-  LOG(WARN) << "Calling for election " << _agent->config().end_points.size();
   std::string body;
   arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	    std::make_unique<std::map<std::string, std::string> >();
-	  (new std::map<std::string, std::string>());
+	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
+  std::stringstream path;
+  path << "/_api/agency/vote?id=" << _id << "&term=" << _term;
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
-		results[i] = arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
-      "/_api/agency/vote?id=0&term=3", std::make_shared<std::string>(body),
-      headerFields, nullptr, 0./*.75*_agent->config().min_ping*/, true);
+    if (i != _id) {
+      results[i] = arangodb::ClusterComm::instance()->asyncRequest("1", 1,
+        _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
+        path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
+        .75*_agent->config().min_ping, true);
+      LOG(WARN) << _agent->config().end_points[i];
+    }
 	}
 
 	std::this_thread::sleep_for(Constituent::duration_t(
 	  .85*_agent->config().min_ping));
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
-	  ClusterCommResult res = arangodb::ClusterComm::instance()->
+    if (i != _id) {
+      ClusterCommResult res = arangodb::ClusterComm::instance()->
 	      enquire(results[i].operationID);
-	  TRI_ASSERT(res.status == CL_COMM_SENT);
-	  if (res.status == CL_COMM_SENT) {
-	    res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
-	    std::shared_ptr< arangodb::velocypack::Builder > answer = res.answer->toVelocyPack(&opts);
-	    /*LOG(WARN) << answer->toString();*/
-	  } else {
-	    /**/
-	  }
+      
+      if (res.status == CL_COMM_SENT) { // Request successfully sent 
+        res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
+        std::shared_ptr< arangodb::velocypack::Builder > body = res.result->getBodyVelocyPack();
+        if (body->isEmpty()) {
+          continue;
+        } else {
+          if (!body->slice().hasKey("vote")) { // Answer has no vote. What happened?
+            _votes[i] = false;
+            continue;
+          } else {
+            LOG(WARN) << body->slice().get("vote");
+          }
+        }
+        //LOG(WARN) << body->toString();
+      } else { // Request failed
+        _votes[i] = false;
+      }
 
-
+    }
   }
-	// count votes
-
 }
 
 void Constituent::run() {
-  //while (_run) {
-
-    if (_state == FOLLOWER) {
+  while (true) {
+    LOG(WARN) << _mode;
+    if (_mode == FOLLOWER) {
       LOG(WARN) << "sleeping ... ";
       std::this_thread::sleep_for(sleepFor());
     } else {
+      LOG(WARN) << "calling ... ";
       callElection();
     }
-  //}
+  }
 };
 
 

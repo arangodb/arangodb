@@ -53,6 +53,7 @@ ApplicationAgency::~ApplicationAgency() {}
 void ApplicationAgency::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
+    ("agency.id", &_agent_id, "This agent's id")
 		("agency.election-timeout-min", &_min_election_timeout, "Minimum "
 		 "timeout before an agent calls for new election [s]")
 		("agency.election-timeout-max", &_max_election_timeout, "Minimum "
@@ -68,8 +69,8 @@ bool ApplicationAgency::prepare() {
     return true;
   }
   _agent = std::unique_ptr<consensus::Agent>(new consensus::Agent(
-      consensus::Config<double>(_min_election_timeout, _max_election_timeout,
-          _agency_endpoints)));
+     consensus::Config<double>(_agent_id, _min_election_timeout,
+       _max_election_timeout, _agency_endpoints)));
   return true;
 }
 

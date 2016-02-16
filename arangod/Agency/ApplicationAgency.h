@@ -115,6 +115,7 @@ class Task;
   double   _max_election_timeout; /**< @brief: max election timeout */
   std::vector<std::string> _agency_endpoints;
   std::unique_ptr<consensus::Agent> _agent;
+  uint32_t _agent_id;
 
 };
 }

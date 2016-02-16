@@ -60,6 +60,10 @@ add_executable(
     ${ProductVersionFiles}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
+    Agency/Agent.cpp
+    Agency/ApplicationAgency.cpp
+    Agency/Constituent.cpp
+    Agency/Log.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/Aggregator.cpp
@@ -176,6 +180,7 @@ add_executable(
     Replication/Syncer.cpp
     Rest/AnyServer.cpp
     RestHandler/RestAdminLogHandler.cpp
+    RestHandler/RestAgencyHandler.cpp 
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
     RestHandler/RestDebugHandler.cpp
