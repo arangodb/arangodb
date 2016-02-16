@@ -895,7 +895,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto ditch = trx.orderDitch(trx.trxCollection());
   TRI_ASSERT(ditch != nullptr);
 
-  res = trx.read(docs, skip, limit, total);
+  res = trx.readSlice(trx.trxCollection(), docs, skip, limit, total);
 
   res = trx.finish(res);
 
@@ -963,7 +963,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = trx.any(&document);
+  res = trx.any(trx.trxCollection(), &document);
   TRI_ASSERT(document.getDataPtr() == nullptr || trx.hasDitch());
 
   res = trx.finish(res);
@@ -1572,7 +1572,7 @@ static void JS_FirstQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::vector<TRI_doc_mptr_copy_t> documents;
-  res = trx.readPositional(documents, 0, count);
+  res = trx.readOrdered(trx.trxCollection(), documents, 0, count);
   trx.finish(res);
 
   size_t const n = documents.size();
@@ -1802,7 +1802,7 @@ static void JS_LastQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::vector<TRI_doc_mptr_copy_t> documents;
-  res = trx.readPositional(documents, -1, count);
+  res = trx.readOrdered(trx.trxCollection(), documents, -1, count);
   trx.finish(res);
 
   uint64_t const n = static_cast<uint64_t>(documents.size());

@@ -458,7 +458,7 @@ static void DocumentVocbaseCol(
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
-  res = trx.document(&document, key.get());
+  res = trx.document(trx.trxCollection(), &document, key.get());
   res = trx.finish(res);
 
   TRI_ASSERT(trx.hasDitch());
@@ -640,7 +640,7 @@ static void ExistsVocbaseVPack(bool useCollection,
   }
 
   TRI_doc_mptr_copy_t document;
-  res = trx.document(&document, key.get());
+  res = trx.document(trx.trxCollection(), &document, key.get());
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR ||
@@ -879,7 +879,7 @@ static void ReplaceVocbaseCol(bool useCollection,
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    res = trx.document(&mptr, key.get());
+    res = trx.document(trx.trxCollection(), &mptr, key.get());
 
     if (res != TRI_ERROR_NO_ERROR ||
         mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
@@ -917,8 +917,8 @@ static void ReplaceVocbaseCol(bool useCollection,
         TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  res = trx.update(key.get(), &mptr, shaped, policy,
-                   options.waitForSync, rid, &actualRevision);
+  res = trx.update(trx.trxCollection(), key.get(), 0, &mptr, shaped, policy,
+                   rid, &actualRevision, options.waitForSync);
 
   res = trx.finish(res);
 
@@ -1029,7 +1029,7 @@ static void InsertVocbaseCol(TRI_vocbase_col_t* col, uint32_t argOffset,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.insert(key.get(), &mptr, shaped, options.waitForSync, nullptr);
+  res = trx.insert(trx.trxCollection(), key.get(), 0, &mptr, shaped, nullptr, options.waitForSync);
 
   res = trx.finish(res);
 
@@ -1179,7 +1179,7 @@ static void DocumentVocbaseVPack(
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.document(&mptr, key.get());
+  res = trx.document(trx.trxCollection(), &mptr, key.get());
   res = trx.finish(res);
 
   TRI_ASSERT(trx.hasDitch());
@@ -1445,7 +1445,7 @@ static void UpdateVocbaseVPack(bool useCollection,
   trx.lockWrite();
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.document(&mptr, key.get());
+  res = trx.document(trx.trxCollection(), &mptr, key.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1490,8 +1490,8 @@ static void UpdateVocbaseVPack(bool useCollection,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  res = trx.update(key.get(), &mptr, patchedJson, policy,
-                   options.waitForSync, rid, &actualRevision);
+  res = trx.update(trx.trxCollection(), key.get(), rid, &mptr, patchedJson, policy,
+                   rid, &actualRevision, options.waitForSync);
 
   res = trx.finish(res);
 
@@ -1700,8 +1700,8 @@ static void RemoveVocbaseCol(bool useCollection,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = trx.remove(key.get(), policy, options.waitForSync, rid,
-                   &actualRevision);
+  res = trx.remove(trx.trxCollection(), key.get(), 0, policy, rid,
+                   &actualRevision, options.waitForSync);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3008,7 +3008,7 @@ static void InsertEdgeCol(TRI_vocbase_col_t* col, uint32_t argOffset,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.insert(key.get(), &mptr, shaped, options.waitForSync, &edge);
+  res = trx.insert(trx.trxCollection(), key.get(), 0, &mptr, shaped, &edge, options.waitForSync);
 
   res = trx.finish(res);
 
@@ -3299,7 +3299,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  res = trx.truncate(forceSync);
+  res = trx.truncate(trx.trxCollection(), forceSync);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {

@@ -253,6 +253,7 @@ int Transaction::any(TRI_transaction_collection_t* trxCollection,
 
 int Transaction::any(TRI_transaction_collection_t* trxCollection,
                      TRI_doc_mptr_copy_t* mptr) {
+  TRI_ASSERT(mptr != nullptr);
   TRI_document_collection_t* document = documentCollection(trxCollection);
 
   // READ-LOCK START
@@ -405,39 +406,3 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read all master pointers
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
-                           std::vector<TRI_doc_mptr_t const*>& docs) {
-  TRI_document_collection_t* document = documentCollection(trxCollection);
-  // READ-LOCK START
-  int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (orderDitch(trxCollection) == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  arangodb::basics::BucketPosition position;
-  uint64_t total = 0;
-  auto idx = document->primaryIndex();
-  docs.reserve(idx->size());
-
-  while (true) {
-    TRI_doc_mptr_t const* mptr = idx->lookupSequential(this, position, total);
-
-    if (mptr == nullptr) {
-      break;
-    }
-
-    docs.emplace_back(mptr);
-  }
-
-  this->unlock(trxCollection, TRI_TRANSACTION_READ);
-  return TRI_ERROR_NO_ERROR;
-}

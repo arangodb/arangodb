@@ -156,7 +156,7 @@ bool RestDocumentHandler::createDocument() {
   TRI_voc_cid_t const cid = trx.cid();
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.insert(&mptr, body, waitForSync, nullptr);
+  res = trx.insert(trx.trxCollection(), &mptr, body, nullptr, waitForSync);
   res = trx.finish(res);
 
   // .............................................................................
@@ -289,7 +289,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
   TRI_doc_mptr_copy_t mptr;
 
-  res = trx.document(&mptr, key);
+  res = trx.document(trx.trxCollection(), &mptr, key);
 
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
@@ -420,7 +420,7 @@ bool RestDocumentHandler::readAllDocuments() {
 
   TRI_voc_cid_t const cid = trx.cid();
 
-  res = trx.all(ids);
+  res = trx.all(trx.trxCollection(), ids, true);
 
   TRI_col_type_e type = trx.documentCollection()->_info.type();
 
@@ -651,7 +651,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     trx.lockWrite();
 
     // do not lock again
-    res = trx.document(&oldDocument, key);
+    res = trx.document(trx.trxCollection(), &oldDocument, key);
+
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
@@ -707,8 +708,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
 
     // do not acquire an extra lock
-    res = trx.update(key, &mptr, patchedJson, policy, waitForSync,
-                     revision, &rid);
+    res = trx.update(trx.trxCollection(), key, 0, &mptr, patchedJson, policy,
+                     revision, &rid, waitForSync);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   } else {
     // replacing an existing document, using a lock
@@ -721,7 +722,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       // do not lock again
       trx.lockWrite();
 
-      res = trx.document(&oldDocument, key);
+      res = trx.document(trx.trxCollection(), &oldDocument, key);
       if (res != TRI_ERROR_NO_ERROR) {
         trx.abort();
         generateTransactionError(collectionName, res,
@@ -763,8 +764,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
     std::unique_ptr<TRI_json_t> json(
         arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-    res = trx.update(key, &mptr, json.get(), policy, waitForSync,
-                     revision, &rid);
+    res = trx.update(trx.trxCollection(), key, 0, &mptr, json.get(), policy,
+                     revision, &rid, waitForSync);
   }
 
   res = trx.finish(res);
@@ -891,7 +892,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   TRI_voc_rid_t rid = 0;
-  res = trx.remove(key, policy, waitForSync, revision, &rid);
+  res = trx.remove(trx.trxCollection(), key, 0, policy, revision, &rid, waitForSync);
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();

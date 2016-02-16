@@ -1506,7 +1506,7 @@ int RestReplicationHandler::processRestoreCollection(
           return res;
         }
 
-        res = trx.truncate(false);
+        res = trx.truncate(trx.trxCollection(), false);
         res = trx.finish(res);
 
         return res;

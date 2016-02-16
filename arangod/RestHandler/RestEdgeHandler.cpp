@@ -195,7 +195,7 @@ bool RestEdgeHandler::createDocument() {
     // will hold the result
     TRI_doc_mptr_copy_t mptr;
 
-    res = trx.insert(&mptr, body, waitForSync, &edge);
+    res = trx.insert(trx.trxCollection(), &mptr, body, &edge, waitForSync);
     res = trx.finish(res);
 
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);

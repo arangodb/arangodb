@@ -984,7 +984,7 @@ int InitialSyncer::handleCollectionSync(
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    res = trx.truncate(false);
+    res = trx.truncate(trx.trxCollection(), false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "unable to truncate collection '" + collectionName + "': " +
@@ -1801,7 +1801,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          res = trx.truncate(false);
+          res = trx.truncate(trx.trxCollection(), false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             errorMsg = "unable to truncate " + collectionMsg + ": " +

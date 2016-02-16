@@ -78,7 +78,7 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.document(&mptr, name);
+  res = trx.document(trx.trxCollection(), &mptr, name);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s' in _graphs",
                                   name.c_str());

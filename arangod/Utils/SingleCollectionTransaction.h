@@ -182,58 +182,6 @@ class SingleCollectionTransaction : public Transaction {
     return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read any (random) document within a transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int any(TRI_doc_mptr_copy_t* mptr) {
-    TRI_ASSERT(mptr != nullptr);
-    return Transaction::any(this->trxCollection(), mptr);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a document within a transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int document(TRI_doc_mptr_copy_t* mptr, std::string const& key) {
-    TRI_ASSERT(mptr != nullptr);
-    return Transaction::document(this->trxCollection(), mptr, key);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all document ids within a transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int all(std::vector<std::string>& ids) {
-    return Transaction::all(this->trxCollection(), ids, true);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a document within a transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readPositional(std::vector<TRI_doc_mptr_copy_t>& documents,
-                     int64_t offset, int64_t count) {
-    return this->readOrdered(this->trxCollection(), documents, offset, count);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read documents within a transaction, using skip and limit
-  //////////////////////////////////////////////////////////////////////////////
-
-  int read(std::vector<TRI_doc_mptr_copy_t>& docs, int64_t skip, uint64_t limit,
-           uint64_t& total) {
-    return this->readSlice(this->trxCollection(), docs, skip, limit, total);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all documents within a transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int read(std::vector<TRI_doc_mptr_t const*>& docs) {
-    return this->readSlice(this->trxCollection(), docs);
-  }
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id
