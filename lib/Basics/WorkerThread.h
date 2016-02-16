@@ -30,7 +30,7 @@
 namespace arangodb {
 namespace basics {
 
-class WorkerThread : public arangodb::basics::Thread {
+class WorkerThread : public Thread {
  public:
   WorkerThread(WorkerThread const&) = delete;
   WorkerThread operator=(WorkerThread const&) = delete;

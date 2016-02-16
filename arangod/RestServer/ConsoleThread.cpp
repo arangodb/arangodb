@@ -64,9 +64,7 @@ ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
       _applicationV8(applicationV8),
       _context(nullptr),
       _vocbase(vocbase),
-      _done(0),
       _userAborted(false) {
-  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +89,6 @@ void ConsoleThread::run() {
   } catch (char const*) {
   } catch (...) {
     _applicationV8->exitContext(_context);
-    _done = true;
     _applicationServer->beginShutdown();
 
     throw;
@@ -99,7 +96,6 @@ void ConsoleThread::run() {
 
   // exit context
   _applicationV8->exitContext(_context);
-  _done = true;
   _applicationServer->beginShutdown();
 }
 
@@ -174,7 +170,7 @@ start_pretty_print();
       serverConsole = &console;
     }
 
-    while (!_userAborted) {
+    while (!isStopping() && !_userAborted.load()) {
       if (nrCommands >= gcInterval) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
@@ -189,10 +185,10 @@ start_pretty_print();
       }
 
       if (eof) {
-        _userAborted = true;
+        _userAborted.store(true);
       }
 
-      if (_userAborted) {
+      if (_userAborted.load()) {
         break;
       }
 
@@ -212,7 +208,7 @@ start_pretty_print();
                                     TRI_V8_STRING(input.c_str()), name, true);
         console.setExecutingCommand(false);
 
-        if (_userAborted) {
+        if (_userAborted.load()) {
           std::cout << "command aborted" << std::endl;
         } else if (tryCatch.HasCaught()) {
           if (!tryCatch.CanContinue() || tryCatch.HasTerminated()) {

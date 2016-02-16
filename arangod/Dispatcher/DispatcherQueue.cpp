@@ -89,7 +89,8 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
-    LOG(TRACE) << "cannot add job " << (void*)job.get() << " to queue " << (void*)this << ". queue is full";
+    LOG(TRACE) << "cannot add job " << (void*)job.get() << " to queue "
+               << (void*)this << ". queue is full";
     return TRI_ERROR_QUEUE_FULL;
   }
 
@@ -225,7 +226,8 @@ void DispatcherQueue::beginShutdown() {
     return;
   }
 
-  LOG(DEBUG) << "beginning shutdown sequence of dispatcher queue '" << _id << "'";
+  LOG(DEBUG) << "beginning shutdown sequence of dispatcher queue '" << _id
+             << "'";
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
@@ -283,7 +285,9 @@ void DispatcherQueue::beginShutdown() {
 
   // wait for threads to shutdown
   for (size_t count = 0; count < MAX_TRIES; ++count) {
-    LOG(TRACE) << "shutdown sequence dispatcher queue '" << _id << "', status: " << _nrRunning.load() << " running threads, " << _nrWaiting.load() << " waiting threads";
+    LOG(TRACE) << "shutdown sequence dispatcher queue '" << _id
+               << "', status: " << _nrRunning.load() << " running threads, "
+               << _nrWaiting.load() << " waiting threads";
 
     if (0 == _nrRunning + _nrWaiting) {
       break;
@@ -297,7 +301,9 @@ void DispatcherQueue::beginShutdown() {
     usleep(10 * 1000);
   }
 
-  LOG(DEBUG) << "shutdown sequence dispatcher queue '" << _id << "', status: " << _nrRunning.load() << " running threads, " << _nrWaiting.load() << " waiting threads";
+  LOG(DEBUG) << "shutdown sequence dispatcher queue '" << _id
+             << "', status: " << _nrRunning.load() << " running threads, "
+             << _nrWaiting.load() << " waiting threads";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +318,7 @@ void DispatcherQueue::shutdown() {
     MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     for (auto& it : _startedThreads) {
-      it->stop();
+      it->beginShutdown();
     }
   }
 
@@ -378,7 +384,8 @@ void DispatcherQueue::startQueueThread() {
   bool ok = thread->start();
 
   if (!ok) {
-    LOG(FATAL) << "cannot start dispatcher thread"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "cannot start dispatcher thread";
+    FATAL_ERROR_EXIT();
   } else {
     _lastChanged = TRI_microtime();
   }

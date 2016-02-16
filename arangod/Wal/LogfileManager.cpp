@@ -1985,9 +1985,7 @@ void LogfileManager::stopSynchronizerThread() {
   if (_synchronizerThread != nullptr) {
     LOG(TRACE) << "stopping WAL synchronizer thread";
 
-    _synchronizerThread->stop();
-    _synchronizerThread->shutdown();
-
+    _synchronizerThread->beginShutdown();
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
   }
@@ -2020,9 +2018,7 @@ void LogfileManager::stopAllocatorThread() {
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping WAL allocator thread";
 
-    _allocatorThread->stop();
-    _allocatorThread->shutdown();
-
+    _allocatorThread->beginShutdown();
     delete _allocatorThread;
     _allocatorThread = nullptr;
   }
@@ -2055,9 +2051,7 @@ void LogfileManager::stopCollectorThread() {
   if (_collectorThread != nullptr) {
     LOG(TRACE) << "stopping WAL collector thread";
 
-    _collectorThread->stop();
-    _collectorThread->shutdown();
-
+    _collectorThread->beginShutdown();
     delete _collectorThread;
     _collectorThread = nullptr;
   }
@@ -2090,9 +2084,7 @@ void LogfileManager::stopRemoverThread() {
   if (_removerThread != nullptr) {
     LOG(TRACE) << "stopping WAL remover thread";
 
-    _removerThread->stop();
-    _removerThread->shutdown();
-
+    _removerThread->beginShutdown();
     delete _removerThread;
     _removerThread = nullptr;
   }

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ThreadPool.h"
+
 #include "Basics/WorkerThread.h"
 
 using namespace arangodb::basics;

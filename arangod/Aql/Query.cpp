@@ -612,16 +612,10 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 /// @brief execute an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::execute(QueryRegistry* registry) {
-  std::unique_ptr<CustomWorkStack> work;
+#include <iostream>
 
-  if (_queryString == nullptr) {
-    // we don't have query string... now pass query id to WorkMonitor
-    work.reset(new CustomWorkStack("AQL query id", _id));
-  } else {
-    // we do have a query string... pass query to WorkMonitor
-    work.reset(new CustomWorkStack("AQL query", _queryString, _queryLength));
-  }
+QueryResult Query::execute(QueryRegistry* registry) {
+  std::unique_ptr<AqlWorkStack> work;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -657,6 +651,14 @@ QueryResult Query::execute(QueryRegistry* registry) {
       return res;
     }
     
+    if (_queryString == nullptr) {
+      // we don't have query string... now pass query id to WorkMonitor
+      work.reset(new AqlWorkStack(_id));
+    } else {
+      // we do have a query string... pass query to WorkMonitor
+      work.reset(new AqlWorkStack(_id, _queryString, _queryLength));
+    }
+
     log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
@@ -779,7 +781,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
-  CustomWorkStack work("AQL", _queryString, _queryLength);
+  std::unique_ptr<AqlWorkStack> work;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -810,6 +812,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       return res;
     }
   
+    work.reset(new AqlWorkStack(_id, _queryString, _queryLength));
+
     log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||

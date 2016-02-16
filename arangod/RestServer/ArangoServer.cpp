@@ -1388,12 +1388,12 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   // .............................................................................
 
   console.userAbort();
-  console.stop();
+  console.beginShutdown();
 
   int iterations = 0;
 
-  while (!console.done() && ++iterations < 30) {
-    usleep(100000);  // spin while console is still needed
+  while (console.isRunning() && ++iterations < 30) {
+    usleep(100 * 1000);  // spin while console is still needed
   }
 
   return EXIT_SUCCESS;

@@ -79,4 +79,9 @@ if [ "$TAG" == "1" ];  then
 
   git tag "v$VERSION"
   git push --tags
+
+  echo
+  echo "--------------------------------------------------"
+  echo "Remember to update the VERSION in 'devel' as well."
+  echo "--------------------------------------------------"
 fi

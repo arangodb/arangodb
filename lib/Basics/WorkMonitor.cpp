@@ -37,36 +37,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief singleton
-////////////////////////////////////////////////////////////////////////////////
-
-static WorkMonitor WORK_MONITOR;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current work item
-////////////////////////////////////////////////////////////////////////////////
-
-static thread_local Thread* CURRENT_THREAD = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current work item
-////////////////////////////////////////////////////////////////////////////////
-
-static thread_local WorkDescription* CURRENT_WORK_DESCRIPTION = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief all known threads
-////////////////////////////////////////////////////////////////////////////////
-
-static std::set<Thread*> THREADS;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief guard for THREADS
-////////////////////////////////////////////////////////////////////////////////
-
-static Mutex THREADS_LOCK;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief list of free descriptions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,6 +61,27 @@ static boost::lockfree::queue<uint64_t> WORK_OVERVIEW(128);
 static std::atomic<bool> WORK_MONITOR_STOPPED(true);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief guard for THREADS
+///
+/// The order in this file must be: WORK_DESCRIPTION, THREADS_LOCK, THREADS,
+/// WORK_MONITOR.
+////////////////////////////////////////////////////////////////////////////////
+
+static Mutex THREADS_LOCK;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all known threads
+////////////////////////////////////////////////////////////////////////////////
+
+static std::set<Thread*> THREADS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief singleton
+////////////////////////////////////////////////////////////////////////////////
+
+static WorkMonitor WORK_MONITOR;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a description and its resources
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,6 +90,8 @@ static void deleteWorkDescription(WorkDescription* desc, bool stopped) {
     switch (desc->_type) {
       case WorkType::THREAD:
       case WorkType::CUSTOM:
+      case WorkType::AQL_ID:
+      case WorkType::AQL_STRING:
         break;
 
       case WorkType::HANDLER:
@@ -136,14 +129,27 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
       break;
 
     case WorkType::CUSTOM:
-      b->add("type", VPackValue(desc->_customType));
+      b->add("type", VPackValue(desc->_identifier._customType));
       b->add("description", VPackValue(desc->_data.text));
+      break;
+
+    case WorkType::AQL_STRING:
+      b->add("type", VPackValue("AQL query"));
+      b->add("queryId", VPackValue(desc->_identifier._id));
+      b->add("description", VPackValue(desc->_data.text));
+      break;
+
+    case WorkType::AQL_ID:
+      b->add("type", VPackValue("AQL query id"));
+      b->add("queryId", VPackValue(desc->_identifier._id));
       break;
 
     case WorkType::HANDLER:
       WorkMonitor::VPACK_HANDLER(b, desc);
       break;
   }
+
+  b->add("id", VPackValue(desc->_id));
 
   if (desc->_prev != nullptr) {
     b->add("parent", VPackValue(VPackValueType::Object));
@@ -152,10 +158,14 @@ static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   }
 }
 
-WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
-    : _type(type), _destroy(true), _prev(prev) {}
+namespace {
+std::atomic_uint_fast64_t NEXT_DESC_ID(static_cast<uint64_t>(0));
+}
 
-WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
+WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
+    : _type(type), _prev(prev), _id(0), _destroy(true) {}
+
+WorkMonitor::WorkMonitor() : Thread("WorkMonitor") {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an empty WorkDescription
@@ -163,9 +173,9 @@ WorkMonitor::WorkMonitor() : Thread("WorkMonitor"), _stopping(false) {}
 
 WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
   WorkDescription* desc = nullptr;
-  WorkDescription* prev = (CURRENT_THREAD == nullptr)
-                              ? CURRENT_WORK_DESCRIPTION
-                              : CURRENT_THREAD->workDescription();
+  WorkDescription* prev = (Thread::CURRENT_THREAD == nullptr)
+                              ? Thread::CURRENT_WORK_DESCRIPTION
+                              : Thread::CURRENT_THREAD->workDescription();
 
   if (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
     desc->_type = type;
@@ -175,6 +185,7 @@ WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
     desc = new WorkDescription(type, prev);
   }
 
+  desc->_id = NEXT_DESC_ID.fetch_add(1, std::memory_order_seq_cst);
   desc->_data.handler = nullptr;
 
   return desc;
@@ -185,10 +196,10 @@ WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
-  if (CURRENT_THREAD == nullptr) {
-    CURRENT_WORK_DESCRIPTION = desc;
+  if (Thread::CURRENT_THREAD == nullptr) {
+    Thread::CURRENT_WORK_DESCRIPTION = desc;
   } else {
-    CURRENT_THREAD->setWorkDescription(desc);
+    Thread::CURRENT_THREAD->setWorkDescription(desc);
   }
 }
 
@@ -197,12 +208,12 @@ void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 WorkDescription* WorkMonitor::deactivateWorkDescription() {
-  if (CURRENT_THREAD == nullptr) {
-    WorkDescription* desc = CURRENT_WORK_DESCRIPTION;
-    CURRENT_WORK_DESCRIPTION = desc->_prev;
+  if (Thread::CURRENT_THREAD == nullptr) {
+    WorkDescription* desc = Thread::CURRENT_WORK_DESCRIPTION;
+    Thread::CURRENT_WORK_DESCRIPTION = desc->_prev;
     return desc;
   } else {
-    return CURRENT_THREAD->setPrevWorkDescription();
+    return Thread::CURRENT_THREAD->setPrevWorkDescription();
   }
 }
 
@@ -224,8 +235,8 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
 
 void WorkMonitor::pushThread(Thread* thread) {
   TRI_ASSERT(thread != nullptr);
-  TRI_ASSERT(CURRENT_THREAD == nullptr);
-  CURRENT_THREAD = thread;
+  TRI_ASSERT(Thread::CURRENT_THREAD == nullptr);
+  Thread::CURRENT_THREAD = thread;
 
   try {
     WorkDescription* desc = createWorkDescription(WorkType::THREAD);
@@ -238,7 +249,7 @@ void WorkMonitor::pushThread(Thread* thread) {
       THREADS.insert(thread);
     }
   } catch (...) {
-    CURRENT_THREAD = nullptr;
+    Thread::CURRENT_THREAD = nullptr;
     throw;
   }
 }
@@ -254,7 +265,8 @@ void WorkMonitor::popThread(Thread* thread) {
   TRI_ASSERT(desc->_type == WorkType::THREAD);
   TRI_ASSERT(desc->_data.thread == thread);
 
-  CURRENT_THREAD = nullptr;
+  Thread::CURRENT_THREAD = nullptr;
+
   try {
     freeWorkDescription(desc);
 
@@ -262,6 +274,62 @@ void WorkMonitor::popThread(Thread* thread) {
       MutexLocker guard(&THREADS_LOCK);
       THREADS.erase(thread);
     }
+  } catch (...) {
+    // just to prevent throwing exceptions from here, as this method
+    // will be called in destructors...
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::pushAql(uint64_t queryId, char const* text, size_t length) {
+  TRI_ASSERT(type != nullptr);
+  TRI_ASSERT(text != nullptr);
+
+  WorkDescription* desc = createWorkDescription(WorkType::AQL_STRING);
+  TRI_ASSERT(desc != nullptr);
+
+  desc->_identifier._id = queryId;
+
+  if (sizeof(desc->_data.text) - 1 < length) {
+    length = sizeof(desc->_data.text) - 1;
+  }
+
+  TRI_CopyString(desc->_data.text, text, length);
+
+  activateWorkDescription(desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::pushAql(uint64_t queryId) {
+  TRI_ASSERT(type != nullptr);
+
+  WorkDescription* desc = createWorkDescription(WorkType::AQL_ID);
+  TRI_ASSERT(desc != nullptr);
+
+  desc->_identifier._id = queryId;
+
+  activateWorkDescription(desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pops a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::popAql() {
+  WorkDescription* desc = deactivateWorkDescription();
+
+  TRI_ASSERT(desc != nullptr);
+  TRI_ASSERT(desc->_type == WorkType::AQL_STRING ||
+             desc->_type == WorkType::AQL_ID);
+
+  try {
+    freeWorkDescription(desc);
   } catch (...) {
     // just to prevent throwing exceptions from here, as this method
     // will be called in destructors...
@@ -280,11 +348,13 @@ void WorkMonitor::pushCustom(char const* type, char const* text,
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
   TRI_ASSERT(desc != nullptr);
 
-  TRI_CopyString(desc->_customType, type, sizeof(desc->_customType) - 1);
+  TRI_CopyString(desc->_identifier._customType, type,
+                 sizeof(desc->_identifier._customType) - 1);
 
   if (sizeof(desc->_data.text) - 1 < length) {
     length = sizeof(desc->_data.text) - 1;
   }
+
   TRI_CopyString(desc->_data.text, text, length);
 
   activateWorkDescription(desc);
@@ -300,7 +370,8 @@ void WorkMonitor::pushCustom(char const* type, uint64_t id) {
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
   TRI_ASSERT(desc != nullptr);
 
-  TRI_CopyString(desc->_customType, type, sizeof(desc->_customType) - 1);
+  TRI_CopyString(desc->_identifier._customType, type,
+                 sizeof(desc->_identifier._customType) - 1);
 
   std::string idString(std::to_string(id));
   TRI_CopyString(desc->_data.text, idString.c_str(), idString.size());
@@ -344,7 +415,7 @@ void WorkMonitor::run() {
   uint32_t s = minSleep;
 
   // clean old entries and create summary if requested
-  while (!_stopping) {
+  while (!isStopping()) {
     try {
       bool found = false;
       WorkDescription* desc;
@@ -429,6 +500,14 @@ void WorkMonitor::run() {
   }
 }
 
+AqlWorkStack::AqlWorkStack(uint64_t queryId, char const* text, size_t length) {
+  WorkMonitor::pushAql(queryId, text, length);
+}
+
+AqlWorkStack::AqlWorkStack(uint64_t queryId) { WorkMonitor::pushAql(queryId); }
+
+AqlWorkStack::~AqlWorkStack() { WorkMonitor::popAql(); }
+
 CustomWorkStack::CustomWorkStack(char const* type, char const* text,
                                  size_t length) {
   WorkMonitor::pushCustom(type, text, length);
@@ -453,7 +532,4 @@ void arangodb::InitializeWorkMonitor() {
 /// @brief stops the work monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ShutdownWorkMonitor() {
-  WORK_MONITOR.shutdown();
-  WORK_MONITOR.join();
-}
+void arangodb::ShutdownWorkMonitor() { WORK_MONITOR.beginShutdown(); }
