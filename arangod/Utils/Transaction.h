@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
@@ -47,14 +48,6 @@
 #include <velocypack/Options.h>
 
 namespace arangodb {
-
-struct OperationOptions {
-  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
-  bool waitForSync;
-  bool keepNull;
-  bool mergeObjects;
-  bool silent;
-};
 
 struct OperationResult {
   int code;
@@ -423,13 +416,74 @@ class Transaction {
   }
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return one or multiple documents from a collection
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult document(std::string const& collectionName,
+                           VPackSlice const& value,
+                           OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief create one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
   /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult insert(std::string const& collectionName,
                          VPackSlice const& value,
                          OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update/patch one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult update(std::string const& collectionName,
+                         VPackSlice const& oldValue,
+                         VPackSlice const& updateValue,
+                         OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief replace one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult replace(std::string const& collectionName,
+                          VPackSlice const& oldValue,
+                          VPackSlice const& updateValue,
+                          OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult remove(std::string const& collectionName,
+                         VPackSlice const& value,
+                         OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief truncate all documents in a collection
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult truncate(std::string const& collectionName,
+                           OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief count the number of documents in a collection
+  /// TODO: implement this
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t count(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using shaped json
