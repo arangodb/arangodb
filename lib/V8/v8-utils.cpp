@@ -3810,12 +3810,6 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       LOG(ERR) << "!" << l.c_str();
     }
-
-    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
-
-    if (*stacktrace && stacktrace.length() > 0) {
-      LOG(ERR) << "stacktrace: " << *stacktrace;
-    }
   }
 }
 

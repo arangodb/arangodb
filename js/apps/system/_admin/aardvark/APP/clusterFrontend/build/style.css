@@ -5497,6 +5497,9 @@ div.headerBar {
 .select2-drop-active {
   z-index: 9999999; }
 
+.modal-tabbar {
+  border-bottom: 1px solid #000; }
+
 .modal-body {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
@@ -5622,13 +5625,15 @@ div.headerBar {
   .modal-body select {
     width: 398px; }
   .modal-body .collectionTh {
-    height: 55px; }
+    height: 50px; }
   .modal-body .tab-content {
     min-height: 200px; }
     .modal-body .tab-content .tab-pane {
       border-top: 1px solid #666 !important;
       margin-left: 0 !important;
       padding-top: 10px; }
+    .modal-body .tab-content .tab-pane-modal {
+      border-top: none !important; }
     .modal-body .tab-content #appstore {
       max-height: 290px; }
   .modal-body .errorMessage {

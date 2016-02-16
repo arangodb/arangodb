@@ -401,32 +401,35 @@ function checkManifest(filename, manifest) {
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateManifestFile(file) {
+function validateManifestFile(filename) {
   var mf, msg;
-  if (!fs.exists(file)) {
-    msg = `Cannot find manifest file "${file}"`;
-    console.errorLines(msg);
+  if (!fs.exists(filename)) {
+    msg = `Cannot find manifest file "${filename}"`;
     throwFileNotFound(msg);
   }
   try {
-    mf = JSON.parse(fs.read(file));
-  } catch (err) {
-    let details = String(err.stack || err);
-    msg = `Cannot parse app manifest "${file}": ${details}`;
-    console.errorLines(msg);
-    throw new ArangoError({
+    mf = JSON.parse(fs.read(filename));
+  } catch (e) {
+    const error = new ArangoError({
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
-      errorMessage: msg
+      errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
+      + '\nFile: ' + filename
+      + '\nCause: ' + e
     });
+    error.cause = e;
+    throw error;
   }
   try {
-    checkManifest(file, mf);
-  } catch (err) {
-    console.errorLines(`Manifest file "${file}" is invalid:\n${err.errorMessage}`);
-    if (err.stack) {
-      console.errorLines(err.stack);
-    }
-    throw err;
+    checkManifest(filename, mf);
+  } catch (e) {
+    const error = new ArangoError({
+      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+      errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+      + '\nFile: ' + filename
+      + '\nCause: ' + e
+    });
+    error.cause = e;
+    throw error;
   }
   return mf;
 }
@@ -485,24 +488,14 @@ function computeAppPath(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAppScript(scriptName, app, argv) {
-  var readableName = utils.getReadableName(scriptName);
   var scripts = app.manifest.scripts;
-
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
-    try {
-      return app.run(scripts[scriptName], {
-        appContext: {
-          argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
-        }
-      });
-    } catch (e) {
-      if (!(e.cause || e).statusCode) {
-        let details = String((e.cause || e).stack || e.cause || e);
-        console.errorLines(`Running script "${readableName}" not possible for mount "${app.mount}":\n${details}`);
+    return app.run(scripts[scriptName], {
+      appContext: {
+        argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
       }
-      throw e;
-    }
+    });
   }
 }
 
@@ -615,10 +608,10 @@ function installAppFromGenerator(targetPath, options) {
     invalidOptions.push('options.collectionNames has to be an array.');
   }
   if (invalidOptions.length > 0) {
-    console.log(invalidOptions);
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
-      errorMessage: JSON.stringify(invalidOptions, undefined, 2)
+      errorMessage: errors.ERROR_INVALID_FOXX_OPTIONS.message
+      + '\nOptions: ' + JSON.stringify(invalidOptions, undefined, 2)
     });
   }
   options.path = targetPath;
@@ -973,8 +966,6 @@ function _validateApp(appInfo) {
       routeApp(tmp, true);
       exportApp(tmp);
     }
-  } catch (e) {
-    throw e;
   } finally {
     fs.removeDirectoryRecursive(tempPath, true);
   }
@@ -1039,20 +1030,6 @@ function _install(appInfo, mount, options, runSetup) {
       }
     } catch (err) {
       console.errorLines(err.stack);
-    }
-    if (e instanceof ArangoError) {
-      if (e.errorNum === errors.ERROR_MODULE_SYNTAX_ERROR.code) {
-        throw _.extend(new ArangoError({
-          errorNum: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
-          errorMessage: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
-        }), {stack: e.stack});
-      }
-      if (e.errorNum === errors.ERROR_MODULE_FAILURE.code) {
-        throw _.extend(new ArangoError({
-          errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-          errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
-        }), {stack: e.stack});
-      }
     }
     throw e;
   }
@@ -1142,12 +1119,6 @@ function _uninstall(mount, options) {
   }
   var collection = utils.getStorage();
   var targetPath = computeAppPath(mount, true);
-  if (!fs.exists(targetPath) && !options.force) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_NO_FOXX_FOUND.code,
-      errorMessage: errors.ERROR_NO_FOXX_FOUND.message
-    });
-  }
   delete appCache[dbname][mount];
   if (!options.__clusterDistribution) {
     try {

@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global window, $, document */
+/*global window, $, document, _ */
 
 (function() {
   "use strict";
@@ -55,7 +55,7 @@
     },
 
     setCheckboxStatus: function(id) {
-      $.each($(id).find('ul').find('li'), function(key, element) {
+      _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
            if ($(element).find('input').attr('checked')) {
              if ($(element).find('i').hasClass('css-round-label')) {
@@ -281,6 +281,149 @@
       $('.arangoFrame .outerDiv .fa-times').remove();
       $('.arangoFrame').hide();
     },
+
+    addAardvarkJob: function (object, callback) {
+      $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_admin/aardvark/job",
+          data: JSON.stringify(object),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAardvarkJob: function (id, callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job/" + encodeURIComponent(id),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAllAardvarkJobs: function (callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    getAardvarkJobs: function (callback) {
+      var result;
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+            result = data;
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+      return result;
+    },
+
+    getPendingJobs: function() {
+      var result; 
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_api/job/pending",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            result = data;
+          },
+          error: function(data) {
+            console.log("pending jobs error: " + data);
+          }
+      });
+      return result;
+    },
+
+    syncAndReturnUninishedAardvarkJobs: function(type) {
+
+      var AaJobs = this.getAardvarkJobs(),
+      pendingJobs = this.getPendingJobs(),
+      array = [];
+
+      if (pendingJobs.length > 0) {
+        _.each(AaJobs, function(aardvark) {
+          if (aardvark.type === type || aardvark.type === undefined) {
+
+             var found = false; 
+            _.each(pendingJobs, function(pending) {
+              if (aardvark.id === pending) {
+                found = true;
+              } 
+            });
+
+            if (found) {
+              this.deleteAardvarkJob(aardvark.id);
+            }
+            else {
+              array.push({
+                collection: aardvark.collection,
+                id: aardvark.id,
+                type: aardvark.type 
+              });
+            }
+          }
+        });
+      }
+      else {
+        this.deleteAllAardvarkJobs(); 
+      }
+
+      return array;
+    }, 
 
     getRandomToken: function () {
       return Math.round(new Date().getTime());
@@ -1512,7 +1655,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
             },
             error: function(data) {
               window.progressView.hide();
-              arangoHelper.arangoNotification(
+              arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
               );
             }
@@ -1520,7 +1663,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         },
         error: function(data) {
           window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not move selected documents.");
+          arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
       });
     },
@@ -1603,7 +1746,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         },
         error: function(data) {
           window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not fetch requested documents.");
+          arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
         }
       });
     },
@@ -2833,13 +2976,21 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
     createModalHotkeys: function() {
       //submit modal
+      $(this.el).unbind('keydown');
+      $(this.el).unbind('return');
       $(this.el).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("input", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body input').unbind('keydown');
+      $('.modal-body input').unbind('return');
+      $(".modal-body input", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("select", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body select').unbind('keydown');
+      $('.modal-body select').unbind('return');
+      $(".modal-body select", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },
@@ -2972,7 +3123,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm) {
+    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm, tabBar) {
       var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -2999,7 +3150,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
         title: title,
         buttons: buttons,
         hideFooter: this.hideFooter,
-        confirm: confirmMsg
+        confirm: confirmMsg,
+        tabBar: tabBar
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
@@ -3015,16 +3167,34 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }
         $("#modalButton" + i).bind("click", b.callback);
       });
+
       $(this.confirm.no).bind("click", function() {
         $(self.confirm.list).css("display", "none");
       });
 
-      var template = templateEngine.createTemplate(templateName);
-      $(".createModalDialog .modal-body").html(template.render({
-        content: tableContent,
-        advancedContent: advancedContent,
-        info: extraInfo
-      }));
+      var template;
+      if (typeof templateName === 'string') {
+        template = templateEngine.createTemplate(templateName);
+        $(".createModalDialog .modal-body").html(template.render({
+          content: tableContent,
+          advancedContent: advancedContent,
+          info: extraInfo
+        }));
+      }
+      else {
+        var counter = 0;
+        _.each(templateName, function(v) {
+          template = templateEngine.createTemplate(v);
+          $(".createModalDialog .modal-body .tab-content #" + tabBar[counter]).html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+
+          counter++;
+        });
+      }
+
       $('.createModalDialog .modalTooltips').tooltip({
         position: {
           my: "left top",
