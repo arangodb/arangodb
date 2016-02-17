@@ -23,6 +23,8 @@
 
 #include "Aql/ModificationOptions.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
@@ -53,4 +55,14 @@ void ModificationOptions::toJson(arangodb::basics::Json& json,
       "readCompleteInput", Json(readCompleteInput));
 
   json("modificationFlags", flags);
+}
+
+void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+  builder.add("ignoreErrors", VPackValue(ignoreErrors));
+  builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("nullMeansRemove", VPackValue(nullMeansRemove));
+  builder.add("mergeObjects", VPackValue(mergeObjects));
+  builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
+  builder.add("readCompleteInput", VPackValue(readCompleteInput));
 }

@@ -3272,7 +3272,10 @@ function ahuacatlFunctionsTestSuite () {
     testAttributes1 : function () {
       var expected = [ [ "foo", "bar", "meow", "_id" ], [ "foo" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u)");
-      assertEqual(expected, actual);
+      // Order is not guaranteed order here in-place
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3282,7 +3285,10 @@ function ahuacatlFunctionsTestSuite () {
     testAttributes2 : function () {
       var expected = [ [ "foo", "bar", "meow" ], [ "foo" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN ATTRIBUTES(u, true)");
-      assertEqual(expected, actual);
+      // Order is not guaranteed order here in-place
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3312,7 +3318,10 @@ function ahuacatlFunctionsTestSuite () {
     testAttributesCxx1 : function () {
       var expected = [ [ "foo", "bar", "meow", "_id" ], [ "foo" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u))");
-      assertEqual(expected, actual);
+      // Order is not guaranteed order here in-place
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3322,7 +3331,10 @@ function ahuacatlFunctionsTestSuite () {
     testAttributesCxx2 : function () {
       var expected = [ [ "foo", "bar", "meow" ], [ "foo" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(ATTRIBUTES(u, true))");
-      assertEqual(expected, actual);
+      // Order is not guaranteed order here in-place
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3352,7 +3364,9 @@ function ahuacatlFunctionsTestSuite () {
     testValues1 : function () {
       var expected = [ [ "bar", "baz", true, "123/456" ], [ "bar" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN VALUES(u)");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3362,7 +3376,9 @@ function ahuacatlFunctionsTestSuite () {
     testValues2 : function () {
       var expected = [ [ "bar", "baz", true ], [ "bar" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN VALUES(u, true)");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3372,7 +3388,8 @@ function ahuacatlFunctionsTestSuite () {
     testValues3 : function () {
       var expected = [ [ "test/1123", "test/abc", "1234", "test", "", [ 1, 2, 3, 4, [ true ] ], null, { d: 42, e: null, f: [ "test!" ] } ] ];
       var actual = getQueryResults("RETURN VALUES({ _from: \"test/1123\", _to: \"test/abc\", _rev: \"1234\", _key: \"test\", void: \"\", a: [ 1, 2, 3, 4, [ true ] ], b : null, c: { d: 42, e: null, f: [ \"test!\" ] } })");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3382,7 +3399,9 @@ function ahuacatlFunctionsTestSuite () {
     testValuesCxx1 : function () {
       var expected = [ [ "bar", "baz", true, "123/456" ], [ "bar" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(VALUES(u))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3392,7 +3411,9 @@ function ahuacatlFunctionsTestSuite () {
     testValuesCxx2 : function () {
       var expected = [ [ "bar", "baz", true ], [ "bar" ] ];
       var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN NOOPT(VALUES(u, true))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
+      assertEqual(actual[1].sort(), expected[1].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3402,7 +3423,8 @@ function ahuacatlFunctionsTestSuite () {
     testValuesCxx3 : function () {
       var expected = [ [ "test/1123", "test/abc", "1234", "test", "", [ 1, 2, 3, 4, [ true ] ], null, { d: 42, e: null, f: [ "test!" ] } ] ];
       var actual = getQueryResults("RETURN NOOPT(VALUES({ _from: \"test/1123\", _to: \"test/abc\", _rev: \"1234\", _key: \"test\", void: \"\", a: [ 1, 2, 3, 4, [ true ] ], b : null, c: { d: 42, e: null, f: [ \"test!\" ] } }))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual[0].sort(), expected[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

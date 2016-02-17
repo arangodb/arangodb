@@ -689,8 +689,9 @@ static void ModifyVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[1]));
-  if (!TRI_IsObjectJson(json.get())) {
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
+  if (res != TRI_ERROR_NO_ERROR || !builder.slice().isObject()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -702,7 +703,8 @@ static void ModifyVocbaseColCoordinator(
 
   error = arangodb::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
-      mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
+      mergeObjects, builder.slice(), headers, responseCode, resultHeaders,
+      resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(error);
@@ -710,29 +712,24 @@ static void ModifyVocbaseColCoordinator(
 
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
-  json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
+  std::shared_ptr<VPackBuilder> resBuilder = VPackParser::fromJson(resultBody);
+  VPackSlice resSlice = resBuilder->slice();
   if (responseCode >= arangodb::rest::HttpResponse::BAD) {
-    if (!TRI_IsObjectJson(json.get())) {
+    if (!resSlice.isObject()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "errorNum");
-    if (TRI_IsNumberJson(subjson)) {
-      errorNum = static_cast<int>(subjson->_value._number);
-    }
-    std::string errorMessage;
-    subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
-    if (TRI_IsStringJson(subjson)) {
-      errorMessage = std::string(subjson->_value._string.data,
-                                 subjson->_value._string.length - 1);
-    }
+    int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        resSlice, "errorNum", 0);
+    std::string errorMessage =
+        arangodb::basics::VelocyPackHelper::getStringValue(resSlice,
+                                                           "errorMessage", "");
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
 
   if (silent) {
     TRI_V8_RETURN_TRUE();
   } else {
-    v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json.get());
+    v8::Handle<v8::Value> ret = TRI_VPackToV8(isolate, resSlice);
     TRI_V8_RETURN(ret);
   }
 }
@@ -872,40 +869,40 @@ static void ReplaceVocbaseCol(bool useCollection,
     // compare attributes in shardKeys
     std::string const cidString = StringUtils::itoa(document->_info.planId());
 
-    TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+    VPackBuilder builder;
+    res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-    if (json == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     res = trx.read(&mptr, key.get());
 
     if (res != TRI_ERROR_NO_ERROR ||
         mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped,
                                    mptr.getDataPtr());  // PROTECTED by trx here
-    TRI_json_t* old = TRI_JsonShapedJson(document->getShaper(),
-                                         &shaped);  // PROTECTED by trx here
+    std::shared_ptr<VPackBuilder> oldBuilder = TRI_VelocyPackShapedJson(
+        document->getShaper(), &shaped);  // PROTECTED by trx here
 
-    if (old == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (oldBuilder == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    if (shardKeysChanged(col->_dbName, cidString, old, json, false)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    VPackSlice const old = oldBuilder->slice();
+
+    if (old.isNone()) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+
+    if (shardKeysChanged(col->_dbName, cidString, old, builder.slice(), false)) {
       TRI_V8_THROW_EXCEPTION(
           TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(
@@ -1339,9 +1336,17 @@ static void UpdateVocbaseCol(bool useCollection,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
+  VPackBuilder builder;
+  {
+    int res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-  if (json == nullptr) {
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+  VPackSlice slice = builder.slice();
+
+  if (slice.isNone()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
   }
 
@@ -1350,7 +1355,6 @@ static void UpdateVocbaseCol(bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -1362,27 +1366,27 @@ static void UpdateVocbaseCol(bool useCollection,
   res = trx.read(&mptr, key.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_memory_zone_t* zone =
-      document->getShaper()->memoryZone();  // PROTECTED by trx here
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped,
                                  mptr.getDataPtr());  // PROTECTED by trx here
-  TRI_json_t* old = TRI_JsonShapedJson(document->getShaper(),
-                                       &shaped);  // PROTECTED by trx here
+  std::shared_ptr<VPackBuilder> oldBuilder =
+      TRI_VelocyPackShapedJson(document->getShaper(),
+                               &shaped);  // PROTECTED by trx here
+  if (oldBuilder == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
 
-  if (old == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  VPackSlice old = oldBuilder->slice();
+  if (old.isNone()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1390,31 +1394,24 @@ static void UpdateVocbaseCol(bool useCollection,
     // compare attributes in shardKeys
     std::string const cidString = StringUtils::itoa(document->_info.planId());
 
-    if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
-      TRI_FreeJson(document->getShaper()->memoryZone(),
-                   old);  // PROTECTED by trx here
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
+    if (shardKeysChanged(col->_dbName, cidString, old, slice, true)) {
       TRI_V8_THROW_EXCEPTION(
           TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
 
-  TRI_json_t* patchedJson = TRI_MergeJson(
-      TRI_UNKNOWN_MEM_ZONE, old, json, !options.keepNull, options.mergeObjects);
-  TRI_FreeJson(zone, old);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  VPackBuilder patchedBuilder = arangodb::basics::VelocyPackHelper::merge(
+      old, slice, !options.keepNull, options.mergeObjects);
 
-  if (patchedJson == nullptr) {
+  VPackSlice patchedSlice = patchedBuilder.slice();
+  if (patchedSlice.isNone()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  res = trx.updateDocument(key.get(), &mptr, patchedJson, policy,
+  res = trx.updateDocument(key.get(), &mptr, patchedSlice, policy,
                            options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

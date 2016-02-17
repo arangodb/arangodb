@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PeriodicTask.h"
-#include "Basics/json.h"
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>

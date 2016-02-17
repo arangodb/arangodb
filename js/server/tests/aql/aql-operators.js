@@ -30,34 +30,32 @@
 
 var jsunity = require("jsunity");
 var aql = require("@arangodb/aql");
+var db = require("internal").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlOperatorsTestSuite () {
-
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-    },
+    setUp: function() {},
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-    },
+    tearDown: function() {},
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.KEYS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.KEYS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testKeys : function () {
+    testKeys: function() {
       assertEqual([ ], aql.KEYS([ ], true));
       assertEqual([ 0, 1, 2 ], aql.KEYS([ 0, 1, 2 ], true));
       assertEqual([ 0, 1, 2 ], aql.KEYS([ 1, 2, 3 ], true));
@@ -88,511 +86,628 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual([ 'a1', 'a10', 'a20', 'a200', 'a21' ], aql.KEYS({ 'a200' : true, 'a21' : true, 'a20' : true, 'a10' : false, 'a1' : null }, true));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_NULL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_NULL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsNullTrue : function () {
-      assertTrue(aql.AQL_IS_NULL(null));
+    testIsNullTrue: function() {
       assertTrue(aql.AQL_IS_NULL(undefined));
       assertTrue(aql.AQL_IS_NULL(NaN));
       assertTrue(aql.AQL_IS_NULL(1.3e308 * 1.3e308));
+      var values = [ null ];
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_NULL(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_NULL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_NULL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_NULL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsNullFalse : function () {
-      assertFalse(aql.AQL_IS_NULL(0));
-      assertFalse(aql.AQL_IS_NULL(1));
-      assertFalse(aql.AQL_IS_NULL(-1));
-      assertFalse(aql.AQL_IS_NULL(0.1));
-      assertFalse(aql.AQL_IS_NULL(-0.1));
-      assertFalse(aql.AQL_IS_NULL(false));
-      assertFalse(aql.AQL_IS_NULL(true));
-      assertFalse(aql.AQL_IS_NULL('abc'));
-      assertFalse(aql.AQL_IS_NULL('null'));
-      assertFalse(aql.AQL_IS_NULL('false'));
-      assertFalse(aql.AQL_IS_NULL('undefined'));
-      assertFalse(aql.AQL_IS_NULL(''));
-      assertFalse(aql.AQL_IS_NULL(' '));
-      assertFalse(aql.AQL_IS_NULL([ ]));
-      assertFalse(aql.AQL_IS_NULL([ 0 ]));
-      assertFalse(aql.AQL_IS_NULL([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_NULL([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_NULL({ }));
-      assertFalse(aql.AQL_IS_NULL({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_NULL({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_NULL({ 'a' : 0, 'b' : 1 }));
+    testIsNullFalse: function() {
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        false,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_NULL(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_NULL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_BOOL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_BOOL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsBoolTrue : function () {
-      assertTrue(aql.AQL_IS_BOOL(false));
-      assertTrue(aql.AQL_IS_BOOL(true));
+    testIsBoolTrue: function() {
+      var values = [ false, true ];
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_BOOL(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_BOOL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_BOOL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_BOOL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsBoolFalse : function () {
+    testIsBoolFalse: function() {
       assertFalse(aql.AQL_IS_BOOL(undefined));
       assertFalse(aql.AQL_IS_BOOL(NaN));
       assertFalse(aql.AQL_IS_BOOL(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_BOOL(0));
-      assertFalse(aql.AQL_IS_BOOL(1));
-      assertFalse(aql.AQL_IS_BOOL(-1));
-      assertFalse(aql.AQL_IS_BOOL(0.1));
-      assertFalse(aql.AQL_IS_BOOL(-0.1));
-      assertFalse(aql.AQL_IS_BOOL(null));
-      assertFalse(aql.AQL_IS_BOOL('abc'));
-      assertFalse(aql.AQL_IS_BOOL('null'));
-      assertFalse(aql.AQL_IS_BOOL('false'));
-      assertFalse(aql.AQL_IS_BOOL('undefined'));
-      assertFalse(aql.AQL_IS_BOOL(''));
-      assertFalse(aql.AQL_IS_BOOL(' '));
-      assertFalse(aql.AQL_IS_BOOL([ ]));
-      assertFalse(aql.AQL_IS_BOOL([ 0 ]));
-      assertFalse(aql.AQL_IS_BOOL([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_BOOL([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_BOOL([ '' ]));
-      assertFalse(aql.AQL_IS_BOOL([ '0' ]));
-      assertFalse(aql.AQL_IS_BOOL([ '1' ]));
-      assertFalse(aql.AQL_IS_BOOL([ true ]));
-      assertFalse(aql.AQL_IS_BOOL([ false ]));
-      assertFalse(aql.AQL_IS_BOOL({ }));
-      assertFalse(aql.AQL_IS_BOOL({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_BOOL({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_BOOL({ 'a' : 0, 'b' : 1 }));
+
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_BOOL(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_BOOL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_NUMBER function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_NUMBER function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsNumberTrue : function () {
-      assertTrue(aql.AQL_IS_NUMBER(0));
-      assertTrue(aql.AQL_IS_NUMBER(1));
-      assertTrue(aql.AQL_IS_NUMBER(-1));
-      assertTrue(aql.AQL_IS_NUMBER(0.1));
-      assertTrue(aql.AQL_IS_NUMBER(-0.1));
-      assertTrue(aql.AQL_IS_NUMBER(12.5356));
-      assertTrue(aql.AQL_IS_NUMBER(-235.26436));
-      assertTrue(aql.AQL_IS_NUMBER(-23.3e17));
-      assertTrue(aql.AQL_IS_NUMBER(563.44576e19));
+    testIsNumberTrue: function() {
+      var values = [0, 1, -1, 0.1, 12.5356, -235.26436, -23.3e17, 563.44576e19];
+
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_NUMBER(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_NUMBER(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_NUMBER function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_NUMBER function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsNumberFalse : function () {
-      assertFalse(aql.AQL_IS_NUMBER(false));
-      assertFalse(aql.AQL_IS_NUMBER(true));
+    testIsNumberFalse: function() {
       assertFalse(aql.AQL_IS_NUMBER(undefined));
       assertFalse(aql.AQL_IS_NUMBER(NaN));
       assertFalse(aql.AQL_IS_NUMBER(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_NUMBER(null));
-      assertFalse(aql.AQL_IS_NUMBER('abc'));
-      assertFalse(aql.AQL_IS_NUMBER('null'));
-      assertFalse(aql.AQL_IS_NUMBER('false'));
-      assertFalse(aql.AQL_IS_NUMBER('undefined'));
-      assertFalse(aql.AQL_IS_NUMBER(''));
-      assertFalse(aql.AQL_IS_NUMBER(' '));
-      assertFalse(aql.AQL_IS_NUMBER([ ]));
-      assertFalse(aql.AQL_IS_NUMBER([ 0 ]));
-      assertFalse(aql.AQL_IS_NUMBER([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_NUMBER([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_NUMBER([ '' ]));
-      assertFalse(aql.AQL_IS_NUMBER([ '0' ]));
-      assertFalse(aql.AQL_IS_NUMBER([ '1' ]));
-      assertFalse(aql.AQL_IS_NUMBER([ true ]));
-      assertFalse(aql.AQL_IS_NUMBER([ false ]));
-      assertFalse(aql.AQL_IS_NUMBER({ }));
-      assertFalse(aql.AQL_IS_NUMBER({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_NUMBER({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_NUMBER({ 'a' : 0, 'b' : 1 }));
+
+      var values = [
+        false,
+        true,
+        null,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_NUMBER(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_NUMBER(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_STRING function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_STRING function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsStringTrue : function () {
-      assertTrue(aql.AQL_IS_STRING('abc'));
-      assertTrue(aql.AQL_IS_STRING('null'));
-      assertTrue(aql.AQL_IS_STRING('false'));
-      assertTrue(aql.AQL_IS_STRING('undefined'));
-      assertTrue(aql.AQL_IS_STRING(''));
-      assertTrue(aql.AQL_IS_STRING(' '));
+    testIsStringTrue: function() {
+      var values = ["'abc'", "'null'", "'false'", "'undefined'", "''", "' '"];
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_STRING(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_STRING(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_STRING function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_STRING function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsStringFalse : function () {
-      assertFalse(aql.AQL_IS_STRING(false));
-      assertFalse(aql.AQL_IS_STRING(true));
+    testIsStringFalse: function() {
       assertFalse(aql.AQL_IS_STRING(undefined));
       assertFalse(aql.AQL_IS_STRING(NaN));
       assertFalse(aql.AQL_IS_STRING(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_STRING(0));
-      assertFalse(aql.AQL_IS_STRING(1));
-      assertFalse(aql.AQL_IS_STRING(-1));
-      assertFalse(aql.AQL_IS_STRING(0.1));
-      assertFalse(aql.AQL_IS_STRING(-0.1));
-      assertFalse(aql.AQL_IS_STRING(null));
-      assertFalse(aql.AQL_IS_STRING([ ]));
-      assertFalse(aql.AQL_IS_STRING([ 0 ]));
-      assertFalse(aql.AQL_IS_STRING([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_STRING([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_STRING([ '' ]));
-      assertFalse(aql.AQL_IS_STRING([ '0' ]));
-      assertFalse(aql.AQL_IS_STRING([ '1' ]));
-      assertFalse(aql.AQL_IS_STRING([ true ]));
-      assertFalse(aql.AQL_IS_STRING([ false ]));
-      assertFalse(aql.AQL_IS_STRING({ }));
-      assertFalse(aql.AQL_IS_STRING({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_STRING({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_STRING({ 'a' : 0, 'b' : 1 }));
+
+      var values = [
+        false,
+        true,
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_STRING(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_STRING(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_LIST function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_LIST function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsListTrue : function () {
-      assertTrue(aql.AQL_IS_LIST([ ]));
-      assertTrue(aql.AQL_IS_LIST([ 0 ]));
-      assertTrue(aql.AQL_IS_LIST([ 0, 1 ]));
-      assertTrue(aql.AQL_IS_LIST([ 1, 2 ]));
-      assertTrue(aql.AQL_IS_LIST([ '' ]));
-      assertTrue(aql.AQL_IS_LIST([ '0' ]));
-      assertTrue(aql.AQL_IS_LIST([ '1' ]));
-      assertTrue(aql.AQL_IS_LIST([ true ]));
-      assertTrue(aql.AQL_IS_LIST([ false ]));
+    testIsListTrue: function() {
+      var values = [
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+      ];
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_LIST(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_LIST(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_LIST function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_LIST function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsListFalse : function () {
-      assertFalse(aql.AQL_IS_LIST('abc'));
-      assertFalse(aql.AQL_IS_LIST('null'));
-      assertFalse(aql.AQL_IS_LIST('false'));
-      assertFalse(aql.AQL_IS_LIST('undefined'));
-      assertFalse(aql.AQL_IS_LIST(''));
-      assertFalse(aql.AQL_IS_LIST(' '));
-      assertFalse(aql.AQL_IS_LIST(false));
-      assertFalse(aql.AQL_IS_LIST(true));
+    testIsListFalse: function() {
       assertFalse(aql.AQL_IS_LIST(undefined));
       assertFalse(aql.AQL_IS_LIST(NaN));
       assertFalse(aql.AQL_IS_LIST(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_LIST(0));
-      assertFalse(aql.AQL_IS_LIST(1));
-      assertFalse(aql.AQL_IS_LIST(-1));
-      assertFalse(aql.AQL_IS_LIST(0.1));
-      assertFalse(aql.AQL_IS_LIST(-0.1));
-      assertFalse(aql.AQL_IS_LIST(null));
-      assertFalse(aql.AQL_IS_LIST({ }));
-      assertFalse(aql.AQL_IS_LIST({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_LIST({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_LIST({ 'a' : 0, 'b' : 1 }));
+
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        false,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_LIST(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_LIST(${v}))`).next());
+      });
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_ARRAY function
+    ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_ARRAY function
-////////////////////////////////////////////////////////////////////////////////
-
-    testIsArrayTrue : function () {
-      assertTrue(aql.AQL_IS_ARRAY([ ]));
-      assertTrue(aql.AQL_IS_ARRAY([ 0 ]));
-      assertTrue(aql.AQL_IS_ARRAY([ 0, 1 ]));
-      assertTrue(aql.AQL_IS_ARRAY([ 1, 2 ]));
-      assertTrue(aql.AQL_IS_ARRAY([ '' ]));
-      assertTrue(aql.AQL_IS_ARRAY([ '0' ]));
-      assertTrue(aql.AQL_IS_ARRAY([ '1' ]));
-      assertTrue(aql.AQL_IS_ARRAY([ true ]));
-      assertTrue(aql.AQL_IS_ARRAY([ false ]));
+    testIsArrayTrue: function() {
+      var values = [
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+      ];
+      values.forEach(function (v) {
+        assertTrue(db._query(`RETURN IS_ARRAY(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_ARRAY(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_ARRAY function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_ARRAY function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsArrayFalse : function () {
-      assertFalse(aql.AQL_IS_ARRAY('abc'));
-      assertFalse(aql.AQL_IS_ARRAY('null'));
-      assertFalse(aql.AQL_IS_ARRAY('false'));
-      assertFalse(aql.AQL_IS_ARRAY('undefined'));
-      assertFalse(aql.AQL_IS_ARRAY(''));
-      assertFalse(aql.AQL_IS_ARRAY(' '));
-      assertFalse(aql.AQL_IS_ARRAY(false));
-      assertFalse(aql.AQL_IS_ARRAY(true));
+    testIsArrayFalse: function() {
       assertFalse(aql.AQL_IS_ARRAY(undefined));
       assertFalse(aql.AQL_IS_ARRAY(NaN));
       assertFalse(aql.AQL_IS_ARRAY(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_ARRAY(0));
-      assertFalse(aql.AQL_IS_ARRAY(1));
-      assertFalse(aql.AQL_IS_ARRAY(-1));
-      assertFalse(aql.AQL_IS_ARRAY(0.1));
-      assertFalse(aql.AQL_IS_ARRAY(-0.1));
-      assertFalse(aql.AQL_IS_ARRAY(null));
-      assertFalse(aql.AQL_IS_ARRAY({ }));
-      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 0 }));
-      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 1 }));
-      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 0, 'b' : 1 }));
+
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        false,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' :1 }"
+      ];
+      values.forEach(function (v) {
+        assertFalse(db._query(`RETURN IS_ARRAY(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_ARRAY(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_DOCUMENT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_DOCUMENT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsDocumentTrue : function () {
-      assertTrue(aql.AQL_IS_DOCUMENT({ }));
-      assertTrue(aql.AQL_IS_DOCUMENT({ 'a' : 0 }));
-      assertTrue(aql.AQL_IS_DOCUMENT({ 'a' : 1 }));
-      assertTrue(aql.AQL_IS_DOCUMENT({ 'a' : 0, 'b' : 1 }));
-      assertTrue(aql.AQL_IS_DOCUMENT({ '1' : false, 'b' : false }));
-      assertTrue(aql.AQL_IS_DOCUMENT({ '0' : false }));
+    testIsDocumentTrue: function() {
+      var values = [
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' : 1 }",
+        "{ '1' : false, 'b' : false }",
+        "{ '0' : false }",
+      ];
+      values.forEach(function(v) {
+        assertTrue(db._query(`RETURN IS_DOCUMENT(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_DOCUMENT(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_DOCUMENT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_DOCUMENT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsDocumentFalse : function () {
-      assertFalse(aql.AQL_IS_DOCUMENT('abc'));
-      assertFalse(aql.AQL_IS_DOCUMENT('null'));
-      assertFalse(aql.AQL_IS_DOCUMENT('false'));
-      assertFalse(aql.AQL_IS_DOCUMENT('undefined'));
-      assertFalse(aql.AQL_IS_DOCUMENT(''));
-      assertFalse(aql.AQL_IS_DOCUMENT(' '));
-      assertFalse(aql.AQL_IS_DOCUMENT(false));
-      assertFalse(aql.AQL_IS_DOCUMENT(true));
+    testIsDocumentFalse: function() {
       assertFalse(aql.AQL_IS_DOCUMENT(undefined));
       assertFalse(aql.AQL_IS_DOCUMENT(NaN));
       assertFalse(aql.AQL_IS_DOCUMENT(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_DOCUMENT(0));
-      assertFalse(aql.AQL_IS_DOCUMENT(1));
-      assertFalse(aql.AQL_IS_DOCUMENT(-1));
-      assertFalse(aql.AQL_IS_DOCUMENT(0.1));
-      assertFalse(aql.AQL_IS_DOCUMENT(-0.1));
-      assertFalse(aql.AQL_IS_DOCUMENT(null));
-      assertFalse(aql.AQL_IS_DOCUMENT([ ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ 0 ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ '' ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ '0' ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ '1' ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ true ]));
-      assertFalse(aql.AQL_IS_DOCUMENT([ false ]));
+
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        false,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+      ];
+      values.forEach(function(v) {
+        assertFalse(db._query(`RETURN IS_DOCUMENT(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_DOCUMENT(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_OBJECT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_OBJECT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsObjectTrue : function () {
-      assertTrue(aql.AQL_IS_OBJECT({ }));
-      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 0 }));
-      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 1 }));
-      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 0, 'b' : 1 }));
-      assertTrue(aql.AQL_IS_OBJECT({ '1' : false, 'b' : false }));
-      assertTrue(aql.AQL_IS_OBJECT({ '0' : false }));
+    testIsObjectTrue: function() {
+      var values = [
+        "{ }",
+        "{ 'a' : 0 }",
+        "{ 'a' : 1 }",
+        "{ 'a' : 0, 'b' : 1 }",
+        "{ '1' : false, 'b' : false }",
+        "{ '0' : false }",
+      ];
+      values.forEach(function(v) {
+        assertTrue(db._query(`RETURN IS_OBJECT(${v})`).next());
+        assertTrue(db._query(`RETURN NOOPT(IS_OBJECT(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.IS_OBJECT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.IS_OBJECT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testIsObjectFalse : function () {
-      assertFalse(aql.AQL_IS_OBJECT('abc'));
-      assertFalse(aql.AQL_IS_OBJECT('null'));
-      assertFalse(aql.AQL_IS_OBJECT('false'));
-      assertFalse(aql.AQL_IS_OBJECT('undefined'));
-      assertFalse(aql.AQL_IS_OBJECT(''));
-      assertFalse(aql.AQL_IS_OBJECT(' '));
-      assertFalse(aql.AQL_IS_OBJECT(false));
-      assertFalse(aql.AQL_IS_OBJECT(true));
+    testIsObjecttFalse: function() {
       assertFalse(aql.AQL_IS_OBJECT(undefined));
       assertFalse(aql.AQL_IS_OBJECT(NaN));
       assertFalse(aql.AQL_IS_OBJECT(1.3e308 * 1.3e308));
-      assertFalse(aql.AQL_IS_OBJECT(0));
-      assertFalse(aql.AQL_IS_OBJECT(1));
-      assertFalse(aql.AQL_IS_OBJECT(-1));
-      assertFalse(aql.AQL_IS_OBJECT(0.1));
-      assertFalse(aql.AQL_IS_OBJECT(-0.1));
-      assertFalse(aql.AQL_IS_OBJECT(null));
-      assertFalse(aql.AQL_IS_OBJECT([ ]));
-      assertFalse(aql.AQL_IS_OBJECT([ 0 ]));
-      assertFalse(aql.AQL_IS_OBJECT([ 0, 1 ]));
-      assertFalse(aql.AQL_IS_OBJECT([ 1, 2 ]));
-      assertFalse(aql.AQL_IS_OBJECT([ '' ]));
-      assertFalse(aql.AQL_IS_OBJECT([ '0' ]));
-      assertFalse(aql.AQL_IS_OBJECT([ '1' ]));
-      assertFalse(aql.AQL_IS_OBJECT([ true ]));
-      assertFalse(aql.AQL_IS_OBJECT([ false ]));
+
+      var values = [
+        0,
+        1,
+        -1,
+        0.1,
+        -0.1,
+        null,
+        false,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '""',
+        '" "',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ '' ]",
+        "[ '0' ]",
+        "[ '1' ]",
+        "[ true ]",
+        "[ false ]",
+      ];
+      values.forEach(function(v) {
+        assertFalse(db._query(`RETURN IS_OBJECT(${v})`).next());
+        assertFalse(db._query(`RETURN NOOPT(IS_OBJECT(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.TO_BOOL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.TO_BOOL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testCastBoolTrue : function () {
-      assertEqual(true, aql.AQL_TO_BOOL(true));
-      assertEqual(true, aql.AQL_TO_BOOL(1));
-      assertEqual(true, aql.AQL_TO_BOOL(2));
-      assertEqual(true, aql.AQL_TO_BOOL(-1));
-      assertEqual(true, aql.AQL_TO_BOOL(100));
-      assertEqual(true, aql.AQL_TO_BOOL(100.01));
-      assertEqual(true, aql.AQL_TO_BOOL(0.001));
-      assertEqual(true, aql.AQL_TO_BOOL(-0.001));
-      assertEqual(true, aql.AQL_TO_BOOL(' '));
-      assertEqual(true, aql.AQL_TO_BOOL('  '));
-      assertEqual(true, aql.AQL_TO_BOOL('1'));
-      assertEqual(true, aql.AQL_TO_BOOL('1 '));
-      assertEqual(true, aql.AQL_TO_BOOL('0'));
-      assertEqual(true, aql.AQL_TO_BOOL('-1'));
-      assertEqual(true, aql.AQL_TO_BOOL([ 0 ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ 0, 1 ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ 1, 2 ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ -1, 0 ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ '' ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ false ]));
-      assertEqual(true, aql.AQL_TO_BOOL([ true ]));
-      assertEqual(true, aql.AQL_TO_BOOL({ 'a' : true }));
-      assertEqual(true, aql.AQL_TO_BOOL({ 'a' : false }));
-      assertEqual(true, aql.AQL_TO_BOOL({ 'a' : false, 'b' : 0 }));
-      assertEqual(true, aql.AQL_TO_BOOL({ '0' : false }));
-      assertEqual(true, aql.AQL_TO_BOOL([ ]));
-      assertEqual(true, aql.AQL_TO_BOOL({ }));
+    testCastBoolTrue: function() {
+      var values = [
+        1,
+        2,
+        -1,
+        100,
+        100.01,
+        0.001,
+        -0.001,
+        true,
+        '"abc"',
+        '"null"',
+        '"false"',
+        '"undefined"',
+        '" "',
+        '"  "',
+        '"1"',
+        '"1 "',
+        '"0"',
+        '"-1"',
+        "[ ]",
+        "[ 0 ]",
+        "[ 0, 1 ]",
+        "[ 1, 2 ]",
+        "[ -1, 0 ]",
+        "[ '' ]",
+        "[ true ]",
+        "[ false ]",
+        "{ }",
+        "{ 'a' : true }",
+        "{ 'a' : false }",
+        "{ 'a' : false, 'b' : 0 }",
+        "{ '0' : false }"
+      ];
+      values.forEach(function(v) {
+        assertEqual(true, db._query(`RETURN TO_BOOL(${v})`).next());
+        assertEqual(true, db._query(`RETURN NOOPT(TO_BOOL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.TO_BOOL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.TO_BOOL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testCastBoolFalse : function () {
-      assertEqual(false, aql.AQL_TO_BOOL(0));
+    testCastBoolFalse: function() {
       assertEqual(false, aql.AQL_TO_BOOL(NaN));
-      assertEqual(false, aql.AQL_TO_BOOL(''));
       assertEqual(false, aql.AQL_TO_BOOL(undefined));
-      assertEqual(false, aql.AQL_TO_BOOL(null));
-      assertEqual(false, aql.AQL_TO_BOOL(false));
+
+      var values = [0, "''", null, false];
+      values.forEach(function(v) {
+        assertEqual(false, db._query(`RETURN TO_BOOL(${v})`).next());
+        assertEqual(false, db._query(`RETURN NOOPT(TO_BOOL(${v}))`).next());
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.TO_NUMBER function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.TO_NUMBER function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testCastNumber : function () {
+    testCastNumber: function() {
       assertEqual(null, aql.AQL_TO_NUMBER(undefined));
-      assertEqual(0, aql.AQL_TO_NUMBER(null));
-      assertEqual(0, aql.AQL_TO_NUMBER(false));
-      assertEqual(1, aql.AQL_TO_NUMBER(true));
-      assertEqual(1, aql.AQL_TO_NUMBER(1));
-      assertEqual(2, aql.AQL_TO_NUMBER(2));
-      assertEqual(-1, aql.AQL_TO_NUMBER(-1));
-      assertEqual(0, aql.AQL_TO_NUMBER(0));
       assertEqual(null, aql.AQL_TO_NUMBER(NaN));
-      assertEqual(0, aql.AQL_TO_NUMBER(''));
-      assertEqual(0, aql.AQL_TO_NUMBER(' '));
-      assertEqual(0, aql.AQL_TO_NUMBER('  '));
-      assertEqual(1, aql.AQL_TO_NUMBER('1'));
-      assertEqual(1, aql.AQL_TO_NUMBER('1 '));
-      assertEqual(0, aql.AQL_TO_NUMBER('0'));
-      assertEqual(-1, aql.AQL_TO_NUMBER('-1'));
-      assertEqual(-1, aql.AQL_TO_NUMBER('-1 '));
-      assertEqual(-1, aql.AQL_TO_NUMBER(' -1 '));
-      assertEqual(null, aql.AQL_TO_NUMBER(' -1a'));
-      assertEqual(null, aql.AQL_TO_NUMBER(' 1a'));
-      assertEqual(null, aql.AQL_TO_NUMBER(' 12335.3 a'));
-      assertEqual(null, aql.AQL_TO_NUMBER('a1bc'));
-      assertEqual(null, aql.AQL_TO_NUMBER('aaaa1'));
-      assertEqual(null, aql.AQL_TO_NUMBER('-a1'));
-      assertEqual(-1.255, aql.AQL_TO_NUMBER('-1.255'));
-      assertEqual(-1.23456, aql.AQL_TO_NUMBER('-1.23456'));
-      assertEqual(-1.23456, aql.AQL_TO_NUMBER('-1.23456 '));
-      assertEqual(1.23456, aql.AQL_TO_NUMBER('  1.23456 '));
-      assertEqual(null, aql.AQL_TO_NUMBER('   1.23456a'));
-      assertEqual(null, aql.AQL_TO_NUMBER('--1'));
-      assertEqual(1, aql.AQL_TO_NUMBER('+1'));
-      assertEqual(12.42e32, aql.AQL_TO_NUMBER('12.42e32'));
-      assertEqual(0, aql.AQL_TO_NUMBER([ ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ 0 ]));
-      assertEqual(-17, aql.AQL_TO_NUMBER([ -17 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 1, 2 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ -1, 0 ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ { } ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ 0, 1, { } ]));
-      assertEqual(null, aql.AQL_TO_NUMBER([ { }, { } ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ '' ]));
-      assertEqual(0, aql.AQL_TO_NUMBER([ false ]));
-      assertEqual(1, aql.AQL_TO_NUMBER([ true ]));
-      assertEqual(null, aql.AQL_TO_NUMBER({ }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : true }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : true, 'b' : 0 }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : { }, 'b' : { } }));
-      assertEqual(null, aql.AQL_TO_NUMBER({ 'a' : [ ], 'b' : [ ] }));
+
+      var values = [
+        {ex: 0, val: null},
+        {ex: 0, val: false},
+        {ex: 1, val: true},
+        {ex: 1, val: 1},
+        {ex: 2, val: 2},
+        {ex: -1, val: -1},
+        {ex: 0, val: 0},
+        {ex: 0, val: "''"},
+        {ex: 0, val: "' '"},
+        {ex: 0, val: "'  '"},
+        {ex: 1, val: "'1'"},
+        {ex: 1, val: "'1 '"},
+        {ex: 1, val: "' 1 '"},
+        {ex: 0, val: "'0'"},
+        {ex: -1, val: "'-1'"},
+        {ex: -1, val: "'-1 '"},
+        {ex: -1, val: "' -1 '"},
+        {ex: null, val: "' -1a '"},
+        {ex: null, val: "' 1a '"},
+        {ex: null, val: "' 12335.3 a '"},
+        {ex: null, val: "'a1bc'"},
+        {ex: null, val: "'aaa1'"},
+        {ex: null, val: "'-a1'"},
+        {ex: -1.255, val: "'-1.255'"},
+        {ex: -1.23456, val: "'-1.23456'"},
+        {ex: -1.23456, val: "'-1.23456 '"},
+        {ex: 1.23456, val: "' 1.23456 '"},
+        {ex: null, val: "'  1.23456a'"},
+        {ex: null, val: "'--1'"},
+        {ex: 1, val: "'+1'"},
+        {ex: 12.42e32, val: "'12.42e32'"},
+        {ex: 0, val: "[]"},
+        {ex: 0, val: "[ 0 ]"},
+        {ex: -17, val: "[ -17 ]"},
+        {ex: null, val: "[ 0, 1 ]"},
+        {ex: null, val: "[ 1, 2 ]"},
+        {ex: null, val: "[ -1, 0 ]"},
+        {ex: null, val: "[ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]"},
+        {ex: null, val: "[ { } ]"},
+        {ex: null, val: "[ 0, 1, { } ]"},
+        {ex: null, val: "[ { }, { } ]"},
+        {ex: 0, val: "[ '' ]"},
+        {ex: 0, val: "[ false ]"},
+        {ex: 1, val: "[ true ]"},
+        {ex: null, val: "{ }"},
+        {ex: null, val: "{ 'a' : true }"},
+        {ex: null, val: "{ 'a' : true, 'b' : 0 }"},
+        {ex: null, val: "{ 'a' : { }, 'b' : { } }"},
+        {ex: null, val: "{ 'a' : [ ], 'b' : [ ] }"}
+      ];
+      values.forEach(function(v) {
+        // double precission check for e=0.0001
+        var q = `RETURN TO_NUMBER(${v.val})`;
+        var diff = db._query(q).next() - v.ex;
+        assertTrue(diff < 0.0001, q);
+        q = `RETURN NOOPT(TO_NUMBER(${v.val}))`;
+        diff = db._query(q).next() - v.ex;
+        assertTrue(diff < 0.0001, q);
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.TO_STRING function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.TO_STRING function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testCastString : function () {
+    testCastString: function() {
       assertEqual('null', aql.AQL_TO_STRING(undefined));
-      assertEqual('null', aql.AQL_TO_STRING(null));
-      assertEqual('false', aql.AQL_TO_STRING(false));
-      assertEqual('true', aql.AQL_TO_STRING(true));
-      assertEqual('1', aql.AQL_TO_STRING(1));
-      assertEqual('2', aql.AQL_TO_STRING(2));
-      assertEqual('-1', aql.AQL_TO_STRING(-1));
-      assertEqual('0', aql.AQL_TO_STRING(0));
       assertEqual('null', aql.AQL_TO_STRING(NaN));
-      assertEqual('', aql.AQL_TO_STRING(''));
-      assertEqual(' ', aql.AQL_TO_STRING(' '));
-      assertEqual('  ', aql.AQL_TO_STRING('  '));
-      assertEqual('1', aql.AQL_TO_STRING('1'));
-      assertEqual('1 ', aql.AQL_TO_STRING('1 '));
-      assertEqual('0', aql.AQL_TO_STRING('0'));
-      assertEqual('-1', aql.AQL_TO_STRING('-1'));
-      assertEqual('', aql.AQL_TO_STRING([ ]));
-      assertEqual('0', aql.AQL_TO_STRING([ 0 ]));
-      assertEqual('0,1', aql.AQL_TO_STRING([ 0, 1 ]));
-      assertEqual('1,2', aql.AQL_TO_STRING([ 1, 2 ]));
-      assertEqual('-1,0', aql.AQL_TO_STRING([ -1, 0 ]));
-      assertEqual('0,1,1,2,9,4', aql.AQL_TO_STRING([ 0, 1, [ 1, 2 ], [ [ 9, 4 ] ] ]));
-      assertEqual('[object Object]', aql.AQL_TO_STRING([ { } ]));
-      assertEqual('0,1,[object Object]', aql.AQL_TO_STRING([ 0, 1, { } ]));
-      assertEqual('[object Object],[object Object]', aql.AQL_TO_STRING([ { }, { } ]));
-      assertEqual('', aql.AQL_TO_STRING([ '' ]));
-      assertEqual('false', aql.AQL_TO_STRING([ false ]));
-      assertEqual('true', aql.AQL_TO_STRING([ true ]));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : true }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : true, 'b' : 0 }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : { }, 'b' : { } }));
-      assertEqual('[object Object]', aql.AQL_TO_STRING({ 'a' : [ ], 'b' : [ ] }));
+      var values = [
+        {ex: "null", val: null},
+        {ex: "false", val: false},
+        {ex: "true", val: true},
+        {ex: "1", val: 1},
+        {ex: "2", val: 2},
+        {ex: "-1", val: -1},
+        {ex: "0", val: 0},
+        {ex: "", val: "''"},
+        {ex: " ", val: "' '"},
+        {ex: "  ", val: "'  '"},
+        {ex: "1", val: "'1'"},
+        {ex: "1 ", val: "'1 '"},
+        {ex: "0", val: "'0'"},
+        {ex: "-1", val: "'-1'"},
+        {ex: "", val: "[ ]"},
+        {ex: "0", val: "[ 0 ]"},
+        {ex: "0,1", val: "[ 0, 1 ]"},
+        {ex: "1,2", val: "[ 1, 2 ]"},
+        {ex: "-1,0", val: "[ -1, 0 ]"},
+        {ex: "0,1,1,2,9,4", val: "[ 0, 1, [1, 2], [ [ 9, 4 ] ] ]"},
+        {ex: "[object Object]", val: "[ { } ]"},
+        {ex: "0,1,[object Object]", val: "[ 0, 1, { } ]"},
+        {ex: "[object Object],[object Object]", val: "[ { }, { } ]"},
+        {ex: "", val: "['']"},
+        {ex: "false", val: "[ false ]"},
+        {ex: "true", val: "[ true ]"},
+        {ex: "[object Object]", val: "{ }"},
+        {ex: "[object Object]", val: "{ 'a' : true }"},
+        {ex: "[object Object]", val: "{ 'a' : true, 'b' : 0 }"},
+        {ex: "[object Object]", val: "{ 'a' : { }, 'b' : { } }"},
+        {ex: "[object Object]", val: "{ 'a' : [ ], 'b' : [ ] }"}
+      ];
+      values.forEach(function(v) {
+        var q = `RETURN TO_STRING(${v.val})`;
+        assertEqual(v.ex, db._query(q).next(), q);
+        q = `RETURN NOOPT(TO_STRING(${v.val}))`;
+        assertEqual(v.ex, db._query(q).next(), q);
+      });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_AND function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_AND function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalAndUndefined : function () {
+    testLogicalAndUndefined: function() {
       var LOGICAL_AND = function (a, b) {
         return aql.LOGICAL_AND(function () { return a; }, function () { return b; });
       };
@@ -727,22 +842,22 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(NaN, LOGICAL_AND('0', NaN));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_AND function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_AND function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalAndBool : function () {
+    testLogicalAndBool: function() {
       assertTrue(aql.LOGICAL_AND(function () { return true; }, function () { return true; }));
       assertFalse(aql.LOGICAL_AND(function () { return true; }, function () { return false; }));
       assertFalse(aql.LOGICAL_AND(function () { return false; }, function () { return true; }));
       assertFalse(aql.LOGICAL_AND(function () { return false; }, function () { return false; }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_OR function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_OR function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalOrUndefined : function () {
+    testLogicalOrUndefined: function() {
       var LOGICAL_OR = function (a, b) {
         return aql.LOGICAL_OR(function () { return a; }, function () { return b; });
       };
@@ -877,22 +992,22 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual('0', LOGICAL_OR('0', NaN));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_OR function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_OR function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalOrBool : function () {
+    testLogicalOrBool: function() {
       assertTrue(aql.LOGICAL_OR(function () { return true; }, function () { return true; }));
       assertTrue(aql.LOGICAL_OR(function () { return true; }, function () { return false; }));
       assertTrue(aql.LOGICAL_OR(function () { return false; }, function () { return true; }));
       assertFalse(aql.LOGICAL_OR(function () { return false; }, function () { return false; }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_NOT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_NOT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalNotUndefined : function () {
+    testLogicalNotUndefined: function() {
       assertEqual(true, aql.LOGICAL_NOT(undefined));
       assertEqual(true, aql.LOGICAL_NOT(null));
       assertEqual(true, aql.LOGICAL_NOT(false));
@@ -914,11 +1029,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(true, aql.LOGICAL_NOT(NaN));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.LOGICAL_NOT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.LOGICAL_NOT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testLogicalNotBool : function () {
+    testLogicalNotBool: function() {
       assertTrue(aql.LOGICAL_NOT(false));
       assertFalse(aql.LOGICAL_NOT(true));
 
@@ -926,11 +1041,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.LOGICAL_NOT(aql.LOGICAL_NOT(false)));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_EQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_EQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalEqualTrue : function () {
+    testRelationalEqualTrue: function() {
       assertTrue(aql.RELATIONAL_EQUAL(undefined, undefined));
       assertTrue(aql.RELATIONAL_EQUAL(undefined, null));
       assertTrue(aql.RELATIONAL_EQUAL(null, undefined));
@@ -985,11 +1100,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_EQUAL({ 'f' : { 'c' : { 'd' : [ 0, 1 ], 'a' : [ 1, 9 ] }, 'a' : false }, 'a' : true }, { 'a' : true, 'f' : { 'a' : false, 'c' : { 'a' : [ 1, 9 ], 'd' : [ 0, 1 ] } } }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_EQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_EQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalEqualFalse : function () {
+    testRelationalEqualFalse: function() {
       assertFalse(aql.RELATIONAL_EQUAL(undefined, true));
       assertFalse(aql.RELATIONAL_EQUAL(undefined, false));
       assertFalse(aql.RELATIONAL_EQUAL(undefined, 0.0));
@@ -1128,11 +1243,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_EQUAL({ 'a' : true, 'b' : { 'a' : false, 'b' : true } }, { 'a' : true, 'b' : { 'a' : true, 'b': true } }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_UNEQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_UNEQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalUnequalTrue : function () {
+    testRelationalUnequalTrue: function() {
       assertTrue(aql.RELATIONAL_UNEQUAL(undefined, true));
       assertTrue(aql.RELATIONAL_UNEQUAL(undefined, false));
       assertTrue(aql.RELATIONAL_UNEQUAL(undefined, 0.0));
@@ -1279,11 +1394,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_UNEQUAL({ 'a' : true, 'b' : { 'a' : false, 'b' : true } }, { 'a' : true, 'b' : { 'a' : true, 'b': true } }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_UNEQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_UNEQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalUnequalFalse : function () {
+    testRelationalUnequalFalse: function() {
       assertFalse(aql.RELATIONAL_UNEQUAL(1, 1));
       assertFalse(aql.RELATIONAL_UNEQUAL(0, 0));
       assertFalse(aql.RELATIONAL_UNEQUAL(-1, -1));
@@ -1336,11 +1451,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_UNEQUAL({ 'f' : { 'c' : { 'd' : [ 0, 1 ], 'a' : [ 1, 9 ] }, 'a' : false }, 'a' : true }, { 'a' : true, 'f' : { 'a' : false, 'c' : { 'a' : [ 1, 9 ], 'd' : [ 0, 1 ] } } }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_LESS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_LESS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalLessTrue : function () {
+    testRelationalLessTrue: function() {
       assertTrue(aql.RELATIONAL_LESS(NaN, false));
       assertTrue(aql.RELATIONAL_LESS(NaN, true));
       assertTrue(aql.RELATIONAL_LESS(NaN, ''));
@@ -1564,11 +1679,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_LESS({ 'a' : [ 10 ], 'b' : true }, { 'a' : [ 10, 1 ] }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_LESS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_LESS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalLessFalse : function () {
+    testRelationalLessFalse: function() {
       assertFalse(aql.RELATIONAL_LESS(undefined, undefined));
       assertFalse(aql.RELATIONAL_LESS(undefined, null));
       assertFalse(aql.RELATIONAL_LESS(undefined, NaN));
@@ -1805,12 +1920,12 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_LESS([ 5, 6, { } ], [ 5, 6, true ]));
       assertFalse(aql.RELATIONAL_LESS([ 5, 6, { } ], [ 5, 6, 9, 9 ]));
     },
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_GREATER function
-////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalGreaterTrue : function () {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_GREATER function
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRelationalGreaterTrue: function() {
       assertTrue(aql.RELATIONAL_GREATER(true, undefined));
       assertTrue(aql.RELATIONAL_GREATER(false, undefined));
       assertTrue(aql.RELATIONAL_GREATER(0.0, undefined));
@@ -2001,11 +2116,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_GREATER({ 'a' : [ 10, 1 ] }, { 'a' : [ 10 ], 'b' : true }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_GREATER function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_GREATER function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalGreaterFalse : function () {
+    testRelationalGreaterFalse: function() {
       assertFalse(aql.RELATIONAL_GREATER(undefined, undefined));
       assertFalse(aql.RELATIONAL_GREATER(undefined, null));
       assertFalse(aql.RELATIONAL_GREATER(null, undefined));
@@ -2217,11 +2332,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_GREATER({ 'a' : 1, 'b' : 2, 'c' : null }, { 'a' : 1, 'b' : 2 }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_LESSEQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_LESSEQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalLessEqualTrue : function () {
+    testRelationalLessEqualTrue: function() {
       assertTrue(aql.RELATIONAL_LESSEQUAL(undefined, undefined));
       assertTrue(aql.RELATIONAL_LESSEQUAL(undefined, null));
       assertTrue(aql.RELATIONAL_LESSEQUAL(null, undefined));
@@ -2473,11 +2588,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_LESSEQUAL({ 'a' : true, 'b' : { 'c' : 1, 'f' : 2 }, 'x' : 9 }, { 'x' : 9, 'b' : { 'f' : 2, 'c' : 1 }, 'a' : true }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_LESSEQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_LESSEQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalLessEqualFalse : function () {
+    testRelationalLessEqualFalse: function() {
       assertFalse(aql.RELATIONAL_LESSEQUAL(true, undefined));
       assertFalse(aql.RELATIONAL_LESSEQUAL(false, undefined));
       assertFalse(aql.RELATIONAL_LESSEQUAL(0.0, undefined));
@@ -2658,11 +2773,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_LESSEQUAL([ null, false ], [ null, null ]));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_GREATEREQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_GREATEREQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalGreaterEqualTrue : function () {
+    testRelationalGreaterEqualTrue: function() {
       assertTrue(aql.RELATIONAL_GREATEREQUAL(undefined, undefined));
       assertTrue(aql.RELATIONAL_GREATEREQUAL(undefined, null));
       assertTrue(aql.RELATIONAL_GREATEREQUAL(null, undefined));
@@ -2930,11 +3045,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_GREATEREQUAL({ 'a' : true, 'b' : { 'c' : 1, 'f' : 2 }, 'x' : 9 }, { 'x' : 9, 'b' : { 'f' : 2, 'c' : 1 }, 'a' : true }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_GREATEREQUAL function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_GREATEREQUAL function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalGreaterEqualFalse : function () {
+    testRelationalGreaterEqualFalse: function() {
       assertFalse(aql.RELATIONAL_GREATEREQUAL(undefined, true));
       assertFalse(aql.RELATIONAL_GREATEREQUAL(undefined, false));
       assertFalse(aql.RELATIONAL_GREATEREQUAL(undefined, 0.0));
@@ -3115,11 +3230,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_GREATEREQUAL([ null, null ], [ null, false ]));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_IN function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_IN function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalInUndefined : function () {
+    testRelationalInUndefined: function() {
       assertFalse(aql.RELATIONAL_IN(undefined, undefined));
       assertFalse(aql.RELATIONAL_IN(undefined, null));
       assertFalse(aql.RELATIONAL_IN(undefined, true));
@@ -3276,11 +3391,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_IN({ }, { 'A' : true }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_IN function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_IN function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalInTrue : function () {
+    testRelationalInTrue: function() {
       assertTrue(aql.RELATIONAL_IN(null, [ null ]));
       assertTrue(aql.RELATIONAL_IN(null, [ null, false ]));
       assertTrue(aql.RELATIONAL_IN(null, [ false, null ]));
@@ -3317,11 +3432,11 @@ function ahuacatlOperatorsTestSuite () {
       assertTrue(aql.RELATIONAL_IN({ 'a' : { 'b' : null, 'c': 1 } }, [ 'a', 'b', { 'a' : { 'c' : 1, 'b' : null } } ]));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.RELATIONAL_IN function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.RELATIONAL_IN function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRelationalInFalse : function () {
+    testRelationalInFalse: function() {
       assertFalse(aql.RELATIONAL_IN(undefined, [ ]));
       assertFalse(aql.RELATIONAL_IN(undefined, [ 0 ]));
       assertFalse(aql.RELATIONAL_IN(undefined, [ 0, 1 ]));
@@ -3380,11 +3495,11 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.RELATIONAL_IN({ 'a' : true }, [ 1, 2, { 'a' : { 'a' : true } } ]));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.UNARY_PLUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.UNARY_PLUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUnaryPlusUndefined : function () {
+    testUnaryPlusUndefined: function() {
       assertEqual(null, aql.UNARY_PLUS(undefined));
       assertEqual(0, aql.UNARY_PLUS(null));
       assertEqual(null, aql.UNARY_PLUS(NaN));
@@ -3405,11 +3520,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.UNARY_PLUS({ 'a' : 1 }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.UNARY_PLUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.UNARY_PLUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUnaryPlusValue : function () {
+    testUnaryPlusValue: function() {
       assertEqual(0, aql.UNARY_PLUS(0));
       assertEqual(1, aql.UNARY_PLUS(1));
       assertEqual(-1, aql.UNARY_PLUS(-1));
@@ -3420,11 +3535,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(-1054.342, aql.UNARY_PLUS(-1054.342));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.UNARY_MINUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.UNARY_MINUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUnaryMinusUndefined : function () {
+    testUnaryMinusUndefined: function() {
       assertEqual(null, aql.UNARY_MINUS(undefined));
       assertEqual(0, aql.UNARY_MINUS(null));
       assertEqual(0, aql.UNARY_MINUS(false));
@@ -3447,11 +3562,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.UNARY_MINUS(NaN));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.UNARY_MINUS function
-////////////////////////////////////////////////////////////////////////////////
-  
-    testUnaryMinusValue : function () {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.UNARY_MINUS function
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUnaryMinusValue: function() {
       assertEqual(0, aql.UNARY_MINUS(0));
       assertEqual(1, aql.UNARY_MINUS(-1));
       assertEqual(-1, aql.UNARY_MINUS(1));
@@ -3463,11 +3578,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(-1054.342, aql.UNARY_MINUS(1054.342));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_PLUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_PLUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticPlusUndefined : function () {
+    testArithmeticPlusUndefined: function() {
       assertEqual(null, aql.ARITHMETIC_PLUS(undefined, undefined));
       assertEqual(null, aql.ARITHMETIC_PLUS(undefined, null));
       assertEqual(null, aql.ARITHMETIC_PLUS(undefined, false));
@@ -3534,11 +3649,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.ARITHMETIC_PLUS(1.3e308 * 10, 1.3e308 * 10));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_PLUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_PLUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticPlusValue : function () {
+    testArithmeticPlusValue: function() {
       assertEqual(0, aql.ARITHMETIC_PLUS(0, 0));
       assertEqual(0, aql.ARITHMETIC_PLUS(1, -1));
       assertEqual(0, aql.ARITHMETIC_PLUS(-1, 1));
@@ -3555,11 +3670,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(2.6e307, aql.ARITHMETIC_PLUS(1.3e307, 1.3e307));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_MINUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_MINUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticMinusUndefined : function () {
+    testArithmeticMinusUndefined: function() {
       assertEqual(null, aql.ARITHMETIC_MINUS(undefined, undefined));
       assertEqual(null, aql.ARITHMETIC_MINUS(undefined, null));
       assertEqual(null, aql.ARITHMETIC_MINUS(undefined, false));
@@ -3623,11 +3738,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.ARITHMETIC_MINUS(-1.3e308 * 10, 1.3e308 * 10));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_MINUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_MINUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticMinusValue : function () {
+    testArithmeticMinusValue: function() {
       assertEqual(0, aql.ARITHMETIC_MINUS(0, 0));
       assertEqual(-1, aql.ARITHMETIC_MINUS(0, 1));
       assertEqual(0, aql.ARITHMETIC_MINUS(-1, -1)); 
@@ -3648,11 +3763,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(-2.6e307, aql.ARITHMETIC_MINUS(-1.3e307, 1.3e307));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_TIMES function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_TIMES function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticTimesUndefined : function () {
+    testArithmeticTimesUndefined: function() {
       assertEqual(null, aql.ARITHMETIC_TIMES(undefined, undefined));
       assertEqual(null, aql.ARITHMETIC_TIMES(undefined, null));
       assertEqual(null, aql.ARITHMETIC_TIMES(undefined, false));
@@ -3721,11 +3836,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, aql.ARITHMETIC_TIMES('0', '0'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_TIMES function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_TIMES function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticTimesValue : function () {
+    testArithmeticTimesValue: function() {
       assertEqual(0, aql.ARITHMETIC_TIMES(0, 0));
       assertEqual(0, aql.ARITHMETIC_TIMES(1, 0));
       assertEqual(0, aql.ARITHMETIC_TIMES(0, 1));
@@ -3750,11 +3865,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1000000, aql.ARITHMETIC_TIMES(1000, 1000));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_DIVIDE function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_DIVIDE function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticDivideUndefined : function () {
+    testArithmeticDivideUndefined: function() {
       assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, undefined));
       assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, null));
       assertEqual(null, aql.ARITHMETIC_DIVIDE(undefined, false));
@@ -3825,11 +3940,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.ARITHMETIC_DIVIDE('0', '0'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_DIVIDE function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_DIVIDE function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticDivideValue : function () {
+    testArithmeticDivideValue: function() {
       assertEqual(0, aql.ARITHMETIC_DIVIDE(0, 1));
       assertEqual(0, aql.ARITHMETIC_DIVIDE(0, 2));
       assertEqual(0, aql.ARITHMETIC_DIVIDE(0, 10));
@@ -3869,11 +3984,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(2, aql.ARITHMETIC_DIVIDE(0.22, 0.11));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_MODULUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_MODULUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticModulusUndefined : function () {
+    testArithmeticModulusUndefined: function() {
       assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, undefined));
       assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, null));
       assertEqual(null, aql.ARITHMETIC_MODULUS(undefined, false));
@@ -3942,11 +4057,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(null, aql.ARITHMETIC_MODULUS(0, 0));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.ARITHMETIC_MODULUS function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.ARITHMETIC_MODULUS function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testArithmeticModulusValue : function () {
+    testArithmeticModulusValue: function() {
       assertEqual(0, aql.ARITHMETIC_MODULUS(0, 1));
       assertEqual(0, aql.ARITHMETIC_MODULUS(1, 1));
       assertEqual(1, aql.ARITHMETIC_MODULUS(1, 2));
@@ -3996,11 +4111,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(-1, aql.ARITHMETIC_MODULUS(-10, 3));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.CONCAT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.CONCAT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStringConcatUndefined : function () {
+    testStringConcatUndefined: function() {
       assertEqual("false", aql.AQL_CONCAT(undefined, false));
       assertEqual("true", aql.AQL_CONCAT(undefined, true));
       assertEqual("0", aql.AQL_CONCAT(undefined, 0));
@@ -4064,11 +4179,11 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("a[object Object]", aql.AQL_CONCAT('a', { }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.CONCAT function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.CONCAT function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStringConcatValue : function () {
+    testStringConcatValue: function() {
       assertEqual('', aql.AQL_CONCAT());
       assertEqual('', aql.AQL_CONCAT(''));
       assertEqual('a', aql.AQL_CONCAT('a'));
@@ -4110,21 +4225,21 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual('fux', aql.AQL_CONCAT(null, 'f', null, 'u', null, 'x', null));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aql.TERNARY_OPERATOR function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test aql.TERNARY_OPERATOR function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testTernaryOperator : function () {
+    testTernaryOperator: function() {
       assertEqual(2, aql.TERNARY_OPERATOR(true, function () { return 2; }, function () { return -1; }));
       assertEqual(-1, aql.TERNARY_OPERATOR(false, function () { return 1; }, function () { return -1; }));
       assertEqual(2, aql.TERNARY_OPERATOR(0, function () { return 1; }, function () { return 2; }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test ranges
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test ranges
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testRanges : function () {
+    testRanges: function() {
       assertEqual([ [ 1, 2, 3 ] ], AQL_EXECUTE("RETURN 1..3").json);
       assertEqual([ [ 0, 1, 2, 3 ] ], AQL_EXECUTE("RETURN null..3").json);
       assertEqual([ [ 1, 2, 3, 4, 5, 6, 7 ] ], AQL_EXECUTE("RETURN 1..3 + 4").json);

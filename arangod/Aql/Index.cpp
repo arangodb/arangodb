@@ -41,6 +41,33 @@ Index::~Index() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a VelocyPack representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+void Index::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+
+  builder.add("type", VPackValue(arangodb::Index::typeName(type)));
+  builder.add("id", VPackValue(arangodb::basics::StringUtils::itoa(id)));
+  builder.add("unique", VPackValue(unique));
+  builder.add("sparse", VPackValue(sparse));
+
+  if (hasSelectivityEstimate()) {
+    builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  builder.add(VPackValue("fields"));
+  {
+    VPackArrayBuilder arrayGuard(&builder);
+    for (auto const& field : fields) {
+      std::string tmp;
+      TRI_AttributeNamesToString(field, tmp);
+      builder.add(VPackValue(tmp));
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the index internals
 ////////////////////////////////////////////////////////////////////////////////
 

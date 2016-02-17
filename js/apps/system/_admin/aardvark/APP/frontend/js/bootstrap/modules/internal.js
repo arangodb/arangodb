@@ -49,22 +49,27 @@ if (global.ArangoError) {
       this.errorNum = error.errorNum;
       this.errorMessage = error.errorMessage;
     }
-
-    this.message = this.toString();
   };
 
   exports.ArangoError.prototype = new Error();
 }
 
+Object.defineProperty(exports.ArangoError.prototype, 'message', {
+  configurable: true,
+  enumerable: true,
+  get() {
+    return this.errorMessage;
+  }
+});
+
+exports.ArangoError.prototype.name = 'ArangoError';
+
 exports.ArangoError.prototype._PRINT = function(context) {
-  context.output += this.toString();
+  context.output += '[' + this.toString() + ']';
 };
 
 exports.ArangoError.prototype.toString = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage || this.message;
-
-  return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
+  return `${this.name} ${this.errorNum}: ${this.message}`;
 };
 
 

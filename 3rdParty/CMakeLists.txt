@@ -16,6 +16,20 @@ macro(import_target tname tdep tinclude tpath)
     )
 endmacro()
 
+# ETCD
+if (MSVC)
+  set (ETCD_BUILD_COMMAND build.bat)
+else()
+  set (ETCD_BUILD_COMMAND ./build)
+endif()
+ExternalProject_Add(etcd_build
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+  CONFIGURE_COMMAND ""
+  BUILD_IN_SOURCE TRUE
+  BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
+  INSTALL_COMMAND "")
+
+
 # ZLIB
 if (UNIX)
   ExternalProject_Add(zlib_build
