@@ -581,6 +581,13 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
   
+OperationResult Transaction::replace(std::string const& collectionName,
+                            VPackSlice const& oldValue,
+                            VPackSlice const& updateValue,
+                            OperationOptions const& options) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
@@ -690,6 +697,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions const& options) {
@@ -714,7 +722,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     if (!k.isString()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, k);
     
     VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
     if (!r.isNone()) {
@@ -734,6 +742,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   builder.close();
 
   VPackSlice removeSlice = builder.slice();
+  std::cout << removeSlice.toJson() << "\n";
+  std::cout << expectedRevision << " <- Revision" << "\n";
 
   TRI_voc_rid_t actualRevision = 0;
   TRI_doc_update_policy_t updatePolicy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
