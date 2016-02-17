@@ -15,7 +15,8 @@
       type: "",
       isSystem: false,
       picture: "",
-      locked: false
+      locked: false,
+      desc: undefined
     },
 
     getProperties: function () {
@@ -112,7 +113,7 @@
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
-                desc: 'Creating index...',
+                desc: 'Creating Index',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -144,7 +145,7 @@
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
-                desc: 'Removing index...',
+                desc: 'Removing Index',
                 collection: self.get("id")
               });
               callback(false, data);

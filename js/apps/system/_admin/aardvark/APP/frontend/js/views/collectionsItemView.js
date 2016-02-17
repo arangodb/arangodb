@@ -26,11 +26,11 @@
     render: function () {
       if (this.model.get("locked")) {
         $(this.el).addClass('locked');
+        $(this.el).addClass(this.model.get("lockType"));
       } 
       else {
         $(this.el).removeClass('locked');
       }
-
       if (this.model.get("status") === 'loading') {
         $(this.el).addClass('locked');
       }
