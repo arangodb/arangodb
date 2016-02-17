@@ -66,7 +66,17 @@ uint32_t TRI_FinalCrc32(uint32_t);
 /// @brief CRC32 value of data block
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_BlockCrc32(uint32_t, char const* data, size_t length);
+extern "C" {
+
+#if ENABLE_ASM_CRC32 == 1
+  uint32_t TRI_BlockCrc32_SSE42(uint32_t, char const* data, size_t length);
+#endif
+
+  uint32_t TRI_BlockCrc32_C(uint32_t hash, char const* data, size_t length);
+  extern uint32_t (*TRI_BlockCrc32)(uint32_t hash,
+                                    char const* data,
+                                    size_t length);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a CRC32 for memory blobs

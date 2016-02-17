@@ -1,7 +1,7 @@
 # General -----------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 2.8)
-project(ArangoDB)
+project(ArangoDB CXX C ASM)
 set (ArangoDB_VERSION_MAJOR 3)
 set (ArangoDB_VERSION_MINOR 0)
 
@@ -216,6 +216,15 @@ if (USE_BACKTRACE)
 else()
   set(BT_LIBS "" CACHE path "Debug Helper libraries")
 endif()
+
+# Allow to prohibit assembler optimization code explicitly
+option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
+  ON)
+if (ASM_OPTIMIZATIONS)
+  add_definitions("-DASM_OPTIMIZATIONS=1")
+else (ASM_OPTIMIZATIONS)
+  add_definitions("-DASM_OPTIMIZATIONS=0")
+endif(ASM_OPTIMIZATIONS)
 
 # Maintainer mode (Assertions) -------------------------------------------------
 option(USE_MAINTAINER_MODE

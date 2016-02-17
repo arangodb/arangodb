@@ -442,6 +442,31 @@ uint32_t TRI_InitialCrc32() { return (0xffffffff); }
 uint32_t TRI_FinalCrc32(uint32_t value) { return (value ^ 0xffffffff); }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Detection of Intel SSE4.2 extensions at runtime:
+////////////////////////////////////////////////////////////////////////////////
+
+#if ENABLE_ASM_CRC32 == 1
+
+#include <cpuid.h>
+#include <x86intrin.h>
+
+static bool HasSSE42() {
+  unsigned int eax, ebx, ecx, edx;
+  if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
+    if ((ecx & 0x100000) != 0) {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+}
+
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief CRC32 value of data block
 ///
 /// optimized code to process 8 bytes at a time. provides a substantial speedup
@@ -451,32 +476,55 @@ uint32_t TRI_FinalCrc32(uint32_t value) { return (value ^ 0xffffffff); }
 /// original source is http://sourceforge.net/projects/slicing-by-8/
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_BlockCrc32(uint32_t value, char const* data, size_t length) {
-  uint32_t* current = (uint32_t*)data;
-  uint8_t* currentChar;
+extern "C" {
 
-  // process eight bytes at once
-  while (length >= 8) {
-    uint32_t one = *current++ ^ value;
-    uint32_t two = *current++;
+  uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
+    uint32_t* current = (uint32_t*)data;
+    uint8_t* currentChar;
 
-    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^
-            Crc32Lookup[1][(two >> 16) & 0xFF] ^
-            Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
-            Crc32Lookup[4][(one >> 24) & 0xFF] ^
-            Crc32Lookup[5][(one >> 16) & 0xFF] ^
-            Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
-    length -= 8;
+    // process eight bytes at once
+    while (length >= 8) {
+      uint32_t one = *current++ ^ value;
+      uint32_t two = *current++;
+
+      value = Crc32Lookup[0][(two >> 24) & 0xFF] ^
+              Crc32Lookup[1][(two >> 16) & 0xFF] ^
+              Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
+              Crc32Lookup[4][(one >> 24) & 0xFF] ^
+              Crc32Lookup[5][(one >> 16) & 0xFF] ^
+              Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
+      length -= 8;
+    }
+
+    currentChar = (uint8_t*)current;
+    // remaining 1 to 7 bytes (standard CRC table-based algorithm)
+    while (length--) {
+      value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
+    }
+
+    return value;
   }
 
-  currentChar = (uint8_t*)current;
-  // remaining 1 to 7 bytes (standard CRC table-based algorithm)
-  while (length--) {
-    value = (value >> 8) ^ Crc32Lookup[0][(value & 0xFF) ^ *currentChar++];
+#if ENABLE_ASM_CRC32 == 1
+  static uint32_t TRI_BlockCrc32_Detect(uint32_t hash,
+                                        char const* data,
+                                        size_t length) {
+    if (HasSSE42()) {
+      TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
+    } else {
+      TRI_BlockCrc32 = TRI_BlockCrc32_C;
+    }
+    return (*TRI_BlockCrc32)(hash, data, length);
   }
 
-  return value;
-}
+  uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length)
+      = TRI_BlockCrc32_Detect;
+#else
+  uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length)
+      = TRI_BlockCrc32_C;
+#endif
+
+}   // extern "C"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a CRC32 for memory blobs
@@ -498,15 +546,10 @@ uint32_t TRI_Crc32HashPointer(void const* data, size_t length) {
 uint32_t TRI_Crc32HashString(char const* data) {
   uint32_t crc;
   uint8_t const* ptr;
+  size_t len = strlen(data);
 
   crc = TRI_InitialCrc32();
-  ptr = (uint8_t const*)data;
-
-  while (*ptr) {
-    crc = (crc >> 8) ^ (Crc32Lookup[0][(crc & 0xFF) ^ (*ptr)]);
-    ++ptr;
-  }
-
+  crc = (*TRI_BlockCrc32)(crc, data, len);
   return TRI_FinalCrc32(crc);
 }
 
