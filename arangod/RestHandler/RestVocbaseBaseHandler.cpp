@@ -127,9 +127,14 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Generate a result for successful save
+////////////////////////////////////////////////////////////////////////////////
+
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result,
-    std::string const& collectionName) {
+    std::string const& collectionName,
+    TRI_col_type_e type) {
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject());
 
@@ -140,9 +145,6 @@ void RestVocbaseBaseHandler::generateSaved(
   }
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
-
-  // TODO This has to be replaced properly
-  TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
 
   std::string escapedHandle(DocumentHelper::assembleDocumentId(
       collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));

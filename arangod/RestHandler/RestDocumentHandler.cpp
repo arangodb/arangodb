@@ -157,7 +157,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName);
+  generateSaved(result, collectionName, TRI_COL_TYPE_DOCUMENT);
   return true;
 }
 

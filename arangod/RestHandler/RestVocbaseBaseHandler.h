@@ -189,7 +189,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName); 
+                     std::string const& collectionName, TRI_col_type_e type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
