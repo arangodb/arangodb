@@ -414,6 +414,54 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief return one or multiple documents from a collection
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::document(std::string const& collectionName,
+                                      VPackSlice const& value,
+                                      OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (value.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    return documentCoordinator(collectionName, value, options);
+  }
+
+  return documentLocal(collectionName, value, options);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief read one or multiple documents in a collection, coordinator
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::documentCoordinator(std::string const& collectionName,
+                                                 VPackSlice const& value,
+                                                 OperationOptions const& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief read one or multiple documents in a collection, local
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::documentLocal(std::string const& collectionName,
+                                           VPackSlice const& value,
+                                           OperationOptions const& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief create one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -531,6 +579,68 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   resultBuilder.close();
 
   return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update/patch one or multiple documents in a collection
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::update(std::string const& collectionName,
+                                    VPackSlice const& oldValue,
+                                    VPackSlice const& newValue,
+                                    OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+  if (!oldValue.isObject() && !oldValue.isArray()) {
+    // must provide a document object or an array of documents
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  
+  if (!newValue.isObject() && !newValue.isArray()) {
+    // must provide a document object or an array of documents
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (oldValue.isArray() || newValue.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    return updateCoordinator(collectionName, oldValue, newValue, options);
+  }
+
+  return updateLocal(collectionName, oldValue, newValue, options);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update one or multiple documents in a collection, coordinator
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::updateCoordinator(std::string const& collectionName,
+                                               VPackSlice const& oldValue,
+                                               VPackSlice const& newValue,
+                                               OperationOptions const& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update one or multiple documents in a collection, local
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::updateLocal(std::string const& collectionName,
+                                         VPackSlice const& oldValue,
+                                         VPackSlice const& newValue,
+                                         OperationOptions const& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 //////////////////////////////////////////////////////////////////////////////
