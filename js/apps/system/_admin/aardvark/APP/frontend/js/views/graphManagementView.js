@@ -315,7 +315,7 @@
           }
         }
       );
-        console.log(edgeDefinitions);
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
