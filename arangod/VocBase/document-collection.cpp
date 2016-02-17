@@ -4733,8 +4733,7 @@ TRI_ASSERT(false);
     *mptr = *header;
   }
 
-  TRI_ASSERT(mptr->getDataPtr() !=
-             nullptr);  // PROTECTED by trx in trxCollection
+  TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
@@ -5121,7 +5120,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     CollectionReadLocker collectionLocker(this, lock);
 
     TRI_doc_mptr_t* header;
-    int res = lookupDocument(trx, &slice, nullptr /* policy */, header);
+    int res = lookupDocument(trx, &slice, nullptr, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5131,9 +5130,8 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     *mptr = *header;
   }
 
-  TRI_ASSERT(mptr->getDataPtr() !=
-             nullptr);  // PROTECTED by trx in trxCollection
-  // TRI_ASSERT(mptr->_rid > 0);
+  TRI_ASSERT(mptr->getDataPtr() != nullptr);
+  TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -5151,6 +5149,17 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
   uint64_t const hash = key.hash();
+
+  TRI_voc_rid_t revision = 0;
+  {
+    VPackSlice r(slice->get(TRI_VOC_ATTRIBUTE_REV));
+    if (r.isString()) {
+      revision = arangodb::basics::StringUtils::uint64(r.copyString());
+    }
+    else if (r.isInteger()) {
+      revision = r.getNumber<TRI_voc_rid_t>();
+    }
+  }
   
   std::unique_ptr<arangodb::wal::Marker> marker(
       createVPackInsertMarker(trx, slice));
@@ -5190,7 +5199,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    // header->_rid = rid; // TODO
+    header->_rid = revision;
     header->_hash = hash;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 

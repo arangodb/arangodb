@@ -457,8 +457,62 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const& value,
                                            OperationOptions const& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  std::string key;
+  TRI_voc_rid_t expectedRevision = 0;
+
+  // extract _key
+  if (value.isObject()) {
+    VPackSlice k = value.get(TRI_VOC_ATTRIBUTE_KEY);
+    if (!k.isString()) {
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+    key = k.copyString();
+  
+    // extract _rev  
+    VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
+    if (!r.isNone()) {
+      if (r.isString()) {
+        expectedRevision = arangodb::basics::StringUtils::uint64(r.copyString());
+      }
+      else if (r.isInteger()) {
+        expectedRevision = r.getNumber<TRI_voc_rid_t>();
+      }
+    }
+  } else if (value.isString()) {
+    key = value.copyString();
+  } else {
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
+
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+ 
+  TRI_doc_mptr_copy_t mptr;
+  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);
+  if (expectedRevision != 0 && expectedRevision != mptr._rid) {
+    return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+  }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(mptr.vpack()));
+
+  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -558,6 +612,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
   VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
   VPackSlice insertSlice = toInsert.slice();
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   TRI_doc_mptr_copy_t mptr;
   int res = document->insert(this, &insertSlice, &mptr, !isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
