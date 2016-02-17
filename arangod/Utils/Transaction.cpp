@@ -445,12 +445,12 @@ OperationResult Transaction::insert(std::string const& collectionName,
 /// @brief create one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-/// TODO: implement this
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
                                                OperationOptions const& options) {
+  // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -523,14 +523,14 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   VPackSlice vpack(mptr.vpack());
   std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
-  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
-  builder.close();
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
+  resultBuilder.close();
 
-  return OperationResult(TRI_ERROR_NO_ERROR, builder.steal()); 
+  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -544,7 +544,7 @@ OperationResult Transaction::remove(std::string const& collectionName,
                                     OperationOptions const& options) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
-  if (!value.isObject() && !value.isArray()) {
+  if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
@@ -562,18 +562,6 @@ OperationResult Transaction::remove(std::string const& collectionName,
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief remove one or multiple documents in a collection, local
-/// the single-document variant of this operation will either succeed or,
-/// if it fails, clean up after itself
-//////////////////////////////////////////////////////////////////////////////
-
-OperationResult Transaction::removeLocal(std::string const& collectionName,
-                                         VPackSlice const& value,
-                                         OperationOptions const& options) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief remove one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -582,6 +570,76 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 OperationResult Transaction::removeCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
                                                OperationOptions const& options) {
+  // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief remove one or multiple documents in a collection, local
+/// the single-document variant of this operation will either succeed or,
+/// if it fails, clean up after itself
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::removeLocal(std::string const& collectionName,
+                                         VPackSlice const& value,
+                                         OperationOptions const& options) {
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+ 
+  std::string key; 
+  TRI_voc_rid_t expectedRevision = 0;
+ 
+  VPackBuilder builder;
+  builder.openObject();
+
+  // extract _key
+  if (value.isObject()) {
+    VPackSlice k = value.get(TRI_VOC_ATTRIBUTE_KEY);
+    if (!k.isString()) {
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
+    
+    VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
+    if (!r.isNone()) {
+      if (r.isString()) {
+        expectedRevision = arangodb::basics::StringUtils::uint64(r.copyString());
+      }
+      else if (r.isInteger()) {
+        expectedRevision = r.getNumber<TRI_voc_rid_t>();
+      }
+    }
+  } else if (value.isString()) {
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
+  }
+  
+  // add _rev  
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(expectedRevision)));
+  builder.close();
+
+  VPackSlice removeSlice = builder.slice();
+
+  TRI_voc_rid_t actualRevision = 0;
+  TRI_doc_update_policy_t updatePolicy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
+  int res = document->remove(this, &removeSlice, &updatePolicy, !isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + key)));
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(actualRevision)));
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  resultBuilder.close();
+
+  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
 

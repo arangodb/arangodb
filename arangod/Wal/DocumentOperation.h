@@ -27,12 +27,11 @@ struct DocumentOperation {
 
   DocumentOperation(arangodb::Transaction* trx, Marker* marker, bool freeMarker,
                     TRI_document_collection_t* document,
-                    TRI_voc_document_operation_e type, TRI_voc_rid_t rid)
+                    TRI_voc_document_operation_e type)
       : trx(trx),
         marker(marker),
         document(document),
         header(nullptr),
-        rid(rid),
         tick(0),
         type(type),
         status(StatusType::CREATED),
@@ -56,7 +55,7 @@ struct DocumentOperation {
 
   DocumentOperation* swap() {
     DocumentOperation* copy =
-        new DocumentOperation(trx, marker, freeMarker, document, type, rid);
+        new DocumentOperation(trx, marker, freeMarker, document, type);
     copy->tick = tick;
     copy->header = header;
     copy->oldHeader = oldHeader;
@@ -131,7 +130,6 @@ struct DocumentOperation {
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;
   TRI_doc_mptr_copy_t oldHeader;
-  TRI_voc_rid_t const rid;
   TRI_voc_tick_t tick;
   TRI_voc_document_operation_e type;
   StatusType status;
