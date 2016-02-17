@@ -28,6 +28,7 @@
         });
         model.set('locked', true);
         model.set('lockType', locked.type);
+        model.set('desc', locked.desc);
       });
 
       this.collection.each(function(model) {

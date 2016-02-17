@@ -409,7 +409,8 @@
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
-                type: aardvark.type 
+                type: aardvark.type,
+                desc: aardvark.desc 
               });
             }
             else {
