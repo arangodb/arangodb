@@ -8022,7 +8022,7 @@ table.arangoDataTable tr.odd {
   display: none; }
 
 #documentsTableID_wrapper {
-  min-height: 480px !important;
+  min-height: 420px !important;
   padding-bottom: 0 !important; }
   #documentsTableID_wrapper .fg-toolbar {
     visibility: hidden; }
@@ -8091,6 +8091,8 @@ table .sorting {
   .edit-index-table .icon_arangodb_roundminus {
     font-size: 20px;
     margin-left: 10px; }
+  .edit-index-table .fa {
+    margin-left: 13px; }
 
 .contentIn .arangoicon {
   font-size: 25px;
