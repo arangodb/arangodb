@@ -5,7 +5,6 @@
 .new-index-view {
   input[type='checkbox'] {
     float: left;
-    margin-top: -9px;
   }
 
   table {
@@ -67,7 +66,18 @@
 
 .newIndexClass {
   table {
+    border-top: 1px solid $c-modal-table-border-bottom;
     margin-bottom: 60px;
+
+    select {
+      margin-right: 7px;
+    }
+
+    .arangoicon {
+      float: right;
+      margin-right: -12px;
+      margin-top: 5px;
+    }
   }
 }
 
