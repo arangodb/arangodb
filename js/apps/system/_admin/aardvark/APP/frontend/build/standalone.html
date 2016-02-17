@@ -295,9 +295,15 @@
 <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
 <div class="tileBadge">
   <span>
+  <% if(model.get('desc')) { %>
+    <div class="corneredBadge inProgress">
+      <%= model.get('desc') %>
+    </div>
+  <% } else if (model.get('status') === "loaded") { %>
     <div class="corneredBadge <%= model.get('status') %>">
       <%= model.get('status') %>
     </div>
+  <% } %>
   </span>
 </div>
 
@@ -1762,7 +1768,6 @@ if (list.length > 0) {
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
       <li><a href="#figures" data-toggle="tab">Figures</a></li>
-      <li><a href="#index" data-toggle="tab">Indexes</a></li>
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
@@ -2004,49 +2009,6 @@ if (list.length > 0) {
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-
-			<div class="tab-pane" id="index">
-        <table id="collectionIndexTable">
-          <tr class="figuresHeader">
-            <th class="collectionInfoTh">ID</th>
-            <th class="collectionInfoTh">Type</th>
-            <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Sparse</th>
-            <th class="collectionInfoTh">Selectivity Est.</th>
-            <th class="collectionInfoTh">Fields</th>
-          </tr>
-          <%
-          if (index) {
-            var fieldString = '';
-            $.each(index.indexes, function(k, v) {
-              if (v.fields !== undefined) {
-                fieldString = v.fields.join(", ");
-              }
-
-              //cut index id
-              var position = v.id.indexOf('/');
-              var indexId = v.id.substr(position+1, v.id.length);
-              var selectivity = (
-                v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-                "n/a"
-              );
-              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-          %>
-          <tr>
-            <th class="collectionInfoTh modal-text"><%=indexId%></th>
-            <th class="collectionInfoTh modal-text"><%=v.type%></th>
-            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
-            <th class="collectionInfoTh modal-text"><%=sparse%></th>
-            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
-            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
-          </tr>
-          <%
-            });
-          }
-          %>
-        </table>
-			</div>
 
 	  </div>
 </script>
@@ -3044,9 +3006,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1455702778219"></script>
-<script src="libs.js?version=1455702778219"></script>
-<script src="app.js?version=1455702778219"></script>
+<script src="sharedLibs.js?version=1455734478560"></script>
+<script src="libs.js?version=1455734478560"></script>
+<script src="app.js?version=1455734478560"></script>
 
   </body>
 </html>

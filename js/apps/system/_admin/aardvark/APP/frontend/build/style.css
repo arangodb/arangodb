@@ -2916,8 +2916,15 @@ div .tile, div .bigtile {
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
   div .locked.tile, div .locked.bigtile {
-    cursor: not-allowed;
-    opacity: .5; }
+    cursor: not-allowed; }
+    div .locked.tile .iconSet,
+    div .locked.bigtile .iconSet,
+    div .locked.tile .borderBox,
+    div .locked.bigtile .borderBox,
+    div .locked.tile .collection-type-icon,
+    div .locked.bigtile .collection-type-icon,
+    div .locked.tile .collectionName, div .locked.bigtile .collectionName {
+      opacity: .5; }
     div .locked.tile .iconSet span:hover, div .locked.bigtile .iconSet span:hover {
       background-color: #fff !important;
       color: #000;
@@ -3015,6 +3022,7 @@ div .tile, div .bigtile {
     width: 100%; }
   div .tile .borderBox, div .bigtile .borderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
+    border-bottom: 0;
     border-radius: 3px;
     height: 75px;
     position: absolute;
@@ -3076,6 +3084,8 @@ div .tile, div .bigtile {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
+        div .tile .tileBadge span .corneredBadge.inProgress, div .bigtile .tileBadge span .corneredBadge.inProgress {
+          border-bottom-color: #5bc0de; }
         div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
@@ -7468,6 +7478,7 @@ input.gv-radio-button {
 
 .progress-view {
   background-color: #363c39;
+  border: 1px solid #fff;
   border-radius: 2px;
   color: #fff;
   height: 188px;
