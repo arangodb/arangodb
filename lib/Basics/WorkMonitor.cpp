@@ -23,13 +23,14 @@
 
 #include "WorkMonitor.h"
 
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Dumper.h"
-#include "velocypack/Sink.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include <boost/lockfree/queue.hpp>
 
@@ -82,143 +83,38 @@ static std::set<Thread*> THREADS;
 static WorkMonitor WORK_MONITOR;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a description and its resources
+/// @brief lock for canceled ids
 ////////////////////////////////////////////////////////////////////////////////
 
-static void deleteWorkDescription(WorkDescription* desc, bool stopped) {
-  if (desc->_destroy) {
-    switch (desc->_type) {
-      case WorkType::THREAD:
-      case WorkType::CUSTOM:
-      case WorkType::AQL_ID:
-      case WorkType::AQL_STRING:
-        break;
+static Mutex CANCEL_LOCK;
 
-      case WorkType::HANDLER:
-        WorkMonitor::DELETE_HANDLER(desc);
-        break;
-    }
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list of canceled ids
+////////////////////////////////////////////////////////////////////////////////
 
-  if (stopped) {
-    // we'll be getting here if the work monitor thread is already shut down
-    // and cannot delete anything anymore. this means we ourselves are
-    // responsible for cleaning up!
-    delete desc;
-    return;
-  }
+static std::set<uint64_t> CANCEL_IDS;
 
-  // while the work monitor thread is still active, push the item on the
-  // work monitor's cleanup list for destruction
-  EMPTY_WORK_DESCRIPTION.push(desc);
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current work description as thread local variable
+////////////////////////////////////////////////////////////////////////////////
+
+static thread_local WorkDescription* CURRENT_WORK_DESCRIPTION = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vpack representation of a work description
 ////////////////////////////////////////////////////////////////////////////////
-
-static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
-  switch (desc->_type) {
-    case WorkType::THREAD:
-      b->add("type", VPackValue("thread"));
-      b->add("name", VPackValue(desc->_data.thread->name()));
-      b->add("number", VPackValue(desc->_data.thread->threadNumber()));
-      b->add("status", VPackValue(VPackValueType::Object));
-      desc->_data.thread->addStatus(b);
-      b->close();
-      break;
-
-    case WorkType::CUSTOM:
-      b->add("type", VPackValue(desc->_identifier._customType));
-      b->add("description", VPackValue(desc->_data.text));
-      break;
-
-    case WorkType::AQL_STRING:
-      b->add("type", VPackValue("AQL query"));
-      b->add("queryId", VPackValue(desc->_identifier._id));
-      b->add("description", VPackValue(desc->_data.text));
-      break;
-
-    case WorkType::AQL_ID:
-      b->add("type", VPackValue("AQL query id"));
-      b->add("queryId", VPackValue(desc->_identifier._id));
-      break;
-
-    case WorkType::HANDLER:
-      WorkMonitor::VPACK_HANDLER(b, desc);
-      break;
-  }
-
-  b->add("id", VPackValue(desc->_id));
-
-  if (desc->_prev != nullptr) {
-    b->add("parent", VPackValue(VPackValueType::Object));
-    vpackWorkDescription(b, desc->_prev);
-    b->close();
-  }
-}
 
 namespace {
 std::atomic_uint_fast64_t NEXT_DESC_ID(static_cast<uint64_t>(0));
 }
 
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
-    : _type(type), _prev(prev), _id(0), _destroy(true) {}
+    : _type(type), _prev(prev), _id(0), _destroy(true), _canceled(false) {}
 
 WorkMonitor::WorkMonitor() : Thread("WorkMonitor") {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty WorkDescription
-////////////////////////////////////////////////////////////////////////////////
-
-WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
-  WorkDescription* desc = nullptr;
-  WorkDescription* prev = (Thread::CURRENT_THREAD == nullptr)
-                              ? Thread::CURRENT_WORK_DESCRIPTION
-                              : Thread::CURRENT_THREAD->workDescription();
-
-  if (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
-    desc->_type = type;
-    desc->_prev = prev;
-    desc->_destroy = true;
-  } else {
-    desc = new WorkDescription(type, prev);
-  }
-
-  desc->_id = NEXT_DESC_ID.fetch_add(1, std::memory_order_seq_cst);
-  desc->_data.handler = nullptr;
-
-  return desc;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief activates a WorkDescription
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
-  if (Thread::CURRENT_THREAD == nullptr) {
-    Thread::CURRENT_WORK_DESCRIPTION = desc;
-  } else {
-    Thread::CURRENT_THREAD->setWorkDescription(desc);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deactivates a WorkDescription
-////////////////////////////////////////////////////////////////////////////////
-
-WorkDescription* WorkMonitor::deactivateWorkDescription() {
-  if (Thread::CURRENT_THREAD == nullptr) {
-    WorkDescription* desc = Thread::CURRENT_WORK_DESCRIPTION;
-    Thread::CURRENT_WORK_DESCRIPTION = desc->_prev;
-    return desc;
-  } else {
-    return Thread::CURRENT_THREAD->setPrevWorkDescription();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an WorkDescription
+/// @brief frees a work description
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
@@ -245,11 +141,10 @@ void WorkMonitor::pushThread(Thread* thread) {
     activateWorkDescription(desc);
 
     {
-      MutexLocker guard(&THREADS_LOCK);
+      MUTEX_LOCKER(guard, THREADS_LOCK);
       THREADS.insert(thread);
     }
   } catch (...) {
-    Thread::CURRENT_THREAD = nullptr;
     throw;
   }
 }
@@ -265,13 +160,11 @@ void WorkMonitor::popThread(Thread* thread) {
   TRI_ASSERT(desc->_type == WorkType::THREAD);
   TRI_ASSERT(desc->_data.thread == thread);
 
-  Thread::CURRENT_THREAD = nullptr;
-
   try {
     freeWorkDescription(desc);
 
     {
-      MutexLocker guard(&THREADS_LOCK);
+      MUTEX_LOCKER(guard, THREADS_LOCK);
       THREADS.erase(thread);
     }
   } catch (...) {
@@ -284,14 +177,16 @@ void WorkMonitor::popThread(Thread* thread) {
 /// @brief pushes a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushAql(uint64_t queryId, char const* text, size_t length) {
-  TRI_ASSERT(type != nullptr);
+void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId,
+                          char const* text, size_t length) {
+  TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(text != nullptr);
 
   WorkDescription* desc = createWorkDescription(WorkType::AQL_STRING);
   TRI_ASSERT(desc != nullptr);
 
   desc->_identifier._id = queryId;
+  desc->_vocbase = vocbase;
 
   if (sizeof(desc->_data.text) - 1 < length) {
     length = sizeof(desc->_data.text) - 1;
@@ -306,13 +201,14 @@ void WorkMonitor::pushAql(uint64_t queryId, char const* text, size_t length) {
 /// @brief pushes a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushAql(uint64_t queryId) {
-  TRI_ASSERT(type != nullptr);
+void WorkMonitor::pushAql(TRI_vocbase_t* vocbase, uint64_t queryId) {
+  TRI_ASSERT(vocbase != nullptr);
 
   WorkDescription* desc = createWorkDescription(WorkType::AQL_ID);
   TRI_ASSERT(desc != nullptr);
 
   desc->_identifier._id = queryId;
+  desc->_vocbase = vocbase;
 
   activateWorkDescription(desc);
 }
@@ -406,6 +302,15 @@ void WorkMonitor::requestWorkOverview(uint64_t taskId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief requests cancel of work
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::cancelWork(uint64_t id) {
+  MUTEX_LOCKER(guard, CANCEL_LOCK);
+  CANCEL_IDS.insert(id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the main event loop, wait for requests and delete old descriptions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -435,6 +340,18 @@ void WorkMonitor::run() {
 
       uint64_t taskId;
 
+      {
+        MUTEX_LOCKER(guard, CANCEL_LOCK);
+
+        if (!CANCEL_IDS.empty()) {
+          for (auto thread : THREADS) {
+            cancelWorkDescriptions(thread);
+          }
+
+          CANCEL_IDS.clear();
+        }
+      }
+
       while (WORK_OVERVIEW.pop(taskId)) {
         VPackBuilder b;
 
@@ -444,7 +361,7 @@ void WorkMonitor::run() {
         b.add("work", VPackValue(VPackValueType::Array));
 
         {
-          MutexLocker guard(&THREADS_LOCK);
+          MUTEX_LOCKER(guard, THREADS_LOCK);
 
           for (auto& thread : THREADS) {
             WorkDescription* desc = thread->workDescription();
@@ -471,7 +388,7 @@ void WorkMonitor::run() {
         VPackDumper dumper(&sink, &options);
         dumper.dump(s);
 
-        SEND_WORK_OVERVIEW(taskId, buffer);
+        sendWorkOverview(taskId, buffer);
       }
     } catch (...) {
       // must prevent propagation of exceptions from here
@@ -500,11 +417,163 @@ void WorkMonitor::run() {
   }
 }
 
-AqlWorkStack::AqlWorkStack(uint64_t queryId, char const* text, size_t length) {
-  WorkMonitor::pushAql(queryId, text, length);
+WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
+  WorkDescription* desc = nullptr;
+  WorkDescription* prev = (Thread::CURRENT_THREAD == nullptr)
+                              ? CURRENT_WORK_DESCRIPTION
+                              : Thread::CURRENT_THREAD->workDescription();
+
+  if (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
+    desc->_type = type;
+    desc->_prev.store(prev);
+    desc->_destroy = true;
+  } else {
+    desc = new WorkDescription(type, prev);
+  }
+
+  desc->_id = NEXT_DESC_ID.fetch_add(1, std::memory_order_seq_cst);
+  desc->_data.handler = nullptr;
+
+  return desc;
 }
 
-AqlWorkStack::AqlWorkStack(uint64_t queryId) { WorkMonitor::pushAql(queryId); }
+void WorkMonitor::deleteWorkDescription(WorkDescription* desc, bool stopped) {
+  if (desc->_destroy) {
+    switch (desc->_type) {
+      case WorkType::THREAD:
+      case WorkType::CUSTOM:
+      case WorkType::AQL_ID:
+      case WorkType::AQL_STRING:
+        break;
+
+      case WorkType::HANDLER:
+        deleteHandler(desc);
+        break;
+    }
+  }
+
+  if (stopped) {
+    // we'll be getting here if the work monitor thread is already shut down
+    // and cannot delete anything anymore. this means we ourselves are
+    // responsible for cleaning up!
+    delete desc;
+    return;
+  }
+
+  // while the work monitor thread is still active, push the item on the
+  // work monitor's cleanup list for destruction
+  EMPTY_WORK_DESCRIPTION.push(desc);
+}
+
+void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
+  if (Thread::CURRENT_THREAD == nullptr) {
+    CURRENT_WORK_DESCRIPTION = desc;
+  } else {
+    Thread::CURRENT_THREAD->setWorkDescription(desc);
+  }
+}
+
+WorkDescription* WorkMonitor::deactivateWorkDescription() {
+  if (Thread::CURRENT_THREAD == nullptr) {
+    WorkDescription* desc = CURRENT_WORK_DESCRIPTION;
+    CURRENT_WORK_DESCRIPTION = desc->_prev.load();
+    return desc;
+  } else {
+    return Thread::CURRENT_THREAD->setPrevWorkDescription();
+  }
+}
+
+void WorkMonitor::vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
+  switch (desc->_type) {
+    case WorkType::THREAD:
+      b->add("type", VPackValue("thread"));
+      b->add("name", VPackValue(desc->_data.thread->name()));
+      b->add("number", VPackValue(desc->_data.thread->threadNumber()));
+      b->add("status", VPackValue(VPackValueType::Object));
+      desc->_data.thread->addStatus(b);
+      b->close();
+      break;
+
+    case WorkType::CUSTOM:
+      b->add("type", VPackValue(desc->_identifier._customType));
+      b->add("description", VPackValue(desc->_data.text));
+      break;
+
+    case WorkType::AQL_STRING:
+      b->add("type", VPackValue("AQL query"));
+      b->add("queryId", VPackValue(desc->_identifier._id));
+      b->add("description", VPackValue(desc->_data.text));
+      break;
+
+    case WorkType::AQL_ID:
+      b->add("type", VPackValue("AQL query id"));
+      b->add("queryId", VPackValue(desc->_identifier._id));
+      break;
+
+    case WorkType::HANDLER:
+      vpackHandler(b, desc);
+      break;
+  }
+
+  b->add("id", VPackValue(desc->_id));
+
+  auto prev = desc->_prev.load();
+
+  if (prev != nullptr) {
+    b->add("parent", VPackValue(VPackValueType::Object));
+    vpackWorkDescription(b, prev);
+    b->close();
+  }
+}
+
+void WorkMonitor::cancelWorkDescriptions(Thread* thread) {
+  WorkDescription* desc = thread->workDescription();
+
+  std::vector<WorkDescription*> path;
+
+  while (desc != nullptr && desc->_type != WorkType::THREAD) {
+    path.push_back(desc);
+
+    uint64_t id = desc->_id;
+
+    if (CANCEL_IDS.find(id) != CANCEL_IDS.end()) {
+      for (auto it = path.rbegin(); it < path.rend(); ++it) {
+        bool descent = true;
+        WorkDescription* d = *it;
+
+        switch (d->_type) {
+          case WorkType::THREAD:
+          case WorkType::CUSTOM:
+          case WorkType::HANDLER:
+            d->_canceled.store(true);
+            break;
+
+          case WorkType::AQL_STRING:
+          case WorkType::AQL_ID:
+            descent = cancelAql(d);
+            break;
+        }
+
+        if (! descent) {
+          break;
+        }
+      }
+
+      return;
+    }
+
+    desc = desc->_prev.load();
+  }
+}
+
+AqlWorkStack::AqlWorkStack(TRI_vocbase_t* vocbase, uint64_t queryId,
+                           char const* text, size_t length) {
+  WorkMonitor::pushAql(vocbase, queryId, text, length);
+}
+
+AqlWorkStack::AqlWorkStack(TRI_vocbase_t* vocbase, uint64_t queryId) {
+  WorkMonitor::pushAql(vocbase, queryId);
+}
 
 AqlWorkStack::~AqlWorkStack() { WorkMonitor::popAql(); }
 

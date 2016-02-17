@@ -25,25 +25,18 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief thread deleter
-////////////////////////////////////////////////////////////////////////////////
+bool WorkMonitor::cancelAql(WorkDescription* desc) {
+  TRI_ASSERT(false);
+  return true;
+}
 
-void WorkMonitor::DELETE_HANDLER(WorkDescription*) { TRI_ASSERT(false); }
+void WorkMonitor::deleteHandler(WorkDescription*) { TRI_ASSERT(false); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief thread description string
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::VPACK_HANDLER(arangodb::velocypack::Builder*,
-                                WorkDescription*) {
+void WorkMonitor::vpackHandler(arangodb::velocypack::Builder*,
+                               WorkDescription*) {
   TRI_ASSERT(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the overview
-////////////////////////////////////////////////////////////////////////////////
-
-void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t, std::string const&) {
+void WorkMonitor::sendWorkOverview(uint64_t, std::string const&) {
   TRI_ASSERT(false);
 }

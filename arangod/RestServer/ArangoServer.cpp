@@ -240,9 +240,9 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData,
       nullptr);
 
-  factory->addHandler("/_admin/work-monitor",
-                      RestHandlerCreator<WorkMonitorHandler>::createNoData,
-                      nullptr);
+  factory->addPrefixHandler("/_admin/work-monitor",
+                            RestHandlerCreator<WorkMonitorHandler>::createNoData,
+                            nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
 #ifdef TRI_ENABLE_FAILURE_TESTS

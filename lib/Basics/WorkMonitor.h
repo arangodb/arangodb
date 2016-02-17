@@ -26,52 +26,16 @@
 
 #include "Basics/Thread.h"
 
-#include "Basics/WorkItem.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace rest {
-class HttpHandler;
-}
-}
+#include "Basics/WorkDescription.h"
+#include "Basics/WorkItem.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of the current work
-////////////////////////////////////////////////////////////////////////////////
-
-enum class WorkType { THREAD, HANDLER, AQL_STRING, AQL_ID, CUSTOM };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief description of the current work
-////////////////////////////////////////////////////////////////////////////////
-
-struct WorkDescription {
-  WorkDescription(WorkType, WorkDescription*);
-
-  WorkType _type;
-  WorkDescription* _prev;
-  uint64_t _id;
-
-  bool _destroy;
-
-  union identifer {
-    char _customType[16];
-    uint64_t _id;
-  } _identifier;
-
-  union data {
-    data() {}
-    ~data() {}
-
-    char text[256];
-    Thread* thread;
-    arangodb::rest::HttpHandler* handler;
-  } _data;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work monitor class
@@ -83,25 +47,7 @@ class WorkMonitor : public Thread {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an empty WorkDescription
-  //////////////////////////////////////////////////////////////////////////////
-
-  static WorkDescription* createWorkDescription(WorkType);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief activates a WorkDescription
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void activateWorkDescription(WorkDescription*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deactivates a WorkDescription
-  //////////////////////////////////////////////////////////////////////////////
-
-  static WorkDescription* deactivateWorkDescription();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief frees an WorkDescription
+  /// @brief frees a work description
   //////////////////////////////////////////////////////////////////////////////
 
   static void freeWorkDescription(WorkDescription* desc);
@@ -122,13 +68,14 @@ class WorkMonitor : public Thread {
   /// @brief pushes a custom task
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushAql(uint64_t queryId, char const* text, size_t length);
+  static void pushAql(TRI_vocbase_t*, uint64_t queryId, char const* text,
+                      size_t length);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pushes a custom task
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushAql(uint64_t queryId);
+  static void pushAql(TRI_vocbase_t*, uint64_t queryId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pops a custom task
@@ -167,32 +114,33 @@ class WorkMonitor : public Thread {
   static WorkDescription* popHandler(arangodb::rest::HttpHandler*, bool free);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handler deleter
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void DELETE_HANDLER(WorkDescription* desc);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief requests a work overview
   //////////////////////////////////////////////////////////////////////////////
 
   static void requestWorkOverview(uint64_t taskId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handler description
+  /// @brief requests cancel of work
   //////////////////////////////////////////////////////////////////////////////
 
-  static void VPACK_HANDLER(arangodb::velocypack::Builder*,
-                            WorkDescription* desc);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sends the overview
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void SEND_WORK_OVERVIEW(uint64_t, std::string const&);
+  static void cancelWork(uint64_t id);
 
  protected:
   void run() override;
+
+ private:
+  static void sendWorkOverview(uint64_t, std::string const&);
+  static bool cancelAql(WorkDescription*);
+  static void deleteHandler(WorkDescription* desc);
+  static void vpackHandler(arangodb::velocypack::Builder*,
+                           WorkDescription* desc);
+
+  static WorkDescription* createWorkDescription(WorkType);
+  static void deleteWorkDescription(WorkDescription*, bool stopped);
+  static void activateWorkDescription(WorkDescription*);
+  static WorkDescription* deactivateWorkDescription();
+  static void vpackWorkDescription(VPackBuilder*, WorkDescription*);
+  static void cancelWorkDescriptions(Thread* thread);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,9 +182,9 @@ class AqlWorkStack {
   AqlWorkStack& operator=(const AqlWorkStack&) = delete;
 
  public:
-  AqlWorkStack(uint64_t id, char const* text, size_t length);
+  AqlWorkStack(TRI_vocbase_t*, uint64_t id, char const* text, size_t length);
 
-  AqlWorkStack(uint64_t id);
+  AqlWorkStack(TRI_vocbase_t*, uint64_t id);
 
   ~AqlWorkStack();
 };

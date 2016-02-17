@@ -27,11 +27,10 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/WorkDescription.h"
 #include "Basics/threads.h"
 
 namespace arangodb {
-struct WorkDescription;
-
 namespace velocypack {
 class Builder;
 }
@@ -64,12 +63,6 @@ class Thread {
   enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED };
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief current work description as thread local variable
-  //////////////////////////////////////////////////////////////////////////////
-
-  static thread_local WorkDescription* CURRENT_WORK_DESCRIPTION;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current work description as thread local variable
   //////////////////////////////////////////////////////////////////////////////
@@ -108,6 +101,22 @@ class Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static Thread* current() { return CURRENT_THREAD; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief check if work has been canceled
+  //////////////////////////////////////////////////////////////////////////////
+
+  static bool isCanceled() {
+    Thread* thread = CURRENT_THREAD;
+
+    if (thread == nullptr) {
+      return false;
+    }
+
+    WorkDescription* desc = thread->workDescription();
+
+    return desc == nullptr ? false : desc->_canceled.load();
+  }
 
  public:
   //////////////////////////////////////////////////////////////////////////////
