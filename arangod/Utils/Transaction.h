@@ -414,7 +414,6 @@ class Transaction {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult document(std::string const& collectionName,
@@ -737,6 +736,14 @@ class Transaction {
   int setupState() { return _setupState; }
 
  private:
+  
+  OperationResult documentCoordinator(std::string const& collectionName,
+                                      VPackSlice const& value,
+                                      OperationOptions const& options);
+
+  OperationResult documentLocal(std::string const& collectionName,
+                                VPackSlice const& value,
+                                OperationOptions const& options);
 
   OperationResult insertCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,
@@ -744,6 +751,16 @@ class Transaction {
 
   OperationResult insertLocal(std::string const& collectionName,
                               VPackSlice const& value,
+                              OperationOptions const& options);
+  
+  OperationResult updateCoordinator(std::string const& collectionName,
+                                    VPackSlice const& oldValue,
+                                    VPackSlice const& newValue,
+                                    OperationOptions const& options);
+
+  OperationResult updateLocal(std::string const& collectionName,
+                              VPackSlice const& oldValue,
+                              VPackSlice const& newValue,
                               OperationOptions const& options);
   
   OperationResult removeCoordinator(std::string const& collectionName,
