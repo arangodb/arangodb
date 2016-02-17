@@ -1102,7 +1102,7 @@ static void UpdateVocbaseVPack(bool useCollection,
 
   VPackSlice update = updateBuilder.slice();
 
-  OperationResult opResult = trx.replace(collectionName, search, update, options);
+  OperationResult opResult = trx.update(collectionName, search, update, options);
 
   res = trx.finish(opResult.code);
 
