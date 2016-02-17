@@ -853,6 +853,7 @@
       if (this.lastCollectionName === this.collectionName) {
         if (this.activeFilter) {
           this.filterCollection();
+          console.log("yes");
           this.restoreFilter();
         }
       }
@@ -902,7 +903,7 @@
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
