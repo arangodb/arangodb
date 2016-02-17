@@ -20125,18 +20125,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        self.refreshCollectionsView();
       };
 
       window.modalView.hide();
-      //this.getIndex();
-      //this.createEditPropertiesModal();
       //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          self.collectionsView.render();
-        }
-      });
     },
 
     lastTarget: null,
@@ -20176,10 +20170,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     refreshCollectionsView: function() {
-      var self = this;
       window.App.arangoCollectionsStore.fetch({
         success: function () {
-          self.collectionsView.checkLockedCollections();
+          window.App.collectionsView.render();
         }
       });
     },
@@ -20200,12 +20193,11 @@ window.ArangoUsers = Backbone.Collection.extend({
           this.model.set("locked", false);
           this.refreshCollectionsView();
         }
+        this.refreshCollectionsView();
       }.bind(this);
 
       this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
-
-      this.refreshCollectionsView();
 
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
@@ -20344,6 +20336,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           $('#collection_' + model.get("name")).removeClass('locked');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+          }
         }
         if (model.get("status") === 'loading') {
           $('#collection_' + model.get("name")).removeClass('loading');
@@ -24158,6 +24155,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -24254,9 +24260,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -24419,6 +24437,22 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,
