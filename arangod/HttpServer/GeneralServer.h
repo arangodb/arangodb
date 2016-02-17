@@ -212,7 +212,7 @@ class GeneralServer : protected TaskManager {
 
   // Overloading for VelocyStream
 
-  bool handleRequest(VelocyCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
+  // bool handleRequest(VelocyCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
   
  protected:
   //////////////////////////////////////////////////////////////////////////////

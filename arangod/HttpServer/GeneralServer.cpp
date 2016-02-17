@@ -230,20 +230,6 @@ void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
   _commTasks.erase(task);
 }
 
-//// Overloading for VelocyStream
-
-// void GeneralServer::handleCommunicationClosed(VelocyCommTask* task) {
-//   MUTEX_LOCKER(_commTasksLock);
-//   _commTasksVstream.erase(task);
-// }
-
-// Trial purpose @TODO remove it
-
-// void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
-//   MUTEX_LOCKER(_commTasksLock);
-//   _commTasks.erase(task);
-// }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,18 +238,6 @@ void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
   MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
-
-//// Overloading for VelocyStream
-
-// void GeneralServer::handleCommunicationFailure(VelocyCommTask* task) {
-//   MUTEX_LOCKER(_commTasksLock);
-//   _commTasksVstream.erase(task);
-// }
-
-// void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
-//   MUTEX_LOCKER(_commTasksLock);
-//   _commTasksVstream.erase(task);
-// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a job for asynchronous execution (using the dispatcher)
@@ -330,28 +304,6 @@ bool GeneralServer::handleRequest(ArangoTask* task,
   return res == TRI_ERROR_NO_ERROR;
 }
 
-// Overloading for VelocyStream
-
-bool GeneralServer::handleRequest(VelocyCommTask* task,
-                               WorkItem::uptr<GeneralHandler>& handler) {
-  // direct handlers
-  if (handler->isDirect()) {
-    HandlerWorkStack work(handler);
-    handleRequestDirectly(task, work.handler());
-
-    return true;
-  }
-
-  // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<GeneralServerJob>(this, handler);
-
-  // add the job to the dispatcher
-  int res = _dispatcher->addJob(job);
-
-  // job is in queue now
-  return res == TRI_ERROR_NO_ERROR;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,26 +336,6 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralServer::handleRequestDirectly(ArangoTask* task,
-                                       GeneralHandler* handler) {
-  GeneralHandler::status_t status = handler->executeFull();
-
-  switch (status._status) {
-    case GeneralHandler::HANDLER_FAILED:
-    case GeneralHandler::HANDLER_DONE:
-      task->handleResponse(handler->getResponse());
-      break;
-
-    case GeneralHandler::HANDLER_ASYNC:
-      // do nothing, just wait
-      break;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle request directly (Vstream)
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::handleRequestDirectly(VelocyCommTask* task,
                                        GeneralHandler* handler) {
   GeneralHandler::status_t status = handler->executeFull();
 
