@@ -186,6 +186,12 @@ include (OptimizeForArchitecture)
 OptimizeForArchitecture()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
+if (NOT GO_FOUND)
+  message ("Go version >=1.2 not found. etcd will not be built.")
+endif()
+
 # Enable Backtrace -------------------------------------------------------------
 option(USE_BACKTRACE "whether we should try to generate c-level stacktraces"
   OFF)
@@ -565,9 +571,6 @@ find_package (BISON)
 
 # FLEX -------------------------------------------------------------------------
 find_package (FLEX)
-
-# GO ---------------------------------------------------------------------------
-find_package(Go 1.2)
 
 # Python
 find_package(PythonInterp 2)
