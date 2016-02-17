@@ -157,6 +157,11 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
   generateSaved(result, collectionName, TRI_COL_TYPE_DOCUMENT);
   return true;
 }
