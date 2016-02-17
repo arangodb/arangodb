@@ -498,9 +498,13 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToArray5 : function () {
-      var expected = [ [ -0.635 ] ];
+      var expected = -0.635;
       var actual = getQueryResults("RETURN NOOPT(TO_ARRAY(-0.635))");
-      assertEqual(expected, actual);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].length, 1);
+      var value = actual[0][0];
+      // Double precission
+      assertEqual(expected.toPrecision(5), value.toPrecision(5));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

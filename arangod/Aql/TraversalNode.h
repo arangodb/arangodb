@@ -53,6 +53,8 @@ class SimpleTraverserExpression
   ~SimpleTraverserExpression();
 
   void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
+
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,11 +105,11 @@ class TraversalNode : public ExecutionNode {
   NodeType getType() const override final { return TRAVERSAL; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
-
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively

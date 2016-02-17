@@ -426,11 +426,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   /// @brief generatePlanForOneShard
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json generatePlanForOneShard(size_t nr,
-                                                 EngineInfo const& info,
-                                                 QueryId& connectedId,
-                                                 std::string const& shardId,
-                                                 bool verbose) {
+  void generatePlanForOneShard(VPackBuilder& builder, size_t nr,
+                               EngineInfo const& info, QueryId& connectedId,
+                               std::string const& shardId, bool verbose) {
     // copy the relevant fragment of the plan for each shard
     // Note that in these parts of the query there are no SubqueryNodes,
     // since they are all on the coordinator!
@@ -462,7 +460,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
     plan.root(previous);
     plan.setVarUsageComputed();
-    return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
+    return plan.root()->toVelocyPack(builder, verbose);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -605,11 +603,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto const& shardId : *shardIds) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-      auto jsonPlan =
-          generatePlanForOneShard(nr++, info, connectedId, shardId, true);
+      VPackBuilder b;
+      generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
+
+      std::unique_ptr<TRI_json_t> tmp(arangodb::basics::VelocyPackHelper::velocyPackToJson(b.slice()));
 
       distributePlanToShard(coordTransactionID, info, collection, connectedId,
-                            shardId, jsonPlan.steal());
+                            shardId, tmp.release());
     }
 
     // fix collection

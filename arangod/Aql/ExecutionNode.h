@@ -35,6 +35,10 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 class Ast;
 struct Collection;
@@ -448,18 +452,18 @@ class ExecutionNode {
 
   bool walk(WalkerWorker<ExecutionNode>* worker);
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
+  ///////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON, returns an AUTOFREE Json object
+  /// @brief toVelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief toJson
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                            bool) const = 0;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                                  bool) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief getVariablesUsedHere, returning a vector
@@ -699,11 +703,10 @@ class ExecutionNode {
                               char const* which);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief toJsonHelper, for a generic node
+  /// @brief toVelocyPackHelper, for a generic node
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJsonHelperGeneric(arangodb::basics::Json&,
-                                             TRI_memory_zone_t*, bool) const;
+  void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set regs to be deleted
@@ -829,11 +832,11 @@ class SingletonNode : public ExecutionNode {
   NodeType getType() const override final { return SINGLETON; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -892,11 +895,11 @@ class EnumerateCollectionNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1000,11 +1003,11 @@ class EnumerateListNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_LIST; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1101,11 +1104,11 @@ class LimitNode : public ExecutionNode {
   NodeType getType() const override final { return LIMIT; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1206,11 +1209,11 @@ class CalculationNode : public ExecutionNode {
   NodeType getType() const override final { return CALCULATION; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1365,11 +1368,11 @@ class SubqueryNode : public ExecutionNode {
   Variable const* outVariable() const { return _outVariable; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1484,11 +1487,11 @@ class FilterNode : public ExecutionNode {
   NodeType getType() const override final { return FILTER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1613,11 +1616,11 @@ class ReturnNode : public ExecutionNode {
   NodeType getType() const override final { return RETURN; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1684,11 +1687,12 @@ class NoResultsNode : public ExecutionNode {
   NodeType getType() const override final { return NORESULTS; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively

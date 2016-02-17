@@ -300,7 +300,13 @@
     </div>
   </span>
 </div>
-<h5 class="collectionName"><%= model.get('name') %></h5>
+
+<% if(model.get('lockType') === "index") { %>
+  <!-- <progress max="100" value="80"></progress>-->
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } else { %>
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } %>
 </script>
 
 <script id="collectionsView.ejs" type="text/template">
@@ -418,21 +424,6 @@
           </div>
         </div>
       </div>
-  </div>
-
-  <!-- Delete Index Modal -->
-  <div id="indexDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-header">
-      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-      <a class="arangoHeader">Delete Index?</a>
-    </div>
-    <div class="modal-body" id="deleteIndex">
-      <p>There is no way back…</p>
-    </div>
-    <div class="modal-footer">
-      <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
-      <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
-    </div>
   </div>
 
 </script>

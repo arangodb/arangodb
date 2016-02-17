@@ -606,57 +606,22 @@
 ///   The manifest file is malformed. It is not in a valid JSON format.
 /// - 3001: @LIT{manifest file is invalid}
 ///   The manifest file of this application is invalid.
-/// - 3002: @LIT{missing manifest attribute}
-///   The manifest file is incomplete. A required attribute is missing.
-/// - 3003: @LIT{unable to extract app root path}
-///   The root path of the application could not be found.
 /// - 3004: @LIT{invalid foxx options}
 ///   The options used to configure the foxx are invalid.
-/// - 3005: @LIT{failed to execute script}
-///   The script provided contains errors.
-/// - 3006: @LIT{syntax error in script}
-///    contains a syntax error: 
 /// - 3007: @LIT{mountpoint is invalid}
 ///   mountpoint is invalid
-/// - 3008: @LIT{No foxx found at this location}
-///   No foxx found at this location
 /// - 3009: @LIT{App not found}
 ///   No app found at this mountpoint
 /// - 3010: @LIT{App not configured}
 ///   The app has to be configured before it can be used
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
-/// - 3101: @LIT{syntax error in module}
-///   The module could not be parsed because of a syntax error.
-/// - 3102: @LIT{failed to wrap module}
-///   The module wrapper could not be generated. This may indicate a problem
-///   with some of the names of the module's context variables.
 /// - 3103: @LIT{failed to invoke module}
 ///   Failed to invoke the module in its context.
-/// - 3110: @LIT{unknown file type}
-///   The module path resolves to a file of an unknown type.
-/// - 3111: @LIT{path must be absolute}
-///   The module path must be absolute.
-/// - 3112: @LIT{cannot use '..' to escape top-level-directory}
-///   The relative module path can not escape the module's top-level directory.
-/// - 3113: @LIT{drive local path is not supported}
-///   The module path contains a Windows drive letter, which is not supported.
-/// - 3120: @LIT{corrupted module origin}
-///   The module origin is invalid.
-/// - 3121: @LIT{corrupted package origin}
-///   The package origin is invalid.
-/// - 3125: @LIT{no content}
-///   The module resolves to a document which is empty or malformed.
-/// - 3130: @LIT{cannot read main file}
-///   The module's main file is not readable.
-/// - 3131: @LIT{main file is not of type 'js'}
-///   The module's main file is not a JavaScript file.
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
-/// - 20000: @LIT{newest version of app already installed}
-///   newest version of app already installed
 /// - 21000: @LIT{named queue already exists}
 ///    "Will be returned if a queue with this name already exists."
 /// - 21001: @LIT{dispatcher stopped}
@@ -3245,26 +3210,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_INVALID_APPLICATION_MANIFEST                            (3001)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3002: ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING
-///
-/// missing manifest attribute
-///
-/// The manifest file is incomplete. A required attribute is missing.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING                         (3002)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3003: ERROR_CANNOT_EXTRACT_APPLICATION_ROOT
-///
-/// unable to extract app root path
-///
-/// The root path of the application could not be found.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_CANNOT_EXTRACT_APPLICATION_ROOT                         (3003)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
 ///
 /// invalid foxx options
@@ -3275,26 +3220,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_INVALID_FOXX_OPTIONS                                    (3004)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3005: ERROR_FAILED_TO_EXECUTE_SCRIPT
-///
-/// failed to execute script
-///
-/// The script provided contains errors.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_FAILED_TO_EXECUTE_SCRIPT                                (3005)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3006: ERROR_SYNTAX_ERROR_IN_SCRIPT
-///
-/// syntax error in script
-///
-///  contains a syntax error: 
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SYNTAX_ERROR_IN_SCRIPT                                  (3006)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3007: ERROR_INVALID_MOUNTPOINT
 ///
 /// mountpoint is invalid
@@ -3303,16 +3228,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3008: ERROR_NO_FOXX_FOUND
-///
-/// No foxx found at this location
-///
-/// No foxx found at this location
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_NO_FOXX_FOUND                                           (3008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3009: ERROR_APP_NOT_FOUND
@@ -3345,27 +3260,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_MODULE_NOT_FOUND                                        (3100)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3101: ERROR_MODULE_SYNTAX_ERROR
-///
-/// syntax error in module
-///
-/// The module could not be parsed because of a syntax error.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_SYNTAX_ERROR                                     (3101)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3102: ERROR_MODULE_BAD_WRAPPER
-///
-/// failed to wrap module
-///
-/// The module wrapper could not be generated. This may indicate a problem with
-/// some of the names of the module's context variables.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_BAD_WRAPPER                                      (3102)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3103: ERROR_MODULE_FAILURE
 ///
 /// failed to invoke module
@@ -3374,96 +3268,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MODULE_FAILURE                                          (3103)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3110: ERROR_MODULE_UNKNOWN_FILE_TYPE
-///
-/// unknown file type
-///
-/// The module path resolves to a file of an unknown type.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_UNKNOWN_FILE_TYPE                                (3110)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3111: ERROR_MODULE_PATH_MUST_BE_ABSOLUTE
-///
-/// path must be absolute
-///
-/// The module path must be absolute.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_PATH_MUST_BE_ABSOLUTE                            (3111)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3112: ERROR_MODULE_CAN_NOT_ESCAPE
-///
-/// cannot use '..' to escape top-level-directory
-///
-/// The relative module path can not escape the module's top-level directory.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_CAN_NOT_ESCAPE                                   (3112)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3113: ERROR_MODULE_DRIVE_LETTER
-///
-/// drive local path is not supported
-///
-/// The module path contains a Windows drive letter, which is not supported.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_DRIVE_LETTER                                     (3113)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3120: ERROR_MODULE_BAD_MODULE_ORIGIN
-///
-/// corrupted module origin
-///
-/// The module origin is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_BAD_MODULE_ORIGIN                                (3120)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3121: ERROR_MODULE_BAD_PACKAGE_ORIGIN
-///
-/// corrupted package origin
-///
-/// The package origin is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_BAD_PACKAGE_ORIGIN                               (3121)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3125: ERROR_MODULE_DOCUMENT_IS_EMPTY
-///
-/// no content
-///
-/// The module resolves to a document which is empty or malformed.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_DOCUMENT_IS_EMPTY                                (3125)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3130: ERROR_MODULE_MAIN_NOT_READABLE
-///
-/// cannot read main file
-///
-/// The module's main file is not readable.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_MAIN_NOT_READABLE                                (3130)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3131: ERROR_MODULE_MAIN_NOT_JS
-///
-/// main file is not of type 'js'
-///
-/// The module's main file is not a JavaScript file.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_MODULE_MAIN_NOT_JS                                      (3131)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS
@@ -3484,16 +3288,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10001)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 20000: ERROR_APP_ALREADY_EXISTS
-///
-/// newest version of app already installed
-///
-/// newest version of app already installed
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_APP_ALREADY_EXISTS                                      (20000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21000: ERROR_QUEUE_ALREADY_EXISTS

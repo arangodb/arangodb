@@ -2124,6 +2124,17 @@ TRI_json_t* TRI_JsonShapedJson(VocShaper* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a shaped json object into a VelocyPack Object
+///        NOTE: Transforms via TRI_json_t.
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> TRI_VelocyPackShapedJson(
+    VocShaper* shaper, TRI_shaped_json_t const* shaped) {
+  std::unique_ptr<TRI_json_t> tmp(TRI_JsonShapedJson(shaper, shaped));
+  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces
 /// this can only be used to stringify shapes of type array
 ////////////////////////////////////////////////////////////////////////////////

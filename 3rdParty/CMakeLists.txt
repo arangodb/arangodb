@@ -16,6 +16,20 @@ macro(import_target tname tdep tinclude tpath)
     )
 endmacro()
 
+# ETCD
+if (MSVC)
+  set (ETCD_BUILD_COMMAND build.bat)
+else()
+  set (ETCD_BUILD_COMMAND ./build)
+endif()
+ExternalProject_Add(etcd_build
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+  CONFIGURE_COMMAND ""
+  BUILD_IN_SOURCE TRUE
+  BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
+  INSTALL_COMMAND "")
+
+
 # ZLIB
 if (UNIX)
   ExternalProject_Add(zlib_build
@@ -71,7 +85,7 @@ set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   CXXFLAGS=${CMAKE_CXX_FLAGS})
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set (V8_BUILD_COMMAND "${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++")
+  set (V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
 endif()
 ExternalProject_Add(v8_build SOURCE_DIR "${V8_DIR}"
   BUILD_IN_SOURCE TRUE BUILD_COMMAND "${V8_BUILD_COMMAND}" 

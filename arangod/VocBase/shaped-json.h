@@ -30,6 +30,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
 }
 }
@@ -900,6 +901,14 @@ TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper*, TRI_json_t const*, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonShapedJson(VocShaper*, TRI_shaped_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a shaped json object into a VelocyPack Object
+///        NOTE: Transforms via TRI_json_t.
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<arangodb::velocypack::Builder> TRI_VelocyPackShapedJson(
+    VocShaper*, TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces

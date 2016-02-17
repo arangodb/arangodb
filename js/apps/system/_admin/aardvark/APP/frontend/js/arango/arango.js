@@ -406,14 +406,14 @@
             });
 
             if (found) {
-              this.deleteAardvarkJob(aardvark.id);
-            }
-            else {
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
                 type: aardvark.type 
               });
+            }
+            else {
+              window.arangoHelper.deleteAardvarkJob(aardvark.id);
             }
           }
         });

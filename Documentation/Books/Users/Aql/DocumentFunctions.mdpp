@@ -113,7 +113,7 @@ AQL supports the following functions to operate on document values:
 
 - *VALUES(document, removeInternal)*: Returns the attribute values of the *document*
   as an array. If *removeInternal* is set to *true*, then all internal attributes (such 
-  as *_id*, *_key* etc.) are removed from the result. 
+  as *_id*, *_key* etc.) are removed from the result. The values will be returned in any order.
 
 - *ZIP(attributes, values)*: Returns a document object assembled from the
   separate parameters *attributes* and *values*. *attributes* and *values* must be

@@ -125,6 +125,12 @@ struct Index {
     return json;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create a VelocyPack representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(VPackBuilder&) const;
+
   bool hasSelectivityEstimate() const {
     if (!hasInternals()) {
       return false;
