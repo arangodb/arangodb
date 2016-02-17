@@ -92,4 +92,14 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
                            std::string& collectionName,
                            std::unique_ptr<char[]>& key, TRI_voc_rid_t& rid);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle from a v8 value (string | object)
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val,
+                           std::string& collectionName,
+                           arangodb::velocypack::Builder& builder,
+                           bool includeRev);
+
 #endif

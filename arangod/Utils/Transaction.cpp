@@ -755,7 +755,6 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions const& options) {
@@ -800,8 +799,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   builder.close();
 
   VPackSlice removeSlice = builder.slice();
-  std::cout << removeSlice.toJson() << "\n";
-  std::cout << expectedRevision << " <- Revision" << "\n";
 
   TRI_voc_rid_t actualRevision = 0;
   TRI_doc_update_policy_t updatePolicy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);

@@ -180,3 +180,84 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
   // unknown value type. give up
   return false;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle from a v8 value (string | object)
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val,
+                           std::string& collectionName,
+                           VPackBuilder& builder,
+                           bool includeRev) {
+  // reset the collection identifier and the revision
+  TRI_ASSERT(collectionName.empty());
+  VPackObjectBuilder guard(&builder);
+
+  std::unique_ptr<char[]> key;
+
+  // extract the document identifier and revision from a string
+  if (val->IsString()) {
+    bool res = ParseDocumentHandle(val, collectionName, key);
+    if (res) {
+      if (key.get() == nullptr) {
+        return false;
+      }
+      builder.add(TRI_VOC_ATTRIBUTE_KEY,
+                  VPackValue(reinterpret_cast<char*>(key.get())));
+    }
+    return res;
+  }
+
+  // extract the document identifier and revision from a document object
+  if (val->IsObject()) {
+    TRI_GET_GLOBALS();
+
+    v8::Handle<v8::Object> obj = val->ToObject();
+    TRI_GET_GLOBAL_STRING(_IdKey);
+    TRI_GET_GLOBAL_STRING(_KeyKey);
+    if (obj->HasRealNamedProperty(_IdKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
+
+      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+        return false;
+      }
+    } else if (obj->HasRealNamedProperty(_KeyKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
+
+      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+
+    if (key.get() == nullptr) {
+      return false;
+    }
+    // If we get here we have a valid key
+    builder.add(TRI_VOC_ATTRIBUTE_KEY,
+                VPackValue(reinterpret_cast<char*>(key.get())));
+
+    if (!includeRev) {
+      return true;
+    }
+
+    TRI_GET_GLOBAL_STRING(_RevKey);
+    if (!obj->HasRealNamedProperty(_RevKey)) {
+      return true;
+    }
+    uint64_t rid = 0;
+
+    rid = TRI_ObjectToUInt64(obj->Get(_RevKey), true);
+
+    if (rid == 0) {
+      return false;
+    }
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(rid)));
+    return true;
+  }
+
+  // unknown value type. give up
+  return false;
+}
