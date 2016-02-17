@@ -43,7 +43,6 @@ void TRI_InitializeC(int argc, char* argv[]) {
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
   Logger::initialize(false);
-  TRI_InitializeHashes();
   TRI_InitializeRandom();
   TRI_InitializeProcess(argc, argv);
 }
@@ -55,7 +54,6 @@ void TRI_InitializeC(int argc, char* argv[]) {
 void TRI_ShutdownC() {
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
-  TRI_ShutdownHashes();
   Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
