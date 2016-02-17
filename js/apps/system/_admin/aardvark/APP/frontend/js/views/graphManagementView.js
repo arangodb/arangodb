@@ -315,9 +315,12 @@
           }
         }
       );
+        console.log(edgeDefinitions);
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent().parent().next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent().parent().next().next().find('.select2-choices').css("border-color", "red");
         return;
       }
 
@@ -480,6 +483,13 @@
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent().parent().next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent().parent().next().next().find('.select2-choices').css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,
