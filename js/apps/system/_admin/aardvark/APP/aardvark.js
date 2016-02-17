@@ -323,13 +323,14 @@ controller.post("/graph-examples/create/:name", function(req, res) {
 
 controller.post("/job", function(req, res) {
 
-  if (req.body().id && req.body().collection && req.body().type) {
+  if (req.body().id && req.body().collection && req.body().type && req.body().desc) {
 
     //store id in _system
     db.aardvark.save({
       id: req.body().id,
       collection: req.body().collection, 
-      type: req.body().type
+      type: req.body().type,
+      desc: req.body().desc
     });
 
     res.json(true);

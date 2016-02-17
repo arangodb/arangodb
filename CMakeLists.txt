@@ -181,10 +181,28 @@ endif ()
 # Architecture
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
+
+include (TargetArch)
+target_architecture(CMAKE_TARGET_ARCHITECTURES)
+list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
+if(NOT "${cmake_target_arch_len}" STREQUAL "1")
+  set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
+  set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
+else()
+  set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL FALSE)
+  set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
+endif()
+
 include (VcMacros)
 include (OptimizeForArchitecture)
 OptimizeForArchitecture()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
+
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
+if (NOT GO_FOUND)
+  message ("Go version >=1.2 not found. etcd will not be built.")
+endif()
 
 # Enable Backtrace -------------------------------------------------------------
 option(USE_BACKTRACE "whether we should try to generate c-level stacktraces"
@@ -565,9 +583,6 @@ find_package (BISON)
 
 # FLEX -------------------------------------------------------------------------
 find_package (FLEX)
-
-# GO ---------------------------------------------------------------------------
-find_package(Go 1.2)
 
 # Python
 find_package(PythonInterp 2)
