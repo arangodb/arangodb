@@ -210,6 +210,15 @@
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
