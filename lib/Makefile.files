@@ -90,6 +90,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/InitializeRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
+	lib/Rest/VelocyResponse.cpp \
 	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
