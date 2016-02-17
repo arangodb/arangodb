@@ -907,6 +907,8 @@
               if (typeof callback === "function") {
                 callback();
               }
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               window.progressView.hide();
@@ -1098,7 +1100,8 @@
               if (xhr.getResponseHeader('x-arango-async-id')) {
                 self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
               }
-
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               self.switchTab("result-switch");
