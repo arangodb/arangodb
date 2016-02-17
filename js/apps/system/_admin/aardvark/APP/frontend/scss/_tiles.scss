@@ -71,7 +71,13 @@ $iconsize: 50px;
 
   &.locked {
     cursor: not-allowed;
-    opacity: .5;
+
+    .iconSet,
+    .borderBox,
+    .collection-type-icon,
+    .collectionName {
+      opacity: .5;
+    }
 
     .iconSet {
       span:hover {
@@ -226,6 +232,7 @@ $iconsize: 50px;
 
   .borderBox {
     border: 1px solid $c-tile-border;
+    border-bottom: 0;
     border-radius: 3px;
     height: 75px;
     position: absolute;
@@ -276,7 +283,6 @@ $iconsize: 50px;
     border-bottom: 16px solid $c-unloaded;
   }
 
-
   .deleted div {
     border-bottom: 16px solid $c-state-critical;
   }
@@ -321,6 +327,10 @@ $iconsize: 50px;
 
         &.loaded {
           border-bottom-color: $c-positive;
+        }
+
+        &.inProgress {
+          border-bottom-color: $c-progress-bar;
         }
 
         &.unloaded {

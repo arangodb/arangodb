@@ -189,12 +189,11 @@ std::string RestImportHandler::buildParseError(size_t i,
 /// @brief process a single VelocyPack document
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
-                                            RestImportResult& result,
-                                            char const* lineStart,
-                                            VPackSlice const& slice,
-                                            bool isEdgeCollection,
-                                            bool waitForSync, size_t i) {
+int RestImportHandler::handleSingleDocument(
+    RestImportTransaction& trx, RestImportResult& result, char const* lineStart,
+    VPackSlice const& slice, std::string const& collectionName,
+    bool isEdgeCollection, OperationOptions const& opOptions, size_t i) {
+
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -216,6 +215,8 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {
+    // Validate from and to
+    // TODO: Check if this is unified in trx.insert
     std::string from;
     std::string to;
 
@@ -240,39 +241,14 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
 
-    TRI_document_edge_t edge;
-
-    edge._fromCid = 0;
-    edge._toCid = 0;
-    edge._fromKey = nullptr;
-    edge._toKey = nullptr;
-
-    // Note that in a DBserver in a cluster the following two calls will
-    // parse the first part as a cluster-wide collection name:
-    int res1 =
-        parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
-    int res2 = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
-
-    if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
-      res = trx.insert(trx.trxCollection(), &document, slice, &edge, waitForSync);
-    } else {
-      res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
-    }
-
-    if (edge._fromKey != nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
-    }
-    if (edge._toKey != nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
-    }
-  } else {
-    // do not acquire an extra lock
-    res = trx.insert(trx.trxCollection(), &document, slice, nullptr, waitForSync);
   }
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  OperationResult opResult = trx.insert(collectionName, slice, opOptions);
+
+  if (opResult.successful()) {
     ++result._numCreated;
   }
+  res = opResult.code;
 
   // special behavior in case of unique constraint violation . . .
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
@@ -284,47 +260,20 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 
       std::string keyString = keySlice.copyString();
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
-        // update: first read existing document
-        TRI_doc_mptr_copy_t previous;
-        int res2 = trx.document(trx.trxCollection(), &previous, keyString);
-
-        if (res2 == TRI_ERROR_NO_ERROR) {
-          auto shaper =
-              trx.documentCollection()->getShaper();  // PROTECTED by trx here
-
-          TRI_shaped_json_t shapedJson;
-          TRI_EXTRACT_SHAPED_JSON_MARKER(
-              shapedJson, previous.getDataPtr());  // PROTECTED by trx here
-          std::unique_ptr<TRI_json_t> old(
-              TRI_JsonShapedJson(shaper, &shapedJson));
-
-          // default value
-          res = TRI_ERROR_OUT_OF_MEMORY;
-
-          if (old != nullptr) {
-            std::unique_ptr<TRI_json_t> json(
-                arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-            std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(
-                TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
-
-            if (patchedJson != nullptr) {
-              res = trx.update(trx.trxCollection(), keyString, 0, &document, patchedJson.get(),
-                               TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, waitForSync);
-            }
-          }
-
-          if (res == TRI_ERROR_NO_ERROR) {
-            ++result._numUpdated;
-          }
-        }
-      } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
-        // replace
-        res = trx.update(trx.trxCollection(), keyString, 0, &document, slice,
-                         TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, waitForSync);
-
-        if (res == TRI_ERROR_NO_ERROR) {
+        // update
+        opResult = trx.update(collectionName, keySlice, slice, opOptions);
+        if (opResult.successful()) {
           ++result._numUpdated;
         }
+        res = opResult.code;
+        // We silently ignore all failed updates
+      } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
+        // replace
+        opResult = trx.replace(collectionName, keySlice, slice, opOptions);
+        if (opResult.successful()) {
+          ++result._numUpdated;
+        }
+        res = opResult.code;
       } else {
         // simply ignore unique key violations silently
         TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
@@ -368,9 +317,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  bool const waitForSync = extractWaitForSync();
   bool const complete = extractComplete();
   bool const overwrite = extractOverwrite();
+  OperationOptions opOptions;
+  opOptions.waitForSync = extractWaitForSync();
 
   // extract the collection name
   bool found;
@@ -509,7 +459,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
 
       res = handleSingleDocument(trx, result, oldPtr, builder->slice(),
-                                 isEdgeCollection, waitForSync, i);
+                                 collection, isEdgeCollection, opOptions, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -548,8 +498,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, nullptr, slice, isEdgeCollection,
-                                 waitForSync, i + 1);
+      res = handleSingleDocument(trx, result, nullptr, slice, collection,
+                                 isEdgeCollection, opOptions, i + 1);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -595,9 +545,10 @@ bool RestImportHandler::createFromKeyValueList() {
     return false;
   }
 
-  bool const waitForSync = extractWaitForSync();
   bool const complete = extractComplete();
   bool const overwrite = extractOverwrite();
+  OperationOptions opOptions;
+  opOptions.waitForSync = extractWaitForSync();
 
   // extract the collection name
   bool found;
@@ -753,7 +704,7 @@ bool RestImportHandler::createFromKeyValueList() {
             createVelocyPackObject(keys, values, errorMsg, i);
         res =
             handleSingleDocument(trx, result, lineStart, objectBuilder->slice(),
-                                 isEdgeCollection, waitForSync, i);
+                                 collection, isEdgeCollection, opOptions, i);
       } catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;

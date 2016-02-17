@@ -58,6 +58,7 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -4733,8 +4734,7 @@ TRI_ASSERT(false);
     *mptr = *header;
   }
 
-  TRI_ASSERT(mptr->getDataPtr() !=
-             nullptr);  // PROTECTED by trx in trxCollection
+  TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
@@ -5121,7 +5121,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     CollectionReadLocker collectionLocker(this, lock);
 
     TRI_doc_mptr_t* header;
-    int res = lookupDocument(trx, &slice, nullptr /* policy */, header);
+    int res = lookupDocument(trx, &slice, nullptr, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5131,13 +5131,11 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     *mptr = *header;
   }
 
-  TRI_ASSERT(mptr->getDataPtr() !=
-             nullptr);  // PROTECTED by trx in trxCollection
-  // TRI_ASSERT(mptr->_rid > 0);
+  TRI_ASSERT(mptr->getDataPtr() != nullptr);
+  TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
@@ -5145,12 +5143,24 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 
 int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
                                       TRI_doc_mptr_copy_t* mptr,
-                                      bool lock, bool waitForSync) {
+                                      OperationOptions& options,
+                                      bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
   uint64_t const hash = key.hash();
+
+  TRI_voc_rid_t revision = 0;
+  {
+    VPackSlice r(slice->get(TRI_VOC_ATTRIBUTE_REV));
+    if (r.isString()) {
+      revision = arangodb::basics::StringUtils::uint64(r.copyString());
+    }
+    else if (r.isInteger()) {
+      revision = r.getNumber<TRI_voc_rid_t>();
+    }
+  }
   
   std::unique_ptr<arangodb::wal::Marker> marker(
       createVPackInsertMarker(trx, slice));
@@ -5190,12 +5200,12 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    // header->_rid = rid; // TODO
+    header->_rid = revision;
     header->_hash = hash;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
     // insert into indexes
-    res = insertDocument(trx, header, operation, mptr, waitForSync);
+    res = insertDocument(trx, header, operation, mptr, options.waitForSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5203,10 +5213,111 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
       TRI_ASSERT(mptr->getDataPtr() !=
                  nullptr);  // PROTECTED by trx in trxCollection
 
-      if (waitForSync) {
+      if (options.waitForSync) {
         markerTick = operation.tick;
       }
     }
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document or edge in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
+                                      VPackSlice const* newSlice, 
+                                      TRI_doc_mptr_copy_t* mptr,
+                                      TRI_doc_update_policy_t const* policy,
+                                      OperationOptions& options,
+                                      bool lock) {
+  // initialize the result
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr);
+
+  TRI_voc_rid_t revisionId = TRI_NewTickServer();
+  
+  // create a sanitized with of the replacement value
+  VPackBuilder builder;
+  builder.openObject();
+
+  VPackObjectIterator it(*slice);
+
+  while (it.valid()) {
+    // let all but the system attributes pass
+    std::string key = it.key().copyString();
+    if (key[0] != '_' ||
+        (key != TRI_VOC_ATTRIBUTE_KEY &&
+         key != TRI_VOC_ATTRIBUTE_ID &&
+         key != TRI_VOC_ATTRIBUTE_REV &&
+         key != TRI_VOC_ATTRIBUTE_FROM &&
+         key != TRI_VOC_ATTRIBUTE_TO)) {
+      builder.add(it.key().copyString(), it.value());
+    }
+    it.next();
+  }
+
+  // finally add a new value for _rev
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
+  builder.close();
+
+  VPackSlice newValues = builder.slice();
+
+  
+  TRI_voc_tick_t markerTick = 0;
+  int res;
+  {
+    TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
+
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader;
+    res = lookupDocument(trx, slice, policy, oldHeader);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_IF_FAILURE("UpdateDocumentNoMarker") {
+      // test what happens when no marker can be created
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("UpdateDocumentNoMarkerExcept") {
+      // test what happens when no marker can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    // merge old and new values 
+    VPackBuilder builder = VPackCollection::merge(VPackSlice(oldHeader->vpack()), newValues, options.mergeObjects, !options.keepNull);  
+  
+    // create marker
+    std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
+
+    arangodb::wal::DocumentOperation operation(
+        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    operation.header = oldHeader;
+    operation.init();
+
+    res = updateDocument(trx, revisionId, oldHeader, operation, mptr, options.waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    } else if (options.waitForSync) {
+      markerTick = operation.tick;
+    }
+  }
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(mptr->getDataPtr() != nullptr); 
+    TRI_ASSERT(mptr->_rid > 0);
   }
 
   if (markerTick > 0) {
@@ -5224,7 +5335,8 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       VPackSlice const* slice,
                                       TRI_doc_update_policy_t const* policy,
-                                      bool lock, bool waitForSync) {
+                                      OperationOptions& options,
+                                      bool lock) {
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
@@ -5289,12 +5401,11 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   
-    res = TRI_AddOperationTransaction(trx->getInternals(), operation,
-                                      waitForSync);
+    res = TRI_AddOperationTransaction(trx->getInternals(), operation, options.waitForSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
-    } else if (waitForSync) {
+    } else if (options.waitForSync) {
       markerTick = operation.tick;
     }
   }
@@ -5318,6 +5429,11 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
   return marker;
 }
 
+arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
+    Transaction* trx, VPackSlice const& slice) {
+  return createVPackInsertMarker(trx, &slice);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a vpack-based remove marker for documents / edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -5330,7 +5446,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document by key
+/// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5358,7 +5474,73 @@ int TRI_document_collection_t::lookupDocument(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief updates an existing document, low level worker
+/// the caller must make sure the write lock on the collection is held
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
+                          TRI_voc_rid_t revisionId,
+                          TRI_doc_mptr_t* oldHeader,
+                          arangodb::wal::DocumentOperation& operation,
+                          TRI_doc_mptr_copy_t* mptr, bool& waitForSync) {
+
+  // save the old data, remember
+  TRI_doc_mptr_copy_t oldData = *oldHeader;
+
+  // remove old document from secondary indexes
+  // (it will stay in the primary index as the key won't change)
+  int res = deleteSecondaryIndexes(trx, oldHeader, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // re-enter the document in case of failure, ignore errors during rollback
+    insertSecondaryIndexes(trx, oldHeader, true);
+    return res;
+  }
+
+  // update header
+  TRI_doc_mptr_t* newHeader = oldHeader;
+
+  // update the header. this will modify oldHeader, too !!!
+  newHeader->_rid = revisionId;
+  newHeader->setDataPtr(
+      operation.marker->mem()); 
+
+  // insert new document into secondary indexes
+  res = insertSecondaryIndexes(trx, newHeader, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // rollback
+    deleteSecondaryIndexes(trx, newHeader, true);
+
+    // copy back old header data
+    oldHeader->copy(oldData);
+
+    insertSecondaryIndexes(trx, oldHeader, true);
+
+    return res;
+  }
+
+  operation.indexed();
+
+  TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+
+  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // write new header into result
+    *mptr = *((TRI_doc_mptr_t*)newHeader);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a document, low level worker
+/// the caller must make sure the write lock on the collection is held
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::insertDocument(

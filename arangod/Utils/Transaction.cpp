@@ -419,7 +419,7 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
 
 OperationResult Transaction::document(std::string const& collectionName,
                                       VPackSlice const& value,
-                                      OperationOptions const& options) {
+                                      OperationOptions& options) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -445,7 +445,7 @@ OperationResult Transaction::document(std::string const& collectionName,
 
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const& value,
-                                                 OperationOptions const& options) {
+                                                 OperationOptions& options) {
   // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -456,9 +456,65 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const& value,
-                                           OperationOptions const& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+                                           OperationOptions& options) {
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  std::string key;
+  TRI_voc_rid_t expectedRevision = 0;
+
+  // extract _key
+  if (value.isObject()) {
+    VPackSlice k = value.get(TRI_VOC_ATTRIBUTE_KEY);
+    if (!k.isString()) {
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
+    key = k.copyString();
+  
+    // extract _rev  
+    VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
+    if (!r.isNone()) {
+      if (r.isString()) {
+        expectedRevision = arangodb::basics::StringUtils::uint64(r.copyString());
+      }
+      else if (r.isInteger()) {
+        expectedRevision = r.getNumber<TRI_voc_rid_t>();
+      }
+    }
+  } else if (value.isString()) {
+    key = value.copyString();
+  } else {
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
+
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+ 
+  TRI_doc_mptr_copy_t mptr;
+  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);
+  if (expectedRevision != 0 && expectedRevision != mptr._rid) {
+    return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+  }
+  
+  VPackBuilder resultBuilder;
+  if (!options.silent) {
+    resultBuilder.add(VPackValue(mptr.vpack()));
+  }
+
+  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -482,11 +538,13 @@ OperationResult Transaction::insert(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  OperationOptions optionsCopy = options;
+
   if (ServerState::instance()->isCoordinator()) {
-    return insertCoordinator(collectionName, value, options);
+    return insertCoordinator(collectionName, value, optionsCopy);
   }
 
-  return insertLocal(collectionName, value, options);
+  return insertLocal(collectionName, value, optionsCopy);
 }
    
 //////////////////////////////////////////////////////////////////////////////
@@ -497,7 +555,7 @@ OperationResult Transaction::insert(std::string const& collectionName,
 
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
-                                               OperationOptions const& options) {
+                                               OperationOptions& options) {
   // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -510,7 +568,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 
 OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const& value,
-                                         OperationOptions const& options) {
+                                         OperationOptions& options) {
   
   TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
 
@@ -518,22 +576,20 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  // TODO: clean this up
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
- 
-
   // add missing attributes for document (_id, _rev, _key)
   VPackBuilder merge;
   merge.openObject();
    
   // generate a new tick value
-  TRI_voc_tick_t const tick = TRI_NewTickServer();
+  TRI_voc_tick_t const revisionId = TRI_NewTickServer();
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   auto key = value.get(TRI_VOC_ATTRIBUTE_KEY);
 
   if (key.isNone()) {
     // "_key" attribute not present in object
-    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(document->_keyGenerator->generate(tick)));
+    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(document->_keyGenerator->generate(revisionId)));
   } else if (!key.isString()) {
     // "_key" present but wrong type
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
@@ -547,7 +603,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   }
   
   // add _rev attribute
-  merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(tick)));
+  merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
 
   // add _id attribute
   uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
@@ -558,9 +614,13 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
   VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
   VPackSlice insertSlice = toInsert.slice();
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   TRI_doc_mptr_copy_t mptr;
-  int res = document->insert(this, &insertSlice, &mptr, !isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
+  int res = document->insert(this, &insertSlice, &mptr, options, !isLocked(document, TRI_TRANSACTION_WRITE));
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -581,6 +641,13 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
   
+OperationResult Transaction::replace(std::string const& collectionName,
+                            VPackSlice const& oldValue,
+                            VPackSlice const& updateValue,
+                            OperationOptions const& options) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
@@ -607,12 +674,14 @@ OperationResult Transaction::update(std::string const& collectionName,
     // multi-document variant is not yet implemented
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  
+  OperationOptions optionsCopy = options;
 
   if (ServerState::instance()->isCoordinator()) {
-    return updateCoordinator(collectionName, oldValue, newValue, options);
+    return updateCoordinator(collectionName, oldValue, newValue, optionsCopy);
   }
 
-  return updateLocal(collectionName, oldValue, newValue, options);
+  return updateLocal(collectionName, oldValue, newValue, optionsCopy);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -624,7 +693,7 @@ OperationResult Transaction::update(std::string const& collectionName,
 OperationResult Transaction::updateCoordinator(std::string const& collectionName,
                                                VPackSlice const& oldValue,
                                                VPackSlice const& newValue,
-                                               OperationOptions const& options) {
+                                               OperationOptions& options) {
   // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -638,9 +707,84 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
 OperationResult Transaction::updateLocal(std::string const& collectionName,
                                          VPackSlice const& oldValue,
                                          VPackSlice const& newValue,
-                                         OperationOptions const& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+                                         OperationOptions& options) {
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  // generate a new tick value
+  TRI_voc_tick_t const revisionId = TRI_NewTickServer();
+  // TODO: clean this up
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  TRI_voc_rid_t expectedRevision = 0;
+
+  VPackBuilder builder;
+  builder.openObject();
+
+  VPackObjectIterator it(newValue);
+  while (it.valid()) {
+    // let all but the system attributes pass
+    std::string key = it.key().copyString();
+    if (key[0] != '_' ||
+        (key != TRI_VOC_ATTRIBUTE_KEY &&
+         key != TRI_VOC_ATTRIBUTE_ID &&
+         key != TRI_VOC_ATTRIBUTE_REV &&
+         key != TRI_VOC_ATTRIBUTE_FROM &&
+         key != TRI_VOC_ATTRIBUTE_TO)) {
+      builder.add(it.key().copyString(), it.value());
+    } else if (key == TRI_VOC_ATTRIBUTE_REV) {
+      if (it.value().isString()) {
+        expectedRevision = arangodb::basics::StringUtils::uint64(it.value().copyString());
+      }
+      else if (it.value().isInteger()) {
+        expectedRevision = it.value().getNumber<TRI_voc_rid_t>();
+      }
+    }
+    it.next();
+  }
+  // finally add (new) _rev attribute
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
+  builder.close();
+
+  VPackSlice sanitized = builder.slice();
+ 
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  TRI_doc_mptr_copy_t mptr;
+  TRI_voc_rid_t actualRevision = 0;
+  TRI_doc_update_policy_t policy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
+
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
+  res = document->update(this, &oldValue, &sanitized, &mptr, &policy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);
+  
+  VPackSlice vpack(mptr.vpack());
+  std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
+
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
+//  resultBuilder.add("_oldRev", VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString())); // TODO
+  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
+  resultBuilder.close();
+
+  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -663,12 +807,14 @@ OperationResult Transaction::remove(std::string const& collectionName,
     // multi-document variant is not yet implemented
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  
+  OperationOptions optionsCopy = options;
 
   if (ServerState::instance()->isCoordinator()) {
-    return removeCoordinator(collectionName, value, options);
+    return removeCoordinator(collectionName, value, optionsCopy);
   }
 
-  return removeLocal(collectionName, value, options);
+  return removeLocal(collectionName, value, optionsCopy);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -679,7 +825,7 @@ OperationResult Transaction::remove(std::string const& collectionName,
 
 OperationResult Transaction::removeCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
-                                               OperationOptions const& options) {
+                                               OperationOptions& options) {
   // TODO
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -692,7 +838,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 
 OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const& value,
-                                         OperationOptions const& options) {
+                                         OperationOptions& options) {
   TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
 
   if (cid == 0) {
@@ -714,7 +860,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     if (!k.isString()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, k);
     
     VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
     if (!r.isNone()) {
@@ -737,7 +883,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
   TRI_voc_rid_t actualRevision = 0;
   TRI_doc_update_policy_t updatePolicy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
-  int res = document->remove(this, &removeSlice, &updatePolicy, !isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
+  int res = document->remove(this, &removeSlice, &updatePolicy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);

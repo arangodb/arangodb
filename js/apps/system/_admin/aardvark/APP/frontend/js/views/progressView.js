@@ -24,7 +24,9 @@
     },
 
     performAction: function() {
-      this.action();
+      if (typeof this.action === 'function') {
+        this.action();
+      }
       window.progressView.hide();
     },
 

@@ -28,6 +28,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
@@ -341,17 +342,25 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int read(arangodb::Transaction*, std::string const&,
            TRI_doc_mptr_copy_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const*,
-             TRI_doc_mptr_copy_t*, bool, bool);
+             TRI_doc_mptr_copy_t*, arangodb::OperationOptions&, bool);
+  int update(arangodb::Transaction*, arangodb::velocypack::Slice const*,
+             arangodb::velocypack::Slice const*, TRI_doc_mptr_copy_t*, 
+             TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const*,
-             TRI_doc_update_policy_t const*, bool, bool);
+             TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
 
  private:
   arangodb::wal::Marker* createVPackInsertMarker(
       arangodb::Transaction*, arangodb::velocypack::Slice const*);
+  arangodb::wal::Marker* createVPackInsertMarker(
+      arangodb::Transaction*, arangodb::velocypack::Slice const&);
   arangodb::wal::Marker* createVPackRemoveMarker(
       arangodb::Transaction*, arangodb::velocypack::Slice const*);
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const*,
                      TRI_doc_update_policy_t const*, TRI_doc_mptr_t*&);
+  int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
+                     arangodb::wal::DocumentOperation&,
+                     TRI_doc_mptr_copy_t*, bool&);
   int insertDocument(arangodb::Transaction*, TRI_doc_mptr_t*,
                      arangodb::wal::DocumentOperation&, TRI_doc_mptr_copy_t*,
                      bool&);
