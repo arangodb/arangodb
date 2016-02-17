@@ -37,6 +37,11 @@
         }
         else {
           $('#collection_' + model.get("name")).removeClass('locked');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+          }
         }
         if (model.get("status") === 'loading') {
           $('#collection_' + model.get("name")).removeClass('loading');
