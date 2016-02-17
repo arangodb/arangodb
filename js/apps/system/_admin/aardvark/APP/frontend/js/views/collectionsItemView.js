@@ -591,6 +591,15 @@
 
     },
 
+    refreshCollectionsView: function() {
+      var self = this;
+      window.App.arangoCollectionsStore.fetch({
+        success: function () {
+          self.collectionsView.checkLockedCollections();
+        }
+      });
+    },
+
     deleteIndex: function () {
       var callback = function(error) {
         if (error) {
@@ -599,13 +608,21 @@
             '<span class="deleteIndex icon_arangodb_roundminus"' + 
             ' data-original-title="Delete index" title="Delete index"></span>'
           );
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
-        else {
+        else if (!error && error !== undefined) {
           $("tr th:contains('"+ this.lastId+"')").parent().remove();
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
       }.bind(this);
 
+      this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
+
+      this.refreshCollectionsView();
+
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
