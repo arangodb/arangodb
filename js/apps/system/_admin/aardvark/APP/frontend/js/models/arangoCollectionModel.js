@@ -112,6 +112,7 @@
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
+                desc: 'Creating index...',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -143,6 +144,7 @@
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
+                desc: 'Removing index...',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -176,7 +178,6 @@
     loadCollection: function (callback) {
 
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
@@ -192,7 +193,6 @@
 
     unloadCollection: function (callback) {
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",

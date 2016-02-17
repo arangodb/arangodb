@@ -31,11 +31,14 @@
       });
 
       this.collection.each(function(model) {
-        if (model.get("locked")) {
+        if (model.get("locked") || model.get("status") === 'loading') {
           $('#collection_' + model.get("name")).addClass('locked');
         }
         else {
           $('#collection_' + model.get("name")).removeClass('locked');
+        }
+        if (model.get("status") === 'loading') {
+          $('#collection_' + model.get("name")).removeClass('loading');
         }
       });
 
