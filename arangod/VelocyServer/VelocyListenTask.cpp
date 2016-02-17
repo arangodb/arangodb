@@ -39,7 +39,7 @@ VelocyListenTask::VelocyListenTask(GeneralServer* server, Endpoint* endpoint)
 
 
 bool VelocyListenTask::handleConnected(TRI_socket_t s,
-                                     const ConnectionInfo& info) {
+                                     const ConnectionInfo& info, bool isHttp) {
   _server->handleConnected(s, info, false);
   return true;
 }

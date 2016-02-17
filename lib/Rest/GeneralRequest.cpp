@@ -100,29 +100,29 @@ GeneralRequest::GeneralRequest( ConnectionInfo const& info, velocypack::Builder 
                         uint32_t length, uint32_t chunk, uint32_t isFirstChunk, 
                         uint64_t messageId, int32_t defaultApiCompatibility,
                         bool allowMethodOverride )
-      : _values(10),
+      : _requestPath(EMPTY_STR),
+        _headers(5),
+        _values(10),
         _arrayValues(1),
         _cookies(1),
-        _requestPath(EMPTY_STR),
-        _headers(5),
         _contentLength(0),
         _body(nullptr),
         _bodySize(0),
+        _freeablesVpack(),
+        _connectionInfo(info),
         _type(VSTREAM_REQUEST_GET), // Default type is supposed to be GET
-        _version(VSTREAM_UNKNOWN),
         _prefix(),
         _suffix(),
+        _version(VSTREAM_UNKNOWN),
         _databaseName(),
-        _connectionInfo(info),
-        _freeablesVpack(),
         _user(),
         _requestContext(nullptr),
-        _isRequestContextOwner(false),
-        _clientTaskId(messageId),
         _defaultApiCompatibility(defaultApiCompatibility),
-        _allowMethodOverride(allowMethodOverride) {
+        _isRequestContextOwner(false),
+        _allowMethodOverride(allowMethodOverride),
+        _clientTaskId(messageId) {
         
-          if ((isFirstChunk == 1)) {
+          if (isFirstChunk == 1) {
             velocypack::Builder vpack = vobject;
             _freeablesVpack.emplace_back(vpack);
             parseHeader(vpack, length);
@@ -1113,33 +1113,38 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 
 string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
   string result;
-  arangodb::velocypack::ValueLength len;
+  // arangodb::velocypack::ValueLength len;
   switch(s.type()) {
     case arangodb::velocypack::ValueType::String  :try{
+                                                    arangodb::velocypack::ValueLength len = 0;
                                                     result = s.getString(len);
                                                   }catch(Exception const& e){
                                                     LOG_ERROR("String Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Double :try{
+                                                    arangodb::velocypack::ValueLength len = 0;
                                                     result = std::string(s.getDouble(), len);
                                                   }catch(Exception const& e){
                                                     LOG_ERROR("Double Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Int  : try{
+                                                  arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getInt(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Int Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::UInt : try{
+                                                  arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getUInt(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::Bool : try{
+                                                  arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getBool(), len);
                                                  }catch(Exception const& e){
                                                   LOG_ERROR("Boolean Parse error: '%s'", e.what());

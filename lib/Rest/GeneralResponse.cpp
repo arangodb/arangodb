@@ -1012,7 +1012,7 @@ arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack:
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
-  bool seenTransferEncoding = false;
+  // bool seenTransferEncoding = false;
   std::string transferEncoding;
   bool const capitalizeHeaders = (_apiCompatibility >= 20100);
   b.add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
@@ -1025,7 +1025,7 @@ arangodb::velocypack::Builder GeneralResponse::writeHeader(arangodb::velocypack:
       continue;
     }
 
-    size_t const keyLength = strlen(key);
+    // size_t const keyLength = strlen(key);
 
     if (capitalizeHeaders) {
       // @TODO: Revaluate this  => ::toupper

@@ -52,7 +52,7 @@ class VelocyListenTask : public ListenTask {
   
  protected:
 
-  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info);
+  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool isHttp);
 
   
  private:

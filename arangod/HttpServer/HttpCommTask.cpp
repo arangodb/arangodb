@@ -533,7 +533,7 @@ void HttpCommTask::addResponse(GeneralResponse* response) {
   //   }
   // }
 
-  // reserve a buffer with some spare capacity
+  //reserve a buffer with some spare capacity
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
                                                responseBodyLength + 128);
 

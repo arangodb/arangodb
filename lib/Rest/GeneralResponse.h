@@ -301,7 +301,7 @@ class GeneralResponse {
   /// @brief checks if the given packet is first chunked (velocystream)
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isFirstChunked() const;
+  bool isFirstChunked() const; // @vstream
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a header field
@@ -413,14 +413,14 @@ class GeneralResponse {
   /// You should call writeHeader only after the body has been created.
   //////////////////////////////////////////////////////////////////////////////
 
-  void writeHeader(basics::StringBuffer*);
+  void writeHeader(basics::StringBuffer*); //@vstream for http
 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief writes the header (Vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder writeHeader(arangodb::velocypack::Builder*);
+  arangodb::velocypack::Builder writeHeader(arangodb::velocypack::Builder*); //@vstream for vstream
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the size of the body
@@ -438,11 +438,11 @@ class GeneralResponse {
   /// again.
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::StringBuffer& body();
+  basics::StringBuffer& body(); //@vstream for http
 
   // Return VelocyPack arangodb @TODO: Substitute it (Create an abstract class for GeneralResponse.* and overload it to HttpResponse and VelocyResponse.*)
 
-  arangodb::velocypack::Builder& bodyVpack();
+  arangodb::velocypack::Builder& bodyVpack(); //@vstream for vstream
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief indicates a head response
@@ -456,7 +456,7 @@ class GeneralResponse {
   void headResponseVpack(size_t size);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handling status response's (Vstream)
+  /// @brief handling status response's (Vstream) //@vstream for vstream
   ///
   //////////////////////////////////////////////////////////////////////////////
 
@@ -529,13 +529,13 @@ class GeneralResponse {
   /// @brief body
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::StringBuffer _body;
+  basics::StringBuffer _body; //@vpack for http
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief body
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder _bodyVpack;
+  arangodb::velocypack::Builder _bodyVpack; //@vpack for vapck
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief body size

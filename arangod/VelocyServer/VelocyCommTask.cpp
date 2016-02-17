@@ -225,15 +225,15 @@ bool VelocyCommTask::processRead() {
         case GeneralRequest::VSTREAM_REQUEST_STATUS:{
           // technically, sending a body for an VSTREAM DELETE request is not
           // forbidden, but it is not explicitly supported
-          bool const expectContentLength =
-              (_requestType == GeneralRequest::VSTREAM_REQUEST_POST ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_PUT ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_PATCH ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE ||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
-               _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
+          // bool const expectContentLength =
+          //     (_requestType == GeneralRequest::VSTREAM_REQUEST_POST ||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_PUT ||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_PATCH ||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS ||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE ||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
+          //      _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
 
         if(!_isFirstChunk){ 
           if (_readBuffer->length() == 0) {
@@ -489,7 +489,7 @@ void VelocyCommTask::addResponse(GeneralResponse* response) {
   // }
 
   _writeBuffers.push_back(buffer.get());
-  auto b = buffer.release();
+  // auto b = buffer.release();
 
   // LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
 
@@ -548,8 +548,15 @@ void VelocyCommTask::processCorsOptions(uint32_t compatibility) {
   handleResponse(&response);
 }
 
-////////////
-// @TODO: Works on checkContentLength
+
+////////////////////////////////////////////////////////////////////////////////
+/// @TODO: To fix warning issue, as an intermediate. NOT A REAL FUNCTION
+/// check the content-length header of a request and fail it is broken
+////////////////////////////////////////////////////////////////////////////////
+
+// bool VelocyCommTask::checkContentLength(bool expectContentLength) {
+//   return true;
+// }  
 ////////////
 
 
