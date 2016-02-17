@@ -418,7 +418,7 @@ class Transaction {
 
   OperationResult document(std::string const& collectionName,
                            VPackSlice const& value,
-                           OperationOptions const& options);
+                           OperationOptions& options);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create one or multiple documents in a collection
@@ -434,7 +434,6 @@ class Transaction {
   /// @brief update/patch one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult update(std::string const& collectionName,
@@ -446,7 +445,6 @@ class Transaction {
   /// @brief replace one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult replace(std::string const& collectionName,
@@ -739,39 +737,50 @@ class Transaction {
   
   OperationResult documentCoordinator(std::string const& collectionName,
                                       VPackSlice const& value,
-                                      OperationOptions const& options);
+                                      OperationOptions& options);
 
   OperationResult documentLocal(std::string const& collectionName,
                                 VPackSlice const& value,
-                                OperationOptions const& options);
+                                OperationOptions& options);
 
   OperationResult insertCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,
-                                    OperationOptions const& options);
+                                    OperationOptions& options);
 
   OperationResult insertLocal(std::string const& collectionName,
                               VPackSlice const& value,
-                              OperationOptions const& options);
+                              OperationOptions& options);
   
   OperationResult updateCoordinator(std::string const& collectionName,
                                     VPackSlice const& oldValue,
                                     VPackSlice const& newValue,
-                                    OperationOptions const& options);
+                                    OperationOptions& options);
 
   OperationResult updateLocal(std::string const& collectionName,
                               VPackSlice const& oldValue,
                               VPackSlice const& newValue,
-                              OperationOptions const& options);
+                              OperationOptions& options);
+  
+  OperationResult replaceCoordinator(std::string const& collectionName,
+                                     VPackSlice const& oldValue,
+                                     VPackSlice const& newValue,
+                                     OperationOptions& options);
+
+  OperationResult replaceLocal(std::string const& collectionName,
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue,
+                               OperationOptions const& options);
   
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,
-                                    OperationOptions const& options);
+                                    OperationOptions& options);
   
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const& value,
-                              OperationOptions const& options);
+                              OperationOptions& options);
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
