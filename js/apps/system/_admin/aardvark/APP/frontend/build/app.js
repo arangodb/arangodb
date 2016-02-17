@@ -10756,14 +10756,14 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
             });
 
             if (found) {
-              this.deleteAardvarkJob(aardvark.id);
-            }
-            else {
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
                 type: aardvark.type 
               });
+            }
+            else {
+              window.arangoHelper.deleteAardvarkJob(aardvark.id);
             }
           }
         });
@@ -16435,7 +16435,8 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       status: "",
       type: "",
       isSystem: false,
-      picture: ""
+      picture: "",
+      locked: false
     },
 
     getProperties: function () {
@@ -16553,14 +16554,14 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
           cache: false,
           type: 'DELETE',
           url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-          async: false,
+          async: true,
           success: function () {
             callback(false);
           },
           error: function (data) {
             callback(true, data);
           }
-      });
+        });
       callback();
     },
 
@@ -19530,19 +19531,29 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
+      if (this.model.get("locked")) {
+        $(this.el).addClass('locked');
+      }
       $(this.el).html(this.template.render({
         model: this.model
       }));
       $(this.el).attr('id', 'collection_' + this.model.get('name'));
+
       return this;
     },
 
     editProperties: function (event) {
+      if (this.model.get("locked")) {
+        return 0;
+      }
       event.stopPropagation();
       this.createEditPropertiesModal();
     },
 
     showProperties: function(event) {
+      if (this.model.get("locked")) {
+        return 0;
+      }
       event.stopPropagation();
       this.createInfoModal();
     },
@@ -19551,6 +19562,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       //check if event was fired from disabled button
       if ($(event.target).hasClass("disabled")) {
+        return 0;
+      }
+      if (this.model.get("locked")) {
         return 0;
       }
 
@@ -19863,7 +19877,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.events, null,
         tabBar
       );
-      this.getIndex();
+      if (this.model.get("status") === 'loaded') {
+        this.getIndex();
+      }
+      else {
+        $($('#infoTab').children()[1]).remove();
+      }
       this.bindIndexEvents();
     },
 
@@ -19895,6 +19914,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
       $('#infoTab a').bind('click', function(e) {
+        $('#indexDeleteModal').remove();
         if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
 
           $('#newIndexView').hide();
@@ -20019,7 +20039,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           break;
       }
       var callback = function(error, msg){
-        
         if (error) {
           if (msg) {
             var message = JSON.parse(msg.responseText);
@@ -20032,10 +20051,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       };
 
       window.modalView.hide();
-      this.getIndex();
-      this.createEditPropertiesModal();
-      $($('#infoTab').children()[1]).find('a').click();
+      //this.getIndex();
+      //this.createEditPropertiesModal();
+      //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
+      window.App.arangoCollectionsStore.fetch({
+        success: function () {
+          self.collectionsView.render();
+        }
+      });
     },
 
     lastTarget: null,
@@ -20051,27 +20075,47 @@ window.ArangoUsers = Backbone.Collection.extend({
                     children().
                     first().
                     text();
-      window.modalView.hide();
+      //window.modalView.hide();
 
       //delete modal
-      $("#indexDeleteModal").modal('show');
-      $('#confirmDeleteIndexBtn').unbind('click');
-      $('#confirmDeleteIndexBtn').bind('click', function() {
+      $("#modal-dialog .modal-footer").after(
+        '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
+          '<strong>Really delete?</strong>' +
+          '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
+          '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
+        '</div>');
+      $('#indexConfirmDelete').unbind('click');
+      $('#indexConfirmDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
         self.deleteIndex();
       });
+
+      $('#indexAbortDelete').unbind('click');
+      $('#indexAbortDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
+      });
+
+
     },
 
     deleteIndex: function () {
       var callback = function(error) {
         if (error) {
           arangoHelper.arangoError("Could not delete index");
+          $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+            '<span class="deleteIndex icon_arangodb_roundminus"' + 
+            ' data-original-title="Delete index" title="Delete index"></span>'
+          );
         }
-      };
+        else {
+          $("tr th:contains('"+ this.lastId+"')").parent().remove();
+        }
+      }.bind(this);
 
-      $("#indexDeleteModal").modal('hide');
       this.model.deleteIndex(this.lastId, callback);
-      this.createEditPropertiesModal();
-      $($('#infoTab').children()[1]).find('a').click();
+      $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+        '<i class="fa fa-circle-o-notch fa-spin"></i>'
+      );
     },
 
     selectIndexType: function () {
@@ -20138,7 +20182,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       }
       else {
-        console.log("toggle else");
         $('#indexEditView').show();
         $('#newIndexView').hide();
         $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
@@ -20179,13 +20222,51 @@ window.ArangoUsers = Backbone.Collection.extend({
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
+    refreshRate: 2000,
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+    checkLockedCollections: function() {
+
+      var self = this,
+      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+
+      this.collection.each(function(model) {
+        model.set('locked', false);
+      });
+
+      _.each(lockedCollections, function(locked) {
+        var model = self.collection.findWhere({
+          id: locked.collection 
+        });
+        model.set('locked', true);
+        model.set('lockType', locked.type);
+      });
+
+      this.collection.each(function(model) {
+        if (model.get("locked")) {
+          $('#collection_' + model.get("name")).addClass('locked');
+        }
+        else {
+          $('#collection_' + model.get("name")).removeClass('locked');
+        }
+      });
+
+    },
+
+    initialize: function() {
+      var self = this;
+
+      window.setInterval(function() {
+        self.checkLockedCollections();
+      }, self.refreshRate);
+
+    },
+
     render: function () {
 
-      var dropdownVisible = false,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+      this.checkLockedCollections();
+      var dropdownVisible = false;
 
       if ($('#collectionsDropdown').is(':visible')) {
         dropdownVisible = true;
@@ -20230,6 +20311,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+
 
       return this;
     },
@@ -20457,7 +20539,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
-      if (returnobj.status !== true) {console.log(returnobj);
+      if (returnobj.status !== true) {
         arangoHelper.arangoError("Collection error", returnobj.errorMessage);
       }
       this.updateCollectionsView();

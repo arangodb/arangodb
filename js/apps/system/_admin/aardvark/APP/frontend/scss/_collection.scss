@@ -117,12 +117,19 @@
   margin-bottom: 1px;
   padding-bottom: 0;
   padding-right: 10px;
+
 }
 
 #infoTab li,
 #graphTab li,
 #collectionTab li {
   float: right;
+
+  &.disabled {
+    a {
+      cursor: not-allowed;
+    }
+  }
 }
 
 #infoTab a,

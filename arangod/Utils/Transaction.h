@@ -459,7 +459,6 @@ class Transaction {
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult remove(std::string const& collectionName,
@@ -744,6 +743,14 @@ class Transaction {
                                     OperationOptions const& options);
 
   OperationResult insertLocal(std::string const& collectionName,
+                              VPackSlice const& value,
+                              OperationOptions const& options);
+  
+  OperationResult removeCoordinator(std::string const& collectionName,
+                                    VPackSlice const& value,
+                                    OperationOptions const& options);
+  
+  OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const& value,
                               OperationOptions const& options);
 

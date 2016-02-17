@@ -1,9 +1,3 @@
-#add_subdirectory(boost)
-#add_subdirectory(etcd)
-#add_subdirectory(linenoise-ng)
-#add_subdirectory(valgrind)
-#add_subdirectory(velocypack)
-#add_subdirectory(zlib-1.2.7)
 
 include(ExternalProject)
 
@@ -17,18 +11,19 @@ macro(import_target tname tdep tinclude tpath)
 endmacro()
 
 # ETCD
-if (MSVC)
-  set (ETCD_BUILD_COMMAND build.bat)
-else()
-  set (ETCD_BUILD_COMMAND ./build)
+if (GO_FOUND)
+  if (MSVC)
+    set (ETCD_BUILD_COMMAND build.bat)
+  else()
+    set (ETCD_BUILD_COMMAND ./build)
+  endif()
+  ExternalProject_Add(etcd_build
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+    CONFIGURE_COMMAND ""
+    BUILD_IN_SOURCE TRUE
+    BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
+    INSTALL_COMMAND "")
 endif()
-ExternalProject_Add(etcd_build
-  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
-  CONFIGURE_COMMAND ""
-  BUILD_IN_SOURCE TRUE
-  BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
-  INSTALL_COMMAND "")
-
 
 # ZLIB
 if (UNIX)

@@ -105,8 +105,6 @@ bool RestDocumentHandler::createDocument() {
   }
   std::string collectionName(collection);
 
-  bool const waitForSync = extractWaitForSync();
-
   bool parseSuccess = true;
   VPackOptions options;
   options.checkAttributeUniqueness = true;

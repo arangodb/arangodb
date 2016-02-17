@@ -14,7 +14,8 @@
       status: "",
       type: "",
       isSystem: false,
-      picture: ""
+      picture: "",
+      locked: false
     },
 
     getProperties: function () {
@@ -106,7 +107,6 @@
           data: JSON.stringify(postParameter),
           contentType: "application/json",
           processData: false,
-          async: true,
           success: function (data, textStatus, xhr) {
             if (xhr.getResponseHeader('x-arango-async-id')) {
               window.arangoHelper.addAardvarkJob({
@@ -128,18 +128,33 @@
     },
 
     deleteIndex: function (id, callback) {
+
+      var self = this;
+
       $.ajax({
           cache: false,
           type: 'DELETE',
           url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-          async: false,
-          success: function () {
-            callback(false);
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
           },
           error: function (data) {
             callback(true, data);
           }
-      });
+        });
       callback();
     },
 
