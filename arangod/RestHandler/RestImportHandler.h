@@ -108,7 +108,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int handleSingleDocument(RestImportTransaction&, RestImportResult&,
-                           char const*, VPackSlice const&, bool, bool, size_t);
+                           char const*, VPackSlice const&, std::string const&,
+                           bool, OperationOptions const&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects
