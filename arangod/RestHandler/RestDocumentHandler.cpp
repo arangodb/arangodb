@@ -105,8 +105,6 @@ bool RestDocumentHandler::createDocument() {
   }
   std::string collectionName(collection);
 
-  bool const waitForSync = extractWaitForSync();
-
   bool parseSuccess = true;
   VPackOptions options;
   options.checkAttributeUniqueness = true;
@@ -154,6 +152,11 @@ bool RestDocumentHandler::createDocument() {
   
   if (result.failed()) {
     generateTransactionError(collection, result.code);
+    return false;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
     return false;
   }
 

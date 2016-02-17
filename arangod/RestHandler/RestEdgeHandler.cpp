@@ -94,32 +94,36 @@ bool RestEdgeHandler::createDocument() {
     return false;
   }
 
-  bool const waitForSync = extractWaitForSync();
+  /* TODO
+  if (!checkCreateCollection(collection, getCollectionType())) {
+    return false;
+  }
+  */
+
   try {
     bool parseSuccess = true;
     VPackOptions options;
+    options.keepTopLevelOpen = true; // We need to insert _from and _to
     std::shared_ptr<VPackBuilder> parsedBody =
         parseVelocyPackBody(&options, parseSuccess);
+
     if (!parseSuccess) {
       return false;
     }
 
-    VPackSlice body = parsedBody->slice();
-
-    if (!body.isObject()) {
+    if (!parsedBody->isOpenObject()) {
       generateTransactionError(collection,
                                TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
       return false;
     }
 
-    if (ServerState::instance()->isCoordinator()) {
-      // json will be freed inside!
-      return createDocumentCoordinator(collection, waitForSync, body, from, to);
-    }
+    // Add _from and _to
+    parsedBody->add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
+    parsedBody->add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
 
-    if (!checkCreateCollection(collection, getCollectionType())) {
-      return false;
-    }
+    parsedBody->close();
+
+    VPackSlice body = parsedBody->slice();
 
     // find and load collection given by name or identifier
     SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
@@ -136,6 +140,8 @@ bool RestEdgeHandler::createDocument() {
       return false;
     }
 
+    // TODO Test if is edge collection
+    /*
     TRI_document_collection_t* document = trx.documentCollection();
 
     if (document->_info.type() != TRI_COL_TYPE_EDGE) {
@@ -145,39 +151,27 @@ bool RestEdgeHandler::createDocument() {
                     TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return false;
     }
+    */
 
-    TRI_voc_cid_t const cid = trx.cid();
+    arangodb::OperationOptions opOptions;
+    opOptions.waitForSync = extractWaitForSync();
 
-    // edge
-    TRI_document_edge_t edge;
-    edge._fromCid = cid;
-    edge._toCid = cid;
-    edge._fromKey = nullptr;
-    edge._toKey = nullptr;
 
-    std::string wrongPart;
-    // Note that in a DBserver in a cluster, the following call will
-    // actually parse the first part of *from* as a cluster-wide
-    // collection name, exactly as it is needed here!
-    res = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
+    arangodb::OperationResult result = trx.insert(collection, body, opOptions);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      wrongPart = "'from'";
-    } else {
-      // Note that in a DBserver in a cluster, the following call will
-      // actually parse the first part of *from* as a cluster-wide
-      // collection name, exactly as it is needed here!
-      res = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        wrongPart = "'to'";
-      }
-    }
+    // Will commit if no error occured.
+    // or abort if an error occured.
+    // result stays valid!
+    res = trx.finish(result.code);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-      FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+    // .............................................................................
+    // outside write transaction
+    // .............................................................................
 
+    if (result.failed()) {
+      // TODO correct errors for _from or _to invalid.
+      /* wrongPart is either from or to
       if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         generateError(HttpResponse::NOT_FOUND, res,
                       wrongPart + " does not point to a valid collection");
@@ -185,32 +179,17 @@ bool RestEdgeHandler::createDocument() {
         generateError(HttpResponse::BAD, res,
                       wrongPart + " is not a document handle");
       }
+      */
+      generateTransactionError(collection, result.code);
       return false;
     }
-
-    // .............................................................................
-    // inside write transaction
-    // .............................................................................
-
-    // will hold the result
-    TRI_doc_mptr_copy_t mptr;
-
-    res = trx.insert(trx.trxCollection(), &mptr, body, &edge, waitForSync);
-    res = trx.finish(res);
-
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-
-    // .............................................................................
-    // outside write transaction
-    // .............................................................................
 
     if (res != TRI_ERROR_NO_ERROR) {
       generateTransactionError(collection, res);
       return false;
     }
 
-    generateSaved(trx, cid, mptr);
+    generateSaved(result, collection, TRI_COL_TYPE_EDGE);
 
     return true;
   } catch (arangodb::basics::Exception const& ex) {

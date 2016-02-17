@@ -414,7 +414,6 @@ class Transaction {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult document(std::string const& collectionName,
@@ -459,7 +458,6 @@ class Transaction {
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult remove(std::string const& collectionName,
@@ -738,12 +736,38 @@ class Transaction {
   int setupState() { return _setupState; }
 
  private:
+  
+  OperationResult documentCoordinator(std::string const& collectionName,
+                                      VPackSlice const& value,
+                                      OperationOptions const& options);
+
+  OperationResult documentLocal(std::string const& collectionName,
+                                VPackSlice const& value,
+                                OperationOptions const& options);
 
   OperationResult insertCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,
                                     OperationOptions const& options);
 
   OperationResult insertLocal(std::string const& collectionName,
+                              VPackSlice const& value,
+                              OperationOptions const& options);
+  
+  OperationResult updateCoordinator(std::string const& collectionName,
+                                    VPackSlice const& oldValue,
+                                    VPackSlice const& newValue,
+                                    OperationOptions const& options);
+
+  OperationResult updateLocal(std::string const& collectionName,
+                              VPackSlice const& oldValue,
+                              VPackSlice const& newValue,
+                              OperationOptions const& options);
+  
+  OperationResult removeCoordinator(std::string const& collectionName,
+                                    VPackSlice const& value,
+                                    OperationOptions const& options);
+  
+  OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const& value,
                               OperationOptions const& options);
 

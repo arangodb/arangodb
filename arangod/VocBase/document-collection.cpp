@@ -1106,7 +1106,7 @@ static int UpdateDocument(arangodb::Transaction* trx,
   TRI_doc_mptr_t* newHeader = oldHeader;
 
   // update the header. this will modify oldHeader, too !!!
-  newHeader->_rid = operation.rid;
+  // newHeader->_rid = operation.rid; // TODO
   newHeader->setDataPtr(
       operation.marker->mem());  // PROTECTED by trx in trxCollection
 
@@ -4790,8 +4790,7 @@ TRI_ASSERT(false);
     arangodb::CollectionWriteLocker collectionLocker(document, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-        rid);
+        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     res = LookupDocument(trx, document, key, policy, header);
 
@@ -4934,8 +4933,7 @@ TRI_ASSERT(false);
     arangodb::CollectionWriteLocker collectionLocker(document, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_INSERT,
-        rid);
+        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -5066,8 +5064,7 @@ TRI_ASSERT(false);
     TRI_ASSERT(marker != nullptr);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_UPDATE,
-        rid);
+        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
     operation.header = oldHeader;
     operation.init();
 
@@ -5147,8 +5144,8 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
-                                      TRI_doc_mptr_copy_t* mptr, bool lock,
-                                      bool waitForSync) {
+                                      TRI_doc_mptr_copy_t* mptr,
+                                      bool lock, bool waitForSync) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
@@ -5170,8 +5167,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_INSERT,
-        0 /*rid*/);  // TODO: fix rid
+        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -5194,7 +5190,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    header->_rid = 0;         // TODO: fix revision id
+    // header->_rid = rid; // TODO
     header->_hash = hash;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
@@ -5253,8 +5249,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-        0 /*rid*/);  // TODO: fix rid
+        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
     TRI_doc_mptr_t* header;
     res = lookupDocument(trx, slice, policy, header);

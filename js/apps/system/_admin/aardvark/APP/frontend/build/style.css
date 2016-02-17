@@ -2897,8 +2897,33 @@ div .tile, div .bigtile {
   position: relative;
   text-align: center;
   z-index: 1; }
+  div .tile progress[value], div .bigtile progress[value] {
+    color: #5bc0de; }
+  div .tile progress::-webkit-progress-bar-value, div .bigtile progress::-webkit-progress-bar-value {
+    background: #5bc0de; }
+  div .tile progress::-webkit-progress-value, div .bigtile progress::-webkit-progress-value {
+    background: #5bc0de; }
+  div .tile progress::-moz-progress-bar, div .bigtile progress::-moz-progress-bar {
+    background: #5bc0de; }
+  div .tile progress, div .bigtile progress {
+    -webkit-appearance: none;
+    border-radius: 0;
+    height: 2px;
+    margin-top: 16px;
+    position: relative;
+    width: 100%;
+    z-index: 10; }
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
+  div .locked.tile, div .locked.bigtile {
+    cursor: not-allowed;
+    opacity: .5; }
+    div .locked.tile .iconSet span:hover, div .locked.bigtile .iconSet span:hover {
+      background-color: #fff !important;
+      color: #000;
+      cursor: not-allowed !important; }
+    div .locked.tile .iconSet:hover, div .locked.bigtile .iconSet:hover {
+      cursor: not-allowed !important; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
     border-radius: 3px;
@@ -2970,6 +2995,8 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
+    div .tile h5.inProgress, div .bigtile h5.inProgress {
+      color: #5bc0de; }
   div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
@@ -5488,7 +5515,7 @@ div.headerBar {
   z-index: 9999999; }
 
 .modal-tabbar {
-  border-bottom: 1px solid #000; }
+  border-bottom: 1px solid #666; }
 
 .modal-body {
   color: #736b68;
@@ -7292,6 +7319,10 @@ input.gv-radio-button {
 #graphTab li,
 #collectionTab li {
   float: right; }
+  #infoTab li.disabled a,
+  #graphTab li.disabled a,
+  #collectionTab li.disabled a {
+    cursor: not-allowed; }
 
 #infoTab a,
 #graphTab a,
@@ -7991,7 +8022,7 @@ table.arangoDataTable tr.odd {
   display: none; }
 
 #documentsTableID_wrapper {
-  min-height: 480px !important;
+  min-height: 420px !important;
   padding-bottom: 0 !important; }
   #documentsTableID_wrapper .fg-toolbar {
     visibility: hidden; }
@@ -8034,8 +8065,7 @@ table .sorting {
   margin-top: 20px; }
 
 .new-index-view input[type='checkbox'] {
-  float: left;
-  margin-top: -9px; }
+  float: left; }
 
 .new-index-view table tr {
   width: 600px !important; }
@@ -8061,6 +8091,8 @@ table .sorting {
   .edit-index-table .icon_arangodb_roundminus {
     font-size: 20px;
     margin-left: 10px; }
+  .edit-index-table .fa {
+    margin-left: 13px; }
 
 .contentIn .arangoicon {
   font-size: 25px;
@@ -8071,7 +8103,14 @@ table .sorting {
   border-bottom: 1px solid #e5e5e5; }
 
 .newIndexClass table {
+  border-top: 1px solid #f7f3f2;
   margin-bottom: 60px; }
+  .newIndexClass table select {
+    margin-right: 7px; }
+  .newIndexClass table .arangoicon {
+    float: right;
+    margin-right: -12px;
+    margin-top: 5px; }
 
 .index-button-bar {
   bottom: 0;

@@ -1179,7 +1179,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-  TRI_UpdateRevisionDocumentCollection(document, operation.rid, false);
+  // TODO!!!!!!!!!
+  // TRI_UpdateRevisionDocumentCollection(document, revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

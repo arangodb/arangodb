@@ -99,7 +99,7 @@ class TRI_doc_update_policy_t {
     return TRI_ERROR_NO_ERROR;
   }
 
- private:
+ public:
   TRI_voc_rid_t _expectedRid;   // the expected revision id of a document. only
                                 // used if set and for update/delete
   TRI_voc_rid_t* _previousRid;  // a variable that the previous revsion id found
