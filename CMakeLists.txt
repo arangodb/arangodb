@@ -106,7 +106,6 @@ endif()
 
 # Build types
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
-message (${CMAKE_BUILD_TYPE_TL})
 if(CMAKE_BUILD_TYPE_TL MATCHES debug)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
@@ -181,6 +180,18 @@ endif ()
 # Architecture
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
+
+include (TargetArch)
+target_architecture(CMAKE_TARGET_ARCHITECTURES)
+list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
+if(NOT "${cmake_target_arch_len}" STREQUAL "1")
+  set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
+  set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
+else()
+  set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL FALSE)
+  set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
+endif()
+
 include (VcMacros)
 include (OptimizeForArchitecture)
 OptimizeForArchitecture()
