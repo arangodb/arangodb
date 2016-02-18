@@ -101,7 +101,13 @@ QueryResult Parser::parse (bool withDetails) {
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
   
-  Aqllex_init(&_scanner);
+  TRI_ASSERT(_scanner == nullptr);
+  if (Aqllex_init(&_scanner) != 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  TRI_ASSERT(_scanner != nullptr);
+
   Aqlset_extra(this, _scanner);
 
   try {
@@ -112,9 +118,11 @@ QueryResult Parser::parse (bool withDetails) {
     }
 
     Aqllex_destroy(_scanner);
+    _scanner = nullptr;
   }
   catch (...) {
     Aqllex_destroy(_scanner);
+    _scanner = nullptr;
     throw;
   }
  
@@ -144,8 +152,12 @@ void Parser::registerParseError (int errorCode,
                                  int line,
                                  int column) {
   char buffer[512];
+  // make sure the buffer is always initialized
+  buffer[0] = '\0';
+  buffer[sizeof(buffer) - 1] = '\0';
+
   snprintf(buffer,
-           sizeof(buffer),
+           sizeof(buffer) - 1,
            format,
            data);
 
