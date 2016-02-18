@@ -182,20 +182,23 @@ const TOP_DIR = (function findTopDir() {
   return topDir;
 }());
 
-const ARANGOB_BIN = fs.join(TOP_DIR, "build", "bin", "arangob");
-const ARANGODUMP_BIN = fs.join(TOP_DIR, "build", "bin", "arangodump");
-const ARANGOD_BIN = fs.join(TOP_DIR, "build", "bin", "arangod");
-const ARANGOIMP_BIN = fs.join(TOP_DIR, "build", "bin", "arangoimp");
-const ARANGORESTORE_BIN = fs.join(TOP_DIR, "build", "bin", "arangorestore");
-const ARANGOSH_BIN = fs.join(TOP_DIR, "build", "bin", "arangosh");
-const ETCD_ARANGO_BIN = fs.join(TOP_DIR, "build", "bin", "etcd-arango");
+const BIN_DIR = (fs.exists("build") && fs.exists(fs.join("build", "bin")))
+        ? fs.join(TOP_DIR, "build", "bin")
+        : fs.join(TOP_DIR, "bin");
+
+const ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
+const ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
+const ARANGOD_BIN = fs.join(BIN_DIR, "arangod");
+const ARANGOIMP_BIN = fs.join(BIN_DIR, "arangoimp");
+const ARANGORESTORE_BIN = fs.join(BIN_DIR, "arangorestore");
+const ARANGOSH_BIN = fs.join(BIN_DIR, "arangosh");
+const CONFIG_DIR = fs.join(TOP_DIR, "build", "etc", "arangodb");
+const CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
+const ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
 const JS_DIR = fs.join(TOP_DIR, "js");
 const LOGS_DIR = fs.join(TOP_DIR, "logs");
 const PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
 const UNITTESTS_DIR = fs.join(TOP_DIR, "UnitTests");
-const CONFIG_DIR = fs.join(TOP_DIR, "build", "etc", "arangodb");
-const CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
-const BIN_DIR = fs.join(TOP_DIR, "build", "bin");
 
 function makeResults(testname) {
   const startTime = time();

@@ -6418,6 +6418,10 @@ toolbar {
   .queryManagementBottomActions button {
     margin-right: 10px; }
 
+#queryManagementContent .table-cell1,
+#arangoQueryManagementTable .table-cell1 {
+  word-break: break-all; }
+
 .queryMethods {
   border-top: 1px solid rgba(140, 138, 137, 0.25);
   padding-bottom: 5px;

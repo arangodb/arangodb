@@ -102,7 +102,6 @@
       this._showDevel = true;
       this._showProd = true;
       this._showSystem = false;
-      this.reload();
     },
 
     slideToggle: function() {
@@ -116,6 +115,7 @@
     },
 
     render: function() {
+      console.log("RENDERER");
       this.collection.sort();
 
       $(this.el).html(this.template.render({}));
