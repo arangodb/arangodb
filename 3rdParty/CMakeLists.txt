@@ -96,7 +96,9 @@ set(V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
 )
 
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
+  if (NOT ${CMAKE_CXX_COMPILER} MATCHES "^/usr/bin/(c|clang)\\+\\+$")
+    set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
+  endif ()
 endif ()
 
 if (NOT USE_PRECOMPILED_V8)
