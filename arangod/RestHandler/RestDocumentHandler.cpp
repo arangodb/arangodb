@@ -579,7 +579,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  OperationResult result;
+  OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
     bool found;
