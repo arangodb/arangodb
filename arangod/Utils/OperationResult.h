@@ -34,11 +34,6 @@
 namespace arangodb {
 
 struct OperationResult {
-  // OperationResult() : buffer(), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  //OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, VPackCustomTypeHandler* handler) : buffer(buffer), customTypeHandler(handler), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  //OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), customTypeHandler(nullptr), code(code), wasSynchronous(false) {}
-  //OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, bool wasSynchronous) : buffer(buffer), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(wasSynchronous) {}
-  //explicit OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer) : OperationResult(TRI_ERROR_NO_ERROR, buffer) {}
 
   explicit OperationResult(int code) 
       : customTypeHandler(nullptr), code(code), wasSynchronous(false) { 
