@@ -507,7 +507,15 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
   if (expectedRevision != 0 && expectedRevision != mptr._rid) {
-    return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+    // still return 
+    VPackBuilder resultBuilder;
+    resultBuilder.openObject();
+    resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + key)));
+    resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(mptr._rid)));
+    resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    resultBuilder.close();
+
+    return OperationResult(TRI_ERROR_ARANGO_CONFLICT, resultBuilder.steal());
   }
   
   VPackBuilder resultBuilder;
@@ -738,13 +746,24 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
+  
+  // read expected revision
+  TRI_voc_rid_t expectedRevision = 0;
+  if (oldValue.isObject()) {
+    VPackSlice r = oldValue.get(TRI_VOC_ATTRIBUTE_REV);
+    if (r.isString()) {
+      expectedRevision = arangodb::basics::StringUtils::uint64(r.copyString());
+    }
+    else if (r.isInteger()) {
+      expectedRevision = r.getNumber<TRI_voc_rid_t>();
+    }
+  }
 
   // generate a new tick value
   TRI_voc_tick_t const revisionId = TRI_NewTickServer();
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  TRI_voc_rid_t expectedRevision = 0;
 
   VPackBuilder builder;
   builder.openObject();
@@ -760,13 +779,6 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
          key != TRI_VOC_ATTRIBUTE_FROM &&
          key != TRI_VOC_ATTRIBUTE_TO)) {
       builder.add(it.key().copyString(), it.value());
-    } else if (key == TRI_VOC_ATTRIBUTE_REV) {
-      if (it.value().isString()) {
-        expectedRevision = arangodb::basics::StringUtils::uint64(it.value().copyString());
-      }
-      else if (it.value().isInteger()) {
-        expectedRevision = it.value().getNumber<TRI_voc_rid_t>();
-      }
     }
     it.next();
   }
@@ -775,7 +787,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   builder.close();
 
   VPackSlice sanitized = builder.slice();
- 
+
   if (orderDitch(trxCollection(cid)) == nullptr) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -797,6 +809,8 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   }
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
+
+  std::string idString(std::to_string(actualRevision));
   
   VPackSlice vpack(mptr.vpack());
   std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
@@ -805,8 +819,8 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   resultBuilder.openObject();
   resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
   resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-//  resultBuilder.add("_oldRev", VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString())); // TODO
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
+  resultBuilder.add("_oldRev", VPackValue(idString));
   resultBuilder.close();
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,

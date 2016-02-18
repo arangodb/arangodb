@@ -64,6 +64,19 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+  
+static TRI_voc_rid_t extractRevisionId(VPackSlice const* slice) {
+  VPackSlice r(slice->get(TRI_VOC_ATTRIBUTE_REV));
+  if (r.isString()) {
+    VPackValueLength length;
+    char const* p = r.getString(length);
+    return arangodb::basics::StringUtils::uint64(p, length);
+  }
+  if (r.isInteger()) {
+    return r.getNumber<TRI_voc_rid_t>();
+  }
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
@@ -5151,16 +5164,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
   uint64_t const hash = key.hash();
 
-  TRI_voc_rid_t revision = 0;
-  {
-    VPackSlice r(slice->get(TRI_VOC_ATTRIBUTE_REV));
-    if (r.isString()) {
-      revision = arangodb::basics::StringUtils::uint64(r.copyString());
-    }
-    else if (r.isInteger()) {
-      revision = r.getNumber<TRI_voc_rid_t>();
-    }
-  }
+  TRI_voc_rid_t revisionId = extractRevisionId(slice);
   
   std::unique_ptr<arangodb::wal::Marker> marker(
       createVPackInsertMarker(trx, slice));
@@ -5200,7 +5204,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    header->_rid = revision;
+    header->_rid = revisionId;
     header->_hash = hash;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
@@ -5241,34 +5245,7 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = TRI_NewTickServer();
-  
-  // create a sanitized with of the replacement value
-  VPackBuilder builder;
-  builder.openObject();
-
-  VPackObjectIterator it(*slice);
-
-  while (it.valid()) {
-    // let all but the system attributes pass
-    std::string key = it.key().copyString();
-    if (key[0] != '_' ||
-        (key != TRI_VOC_ATTRIBUTE_KEY &&
-         key != TRI_VOC_ATTRIBUTE_ID &&
-         key != TRI_VOC_ATTRIBUTE_REV &&
-         key != TRI_VOC_ATTRIBUTE_FROM &&
-         key != TRI_VOC_ATTRIBUTE_TO)) {
-      builder.add(it.key().copyString(), it.value());
-    }
-    it.next();
-  }
-
-  // finally add a new value for _rev
-  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
-  builder.close();
-
-  VPackSlice newValues = builder.slice();
-
+  TRI_voc_rid_t revisionId = extractRevisionId(slice);
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -5296,8 +5273,8 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
     }
 
     // merge old and new values 
-    VPackBuilder builder = VPackCollection::merge(VPackSlice(oldHeader->vpack()), newValues, options.mergeObjects, !options.keepNull);  
-  
+    VPackBuilder builder = VPackCollection::merge(VPackSlice(oldHeader->vpack()), *newSlice, options.mergeObjects, !options.keepNull);  
+ 
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
 
