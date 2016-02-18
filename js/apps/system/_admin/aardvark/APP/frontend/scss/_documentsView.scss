@@ -47,8 +47,21 @@
     margin-left: 10px;
   }
 
-  .fa {
-    margin-left: 13px;
+  tfoot {
+
+    border-top: 1px solid $c-modal-table-border-bottom;
+
+    i {
+      color: $c-positive;
+      font-size: 19px;
+      margin-left: 16px;
+      margin-top: 5px;
+    }
+
+    i:hover {
+      color: $c-positive-hover;
+      cursor: pointer;
+    }
   }
 
 }
@@ -86,16 +99,17 @@
 }
 
 .index-button-bar {
-  bottom: 0;
-  margin-bottom: 15px;
-  margin-right: 17px;
-  margin-top: 15px;
-  position: absolute;
-  right: 0;
 
-  button {
-    float: right;
-    margin-left: 0;
+  float: right;
+
+  i {
+    color: $c-positive;
+    font-size: 16pt;
+    margin-right: 43px;
+  }
+
+  i:hover {
+    cursor: pointer;
   }
 
   #cancelIndex {

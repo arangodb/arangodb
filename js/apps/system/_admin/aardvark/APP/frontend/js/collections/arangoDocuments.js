@@ -13,7 +13,7 @@
     MAX_SORT: 12000,
 
     lastQuery: {},
-    sortAttribute: "_key",
+    sortAttribute: "",
 
     url: '/_api/documents',
     model: window.arangoDocumentModel,
@@ -195,7 +195,7 @@
           query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
                 + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
         }
-        else {
+        else if (this.getSort() !== '') {
           query += " SORT x." + this.getSort();
         }
       }

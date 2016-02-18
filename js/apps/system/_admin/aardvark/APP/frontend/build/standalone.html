@@ -890,8 +890,7 @@ if (list.length > 0) {
        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
        <button id="resetView" class="button-warning btn-old-padding">Reset</button>
        <button id="filterSend" class="button-success btn-old-padding">Filter</button>
-       <input type="text" id="docsSort" placeholder="_key" style="float: right"></input>
-       <div class="textDiv" style="float: right">Sort by:</div>
+       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
     </div>
   </div>
 
@@ -1274,10 +1273,18 @@ if (list.length > 0) {
           </thead>
           <tbody>
           </tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td><i class="fa fa-plus-circle" id="addIndex"></i></td>
+            </tr>
+          </tfoot>
         </table>
-        <div class="index-button-bar">
-          <button id="addIndex" class="button-success">Add Index</button>
-        </div>
     </div>
 
       <div id="newIndexView" class="new-index-view" style="display:none">
@@ -1870,7 +1877,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
-            <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
@@ -1884,7 +1891,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Journals</th>
-            <th class="modal-text"><%=figuresData.figures.journals.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
@@ -1895,7 +1902,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Compactors</th>
-            <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
@@ -1906,7 +1913,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
@@ -1917,7 +1924,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Indexes</th>
-            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
@@ -1936,7 +1943,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of shapes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1944,7 +1951,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of attributes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1978,7 +1985,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Alive</th>
-            <th class="modal-text"><%=figuresData.figures.alive.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
@@ -1991,7 +1998,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Dead</th>
-            <th class="modal-text"><%=figuresData.figures.dead.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.dead.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
@@ -3006,9 +3013,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1455739789310"></script>
-<script src="libs.js?version=1455739789310"></script>
-<script src="app.js?version=1455739789310"></script>
+<script src="sharedLibs.js?version=1455805193418"></script>
+<script src="libs.js?version=1455805193418"></script>
+<script src="app.js?version=1455805193418"></script>
 
   </body>
 </html>

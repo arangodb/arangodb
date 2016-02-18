@@ -17882,7 +17882,7 @@ window.arangoDocument = Backbone.Collection.extend({
     MAX_SORT: 12000,
 
     lastQuery: {},
-    sortAttribute: "_key",
+    sortAttribute: "",
 
     url: '/_api/documents',
     model: window.arangoDocumentModel,
@@ -18064,7 +18064,7 @@ window.arangoDocument = Backbone.Collection.extend({
           query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
                 + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
         }
-        else {
+        else if (this.getSort() !== '') {
           query += " SORT x." + this.getSort();
         }
       }
@@ -20000,7 +20000,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#modal-dialog .modal-footer .button-danger').hide();  
           $('#modal-dialog .modal-footer .button-success').hide();  
           $('#modal-dialog .modal-footer .button-notification').hide();
-          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+          //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         }
         if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
           $('#modal-dialog .modal-footer .button-danger').show();  
@@ -20008,7 +20008,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#modal-dialog .modal-footer .button-notification').show();
           var elem = $('.index-button-bar')[0]; 
           var elem2 = $('.index-button-bar2')[0]; 
-          $('#addIndex').detach().appendTo(elem);
+          //$('#addIndex').detach().appendTo(elem);
           if ($('#cancelIndex').is(':visible')) {
             $('#cancelIndex').detach().appendTo(elem2);
             $('#createIndex').detach().appendTo(elem2);
@@ -20262,7 +20262,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       if ($('#indexEditView').is(':visible')) {
         $('#indexEditView').hide();
         $('#newIndexView').show();
-        $('#addIndex').detach().appendTo(elem2);
+        //$('#addIndex').detach().appendTo(elem2);
         $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
 
@@ -20270,7 +20270,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       else {
         $('#indexEditView').show();
         $('#newIndexView').hide();
-        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#cancelIndex').detach().appendTo(elem);
         $('#createIndex').detach().appendTo(elem);
       }
@@ -22354,6 +22354,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 /*jshint browser: true */
 /*jshint unused: false */
 /*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global numeral */
 
 (function() {
   "use strict";
@@ -23277,10 +23278,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(this.collection.getTotal() + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
-        total.html(this.collection.getTotal() + " edge(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");
       }
     },
 
