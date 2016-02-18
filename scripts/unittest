@@ -15,7 +15,16 @@ ulimit -n 2048
 export PORT=`expr 1024 + $RANDOM`
 export ETCD_NONO_WAL_SYNC=1
 
-exec build/bin/arangosh \
+
+if [ -x build/bin/arangosh ];  then
+  ARANGOSH=build/bin/arangosh
+elif [ -x bin/arangosh ];  then
+  ARANGOSH=bin/arangosh
+else
+  echo "$0: cannot locate arangosh"
+fi
+
+exec $ARANGOSH \
   -c etc${PS}relative${PS}arangosh.conf \
   --server.endpoint tcp://127.0.0.1:${PORT} \
   --javascript.execute UnitTests${PS}unittest.js \
