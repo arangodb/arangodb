@@ -1,4 +1,3 @@
-
 include(ExternalProject)
 
 macro(import_target tname tdep tinclude tpath)
@@ -10,7 +9,10 @@ macro(import_target tname tdep tinclude tpath)
     )
 endmacro()
 
-# ETCD
+################################################################################
+## ETCD
+################################################################################
+
 if (GO_FOUND)
   if (MSVC)
     set (ETCD_BUILD_COMMAND build.bat)
@@ -25,7 +27,10 @@ if (GO_FOUND)
     INSTALL_COMMAND "")
 endif()
 
-# ZLIB
+################################################################################
+## ZLIB
+################################################################################
+
 if (UNIX)
   ExternalProject_Add(zlib_build
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib-1.2.7
@@ -42,7 +47,10 @@ import_target(zlib zlib_build
     "${CMAKE_CURRENT_SOURCE_DIR}/libev/.libs/libev.a"
 )
 
-# EV
+################################################################################
+## EV
+################################################################################
+
 if (UNIX)
   ExternalProject_Add(ev_build
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libev
@@ -59,7 +67,9 @@ import_target(ev ev_build
     "${CMAKE_CURRENT_SOURCE_DIR}/libev/.libs/libev.a"
 )
 
-### V8 and ICU
+################################################################################
+## V8 and ICU
+################################################################################
 
 if(UNIX)
   set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
@@ -74,19 +84,30 @@ else()
   message(ERROR "Not implemented for your OS")
 endif()
 
-include(ExternalProject)
-set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
-  snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
-  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
-  CXXFLAGS=${CMAKE_CXX_FLAGS})
+set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
+  strictaliasing=off snapshot=off werror=no
+  ${V8_PLATFORM}
+  CC=${CMAKE_C_COMPILER}
+  CXX=${CMAKE_CXX_COMPILER}
+  CXXFLAGS=${CMAKE_CXX_FLAGS}
+  LDFLAGS=${CMAKE_EXE_LINKER_FLAGS}
+  PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+  )
+
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set (V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
 endif()
+
+if (NOT USE_PRECOMPILED_V8)
 ExternalProject_Add(v8_build SOURCE_DIR "${V8_DIR}"
   BUILD_IN_SOURCE TRUE BUILD_COMMAND "${V8_BUILD_COMMAND}" 
   INSTALL_COMMAND "")
+endif()
 
+################################################################################
 ## V8
+################################################################################
+
 import_target(v8_base v8_build "${V8_DIR}/include"
   "${V8_BIN_DIR}/libv8_base.a") 
 
@@ -103,7 +124,10 @@ import_target(v8_snapshot v8_build "${V8_DIR}/include"
   "${V8_BIN_DIR}/libv8_snapshot.a") 
 
 
+################################################################################
 ## ICU
+################################################################################
+
 # include include paths
 #add_library(icu_header INTERFACE)
 #target_include_directories(icu_header INTERFACE

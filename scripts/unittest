@@ -15,7 +15,7 @@ ulimit -n 2048
 export PORT=`expr 1024 + $RANDOM`
 export ETCD_NONO_WAL_SYNC=1
 
-exec bin/arangosh \
+exec build/bin/arangosh \
   -c etc${PS}relative${PS}arangosh.conf \
   --server.endpoint tcp://127.0.0.1:${PORT} \
   --javascript.execute UnitTests${PS}unittest.js \

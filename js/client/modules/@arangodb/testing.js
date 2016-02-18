@@ -171,7 +171,33 @@ const Kickstarter = require("@arangodb/cluster").Kickstarter;
 let cleanupDirectories = [];
 let serverCrashed = false;
 
-const makeResults = function(testname) {
+const TOP_DIR = (function findTopDir() {
+  const topDir = fs.normalize(fs.makeAbsolute("."));
+
+  if (!fs.exists("3rdParty") && !fs.exists("arangod") &&
+    !fs.exists("arangosh") && !fs.exists("UnitTests")) {
+    throw "Must be in ArangoDB topdir to execute unit tests.";
+  }
+
+  return topDir;
+}());
+
+const ARANGOB_BIN = fs.join(TOP_DIR, "build", "bin", "arangob");
+const ARANGODUMP_BIN = fs.join(TOP_DIR, "build", "bin", "arangodump");
+const ARANGOD_BIN = fs.join(TOP_DIR, "build", "bin", "arangod");
+const ARANGOIMP_BIN = fs.join(TOP_DIR, "build", "bin", "arangoimp");
+const ARANGORESTORE_BIN = fs.join(TOP_DIR, "build", "bin", "arangorestore");
+const ARANGOSH_BIN = fs.join(TOP_DIR, "build", "bin", "arangosh");
+const ETCD_ARANGO_BIN = fs.join(TOP_DIR, "build", "bin", "etcd-arango");
+const JS_DIR = fs.join(TOP_DIR, "js");
+const LOGS_DIR = fs.join(TOP_DIR, "logs");
+const PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
+const UNITTESTS_DIR = fs.join(TOP_DIR, "UnitTests");
+const CONFIG_DIR = fs.join(TOP_DIR, "build", "etc", "arangodb");
+const CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
+const BIN_DIR = fs.join(TOP_DIR, "build", "bin");
+
+function makeResults(testname) {
   const startTime = time();
 
   return function(status, message) {
@@ -214,21 +240,6 @@ const makeResults = function(testname) {
 
     return full;
   };
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief top-level directory
-////////////////////////////////////////////////////////////////////////////////
-
-function findTopDir() {
-  const topDir = fs.normalize(fs.makeAbsolute("."));
-
-  if (!fs.exists("3rdParty") && !fs.exists("arangod") &&
-    !fs.exists("arangosh") && !fs.exists("UnitTests")) {
-    throw "Must be in ArangoDB topdir to execute unit tests.";
-  }
-
-  return topDir;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,8 +247,6 @@ function findTopDir() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function makeArgsArangod(options, appDir) {
-  const topDir = findTopDir();
-
   if (appDir === undefined) {
     appDir = fs.getTempPath();
   }
@@ -246,11 +255,11 @@ function makeArgsArangod(options, appDir) {
 
   return {
     "configuration": "none",
-    "server.keyfile": fs.join(topDir, "UnitTests", "server.pem"),
+    "server.keyfile": PEM_FILE,
     "database.maximal-journal-size": "1048576",
     "database.force-sync-properties": "false",
     "javascript.app-path": appDir,
-    "javascript.startup-directory": fs.join(topDir, "js"),
+    "javascript.startup-directory": JS_DIR,
     "server.threads": "20",
     "javascript.v8-contexts": "5",
     "server.disable-authentication": "true",
@@ -263,11 +272,9 @@ function makeArgsArangod(options, appDir) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function makeArgsArangosh(options) {
-  const topDir = findTopDir();
-
   return {
     "configuration": "none",
-    "javascript.startup-directory": fs.join(topDir, "js"),
+    "javascript.startup-directory": JS_DIR,
     "server.username": options.username,
     "server.password": options.password,
     "flatCommands": ["--no-colors", "--quiet"]
@@ -953,18 +960,15 @@ function executeAndWait(cmd, args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function runInArangosh(options, instanceInfo, file, addArgs) {
-  const topDir = findTopDir();
-
   let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
-  args["javascript.unit-tests"] = fs.join(topDir, file);
+  args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
 
-  const arangosh = fs.join("bin", "arangosh");
-  let rc = executeAndWait(arangosh, toArgv(args));
+  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args));
 
   let result;
 
@@ -995,8 +999,7 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
   }
 
   const argv = toArgv(args).concat(cmds);
-  const arangosh = fs.join("bin", "arangosh");
-  return executeAndWait(arangosh, argv);
+  return executeAndWait(ARANGOSH_BIN, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1004,13 +1007,11 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function runArangoImp(options, instanceInfo, what) {
-  const topDir = findTopDir();
-
   let args = {
     "server.username": options.username,
     "server.password": options.password,
     "server.endpoint": instanceInfo.endpoint,
-    "file": fs.join(topDir, what.data),
+    "file": fs.join(TOP_DIR, what.data),
     "collection": what.coll,
     "type": what.type
   };
@@ -1027,8 +1028,7 @@ function runArangoImp(options, instanceInfo, what) {
     args["separator"] = what.separator;
   }
 
-  const arangoimp = fs.join("bin", "arangoimp");
-  return executeAndWait(arangoimp, toArgv(args));
+  return executeAndWait(ARANGOIMP_BIN, toArgv(args));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1048,11 +1048,11 @@ function runArangoDumpRestore(options, instanceInfo, which, database) {
 
   if (which === "dump") {
     args["output-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
-    exe = fs.join("bin", "arangodump");
+    exe = ARANGODUMP_BIN;
   } else {
     args["create-database"] = "true";
     args["input-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
-    exe = fs.join("bin", "arangorestore");
+    exe = ARANGORESTORE_BIN;
   }
 
   return executeAndWait(exe, toArgv(args));
@@ -1078,8 +1078,7 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     args.quiet = true;
   }
 
-  const exe = fs.join("bin", "arangob");
-  return executeAndWait(exe, toArgv(args));
+  return executeAndWait(ARANGOB_BIN, toArgv(args));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1206,15 +1205,13 @@ function shutdownInstance(instanceInfo, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function startDispatcher(instanceInfo) {
-  const cmd = fs.join("bin", "arangod");
-
   let args = {};
 
   args["configuration"] = "none";
 
-  args["cluster.agent-path"] = fs.join("bin", "etcd-arango");
+  args["cluster.agent-path"] = ETCD_ARANGO_BIN;
 
-  args["cluster.arangod-path"] = fs.join("bin", "arangod");
+  args["cluster.arangod-path"] = ARANGOD_BIN;
 
   args["cluster.coordinator-config"] =
     fs.join("etc", "relative", "arangod-coordinator.conf");
@@ -1242,7 +1239,7 @@ function startDispatcher(instanceInfo) {
 
   args["javascript.app-path"] = fs.join("js", "apps");
 
-  instanceInfo.dispatcherPid = executeExternal(cmd, toArgv(args));
+  instanceInfo.dispatcherPid = executeExternal(ARANGOD_BIN, toArgv(args));
 
   while (arango.GET("/_admin/version").error === true) {
     print("Waiting for dispatcher to appear");
@@ -1408,15 +1405,13 @@ function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtra
     args = _.extend(args, addArgs);
   }
 
-  const run = fs.join("bin", "arangod");
-
   if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, testname, run);
+    const valgrindArgs = valgrindArgsSingleServer(options, testname, ARANGOD_BIN);
     const newargs = valgrindArgs.concat(toArgv(args));
 
     instanceInfo.pid = executeExternal(options.valgrind, newargs);
   } else {
-    instanceInfo.pid = executeExternal(run, toArgv(args));
+    instanceInfo.pid = executeExternal(ARANGOD_BIN, toArgv(args));
   }
 
   return true;
@@ -1424,10 +1419,9 @@ function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtra
 
 function startInstance(protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
-  const topDir = findTopDir();
 
   let instanceInfo = {};
-  instanceInfo.topDir = topDir;
+  instanceInfo.topDir = TOP_DIR;
 
   // create temporary directories
   instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
@@ -1550,10 +1544,8 @@ function rubyTests(options, ssl) {
     '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
     'end\n');
 
-  const logsdir = fs.join(findTopDir(), "logs");
-
   try {
-    fs.makeDirectory(logsdir);
+    fs.makeDirectory(LOGS_DIR);
   } catch (err) {}
 
   const files = fs.list(fs.join("UnitTests", "HttpInterface"));
@@ -1887,8 +1879,6 @@ let testFuncs = {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function(options) {
-  const arangosh = fs.join("bin", "arangosh");
-
   let failed = 0;
   let args = makeArgsArangosh(options);
 
@@ -1906,7 +1896,7 @@ testFuncs.arangosh = function(options) {
   args["javascript.execute-string"] = "throw('foo')";
 
   const startTime = time();
-  let rc = executeExternalAndWait(arangosh, toArgv(args));
+  let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
   const deltaTime = time() - startTime;
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
@@ -1926,7 +1916,7 @@ testFuncs.arangosh = function(options) {
   args["javascript.execute-string"] = ";";
 
   const startTime2 = time();
-  rc = executeExternalAndWait(arangosh, toArgv(args));
+  rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
   const deltaTime2 = time() - startTime2;
 
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
@@ -2348,13 +2338,12 @@ testFuncs.authentication_parameters = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.boost = function(options) {
-  const topDir = findTopDir();
   const args = ["--show_progress"];
 
   let results = {};
 
   if (!options.skipBoost) {
-    const run = fs.join(topDir, "UnitTests", "basics_suite");
+    const run = fs.join(UNITTESTS_DIR, "basics_suite");
 
     if (options.valgrind) {
       const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
@@ -2367,7 +2356,7 @@ testFuncs.boost = function(options) {
   }
 
   if (!options.skipGeo) {
-    const run = fs.join(topDir, "UnitTests", "geo_suite");
+    const run = fs.join(UNITTESTS_DIR, "geo_suite");
 
     if (options.valgrind) {
       const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
@@ -2407,8 +2396,6 @@ testFuncs.config = function(options) {
     }
   };
 
-  const topDir = findTopDir();
-
   const ts = ["arangod",
     "arangob",
     "arangodump",
@@ -2425,11 +2412,11 @@ testFuncs.config = function(options) {
     const test = ts[i];
 
     const args = {
-      "configuration": fs.join(topDir, "etc", "arangodb", test + ".conf"),
+      "configuration": fs.join(CONFIG_DIR, test + ".conf"),
       "flatCommands": ["--help"]
     };
 
-    const run = fs.join(topDir, "bin", test);
+    const run = fs.join(BIN_DIR, test);
 
     if (options.valgrind) {
       const valgrindArgs = valgrindArgsSingleServer(options, test, run);
@@ -2459,11 +2446,11 @@ testFuncs.config = function(options) {
     const test = ts[i];
 
     const args = {
-      "configuration": fs.join(topDir, "etc", "relative", test + ".conf"),
+      "configuration": fs.join(CONFIG_RELATIVE_DIR, test + ".conf"),
       "flatCommands": ["--help"]
     };
 
-    const run = fs.join(topDir, "bin", test);
+    const run = fs.join(BIN_DIR, test);
 
     if (options.valgrind) {
       const valgrindArgs = valgrindArgsSingleServer(options, test, run);
@@ -2474,7 +2461,7 @@ testFuncs.config = function(options) {
       results.relative[test] = executeAndWait(run, toArgv(args));
     }
 
-    results.relative[test] = executeAndWait(fs.join(topDir, "bin", test),
+    results.relative[test] = executeAndWait(fs.join(BIN_DIR, test),
       toArgv(args));
 
     if (!results.relative[test].status) {
@@ -2496,21 +2483,18 @@ testFuncs.config = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.dfdb = function(options) {
-  const topDir = findTopDir();
   const dataDir = fs.getTempFile();
   const args = ["-c", "etc/relative/arango-dfdb.conf", "--no-server", dataDir];
 
   let results = {};
 
-  const run = fs.join(topDir, "bin", "arangod");
-
   if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", run);
+    const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(args);
 
     results.dfdb = executeAndWait(options.valgrind, newargs);
   } else {
-    results.dfdb = executeAndWait(run, args);
+    results.dfdb = executeAndWait(ARANGOD_BIN, args);
   }
 
   return results;
@@ -2962,7 +2946,7 @@ function runArangodRecovery(instanceInfo, options, script, setup) {
     fs.join(".", "js", "server", "tests", "recovery", script + ".js")
   ]);
 
-  instanceInfo.pid = executeAndWait(fs.join("bin", "arangod"), argv);
+  instanceInfo.pid = executeAndWait(ARANGOD_BIN, argv);
 }
 
 const recoveryTests = [
@@ -3544,16 +3528,15 @@ testFuncs.upgrade = function(options) {
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
-  const run = fs.join("bin", "arangod");
   const argv = toArgv(args).concat(["--upgrade"]);
 
   if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(argv);
 
     result.upgrade.first = executeAndWait(options.valgrind, newargs);
   } else {
-    result.upgrade.first = executeAndWait(run, argv);
+    result.upgrade.first = executeAndWait(ARANGOD_BIN, argv);
   }
 
   if (result.upgrade.first !== 0 && !options.force) {
@@ -3564,12 +3547,12 @@ testFuncs.upgrade = function(options) {
   ++result.upgrade.total;
 
   if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", run);
+    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(argv);
 
     result.upgrade.second = executeAndWait(options.valgrind, newargs);
   } else {
-    result.upgrade.second = executeAndWait(run, argv);
+    result.upgrade.second = executeAndWait(ARANGOD_BIN, argv);
   }
 
   cleanupDirectories.push(tmpDataDir);
