@@ -1,6 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global numeral */
 
 (function() {
   "use strict";
@@ -924,10 +925,10 @@
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(this.collection.getTotal() + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
-        total.html(this.collection.getTotal() + " edge(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");
       }
     },
 

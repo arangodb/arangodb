@@ -384,6 +384,11 @@
 * GITHUB: https://github.com/select2/select2
 * License: [MIT License](https://github.com/select2/select2/blob/master/LICENSE.md)
 
+#### Numeral.js
+
+* GITHUB: https://github.com/adamwdraper/Numeral-js
+* License: [MIT License](https://github.com/adamwdraper/Numeral-js/blob/master/LICENSE)
+
 #### Swagger UI
 
 * Project Home: http://swagger.io
