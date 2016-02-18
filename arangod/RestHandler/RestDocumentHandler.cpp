@@ -253,9 +253,15 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return getDocumentCoordinator(collection, key, generateBody);
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    if (ifRid != 0) {
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(ifRid));
+    }
   }
+  VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
@@ -266,67 +272,44 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
+  OperationOptions options;
+  options.silent = !generateBody;
+
+  OperationResult result = trx.document(collection, search, options);
+
+  res = trx.finish(result.code);
+
+  if(!result.successful()) {
+    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      generateDocumentNotFound(collection, (TRI_voc_key_t)key.c_str());
+      return false;
+    } else if (ifRid != 0 && result.code == TRI_ERROR_ARANGO_CONFLICT) {
+      generatePreconditionFailed(result.slice());
+    } else {
+      generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
+    }
+    return false;
   }
-  TRI_doc_mptr_copy_t mptr;
-
-  res = trx.document(trx.trxCollection(), &mptr, key);
-
-  TRI_document_collection_t* document = trx.documentCollection();
-  TRI_ASSERT(document != nullptr);
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
-  res = trx.finish(res);
-
-  // .............................................................................
-  // outside read transaction
-  // .............................................................................
-
-  TRI_ASSERT(trx.hasDitch());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str());
+    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
     return false;
   }
 
-  if (mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
-    generateDocumentNotFound(trx, cid, (TRI_voc_key_t)key.c_str());
-    return false;
-  }
-
-  // generate result
-  TRI_voc_rid_t const rid = mptr._rid;
-
-  if (ifNoneRid == 0) {
-    if (ifRid == 0 || ifRid == rid) {
-      generateDocument(trx, cid, mptr, shaper, generateBody);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
-  } else if (ifNoneRid == rid) {
-    if (ifRid == 0 || ifRid == rid) {
-      generateNotModified(rid);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
+  TRI_voc_rid_t const rid =
+      VelocyPackHelper::getNumericValue<TRI_voc_rid_t>(
+          result.slice(), TRI_VOC_ATTRIBUTE_REV, 0);
+  if (ifNoneRid != 0 && ifNoneRid == rid) {
+    generateNotModified(rid);
   } else {
-    if (ifRid == 0 || ifRid == rid) {
-      generateDocument(trx, cid, mptr, shaper, generateBody);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
+    generateDocument(result.slice(), generateBody);
   }
-
   return true;
 }
 
