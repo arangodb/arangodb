@@ -1074,3 +1074,97 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                          options.waitForSync); 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all documents in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::truncate(std::string const& collectionName,
+                                      OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  
+  OperationOptions optionsCopy = options;
+
+  if (ServerState::instance()->isCoordinator()) {
+    return truncateCoordinator(collectionName, optionsCopy);
+  }
+
+  return truncateLocal(collectionName, optionsCopy);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all documents in a collection, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::truncateCoordinator(std::string const& collectionName,
+                                                 OperationOptions& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all documents in a collection, local
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::truncateLocal(std::string const& collectionName,
+                                           OperationOptions& options) {
+  // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of documents in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::count(std::string const& collectionName) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+  if (ServerState::instance()->isCoordinator()) {
+    return countCoordinator(collectionName);
+  }
+
+  return countLocal(collectionName);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of documents in a collection
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::countCoordinator(std::string const& collectionName) {
+  uint64_t count = 0;
+  int res = arangodb::countOnCoordinator(_vocbase->_name, collectionName, count);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(count));
+
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of documents in a collection
+//////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::countLocal(std::string const& collectionName) {
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(document->size()));
+
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+}
+

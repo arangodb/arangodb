@@ -477,8 +477,7 @@ class Transaction {
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief truncate all documents in a collection
-  /// TODO: implement this
+  /// @brief remove all documents in a collection
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult truncate(std::string const& collectionName,
@@ -486,10 +485,9 @@ class Transaction {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief count the number of documents in a collection
-  /// TODO: implement this
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t count(std::string const& collectionName);
+  OperationResult count(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using shaped json
@@ -792,6 +790,15 @@ class Transaction {
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const& value,
                               OperationOptions& options);
+  
+  OperationResult truncateCoordinator(std::string const& collectionName,
+                                      OperationOptions& options);
+  
+  OperationResult truncateLocal(std::string const& collectionName,
+                                OperationOptions& options);
+  
+  OperationResult countCoordinator(std::string const& collectionName);
+  OperationResult countLocal(std::string const& collectionName);
 
  protected:
 
