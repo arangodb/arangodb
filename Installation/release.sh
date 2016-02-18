@@ -9,7 +9,7 @@ if [ "$1" == "--no-tag" ];  then
 fi
 
 if [ "$#" -ne 1 ];  then
-  echo "usage: $0 <major>.<minor>.<patchlevel>"
+  echo "usage: $0 <major>.<minor>.<revision>"
   exit 1
 fi
 
@@ -27,32 +27,52 @@ else
   exit 1
 fi
 
-echo "$VERSION" > VERSION
+VERSION_MAJOR=`echo $VERSION | awk -F. '{print $1}'`
+VERSION_MINOR=`echo $VERSION | awk -F. '{print $2}'`
+VERSION_REVISION=`echo $VERSION | awk -F. '{print $3}'`
 
-cat configure.ac \
-  | sed -e 's~AC_INIT(\[\(.*\)\], \[.*\..*\..*\], \[\(.*\)\], \[\(.*\)\], \[\(.*\)\])~AC_INIT([\1], ['$VERSION'], [\2], [\3], [\4\])~' \
-  > configure.ac.tmp
+cat CMakeLists.txt \
+  | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")" \
+  | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")" \
+  | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")" \
+  > CMakeLists.txt.tmp
 
-mv configure.ac.tmp configure.ac
+mv CMakeLists.txt.tmp CMakeLists.txt
+
+CMAKE_CONFIGURE="-DUSE_MAINTAINER_MODE=ON"
 
 if [ `uname` == "Darwin" ];  then
-  ./configure \
-    --enable-maintainer-mode \
-    CPPFLAGS="-I/usr/local/include -I/usr/local/opt/openssl/include" \
-    LDFLAGS="-L/usr/local/opt/openssl/lib -L/usr/local/Cellar/boost/1.58.0/lib"
-else
-  ./configure --enable-maintainer-mode
+  CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 fi
 
-make built-sources
-make add-maintainer
-make add-automagic
+rm -rf build && mkdir build
 
-make
-make examples
-make swagger
+./scripts/jsint.sh
 
-make jslint
+(
+  cd build
+  cmake .. ${CMAKE_CONFIGURE}
+  make -j 8
+)
+
+git add -f \
+  README \
+  arangod/Aql/tokens.cpp \
+  arangod/Aql/grammar.cpp \
+  arangod/Aql/grammar.h \
+  lib/JsonParser/json-parser.cpp \
+  lib/V8/v8-json.cpp \
+  lib/Basics/voc-errors.h \
+  lib/Basics/voc-errors.cpp \
+  js/common/bootstrap/errors.js \
+  CMakeLists.txt
+
+(
+  cd build
+  make swagger
+)
+
+./scripts/generateExamples
 
 (
   cd js/apps/system/_admin/aardvark/APP

@@ -34,8 +34,6 @@ else ()
 
 endif ()
 
-# TODO # add vars to configure
-configure_file(Basics/local-configuration.h.in Basics/local-configuration.h COPYONLY)
 # Find includes in corresponding build directories
 # set(CMAKE_INCLUDE_CURRENT_DIR ON) # <- now done via include_directories in main file
 
