@@ -36,7 +36,7 @@ if (UNIX)
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib-1.2.7
     BUILD_IN_SOURCE 1
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib
-    CONFIGURE_COMMAND ./configure CC=${CMAKE_C_COMPILER} --prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib --static
+    CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib --static
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
     )  
@@ -56,7 +56,7 @@ if (UNIX)
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libev
     BUILD_IN_SOURCE 1
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libev
-    CONFIGURE_COMMAND ./configure CC=${CMAKE_C_COMPILER} --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared
+    CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
     )  
