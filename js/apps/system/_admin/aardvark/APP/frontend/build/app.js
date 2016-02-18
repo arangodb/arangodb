@@ -20314,38 +20314,40 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     checkLockedCollections: function() {
 
-      var self = this,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+      if (window.location.hash === '#collections') {
+        var self = this,
+        lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
-      this.collection.each(function(model) {
-        model.set('locked', false);
-      });
-
-      _.each(lockedCollections, function(locked) {
-        var model = self.collection.findWhere({
-          id: locked.collection 
+        this.collection.each(function(model) {
+          model.set('locked', false);
         });
-        model.set('locked', true);
-        model.set('lockType', locked.type);
-        model.set('desc', locked.desc);
-      });
 
-      this.collection.each(function(model) {
-        if (model.get("locked") || model.get("status") === 'loading') {
-          $('#collection_' + model.get("name")).addClass('locked');
-        }
-        else {
-          $('#collection_' + model.get("name")).removeClass('locked');
-          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
-          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
-            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
-            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+        _.each(lockedCollections, function(locked) {
+          var model = self.collection.findWhere({
+            id: locked.collection 
+          });
+          model.set('locked', true);
+          model.set('lockType', locked.type);
+          model.set('desc', locked.desc);
+        });
+
+        this.collection.each(function(model) {
+          if (model.get("locked") || model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).addClass('locked');
           }
-        }
-        if (model.get("status") === 'loading') {
-          $('#collection_' + model.get("name")).removeClass('loading');
-        }
-      });
+          else {
+            $('#collection_' + model.get("name")).removeClass('locked');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+              $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+            }
+          }
+          if (model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).removeClass('loading');
+          }
+        });
+      }
 
     },
 
@@ -22403,8 +22405,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.page = page;
       this.type = type;
 
-      this.checkCollectionState();
-
       this.collection.getDocuments(this.getDocsCallback.bind(this));
       this.collectionModel = this.collectionsStore.get(colid);
     },
@@ -23210,14 +23210,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (this.lastCollectionName === this.collectionName) {
         if (this.activeFilter) {
           this.filterCollection();
-          console.log("yes");
           this.restoreFilter();
         }
       }
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
-          this.collection.setSort('_key');
+          this.collection.setSort('');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
@@ -23553,9 +23552,53 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function(){
+
       $(this.el).html(this.template.render({
         model: this.model
       }));
+
+      var conf = function() {
+        if (this.model.needsConfiguration()) {
+
+          if ($(this.el).find('.warning-icons').length > 0) {
+            $(this.el).find('.warning-icons')
+            .append('<span class="fa fa-cog" title="Needs configuration"></span>');
+          }
+          else {
+            $(this.el).find('img')
+            .after(
+              '<span class="warning-icons"><span class="fa fa-cog" title="Needs configuration"></span></span>'
+            );
+          }
+        }
+      }.bind(this);
+
+      var depend = function() {
+        if (this.model.hasUnconfiguredDependencies()) {
+
+          if ($(this.el).find('.warning-icons').length > 0) {
+            $(this.el).find('.warning-icons')
+            .append('<span class="fa fa-cubes" title="Unconfigured dependencies"></span>');
+          }
+          else {
+            $(this.el).find('img')
+            .after(
+              '<span class="warning-icons"><span class="fa fa-cubes" title="Unconfigured dependencies"></span></span>'
+            );
+          }
+        }
+      }.bind(this);
+
+      /*isBroken function in model doesnt make sense
+      var broken = function() {
+        $(this.el).find('warning-icons')
+        .append('<span class="fa fa-warning" title="Mount error"></span>');
+      }.bind(this);
+       */
+
+      this.model.getConfiguration(conf);
+      this.model.getDependencies(depend);
+
       return $(this.el);
     }
   });
@@ -25969,6 +26012,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           if (rowsArray.length === 0) {
             rowsArray.push([
               message,
+              "",
               "",
               "",
               ""
