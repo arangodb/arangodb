@@ -346,6 +346,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              arangodb::velocypack::Slice const*, TRI_doc_mptr_copy_t*, 
              TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
+  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const*,
+             arangodb::velocypack::Slice const*, TRI_doc_mptr_copy_t*, 
+             TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
 
@@ -371,6 +374,16 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
   int postInsertIndexes(arangodb::Transaction*, TRI_doc_mptr_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two object slices
+////////////////////////////////////////////////////////////////////////////////
+    
+  arangodb::velocypack::Builder mergeObjects(arangodb::Transaction* trx,
+                                             bool isReplace,
+                                             arangodb::velocypack::Slice const& oldValue,
+                                             arangodb::velocypack::Slice const& newValue,
+                                             bool mergeObjects, bool keepNull);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

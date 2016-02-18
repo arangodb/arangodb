@@ -47,11 +47,13 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;
+  using VPackSlice = arangodb::velocypack::Slice;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transaction
@@ -275,6 +277,12 @@ class Transaction {
 
     return trxCollection->_ditch;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract a revision id from a slice
+  //////////////////////////////////////////////////////////////////////////////
+
+  static TRI_voc_rid_t extractRevisionId(VPackSlice const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -769,7 +777,7 @@ class Transaction {
   OperationResult replaceLocal(std::string const& collectionName,
                                VPackSlice const& oldValue,
                                VPackSlice const& newValue,
-                               OperationOptions const& options);
+                               OperationOptions& options);
   
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,
