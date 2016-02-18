@@ -38,12 +38,15 @@ var Module = require("module");
 
 var fs = require("fs");
 var util = require("util");
+var mimeTypes = require("mime-types");
 var console = require("console");
 var _ = require("lodash");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
 var ErrorStackParser = require("error-stack-parser");
+
+const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2069,7 +2072,7 @@ function pathHandler (req, res, options, next) {
   }
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
-    res.contentType = arangodb.guessContentType(filename);
+    res.contentType = mimeTypes.lookup(filename) || MIME_DEFAULT;
     if (options.hasOwnProperty('gzip')) {
       if (options.gzip === true) {
 

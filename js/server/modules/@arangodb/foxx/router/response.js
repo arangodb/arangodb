@@ -29,7 +29,6 @@ const mediaTyper = require('media-typer');
 const mimeTypes = require('mime-types');
 const typeIs = require('type-is');
 const contentDisposition = require('content-disposition');
-const guessContentType = require('@arangodb').guessContentType;
 const addCookie = require('@arangodb/actions').addCookie;
 const crypto = require('@arangodb/crypto');
 
@@ -121,7 +120,7 @@ module.exports = class SyntheticResponse {
   attachment(filename) {
     this.headers['content-disposition'] = contentDisposition(filename);
     if (filename && !this._raw.contentType) {
-      this._raw.contentType = guessContentType(filename);
+      this._raw.contentType = mimeTypes.lookup(filename) || MIME_BINARY;
     }
     return this;
   }
@@ -165,7 +164,7 @@ module.exports = class SyntheticResponse {
       this.headers['last-modified'] = lastModified.toUTCString();
     }
     if (!this._raw.contentType) {
-      this._raw.contentType = guessContentType(filename, MIME_BINARY);
+      this._raw.contentType = mimeTypes.lookup(filename) || MIME_BINARY;
     }
     return this;
   }

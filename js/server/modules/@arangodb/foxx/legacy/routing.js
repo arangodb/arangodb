@@ -27,10 +27,13 @@
 const _ = require('lodash');
 const fs = require('fs');
 const arangodb = require('@arangodb');
+const mimeTypes = require('mime-types');
 const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 const is = require('@arangodb/is');
 const actions = require('@arangodb/actions');
+
+const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief excludes certain files
@@ -124,18 +127,18 @@ function buildFileAsset(app, path, basePath, asset) {
 
   // path contains a dot, derive content type from path
   else if (path.match(/\.[a-zA-Z0-9]+$/)) {
-    type = arangodb.guessContentType(path);
+    type = mimeTypes.lookup(path) || MIME_DEFAULT;
   }
 
   // path does not contain a dot,
   // derive content type from included asset names
   else if (asset.files.length > 0) {
-    type = arangodb.guessContentType(asset.files[0]);
+    type = mimeTypes.lookup(asset.files[0]) || MIME_DEFAULT;
   }
 
   // use built-in defaulti content-type
   else {
-    type = arangodb.guessContentType('');
+    type = MIME_DEFAULT;
   }
 
   // .............................................................................

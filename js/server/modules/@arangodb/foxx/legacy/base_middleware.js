@@ -27,6 +27,8 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const mimeTypes = require('mime-types');
+
 ////////////////////////////////////////////////////////////////////////////////
 /// JSF_foxx_BaseMiddleware_initializer
 /// @brief The Base Middleware
@@ -45,8 +47,7 @@ function BaseMiddleware() {
       crypto = require("@arangodb/crypto"),
       actions = require("@arangodb/actions"),
       internal = require("internal"),
-      fs = require("fs"),
-      arangodb = require("@arangodb");
+      fs = require("fs");
 
     requestFunctions = {
 
@@ -220,7 +221,7 @@ function BaseMiddleware() {
         }
 
         if (! this.contentType) {
-          this.contentType = arangodb.guessContentType(filename, 'application/octet-stream');
+          this.contentType = mimeTypes.lookup(filename) || 'application/octet-stream';
         }
       }
     };
