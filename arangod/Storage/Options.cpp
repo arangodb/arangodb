@@ -119,7 +119,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
   
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    if (value.head() != 0xf0) {
+    if (value.head() != 0xf3) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid custom type");
     }
