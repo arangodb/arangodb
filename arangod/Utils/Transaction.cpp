@@ -488,7 +488,7 @@ OperationResult Transaction::document(std::string const& collectionName,
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const& value,
                                                  OperationOptions& options) {
-  auto headers = make_unique<std::map<std::string, std::string>>();
+  auto headers = std::make_unique<std::map<std::string, std::string>>();
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
