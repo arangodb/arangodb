@@ -611,7 +611,10 @@ static void DocumentVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice());
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  resultOptions.customTypeHandler = opResult.customTypeHandler;
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
 
   TRI_V8_RETURN(result);
 }

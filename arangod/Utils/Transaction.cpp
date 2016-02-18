@@ -511,7 +511,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   
   VPackBuilder resultBuilder;
   if (!options.silent) {
-    resultBuilder.add(VPackValue(mptr.vpack()));
+    resultBuilder.add(VPackSlice(mptr.vpack()));
   }
 
   return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase)); 

@@ -45,7 +45,9 @@ static v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
-                                               VPackSlice const& slice) {
+                                               VPackSlice const& slice,
+                                               VPackOptions const* options,
+                                               VPackSlice const* base) {
   TRI_ASSERT(slice.isObject());
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
 
@@ -55,7 +57,8 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
 
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    v8::Handle<v8::Value> val = TRI_VPackToV8(isolate, it.value());
+    v8::Handle<v8::Value> val =
+        TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
       auto k = ObjectVPackString(isolate, it.key());
       object->ForceSet(k, val);
@@ -71,7 +74,9 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
-                                              VPackSlice const& slice) {
+                                              VPackSlice const& slice,
+                                              VPackOptions const* options,
+                                              VPackSlice const* base) {
   TRI_ASSERT(slice.isArray());
   v8::Handle<v8::Array> object =
       v8::Array::New(isolate, static_cast<int>(slice.length()));
@@ -84,7 +89,8 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
   VPackArrayIterator it(slice);
 
   while (it.valid()) {
-    v8::Handle<v8::Value> val = TRI_VPackToV8(isolate, it.value());
+    v8::Handle<v8::Value> val =
+        TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
       object->Set(j++, val);
     }
@@ -99,7 +105,9 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
-                                    VPackSlice const& slice) {
+                                    VPackSlice const& slice,
+                                    VPackOptions const* options,
+                                    VPackSlice const* base) {
   switch (slice.type()) {
     case VPackValueType::Null:
       return v8::Null(isolate);
@@ -116,9 +124,18 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     case VPackValueType::String:
       return ObjectVPackString(isolate, slice);
     case VPackValueType::Object:
-      return ObjectVPackObject(isolate, slice);
+      return ObjectVPackObject(isolate, slice, options, base);
     case VPackValueType::Array:
-      return ObjectVPackArray(isolate, slice);
+      return ObjectVPackArray(isolate, slice, options, base);
+    case VPackValueType::Custom: {
+      if (options->customTypeHandler == nullptr || base == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Could not extract custom attribute.");
+      }
+      std::string id =
+          options->customTypeHandler->toString(slice, options, *base);
+      return TRI_V8_STD_STRING(id);
+    }
     case VPackValueType::None:
     default:
       return v8::Undefined(isolate);
