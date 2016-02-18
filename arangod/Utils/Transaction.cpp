@@ -42,13 +42,35 @@ using namespace arangodb;
 
 thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _key attribute from a slice
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Transaction::extractKey(VPackSlice const* slice) {
+  TRI_ASSERT(slice != nullptr);
+  
+  // extract _key
+  if (slice->isObject()) {
+    VPackSlice k = slice->get(TRI_VOC_ATTRIBUTE_KEY);
+    if (!k.isString()) {
+      return ""; // fail
+    }
+    return k.copyString();
+  } 
+  if (slice->isString()) {
+    return slice->copyString();
+  } 
+  return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a revision id from a slice
+/// @brief extract the _rev attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t Transaction::extractRevisionId(VPackSlice const* slice) {
   TRI_ASSERT(slice != nullptr);
+  TRI_ASSERT(slice->isObject());
 
   VPackSlice r(slice->get(TRI_VOC_ATTRIBUTE_REV));
   if (r.isString()) {
@@ -483,21 +505,12 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  std::string key;
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&value);
-
-  // extract _key
-  if (value.isObject()) {
-    VPackSlice k = value.get(TRI_VOC_ATTRIBUTE_KEY);
-    if (!k.isString()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    }
-    key = k.copyString();
-  } else if (value.isString()) {
-    key = value.copyString();
-  } else {
+  std::string key(Transaction::extractKey(&value));
+  if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
+
+  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&value);
 
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
@@ -681,7 +694,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   resultBuilder.close();
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-                         options.waitForSync || document->_info.waitForSync()); 
+                         options.waitForSync); 
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -818,7 +831,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   resultBuilder.close();
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-                         options.waitForSync || document->_info.waitForSync()); 
+                         options.waitForSync); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -954,22 +967,9 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
   resultBuilder.add("_oldRev", VPackValue(idString));
   resultBuilder.close();
 
-  return OperationResult(resultBuilder.steal(), options.waitForSync); 
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                         options.waitForSync); 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief remove one or multiple documents in a collection
@@ -1033,8 +1033,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
  
   std::string key; 
-  TRI_voc_rid_t expectedRevision = 0;
- 
+  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&value);
+
   VPackBuilder builder;
   builder.openObject();
 
@@ -1045,16 +1045,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
     builder.add(TRI_VOC_ATTRIBUTE_KEY, k);
-    
-    VPackSlice r = value.get(TRI_VOC_ATTRIBUTE_REV);
-    if (!r.isNone()) {
-      if (r.isString()) {
-        expectedRevision = arangodb::basics::StringUtils::uint64(r.copyString());
-      }
-      else if (r.isInteger()) {
-        expectedRevision = r.getNumber<TRI_voc_rid_t>();
-      }
-    }
   } else if (value.isString()) {
     builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
   }
@@ -1081,6 +1071,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   resultBuilder.close();
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-                         options.waitForSync || document->_info.waitForSync()); 
+                         options.waitForSync); 
 }
 
