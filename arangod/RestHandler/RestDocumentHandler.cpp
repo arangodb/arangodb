@@ -151,7 +151,7 @@ bool RestDocumentHandler::createDocument() {
   // .............................................................................
   
   if (result.failed()) {
-    generateTransactionError(collection, result.code);
+    generateTransactionError(result);
     return false;
   }
 
@@ -550,15 +550,19 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // extract or chose the update policy
-  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-  bool const waitForSync = extractWaitForSync();
+  OperationOptions opOptions;
+  opOptions.waitForSync = extractWaitForSync();
 
-  if (ServerState::instance()->isCoordinator()) {
-    return modifyDocumentCoordinator(collection, key, revision, policy,
-                                     waitForSync, isPatch, body);
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    if (revision != 0) {
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
+    }
   }
 
-  TRI_doc_mptr_copy_t mptr;
+  VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
@@ -575,187 +579,52 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
-  }
-
-  TRI_voc_rid_t rid = 0;
-  TRI_document_collection_t* document = trx.documentCollection();
-  TRI_ASSERT(document != nullptr);
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
-  std::string const&& cidString = StringUtils::itoa(document->_info.planId());
-
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-    return false;
-  }
-
+  OperationResult result;
   if (isPatch) {
     // patching an existing document
-    bool nullMeansRemove;
-    bool mergeObjects;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
     if (!found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
-      nullMeansRemove = false;
+      opOptions.keepNull = true;
     } else {
       // delete null attributes
-      nullMeansRemove = true;
+      opOptions.keepNull = false;
     }
 
     valueStr = _request->value("mergeObjects", found);
     if (!found || StringUtils::boolean(valueStr)) {
       // the default is true
-      mergeObjects = true;
+      opOptions.mergeObjects = true;
     } else {
-      mergeObjects = false;
+      opOptions.mergeObjects = false;
     }
 
-    // read the existing document
-    TRI_doc_mptr_copy_t oldDocument;
-
-    // create a write lock that spans the initial read and the update
-    // otherwise the update is not atomic
-    trx.lockWrite();
-
-    // do not lock again
-    res = trx.document(trx.trxCollection(), &oldDocument, key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      trx.abort();
-      generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                               rid);
-      return false;
-    }
-
-    if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
-      trx.abort();
-      generateTransactionError(collectionName,
-                               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                               (TRI_voc_key_t)key.c_str(), rid);
-      return false;
-    }
-
-    TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(
-        shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
-    TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-
-    if (old == nullptr) {
-      trx.abort();
-      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-      return false;
-    }
-
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-    if (ServerState::instance()->isDBServer()) {
-      // compare attributes in shardKeys
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
-                           true)) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-
-        trx.abort();
-        generateTransactionError(
-            collectionName,
-            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-
-        return false;
-      }
-    }
-
-    TRI_json_t* patchedJson = TRI_MergeJson(
-        TRI_UNKNOWN_MEM_ZONE, old, json.get(), nullMeansRemove, mergeObjects);
-    TRI_FreeJson(shaper->memoryZone(), old);
-
-    if (patchedJson == nullptr) {
-      trx.abort();
-      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-
-      return false;
-    }
-
-    // do not acquire an extra lock
-    res = trx.update(trx.trxCollection(), key, 0, &mptr, patchedJson, policy,
-                     revision, &rid, waitForSync);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+    result = trx.update(collection, search, body, opOptions);
   } else {
-    // replacing an existing document, using a lock
-
-    if (ServerState::instance()->isDBServer()) {
-      // compare attributes in shardKeys
-      // read the existing document
-      TRI_doc_mptr_copy_t oldDocument;
-
-      // do not lock again
-      trx.lockWrite();
-
-      res = trx.document(trx.trxCollection(), &oldDocument, key);
-      if (res != TRI_ERROR_NO_ERROR) {
-        trx.abort();
-        generateTransactionError(collectionName, res,
-                                 (TRI_voc_key_t)key.c_str(), rid);
-        return false;
-      }
-
-      if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
-        trx.abort();
-        generateTransactionError(collectionName,
-                                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                 (TRI_voc_key_t)key.c_str(), rid);
-        return false;
-      }
-
-      TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(
-          shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
-      TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-
-      std::unique_ptr<TRI_json_t> json(
-          arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
-                           false)) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-
-        trx.abort();
-        generateTransactionError(
-            collectionName,
-            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-
-        return false;
-      }
-
-      if (old != nullptr) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-      }
-    }
-
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-    res = trx.update(trx.trxCollection(), key, 0, &mptr, json.get(), policy,
-                     revision, &rid, waitForSync);
+    // replacing an existing document
+    result = trx.replace(collection, search, body, opOptions);
   }
 
-  res = trx.finish(res);
+  res = trx.finish(result.code);
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                             rid);
-
+  if (result.failed()) {
+    generateTransactionError(result);
     return false;
   }
 
-  generateSaved(trx, cid, mptr);
+  if (res != TRI_ERROR_NO_ERROR) {
+    // This should not occur. Updated worked but commit failed
+    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str(), 0);
+    return false;
+  }
+
+  // TODO Fix Collection Type!
+  generateSaved(result, collection, TRI_COL_TYPE_DOCUMENT);
 
   return true;
 }
