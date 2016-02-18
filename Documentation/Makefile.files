@@ -36,20 +36,6 @@ man:
             done; \
         done
 
-################################################################################
-### @brief generate json for swagger REST-API
-################################################################################
-
-.PHONY: swagger
-
-swagger:
-	(python \
-            @srcdir@/Documentation/Scripts/generateSwagger.py \
-                @srcdir@ \
-                @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs api-docs \
-		@srcdir@/Documentation/DocuBlocks/Rest/ \
-        ) > @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs.json	
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
