@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graphs.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/VelocyPackHelper.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
@@ -32,12 +33,11 @@ using namespace arangodb::aql;
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 
-void Graph::insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr) {
-  for (size_t j = 0; j < arr.size(); ++j) {
-    Json c = arr.at(j);
+void Graph::insertVertexCollections(VPackSlice& arr) {
+  TRI_ASSERT(arr.isArray());
+  for (auto const& c : VPackArrayIterator(arr)) {
     TRI_ASSERT(c.isString());
-    std::string name = JsonHelper::getStringValue(c.json(), "");
-    addVertexCollection(name);
+    addVertexCollection(c.copyString());
   }
 }
 
@@ -101,23 +101,23 @@ void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   }
 }
 
-Graph::Graph(arangodb::basics::Json const& j) : _vertexColls(), _edgeColls() {
-  auto jsonDef = j.get(_attrEdgeDefs);
+Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
+  if (slice.hasKey(_attrEdgeDefs)) {
+    auto edgeDefs = slice.get(_attrEdgeDefs);
 
-  for (size_t i = 0; i < jsonDef.size(); ++i) {
-    Json def = jsonDef.at(i);
-    TRI_ASSERT(def.isObject());
-    Json e = def.get("collection");
-    TRI_ASSERT(e.isString());
-    std::string eCol = JsonHelper::getStringValue(e.json(), "");
-    addEdgeCollection(eCol);
-    e = def.get("from");
-    TRI_ASSERT(e.isArray());
-    insertVertexCollectionsFromJsonArray(e);
-    e = def.get("to");
-    TRI_ASSERT(e.isArray());
-    insertVertexCollectionsFromJsonArray(e);
+    for (auto const& def : VPackArrayIterator(edgeDefs)) {
+      TRI_ASSERT(def.isObject());
+      std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
+          def, "collection", "");
+      // TODO what if graph is not in a valid format any more
+      VPackSlice tmp = def.get("from");
+      insertVertexCollections(tmp);
+      tmp = def.get("to");
+      insertVertexCollections(tmp);
+    }
   }
-  auto orphans = j.get(_attrOrphans);
-  insertVertexCollectionsFromJsonArray(orphans);
+  if (slice.hasKey(_attrOrphans)) {
+    auto orphans = slice.get(_attrOrphans);
+    insertVertexCollections(orphans);
+  }
 }

@@ -28,11 +28,16 @@
 #include "Basics/JsonHelper.h"
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
+
 namespace aql {
 
 class Graph {
  public:
-  explicit Graph(arangodb::basics::Json const&);
+  explicit Graph(arangodb::velocypack::Slice const&);
 
   ~Graph() {}
 
@@ -72,7 +77,7 @@ class Graph {
   /// @brief Add Collections to the object
   //////////////////////////////////////////////////////////////////////////////
 
-  void insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr);
+  void insertVertexCollections(arangodb::velocypack::Slice& arr);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

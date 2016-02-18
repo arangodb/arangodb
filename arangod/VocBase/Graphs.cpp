@@ -28,7 +28,7 @@
 #include "Cluster/ClusterMethods.h"
 using namespace arangodb::basics;
 
-std::string const graphs = "_graphs";
+std::string const GRAPHS = "_graphs";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Load a graph from the _graphs collection; local and coordinator way
@@ -36,65 +36,38 @@ std::string const graphs = "_graphs";
 
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
-  if (ServerState::instance()->isCoordinator()) {
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-    auto headers = std::make_unique<std::map<std::string, std::string>>();
-    std::map<std::string, std::string> resultHeaders;
-    std::string resultBody;
-
-    TRI_voc_rid_t rev = 0;
-
-    int error = arangodb::getDocumentOnCoordinator(
-        vocbase->_name, graphs, name, rev, headers, true, responseCode,
-        resultHeaders, resultBody);
-
-    if (error != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(error,
-                                    "while fetching _graph['%s'] entry: `%s`",
-                                    name.c_str(), resultBody.c_str());
-    }
-
-    auto json = JsonHelper::fromString(resultBody);
-
-    if (json == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_HTTP_CORRUPTED_JSON,
-                                    "while fetching _graph['%s'] entry: `%s`",
-                                    name.c_str(), resultBody.c_str());
-    }
-
-    return new arangodb::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
-  }
-
-  CollectionNameResolver resolver(vocbase);
-  auto collName = resolver.getCollectionId(graphs);
 
   SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          vocbase, collName);
+                                          vocbase, GRAPHS);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s' in _graphs",
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
                                   name.c_str());
   }
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b);
+    b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(name));
+  }
 
-  TRI_doc_mptr_copy_t mptr;
-  res = trx.document(trx.trxCollection(), &mptr, name);
+  // Default options are enough here
+  OperationOptions options;
+
+  OperationResult result = trx.document(GRAPHS, b.slice(), options);
+
+  // Commit or abort.
+  res = trx.finish(result.code);
+
+  if (!result.successful()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
+                                  name.c_str());
+  }
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s' in _graphs",
-                                  name.c_str());
-  }
-  TRI_shaped_json_t document;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
-  auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
-
-  auto j = TRI_JsonShapedJson(shaper, &document);
-  trx.finish(res);
-
-  if (j == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_SHAPER_FAILED,
-                                  "while accessing shape for graph '%s'",
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
                                   name.c_str());
   }
 
-  return new arangodb::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
+  return new arangodb::aql::Graph(result.slice());
 }
