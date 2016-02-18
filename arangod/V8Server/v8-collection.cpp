@@ -2584,36 +2584,27 @@ static void JS_CountVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t* collection =
+  TRI_vocbase_col_t const* col =
       TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == nullptr) {
+  if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("count()");
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    // First get the initial data:
-    std::string const dbname(collection->_dbName);
-
-    // TODO: someone might rename the collection while we're reading its name...
-    std::string const collname(collection->_name);
-
-    uint64_t count = 0;
-    int error = arangodb::countOnCoordinator(dbname, collname, count);
-
-    if (error != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(error);
-    }
-
-    TRI_V8_RETURN(v8::Number::New(isolate, (double)count));
+    
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  
+  std::string collectionName(col->name());
 
   SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+      new V8TransactionContext(true), vocbase, collectionName);
 
   int res = trx.begin();
 
@@ -2621,17 +2612,18 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+  OperationResult opResult = trx.count(collectionName);
+  
+  res = trx.finish(opResult.code);
 
-  // READ-LOCK start
-  trx.lockRead();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
-  uint64_t const s = document->size();
+  VPackSlice s = opResult.slice();
+  TRI_ASSERT(s.isNumber());
 
-  trx.finish(res);
-  // READ-LOCK end
-
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s)));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s.getNumber<double>())));
   TRI_V8_TRY_CATCH_END
 }
 
