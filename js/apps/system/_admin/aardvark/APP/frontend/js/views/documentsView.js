@@ -50,8 +50,6 @@
       this.page = page;
       this.type = type;
 
-      this.checkCollectionState();
-
       this.collection.getDocuments(this.getDocsCallback.bind(this));
       this.collectionModel = this.collectionsStore.get(colid);
     },
@@ -857,14 +855,13 @@
       if (this.lastCollectionName === this.collectionName) {
         if (this.activeFilter) {
           this.filterCollection();
-          console.log("yes");
           this.restoreFilter();
         }
       }
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
-          this.collection.setSort('_key');
+          this.collection.setSort('');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
