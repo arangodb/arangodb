@@ -30,7 +30,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace rest {
-class HttpHandler;
+class GeneralHandler;
 }
 
 class Thread;
@@ -67,7 +67,7 @@ struct WorkDescription {
 
     char text[256];
     Thread* thread;
-    arangodb::rest::HttpHandler* handler;
+    arangodb::rest::GeneralHandler* handler;
   } _data;
 };
 }

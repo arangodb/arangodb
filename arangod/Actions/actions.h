@@ -76,7 +76,7 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
                                       arangodb::rest::GeneralRequest*,
-                                      arangodb::basics::Mutex* dataLock,
+                                      arangodb::Mutex* dataLock,
                                       void** data) = 0;
 
   virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;

@@ -28,7 +28,6 @@
 
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
 #include "Rest/GeneralRequest.h"
 
 using namespace arangodb;

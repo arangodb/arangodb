@@ -41,12 +41,8 @@ class ApplicationV8;
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
   RestSimpleQueryHandler(
-      rest::HttpRequest*,
+      rest::GeneralRequest*,
       std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
-
-  RestSimpleQueryHandler(rest::GeneralRequest*,
-                         std::pair<arangodb::ApplicationV8*,
-                                   arangodb::aql::QueryRegistry*>*);
 
  public:
   status_t execute() override final;

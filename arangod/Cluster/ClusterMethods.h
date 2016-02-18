@@ -75,6 +75,10 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
                       struct TRI_json_t const* oldJson,
                       struct TRI_json_t const* newJson, bool isPatch);
 
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      VPackSlice const& oldSlice, VPackSlice const& newSlice,
+                      bool isPatch);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////

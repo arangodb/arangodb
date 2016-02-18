@@ -1102,43 +1102,43 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 /// @brief retrieve object from Slice(VPack) and return as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
-  string result;
+std::string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
+  std::string result;
   // arangodb::velocypack::ValueLength len;
   switch(s.type()) {
     case arangodb::velocypack::ValueType::String  :try{
                                                     arangodb::velocypack::ValueLength len = 0;
                                                     result = s.getString(len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("String Parse error: '%s'", e.what());
+                                                  }catch(velocypack::Exception const& e){
+                                                    // LOG_ERROR("String Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Double :try{
                                                     arangodb::velocypack::ValueLength len = 0;
                                                     result = std::string(s.getDouble(), len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("Double Parse error: '%s'", e.what());
+                                                  }catch(velocypack::Exception const& e){
+                                                    // LOG_ERROR("Double Parse error: '%s'", e.what());
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Int  : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Int Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  // LOG_ERROR("Int Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::UInt : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getUInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  // LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::Bool : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getBool(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Boolean Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  // LOG_ERROR("Boolean Parse error: '%s'", e.what());
                                                  }
                                                  break;
     default : result = "";

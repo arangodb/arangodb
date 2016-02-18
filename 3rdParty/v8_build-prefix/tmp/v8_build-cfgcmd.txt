@@ -1,0 +1,1 @@
+cmd='/usr/local/Cellar/cmake/3.2.1/bin/cmake;-GUnix Makefiles;/Users/aalekhn/Documents/arangodb/adb-2/arangodb/3rdParty/V8-4.3.61'

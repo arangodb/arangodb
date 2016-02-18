@@ -322,9 +322,7 @@ GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
       return GeneralResponse::BAD;
     }
 

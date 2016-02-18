@@ -87,14 +87,8 @@ class v8_action_t : public TRI_action_t {
     _callbacks[isolate].Reset(isolate, callback);
   }
 
-<<<<<<< HEAD
-  TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
-                              Mutex* dataLock, void** data) override {
-=======
-
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
                               Mutex* dataLock, void** data) {
->>>>>>> velocystream
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls

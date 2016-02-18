@@ -27,11 +27,8 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
-
-#include <openssl/ssl.h>
-
-#include "Rest/EndpointList.h"
 #include "HttpServer/GeneralHandlerFactory.h"
+#include "Rest/EndpointList.h"
 
 #include <openssl/ssl.h>
 

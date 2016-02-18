@@ -24,7 +24,7 @@
 #include "GeneralHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/GeneralServerJob.h"
 #include "Rest/GeneralRequest.h"
@@ -171,15 +171,15 @@ GeneralHandler::status_t GeneralHandler::executeFull() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(ERR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(ERR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(ERR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
@@ -232,15 +232,15 @@ GeneralHandler::status_t GeneralHandler::executeFullVstream() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(ERR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(ERR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(ERR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {

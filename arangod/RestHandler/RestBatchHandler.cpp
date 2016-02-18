@@ -126,7 +126,7 @@ GeneralHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
+    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength).c_str();
     GeneralRequest* request =
         new GeneralRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -456,7 +456,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (arangodb::rest::GeneralRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'", value.c_str(), arangodb::rest::GeneralRequest::BatchContentType.c_str());
+          LOG(WARN) << "unexpected content-type "<< value.c_str() <<" for multipart-message. expected: " << arangodb::rest::GeneralRequest::BatchContentType.c_str();
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

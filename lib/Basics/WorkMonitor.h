@@ -47,31 +47,31 @@ class Builder;
 /// @brief type of the current work
 ////////////////////////////////////////////////////////////////////////////////
 
-enum class WorkType { THREAD, HANDLER, CUSTOM };
+// enum class WorkType { THREAD, HANDLER, CUSTOM, AQL_STRING, AQL_ID };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of the current work
 ////////////////////////////////////////////////////////////////////////////////
 
-struct WorkDescription {
-  WorkDescription(WorkType, WorkDescription*);
+// struct WorkDescription {
+//   WorkDescription(WorkType, WorkDescription*);
 
-  WorkType _type;
-  bool _destroy;
+//   WorkType _type;
+//   bool _destroy;
 
-  char _customType[16];
+//   char _customType[16];
 
-  union data {
-    data() {}
-    ~data() {}
+//   union data {
+//     data() {}
+//     ~data() {}
 
-    char text[256];
-    arangodb::basics::Thread* thread;
-    arangodb::rest::GeneralHandler* handler;
-  } _data;
+//     char text[256];
+//     arangodb::basics::Thread* thread;
+//     arangodb::rest::GeneralHandler* handler;
+//   } _data;
 
-  WorkDescription* _prev;
-};
+//   WorkDescription* _prev;
+// };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work monitor class

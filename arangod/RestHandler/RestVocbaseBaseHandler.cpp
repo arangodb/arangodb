@@ -447,7 +447,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     }
     
     case TRI_ERROR_FORBIDDEN: {
-      generateError(HttpResponse::FORBIDDEN, res);
+      generateError(GeneralResponse::FORBIDDEN, res);
       return;
     }
         
@@ -458,7 +458,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
     case TRI_ERROR_LOCKED:
     case TRI_ERROR_DEADLOCK: {
-      generateError(HttpResponse::SERVER_ERROR, res);
+      generateError(GeneralResponse::SERVER_ERROR, res);
       return;
     }
 

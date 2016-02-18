@@ -1,0 +1,1 @@
+cmd='./configure;--prefix=/Users/aalekhn/Documents/arangodb/adb-2/arangodb/3rdParty/libev;--enable-static;--disable-shared'

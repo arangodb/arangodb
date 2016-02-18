@@ -25,7 +25,7 @@
 #include "GeneralServerJob.h"
 
 #include "Basics/WorkMonitor.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
@@ -67,7 +67,7 @@ size_t GeneralServerJob::queue() const { return _handler->queue(); }
 void GeneralServerJob::work() {
   TRI_ASSERT(_handler.get() != nullptr);
 
-  LOG_TRACE("beginning job %p", (void*)this);
+  LOG(TRACE) << "beginning job " << (void*)this;
 
   // the _handler needs to stay intact, so that we can cancel the job
   // therefore cannot use HandlerWorkStack here. Because we need to
@@ -94,7 +94,7 @@ void GeneralServerJob::work() {
       Scheduler::SCHEDULER->signalTask(data);
     }
 
-    LOG_TRACE("finished job %p", (void*)this);
+    LOG(TRACE) << "finished job " << (void*)this;
   } catch (...) {
     _workDesc = WorkMonitor::popHandler(_handler.release(), false);
     throw;
