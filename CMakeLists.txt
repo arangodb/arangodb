@@ -2,8 +2,6 @@
 
 cmake_minimum_required(VERSION 2.8)
 project(ArangoDB)
-set (ArangoDB_VERSION_MAJOR 3)
-set (ArangoDB_VERSION_MINOR 0)
 
 if(POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
@@ -12,7 +10,20 @@ endif()
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
 set(ARANGODB_CONTACT            "hackers@arangodb.org")
-set(ARANGODB_VERSION            "3.0" CACHE path "ArangoDB version")
+set(ARANGODB_VERSION_MAJOR      "3")
+set(ARANGODB_VERSION_MINOR      "0")
+set(ARANGODB_VERSION_REVISION   "0-devel")
+
+set(ARANGODB_VERSION
+    "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/build.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/build.h")
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
 set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
 set(ARANGOB_FRIENDLY_STRING     "ArangoBench - stresstester")
@@ -56,10 +67,6 @@ set(BIN_ARANGOSH      arangosh)
 
 # Google V8 engine including ICU
 set(V8_VERSION        4.3.61)
-
-configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/local-configuration.h.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/local-configuration.h")
 
 # OS type (Convenience) --------------------------------------------------------
 if(WIN32)
@@ -224,6 +231,13 @@ if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif()
 
+# Maintainer mode (Failure Tests) ----------------------------------------------
+option(USE_FAILURE_TESTS
+  "whether we want to have failure tests compiled in" OFF)
+if (USE_FAILURE_TESTS)
+  add_definitions("-DTRI_ENABLE_FAILURE_TESTS=1")
+endif()
+
 # Enable relative paths to binaries --------------------------------------------
 option(USE_RELATIVE "Do you want to have all path are relative to the binary" OFF)
 
@@ -362,6 +376,10 @@ include_directories(${PROJECT_BINARY_DIR}/lib)
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
 endif()
+
+# Libraries --------------------------------------------------------------------
+option(USE_PRECOMPILED_V8
+  "whether we want to use a precompiled V8" OFF)
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
@@ -783,6 +801,13 @@ if (MSVC)
 
 endif ()
 
+add_custom_target (swagger
+ COMMAND ${PYTHON_EXECUTABLE}
+   ${PROJECT_SOURCE_DIR}/Documentation/Scripts/generateSwagger.py
+   ${PROJECT_SOURCE_DIR}
+   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/api-docs api-docs
+   ${PROJECT_SOURCE_DIR}/Documentation/DocuBlocks/Rest/
+   > ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/api-docs.json)
+
 # Finally: user cpack
 include(CPack)
-
