@@ -515,6 +515,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate an error message for a transaction error
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
@@ -608,6 +609,94 @@ void RestVocbaseBaseHandler::generateTransactionError(
                     "failed with error: " + std::string(TRI_errno_string(res)));
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate an error message for a transaction error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateTransactionError(
+    OperationResult const& result) {
+  switch (result.code) {
+    case TRI_ERROR_ARANGO_READ_ONLY:
+      generateError(HttpResponse::FORBIDDEN, result.code,
+                    "collection is read-only");
+      return;
+    
+    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+      generateError(HttpResponse::CONFLICT, result.code,
+                    "cannot create document, unique constraint violated");
+      return;
+
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
+      generateError(HttpResponse::BAD, result.code, "invalid document key");
+      return;
+
+    case TRI_ERROR_ARANGO_OUT_OF_KEYS:
+      generateError(HttpResponse::SERVER_ERROR, result.code, "out of keys");
+      return;
+
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
+      generateError(HttpResponse::BAD, result.code,
+                    "collection does not allow using user-defined keys");
+      return;
+
+    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+      generateError(rest::HttpResponse::NOT_FOUND,
+                    TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return;
+
+    case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
+      generateError(HttpResponse::BAD, result.code);
+      return;
+
+    case TRI_ERROR_ARANGO_CONFLICT:
+      generatePreconditionFailed(result.slice());
+      return;
+
+    case TRI_ERROR_CLUSTER_SHARD_GONE:
+      generateError(HttpResponse::SERVER_ERROR, result.code,
+                    "coordinator: no responsible shard found");
+      return;
+
+    case TRI_ERROR_CLUSTER_TIMEOUT:
+      generateError(HttpResponse::SERVER_ERROR, result.code);
+      return;
+
+    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
+    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
+      generateError(HttpResponse::BAD, result.code);
+      return;
+    }
+
+    case TRI_ERROR_CLUSTER_UNSUPPORTED: {
+      generateError(HttpResponse::NOT_IMPLEMENTED, result.code);
+      return;
+    }
+    
+    case TRI_ERROR_FORBIDDEN: {
+      generateError(HttpResponse::FORBIDDEN, result.code);
+      return;
+    }
+        
+    case TRI_ERROR_OUT_OF_MEMORY: 
+    case TRI_ERROR_LOCK_TIMEOUT: 
+    case TRI_ERROR_AID_NOT_FOUND:
+    case TRI_ERROR_DEBUG:
+    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
+    case TRI_ERROR_LOCKED:
+    case TRI_ERROR_DEADLOCK: {
+      generateError(HttpResponse::SERVER_ERROR, result.code);
+      return;
+    }
+
+    default:
+      generateError(
+          HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+          "failed with error: " + std::string(TRI_errno_string(result.code)));
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision
