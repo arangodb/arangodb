@@ -69,7 +69,7 @@ static std::string StateNames[] = {
     "executing",           // EXECUTION
     "finalizing",          // FINALIZATION
 
-    "invalid"              // INVALID
+    "invalid"  // INVALID
 };
 
 // make sure the state strings and the actual states match
@@ -161,7 +161,7 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::DoDisableQueryTracking = false;
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,16 +612,10 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 /// @brief execute an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::execute(QueryRegistry* registry) {
-  std::unique_ptr<CustomWorkStack> work;
+#include <iostream>
 
-  if (_queryString == nullptr) {
-    // we don't have query string... now pass query id to WorkMonitor
-    work.reset(new CustomWorkStack("AQL query id", _id));
-  } else {
-    // we do have a query string... pass query to WorkMonitor
-    work.reset(new CustomWorkStack("AQL query", _queryString, _queryLength));
-  }
+QueryResult Query::execute(QueryRegistry* registry) {
+  std::unique_ptr<AqlWorkStack> work;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -656,7 +650,15 @@ QueryResult Query::execute(QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
-    
+
+    if (_queryString == nullptr) {
+      // we don't have query string... now pass query id to WorkMonitor
+      work.reset(new AqlWorkStack(_vocbase, _id));
+    } else {
+      // we do have a query string... pass query to WorkMonitor
+      work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
+    }
+
     log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
@@ -695,15 +697,15 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()));
+          std::unique_ptr<TRI_json_t> copy(
+              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()));
 
           if (copy == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
           auto result = QueryCache::instance()->store(
-              _vocbase, queryStringHash, _queryString, _queryLength,
-              copy.get(),
+              _vocbase, queryStringHash, _queryString, _queryLength, copy.get(),
               _trx->collectionNames());
 
           if (result != nullptr) {
@@ -779,7 +781,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
-  CustomWorkStack work("AQL", _queryString, _queryLength);
+  std::unique_ptr<AqlWorkStack> work;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -809,7 +811,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     if (res.code != TRI_ERROR_NO_ERROR) {
       return res;
     }
-  
+
+    work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
+
     log();
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
@@ -1022,8 +1026,9 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
-      result.json = bestPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE,
-                                     verbosePlans()).steal();
+      result.json =
+          bestPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans())
+              .steal();
 
       // cacheability
       result.cached = (_queryString != nullptr && _queryLength > 0 &&
@@ -1289,7 +1294,11 @@ void Query::log() {
   if (_queryString != nullptr) {
     static size_t const MaxLength = 1024;
 
-    LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '" << std::string(_queryString, (std::min)(_queryLength, MaxLength)).append(_queryLength > MaxLength ? "..." : "") << "'";
+    LOG_TOPIC(TRACE, Logger::QUERIES)
+        << "executing query " << _id << ": '"
+        << std::string(_queryString, (std::min)(_queryLength, MaxLength))
+               .append(_queryLength > MaxLength ? "..." : "")
+        << "'";
   }
 }
 
@@ -1474,7 +1483,7 @@ std::string Query::getStateString() const {
 /// @brief get a shared builder for in-place VelocyPack construction
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Query::getSharedBuilder () {
+std::shared_ptr<VPackBuilder> Query::getSharedBuilder() {
   // TODO Proper memory efficient implementation
   return std::make_shared<VPackBuilder>();
 };

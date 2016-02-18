@@ -47,31 +47,12 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
       _scheduler(scheduler),
       _defaultLoop(defaultLoop),
       _loop(loop),
-      _stopping(false),
-      _stopped(false),
-      _open(false),
       _hasWork(false),
       _numberTasks(0),
-      _taskData(100) {
-  // allow cancelation
-  allowAsynchronousCancelation();
-}
+      _taskData(100) {}
 
-SchedulerThread::~SchedulerThread() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the scheduler thread is up and running
-////////////////////////////////////////////////////////////////////////////////
-
-bool SchedulerThread::isStarted() { return true; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the scheduler thread for business
-////////////////////////////////////////////////////////////////////////////////
-
-bool SchedulerThread::open() {
-  _open = true;
-  return true;
+SchedulerThread::~SchedulerThread() {
+  shutdown(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,9 +60,11 @@ bool SchedulerThread::open() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown() {
-  LOG(TRACE) << "beginning shutdown sequence of scheduler thread (" << threadId() << ")";
+  Thread::beginShutdown();
 
-  _stopping = true;
+  LOG(TRACE) << "beginning shutdown sequence of scheduler thread ("
+             << threadId() << ")";
+
   _scheduler->wakeupLoop(_loop);
 }
 
@@ -91,7 +74,7 @@ void SchedulerThread::beginShutdown() {
 
 bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
   // thread has already been stopped
-  if (_stopped.load()) {
+  if (isStopping()) {
     // do nothing
     deleteTask(task);
     return false;
@@ -135,12 +118,12 @@ bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
 
 void SchedulerThread::unregisterTask(Task* task) {
   // thread has already been stopped
-  if (_stopped.load()) {
-    // do nothing
+  if (isStopping()) {
+    return;
   }
 
   // same thread, in this case it does not matter if we are inside the loop
-  else if (threadId() == currentThreadId()) {
+  if (threadId() == currentThreadId()) {
     cleanupTask(task);
     --_numberTasks;
   }
@@ -165,12 +148,13 @@ void SchedulerThread::unregisterTask(Task* task) {
 
 void SchedulerThread::destroyTask(Task* task) {
   // thread has already been stopped
-  if (_stopped.load()) {
+  if (isStopping()) {
     deleteTask(task);
+    return;
   }
 
   // same thread, in this case it does not matter if we are inside the loop
-  else if (threadId() == currentThreadId()) {
+  if (threadId() == currentThreadId()) {
     cleanupTask(task);
     deleteTask(task);
     --_numberTasks;
@@ -210,11 +194,7 @@ void SchedulerThread::run() {
 #endif
   }
 
-  while (!_stopping.load() && !_open.load()) {
-    usleep(1000);
-  }
-
-  while (!_stopping.load()) {
+  while (!isStopping()) {
     // handle the returned data
     TaskData* data;
 
@@ -233,7 +213,7 @@ void SchedulerThread::run() {
       _scheduler->eventLoop(_loop);
     } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-      if (_stopping.load()) {
+      if (isStopping()) {
         LOG(WARN) << "caught cancelation exception during work";
         throw;
       }
@@ -299,8 +279,6 @@ void SchedulerThread::run() {
 
   LOG(TRACE) << "scheduler thread stopped (" << threadId() << ")";
 
-  _stopped = true;
-
   // pop all undeliviered task data
   {
     TaskData* data;
@@ -346,8 +324,5 @@ void SchedulerThread::run() {
 
 void SchedulerThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);
-  b->add("stopping", VPackValue(_stopping.load()));
-  b->add("open", VPackValue(_open.load()));
-  b->add("stopped", VPackValue(_stopped.load()));
   b->add("numberTasks", VPackValue(_numberTasks.load()));
 }

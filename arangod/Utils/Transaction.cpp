@@ -514,7 +514,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(VPackValue(mptr.vpack()));
   }
 
-  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
+  return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase)); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -638,7 +638,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
   resultBuilder.close();
 
-  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
+  return OperationResult(resultBuilder.steal(), options.waitForSync); 
 }
   
 OperationResult Transaction::replace(std::string const& collectionName,
@@ -784,7 +784,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
   resultBuilder.close();
 
-  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
+  return OperationResult(resultBuilder.steal(), options.waitForSync); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -896,6 +896,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
   resultBuilder.close();
 
-  return OperationResult(TRI_ERROR_NO_ERROR, resultBuilder.steal()); 
+  return OperationResult(resultBuilder.steal(), options.waitForSync); 
 }
 

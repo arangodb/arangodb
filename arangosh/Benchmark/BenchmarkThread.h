@@ -42,7 +42,7 @@
 namespace arangodb {
 namespace arangob {
 
-class BenchmarkThread : public arangodb::basics::Thread {
+class BenchmarkThread : public arangodb::Thread {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief construct the benchmark thread

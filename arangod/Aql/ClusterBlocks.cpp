@@ -1356,11 +1356,10 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     headers.emplace("Shard-Id", _ownName);
   }
 
-  auto currentThread =
-      arangodb::rest::DispatcherThread::currentDispatcherThread;
+  auto currentThread = arangodb::rest::DispatcherThread::current();
 
   if (currentThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->block();
+    currentThread->block();
   }
 
   auto result = cc->syncRequest(
@@ -1371,7 +1370,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       body, headers, defaultTimeOut);
 
   if (currentThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+    currentThread->unblock();
   }
 
   return result;

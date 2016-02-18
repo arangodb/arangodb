@@ -30,6 +30,8 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
 namespace StorageOptions {
@@ -38,6 +40,8 @@ namespace StorageOptions {
   VPackAttributeTranslator const* getTranslator();
   VPackOptions const* getDefaultOptions();
   VPackOptions const* getInsertOptions();
+
+  VPackCustomTypeHandler* getCustomTypeHandler(TRI_vocbase_t*);
 }
 }
 

@@ -67,9 +67,11 @@ void ClusterCommResult::setDestination(std::string const& dest,
         serverID = "";
         status = CL_COMM_ERROR;
         if (logConnectionErrors) {
-          LOG(ERR) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
+          LOG(ERR) << "cannot find responsible server for shard '"
+                   << shardID.c_str() << "'";
         } else {
-          LOG(INFO) << "cannot find responsible server for shard '" << shardID.c_str() << "'";
+          LOG(INFO) << "cannot find responsible server for shard '"
+                    << shardID.c_str() << "'";
         }
         return;
       }
@@ -103,9 +105,11 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_ERROR;
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
-      LOG(ERR) << "did not find endpoint of server '" << serverID.c_str() << "'";
+      LOG(ERR) << "did not find endpoint of server '" << serverID.c_str()
+               << "'";
     } else {
-      LOG(INFO) << "did not find endpoint of server '" << serverID.c_str() << "'";
+      LOG(INFO) << "did not find endpoint of server '" << serverID.c_str()
+                << "'";
     }
   }
 }
@@ -123,8 +127,7 @@ ClusterComm::ClusterComm()
 
 ClusterComm::~ClusterComm() {
   if (_backgroundThread != nullptr) {
-    _backgroundThread->stop();
-    _backgroundThread->shutdown();
+    _backgroundThread->beginShutdown();
     delete _backgroundThread;
     _backgroundThread = nullptr;
   }
@@ -169,11 +172,13 @@ void ClusterComm::startBackgroundThread() {
   _backgroundThread = new ClusterCommThread();
 
   if (nullptr == _backgroundThread) {
-    LOG(FATAL) << "unable to start ClusterComm background thread"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "unable to start ClusterComm background thread";
+    FATAL_ERROR_EXIT();
   }
 
-  if (!_backgroundThread->init() || !_backgroundThread->start()) {
-    LOG(FATAL) << "ClusterComm background thread does not work"; FATAL_ERROR_EXIT();
+  if (!_backgroundThread->start()) {
+    LOG(FATAL) << "ClusterComm background thread does not work";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -251,7 +256,8 @@ ClusterCommResult const ClusterComm::asyncRequest(
     // queue right away for backward compatibility:
     ClusterCommResult const resCopy(op->result);
     if (!singleRequest) {
-      LOG(DEBUG) << "In asyncRequest, putting failed request " << resCopy.operationID << " directly into received queue.";
+      LOG(DEBUG) << "In asyncRequest, putting failed request "
+                 << resCopy.operationID << " directly into received queue.";
       CONDITION_LOCKER(locker, somethingReceived);
       received.push_back(op.get());
       op.release();
@@ -393,12 +399,17 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     res->errorMessage =
         "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
-      LOG(ERR) << "cannot create connection to server '" << res->serverID.c_str() << "'";
+      LOG(ERR) << "cannot create connection to server '"
+               << res->serverID.c_str() << "'";
     } else {
-      LOG(INFO) << "cannot create connection to server '" << res->serverID.c_str() << "'";
+      LOG(INFO) << "cannot create connection to server '"
+                << res->serverID.c_str() << "'";
     }
   } else {
-    LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(reqtype).c_str() << " request to DB server '" << res->serverID.c_str() << "': " << body.c_str();
+    LOG(DEBUG) << "sending "
+               << arangodb::rest::HttpRequest::translateMethod(reqtype).c_str()
+               << " request to DB server '" << res->serverID.c_str()
+               << "': " << body.c_str();
     // LOCKING-DEBUG
     // std::cout << "syncRequest: sending " <<
     // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to
@@ -547,8 +558,10 @@ ClusterCommResult const ClusterComm::wait(
   }
 
   // tell Dispatcher that we are waiting:
-  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->block();
+  auto dt = arangodb::rest::DispatcherThread::current();
+
+  if (dt != nullptr) {
+    dt->block();
   }
 
   if (0 != operationID) {
@@ -568,10 +581,8 @@ ClusterCommResult const ClusterComm::wait(
           res.operationID = operationID;
           res.status = CL_COMM_DROPPED;
           // tell Dispatcher that we are back in business
-          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-              nullptr) {
-            arangodb::rest::DispatcherThread::currentDispatcherThread
-                ->unblock();
+          if (dt != nullptr) {
+            dt->unblock();
           }
           return res;
         }
@@ -590,10 +601,8 @@ ClusterCommResult const ClusterComm::wait(
             throw;
           }
           // tell Dispatcher that we are back in business
-          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-              nullptr) {
-            arangodb::rest::DispatcherThread::currentDispatcherThread
-                ->unblock();
+          if (dt != nullptr) {
+            dt->unblock();
           }
           return op->result;
         }
@@ -630,10 +639,8 @@ ClusterCommResult const ClusterComm::wait(
             std::unique_ptr<ClusterCommOperation> opPtr(op);
             ClusterCommResult res = op->result;
             // tell Dispatcher that we are back in business
-            if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-                nullptr) {
-              arangodb::rest::DispatcherThread::currentDispatcherThread
-                  ->unblock();
+            if (dt != nullptr) {
+              dt->unblock();
             }
             return res;
           }
@@ -659,9 +666,8 @@ ClusterCommResult const ClusterComm::wait(
         res.shardID = shardID;
         res.status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
-        if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-            nullptr) {
-          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+        if (dt != nullptr) {
+          dt->unblock();
         }
         return res;
       }
@@ -682,8 +688,8 @@ ClusterCommResult const ClusterComm::wait(
   res.shardID = shardID;
   res.status = CL_COMM_TIMEOUT;
   // tell Dispatcher that we are back in business
-  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+  if (dt != nullptr) {
+    dt->unblock();
   }
   return res;
 }
@@ -787,9 +793,11 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
       ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
-      LOG(ERR) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
+      LOG(ERR) << "asyncAnswer: cannot find endpoint for server '"
+               << coordinatorID.c_str() << "'";
     } else {
-      LOG(INFO) << "asyncAnswer: cannot find endpoint for server '" << coordinatorID.c_str() << "'";
+      LOG(INFO) << "asyncAnswer: cannot find endpoint for server '"
+                << coordinatorID.c_str() << "'";
     }
     return;
   }
@@ -797,7 +805,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
   if (nullptr == connection) {
-    LOG(ERR) << "asyncAnswer: cannot create connection to server '" << coordinatorID.c_str() << "'";
+    LOG(ERR) << "asyncAnswer: cannot create connection to server '"
+             << coordinatorID.c_str() << "'";
     return;
   }
 
@@ -810,7 +819,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
-  LOG(DEBUG) << "asyncAnswer: sending PUT request to DB server '" << coordinatorID.c_str() << "'";
+  LOG(DEBUG) << "asyncAnswer: sending PUT request to DB server '"
+             << coordinatorID.c_str() << "'";
 
   auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
       connection->_connection, 3600.0, false);
@@ -981,20 +991,26 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
+ClusterCommThread::ClusterCommThread() : Thread("ClusterComm") {}
 
-ClusterCommThread::ClusterCommThread()
-    : Thread("ClusterComm"), _agency(), _condition(), _stop(0) {
-  allowAsynchronousCancelation();
+ClusterCommThread::~ClusterCommThread() {
+  shutdown(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a ClusterCommThread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommThread::~ClusterCommThread() {}
+void ClusterCommThread::beginShutdown() {
+  Thread::beginShutdown();
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc != nullptr) {
+    CONDITION_LOCKER(guard, cc->somethingToSend);
+    guard.signal();
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
@@ -1008,11 +1024,11 @@ void ClusterCommThread::run() {
 
   LOG(DEBUG) << "starting ClusterComm thread";
 
-  while (0 == _stop) {
+  while (!isStopping()) {
     // First check the sending queue, as long as it is not empty, we send
     // a request via SimpleHttpClient:
     while (true) {  // left via break when there is no job in send queue
-      if (0 != _stop) {
+      if (isStopping()) {
         break;
       }
 
@@ -1049,17 +1065,28 @@ void ClusterCommThread::run() {
           op->result.errorMessage = "cannot create connection to server: ";
           op->result.errorMessage += op->result.serverID;
           if (cc->logConnectionErrors()) {
-            LOG(ERR) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
+            LOG(ERR) << "cannot create connection to server '"
+                     << op->result.serverID.c_str() << "'";
           } else {
-            LOG(INFO) << "cannot create connection to server '" << op->result.serverID.c_str() << "'";
+            LOG(INFO) << "cannot create connection to server '"
+                      << op->result.serverID.c_str() << "'";
           }
         } else {
           if (nullptr != op->body.get()) {
-            LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(op->reqtype)
-                          .c_str() << " request to DB server '" << op->result.serverID.c_str() << "': " << op->body->c_str();
+            LOG(DEBUG) << "sending "
+                       << arangodb::rest::HttpRequest::translateMethod(
+                              op->reqtype)
+                              .c_str()
+                       << " request to DB server '"
+                       << op->result.serverID.c_str()
+                       << "': " << op->body->c_str();
           } else {
-            LOG(DEBUG) << "sending " << arangodb::rest::HttpRequest::translateMethod(op->reqtype)
-                          .c_str() << " request to DB server '" << op->result.serverID.c_str() << "'";
+            LOG(DEBUG) << "sending "
+                       << arangodb::rest::HttpRequest::translateMethod(
+                              op->reqtype)
+                              .c_str()
+                       << " request to DB server '"
+                       << op->result.serverID.c_str() << "'";
           }
 
           auto client =
@@ -1131,14 +1158,5 @@ void ClusterCommThread::run() {
     }
   }
 
-  // another thread is waiting for this value to shut down properly
-  _stop = 2;
-
   LOG(DEBUG) << "stopped ClusterComm thread";
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the cluster comm background thread
-////////////////////////////////////////////////////////////////////////////////
-
-bool ClusterCommThread::init() { return true; }

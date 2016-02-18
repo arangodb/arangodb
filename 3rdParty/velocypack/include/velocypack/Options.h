@@ -36,6 +36,7 @@ namespace arangodb {
 namespace velocypack {
 class AttributeTranslator;
 class Dumper;
+class Options;
 class Slice;
 
 struct AttributeExcludeHandler {
@@ -47,8 +48,12 @@ struct AttributeExcludeHandler {
 struct CustomTypeHandler {
   virtual ~CustomTypeHandler() {}
 
-  virtual void toJson(Slice const& value, Dumper* dumper,
-                      Slice const& base) = 0;
+  virtual void dump(Slice const& value, Dumper* dumper,
+                    Slice const& base) = 0;
+
+  virtual std::string toString(Slice const& value, Options const* options,
+                               Slice const& base) = 0;
+                    
 };
 
 struct Options {

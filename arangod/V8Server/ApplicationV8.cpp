@@ -364,15 +364,16 @@ ApplicationV8::V8Context* ApplicationV8::enterContext(TRI_vocbase_t* vocbase,
         _freeContexts.emplace_back(context);
         _dirtyContexts.pop_back();
       } else {
-        auto currentThread =
-            arangodb::rest::DispatcherThread::currentDispatcherThread;
+        auto currentThread = arangodb::rest::DispatcherThread::current();
 
         if (currentThread != nullptr) {
-          arangodb::rest::DispatcherThread::currentDispatcherThread->block();
+          currentThread->block();
         }
+
         guard.wait();
+
         if (currentThread != nullptr) {
-          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+          currentThread->unblock();
         }
       }
     }
@@ -1070,7 +1071,7 @@ void ApplicationV8::stop() {
 
   LOG(DEBUG) << "Commanding GC Thread to terminate";
   // stop GC thread
-  _gcThread->shutdown();
+  _gcThread->beginShutdown();
 
   // shutdown all instances
   {

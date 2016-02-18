@@ -342,18 +342,17 @@ CollectorThread::CollectorThread(LogfileManager* logfileManager,
       _operationsQueueLock(),
       _operationsQueue(),
       _operationsQueueInUse(false),
-      _stop(0),
       _numPendingOperations(0),
       _collectorResultCondition(),
-      _collectorResult(TRI_ERROR_NO_ERROR) {
-  allowAsynchronousCancelation();
-}
+      _collectorResult(TRI_ERROR_NO_ERROR) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectorThread::~CollectorThread() {}
+CollectorThread::~CollectorThread() {
+  shutdown(true);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
@@ -372,20 +371,14 @@ int CollectorThread::waitForResult(uint64_t timeout) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the collector thread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::stop() {
-  if (_stop > 0) {
-    return;
-  }
+void CollectorThread::beginShutdown() {
+  Thread::beginShutdown();
 
-  _stop = 1;
-  _condition.signal();
-
-  while (_stop != 2) {
-    usleep(10000);
-  }
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,13 +398,12 @@ void CollectorThread::run() {
   int counter = 0;
 
   while (true) {
-    int stop = (int)_stop;
     bool hasWorked = false;
     bool doDelay = false;
 
     try {
       // step 1: collect a logfile if any qualifies
-      if (stop == 0) {
+      if (!isStopping()) {
         // don't collect additional logfiles in case we want to shut down
         bool worked;
         int res = this->collectLogfiles(worked);
@@ -441,7 +433,8 @@ void CollectorThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG(ERR) << "got unexpected error in collectorThread::run: " << TRI_errno_string(res);
+      LOG(ERR) << "got unexpected error in collectorThread::run: "
+               << TRI_errno_string(res);
     } catch (...) {
       LOG(ERR) << "got unspecific error in collectorThread::run";
     }
@@ -454,28 +447,26 @@ void CollectorThread::run() {
       interval *= 2;
     }
 
-    if (stop == 0 && !hasWorked) {
+    CONDITION_LOCKER(guard, _condition);
+
+    if (!isStopping() && !hasWorked) {
       // sleep only if there was nothing to do
-      CONDITION_LOCKER(guard, _condition);
 
       if (!guard.wait(interval)) {
         if (++counter > 10) {
-          LOG(TRACE) << "wal collector has queued operations: " << numQueuedOperations();
+          LOG(TRACE) << "wal collector has queued operations: "
+                     << numQueuedOperations();
           counter = 0;
         }
       }
-    } else if (stop == 1 && !hasQueuedOperations()) {
+    } else if (isStopping() && !hasQueuedOperations()) {
       // no operations left to execute, we can exit
       break;
     }
-
-    // next iteration
   }
 
   // all queues are empty, so we can exit
   TRI_ASSERT(!hasQueuedOperations());
-
-  _stop = 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -519,7 +510,8 @@ int CollectorThread::collectLogfiles(bool& worked) {
 
   try {
     int res = collect(logfile);
-    // LOG(TRACE) << "collected logfile: " << // logfile->id() << ". result: " << res;
+    // LOG(TRACE) << "collected logfile: " << // logfile->id() << ". result: "
+    // << res;
 
     if (res == TRI_ERROR_NO_ERROR) {
       // reset collector status
@@ -547,7 +539,8 @@ int CollectorThread::collectLogfiles(bool& worked) {
 
     int res = ex.code();
 
-    LOG(DEBUG) << "collecting logfile " << logfile->id() << " failed: " << TRI_errno_string(res);
+    LOG(DEBUG) << "collecting logfile " << logfile->id()
+               << " failed: " << TRI_errno_string(res);
 
     return res;
   } catch (...) {
@@ -615,10 +608,13 @@ int CollectorThread::processQueuedOperations(bool& worked) {
       } else if (res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
                  res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         // these are expected errors
-        LOG(TRACE) << "removing queued operations for already deleted collection";
+        LOG(TRACE)
+            << "removing queued operations for already deleted collection";
         res = TRI_ERROR_NO_ERROR;
       } else {
-        LOG(WARN) << "got unexpected error code while applying queued operations: " << TRI_errno_string(res);
+        LOG(WARN)
+            << "got unexpected error code while applying queued operations: "
+            << TRI_errno_string(res);
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
@@ -843,14 +839,16 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
-    LOG(TRACE) << "wal collector couldn't acquire write lock for collection '" << document->_info.id() << "': " << TRI_errno_string(res);
+    LOG(TRACE) << "wal collector couldn't acquire write lock for collection '"
+               << document->_info.id() << "': " << TRI_errno_string(res);
 
     return res;
   }
 
   try {
     // now we have the write lock on the collection
-    LOG(TRACE) << "wal collector processing operations for collection '" << document->_info.namec_str() << "'";
+    LOG(TRACE) << "wal collector processing operations for collection '"
+               << document->_info.namec_str() << "'";
 
     TRI_ASSERT(!cache->operations->empty());
 
@@ -859,7 +857,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     }
 
     // finally update all datafile statistics
-    LOG(TRACE) << "updating datafile statistics for collection '" << document->_info.namec_str() << "'";
+    LOG(TRACE) << "updating datafile statistics for collection '"
+               << document->_info.namec_str() << "'";
     updateDatafileStatistics(document, cache);
 
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
@@ -877,7 +876,9 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   // always release the locks
   trx.finish(res);
 
-  LOG(TRACE) << "wal collector processed operations for collection '" << document->_info.namec_str() << "' with status: " << TRI_errno_string(res);
+  LOG(TRACE) << "wal collector processed operations for collection '"
+             << document->_info.namec_str()
+             << "' with status: " << TRI_errno_string(res);
 
   return res;
 }
@@ -997,7 +998,8 @@ int CollectorThread::collect(Logfile* logfile) {
           // prevents the log message from being shown over and over again in
           // case the
           // file system is full
-          LOG(WARN) << "got unexpected error in CollectorThread::collect: " << TRI_errno_string(res);
+          LOG(WARN) << "got unexpected error in CollectorThread::collect: "
+                    << TRI_errno_string(res);
         }
         // abort early
         return res;
@@ -1041,7 +1043,9 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_document_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
-  LOG(TRACE) << "collector transferring markers for '" << document->_info.namec_str() << "', totalOperationsCount: " << totalOperationsCount;
+  LOG(TRACE) << "collector transferring markers for '"
+             << document->_info.namec_str()
+             << "', totalOperationsCount: " << totalOperationsCount;
 
   CollectorCache* cache =
       new CollectorCache(collectionId, databaseId, logfile,
@@ -1348,7 +1352,9 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
       (_numPendingOperations + numOperations) >= maxNumPendingOperations) {
     // activate write-throttling!
     _logfileManager->activateWriteThrottling();
-    LOG(WARN) << "queued more than " << maxNumPendingOperations << " pending WAL collector operations. now activating write-throttling";
+    LOG(WARN)
+        << "queued more than " << maxNumPendingOperations
+        << " pending WAL collector operations. now activating write-throttling";
   }
 
   _numPendingOperations += numOperations;
@@ -1416,7 +1422,8 @@ int CollectorThread::syncDatafileCollection(
       bool ok = datafile->sync(datafile, synced, written);
 
       if (ok) {
-        LOG(TRACE) << "msync succeeded " << synced << ", size " << (written - synced);
+        LOG(TRACE) << "msync succeeded " << synced << ", size "
+                   << (written - synced);
         datafile->_synced = written;
       } else {
         res = TRI_errno();
@@ -1488,7 +1495,8 @@ char* CollectorThread::nextFreeMarkerPosition(
       }
 
       // journal is full, close it and sync
-      LOG(DEBUG) << "closing full journal '" << datafile->getName(datafile) << "'";
+      LOG(DEBUG) << "closing full journal '" << datafile->getName(datafile)
+                 << "'";
       TRI_CloseDatafileDocumentCollection(document, i, false);
     }
 

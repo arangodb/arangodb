@@ -1164,7 +1164,15 @@ void Logger::shutdown(bool clearBuffers) {
     LoggingActive.store(false, std::memory_order_relaxed);
 
     // ignore all errors for now as we cannot log them anywhere...
-    LoggingThread->join();
+    LoggingThread->beginShutdown();
+
+    for (size_t i = 0; i < 10; ++i) {
+      if (LoggingThread->isRunning()) {
+        break;
+      }
+
+      usleep(100 * 1000);
+    }
   }
 
   // cleanup appenders

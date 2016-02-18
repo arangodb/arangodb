@@ -662,11 +662,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 
   if (operation == "lock") {
     // Mark current thread as potentially blocking:
-    auto currentThread =
-        arangodb::rest::DispatcherThread::currentDispatcherThread;
+    auto currentThread = arangodb::rest::DispatcherThread::current();
 
     if (currentThread != nullptr) {
-      arangodb::rest::DispatcherThread::currentDispatcherThread->block();
+      currentThread->block();
     }
     int res = TRI_ERROR_INTERNAL;
     try {
@@ -674,14 +673,14 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     } catch (...) {
       LOG(ERR) << "lock lead to an exception";
       if (currentThread != nullptr) {
-        arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+        currentThread->unblock();
       }
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "lock lead to an exception");
       return;
     }
     if (currentThread != nullptr) {
-      arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+      currentThread->unblock();
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR
                             ? arangodb::basics::Json(false)

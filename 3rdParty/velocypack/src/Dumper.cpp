@@ -433,7 +433,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       if (options->customTypeHandler == nullptr) {
         handleUnsupportedType(slice);
       } else {
-        options->customTypeHandler->toJson(*slice, this, *base);
+        options->customTypeHandler->dump(*slice, this, *base);
       }
       break;
     }
