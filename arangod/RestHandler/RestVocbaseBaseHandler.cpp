@@ -472,7 +472,8 @@ void RestVocbaseBaseHandler::generateDocument(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
-                                              bool generateBody) {
+                                              bool generateBody,
+                                              VPackOptions const* options) {
   TRI_ASSERT(document.isObject());
   TRI_ASSERT(document.hasKey(TRI_VOC_ATTRIBUTE_REV));
 
@@ -485,7 +486,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 
   if (generateBody) {
     VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer);
+    VPackDumper dumper(&buffer, options);
     try {
       dumper.dump(document);
     } catch (...) {
@@ -500,7 +501,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
     TRI_InitStringBuffer(&tmpBuffer, TRI_UNKNOWN_MEM_ZONE);
 
     VPackStringBufferAdapter buffer(&tmpBuffer);
-    VPackDumper dumper(&buffer);
+    VPackDumper dumper(&buffer, options);
     try {
       dumper.dump(document);
     } catch (...) {

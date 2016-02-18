@@ -312,7 +312,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates first entry from a result set
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocument(arangodb::velocypack::Slice const&, bool);
+  void generateDocument(arangodb::velocypack::Slice const&, bool,
+                        arangodb::velocypack::Options const* options = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error

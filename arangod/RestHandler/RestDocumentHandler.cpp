@@ -279,8 +279,6 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   OperationOptions options;
-  options.silent = !generateBody;
-
   OperationResult result = trx.document(collection, search, options);
 
   res = trx.finish(result.code);
@@ -308,7 +306,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   if (ifNoneRid != 0 && ifNoneRid == rid) {
     generateNotModified(rid);
   } else {
-    generateDocument(result.slice(), generateBody);
+    VPackOptions options = VPackOptions::Defaults;
+    options.customTypeHandler = result.customTypeHandler;
+    generateDocument(result.slice(), generateBody, &options);
   }
   return true;
 }
