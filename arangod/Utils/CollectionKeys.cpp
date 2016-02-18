@@ -32,7 +32,6 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"

@@ -30,7 +30,6 @@
 #include "Utils/CollectionExport.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
