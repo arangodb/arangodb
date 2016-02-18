@@ -253,8 +253,9 @@ class Builder {
   std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
 
   std::shared_ptr<Buffer<uint8_t>> steal() {
-    std::shared_ptr<Buffer<uint8_t>> res = std::move(_buffer);
-    _buffer.reset(new Buffer<uint8_t>());
+    // After a steal the Builder is broken!
+    std::shared_ptr<Buffer<uint8_t>> res = _buffer;
+    _buffer.reset();
     _pos = 0;
     return res;
   }
