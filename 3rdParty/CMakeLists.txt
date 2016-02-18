@@ -79,12 +79,16 @@ set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
   CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   CXXFLAGS=${CMAKE_CXX_FLAGS})
+
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set (V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
 endif()
+
+if (NOT USE_PRECOMPILED_V8)
 ExternalProject_Add(v8_build SOURCE_DIR "${V8_DIR}"
   BUILD_IN_SOURCE TRUE BUILD_COMMAND "${V8_BUILD_COMMAND}" 
   INSTALL_COMMAND "")
+endif()
 
 ## V8
 import_target(v8_base v8_build "${V8_DIR}/include"
