@@ -262,14 +262,26 @@ namespace triagens {
 
             if (res != TRI_ERROR_NO_ERROR) {
               // clean up
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+              auto erased =
+#endif
               _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+              TRI_ASSERT(erased == 1);
+#endif
             }
 
             return res;
           }
           catch (...) {
             // clean up
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            auto erased =
+#endif
             _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            TRI_ASSERT(erased == 1);
+#endif
             throw;
           }
         }
@@ -287,7 +299,13 @@ namespace triagens {
             return;
           }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          auto erased =
+#endif
           _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(erased == 1);
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,24 +325,46 @@ namespace triagens {
 
           if (it == _active.end()) {
             // should not happen, but definitely nothing to do here
+            TRI_ASSERT(false);
             return;
           }
-        
+       
+          bool wasLast;
+           
           if (isWrite) {
             TRI_ASSERT((*it).second.second);
             TRI_ASSERT((*it).second.first.size() == 1);
             // remove whole entry
-            _active.erase(value);
+            wasLast = true;
           }
           else {
             TRI_ASSERT(! (*it).second.second);
             TRI_ASSERT((*it).second.first.size() >= 1);
-            
-            (*it).second.first.erase(tid);
-            if ((*it).second.first.empty()) {
-              // remove last reader
-              _active.erase(value);
+            TRI_ASSERT((*it).second.first.find(tid) != (*it).second.first.end());
+         
+            wasLast = ((*it).second.first.size() == 1);
+            if (!wasLast) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+              auto erased =
+#endif
+              (*it).second.first.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+              TRI_ASSERT(erased == 1);
+#endif
+              TRI_ASSERT((*it).second.first.find(tid) == (*it).second.first.end());
             }
+            TRI_ASSERT(! (*it).second.second);
+            TRI_ASSERT((*it).second.first.size() >= 1);
+          }
+
+          if (wasLast) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            auto erased =
+#endif
+            _active.erase(value);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            TRI_ASSERT(erased == 1);
+#endif
           }
         }
 
@@ -357,10 +397,19 @@ namespace triagens {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(result.second);
 #endif
+            TRI_ASSERT(!(*it).second.second);
+            TRI_ASSERT((*it).second.first.find(tid) != (*it).second.first.end());
           }
 
           if (wasBlockedBefore) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            auto erased = 
+#endif
             _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+            TRI_ASSERT(erased == 1);
+#endif
+
           }
         }
 

@@ -31,6 +31,7 @@
 #define ARANGODB_UTILS_COLLECTION_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -62,7 +63,12 @@ namespace triagens {
             _doLock(false) {
 
           if (doLock) {
-            _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+            int res = _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(res);
+            }
+
             _doLock = true;
           }
         }

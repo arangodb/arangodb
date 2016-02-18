@@ -325,13 +325,13 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     try {
       if (! wasBlocked) {
         // insert reader
+        wasBlocked = true;
         if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG_TRACE("deadlock detected while trying to acquire read-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
         LOG_TRACE("waiting for read-lock on collection '%s'", _info._name);
-        wasBlocked = true;
       }
       else if (++iterations >= 5) {
         // periodically check for deadlocks
@@ -349,8 +349,9 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
       // clean up!
       if (wasBlocked) {
         _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-        return TRI_ERROR_OUT_OF_MEMORY;
       }
+      // and always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
 #ifdef _WIN32
@@ -411,12 +412,12 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
     try {
       if (! wasBlocked) {
         // insert writer 
+        wasBlocked = true;
         if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG_TRACE("deadlock detected while trying to acquire write-lock on collection '%s'", _info._name);
           return TRI_ERROR_DEADLOCK;
         }
-        wasBlocked = true;
         LOG_TRACE("waiting for write-lock on collection '%s'", _info._name);
       }
       else if (++iterations >= 5) {
@@ -435,8 +436,9 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
       // clean up!
       if (wasBlocked) {
         _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-        return TRI_ERROR_OUT_OF_MEMORY;
       }
+      // and always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
 #ifdef _WIN32
@@ -5131,7 +5133,17 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       return TRI_ERROR_DEBUG;
     }
 
+    // create a temporary deleter object for the marker
+    // this will destroy the marker in case the write-locker throws an exception on creation
+    std::unique_ptr<triagens::wal::Marker> deleter;
+    if (marker != nullptr && freeMarker) {
+      deleter.reset(marker);
+    }
+
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
+    // if we got here, the marker must not be deleted by the deleter, but will be handed to
+    // the document operation, which will take over
+    deleter.release();
 
     triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
 
@@ -5272,7 +5284,17 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       return TRI_ERROR_DEBUG;
     }
 
+    // create a temporary deleter object for the marker
+    // this will destroy the marker in case the write-locker throws an exception on creation
+    std::unique_ptr<triagens::wal::Marker> deleter;
+    if (marker != nullptr && freeMarker) {
+      deleter.reset(marker);
+    }
+
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
+    // if we got here, the marker must not be deleted by the deleter, but will be handed to
+    // the document operation, which will take over
+    deleter.release();
 
     triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
@@ -5356,6 +5378,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       return TRI_ERROR_DEBUG;
     }
 
+    // note: the write-locker may throw if it cannot acquire the lock
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
     // get the header pointer of the previous revision
