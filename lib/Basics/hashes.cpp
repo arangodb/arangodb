@@ -463,6 +463,22 @@ static bool HasSSE42() {
   }
 }
 
+extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
+                                              char const* data,
+                                              size_t length) {
+  uint64_t tmp = value;
+  auto p = reinterpret_cast<uint64_t const*>(data);
+  while (length >= 8) {
+    tmp = _mm_crc32_u64(tmp, *p++);
+    length -= 8;
+  }
+  auto p2 = reinterpret_cast<unsigned char const*>(p);
+  value = static_cast<uint32_t>(tmp);
+  while (length-- > 0) {
+    value = _mm_crc32_u8(value, *p2++);
+  }
+  return value;
+}
 #endif
 
 
@@ -511,6 +527,7 @@ extern "C" {
                                         size_t length) {
     if (HasSSE42()) {
       TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
+      //TRI_BlockCrc32 = TRI_BlockCrc32_intrinsics;
     } else {
       TRI_BlockCrc32 = TRI_BlockCrc32_C;
     }
