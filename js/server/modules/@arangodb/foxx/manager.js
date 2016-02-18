@@ -128,7 +128,15 @@ const manifestSchema = {
   files: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(joi.string().required(), joi.object().required()))
+    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
+      joi.string().required(),
+      joi.object().required()
+      .keys({
+        path: joi.string().required(),
+        gzip: joi.boolean().optional(),
+        type: joi.string().optional()
+      })
+    ))
   ),
 
   scripts: (

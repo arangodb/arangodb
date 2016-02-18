@@ -2066,31 +2066,24 @@ function pathHandler (req, res, options, next) {
 
   if (options.hasOwnProperty('root')) {
     var root = options.root;
-
     filename = fs.join(root, filename);
     encodedFilename = filename;
   }
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
-    res.contentType = mimeTypes.lookup(filename) || MIME_DEFAULT;
-    if (options.hasOwnProperty('gzip')) {
-      if (options.gzip === true) {
-
-        //check if client is capable of gzip encoding
-        if (req.hasOwnProperty('headers')) {
-          if (req.headers.hasOwnProperty('accept-encoding')) {
-            var encoding = req.headers['accept-encoding'];
-            if (encoding.indexOf('gzip') > -1) {
-
-              //check if gzip file is available
-              encodedFilename = encodedFilename + '.gz';
-              if (fs.exists(encodedFilename)) {
-                if (!res.hasOwnProperty('headers')) {
-                  res.headers = {};
-                }
-                res.headers['Content-Encoding'] = "gzip";
-              }
+    res.contentType = options.type || mimeTypes.lookup(filename) || MIME_DEFAULT;
+    if (options.gzip === true) {
+      //check if client is capable of gzip encoding
+      if (req.headers) {
+        var encoding = req.headers['accept-encoding'];
+        if (encoding && encoding.indexOf('gzip') >= 0) {
+          //check if gzip file is available
+          encodedFilename = encodedFilename + '.gz';
+          if (fs.exists(encodedFilename)) {
+            if (!res.headers) {
+              res.headers = {};
             }
+            res.headers['Content-Encoding'] = "gzip";
           }
         }
       }

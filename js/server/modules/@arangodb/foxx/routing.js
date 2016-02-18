@@ -153,6 +153,7 @@ exports.routeApp = function (service, throwOnErrors) {
           options: {
             root: service.root,
             path: fs.join(service.path, directory),
+            type: file.type,
             gzip: Boolean(file.gzip)
           }
         }
