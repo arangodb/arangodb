@@ -15,38 +15,40 @@
 
     checkLockedCollections: function() {
 
-      var self = this,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+      if (window.location.hash === '#collections') {
+        var self = this,
+        lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
-      this.collection.each(function(model) {
-        model.set('locked', false);
-      });
-
-      _.each(lockedCollections, function(locked) {
-        var model = self.collection.findWhere({
-          id: locked.collection 
+        this.collection.each(function(model) {
+          model.set('locked', false);
         });
-        model.set('locked', true);
-        model.set('lockType', locked.type);
-        model.set('desc', locked.desc);
-      });
 
-      this.collection.each(function(model) {
-        if (model.get("locked") || model.get("status") === 'loading') {
-          $('#collection_' + model.get("name")).addClass('locked');
-        }
-        else {
-          $('#collection_' + model.get("name")).removeClass('locked');
-          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
-          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
-            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
-            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+        _.each(lockedCollections, function(locked) {
+          var model = self.collection.findWhere({
+            id: locked.collection 
+          });
+          model.set('locked', true);
+          model.set('lockType', locked.type);
+          model.set('desc', locked.desc);
+        });
+
+        this.collection.each(function(model) {
+          if (model.get("locked") || model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).addClass('locked');
           }
-        }
-        if (model.get("status") === 'loading') {
-          $('#collection_' + model.get("name")).removeClass('loading');
-        }
-      });
+          else {
+            $('#collection_' + model.get("name")).removeClass('locked');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+              $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+            }
+          }
+          if (model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).removeClass('loading');
+          }
+        });
+      }
 
     },
 
