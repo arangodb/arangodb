@@ -3137,7 +3137,17 @@ div .bigtile {
   #arangoCollectionSelect {
     display: inline-block;
     height: 29px;
-    margin-top: 1px; } }
+    margin-top: 1px; }
+  .footer-center p {
+    display: none; }
+  #queryContent .styled-select,
+  #queryContent #querySize,
+  #queryContent #querySizeDiv {
+    width: 90px !important; } }
+
+@media (max-width: 970px) {
+  #documentsDiv #totalDocuments {
+    display: none; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
@@ -5256,9 +5266,10 @@ div.dropdownInner {
     border-left: 1px solid rgba(140, 138, 137, 0.25);
     display: inline;
     list-style-type: none;
+    margin-left: 10px;
     margin-top: 10px;
     min-height: 105px;
-    width: 230px; }
+    width: 175px; }
     div.dropdownInner ul:first-of-type {
       border: 0; }
     div.dropdownInner ul label {
@@ -5284,6 +5295,8 @@ div.queryline {
   div.queryline select,
   div.queryline input {
     margin-bottom: 5px; }
+  div.queryline input {
+    width: 16%; }
   div.queryline input[type='file'] {
     border: 0; }
   div.queryline.querylineAdd span {
@@ -5328,7 +5341,7 @@ select.filterSelect {
   color: #00f;
   margin-left: 10px;
   margin-right: 10px;
-  width: 100px; }
+  width: 80px; }
 
 #filterHeader button {
   float: right;
@@ -5489,6 +5502,17 @@ div.headerBar {
     float: left;
     font-size: 13pt;
     font-weight: 100; }
+  .breadcrumb #app-development-path {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+    border-left: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    border-right: 1px solid rgba(140, 138, 137, 0.25);
+    height: 24px;
+    margin-left: -6px;
+    margin-top: -10px;
+    padding-left: 5px;
+    width: 100%; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -5658,9 +5682,9 @@ div.headerBar {
     -webkit-transform: rotate(90deg);
     transform: rotate(90deg); }
   .modal-body input {
-    width: 384px; }
+    width: 436px; }
   .modal-body select {
-    width: 398px; }
+    width: 450px; }
   .modal-body .collectionTh {
     height: 50px; }
   .modal-body .tab-content {
@@ -5699,7 +5723,8 @@ div.headerBar {
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: 0;
-  width: 580px;
+  margin-left: -325px !important;
+  width: 650px;
   z-index: 9999999; }
   .modal .fade.in {
     top: 12.1% !important; }
@@ -5775,7 +5800,7 @@ div.headerBar {
 .createModalDialog .figures1,
 .createModalDialog .figures2 {
   margin-bottom: 20px;
-  width: 255px; }
+  width: 300px; }
 
 .createModalDialog .figures2 {
   margin-left: 20px !important; }
@@ -6422,7 +6447,17 @@ div .bigtile {
   #arangoCollectionSelect {
     display: inline-block;
     height: 29px;
-    margin-top: 1px; } }
+    margin-top: 1px; }
+  .footer-center p {
+    display: none; }
+  #queryContent .styled-select,
+  #queryContent #querySize,
+  #queryContent #querySizeDiv {
+    width: 90px !important; } }
+
+@media (max-width: 970px) {
+  #documentsDiv #totalDocuments {
+    display: none; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
