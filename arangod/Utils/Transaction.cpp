@@ -25,6 +25,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
 #include "VocBase/KeyGenerator.h"
+#include "Cluster/ClusterMethods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -514,7 +515,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     resultBuilder.close();
 
-    return OperationResult(TRI_ERROR_ARANGO_CONFLICT, resultBuilder.steal());
+    return OperationResult(resultBuilder.steal(), nullptr, "",
+        TRI_ERROR_ARANGO_CONFLICT,
+        options.waitForSync || document->_info.waitForSync()); 
   }
   
   VPackBuilder resultBuilder;
@@ -522,7 +525,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(VPackSlice(mptr.vpack()));
   }
 
-  return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase)); 
+  return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase), "", TRI_ERROR_NO_ERROR, false); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -564,8 +567,31 @@ OperationResult Transaction::insert(std::string const& collectionName,
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
                                                OperationOptions& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  std::map<std::string, std::string> headers;
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
+
+  int res = arangodb::createDocumentOnCoordinator(
+      _vocbase->_name, collectionName, options.waitForSync,
+      value, headers, responseCode, resultHeaders, resultBody);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    VPackParser parser;
+    try {
+      parser.parse(resultBody);
+      auto bui = parser.steal();
+      auto buf = bui->steal();
+      return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, 
+          responseCode == arangodb::rest::HttpResponse::CREATED);
+    }
+    catch (VPackException& e) {
+      std::string message = "JSON from DBserver not parseable: "
+                            + resultBody + ":" + e.what();
+      return OperationResult(TRI_ERROR_INTERNAL, message);
+    }
+  }
+  return OperationResult(res);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -646,7 +672,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
   resultBuilder.close();
 
-  return OperationResult(resultBuilder.steal(), options.waitForSync); 
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                         options.waitForSync || document->_info.waitForSync()); 
 }
   
 OperationResult Transaction::replace(std::string const& collectionName,
@@ -798,7 +825,8 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   resultBuilder.add("_oldRev", VPackValue(idString));
   resultBuilder.close();
 
-  return OperationResult(resultBuilder.steal(), options.waitForSync); 
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                         options.waitForSync || document->_info.waitForSync()); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -910,6 +938,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
   resultBuilder.close();
 
-  return OperationResult(resultBuilder.steal(), options.waitForSync); 
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                         options.waitForSync || document->_info.waitForSync()); 
 }
 
