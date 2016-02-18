@@ -261,7 +261,7 @@ SchedulerLibev::~SchedulerLibev() {
 
   // force threads to shutdown
   for (size_t i = 0; i < nrThreads; ++i) {
-    threads[i]->stop();
+    threads[i]->beginShutdown();
   }
 
   for (size_t i = 0; i < 100 && isRunning(); ++i) {

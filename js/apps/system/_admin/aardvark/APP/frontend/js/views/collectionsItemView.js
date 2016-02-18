@@ -557,18 +557,12 @@
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        self.refreshCollectionsView();
       };
 
       window.modalView.hide();
-      //this.getIndex();
-      //this.createEditPropertiesModal();
       //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          self.collectionsView.render();
-        }
-      });
     },
 
     lastTarget: null,
@@ -608,10 +602,9 @@
     },
 
     refreshCollectionsView: function() {
-      var self = this;
       window.App.arangoCollectionsStore.fetch({
         success: function () {
-          self.collectionsView.checkLockedCollections();
+          window.App.collectionsView.render();
         }
       });
     },
@@ -632,12 +625,11 @@
           this.model.set("locked", false);
           this.refreshCollectionsView();
         }
+        this.refreshCollectionsView();
       }.bind(this);
 
       this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
-
-      this.refreshCollectionsView();
 
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'

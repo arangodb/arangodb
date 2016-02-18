@@ -240,9 +240,9 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData,
       nullptr);
 
-  factory->addHandler("/_admin/work-monitor",
-                      RestHandlerCreator<WorkMonitorHandler>::createNoData,
-                      nullptr);
+  factory->addPrefixHandler("/_admin/work-monitor",
+                            RestHandlerCreator<WorkMonitorHandler>::createNoData,
+                            nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
 #ifdef TRI_ENABLE_FAILURE_TESTS
@@ -1388,12 +1388,12 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   // .............................................................................
 
   console.userAbort();
-  console.stop();
+  console.beginShutdown();
 
   int iterations = 0;
 
-  while (!console.done() && ++iterations < 30) {
-    usleep(100000);  // spin while console is still needed
+  while (console.isRunning() && ++iterations < 30) {
+    usleep(100 * 1000);  // spin while console is still needed
   }
 
   return EXIT_SUCCESS;

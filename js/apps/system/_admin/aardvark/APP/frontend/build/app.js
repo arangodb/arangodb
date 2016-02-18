@@ -10759,7 +10759,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
-                type: aardvark.type 
+                type: aardvark.type,
+                desc: aardvark.desc 
               });
             }
             else {
@@ -16436,7 +16437,8 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       type: "",
       isSystem: false,
       picture: "",
-      locked: false
+      locked: false,
+      desc: undefined
     },
 
     getProperties: function () {
@@ -16533,7 +16535,7 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
-                desc: 'Creating index...',
+                desc: 'Creating Index',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -16565,7 +16567,7 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
-                desc: 'Removing index...',
+                desc: 'Removing Index',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -17875,11 +17877,11 @@ window.arangoDocument = Backbone.Collection.extend({
     collectionID: 1,
 
     filters: [],
+    checkCursorTimer: undefined,
 
     MAX_SORT: 12000,
 
     lastQuery: {},
-
     sortAttribute: "_key",
 
     url: '/_api/documents',
@@ -17924,8 +17926,6 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     setFiltersForQuery: function(bindVars) {
-      var self = this;
-
       if (this.filters.length === 0) {
         return "";
       }
@@ -17979,7 +17979,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave, queryRemove, queryObj, bindVars = {
+      var querySave, queryRemove, bindVars = {
         "@collection": fromCollection,
         "filterid": key
       }, queryObj1, queryObj2;
@@ -18012,7 +18012,7 @@ window.arangoDocument = Backbone.Collection.extend({
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
-        success: function(data) {
+        success: function() {
           // if successful remove unwanted docs
           $.ajax({
             cache: false,
@@ -18021,13 +18021,13 @@ window.arangoDocument = Backbone.Collection.extend({
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
-            success: function(data) {
+            success: function() {
               if (callback) {
                 callback();
               }
               window.progressView.hide();
             },
-            error: function(data) {
+            error: function() {
               window.progressView.hide();
               arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
@@ -18035,7 +18035,7 @@ window.arangoDocument = Backbone.Collection.extend({
             }
           });
         },
-        error: function(data) {
+        error: function() {
           window.progressView.hide();
           arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
@@ -18043,7 +18043,6 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     getDocuments: function (callback) {
-      window.progressView.showWithDelay(300, "Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -18091,36 +18090,83 @@ window.arangoDocument = Backbone.Collection.extend({
         };
       }
 
+      var checkCursorStatus = function(jobid) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: '/_api/job/' + encodeURIComponent(jobid),
+          contentType: 'application/json',
+          success: function(data, textStatus, xhr) {
+            if (xhr.status === 201) {
+              window.progressView.toShow = false;
+              self.clearDocuments();
+              if (data.extra && data.extra.stats.fullCount !== undefined) {
+                self.setTotal(data.extra.stats.fullCount);
+              }
+              if (self.getTotal() !== 0) {
+                _.each(data.result, function(v) {
+                  self.add({
+                    "id": v._id,
+                    "rev": v._rev,
+                    "key": v._key,
+                    "content": v
+                  });
+                });
+              }
+              self.lastQuery = queryObj;
+
+              callback(false, data);
+            }
+            else if (xhr.status === 204) {
+              self.checkCursorTimer = window.setTimeout(function() {
+                checkCursorStatus(jobid);
+              }, 500);
+            }
+
+          },
+          error: function(data) {
+            callback(false, data);
+          }
+        });
+      };
+
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
+        headers: {
+          'x-arango-async': 'store'
+        },
         contentType: "application/json",
-        success: function(data) {
-          window.progressView.toShow = false;
-          self.clearDocuments();
-          if (data.extra && data.extra.stats.fullCount !== undefined) {
-            self.setTotal(data.extra.stats.fullCount);
-          }
-          if (self.getTotal() !== 0) {
-            _.each(data.result, function(v) {
-              self.add({
-                "id": v._id,
-                "rev": v._rev,
-                "key": v._key,
-                "content": v
+        success: function (data, textStatus, xhr) {
+
+          if (xhr.getResponseHeader('x-arango-async-id')) {
+            var jobid = xhr.getResponseHeader('x-arango-async-id');
+
+            var cancelRunningCursor = function() {
+              $.ajax({
+                url: '/_api/job/'+ encodeURIComponent(jobid) + "/cancel",
+                type: 'PUT',
+                success: function() {
+                  window.clearTimeout(self.checkCursorTimer);
+                  arangoHelper.arangoNotification("Documents", "Canceled operation.");
+                  $('.dataTables_empty').text('Canceled.');
+                  window.progressView.hide();
+                }
               });
-            });
+            };
+
+            window.progressView.showWithDelay(300, "Fetching documents...", cancelRunningCursor);
+
+            checkCursorStatus(jobid);
           }
-          self.lastQuery = queryObj;
-          callback();
-          window.progressView.hide();
+          else {
+            callback(true, data);
+          }
         },
         error: function(data) {
-          window.progressView.hide();
-          arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+          callback(false, data);
         }
       });
     },
@@ -18130,7 +18176,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     buildDownloadDocumentQuery: function() {
-      var self = this, query, queryObj, bindVars;
+      var query, queryObj, bindVars;
 
       bindVars = {
         "@collection": this.collectionID
@@ -18180,6 +18226,7 @@ window.arangoDocument = Backbone.Collection.extend({
             }
           }
           catch (err) {
+            console.log(err);
           }               
         }
       });
@@ -19547,11 +19594,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     render: function () {
       if (this.model.get("locked")) {
         $(this.el).addClass('locked');
+        $(this.el).addClass(this.model.get("lockType"));
       } 
       else {
         $(this.el).removeClass('locked');
       }
-
       if (this.model.get("status") === 'loading') {
         $(this.el).addClass('locked');
       }
@@ -20078,18 +20125,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        self.refreshCollectionsView();
       };
 
       window.modalView.hide();
-      //this.getIndex();
-      //this.createEditPropertiesModal();
       //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          self.collectionsView.render();
-        }
-      });
     },
 
     lastTarget: null,
@@ -20129,10 +20170,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     refreshCollectionsView: function() {
-      var self = this;
       window.App.arangoCollectionsStore.fetch({
         success: function () {
-          self.collectionsView.checkLockedCollections();
+          window.App.collectionsView.render();
         }
       });
     },
@@ -20153,12 +20193,11 @@ window.ArangoUsers = Backbone.Collection.extend({
           this.model.set("locked", false);
           this.refreshCollectionsView();
         }
+        this.refreshCollectionsView();
       }.bind(this);
 
       this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
-
-      this.refreshCollectionsView();
 
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
@@ -20288,6 +20327,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
         model.set('locked', true);
         model.set('lockType', locked.type);
+        model.set('desc', locked.desc);
       });
 
       this.collection.each(function(model) {
@@ -20296,6 +20336,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           $('#collection_' + model.get("name")).removeClass('locked');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+          }
         }
         if (model.get("status") === 'loading') {
           $('#collection_' + model.get("name")).removeClass('loading');
@@ -22363,12 +22408,21 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.collectionModel = this.collectionsStore.get(colid);
     },
 
-    getDocsCallback: function() {
+    getDocsCallback: function(error) {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
-      this.drawTable();
-      this.renderPaginationElements();
+
+      if (error) {
+        window.progressView.hide();
+        arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+      }
+      else if (!error || error !== undefined){
+        window.progressView.hide();
+        this.drawTable();
+        this.renderPaginationElements();
+      }
+
     },
 
     events: {
@@ -22640,11 +22694,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     getFilterContent: function () {
       var filters = [ ];
-      var i;
+      var i, value;
 
       for (i in this.filters) {
         if (this.filters.hasOwnProperty(i)) {
-          var value = $('#attribute_value' + i).val();
+          value = $('#attribute_value' + i).val();
 
           try {
             value = JSON.parse(value);
@@ -22825,8 +22879,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           buttons,
           tableContent
         );
-
-        return;
       }
       else {
         tableContent.push(
@@ -23062,9 +23114,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     reallyDelete: function () {
-      var self = this;
-      var row = $(self.target).closest("tr").get(0);
-
       var deleted = false;
       var result;
       if (this.type === 'document') {
@@ -23096,7 +23145,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
-
     },
 
     editModeClick: function(event) {
@@ -23161,6 +23209,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (this.lastCollectionName === this.collectionName) {
         if (this.activeFilter) {
           this.filterCollection();
+          console.log("yes");
           this.restoreFilter();
         }
       }
@@ -23210,7 +23259,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -24106,6 +24155,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -24202,9 +24260,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -24367,6 +24437,22 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,
@@ -25638,7 +25724,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     performAction: function() {
-      this.action();
+      if (typeof this.action === 'function') {
+        this.action();
+      }
       window.progressView.hide();
     },
 

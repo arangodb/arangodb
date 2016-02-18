@@ -68,11 +68,8 @@ HeartbeatThread::HeartbeatThread(
       _numFails(0),
       _numDispatchedJobs(0),
       _lastDispatchedJobResult(false),
-      _versionThatTriggeredLastJob(0),
-      _ready(false),
-      _stop(0) {
+      _versionThatTriggeredLastJob(0) {
   TRI_ASSERT(_dispatcher != nullptr);
-  allowAsynchronousCancelation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +164,9 @@ void HeartbeatThread::runDBServer() {
         if (_numDispatchedJobs == -1) {
           if (_lastDispatchedJobResult) {
             lastPlanVersionJobSuccess = _versionThatTriggeredLastJob;
-            LOG(INFO) << "Found result of successful handleChangesDBServer job, have now version " << lastPlanVersionJobSuccess << ".";
+            LOG(INFO) << "Found result of successful handleChangesDBServer "
+                         "job, have now version "
+                      << lastPlanVersionJobSuccess << ".";
           }
           _numDispatchedJobs = 0;
         } else if (_numDispatchedJobs > 0) {
@@ -344,7 +343,8 @@ void HeartbeatThread::runCoordinator() {
                 TRI_UseCoordinatorDatabaseServer(_server, i->c_str());
 
             if (vocbase != nullptr) {
-              LOG(INFO) << "Reloading users for database " << vocbase->_name << ".";
+              LOG(INFO) << "Reloading users for database " << vocbase->_name
+                        << ".";
 
               if (!fetchUsers(vocbase)) {
                 // something is wrong... probably the database server
@@ -684,7 +684,9 @@ bool HeartbeatThread::sendState() {
   if (++_numFails % _maxFailsBeforeWarning == 0) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG(WARN) << "heartbeat could not be sent to agency endpoints (" << endpoints.c_str() << "): http code: " << result.httpCode() << ", body: " << result.body().c_str();
+    LOG(WARN) << "heartbeat could not be sent to agency endpoints ("
+              << endpoints.c_str() << "): http code: " << result.httpCode()
+              << ", body: " << result.body().c_str();
     _numFails = 0;
   }
 
@@ -732,10 +734,12 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   }
 
   if (result) {
-    LOG(TRACE) << "fetching users for database '" << vocbase->_name << "' successful";
+    LOG(TRACE) << "fetching users for database '" << vocbase->_name
+               << "' successful";
     _refetchUsers.erase(vocbase);
   } else {
-    LOG(TRACE) << "fetching users for database '" << vocbase->_name << "' failed with error: " << TRI_errno_string(res);
+    LOG(TRACE) << "fetching users for database '" << vocbase->_name
+               << "' failed with error: " << TRI_errno_string(res);
     _refetchUsers.insert(vocbase);
   }
 

@@ -430,7 +430,7 @@ int main(int argc, char* argv[]) {
   testCase->tearDown();
 
   for (int i = 0; i < ThreadConcurrency; ++i) {
-    threads[i]->join();
+    threads[i]->beginShutdown();
     delete threads[i];
     delete endpoints[i];
   }
