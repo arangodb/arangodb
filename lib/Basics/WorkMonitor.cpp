@@ -105,7 +105,7 @@ static thread_local WorkDescription* CURRENT_WORK_DESCRIPTION = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-std::atomic_uint_fast64_t NEXT_DESC_ID(static_cast<uint64_t>(0));
+std::atomic<uint64_t> NEXT_DESC_ID(static_cast<uint64_t>(0));
 }
 
 WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
