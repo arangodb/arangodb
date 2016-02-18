@@ -515,7 +515,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     resultBuilder.close();
 
-    return OperationResult(TRI_ERROR_ARANGO_CONFLICT, resultBuilder.steal());
+    return OperationResult(resultBuilder.steal(), nullptr, "",
+        TRI_ERROR_ARANGO_CONFLICT,
+        options.waitForSync || document->_info.waitForSync()); 
   }
   
   VPackBuilder resultBuilder;
