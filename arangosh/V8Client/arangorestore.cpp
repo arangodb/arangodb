@@ -39,7 +39,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -313,7 +313,7 @@ static int TryCreateDatabase(std::string const& name) {
   std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
+      Client->request(GeneralRequest::HTTP_REQUEST_POST, "/_api/database",
                       body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -322,11 +322,11 @@ static int TryCreateDatabase(std::string const& name) {
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == HttpResponse::OK || returnCode == HttpResponse::CREATED) {
+  if (returnCode == GeneralResponse::OK || returnCode == GeneralResponse::CREATED) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } else if (returnCode == HttpResponse::UNAUTHORIZED ||
-             returnCode == HttpResponse::FORBIDDEN) {
+  } else if (returnCode == GeneralResponse::UNAUTHORIZED ||
+             returnCode == GeneralResponse::FORBIDDEN) {
     // invalid authorization
     Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     return TRI_ERROR_FORBIDDEN;
@@ -343,7 +343,7 @@ static int TryCreateDatabase(std::string const& name) {
 
 static std::string GetArangoVersion() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";
@@ -351,7 +351,7 @@ static std::string GetArangoVersion() {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // default value
     version = "arango";
 
@@ -391,7 +391,7 @@ static std::string GetArangoVersion() {
 
 static bool GetArangoIsCluster() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -399,7 +399,7 @@ static bool GetArangoIsCluster() {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // convert response body to json
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
@@ -449,7 +449,7 @@ static int SendRestoreCollection(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -479,7 +479,7 @@ static int SendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg) {
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -511,7 +511,7 @@ static int SendRestoreData(std::string const& cname, char const* buffer,
                           (Force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_PUT, url, buffer, bufferSize));
+      Client->request(GeneralRequest::HTTP_REQUEST_PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();

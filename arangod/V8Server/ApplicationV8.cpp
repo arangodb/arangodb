@@ -41,7 +41,7 @@
 #include "Cluster/v8-cluster.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/V8TransactionContext.h"

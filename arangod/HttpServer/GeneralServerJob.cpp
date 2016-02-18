@@ -22,27 +22,28 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServerJob.h"
+#include "GeneralServerJob.h"
 
 #include "Basics/WorkMonitor.h"
-#include "Basics/Logger.h"
+#include "Basics/logging.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralHandler.h"
+#include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
+using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::HttpServerJob(HttpServer* server,
-                             WorkItem::uptr<HttpHandler>& handler, bool isAsync)
-    : Job("HttpServerJob"),
+GeneralServerJob::GeneralServerJob(GeneralServer* server,
+                             WorkItem::uptr<GeneralHandler>& handler, bool isAsync)
+    : Job("GeneralServerJob"),
       _server(server),
       _workDesc(nullptr),
       _isAsync(isAsync) {
@@ -53,18 +54,20 @@ HttpServerJob::HttpServerJob(HttpServer* server,
 /// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::~HttpServerJob() {
+GeneralServerJob::~GeneralServerJob() {
   if (_workDesc != nullptr) {
     WorkMonitor::freeWorkDescription(_workDesc);
   }
 }
 
-size_t HttpServerJob::queue() const { return _handler->queue(); }
 
-void HttpServerJob::work() {
+size_t GeneralServerJob::queue() const { return _handler->queue(); }
+
+
+void GeneralServerJob::work() {
   TRI_ASSERT(_handler.get() != nullptr);
 
-  LOG(TRACE) << "beginning job " << (void*)this;
+  LOG_TRACE("beginning job %p", (void*)this);
 
   // the _handler needs to stay intact, so that we can cancel the job
   // therefore cannot use HandlerWorkStack here. Because we need to
@@ -82,7 +85,7 @@ void HttpServerJob::work() {
       auto data = std::make_unique<TaskData>();
 
       data->_taskId = _handler->taskId();
-      data->_loop = _handler->eventLoop();
+      data-> _loop = _handler->eventLoop();
       data->_type = TaskData::TASK_DATA_RESPONSE;
       data->_response.reset(_handler->stealResponse());
 
@@ -91,7 +94,7 @@ void HttpServerJob::work() {
       Scheduler::SCHEDULER->signalTask(data);
     }
 
-    LOG(TRACE) << "finished job " << (void*)this;
+    LOG_TRACE("finished job %p", (void*)this);
   } catch (...) {
     _workDesc = WorkMonitor::popHandler(_handler.release(), false);
     throw;
@@ -100,13 +103,16 @@ void HttpServerJob::work() {
   _workDesc = WorkMonitor::popHandler(_handler.release(), false);
 }
 
-bool HttpServerJob::cancel() { return _handler->cancel(); }
 
-void HttpServerJob::cleanup(DispatcherQueue* queue) {
+bool GeneralServerJob::cancel() { return _handler->cancel(); }
+
+
+void GeneralServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-void HttpServerJob::handleError(arangodb::basics::Exception const& ex) {
+
+void GeneralServerJob::handleError(arangodb::basics::Exception const& ex) {
   _handler->handleError(ex);
 }

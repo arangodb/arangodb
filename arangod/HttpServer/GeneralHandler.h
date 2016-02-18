@@ -21,33 +21,37 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_HANDLER_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/Job.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Scheduler/events.h"
 #include "Statistics/StatisticsAgent.h"
+
 
 namespace arangodb {
 namespace rest {
 class Dispatcher;
-class HttpHandlerFactory;
-class HttpRequest;
-class HttpServer;
+class GeneralHandlerFactory;
+class GeneralRequest;
+class GeneralServer;
+class VelocyServer;
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief abstract class for http/vstream handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
-  HttpHandler(HttpHandler const&) = delete;
-  HttpHandler& operator=(HttpHandler const&) = delete;
+class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
+  GeneralHandler(GeneralHandler const&) = delete;
+  GeneralHandler& operator=(GeneralHandler const&) = delete;
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler
@@ -56,15 +60,16 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// responsibility to destroy them both. See also the two steal methods.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit HttpHandler(HttpRequest*);
+  explicit GeneralHandler(GeneralRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a handler
   //////////////////////////////////////////////////////////////////////////////
 
  protected:
-  ~HttpHandler();
+  ~GeneralHandler();
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief status of execution
@@ -84,6 +89,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
     status_e _status;
   };
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if a handler is executed directly
@@ -131,8 +137,9 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief adds a response
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void addResponse(HttpHandler*);
+  virtual void addResponse(GeneralHandler*);
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the id of the underlying task
@@ -158,43 +165,52 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   status_t executeFull();
 
+  status_t executeFullVstream();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the server object
   //////////////////////////////////////////////////////////////////////////////
 
-  void setServer(HttpHandlerFactory* server);
+  void setServer(GeneralHandlerFactory* server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest const* getRequest() const;
+  GeneralRequest const* getRequest() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* stealRequest();
+  GeneralRequest* stealRequest();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* getResponse() const;
+  GeneralResponse* getResponse() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* stealResponse();
+  GeneralResponse* stealResponse();
 
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new HTTP response
   //////////////////////////////////////////////////////////////////////////////
 
-  void createResponse(HttpResponse::HttpResponseCode);
+  void createResponse(GeneralResponse::HttpResponseCode);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create a new VSTREAM response
+  //////////////////////////////////////////////////////////////////////////////
+
+  void createResponse(GeneralResponse::VstreamResponseCode);
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler id
@@ -218,19 +234,19 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* _request;
+  GeneralRequest* _request;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse* _response;
+  GeneralResponse* _response;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _server;
+  GeneralHandlerFactory* _server;
 };
 }
 }

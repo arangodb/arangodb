@@ -31,7 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
@@ -39,35 +39,35 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
+RestDocumentHandler::RestDocumentHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-HttpHandler::status_t RestDocumentHandler::execute() {
+GeneralHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_DELETE:
       deleteDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::HTTP_REQUEST_GET:
       readDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::HTTP_REQUEST_HEAD:
       checkDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::HTTP_REQUEST_POST:
       createDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::HTTP_REQUEST_PUT:
       replaceDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::HTTP_REQUEST_PATCH:
       updateDocument();
       break;
 
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+    case GeneralRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
@@ -86,7 +86,7 @@ bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (!suffix.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -97,7 +97,7 @@ bool RestDocumentHandler::createDocument() {
   char const* collection = _request->value("collection", found);
 
   if (!found || *collection == '\0') {
-    generateError(HttpResponse::BAD,
+    generateError(GeneralResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
@@ -149,7 +149,7 @@ bool RestDocumentHandler::createDocument() {
   if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT
     // collection
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    generateError(GeneralResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
@@ -181,7 +181,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
     char const* collection, bool waitForSync, VPackSlice const& document) {
   std::string const& dbname = _request->databaseName();
   std::string const collname(collection);
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> headers =
       arangodb::getForwardableRequestHeaders(_request);
   std::map<std::string, std::string> resultHeaders;
@@ -201,7 +201,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +218,7 @@ bool RestDocumentHandler::readDocument() {
       return readAllDocuments();
 
     case 1:
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+      generateError(GeneralResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                     "expecting GET /_api/document/<document-handle>");
       return false;
 
@@ -226,7 +226,7 @@ bool RestDocumentHandler::readDocument() {
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle> or GET "
                     "/_api/document?collection=<collection-name>");
       return false;
@@ -249,7 +249,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t const ifNoneRid =
       extractRevision("if-none-match", 0, isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -257,7 +257,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t const ifRid =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -347,7 +347,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
                                                  std::string const& key,
                                                  bool generateBody) {
   std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
@@ -381,7 +381,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   } else {
     _response->body().appendText(resultBody.c_str(), resultBody.size());
   }
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +483,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(
     std::string const& collname, std::string const& returnType) {
   std::string const& dbname = _request->databaseName();
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::string contentType;
   std::string resultBody;
 
@@ -498,7 +498,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(
   createResponse(responseCode);
   _response->setContentType(contentType);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -509,7 +509,7 @@ bool RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
     return false;
   }
@@ -541,7 +541,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(" /_api/document/<document-handle>");
 
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
@@ -570,7 +570,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   TRI_voc_rid_t const revision =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -797,7 +797,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -824,7 +824,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -835,7 +835,7 @@ bool RestDocumentHandler::deleteDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle>");
     return false;
   }
@@ -849,7 +849,7 @@ bool RestDocumentHandler::deleteDocument() {
   TRI_voc_rid_t const revision =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -859,7 +859,7 @@ bool RestDocumentHandler::deleteDocument() {
   bool const waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "policy must be 'error' or 'last'");
     return false;
   }
@@ -922,7 +922,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
     std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync) {
   std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
@@ -942,5 +942,5 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }

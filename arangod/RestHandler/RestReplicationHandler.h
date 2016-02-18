@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "HttpServer/GeneralServer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
@@ -43,13 +44,13 @@ class Transaction;
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestReplicationHandler(rest::HttpRequest*);
+  explicit RestReplicationHandler(rest::GeneralRequest*);
 
   ~RestReplicationHandler();
 
  public:
-  HttpHandler::status_t execute();
 
+  GeneralHandler::status_t execute();
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief comparator to sort collections

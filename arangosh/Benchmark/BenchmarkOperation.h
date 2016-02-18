@@ -69,7 +69,7 @@ struct BenchmarkOperation {
   /// @brief return the HTTP method of the operation to execute
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual arangodb::rest::HttpRequest::HttpRequestType type(int const,
+  virtual arangodb::rest::GeneralRequest::RequestType type(int const,
                                                             size_t const,
                                                             size_t const) = 0;
 

@@ -29,7 +29,7 @@
 
 namespace arangodb {
 namespace rest {
-class HttpServer;
+class GeneralServer;
 class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,17 +45,17 @@ class HttpListenTask : public ListenTask {
   /// @brief listen to given port
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpListenTask(HttpServer* server, Endpoint* endpoint);
+  HttpListenTask(GeneralServer* server, Endpoint* endpoint);
 
  protected:
-  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info);
+  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool _isHttp);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying general server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer* _server;
+  GeneralServer* _server;
 };
 }
 }

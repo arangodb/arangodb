@@ -1636,7 +1636,7 @@ static void JS_GetClusterAuthentication(
 
 static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::rest::HttpRequest::HttpRequestType& reqType,
+    arangodb::rest::GeneralRequest::RequestType& reqType,
     std::string& destination, std::string& path, std::string& body,
     std::map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
@@ -1647,13 +1647,13 @@ static void PrepareClusterCommRequest(
 
   TRI_ASSERT(args.Length() >= 4);
 
-  reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
+  reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
     std::string methstring = *UTF8;
-    reqType = arangodb::rest::HttpRequest::translateMethod(methstring);
-    if (reqType == arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) {
-      reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
+    reqType = arangodb::rest::GeneralRequest::translateMethod(methstring);
+    if (reqType == arangodb::rest::GeneralRequest::HTTP_REQUEST_ILLEGAL) {
+      reqType = arangodb::rest::GeneralRequest::HTTP_REQUEST_GET;
     }
   }
 
@@ -1880,7 +1880,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::GeneralRequest::RequestType reqType;
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
@@ -1943,7 +1943,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::rest::GeneralRequest::RequestType reqType;
   std::string destination;
   std::string path;
   std::string body;

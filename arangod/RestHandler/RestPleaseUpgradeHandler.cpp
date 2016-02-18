@@ -27,13 +27,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
-    : HttpHandler(request) {}
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request)
+    : GeneralHandler(request) {}
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
-  createResponse(HttpResponse::OK);
+
+GeneralHandler::status_t RestPleaseUpgradeHandler::execute() {
+  createResponse(GeneralResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 
   auto& buffer = _response->body();

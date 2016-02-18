@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/RequestContext.h"
 
 struct TRI_server_t;
@@ -67,7 +67,8 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   static double accessSid(std::string const& database, std::string const& sid);
 
  public:
-  VocbaseContext(rest::HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
+
+  VocbaseContext(rest::GeneralRequest*, TRI_server_t*, TRI_vocbase_t*);
 
   ~VocbaseContext();
 
@@ -91,11 +92,17 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   char const* getRealm() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the authentication
+  /// @brief checks the authentication(http)
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::HttpResponse::HttpResponseCode authenticate();
+  rest::GeneralResponse::HttpResponseCode authenticate();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the authentication(vstream)
+  //////////////////////////////////////////////////////////////////////////////
+
+  rest::GeneralResponse::VstreamResponseCode authenticateVstream();
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief was docuBlock SessionTimeout

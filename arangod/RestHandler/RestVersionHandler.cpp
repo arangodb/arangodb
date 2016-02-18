@@ -24,7 +24,7 @@
 #include "RestVersionHandler.h"
 
 #include "Rest/AnyServer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -41,12 +41,12 @@ using namespace arangodb::rest;
 
 extern AnyServer* ArangoInstance;
 
-RestVersionHandler::RestVersionHandler(HttpRequest* request)
+RestVersionHandler::RestVersionHandler(GeneralRequest* request)
     : RestBaseHandler(request) {}
 
 bool RestVersionHandler::isDirect() const { return true; }
 
-HttpHandler::status_t RestVersionHandler::execute() {
+GeneralHandler::status_t RestVersionHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));

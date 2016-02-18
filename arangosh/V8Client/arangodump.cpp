@@ -40,7 +40,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -290,7 +290,7 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
 
 static std::string GetArangoVersion() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";
@@ -298,7 +298,7 @@ static std::string GetArangoVersion() {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     // default value
     version = "arango";
     try {
@@ -337,7 +337,7 @@ static std::string GetArangoVersion() {
 
 static bool GetArangoIsCluster() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
+      GeneralRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -345,7 +345,7 @@ static bool GetArangoIsCluster() {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == GeneralResponse::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
@@ -379,7 +379,7 @@ static int StartBatch(std::string DBserver, std::string& errorMsg) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_POST, url + urlExt, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_POST, url + urlExt, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -432,7 +432,7 @@ static void ExtendBatch(std::string DBserver) {
   }
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url + urlExt, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url + urlExt, body.c_str(), body.size()));
 
   // ignore any return value
 }
@@ -454,7 +454,7 @@ static void EndBatch(std::string DBserver) {
   BatchId = 0;
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
-      HttpRequest::HTTP_REQUEST_DELETE, url + urlExt, nullptr, 0));
+      GeneralRequest::HTTP_REQUEST_DELETE, url + urlExt, nullptr, 0));
 
   // ignore any return value
 }
@@ -490,7 +490,7 @@ static int DumpCollection(int fd, std::string const& cid,
     Stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
-        Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+        Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -582,7 +582,7 @@ static void FlushWal() {
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_PUT, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_PUT, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
@@ -601,7 +601,7 @@ static int RunDump(std::string& errorMsg) {
       std::string(IncludeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -864,7 +864,7 @@ static int DumpShard(int fd, std::string const& DBserver,
     Stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
-        Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+        Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -950,7 +950,7 @@ static int RunClusterDump(std::string& errorMsg) {
       std::string(IncludeSystemCollections ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
-      Client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      Client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();

@@ -22,30 +22,48 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
+#include "Basics/ConditionLocker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "HttpServer/GeneralServer.h"
+#include "HttpServer/GeneralHandlerFactory.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
+RestShardHandler::RestShardHandler(arangodb::rest::GeneralRequest* request,
                                    Dispatcher* data)
     : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
+
+
 bool RestShardHandler::isDirect() const { return true; }
 
-arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
+
+arangodb::rest::GeneralHandler::status_t RestShardHandler::execute() {
+// Deactivated to allow for asynchronous cluster internal communication
+// between two DBservers. 30.7.2014 Max.
+#if 0
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  if (role != ServerState::ROLE_COORDINATOR) {
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int) arangodb::rest::GeneralResponse::BAD,
+                  "this API is meant to be called on a coordinator node");
+    return status_t(HANDLER_DONE);
+  }
+#endif
+
   bool found;
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
   if (!found) {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int)arangodb::rest::HttpResponse::BAD,
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int)arangodb::rest::GeneralResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
@@ -55,10 +73,10 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    createResponse(arangodb::rest::HttpResponse::ACCEPTED);
+    createResponse(arangodb::rest::GeneralResponse::ACCEPTED);
   } else {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int)arangodb::rest::HttpResponse::BAD, result.c_str());
+    generateError(arangodb::rest::GeneralResponse::BAD,
+                  (int)arangodb::rest::GeneralResponse::BAD, result.c_str());
   }
 
   return status_t(HANDLER_DONE);

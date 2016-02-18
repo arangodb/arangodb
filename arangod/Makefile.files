@@ -104,16 +104,19 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/HttpServer/ApplicationEndpointServer.cpp \
+	arangod/HttpServer/ArangoTask.cpp \
 	arangod/HttpServer/AsyncJobManager.cpp \
 	arangod/HttpServer/HttpCommTask.cpp \
-	arangod/HttpServer/HttpHandler.cpp \
-	arangod/HttpServer/HttpHandlerFactory.cpp \
+	arangod/HttpServer/GeneralHandler.cpp \
+	arangod/HttpServer/GeneralHandlerFactory.cpp \
 	arangod/HttpServer/HttpListenTask.cpp \
-	arangod/HttpServer/HttpServer.cpp \
-	arangod/HttpServer/HttpServerJob.cpp \
+	arangod/HttpServer/GeneralServer.cpp \
+	arangod/HttpServer/GeneralServerJob.cpp \
 	arangod/HttpServer/HttpsCommTask.cpp \
 	arangod/HttpServer/HttpsServer.cpp \
 	arangod/HttpServer/PathHandler.cpp \
+	arangod/VelocyServer/VelocyCommTask.cpp \
+	arangod/VelocyServer/VelocyListenTask.cpp \
 	arangod/Indexes/CapConstraint.cpp \
 	arangod/Indexes/EdgeIndex.cpp \
 	arangod/Indexes/FulltextIndex.cpp \

@@ -37,7 +37,8 @@ namespace arangodb {
 
 class RestExportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestExportHandler(rest::HttpRequest*);
+
+  explicit RestExportHandler(rest::GeneralRequest*);
 
  public:
   status_t execute() override;

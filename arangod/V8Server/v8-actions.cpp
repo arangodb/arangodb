@@ -34,9 +34,9 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "HttpServer/GeneralServer.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -52,7 +52,7 @@ using namespace arangodb::rest;
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
-    v8::Handle<v8::Function> callback, HttpRequest* request);
+    v8::Handle<v8::Function> callback, GeneralRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -87,8 +87,14 @@ class v8_action_t : public TRI_action_t {
     _callbacks[isolate].Reset(isolate, callback);
   }
 
+<<<<<<< HEAD
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
                               Mutex* dataLock, void** data) override {
+=======
+
+  TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
+                              Mutex* dataLock, void** data) {
+>>>>>>> velocystream
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -132,7 +138,7 @@ class v8_action_t : public TRI_action_t {
 
         result.isValid = true;
         result.response =
-            new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
+            new GeneralResponse(GeneralResponse::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -236,7 +242,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
-                      HttpResponse* response, v8::Handle<v8::Object> data) {
+                      GeneralResponse* response, v8::Handle<v8::Object> data) {
   std::string name;
   std::string value;
   int lifeTimeSeconds = 0;
@@ -292,12 +298,12 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a C++ HttpRequest to a V8 request object
+/// @brief convert a C++ GeneralRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
                                              TRI_v8_global_t const* v8g,
-                                             HttpRequest* request) {
+                                             GeneralRequest* request) {
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
 
@@ -412,7 +418,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request type
   switch (request->requestType()) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::HTTP_REQUEST_POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
       req->ForceSet(
@@ -421,7 +427,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case HttpRequest::HTTP_REQUEST_PUT: {
+    case GeneralRequest::HTTP_REQUEST_PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
       req->ForceSet(
@@ -430,7 +436,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       break;
     }
 
-    case HttpRequest::HTTP_REQUEST_PATCH: {
+    case GeneralRequest::HTTP_REQUEST_PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
       req->ForceSet(
@@ -438,22 +444,22 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
           TRI_V8_PAIR_STRING(request->body(), (int)request->bodySize()));
       break;
     }
-    case HttpRequest::HTTP_REQUEST_OPTIONS: {
+    case GeneralRequest::HTTP_REQUEST_OPTIONS: {
       TRI_GET_GLOBAL_STRING(OptionsConstant);
       req->ForceSet(RequestTypeKey, OptionsConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_DELETE: {
+    case GeneralRequest::HTTP_REQUEST_DELETE: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->ForceSet(RequestTypeKey, DeleteConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_HEAD: {
+    case GeneralRequest::HTTP_REQUEST_HEAD: {
       TRI_GET_GLOBAL_STRING(HeadConstant);
       req->ForceSet(RequestTypeKey, HeadConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_GET: {
+    case GeneralRequest::HTTP_REQUEST_GET: {
       default:
         TRI_GET_GLOBAL_STRING(GetConstant);
         req->ForceSet(RequestTypeKey, GetConstant);
@@ -515,23 +521,23 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a C++ HttpRequest to a V8 request object
+/// @brief convert a C++ GeneralRequest to a V8 request object
 ////////////////////////////////////////////////////////////////////////////////
 
-static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
+static GeneralResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                                      TRI_v8_global_t const* v8g,
                                      v8::Handle<v8::Object> const res,
                                      uint32_t compatibility) {
-  HttpResponse::HttpResponseCode code = HttpResponse::OK;
+  GeneralResponse::HttpResponseCode code = GeneralResponse::OK;
 
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (HttpResponse::HttpResponseCode)(
+    code = (GeneralResponse::HttpResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  auto response = std::make_unique<HttpResponse>(code, compatibility);
+  auto response = std::make_unique<GeneralResponse>(code, compatibility);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
@@ -613,7 +619,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                         TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
-      response->setResponseCode(HttpResponse::SERVER_ERROR);
+      response->setResponseCode(GeneralResponse::SERVER_ERROR);
     }
   }
 
@@ -668,7 +674,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
-    v8::Handle<v8::Function> callback, HttpRequest* request) {
+    v8::Handle<v8::Function> callback, GeneralRequest* request) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
@@ -736,8 +742,8 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
-    HttpResponse* response =
-        new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
+    GeneralResponse* response =
+        new GeneralResponse(GeneralResponse::SERVER_ERROR, request->compatibility());
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
     }
@@ -751,7 +757,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR,
+     GeneralResponse* response = new GeneralResponse(GeneralResponse::SERVER_ERROR,
                                                 request->compatibility());
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 
@@ -911,7 +917,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::GeneralRequest*>(e->Value());
 
       if (request != nullptr) {
         V8Buffer* buffer =
@@ -946,7 +952,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::rest::GeneralRequest*>(e->Value());
 
       char const* beg = request->body();
       char const* end = beg + request->bodySize();
@@ -1131,7 +1137,7 @@ static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_Utf8ValueNFC data(TRI_UNKNOWN_MEM_ZONE, args[1]);
 
-  int res = HttpServer::sendChunk(id, *data);
+  int res = GeneralServer::sendChunk(id, *data);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_TASK_NOT_FOUND) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot send chunk");
@@ -1271,8 +1277,13 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 #ifdef TRI_ENABLE_FAILURE_TESTS
 static bool clusterSendToAllServers(
     std::string const& dbname,
+<<<<<<< HEAD
     std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::HttpRequest::HttpRequestType const& method,
+=======
+    std::string const& path, // Note: Has to be properly encoded!
+    arangodb::rest::GeneralRequest::RequestType const& method,
+>>>>>>> velocystream
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1368,9 +1379,14 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
+<<<<<<< HEAD
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
         arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+=======
+    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                      arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_PUT, "");
+>>>>>>> velocystream
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1412,9 +1428,14 @@ static void JS_DebugRemoveFailAt(
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
+<<<<<<< HEAD
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
         arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+=======
+    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                      arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE, "");
+>>>>>>> velocystream
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1457,7 +1478,12 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
+<<<<<<< HEAD
         arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+=======
+        arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE,
+        "");
+>>>>>>> velocystream
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

@@ -23,7 +23,7 @@
 
 #include "RestShutdownHandler.h"
 
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(arangodb::rest::HttpRequest* request,
+RestShutdownHandler::RestShutdownHandler(arangodb::rest::GeneralRequest* request,
                                          void* applicationServer)
     : RestBaseHandler(request),
       _applicationServer(
@@ -43,7 +43,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestShutdownHandler::execute() {
+GeneralHandler::status_t RestShutdownHandler::execute() {
   _applicationServer->beginShutdown();
 
   try {

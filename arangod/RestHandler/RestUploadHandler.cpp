@@ -26,27 +26,28 @@
 #include "Basics/files.h"
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
-#include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
+#include "HttpServer/GeneralServer.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUploadHandler::RestUploadHandler(HttpRequest* request)
+RestUploadHandler::RestUploadHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 RestUploadHandler::~RestUploadHandler() {}
 
-HttpHandler::status_t RestUploadHandler::execute() {
-  // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+GeneralHandler::status_t RestUploadHandler::execute() {
 
-  if (type != HttpRequest::HTTP_REQUEST_POST) {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  // extract the request type
+  const GeneralRequest::RequestType type = _request->requestType();
+
+  if (type != GeneralRequest::HTTP_REQUEST_POST) {
+    generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status_t(GeneralHandler::HANDLER_DONE);
   }
 
   char* filename = nullptr;
@@ -56,8 +57,8 @@ HttpHandler::status_t RestUploadHandler::execute() {
   if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
       TRI_ERROR_NO_ERROR) {
     errorMessage = "could not generate temp file: " + errorMessage;
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
-    return status_t(HttpHandler::HANDLER_FAILED);
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
+    return status_t(GeneralHandler::HANDLER_FAILED);
   }
 
   char* relative = TRI_GetFilename(filename);
@@ -77,9 +78,9 @@ HttpHandler::status_t RestUploadHandler::execute() {
       if (!parseMultiPart(body, bodySize)) {
         TRI_Free(TRI_CORE_MEM_ZONE, relative);
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                       "invalid multipart request");
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status_t(GeneralHandler::HANDLER_FAILED);
       }
     }
   }
@@ -90,16 +91,16 @@ HttpHandler::status_t RestUploadHandler::execute() {
   } catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "could not save file");
-    return status_t(HttpHandler::HANDLER_FAILED);
+    return status_t(GeneralHandler::HANDLER_FAILED);
   }
 
   char* fullName = TRI_Concatenate2File("uploads", relative);
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
 
   // create the response
-  createResponse(HttpResponse::CREATED);
+  createResponse(GeneralResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   VPackBuilder b;
@@ -110,9 +111,9 @@ HttpHandler::status_t RestUploadHandler::execute() {
   b.close();
   VPackSlice s = b.slice();
 
-  generateResult(HttpResponse::CREATED, s);
+  generateResult(GeneralResponse::CREATED, s);
   // success
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status_t(GeneralHandler::HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

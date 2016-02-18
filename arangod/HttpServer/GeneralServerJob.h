@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_JOB_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
 #include "Dispatcher/Job.h"
 
@@ -32,37 +32,37 @@
 
 namespace arangodb {
 namespace rest {
-class HttpHandler;
-class HttpServer;
+class GeneralHandler;
+class GeneralServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpServerJob : public Job {
-  HttpServerJob(HttpServerJob const&) = delete;
-  HttpServerJob& operator=(HttpServerJob const&) = delete;
+class GeneralServerJob : public Job {
+  GeneralServerJob(GeneralServerJob const&) = delete;
+  GeneralServerJob& operator=(GeneralServerJob const&) = delete;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new server job
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServerJob(HttpServer*, arangodb::WorkItem::uptr<HttpHandler>&,
+  GeneralServerJob(GeneralServer*, arangodb::WorkItem::uptr<GeneralHandler>&,
                 bool isAsync = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a server job
   //////////////////////////////////////////////////////////////////////////////
 
-  ~HttpServerJob();
+  ~GeneralServerJob();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the underlying handler
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandler* handler() const { return _handler.get(); }
+  GeneralHandler* handler() const { return _handler.get(); }
 
  public:
   size_t queue() const override;
@@ -80,13 +80,13 @@ class HttpServerJob : public Job {
   /// @brief general server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer* _server;
+  GeneralServer* _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::WorkItem::uptr<HttpHandler> _handler;
+  arangodb::WorkItem::uptr<GeneralHandler> _handler;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief work description we need to destroy

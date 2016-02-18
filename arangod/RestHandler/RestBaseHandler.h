@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
-#include "HttpServer/HttpHandler.h"
-#include "Rest/HttpResponse.h"
+#include "HttpServer/GeneralHandler.h"
+#include "Rest/GeneralResponse.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,10 +41,9 @@ class Slice;
 /// @brief default handler for error handling and json in-/output
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestBaseHandler : public rest::HttpHandler {
+class RestBaseHandler : public rest::GeneralHandler {  
  public:
-  explicit RestBaseHandler(rest::HttpRequest* request);
-
+  explicit RestBaseHandler(rest::GeneralRequest* request);
  public:
   void handleError(basics::Exception const&);
 
@@ -59,7 +58,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(rest::GeneralResponse::HttpResponseCode,
                               TRI_json_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -72,8 +71,8 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
-                              arangodb::velocypack::Slice const& slice);
+  virtual void generateResult(rest::GeneralResponse::HttpResponseCode,
+                              VPackSlice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a cancel message
@@ -85,13 +84,13 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int);
+  virtual void generateError(rest::GeneralResponse::HttpResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int,
+  virtual void generateError(rest::GeneralResponse::HttpResponseCode, int,
                              std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////

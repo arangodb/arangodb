@@ -38,8 +38,7 @@ class Dispatcher;
 
 class RestShardHandler : public RestBaseHandler {
  public:
-  RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
-
+  RestShardHandler(rest::GeneralRequest* request, rest::Dispatcher*);
  public:
   bool isDirect() const override;
 

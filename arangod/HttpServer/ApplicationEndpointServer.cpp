@@ -29,12 +29,12 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Basics/logging.h"
 #include "Basics/ssl-helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralHandlerFactory.h"
+#include "HttpServer/GeneralServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Rest/Version.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -44,6 +44,8 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace std;
+
 
 namespace {
 class BIOGuard {
@@ -57,12 +59,14 @@ class BIOGuard {
 };
 }
 
+
+
 ApplicationEndpointServer::ApplicationEndpointServer(
     ApplicationServer* applicationServer,
     ApplicationScheduler* applicationScheduler,
     ApplicationDispatcher* applicationDispatcher, AsyncJobManager* jobManager,
     std::string const& authenticationRealm,
-    HttpHandlerFactory::context_fptr setContext, void* contextData)
+    GeneralHandlerFactory::context_fptr setContext, void* contextData)
     : ApplicationFeature("EndpointServer"),
       _applicationServer(applicationServer),
       _applicationScheduler(applicationScheduler),
@@ -100,6 +104,7 @@ ApplicationEndpointServer::ApplicationEndpointServer(
   _defaultApiCompatibility = Version::getNumericServerVersion();
 }
 
+
 ApplicationEndpointServer::~ApplicationEndpointServer() {
   // ..........................................................................
   // Where ever possible we should EXPLICITLY write down the type used in
@@ -121,6 +126,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer() {
   }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the endpoint servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,10 +135,10 @@ bool ApplicationEndpointServer::buildServers() {
   TRI_ASSERT(_handlerFactory != nullptr);
   TRI_ASSERT(_applicationScheduler->scheduler() != nullptr);
 
-  HttpServer* server;
+  GeneralServer* server;
 
   // unencrypted endpoints
-  server = new HttpServer(_applicationScheduler->scheduler(),
+  server = new GeneralServer(_applicationScheduler->scheduler(),
                           _applicationDispatcher->dispatcher(), _handlerFactory,
                           _jobManager, _keepAliveTimeout);
 
@@ -143,8 +149,8 @@ bool ApplicationEndpointServer::buildServers() {
   if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
     if (_sslContext == nullptr) {
-      LOG(INFO) << "please use the --server.keyfile option";
-      LOG(FATAL) << "no ssl context is known, cannot create https server"; FATAL_ERROR_EXIT();
+      LOG_INFO("please use the --server.keyfile option");
+      LOG_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
     }
 
     // https
@@ -159,6 +165,8 @@ bool ApplicationEndpointServer::buildServers() {
 
   return true;
 }
+
+
 
 void ApplicationEndpointServer::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -194,6 +202,7 @@ void ApplicationEndpointServer::setupOptions(
       "SSL cipher list, see OpenSSL documentation");
 }
 
+
 bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
@@ -203,11 +212,15 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0) {
-    LOG(FATAL) << "invalid value for --server.backlog-size. expecting a positive value"; FATAL_ERROR_EXIT();
+    LOG_FATAL_AND_EXIT(
+        "invalid value for --server.backlog-size. expecting a positive value");
   }
 
   if (_backlogSize > SOMAXCONN) {
-    LOG(WARN) << "value for --server.backlog-size exceeds default system header SOMAXCONN value " << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
+    LOG_WARNING(
+        "value for --server.backlog-size exceeds default system header "
+        "SOMAXCONN value %d. trying to use %d anyway",
+        (int)SOMAXCONN, (int)SOMAXCONN);
   }
 
   if (!_httpPort.empty()) {
@@ -220,16 +233,18 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // add & validate endpoints
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize,
-                                _reuseAddress);
+    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize, _reuseAddress);
 
     if (!ok) {
-      LOG(FATAL) << "invalid endpoint '" << (*i).c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
     }
   }
 
-  if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
-    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << HttpRequest::MinCompatibility; FATAL_ERROR_EXIT();
+  if (_defaultApiCompatibility < GeneralRequest::MinCompatibility) {
+    LOG_FATAL_AND_EXIT(
+        "invalid value for --server.default-api-compatibility. minimum allowed "
+        "value is %d",
+        (int)GeneralRequest::MinCompatibility);
   }
 
   // and return
@@ -264,7 +279,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
     return false;
   }
 
-  LOG(TRACE) << "loading endpoint list from file '" << filename.c_str() << "'";
+  LOG_TRACE("loading endpoint list from file '%s'", filename.c_str());
 
   std::shared_ptr<VPackBuilder> builder;
   try {
@@ -276,7 +291,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
-    LOG(WARN) << "error loading ENDPOINTS file '" << filename.c_str() << "'";
+    LOG_WARNING("error loading ENDPOINTS file '%s'", filename.c_str());
     return false;
   }
 
@@ -322,6 +337,7 @@ std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping(
   return _endpointList.getMapping(endpoint);
 }
 
+
 bool ApplicationEndpointServer::prepare() {
   if (_disabled) {
     return true;
@@ -330,21 +346,23 @@ bool ApplicationEndpointServer::prepare() {
   loadEndpoints();
 
   if (_endpointList.empty()) {
-    LOG(INFO) << "please use the '--server.endpoint' option";
-    LOG(FATAL) << "no endpoints have been specified, giving up"; FATAL_ERROR_EXIT();
+    LOG_INFO("please use the '--server.endpoint' option");
+    LOG_FATAL_AND_EXIT("no endpoints have been specified, giving up");
   }
 
   // dump all endpoints for user information
   _endpointList.dump();
 
   _handlerFactory =
-      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
+      new GeneralHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
-  LOG(DEBUG) << "using default API compatibility: " << (long int)_defaultApiCompatibility;
+  LOG_DEBUG("using default API compatibility: %ld",
+            (long int)_defaultApiCompatibility);
 
   return true;
 }
+
 
 bool ApplicationEndpointServer::open() {
   if (_disabled) {
@@ -358,6 +376,7 @@ bool ApplicationEndpointServer::open() {
   return true;
 }
 
+
 void ApplicationEndpointServer::close() {
   if (_disabled) {
     return;
@@ -369,6 +388,7 @@ void ApplicationEndpointServer::close() {
   }
 }
 
+
 void ApplicationEndpointServer::stop() {
   if (_disabled) {
     return;
@@ -378,6 +398,7 @@ void ApplicationEndpointServer::stop() {
     server->stop();
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an ssl context
@@ -391,21 +412,25 @@ bool ApplicationEndpointServer::createSslContext() {
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG(ERR) << "invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.";
+    LOG_ERROR(
+        "invalid SSL protocol version specified. Please use a valid value for "
+        "--server.ssl-protocol.");
     return false;
   }
 
-  LOG(DEBUG) << "using SSL protocol version '" << protocolName((protocol_e)_sslProtocol).c_str() << "'";
+  LOG_DEBUG("using SSL protocol version '%s'",
+            protocolName((protocol_e)_sslProtocol).c_str());
 
   if (!FileUtils::exists(_httpsKeyfile)) {
-    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile.c_str() << "'"; FATAL_ERROR_EXIT();
+    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'",
+                       _httpsKeyfile.c_str());
   }
 
   // create context
   _sslContext = sslContext(protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == nullptr) {
-    LOG(ERR) << "failed to create SSL context, cannot create HTTPS server";
+    LOG_ERROR("failed to create SSL context, cannot create HTTPS server");
     return false;
   }
 
@@ -414,20 +439,21 @@ bool ApplicationEndpointServer::createSslContext() {
       _sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
 
   if (_sslCache) {
-    LOG(TRACE) << "using SSL session caching";
+    LOG_TRACE("using SSL session caching");
   }
 
   // set options
   SSL_CTX_set_options(_sslContext, (long)_sslOptions);
 
-  LOG(INFO) << "using SSL options: " << _sslOptions;
+  LOG_INFO("using SSL options: %ld", (long)_sslOptions);
 
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'",
+                         _sslCipherList.c_str());
     } else {
-      LOG(INFO) << "using SSL cipher-list '" << _sslCipherList.c_str() << "'";
+      LOG_INFO("using SSL cipher-list '%s'", _sslCipherList.c_str());
     }
   }
 
@@ -440,19 +466,20 @@ bool ApplicationEndpointServer::createSslContext() {
       _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-    LOG(FATAL) << "cannot set SSL session id context '" << _rctx.c_str() << "'"; FATAL_ERROR_EXIT();
+    LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+    LOG_FATAL_AND_EXIT("cannot set SSL session id context '%s'", _rctx.c_str());
   }
 
   // check CA
   if (!_cafile.empty()) {
-    LOG(TRACE) << "trying to load CA certificates from '" << _cafile.c_str() << "'";
+    LOG_TRACE("trying to load CA certificates from '%s'", _cafile.c_str());
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
+                         _cafile.c_str());
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -460,11 +487,12 @@ bool ApplicationEndpointServer::createSslContext() {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG(ERR) << "ssl error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG_ERROR("ssl error: %s", lastSSLError().c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
+                         _cafile.c_str());
     }
 
-    if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
+    if (TRI_IsTraceLogging(__FILE__)) {
       for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
         X509_NAME* cert = sk_X509_NAME_value(certNames, i);
 
@@ -476,10 +504,12 @@ bool ApplicationEndpointServer::createSslContext() {
                               ASN1_STRFLGS_UTF8_CONVERT) &
                                  ~ASN1_STRFLGS_ESC_MSB);
 
+#ifdef TRI_ENABLE_LOGGER
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOG(TRACE) << "name: " << std::string(r, len).c_str();
+          LOG_TRACE("name: %s", std::string(r, len).c_str());
+#endif
         }
       }
     }

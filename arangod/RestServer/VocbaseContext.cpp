@@ -137,7 +137,7 @@ double VocbaseContext::accessSid(std::string const& database,
   return (*it2).second.second;
 }
 
-VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
+VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_server_t* server,
                                TRI_vocbase_t* vocbase)
     : RequestContext(request), _server(server), _vocbase(vocbase) {
   TRI_ASSERT(_server != nullptr);
@@ -184,12 +184,12 @@ char const* VocbaseContext::getRealm() const {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
+GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
   if (!_vocbase->_settings.requireAuthentication) {
     // no authentication required at all
-    return HttpResponse::OK;
+    return GeneralResponse::OK;
   }
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
@@ -200,7 +200,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (ci.endpointType == Endpoint::DOMAIN_UNIX &&
       !_vocbase->_settings.requireAuthenticationUnixSockets) {
     // no authentication required for unix socket domain connections
-    return HttpResponse::OK;
+    return GeneralResponse::OK;
   }
 #endif
 
@@ -212,10 +212,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     if (path != nullptr) {
       // check if path starts with /_
       if (*path != '/') {
-        return HttpResponse::OK;
+        return GeneralResponse::OK;
       }
       if (*path != '\0' && *(path + 1) != '_') {
-        return HttpResponse::OK;
+        return GeneralResponse::OK;
       }
     }
   }
@@ -223,7 +223,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (TRI_IsPrefixString(path, "/_open/") ||
       TRI_IsPrefixString(path, "/_admin/aardvark/") ||
       TRI_EqualString(path, "/")) {
-    return HttpResponse::OK;
+    return GeneralResponse::OK;
   }
 
   // .............................................................................
@@ -259,11 +259,11 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
         if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
           // session has expired
           sids.erase(sid);
-          return HttpResponse::UNAUTHORIZED;
+          return GeneralResponse::UNAUTHORIZED;
         }
 
         (*it2).second.second = now;
-        return HttpResponse::OK;
+        return GeneralResponse::OK;
       }
     }
 
@@ -273,7 +273,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   char const* auth = _request->header("authorization", found);
 
   if (!found || !TRI_CaseEqualString(auth, "basic ", 6)) {
-    return HttpResponse::UNAUTHORIZED;
+    return GeneralResponse::UNAUTHORIZED;
   }
 
   // skip over "basic "
@@ -287,7 +287,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string const expected = ServerState::instance()->getAuthentication();
 
     if (expected.substr(6) != std::string(auth)) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::UNAUTHORIZED;
     }
 
     std::string const up = StringUtils::decodeBase64(auth);
@@ -296,13 +296,13 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
 
-      return HttpResponse::BAD;
+      return GeneralResponse::BAD;
     }
 
     std::string const username = up.substr(0, n);
     _request->setUser(username);
 
-    return HttpResponse::OK;
+    return GeneralResponse::OK;
   }
 
   // look up the info in the cache first
@@ -322,8 +322,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
-      return HttpResponse::BAD;
+      LOG_TRACE(
+          "invalid authentication data found, cannot extract "
+          "username/password");
+      return GeneralResponse::BAD;
     }
 
     username = up.substr(0, n);
@@ -334,7 +336,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
                                         up.substr(n + 1).c_str(), &mustChange);
 
     if (!res) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::UNAUTHORIZED;
     }
   }
 
@@ -342,14 +344,19 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   _request->setUser(username);
 
   if (mustChange) {
-    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
-         _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
+    if ((_request->requestType() == GeneralRequest::HTTP_REQUEST_PUT ||
+         _request->requestType() == GeneralRequest::HTTP_REQUEST_PATCH) &&
         TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
-      return HttpResponse::OK;
+      return GeneralResponse::OK;
     }
 
-    return HttpResponse::FORBIDDEN;
+    return GeneralResponse::FORBIDDEN;
   }
 
-  return HttpResponse::OK;
+  return GeneralResponse::OK;
+}
+
+// @TODO:Create authenticateVStream method
+GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
+  return GeneralResponse::VSTREAM_OK;
 }

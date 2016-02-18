@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "ApplicationServer/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
@@ -37,7 +37,8 @@ namespace arangodb {
 
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
+  
+  RestShutdownHandler(rest::GeneralRequest*, void* applicationServer);
 
  public:
   bool isDirect() const override;

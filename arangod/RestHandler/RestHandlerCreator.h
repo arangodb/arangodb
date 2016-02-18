@@ -28,8 +28,8 @@
 
 namespace arangodb {
 namespace rest {
-class HttpHandler;
-class HttpRequest;
+class GeneralHandler;
+class GeneralRequest;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ class RestHandlerCreator : public H {
   /// @brief create with void pointer data
   //////////////////////////////////////////////////////////////////////////////
 
-  static rest::HttpHandler* create(rest::HttpRequest* request, void* data) {
+  static rest::GeneralHandler* create(rest::GeneralRequest* request, void* data) {
     return new H(request, data);
   }
 
@@ -52,7 +52,7 @@ class RestHandlerCreator : public H {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename D>
-  static rest::HttpHandler* createData(rest::HttpRequest* request, void* data) {
+  static rest::GeneralHandler* createData(rest::GeneralRequest* request, void* data) {
     return new H(request, (D)data);
   }
 
@@ -60,7 +60,7 @@ class RestHandlerCreator : public H {
   /// @brief create without data
   //////////////////////////////////////////////////////////////////////////////
 
-  static rest::HttpHandler* createNoData(rest::HttpRequest* request, void*) {
+  static rest::GeneralHandler* createNoData(rest::GeneralRequest* request, void*) {
     return new H(request);
   }
 };

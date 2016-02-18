@@ -47,7 +47,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   };
 
  public:
-  RestActionHandler(rest::HttpRequest*, action_options_t*);
+  RestActionHandler(rest::GeneralRequest*, action_options_t*);
 
  public:
   bool isDirect() const override;

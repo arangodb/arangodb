@@ -25,15 +25,16 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Logger.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequest.h"
+#include "HttpServer/GeneralHandlerFactory.h"
+#include "HttpServer/GeneralServer.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace std;
 
-RestBatchHandler::RestBatchHandler(HttpRequest* request)
+RestBatchHandler::RestBatchHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 RestBatchHandler::~RestBatchHandler() {}
@@ -42,24 +43,24 @@ RestBatchHandler::~RestBatchHandler() {}
 /// @brief was docuBlock JSF_batch_processing
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestBatchHandler::execute() {
+GeneralHandler::status_t RestBatchHandler::execute() {
   // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+  const GeneralRequest::RequestType type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST &&
-      type != HttpRequest::HTTP_REQUEST_PUT) {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  if (type != GeneralRequest::HTTP_REQUEST_POST &&
+      type != GeneralRequest::HTTP_REQUEST_PUT) {
+    generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status_t(HttpHandler::HANDLER_DONE);
+    return status_t(GeneralHandler::HANDLER_DONE);
   }
 
   std::string boundary;
 
   // invalid content-type or boundary sent
   if (!getBoundary(&boundary)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
-    return status_t(HttpHandler::HANDLER_FAILED);
+    return status_t(GeneralHandler::HANDLER_FAILED);
   }
 
   LOG(TRACE) << "boundary of multipart-message is '" << boundary.c_str() << "'";
@@ -70,7 +71,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   std::string authorization = _request->header("authorization");
 
   // create the response
-  createResponse(HttpResponse::OK);
+  createResponse(GeneralResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
@@ -86,11 +87,11 @@ HttpHandler::status_t RestBatchHandler::execute() {
     // get the next part from the multipart message
     if (!extractPart(&helper)) {
       // error
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
       LOG(WARN) << "received a corrupted multipart message";
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status_t(GeneralHandler::HANDLER_FAILED);
     }
 
     // split part into header & body
@@ -125,15 +126,15 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength).c_str();
-    HttpRequest* request =
-        new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
+    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
+    GeneralRequest* request =
+        new GeneralRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
 
     if (request == nullptr) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status_t(GeneralHandler::HANDLER_FAILED);
     }
 
     // we do not have a client task id here
@@ -154,39 +155,39 @@ HttpHandler::status_t RestBatchHandler::execute() {
       request->setHeader("authorization", 13, authorization.c_str());
     }
 
-    HttpHandler* handler = _server->createHandler(request);
+    GeneralHandler* handler = _server->createHandler(request);
 
     if (!handler) {
       delete request;
 
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                     "could not create handler for batch part processing");
 
-      return status_t(HttpHandler::HANDLER_FAILED);
+      return status_t(GeneralHandler::HANDLER_FAILED);
     }
 
     // start to work for this handler
     {
       HandlerWorkStack work(handler);
-      HttpHandler::status_t status = handler->executeFull();
+      GeneralHandler::status_t status = handler->executeFull();
 
-      if (status._status == HttpHandler::HANDLER_FAILED) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      if (status._status == GeneralHandler::HANDLER_FAILED) {
+        generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status_t(GeneralHandler::HANDLER_FAILED);
       }
 
-      HttpResponse* partResponse = handler->getResponse();
+      GeneralResponse* partResponse = handler->getResponse();
 
       if (partResponse == nullptr) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+        generateError(GeneralResponse::BAD, TRI_ERROR_INTERNAL,
                       "could not create a response for batch part request");
 
-        return status_t(HttpHandler::HANDLER_FAILED);
+        return status_t(GeneralHandler::HANDLER_FAILED);
       }
 
-      const HttpResponse::HttpResponseCode code = partResponse->responseCode();
+      const GeneralResponse::HttpResponseCode code = partResponse->responseCode();
 
       // count everything above 400 as error
       if (code >= 400) {
@@ -196,7 +197,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       // append the boundary for this subpart
       _response->body().appendText(boundary + "\r\nContent-Type: ");
       _response->body().appendText(
-          arangodb::rest::HttpRequest::BatchContentType);
+          arangodb::rest::GeneralRequest::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
@@ -229,12 +230,12 @@ HttpHandler::status_t RestBatchHandler::execute() {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponse::BatchErrorHeader,
+    _response->setHeader(GeneralResponse::BatchErrorHeader,
                          StringUtils::itoa(errors));
   }
 
   // success
-  return status_t(HttpHandler::HANDLER_DONE);
+  return status_t(GeneralHandler::HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +289,7 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
-  if (parts.size() != 2 || parts[0] != HttpRequest::MultiPartContentType) {
+  if (parts.size() != 2 || parts[0] != GeneralRequest::MultiPartContentType) {
     // content-type is not formatted as expected
     return false;
   }
@@ -452,10 +453,10 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
-        if (arangodb::rest::HttpRequest::BatchContentType == value) {
+        if (arangodb::rest::GeneralRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG(WARN) << "unexpected content-type '" << value.c_str() << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType.c_str() << "'";
+          LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'", value.c_str(), arangodb::rest::GeneralRequest::BatchContentType.c_str());
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

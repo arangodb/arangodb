@@ -93,7 +93,7 @@ class EndpointUnixDomain final : public Endpoint {
   std::string getHost() const override { return "localhost"; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host string for HTTP requests
+  /// @brief get host string for HTTP/Vstream requests
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getHostString() const override { return "localhost"; }

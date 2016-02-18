@@ -23,37 +23,37 @@
 
 #include "RestQueryCacheHandler.h"
 #include "Aql/QueryCache.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryCacheHandler::RestQueryCacheHandler(HttpRequest* request)
+RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
 
-HttpHandler::status_t RestQueryCacheHandler::execute() {
+GeneralHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::HTTP_REQUEST_DELETE:
       clearCache();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::HTTP_REQUEST_GET:
       readProperties();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::HTTP_REQUEST_PUT:
       replaceProperties();
       break;
 
-    case HttpRequest::HTTP_REQUEST_POST:
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
+    case GeneralRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
@@ -75,7 +75,7 @@ bool RestQueryCacheHandler::clearCache() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("code", VPackValue(GeneralResponse::OK));
     result.close();
     VPackSlice slice = result.slice();
     generateResult(slice);
@@ -118,7 +118,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
@@ -134,7 +134,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON-Object body");
     return true;
   }

@@ -25,7 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 
 namespace arangodb {
 
@@ -33,9 +33,9 @@ namespace arangodb {
 /// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestPleaseUpgradeHandler : public rest::HttpHandler {
+class RestPleaseUpgradeHandler : public rest::GeneralHandler {
  public:
-  explicit RestPleaseUpgradeHandler(rest::HttpRequest*);
+  explicit RestPleaseUpgradeHandler(rest::GeneralRequest*);
 
  public:
   bool isDirect() const override;

@@ -51,7 +51,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
@@ -118,7 +118,7 @@ static std::string ToString(std::vector<T> const& v) {
 /// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
+void ArangoServer::defineHandlers(GeneralHandlerFactory* factory) {
   // First the "_api" handlers:
 
   // add an upgrade warning
@@ -265,7 +265,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(
-    arangodb::rest::HttpRequest* request, TRI_server_t* server) {
+    arangodb::rest::GeneralRequest* request, TRI_server_t* server) {
   // get the request endpoint
   ConnectionInfo const& ci = request->connectionInfo();
   std::string const& endpoint = ci.endpoint;
@@ -325,7 +325,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext(arangodb::rest::HttpRequest* request,
+static bool SetRequestContext(arangodb::rest::GeneralRequest* request,
                               void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
@@ -616,7 +616,7 @@ void ArangoServer::buildApplicationServer() {
                            "number of threads for basic operations")(
               "server.additional-threads", &_additionalThreads,
               "number of threads in additional queues")(
-              "server.hide-product-header", &HttpResponse::HideProductHeader,
+              "server.hide-product-header", &GeneralResponse::HideProductHeader,
               "do not expose \"Server: ArangoDB\" header in HTTP responses")(
               "server.foxx-queues", &_foxxQueues, "enable Foxx queues")(
               "server.foxx-queues-poll-interval", &_foxxQueuesPollInterval,
@@ -1037,12 +1037,12 @@ int ArangoServer::startupServer() {
 
   if (startServer) {
     // start with enabled maintenance mode
-    HttpHandlerFactory::setMaintenance(true);
+    GeneralHandlerFactory::setMaintenance(true);
 
     // create the server
     _applicationEndpointServer->buildServers();
 
-    HttpHandlerFactory* handlerFactory =
+    GeneralHandlerFactory* handlerFactory =
         _applicationEndpointServer->getHandlerFactory();
 
     defineHandlers(handlerFactory);
@@ -1348,7 +1348,7 @@ void ArangoServer::waitForHeartbeat() {
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   // disabled maintenance mode
   waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
+  GeneralHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
   _applicationServer->wait();
@@ -1372,7 +1372,7 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
 
   // disabled maintenance mode
   waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
+  GeneralHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
   _applicationServer->wait();

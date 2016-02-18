@@ -33,9 +33,45 @@
 #include "Basics/WorkItem.h"
 
 namespace arangodb {
+namespace rest {
+class GeneralHandler;
+}
+}
+
+namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of the current work
+////////////////////////////////////////////////////////////////////////////////
+
+enum class WorkType { THREAD, HANDLER, CUSTOM };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief description of the current work
+////////////////////////////////////////////////////////////////////////////////
+
+struct WorkDescription {
+  WorkDescription(WorkType, WorkDescription*);
+
+  WorkType _type;
+  bool _destroy;
+
+  char _customType[16];
+
+  union data {
+    data() {}
+    ~data() {}
+
+    char text[256];
+    arangodb::basics::Thread* thread;
+    arangodb::rest::GeneralHandler* handler;
+  } _data;
+
+  WorkDescription* _prev;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work monitor class
@@ -105,13 +141,13 @@ class WorkMonitor : public Thread {
   /// @brief pushes a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static void pushHandler(arangodb::rest::HttpHandler*);
+  static void pushHandler(arangodb::rest::GeneralHandler*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pops and releases a handler
   //////////////////////////////////////////////////////////////////////////////
 
-  static WorkDescription* popHandler(arangodb::rest::HttpHandler*, bool free);
+  static WorkDescription* popHandler(arangodb::rest::GeneralHandler*, bool free);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief requests a work overview
@@ -144,7 +180,7 @@ class WorkMonitor : public Thread {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auto push and pop for HttpHandler
+/// @brief auto push and pop for GeneralHandler
 ////////////////////////////////////////////////////////////////////////////////
 
 class HandlerWorkStack {
@@ -152,9 +188,10 @@ class HandlerWorkStack {
   HandlerWorkStack& operator=(const HandlerWorkStack&) = delete;
 
  public:
-  explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
+  explicit HandlerWorkStack(arangodb::rest::GeneralHandler*);
 
-  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
+
+  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::GeneralHandler>&);
 
   ~HandlerWorkStack();
 
@@ -163,14 +200,14 @@ class HandlerWorkStack {
   /// @brief returns the handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* handler() const { return _handler; }
+  arangodb::rest::GeneralHandler* handler() const { return _handler; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::HttpHandler* _handler;
+  arangodb::rest::GeneralHandler* _handler;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

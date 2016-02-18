@@ -42,7 +42,7 @@ class QueryRegistry;
 }
 
 namespace rest {
-class HttpRequest;
+class GeneralRequest;
 class ApplicationDispatcher;
 class ApplicationScheduler;
 }

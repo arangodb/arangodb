@@ -30,7 +30,9 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
 #include "Replication/InitialSyncer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/SslInterface.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
@@ -1183,7 +1185,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      _client->request(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from master at " +
@@ -1340,8 +1342,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(_masterIs27OrHigher ? HttpRequest::HTTP_REQUEST_PUT
-                                           : HttpRequest::HTTP_REQUEST_GET,
+      _client->request(_masterIs27OrHigher ? GeneralRequest::HTTP_REQUEST_PUT
+                                           : GeneralRequest::HTTP_REQUEST_GET,
                        url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {

@@ -32,10 +32,10 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                         HttpHandlerFactory* handlerFactory,
+                         GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
-    : HttpServer(scheduler, dispatcher, handlerFactory, jobManager,
+    : GeneralServer(scheduler, dispatcher, handlerFactory, jobManager,
                  keepAliveTimeout),
       _ctx(ctx),
       _verificationMode(SSL_VERIFY_NONE),
@@ -60,7 +60,7 @@ void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
   _verificationCallback = func;
 }
 
-HttpCommTask* HttpsServer::createCommTask(TRI_socket_t s,
+ArangoTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           const ConnectionInfo& info) {
   return new HttpsCommTask(this, s, info, _keepAliveTimeout, _ctx,
                            _verificationMode, _verificationCallback);

@@ -25,7 +25,7 @@
 #define ARANGOD_HTTP_SERVER_PATH_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/GeneralHandler.h"
 
 namespace arangodb {
 namespace rest {
@@ -34,7 +34,7 @@ namespace rest {
 /// @brief path handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class PathHandler : public HttpHandler {
+class PathHandler : public GeneralHandler {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief path options
@@ -67,14 +67,14 @@ class PathHandler : public HttpHandler {
   /// @brief factory methods
   //////////////////////////////////////////////////////////////////////////////
 
-  static HttpHandler* create(HttpRequest* request, void* data) {
+  static GeneralHandler* create(GeneralRequest* request, void* data) {
     Options* options = static_cast<Options*>(data);
 
     return new PathHandler(request, options);
   }
 
  public:
-  PathHandler(HttpRequest* request, Options const* options);
+  PathHandler(GeneralRequest* request, Options const* options);
 
  public:
   bool isDirect() const override { return true; }

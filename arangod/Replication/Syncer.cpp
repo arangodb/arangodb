@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -703,7 +703,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   _client->_retryWaitTime = 500 * 1000;
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->retryRequest(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
+      _client->retryRequest(GeneralRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   // restore old settings
   _client->_maxRetries = maxRetries;

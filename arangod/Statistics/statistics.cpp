@@ -514,7 +514,7 @@ void TRI_InitializeStatistics() {
   TRI_MethodRequestsStatistics.clear();
 
   for (int i = 0;
-       i < ((int)arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+       i < ((int)arangodb::rest::GeneralRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }

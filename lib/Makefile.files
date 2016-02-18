@@ -74,17 +74,21 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/WorkMonitor.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
+	lib/Rest/ArangoResponse.cpp \
 	lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp \
 	lib/Rest/EndpointIpV4.cpp \
 	lib/Rest/EndpointIpV6.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/EndpointUnixDomain.cpp \
-	lib/Rest/HttpRequest.cpp \
+	lib/Rest/GeneralRequest.cpp \
+	lib/Rest/GeneralResponse.cpp \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/InitializeRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
+	lib/Rest/VelocyResponse.cpp \
+	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellBase.cpp \

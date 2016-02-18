@@ -27,8 +27,11 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
-#include "HttpServer/HttpHandlerFactory.h"
+
+#include <openssl/ssl.h>
+
 #include "Rest/EndpointList.h"
+#include "HttpServer/GeneralHandlerFactory.h"
 
 #include <openssl/ssl.h>
 
@@ -37,7 +40,7 @@ namespace rest {
 class ApplicationDispatcher;
 class ApplicationScheduler;
 class AsyncJobManager;
-class HttpServer;
+class GeneralServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application http server feature
@@ -52,7 +55,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   ApplicationEndpointServer(ApplicationServer*, ApplicationScheduler*,
                             ApplicationDispatcher*, AsyncJobManager*,
                             std::string const&,
-                            HttpHandlerFactory::context_fptr, void*);
+                            GeneralHandlerFactory::context_fptr, void*);
 
   ~ApplicationEndpointServer();
 
@@ -67,7 +70,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief get the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* getHandlerFactory() const { return _handlerFactory; }
+  GeneralHandlerFactory* getHandlerFactory() const { return _handlerFactory; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the server basepath
@@ -153,7 +156,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief set context callback function
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory::context_fptr _setContext;
+  GeneralHandlerFactory::context_fptr _setContext;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief context data passed to callback functions
@@ -165,13 +168,13 @@ class ApplicationEndpointServer : public ApplicationFeature {
   /// @brief the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _handlerFactory;
+  GeneralHandlerFactory* _handlerFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all constructed servers
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<HttpServer*> _servers;
+  std::vector<GeneralServer*> _servers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server basepath

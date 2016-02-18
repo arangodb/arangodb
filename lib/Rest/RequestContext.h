@@ -26,13 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Rest/RequestUser.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
 namespace rest {
 
-class HttpRequest;
+class GeneralRequest;
 
 class RequestContext {
  public:
@@ -40,7 +40,7 @@ class RequestContext {
   /// @brief create the request context
   //////////////////////////////////////////////////////////////////////////////
 
-  RequestContext(HttpRequest* request) : _request(request) {}
+  RequestContext(GeneralRequest* request) : _request(request) {}
 
   virtual ~RequestContext() {}
 
@@ -65,14 +65,20 @@ class RequestContext {
   /// @brief authenticate user
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpResponse::HttpResponseCode authenticate() = 0;
+  virtual GeneralResponse::HttpResponseCode authenticate() = 0;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief authenticate user (vstream)
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual GeneralResponse::VstreamResponseCode authenticateVstream() = 0;
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the request of the context
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest* _request;
+  GeneralRequest* _request;
 };
 }
 }

@@ -44,7 +44,7 @@ static arangodb::Mutex ExecutorLock;
 
 ServerJob::ServerJob(HeartbeatThread* heartbeat, TRI_server_t* server,
                      ApplicationV8* applicationV8)
-    : Job("HttpServerJob"),
+    : Job("GeneralServerJob"),
       _heartbeat(heartbeat),
       _server(server),
       _applicationV8(applicationV8),

@@ -43,7 +43,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/Version.h"
 #include "V8/JSLoader.h"
@@ -672,7 +672,7 @@ static void ClientConnection_ConstructorCallback(
   }
 
   if (connection->isConnected() &&
-      connection->getLastHttpReturnCode() == HttpResponse::OK) {
+      connection->getLastHttpReturnCode() == GeneralResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '"
       << BaseClient.endpointServer()->getSpecification() << "', version "
@@ -770,7 +770,7 @@ static void ClientConnection_reconnect(
   V8ClientConnection* newConnection = CreateConnection();
 
   if (newConnection->isConnected() &&
-      newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
+      newConnection->getLastHttpReturnCode() == GeneralResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '"
       << BaseClient.endpointServer()->getSpecification()
@@ -2092,7 +2092,7 @@ static bool PrintHelo(bool useServer) {
 
     if (useServer) {
       if (ClientConnection && ClientConnection->isConnected() &&
-          ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
+          ClientConnection->getLastHttpReturnCode() == GeneralResponse::OK) {
         ostringstream is;
         is << "Connected to ArangoDB '" << BaseClient.endpointString()
            << "' version: " << ClientConnection->getVersion() << " ["

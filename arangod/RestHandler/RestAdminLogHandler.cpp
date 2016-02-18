@@ -28,13 +28,14 @@
 
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/logging.h"
+#include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
+RestAdminLogHandler::RestAdminLogHandler(rest::GeneralRequest* request)
     : RestBaseHandler(request) {}
 
 bool RestAdminLogHandler::isDirect() const { return true; }
@@ -43,10 +44,10 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_admin_modules_flush
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestAdminLogHandler::execute() {
+GeneralHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::FORBIDDEN,
+    generateError(GeneralResponse::FORBIDDEN,
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return status_t(HANDLER_DONE);
   }
@@ -85,7 +86,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = LogLevel::TRACE;
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
@@ -144,7 +145,23 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     for (auto entry : entries) {
       std::string text = StringUtils::tolower(entry._message);
 
+// <<<<<<< HEAD
       if (text.find(searchString) == std::string::npos) {
+// =======
+//   if (logs == nullptr) {
+//     generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+//     return status_t(HANDLER_DONE);
+//   }
+
+//   std::vector<TRI_log_buffer_t*> clean;
+//   for (size_t i = 0; i < TRI_LengthVector(logs); ++i) {
+//     TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
+
+//     if (search) {
+//       std::string text = StringUtils::tolower(buf->_text);
+
+//       if (text.find(searchString) == string::npos) {
+// >>>>>>> velocystream
         continue;
       }
 

@@ -23,13 +23,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H
+#define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
 
 #include "Basics/Mutex.h"
-#include "HttpServer/HttpHandler.h"
+#include "Basics/SpinLock.h"
+#include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
+
+#include "HttpServer/ArangoTask.h"
 #include "Scheduler/TaskManager.h"
+#include "VelocyServer/VelocyCommTask.h"
+
 
 namespace arangodb {
 namespace rest {
@@ -37,9 +42,11 @@ namespace rest {
 class AsyncJobManager;
 class Dispatcher;
 class EndpointList;
-class HttpServerJob;
+class GeneralServerJob;
 class HttpCommTask;
-class HttpHandlerFactory;
+class ArangoTask;
+class VelocyCommTask;
+class GeneralHandlerFactory;
 class Job;
 class ListenTask;
 
@@ -47,10 +54,11 @@ class ListenTask;
 /// @brief general server
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpServer : protected TaskManager {
-  HttpServer(HttpServer const&) = delete;
-  HttpServer const& operator=(HttpServer const&) = delete;
+class GeneralServer : protected TaskManager {
+  GeneralServer(GeneralServer const&) = delete;
+  GeneralServer const& operator=(GeneralServer const&) = delete;
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint server
@@ -58,26 +66,37 @@ class HttpServer : protected TaskManager {
 
   static int sendChunk(uint64_t, std::string const&);
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new general server with dispatcher and job manager
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
+  GeneralServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
              double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a general server
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~HttpServer();
+  virtual ~GeneralServer();
 
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the protocol
+  /// @brief returns the protocol @TODO: Change it to conditional argument
   //////////////////////////////////////////////////////////////////////////////
 
   virtual char const* protocol() const { return "http"; }
+
+  //   virtual char const* protocol() const { 
+  //   if(_isHttp) {
+  //     return "http";
+  //   } else{
+  //     return "vstream"
+  //   }  
+  // }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the encryption to be used
@@ -91,8 +110,10 @@ class HttpServer : protected TaskManager {
   /// @brief generates a suitable communication task
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
+  virtual ArangoTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
+  virtual VelocyCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&, bool);
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the scheduler
@@ -116,7 +137,7 @@ class HttpServer : protected TaskManager {
   /// @brief return the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* handlerFactory() const { return _handlerFactory; }
+  GeneralHandlerFactory* handlerFactory() const { return _handlerFactory; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds the endpoint list
@@ -146,44 +167,65 @@ class HttpServer : protected TaskManager {
   /// @brief handles connection request
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleConnected(TRI_socket_t s, const ConnectionInfo& info);
+  void handleConnected(TRI_socket_t s, const ConnectionInfo& info, bool isHttp);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection close
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationClosed(HttpCommTask*);
+  void handleCommunicationClosed(ArangoTask*);
+
+  // Overloading for VelocyServer
+
+  // void handleCommunicationClosed(VelocyCommTask*);
+
+  // // Trial purpose @TODO remove it
+
+  // void handleCommunicationClosed(ArangoTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection failure
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationFailure(HttpCommTask*);
+  void handleCommunicationFailure(ArangoTask*);
+
+  // Overloading for VelocyServer
+
+  // void handleCommunicationFailure(VelocyCommTask*);
+
+  // // Overloading for VelocyServer
+
+  // void handleCommunicationFailure(ArangoTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a job for asynchronous execution
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequestAsync(arangodb::WorkItem::uptr<HttpHandler>&,
+  bool handleRequestAsync(arangodb::WorkItem::uptr<GeneralHandler>&,
                           uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes the handler directly or add it to the queue
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<HttpHandler>&);
+  bool handleRequest(ArangoTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
 
+  // Overloading for VelocyStream
+
+  // bool handleRequest(VelocyCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Handler, Job, and Task tuple
   //////////////////////////////////////////////////////////////////////////////
 
   struct handler_task_job_t {
-    HttpHandler* _handler;
-    HttpCommTask* _task;
-    HttpServerJob* _job;
+    GeneralHandler* _handler;
+    ArangoTask* _task;
+    GeneralServerJob* _job;
   };
 
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens a listen port
@@ -195,14 +237,19 @@ class HttpServer : protected TaskManager {
   /// @brief handle request directly
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleRequestDirectly(HttpCommTask* task, HttpHandler* handler);
+  void handleRequestDirectly(ArangoTask* task, GeneralHandler* handler);
+
+  // Overloading for VelocyStream
+
+  void handleRequestDirectly(VelocyCommTask* task, GeneralHandler* handler);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerHandler(HttpHandler* handler, HttpCommTask* task);
+  void registerHandler(GeneralHandler* handler, ArangoTask* task);
 
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the scheduler
@@ -220,7 +267,7 @@ class HttpServer : protected TaskManager {
   /// @brief the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory* _handlerFactory;
+  GeneralHandlerFactory* _handlerFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the job manager
@@ -244,13 +291,25 @@ class HttpServer : protected TaskManager {
   /// @brief mutex for comm tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _commTasksLock;
+  arangodb::basics::Mutex _commTasksLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief active comm tasks
+  /// @brief active comm tasks(Http)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_set<HttpCommTask*> _commTasks;
+  std::unordered_set<ArangoTask*> _commTasks;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief active comm tasks(VelocyStream)
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<VelocyCommTask*> _commTasksVstream;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief to judge whether the request received is Http or VelocyStream
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool _isHttp;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keep-alive timeout
@@ -262,3 +321,5 @@ class HttpServer : protected TaskManager {
 }
 
 #endif
+
+

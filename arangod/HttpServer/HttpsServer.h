@@ -24,7 +24,7 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTPS_SERVER_H
 #define ARANGOD_HTTP_SERVER_HTTPS_SERVER_H 1
 
-#include "HttpServer/HttpServer.h"
+#include "HttpServer/GeneralServer.h"
 
 #include <openssl/ssl.h>
 
@@ -35,13 +35,13 @@ namespace rest {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-class HttpsServer : public HttpServer {
+class HttpsServer : public GeneralServer {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new http server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpsServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
+  HttpsServer(Scheduler*, Dispatcher*, GeneralHandlerFactory*, AsyncJobManager*,
               double keepAliveTimeout, SSL_CTX*);
 
   ~HttpsServer();
@@ -66,7 +66,7 @@ class HttpsServer : public HttpServer {
     return Endpoint::ENCRYPTION_SSL;
   }
 
-  HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
+  ArangoTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

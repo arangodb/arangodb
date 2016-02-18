@@ -37,7 +37,7 @@ std::string const graphs = "_graphs";
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
     auto headers = std::make_unique<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::string resultBody;

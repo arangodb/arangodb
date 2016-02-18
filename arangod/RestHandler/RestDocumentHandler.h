@@ -35,7 +35,8 @@ namespace arangodb {
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestDocumentHandler(rest::HttpRequest*);
+
+  explicit RestDocumentHandler(rest::GeneralRequest*);
 
  public:
   status_t execute() override final;

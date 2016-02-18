@@ -26,10 +26,10 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/Logger.h"
-#include "HttpServer/HttpHandler.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "HttpServer/HttpServer.h"
+#include "Basics/logging.h"
+#include "HttpServer/GeneralHandler.h"
+#include "HttpServer/GeneralHandlerFactory.h"
+#include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
@@ -37,49 +37,17 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief static initializers
-////////////////////////////////////////////////////////////////////////////////
-
-size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
-size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //   1 GB
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
+HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
-    : Task("HttpCommTask"),
-      SocketTask(socket, keepAliveTimeout),
-      _connectionInfo(info),
-      _server(server),
-      _writeBuffers(),
-      _writeBuffersStats(),
+    :Task("HttpCommTask"), 
+    ArangoTask(server, socket, info, keepAliveTimeout, "HttpCommTask", 
+                            GeneralRequest::HTTP_UNKNOWN, GeneralRequest::HTTP_REQUEST_ILLEGAL),
       _readPosition(0),
       _bodyPosition(0),
-      _bodyLength(0),
-      _requestPending(false),
-      _closeRequested(false),
-      _readRequestBody(false),
-      _denyCredentials(false),
-      _acceptDeflate(false),
-      _newRequest(true),
-      _isChunked(false),
-      _request(nullptr),
-      _httpVersion(HttpRequest::HTTP_UNKNOWN),
-      _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
-      _fullUrl(),
-      _origin(),
-      _startPosition(0),
-      _sinceCompactification(0),
-      _originalBodyLength(0),
-      _setupDone(false) {
-  LOG(TRACE) << "connection established, client " << TRI_get_fd_or_handle_of_socket(socket) << ", server ip " << _connectionInfo.serverAddress.c_str() << ", server port " << _connectionInfo.serverPort << ", client ip " << _connectionInfo.clientAddress.c_str() << ", client port " << _connectionInfo.clientPort;
-
-  // acquire a statistics entry and set the type to HTTP
-  ConnectionStatisticsAgent::acquire();
-  connectionStatisticsAgentSetStart();
+      _startPosition(0) {
   connectionStatisticsAgentSetHttp();
 }
 
@@ -88,7 +56,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask() {
-  LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+  // LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
 
   // free write buffers and statistics
   for (auto& i : _writeBuffers) {
@@ -101,22 +69,6 @@ HttpCommTask::~HttpCommTask() {
 
   // free request
   delete _request;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles response
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::handleResponse(HttpResponse* response) {
-  if (response->isChunked()) {
-    _requestPending = true;
-    _isChunked = true;
-  } else {
-    _requestPending = false;
-    _isChunked = false;
-  }
-
-  addResponse(response);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,8 +91,8 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _httpVersion = HttpRequest::HTTP_UNKNOWN;
-      _requestType = HttpRequest::HTTP_REQUEST_ILLEGAL;
+      _httpVersion = GeneralRequest::HTTP_UNKNOWN;
+      _requestType = GeneralRequest::HTTP_REQUEST_ILLEGAL;
       _fullUrl = "";
       _denyCredentials = false;
       _acceptDeflate = false;
@@ -171,10 +123,11 @@ bool HttpCommTask::processRead() {
     size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG(WARN) << "maximal header size is " << MaximalHeaderSize << ", request header size is " << headerLength;
+      LOG_WARNING("maximal header size is %d, request header size is %d",
+                  (int)MaximalHeaderSize, (int)headerLength);
 
       // header is too large
-      HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
+      GeneralResponse response(GeneralResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
                             getCompatibility());
 
       // we need to close the connection, because there is no way we
@@ -189,8 +142,9 @@ bool HttpCommTask::processRead() {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer->c_str() + 4;
 
-      LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": " << std::string(_readBuffer->c_str() + _startPosition,
-                            _readPosition - _startPosition).c_str();
+      LOG_TRACE("HTTP READ FOR %p: %s", (void*)this,
+                std::string(_readBuffer->c_str() + _startPosition,
+                            _readPosition - _startPosition).c_str());
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
@@ -200,10 +154,10 @@ bool HttpCommTask::processRead() {
           _readPosition - _startPosition);
 
       if (_request == nullptr) {
-        LOG(ERR) << "cannot generate request";
+        LOG_ERROR("cannot generate request");
 
         // internal server error
-        HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
+        GeneralResponse response(GeneralResponse::SERVER_ERROR, getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know how to remove the body and then continue
@@ -216,11 +170,11 @@ bool HttpCommTask::processRead() {
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
-      _httpVersion = _request->httpVersion();
+      _httpVersion = _request->protocolVersion();
 
-      if (_httpVersion != HttpRequest::HTTP_1_0 &&
-          _httpVersion != HttpRequest::HTTP_1_1) {
-        HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED,
+      if (_httpVersion != GeneralRequest::HTTP_1_0 &&
+          _httpVersion != GeneralRequest::HTTP_1_1) {
+        GeneralResponse response(GeneralResponse::HTTP_VERSION_NOT_SUPPORTED,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -235,7 +189,7 @@ bool HttpCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG,
+        GeneralResponse response(GeneralResponse::REQUEST_URI_TOO_LONG,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -250,7 +204,9 @@ bool HttpCommTask::processRead() {
       // and ports
       _request->setProtocol(_server->protocol());
 
-      LOG(TRACE) << "server port " << _connectionInfo.serverPort << ", client port " << _connectionInfo.clientPort;
+      LOG_TRACE("server port %d, client port %d",
+                (int)_connectionInfo.serverPort,
+                (int)_connectionInfo.clientPort);
 
       // set body start to current position
       _bodyPosition = _readPosition;
@@ -280,21 +236,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case HttpRequest::HTTP_REQUEST_GET:
-        case HttpRequest::HTTP_REQUEST_DELETE:
-        case HttpRequest::HTTP_REQUEST_HEAD:
-        case HttpRequest::HTTP_REQUEST_OPTIONS:
-        case HttpRequest::HTTP_REQUEST_POST:
-        case HttpRequest::HTTP_REQUEST_PUT:
-        case HttpRequest::HTTP_REQUEST_PATCH: {
+        case GeneralRequest::HTTP_REQUEST_GET:
+        case GeneralRequest::HTTP_REQUEST_DELETE:
+        case GeneralRequest::HTTP_REQUEST_HEAD:
+        case GeneralRequest::HTTP_REQUEST_OPTIONS:
+        case GeneralRequest::HTTP_REQUEST_POST:
+        case GeneralRequest::HTTP_REQUEST_PUT:
+        case GeneralRequest::HTTP_REQUEST_PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == HttpRequest::HTTP_REQUEST_POST ||
-               _requestType == HttpRequest::HTTP_REQUEST_PUT ||
-               _requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-               _requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
-               _requestType == HttpRequest::HTTP_REQUEST_DELETE);
+              (_requestType == GeneralRequest::HTTP_REQUEST_POST ||
+               _requestType == GeneralRequest::HTTP_REQUEST_PUT ||
+               _requestType == GeneralRequest::HTTP_REQUEST_PATCH ||
+               _requestType == GeneralRequest::HTTP_REQUEST_OPTIONS ||
+               _requestType == GeneralRequest::HTTP_REQUEST_DELETE);
 
           if (!checkContentLength(expectContentLength)) {
             return false;
@@ -314,10 +270,12 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l).c_str() << "'";
+          LOG_WARNING(
+              "got corrupted HTTP request '%s'",
+              std::string(_readBuffer->c_str() + _startPosition, l).c_str());
 
           // bad request, method not allowed
-          HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
+          GeneralResponse response(GeneralResponse::METHOD_NOT_ALLOWED,
                                 getCompatibility());
 
           // we need to close the connection, because there is no way we
@@ -344,9 +302,9 @@ bool HttpCommTask::processRead() {
 
       if (scheduler != nullptr && !scheduler->isActive()) {
         // server is inactive and will intentionally respond with HTTP 503
-        LOG(TRACE) << "cannot serve request - server is inactive";
+        LOG_TRACE("cannot serve request - server is inactive");
 
-        HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE,
+        GeneralResponse response(GeneralResponse::SERVICE_UNAVAILABLE,
                               getCompatibility());
 
         // we need to close the connection, because there is no way we
@@ -363,7 +321,7 @@ bool HttpCommTask::processRead() {
         std::string const& expect = _request->header("expect", found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
-          LOG(TRACE) << "received a 100-continue request";
+          LOG_TRACE("received a 100-continue request");
 
           auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
           buffer->appendText(
@@ -395,11 +353,11 @@ bool HttpCommTask::processRead() {
       return false;
     }
 
-    // read "bodyLength" from read buffer and add this body to "httpRequest"
+    // read "bodyLength" from read buffer and add this body to "GeneralRequest"
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
-    LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
-                                _bodyLength).c_str();
+    LOG_TRACE("%s", std::string(_readBuffer->c_str() + _bodyPosition,
+                                _bodyLength).c_str());
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -423,7 +381,7 @@ bool HttpCommTask::processRead() {
                                          _bodyLength);
 
   bool const isOptionsRequest =
-      (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+      (_requestType == GeneralRequest::HTTP_REQUEST_OPTIONS);
   resetState(false);
 
   // .............................................................................
@@ -436,17 +394,17 @@ bool HttpCommTask::processRead() {
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close
     // the connection
-    LOG(DEBUG) << "connection close requested by client";
+    LOG_DEBUG("connection close requested by client");
     _closeRequested = true;
   } else if (_request->isHttp10() && connectionType != "keep-alive") {
     // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
     // we should close the connection
-    LOG(DEBUG) << "no keep-alive, connection close requested by client";
+    LOG_DEBUG("no keep-alive, connection close requested by client");
     _closeRequested = true;
   } else if (_keepAliveTimeout <= 0.0) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
-    LOG(DEBUG) << "keep-alive disabled by admin";
+    LOG_DEBUG("keep-alive disabled by admin");
     _closeRequested = true;
   }
 
@@ -459,12 +417,12 @@ bool HttpCommTask::processRead() {
 
   auto const compatibility = _request->compatibility();
 
-  HttpResponse::HttpResponseCode authResult =
+  GeneralResponse::HttpResponseCode authResult =
       _server->handlerFactory()->authenticateRequest(_request);
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
-  if (authResult == HttpResponse::OK || isOptionsRequest) {
+  if (authResult == GeneralResponse::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
       processCorsOptions(compatibility);
@@ -474,8 +432,8 @@ bool HttpCommTask::processRead() {
   }
 
   // not found
-  else if (authResult == HttpResponse::NOT_FOUND) {
-    HttpResponse response(authResult, compatibility);
+  else if (authResult == GeneralResponse::NOT_FOUND) {
+    GeneralResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
@@ -492,8 +450,8 @@ bool HttpCommTask::processRead() {
   }
 
   // forbidden
-  else if (authResult == HttpResponse::FORBIDDEN) {
-    HttpResponse response(authResult, compatibility);
+  else if (authResult == GeneralResponse::FORBIDDEN) {
+    GeneralResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
     response.body()
@@ -510,7 +468,7 @@ bool HttpCommTask::processRead() {
 
   // not authenticated
   else {
-    HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
+    GeneralResponse response(GeneralResponse::UNAUTHORIZED, compatibility);
     std::string const realm =
         "basic realm=\"" +
         _server->handlerFactory()->authenticationRealm(_request) + "\"";
@@ -528,59 +486,15 @@ bool HttpCommTask::processRead() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends more chunked data
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::sendChunk(StringBuffer* buffer) {
-  if (_isChunked) {
-    TRI_ASSERT(buffer != nullptr);
-
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(nullptr);
-
-    fillWriteBuffer();
-  } else {
-    delete buffer;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief chunking is finished
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::finishedChunked() {
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6);
-  buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
-
-  _writeBuffers.push_back(buffer.get());
-  buffer.release();
-  _writeBuffersStats.push_back(nullptr);
-
-  _isChunked = false;
-  _requestPending = false;
-
-  fillWriteBuffer();
-  processRead();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief task set up complete
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::setupDone() {
-  _setupDone.store(true, std::memory_order_relaxed);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::addResponse(HttpResponse* response) {
+void HttpCommTask::addResponse(GeneralResponse* response) {
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
-    LOG(TRACE) << "handling CORS response";
+    LOG_TRACE("handling CORS response");
 
     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
                         "etag, content-encoding, content-length, location, "
@@ -604,7 +518,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   size_t const responseBodyLength = response->bodySize();
 
-  if (_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType == GeneralRequest::HTTP_REQUEST_HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -619,7 +533,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   //   }
   // }
 
-  // reserve a buffer with some spare capacity
+  //reserve a buffer with some spare capacity
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
                                                responseBodyLength + 128);
 
@@ -627,7 +541,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType != GeneralRequest::HTTP_REQUEST_HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -643,7 +557,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
-  LOG(TRACE) << "HTTP WRITE FOR " << (void*)this << ": " << b->c_str();
+  LOG_TRACE("HTTP WRITE FOR %p: %s", (void*)this, b->c_str());
 
   // clear body
   response->body().clear();
@@ -652,15 +566,15 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-  LOG_TOPIC(INFO, Logger::REQUESTS) 
-      << "\"http-request\",\"" << _connectionInfo.clientAddress 
-      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_httpVersion) << "\"," 
-      << static_cast<int>(response->responseCode()) << "," 
-      << _originalBodyLength << "," 
-      << responseBodyLength << ",\"" 
-      << _fullUrl << "\","
-      << Logger::DURATION(totalTime, 6);
+  // disable the following statement to prevent excessive logging of incoming
+  // requests
+  LOG_USAGE(
+      ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+      _connectionInfo.clientAddress.c_str(),
+      GeneralRequest::translateMethod(_requestType).c_str(),
+      GeneralRequest::translateVersion(_httpVersion).c_str(),
+      (int)response->responseCode(), (unsigned long long)_originalBodyLength,
+      (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
 
   // start output
   fillWriteBuffer();
@@ -675,7 +589,7 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    HttpResponse response(HttpResponse::LENGTH_REQUIRED, getCompatibility());
+    GeneralResponse response(GeneralResponse::LENGTH_REQUIRED, getCompatibility());
 
     resetState(true);
     handleResponse(&response);
@@ -687,14 +601,17 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
     // content-length header was sent but the request method does not support
     // that
     // we'll warn but read the body anyway
-    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this should not happen";
+    LOG_WARNING(
+        "received HTTP GET/HEAD request with content-length, this should not "
+        "happen");
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG(WARN) << "maximal body size is " << MaximalBodySize << ", request body size is " << bodyLength;
+    LOG_WARNING("maximal body size is %d, request body size is %d",
+                (int)MaximalBodySize, (int)bodyLength);
 
     // request entity too large
-    HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE,
+    GeneralResponse response(GeneralResponse::REQUEST_ENTITY_TOO_LARGE,
                           getCompatibility());
 
     resetState(true);
@@ -717,36 +634,18 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the write buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handles CORS options
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
   std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
-  HttpResponse response(HttpResponse::OK, compatibility);
+  GeneralResponse response(GeneralResponse::OK, compatibility);
 
   response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
 
   if (!_origin.empty()) {
-    LOG(TRACE) << "got CORS preflight request";
+    LOG_TRACE("got CORS preflight request");
     std::string const allowHeaders =
         StringUtils::trim(_request->header("access-control-request-headers"));
 
@@ -762,7 +661,8 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
       // server. that's a client problem.
       response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
                          allowHeaders);
-      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders.c_str();
+      LOG_TRACE("client requested validation of the following headers: %s",
+                allowHeaders.c_str());
     }
 
     // set caching time (hard-coded value)
@@ -780,7 +680,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const acceptEncoding =
+  std::string const& acceptEncoding =
       _request->header("accept-encoding", found);
 
   if (found) {
@@ -790,16 +690,16 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   // check for an async request
-  std::string const asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
-  WorkItem::uptr<HttpHandler> handler(
+  WorkItem::uptr<GeneralHandler> handler(
       _server->handlerFactory()->createHandler(_request));
 
   if (handler == nullptr) {
-    LOG(TRACE) << "no handler is known, giving up";
+    LOG_TRACE("no handler is known, giving up");
 
-    HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
+    GeneralResponse response(GeneralResponse::NOT_FOUND, compatibility);
 
     clearRequest();
     handleResponse(&response);
@@ -829,7 +729,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
     }
 
     if (ok) {
-      HttpResponse response(HttpResponse::ACCEPTED, compatibility);
+      GeneralResponse response(GeneralResponse::ACCEPTED, compatibility);
 
       if (jobId > 0) {
         // return the job id we just created
@@ -849,18 +749,9 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (!ok) {
-    HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
+    GeneralResponse response(GeneralResponse::SERVER_ERROR, compatibility);
     handleResponse(&response);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the request object
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpCommTask::clearRequest() {
-  delete _request;
-  _request = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -910,16 +801,6 @@ void HttpCommTask::resetState(bool close) {
   _readRequestBody = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decides whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-bool HttpCommTask::sendWwwAuthenticateHeader() const {
-  bool found;
-  _request->header("x-omit-www-authenticate", found);
-
-  return !found;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get request compatibility
@@ -930,124 +811,5 @@ int32_t HttpCommTask::getCompatibility() const {
     return _request->compatibility();
   }
 
-  return HttpRequest::MinCompatibility;
-}
-
-bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
-  bool ok = SocketTask::setup(scheduler, loop);
-
-  if (!ok) {
-    return false;
-  }
-
-  _scheduler = scheduler;
-  _loop = loop;
-
-  setupDone();
-
-  return true;
-}
-
-void HttpCommTask::cleanup() { SocketTask::cleanup(); }
-
-bool HttpCommTask::handleEvent(EventToken token, EventType events) {
-  bool result = SocketTask::handleEvent(token, events);
-
-  if (_clientClosed) {
-    _scheduler->destroyTask(this);
-  }
-
-  return result;
-}
-
-void HttpCommTask::signalTask(TaskData* data) {
-  // data response
-  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
-    handleResponse(data->_response.get());
-    processRead();
-  }
-
-  // data chunk
-  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
-    size_t len = data->_data.size();
-
-    if (0 == len) {
-      finishedChunked();
-    } else {
-      StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-      TRI_ASSERT(buffer != nullptr);
-
-      buffer->appendHex(len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-      buffer->appendText(data->_data.c_str(), len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-      sendChunk(buffer);
-    }
-  }
-
-  // do not know, what to do - give up
-  else {
-    _scheduler->destroyTask(this);
-  }
-}
-
-bool HttpCommTask::handleRead() {
-  bool res = true;
-
-  if (!_setupDone.load(std::memory_order_relaxed)) {
-    return res;
-  }
-
-  if (!_closeRequested) {
-    res = fillReadBuffer();
-
-    // process as much data as we got
-    while (processRead()) {
-      if (_closeRequested) {
-        break;
-      }
-    }
-  } else {
-    // if we don't close here, the scheduler thread may fall into a
-    // busy wait state, consuming 100% CPU!
-    _clientClosed = true;
-  }
-
-  if (_clientClosed) {
-    res = false;
-    _server->handleCommunicationClosed(this);
-  } else if (!res) {
-    _clientClosed = true;
-    _server->handleCommunicationFailure(this);
-  }
-
-  return res;
-}
-
-void HttpCommTask::completedWriteBuffer() {
-  _writeBuffer = nullptr;
-  _writeLength = 0;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  }
-
-  fillWriteBuffer();
-
-  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-      _writeBuffers.empty() && !_isChunked) {
-    _clientClosed = true;
-    _server->handleCommunicationClosed(this);
-  }
-}
-
-void HttpCommTask::handleTimeout() {
-  _clientClosed = true;
-  _server->handleCommunicationClosed(this);
+  return GeneralRequest::MinCompatibility;
 }

@@ -21,43 +21,50 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpHandlerFactory.h"
+#include "GeneralHandlerFactory.h"
 
-#include "Basics/Logger.h"
-#include "HttpServer/HttpHandler.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/StringUtils.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "HttpServer/GeneralHandler.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/SslInterface.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace std;
+
 
 namespace {
 sig_atomic_t MaintenanceMode = 0;
 }
 
+
 namespace {
-class MaintenanceHandler : public HttpHandler {
+class MaintenanceHandler : public GeneralHandler {
  public:
-  explicit MaintenanceHandler(HttpRequest* request) : HttpHandler(request){};
+  explicit MaintenanceHandler(GeneralRequest* request) : GeneralHandler(request){};
 
   bool isDirect() const override { return true; };
 
   status_t execute() override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::SERVICE_UNAVAILABLE);
 
     return status_t(HANDLER_DONE);
   };
 
   void handleError(const Exception& error) override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::SERVICE_UNAVAILABLE);
   };
 };
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
+GeneralHandlerFactory::GeneralHandlerFactory(std::string const& authenticationRealm,
                                        int32_t minCompatibility,
                                        bool allowMethodOverride,
                                        context_fptr setContext,
@@ -73,7 +80,7 @@ HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
 /// @brief clones a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
+GeneralHandlerFactory::GeneralHandlerFactory(GeneralHandlerFactory const& that)
     : _authenticationRealm(that._authenticationRealm),
       _minCompatibility(that._minCompatibility),
       _allowMethodOverride(that._allowMethodOverride),
@@ -88,8 +95,8 @@ HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
 /// @brief copies a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory& HttpHandlerFactory::operator=(
-    HttpHandlerFactory const& that) {
+GeneralHandlerFactory& GeneralHandlerFactory::operator=(
+    GeneralHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm;
     _minCompatibility = that._minCompatibility;
@@ -109,15 +116,17 @@ HttpHandlerFactory& HttpHandlerFactory::operator=(
 /// @brief destructs a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::~HttpHandlerFactory() {}
+GeneralHandlerFactory::~GeneralHandlerFactory() {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::setMaintenance(bool value) {
+void GeneralHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
@@ -125,13 +134,13 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
-    HttpRequest* request) {
+GeneralResponse::HttpResponseCode GeneralHandlerFactory::authenticateRequest(
+    GeneralRequest* request) {
   auto context = request->getRequestContext();
 
   if (context == nullptr) {
     if (!setRequestContext(request)) {
-      return HttpResponse::NOT_FOUND;
+      return GeneralResponse::NOT_FOUND;
     }
 
     context = request->getRequestContext();
@@ -143,10 +152,32 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief authenticates a new request (vstream)
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralResponse::VstreamResponseCode GeneralHandlerFactory::authenticateRequestVstream(
+    GeneralRequest* request) {
+  auto context = request->getRequestContext();
+
+  if (context == nullptr) {
+    if (!setRequestContext(request)) {
+      return GeneralResponse::VSTREAM_NOT_FOUND;
+    }
+
+    context = request->getRequestContext();
+  }
+
+  TRI_ASSERT(context != nullptr);
+
+  return context->authenticateVstream();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
+bool GeneralHandlerFactory::setRequestContext(GeneralRequest* request) {
   return _setContext(request, _setContextData);
 }
 
@@ -154,8 +185,7 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpHandlerFactory::authenticationRealm(
-    HttpRequest* request) const {
+std::string GeneralHandlerFactory::authenticationRealm(GeneralRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -172,9 +202,9 @@ std::string HttpHandlerFactory::authenticationRealm(
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
+GeneralRequest* GeneralHandlerFactory::createRequest(ConnectionInfo const& info,
                                                char const* ptr, size_t length) {
-  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility,
+  GeneralRequest* request = new GeneralRequest(info, ptr, length, _minCompatibility,
                                          _allowMethodOverride);
 
   if (request != nullptr) {
@@ -188,7 +218,7 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
+GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }
@@ -200,7 +230,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG(TRACE) << "no direct handler found, trying prefixes";
+    LOG_TRACE("no direct handler found, trying prefixes");
 
     // find longest match
     std::string prefix;
@@ -219,16 +249,16 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
 
     if (prefix.empty()) {
-      LOG(TRACE) << "no prefix handler found, trying catch all";
+      LOG_TRACE("no prefix handler found, trying catch all");
 
       i = ii.find("/");
       if (i != ii.end()) {
-        LOG(TRACE) << "found catch all handler '/'";
+        LOG_TRACE("found catch all handler '/'");
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
 
-        while (n != std::string::npos) {
+        while (n != string::npos) {
           request->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
@@ -244,12 +274,12 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
 
     else {
-      LOG(TRACE) << "found prefix match '" << prefix.c_str() << "'";
+      LOG_TRACE("found prefix match '%s'", prefix.c_str());
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
 
-      while (n != std::string::npos) {
+      while (n != string::npos) {
         request->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);
@@ -269,12 +299,12 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
   // no match
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      HttpHandler* notFoundHandler = _notFound(request, data);
+      GeneralHandler* notFoundHandler = _notFound(request, data);
       notFoundHandler->setServer(this);
 
       return notFoundHandler;
     } else {
-      LOG(TRACE) << "no not-found handler, giving up";
+      LOG_TRACE("no not-found handler, giving up");
       return nullptr;
     }
   }
@@ -288,8 +318,8 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
   }
 
-  LOG(TRACE) << "found handler for path '" << path.c_str() << "'";
-  HttpHandler* handler = i->second(request, data);
+  LOG_TRACE("found handler for path '%s'", path.c_str());
+  GeneralHandler* handler = i->second(request, data);
 
   handler->setServer(this);
 
@@ -300,7 +330,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
+void GeneralHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -310,8 +340,8 @@ void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler(std::string const& path,
-                                          create_fptr func, void* data) {
+void GeneralHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
+                                          void* data) {
   _constructors[path] = func;
   _datas[path] = data;
   _prefixes.emplace_back(path);
@@ -321,6 +351,6 @@ void HttpHandlerFactory::addPrefixHandler(std::string const& path,
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
+void GeneralHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }

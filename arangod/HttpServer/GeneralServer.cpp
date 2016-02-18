@@ -22,20 +22,24 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServer.h"
+#include "GeneralServer.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
-#include "Basics/Logger.h"
+#include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
+#include "HttpServer/ArangoTask.h"
+#include "HttpServer/ArangoTask.h"
+#include "HttpServer/GeneralHandler.h"
 #include "HttpServer/HttpListenTask.h"
-#include "HttpServer/HttpServerJob.h"
+#include "HttpServer/GeneralServerJob.h"
 #include "Rest/EndpointList.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
+#include "VelocyServer/VelocyCommTask.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,7 +49,7 @@ using namespace arangodb::rest;
 /// @brief destroys an endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
+int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
   std::unique_ptr<TaskData> taskData(new TaskData());
 
   taskData->_taskId = taskId;
@@ -62,8 +66,8 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
-                       HttpHandlerFactory* handlerFactory,
+GeneralServer::GeneralServer(Scheduler* scheduler, Dispatcher* dispatcher,
+                       GeneralHandlerFactory* handlerFactory,
                        AsyncJobManager* jobManager, double keepAliveTimeout)
     : _scheduler(scheduler),
       _dispatcher(dispatcher),
@@ -72,28 +76,36 @@ HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
       _listenTasks(),
       _endpointList(nullptr),
       _commTasks(),
+      _commTasksVstream(),
       _keepAliveTimeout(keepAliveTimeout) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::~HttpServer() { stopListening(); }
+GeneralServer::~GeneralServer() { stopListening(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
+ArangoTask* GeneralServer::createCommTask(TRI_socket_t s,
                                          ConnectionInfo const& info) {
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
+}
+
+// Overload for VelocyStream
+
+VelocyCommTask* GeneralServer::createCommTask(TRI_socket_t s, 
+                                         ConnectionInfo const &info, bool _isHttp) {
+  return new VelocyCommTask(this, s, info, _keepAliveTimeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::setEndpointList(EndpointList const* list) {
+void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
 }
 
@@ -101,18 +113,22 @@ void HttpServer::setEndpointList(EndpointList const* list) {
 /// @brief starts listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::startListening() {
+void GeneralServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
-    LOG(TRACE) << "trying to bind to endpoint '" << i.first.c_str() << "' for requests";
+    LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());
 
     bool ok = openEndpoint(i.second);
 
     if (ok) {
-      LOG(DEBUG) << "bound to endpoint '" << i.first.c_str() << "'";
+      LOG_DEBUG("bound to endpoint '%s'", i.first.c_str());
     } else {
-      LOG(FATAL) << "failed to bind to endpoint '" << i.first.c_str() << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
+      LOG_FATAL_AND_EXIT(
+          "failed to bind to endpoint '%s'. Please check "
+          "whether another instance is already running or "
+          "review your endpoints configuration.",
+          i.first.c_str());
     }
   }
 }
@@ -121,7 +137,7 @@ void HttpServer::startListening() {
 /// @brief stops listening
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stopListening() {
+void GeneralServer::stopListening() {
   for (auto& task : _listenTasks) {
     _scheduler->destroyTask(task);
   }
@@ -133,22 +149,37 @@ void HttpServer::stopListening() {
 /// @brief removes all listen and comm tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::stop() {
+void GeneralServer::stop() {
   while (true) {
-    HttpCommTask* task = nullptr;
+    if(_isHttp){
+      ArangoTask* task = nullptr;
+      {
+          MUTEX_LOCKER(_commTasksLock);
 
-    {
-      MUTEX_LOCKER(mutexLocker, _commTasksLock);
+        if (_commTasks.empty()) {
+          break;
+        }
 
-      if (_commTasks.empty()) {
-        break;
+        task = *_commTasks.begin();
+        _commTasks.erase(task);
       }
 
-      task = *_commTasks.begin();
-      _commTasks.erase(task);
-    }
+      _scheduler->destroyTask(task);
+    }else{
+      VelocyCommTask* task_v = nullptr;
+      {
+          MUTEX_LOCKER(_commTasksLock);
 
-    _scheduler->destroyTask(task);
+        if (_commTasksVstream.empty()) {
+          break;
+        }
+
+        task_v = *_commTasksVstream.begin();
+        _commTasksVstream.erase(task_v);
+      }
+
+      _scheduler->destroyTask(task_v);
+    }
   }
 }
 
@@ -156,29 +187,46 @@ void HttpServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
-  HttpCommTask* task = createCommTask(s, info);
+void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool isHttp) {
+  _isHttp = isHttp;
+  if(_isHttp){
+    ArangoTask* task = createCommTask(s, info);
+    try {
+      MUTEX_LOCKER(_commTasksLock);
+      _commTasks.emplace(task);
+    } catch (...) {
+      // destroy the task to prevent a leak
+      deleteTask(task);
+      throw;
+    }
 
-  try {
-    MUTEX_LOCKER(mutexLocker, _commTasksLock);
-    _commTasks.emplace(task);
-  } catch (...) {
-    // destroy the task to prevent a leak
-    deleteTask(task);
-    throw;
-  }
+    // registers the task and get the number of the scheduler thread
+    ssize_t n;
+    _scheduler->registerTask(task, &n);
 
-  // registers the task and get the number of the scheduler thread
-  ssize_t n;
-  _scheduler->registerTask(task, &n);
+  } else{
+    VelocyCommTask* task_v = createCommTask(s, info, _isHttp);
+    try {
+      MUTEX_LOCKER(_commTasksLock);
+      _commTasksVstream.emplace(task_v);
+    } catch (...) {
+      // destroy the task to prevent a leak
+      deleteTask(task_v);
+      throw;
+    }
+
+    // registers the task and get the number of the scheduler thread
+    ssize_t n;
+    _scheduler->registerTask(task_v, &n);
+  }  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
-  MUTEX_LOCKER(mutexLocker, _commTasksLock);
+void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
 
@@ -186,8 +234,8 @@ void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
-  MUTEX_LOCKER(mutexLocker, _commTasksLock);
+void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
+  MUTEX_LOCKER(_commTasksLock);
   _commTasks.erase(task);
 }
 
@@ -195,7 +243,7 @@ void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
+bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
@@ -208,11 +256,11 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true);
+      std::make_unique<GeneralServerJob>(this, handler, true); //@TODO: To be changed to GeneralServerJob
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    _jobManager->initAsyncJob(static_cast<HttpServerJob*>(job.get()), hdr);
+    _jobManager->initAsyncJob(static_cast<GeneralServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -222,7 +270,8 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    LOG(WARN) << "unable to add job to the job queue: " << TRI_errno_string(res);
+    LOG_WARNING("unable to add job to the job queue: %s",
+                TRI_errno_string(res));
     // todo send info to async work manager?
     return false;
   }
@@ -235,8 +284,8 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest(HttpCommTask* task,
-                               WorkItem::uptr<HttpHandler>& handler) {
+bool GeneralServer::handleRequest(ArangoTask* task,
+                               WorkItem::uptr<GeneralHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
     HandlerWorkStack work(handler);
@@ -246,9 +295,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   }
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
-
-  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob " << (void*)job.get();
+  std::unique_ptr<Job> job = std::make_unique<GeneralServerJob>(this, handler);
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);
@@ -261,7 +308,7 @@ bool HttpServer::handleRequest(HttpCommTask* task,
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::openEndpoint(Endpoint* endpoint) {
+bool GeneralServer::openEndpoint(Endpoint* endpoint) {
   ListenTask* task = new HttpListenTask(this, endpoint);
 
   // ...................................................................
@@ -285,20 +332,20 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle request directly
+/// @brief handle request directly (Http)
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleRequestDirectly(HttpCommTask* task,
-                                       HttpHandler* handler) {
-  HttpHandler::status_t status = handler->executeFull();
+void GeneralServer::handleRequestDirectly(ArangoTask* task,
+                                       GeneralHandler* handler) {
+  GeneralHandler::status_t status = handler->executeFull();
 
   switch (status._status) {
-    case HttpHandler::HANDLER_FAILED:
-    case HttpHandler::HANDLER_DONE:
+    case GeneralHandler::HANDLER_FAILED:
+    case GeneralHandler::HANDLER_DONE:
       task->handleResponse(handler->getResponse());
       break;
 
-    case HttpHandler::HANDLER_ASYNC:
+    case GeneralHandler::HANDLER_ASYNC:
       // do nothing, just wait
       break;
   }

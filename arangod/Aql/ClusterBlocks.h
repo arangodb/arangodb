@@ -520,7 +520,7 @@ class RemoteBlock : public ExecutionBlock {
 
  private:
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::HttpRequest::HttpRequestType type, std::string const& urlPart,
+      rest::GeneralRequest::RequestType type, std::string const& urlPart,
       std::string const& body) const;
 
   //////////////////////////////////////////////////////////////////////////////

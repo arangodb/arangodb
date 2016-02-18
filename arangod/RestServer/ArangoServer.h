@@ -49,8 +49,8 @@ class ApplicationEndpointServer;
 class ApplicationScheduler;
 class AsyncJobManager;
 class Dispatcher;
-class HttpHandlerFactory;
-class HttpServer;
+class GeneralHandlerFactory;
+class GeneralServer;
 class HttpsServer;
 }
 
@@ -131,7 +131,7 @@ class ArangoServer : public rest::AnyServer {
   /// @brief defineHandlers, define "_api" and "_admin" handlers
   //////////////////////////////////////////////////////////////////////////////
 
-  void defineHandlers(arangodb::rest::HttpHandlerFactory* factory);
+  void defineHandlers(arangodb::rest::GeneralHandlerFactory* factory);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

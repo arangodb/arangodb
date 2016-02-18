@@ -28,8 +28,8 @@
 #include "Basics/mimetypes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralRequest.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb::basics;
 
@@ -40,8 +40,8 @@ namespace rest {
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PathHandler::PathHandler(HttpRequest* request, Options const* options)
-    : HttpHandler(request),
+PathHandler::PathHandler(GeneralRequest* request, Options const* options)
+    : GeneralHandler(request),
       path(options->path),
       contentType(options->contentType),
       allowSymbolicLink(options->allowSymbolicLink),
@@ -61,7 +61,7 @@ PathHandler::PathHandler(HttpRequest* request, Options const* options)
 // Handler methods
 // -----------------------------------------------------------------------------
 
-HttpHandler::status_t PathHandler::execute() {
+GeneralHandler::status_t PathHandler::execute() {
   static std::string const allowed =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
@@ -77,7 +77,7 @@ HttpHandler::status_t PathHandler::execute() {
     }
     url += defaultFile;
 
-    createResponse(HttpResponse::MOVED_PERMANENTLY);
+    createResponse(GeneralResponse::MOVED_PERMANENTLY);
 
     _response->setHeader(TRI_CHAR_LENGTH_PAIR("location"), url);
     _response->setContentType("text/html");
@@ -100,7 +100,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == ".") {
       LOG(WARN) << "file '" << name.c_str() << "' contains '.'";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains '.'");
       return status_t(HANDLER_DONE);
     }
@@ -108,7 +108,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == "..") {
       LOG(WARN) << "file '" << name.c_str() << "' contains '..'";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains '..'");
       return status_t(HANDLER_DONE);
     }
@@ -118,7 +118,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name.c_str() << "' contains illegal character";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
                                    std::string(1, next[sc]) + "'");
       return status_t(HANDLER_DONE);
@@ -128,7 +128,7 @@ HttpHandler::status_t PathHandler::execute() {
       if (!FileUtils::isDirectory(path)) {
         LOG(WARN) << "file '" << name.c_str() << "' not found";
 
-        createResponse(HttpResponse::NOT_FOUND);
+        createResponse(GeneralResponse::NOT_FOUND);
         _response->body().appendText("file not found");
         return status_t(HANDLER_DONE);
       }
@@ -140,7 +140,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG(WARN) << "file '" << name.c_str() << "' contains symbolic link";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
       return status_t(HANDLER_DONE);
     }
@@ -149,26 +149,26 @@ HttpHandler::status_t PathHandler::execute() {
   if (!FileUtils::isRegularFile(name)) {
     LOG(WARN) << "file '" << name.c_str() << "' not found";
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::NOT_FOUND);
     _response->body().appendText("file not found");
     return status_t(HANDLER_DONE);
   }
 
-  createResponse(HttpResponse::OK);
+  createResponse(GeneralResponse::OK);
 
   try {
     FileUtils::slurp(name, _response->body());
   } catch (...) {
     LOG(WARN) << "file '" << name.c_str() << "' not readable";
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::NOT_FOUND);
     _response->body().appendText("file not readable");
     return status_t(HANDLER_DONE);
   }
 
   // check if we should use caching and this is an HTTP GET request
   if (cacheMaxAge > 0 &&
-      _request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
+      _request->requestType() == GeneralRequest::HTTP_REQUEST_GET) {
     // yes, then set a pro-caching header
     _response->setHeader(TRI_CHAR_LENGTH_PAIR("cache-control"), maxAgeHeader);
   }
@@ -200,7 +200,7 @@ HttpHandler::status_t PathHandler::execute() {
 }
 
 void PathHandler::handleError(const Exception&) {
-  createResponse(HttpResponse::SERVER_ERROR);
+  createResponse(GeneralResponse::SERVER_ERROR);
 }
 }
 }
