@@ -16,16 +16,18 @@ endmacro()
 if (GO_FOUND)
   if (MSVC)
     set (ETCD_BUILD_COMMAND build.bat)
-  else()
+  else ()
     set (ETCD_BUILD_COMMAND ./build)
-  endif()
+  endif ()
+
   ExternalProject_Add(etcd_build
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
-    INSTALL_COMMAND "")
-endif()
+    INSTALL_COMMAND ""
+  )
+endif ()
 
 ################################################################################
 ## ZLIB
@@ -39,8 +41,8 @@ if (UNIX)
     CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib --static
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
-    )  
-endif()
+  )  
+endif ()
 
 import_target(zlib zlib_build
   "${CMAKE_CURRENT_SOURCE_DIR}/libev"
@@ -59,8 +61,8 @@ if (UNIX)
     CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
-    )  
-endif()
+  )  
+endif ()
 
 import_target(ev ev_build
   "${CMAKE_CURRENT_SOURCE_DIR}/libev"
@@ -71,19 +73,19 @@ import_target(ev ev_build
 ## V8 and ICU
 ################################################################################
 
-if(UNIX)
+if (UNIX)
   set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
   set(V8_PLATFORM "native")
   set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
   set(ICU_BIN_DIR "${V8_BIN_DIR}")
 
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
     set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
-  endif()
-else()
+  endif ()
+else ()
   message(ERROR "Not implemented for your OS")
-endif()
+endif ()
 
 set(V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
   strictaliasing=off snapshot=off werror=no
@@ -91,19 +93,20 @@ set(V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
   CC=${CMAKE_C_COMPILER}
   CXX=${CMAKE_CXX_COMPILER}
   PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
-  )
+)
 
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++)
-endif()
+endif ()
 
 if (NOT USE_PRECOMPILED_V8)
   ExternalProject_Add(v8_build
     SOURCE_DIR "${V8_DIR}"
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND "${V8_BUILD_COMMAND}" 
-    INSTALL_COMMAND "")
-endif()
+    INSTALL_COMMAND ""
+  )
+endif ()
 
 import_target(v8_base v8_build
   "${V8_DIR}/include"
