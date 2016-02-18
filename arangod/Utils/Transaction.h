@@ -34,6 +34,7 @@
 #include "Utils/DocumentHelper.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
@@ -118,6 +119,22 @@ class Transaction {
   }
 
  public:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Type of cursor
+  //////////////////////////////////////////////////////////////////////////////
+
+  enum class CursorType {
+    ALL = 0,
+    ANY,
+    EDGE,
+    GEO1,
+    GEO2,
+    HASH,
+    FULLTEXT,
+    SKIPLIST
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return database of transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -709,6 +726,15 @@ class Transaction {
 
     return res;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for OperationCursor objects
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationCursor indexScan(std::string const& collection,
+                            CursorType cursorType,
+                            std::string const& indexId,
+                            std::shared_ptr<std::vector<VPackSlice>> search);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
