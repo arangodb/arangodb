@@ -70,7 +70,7 @@ namespace triagens {
 /// @brief destructs an agent
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~StatisticsAgent () {
+        virtual ~StatisticsAgent () {
           if (_statistics != nullptr) {
             FUNC::release(_statistics);
           }
