@@ -19,6 +19,8 @@ ln -s build/bin bin
 echo
 echo "$0: configuring ArangoDB"
 
+export LDFLAGS="-lrt"
+
 (cd build && cmake .. -DUSE_RELATIVE=ON -DUSE_PRECOMPILED_V8=ON)
 
 echo
