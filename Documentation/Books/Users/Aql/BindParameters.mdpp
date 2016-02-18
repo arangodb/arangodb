@@ -40,3 +40,5 @@ when using the bind parameter in a query, two *@* symbols must be used).
       RETURN u
 
 
+Specific information about parameters binding can also be found in [Aql With Web Interface](AqlWithWebInterface.md) and [Aql With Arangosh](AqlWithArangosh.md), and [HTTP Interface for AQL Queries](../HttpAqlQuery/README.md)
+

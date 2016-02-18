@@ -41,7 +41,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,8 +177,8 @@ void RestVocbaseBaseHandler::generate20x(
     std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid,
     TRI_col_type_e type) {
   std::string handle(
-      std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
-  std::string rev(std::move(StringUtils::itoa(rid)));
+      DocumentHelper::assembleDocumentId(collectionName, key));
+  std::string rev(StringUtils::itoa(rid));
 
   createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
@@ -189,8 +188,8 @@ void RestVocbaseBaseHandler::generate20x(
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
 
-    std::string escapedHandle(std::move(
-        DocumentHelper::assembleDocumentId(collectionName, key, true)));
+    std::string escapedHandle(
+        DocumentHelper::assembleDocumentId(collectionName, key, true));
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
@@ -245,7 +244,7 @@ void RestVocbaseBaseHandler::generateForbidden() {
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
     std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
-  std::string rev(std::move(StringUtils::itoa(rid)));
+  std::string rev(StringUtils::itoa(rid));
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
@@ -289,8 +288,8 @@ void RestVocbaseBaseHandler::generateDocument(
 
   char const* key =
       TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx from above
-  std::string id(std::move(DocumentHelper::assembleDocumentId(
-      resolver->getCollectionName(cid), key)));
+  std::string id(DocumentHelper::assembleDocumentId(
+      resolver->getCollectionName(cid), key));
 
   try {
     VPackBuilder builder;
@@ -299,7 +298,7 @@ void RestVocbaseBaseHandler::generateDocument(
     builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
 
     // convert rid from uint64_t to string
-    std::string rev(std::move(StringUtils::itoa(mptr._rid)));
+    std::string rev(StringUtils::itoa(mptr._rid));
     builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
 
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
@@ -312,27 +311,27 @@ void RestVocbaseBaseHandler::generateDocument(
       TRI_doc_edge_key_marker_t const* marker =
           static_cast<TRI_doc_edge_key_marker_t const*>(
               mptr.getDataPtr());  // PROTECTED by trx passed from above
-      std::string from(std::move(DocumentHelper::assembleDocumentId(
+      std::string from(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey))));
+          std::string((char*)marker + marker->_offsetFromKey)));
       builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
 
-      std::string to(std::move(DocumentHelper::assembleDocumentId(
+      std::string to(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey))));
+          std::string((char*)marker + marker->_offsetToKey)));
       builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
     } else if (type == TRI_WAL_MARKER_EDGE) {
       arangodb::wal::edge_marker_t const* marker =
           static_cast<arangodb::wal::edge_marker_t const*>(
               mptr.getDataPtr());  // PROTECTED by trx passed from above
-      std::string from(std::move(DocumentHelper::assembleDocumentId(
+      std::string from(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey))));
+          std::string((char*)marker + marker->_offsetFromKey)));
       builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
 
-      std::string to(std::move(DocumentHelper::assembleDocumentId(
+      std::string to(DocumentHelper::assembleDocumentId(
           resolver->getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey))));
+          std::string((char*)marker + marker->_offsetToKey)));
       builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
     }
     builder.close();
@@ -395,7 +394,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
     case TRI_ERROR_ARANGO_READ_ONLY:
       generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
       return;
-
+    
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
       generateError(HttpResponse::CONFLICT, res,
                     "cannot create document, unique constraint violated");
@@ -444,6 +443,22 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
       generateError(HttpResponse::NOT_IMPLEMENTED, res);
+      return;
+    }
+    
+    case TRI_ERROR_FORBIDDEN: {
+      generateError(HttpResponse::FORBIDDEN, res);
+      return;
+    }
+        
+    case TRI_ERROR_OUT_OF_MEMORY: 
+    case TRI_ERROR_LOCK_TIMEOUT: 
+    case TRI_ERROR_AID_NOT_FOUND:
+    case TRI_ERROR_DEBUG:
+    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
+    case TRI_ERROR_LOCKED:
+    case TRI_ERROR_DEADLOCK: {
+      generateError(HttpResponse::SERVER_ERROR, res);
       return;
     }
 
@@ -556,8 +571,9 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   }
   success = false;
-  VPackParser p;
-  return p.steal();
+  return std::make_shared<VPackBuilder>();
+  //VPackParser p;
+  //return p.steal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

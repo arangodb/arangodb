@@ -36,14 +36,12 @@
 
 using namespace arangodb::aql;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if code is executed in cluster or not
 ////////////////////////////////////////////////////////////////////////////////
 
-static ExecutionCondition const NotInCluster = [] {
-  return !arangodb::ServerState::instance()->isRunningInCluster();
-};
+static ExecutionCondition const NotInCluster =
+    [] { return !arangodb::ServerState::instance()->isRunningInCluster(); };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal functions used in execution
@@ -69,7 +67,15 @@ std::unordered_map<int,
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD), "ARITHMETIC_MODULUS"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND), "LOGICAL_AND"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR), "LOGICAL_OR"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_TERNARY), "TERNARY_OPERATOR"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "RELATIONAL_ARRAY_EQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "RELATIONAL_ARRAY_UNEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "RELATIONAL_ARRAY_GREATER"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "RELATIONAL_ARRAY_GREATEREQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "RELATIONAL_ARRAY_LESS"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "RELATIONAL_ARRAY_LESSEQUAL"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "RELATIONAL_ARRAY_IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "RELATIONAL_ARRAY_NOT_IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-accessible functions
@@ -203,7 +209,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"LENGTH", Function("LENGTH", "AQL_LENGTH", "las", true, true, false, true,
                         true, &Functions::Length)},
     {"COUNT", Function("COUNT", "AQL_LENGTH", "las", true, true, false, true,
-                        true, &Functions::Length)}, // alias for LENGTH()
+                       true, &Functions::Length)},  // alias for LENGTH()
     {"MIN", Function("MIN", "AQL_MIN", "l", true, true, false, true, true,
                      &Functions::Min)},
     {"MAX", Function("MAX", "AQL_MAX", "l", true, true, false, true, true,
@@ -216,8 +222,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
                             false, true, true, &Functions::Percentile)},
     {"AVERAGE", Function("AVERAGE", "AQL_AVERAGE", "l", true, true, false, true,
                          true, &Functions::Average)},
-    {"AVG", Function("AVG", "AQL_AVERAGE", "l", true, true, false, true,
-                         true, &Functions::Average)}, // alias for AVERAGE()
+    {"AVG", Function("AVG", "AQL_AVERAGE", "l", true, true, false, true, true,
+                     &Functions::Average)},  // alias for AVERAGE()
     {"VARIANCE_SAMPLE",
      Function("VARIANCE_SAMPLE", "AQL_VARIANCE_SAMPLE", "l", true, true, false,
               true, true, &Functions::VarianceSample)},
@@ -225,8 +231,10 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
      Function("VARIANCE_POPULATION", "AQL_VARIANCE_POPULATION", "l", true, true,
               false, true, true, &Functions::VariancePopulation)},
     {"VARIANCE",
-     Function("VARIANCE", "AQL_VARIANCE_POPULATION", "l", true, true,
-              false, true, true, &Functions::VariancePopulation)}, // alias for VARIANCE_POPULATION()
+     Function(
+         "VARIANCE", "AQL_VARIANCE_POPULATION", "l", true, true, false, true,
+         true,
+         &Functions::VariancePopulation)},  // alias for VARIANCE_POPULATION()
     {"STDDEV_SAMPLE",
      Function("STDDEV_SAMPLE", "AQL_STDDEV_SAMPLE", "l", true, true, false,
               true, true, &Functions::StdDevSample)},
@@ -234,8 +242,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
      Function("STDDEV_POPULATION", "AQL_STDDEV_POPULATION", "l", true, true,
               false, true, true, &Functions::StdDevPopulation)},
     {"STDDEV",
-     Function("STDDEV", "AQL_STDDEV_POPULATION", "l", true, true,
-              false, true, true, &Functions::StdDevPopulation)}, // alias for STDDEV_POPULATION()
+     Function("STDDEV", "AQL_STDDEV_POPULATION", "l", true, true, false, true,
+              true,
+              &Functions::StdDevPopulation)},  // alias for STDDEV_POPULATION()
     {"UNIQUE", Function("UNIQUE", "AQL_UNIQUE", "l", true, true, false, true,
                         true, &Functions::Unique)},
     {"SORTED_UNIQUE",
@@ -456,6 +465,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     {"PARSE_IDENTIFIER",
      Function("PARSE_IDENTIFIER", "AQL_PARSE_IDENTIFIER", ".", true, true,
               false, true, true, &Functions::ParseIdentifier)},
+    {"IS_SAME_COLLECTION",
+      Function("IS_SAME_COLLECTION", "AQL_IS_SAME_COLLECTION", "ch,as", true, true,
+               false, true, true, &Functions::IsSameCollection)},
     {"CURRENT_USER", Function("CURRENT_USER", "AQL_CURRENT_USER", "", false,
                               false, false, false, true)},
     {"CURRENT_DATABASE",
@@ -478,7 +490,6 @@ size_t const Executor::DefaultLiteralSizeThreshold = 32;
 
 int64_t const Executor::MaxRangeAccessArraySize = 1024 * 1024 * 32;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an executor
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,7 +506,6 @@ Executor::Executor(int64_t literalSizeThreshold)
 ////////////////////////////////////////////////////////////////////////////////
 
 Executor::~Executor() { delete _buffer; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an expression execution object
@@ -611,7 +621,6 @@ Function const* Executor::getFunctionByName(std::string const& name) {
   // return the address of the function
   return &((*it).second);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse the expression and note all (big) array/object literals
@@ -1022,7 +1031,7 @@ void Executor::generateCodeUnaryOperator(AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unary operator function not found");
   }
 
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
@@ -1045,7 +1054,7 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary operator function not found");
   }
 
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
@@ -1065,6 +1074,39 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
     generateCodeNode(node->getMember(0));
     _buffer->appendChar(',');
     generateCodeNode(node->getMember(1));
+  }
+
+  _buffer->appendChar(')');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a binary array operator
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto it = InternalFunctionNames.find(static_cast<int>(node->type));
+
+  if (it == InternalFunctionNames.end()) {
+    // no function found for the type of node
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "binary array function not found");
+  }
+
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
+  _buffer->appendText((*it).second);
+  _buffer->appendChar('(');
+
+  generateCodeNode(node->getMember(0));
+  _buffer->appendChar(',');
+  generateCodeNode(node->getMember(1));
+
+  AstNode const* quantifier = node->getMember(2);
+
+  if (quantifier->type == NODE_TYPE_QUANTIFIER) {
+    _buffer->appendChar(',');
+    _buffer->appendInteger(quantifier->getIntValue(true));
   }
 
   _buffer->appendChar(')');
@@ -1391,6 +1433,17 @@ void Executor::generateCodeNode(AstNode const* node) {
       generateCodeBinaryOperator(node);
       break;
 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      generateCodeBinaryArrayOperator(node);
+      break;
+
     case NODE_TYPE_OPERATOR_TERNARY:
       generateCodeTernaryOperator(node);
       break;
@@ -1474,5 +1527,3 @@ arangodb::basics::StringBuffer* Executor::initializeBuffer() {
 
   return _buffer;
 }
-
-

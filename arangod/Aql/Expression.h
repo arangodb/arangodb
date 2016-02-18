@@ -57,7 +57,6 @@ struct V8Expression;
 class Expression {
   enum ExpressionType : uint32_t { UNPROCESSED, JSON, V8, SIMPLE, ATTRIBUTE };
 
-  
  public:
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
@@ -75,10 +74,16 @@ class Expression {
 
   Expression(Ast*, arangodb::basics::Json const&);
 
-
   ~Expression();
+ 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief replace the root node
+  //////////////////////////////////////////////////////////////////////////////
 
-  
+  inline void replaceNode (AstNode* node) {
+    _node = node;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying AST node
   //////////////////////////////////////////////////////////////////////////////
@@ -149,11 +154,19 @@ class Expression {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the expression
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
+    _node->toVelocyPack(builder, verbose);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief execute the expression
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue execute(arangodb::AqlTransaction* trx, AqlItemBlock const*,
-                   size_t, std::vector<Variable const*> const&,
+  AqlValue execute(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+                   std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&,
                    TRI_document_collection_t const**);
 
@@ -264,7 +277,6 @@ class Expression {
 
   void invalidate();
 
-  
  private:
   void setVariable(Variable const* variable, TRI_json_t const* value) {
     TRI_ASSERT(value != nullptr);
@@ -279,8 +291,8 @@ class Expression {
 
   bool findInArray(AqlValue const&, AqlValue const&,
                    TRI_document_collection_t const*,
-                   TRI_document_collection_t const*,
-                   arangodb::AqlTransaction*, AstNode const*) const;
+                   TRI_document_collection_t const*, arangodb::AqlTransaction*,
+                   AstNode const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief analyze the expression (determine its type etc.)
@@ -311,18 +323,16 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionAttributeAccess(
-      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
-      size_t, std::vector<Variable const*> const&,
-      std::vector<RegisterId> const&);
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionIndexedAccess(
-      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
-      size_t, std::vector<Variable const*> const&,
-      std::vector<RegisterId> const&);
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with ARRAY
@@ -385,8 +395,7 @@ class Expression {
   /// @brief execute an expression of type SIMPLE with NOT
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue executeSimpleExpressionNot(AstNode const*,
-                                      arangodb::AqlTransaction*,
+  AqlValue executeSimpleExpressionNot(AstNode const*, arangodb::AqlTransaction*,
                                       AqlItemBlock const*, size_t,
                                       std::vector<Variable const*> const&,
                                       std::vector<RegisterId> const&);
@@ -406,9 +415,16 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionComparison(
-      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
-      size_t, std::vector<Variable const*> const&,
-      std::vector<RegisterId> const&);
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionArrayComparison(
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with TERNARY
@@ -446,11 +462,9 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionArithmetic(
-      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*,
-      size_t, std::vector<Variable const*> const&,
-      std::vector<RegisterId> const&);
+      AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the AST
@@ -540,7 +554,6 @@ class Expression {
 
   std::unordered_map<Variable const*, TRI_json_t const*> _variables;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "constant" global object for NULL which can be shared by all
@@ -568,4 +581,3 @@ class Expression {
 }  // namespace arangodb
 
 #endif
-

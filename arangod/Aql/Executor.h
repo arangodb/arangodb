@@ -43,9 +43,7 @@ struct AstNode;
 class Query;
 struct V8Expression;
 
-
 class Executor {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the executor
@@ -59,7 +57,6 @@ class Executor {
 
   ~Executor();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an expression execution object
@@ -86,7 +83,6 @@ class Executor {
 
   static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief traverse the expression and note all (big) array/object literals
@@ -161,6 +157,12 @@ class Executor {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateCodeBinaryOperator(AstNode const*);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generate JavaScript code for a binary array operator
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateCodeBinaryArrayOperator(AstNode const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate JavaScript code for the ternary operator
@@ -252,7 +254,6 @@ class Executor {
 
   v8::Handle<v8::Value> compileExpression();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a string buffer used for operations
@@ -284,7 +285,6 @@ class Executor {
 
   static std::unordered_map<std::string, Function const> const FunctionNames;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum number of array members / object attributes for considering
@@ -303,5 +303,3 @@ class Executor {
 }
 
 #endif
-
-

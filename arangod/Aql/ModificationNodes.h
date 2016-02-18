@@ -40,7 +40,6 @@ struct Collection;
 class ExecutionBlock;
 class ExecutionPlan;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for modification operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,13 +70,12 @@ class ModificationNode : public ExecutionNode {
   ModificationNode(ExecutionPlan*, arangodb::basics::Json const& json);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void toJsonHelper(arangodb::basics::Json& json,
-                            TRI_memory_zone_t* zone, bool) const override;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                                  bool) const override;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the database
@@ -156,7 +154,6 @@ class ModificationNode : public ExecutionNode {
 
   bool isModificationNode() const override { return true; }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _vocbase, the database
@@ -189,7 +186,6 @@ class ModificationNode : public ExecutionNode {
   Variable const* _outVariableNew;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RemoveNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +194,6 @@ class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RemoveBlock;
-
 
  public:
   RemoveNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -219,11 +214,11 @@ class RemoveNode : public ModificationNode {
   NodeType getType() const override final { return REMOVE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -249,7 +244,6 @@ class RemoveNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -257,7 +251,6 @@ class RemoveNode : public ModificationNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class InsertNode
@@ -267,7 +260,6 @@ class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class InsertBlock;
-
 
  public:
   InsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -289,11 +281,11 @@ class InsertNode : public ModificationNode {
   NodeType getType() const override final { return INSERT; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -319,7 +311,6 @@ class InsertNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -327,7 +318,6 @@ class InsertNode : public ModificationNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpdateNode
@@ -364,11 +354,11 @@ class UpdateNode : public ModificationNode {
   NodeType getType() const override final { return UPDATE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -405,7 +395,6 @@ class UpdateNode : public ModificationNode {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -419,7 +408,6 @@ class UpdateNode : public ModificationNode {
 
   Variable const* _inKeyVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ReplaceNode
@@ -456,11 +444,11 @@ class ReplaceNode : public ModificationNode {
   NodeType getType() const override final { return REPLACE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -497,7 +485,6 @@ class ReplaceNode : public ModificationNode {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -511,7 +498,6 @@ class ReplaceNode : public ModificationNode {
 
   Variable const* _inKeyVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpsertNode
@@ -554,11 +540,11 @@ class UpsertNode : public ModificationNode {
   NodeType getType() const override final { return UPSERT; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -589,7 +575,6 @@ class UpsertNode : public ModificationNode {
     vars.emplace(_updateVariable);
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for the search document
@@ -620,4 +605,3 @@ class UpsertNode : public ModificationNode {
 }  // namespace arangodb
 
 #endif
-

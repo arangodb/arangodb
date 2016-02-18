@@ -201,7 +201,7 @@
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
-      [ 100, 250, 500, 1000, 2500, 5000, 10000 ].forEach(function (value) {
+      [ 100, 250, 500, 1000, 2500, 5000, 10000, "all" ].forEach(function (value) {
         sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
           '>' + _.escape(value) + ' results</option>');
@@ -690,9 +690,12 @@
         var sizeBox = $('#querySize');
         var data = {
           query: selectedText || inputEditor.getValue(),
-          batchSize: parseInt(sizeBox.val(), 10),
           id: "currentFrontendQuery"
         };
+
+        if (sizeBox.val() !== 'all') {
+          data.batchSize = parseInt(sizeBox.val(), 10);
+        }
 
         var bindVars = varsEditor.getValue();
 
@@ -904,6 +907,8 @@
               if (typeof callback === "function") {
                 callback();
               }
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               window.progressView.hide();
@@ -1095,7 +1100,8 @@
               if (xhr.getResponseHeader('x-arango-async-id')) {
                 self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
               }
-
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               self.switchTab("result-switch");

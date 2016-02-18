@@ -23,11 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "edge-collection.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Indexes/EdgeIndex.h"
 #include "VocBase/document-collection.h"
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the _from and _to end of an edge are identical
@@ -127,7 +125,6 @@ static bool FindEdges(arangodb::Transaction* trx,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +142,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
   auto edgeIndex = document->edgeIndex();
 
   if (edgeIndex == nullptr) {
-    LOG_ERROR("collection does not have an edges index");
+    LOG(ERR) << "collection does not have an edges index";
     return result;
   }
 
@@ -164,5 +161,3 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
 
   return result;
 }
-
-

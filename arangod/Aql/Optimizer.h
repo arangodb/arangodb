@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace aql {
 
-
 class Optimizer {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -45,13 +44,13 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    VPackBuilder toVelocyPack() const {
-      VPackBuilder result;
+    std::shared_ptr<VPackBuilder> toVelocyPack() const {
+      auto result = std::make_shared<VPackBuilder>();
       {
-        VPackObjectBuilder b(&result);
-        result.add("rulesExecuted", VPackValue(rulesExecuted));
-        result.add("rulesSkipped", VPackValue(rulesSkipped));
-        result.add("plansCreated", VPackValue(plansCreated));
+        VPackObjectBuilder b(result.get());
+        result->add("rulesExecuted", VPackValue(rulesExecuted));
+        result->add("rulesSkipped", VPackValue(rulesSkipped));
+        result->add("plansCreated", VPackValue(plansCreated));
       }
       return result;
     }
@@ -96,6 +95,8 @@ class Optimizer {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1 = 105,
+    
+    inlineSubqueriesRule_pass1 = 106,
 
     // split and-combined filters into multiple smaller filters
     splitFiltersRule_pass1 = 110,
@@ -296,7 +297,6 @@ class Optimizer {
     std::deque<ExecutionPlan*> list;
     std::deque<int> levelDone;
 
-
     PlanList() {}
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +413,6 @@ class Optimizer {
     }
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, this will initialize the rules database
@@ -423,10 +422,8 @@ class Optimizer {
 
   explicit Optimizer(size_t);
 
-
   ~Optimizer() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do the optimization, this does the optimization, the resulting
@@ -532,7 +529,6 @@ class Optimizer {
     return (*it).second.level;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief estimatePlans
@@ -591,7 +587,6 @@ class Optimizer {
 
   static void setupRules();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief optimizer statistics
@@ -599,7 +594,6 @@ class Optimizer {
 
   Stats _stats;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the rules database
@@ -617,7 +611,7 @@ class Optimizer {
   /// @brief mutex to protect rule setup
   //////////////////////////////////////////////////////////////////////////////
 
-  static arangodb::basics::Mutex SetupLock;
+  static arangodb::Mutex SetupLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current set of plans to be optimized
@@ -647,4 +641,3 @@ class Optimizer {
 }  // namespace aql
 }  // namespace arangodb
 #endif
-

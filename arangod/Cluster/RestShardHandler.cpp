@@ -22,12 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestShardHandler.h"
-#include "Basics/ConditionLocker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -40,24 +37,9 @@ RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-
-
 bool RestShardHandler::isDirect() const { return true; }
 
-
 arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
-// Deactivated to allow for asynchronous cluster internal communication
-// between two DBservers. 30.7.2014 Max.
-#if 0
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_COORDINATOR) {
-    generateError(arangodb::rest::HttpResponse::BAD,
-                  (int) arangodb::rest::HttpResponse::BAD,
-                  "this API is meant to be called on a coordinator node");
-    return status_t(HANDLER_DONE);
-  }
-#endif
-
   bool found;
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
@@ -81,5 +63,3 @@ arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
-

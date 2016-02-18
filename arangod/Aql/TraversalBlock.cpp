@@ -32,12 +32,10 @@
 #include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using VertexId = arangodb::traverser::VertexId;
-
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
@@ -266,8 +264,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   auto en = static_cast<TraversalNode const*>(getPlanNode());
 
   for (size_t j = 0; j < hint; ++j) {
-    std::unique_ptr<arangodb::traverser::TraversalPath> p(
-        _traverser->next());
+    std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
 
     if (p == nullptr) {
       // There are no further paths available.
@@ -350,9 +347,10 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       if (input.has(TRI_VOC_ATTRIBUTE_ID)) {
         Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
         if (_idJson.isString()) {
-          _vertexId = arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
-          VertexId v = arangodb::traverser::IdStringToVertexId(
-              _resolver, _vertexId);
+          _vertexId =
+              arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
+          VertexId v =
+              arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
           _traverser->setStartVertex(v);
         }
       }
@@ -516,4 +514,3 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   // Skip the next atMost many paths.
   return atMost;
 }
-

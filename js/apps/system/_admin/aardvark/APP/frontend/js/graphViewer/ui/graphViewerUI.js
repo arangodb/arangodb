@@ -639,10 +639,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     this.graphSettings = {};
 
     this.loadLocalStorage = function() {
-      var graphName = adapterConfig.graphName;
+      //graph name not enough, need to set db name also
+      var dbName = adapterConfig.baseUrl.split('/')[2],
+      combinedGraphName = adapterConfig.graphName + dbName;
+      
       if (localStorage.getItem('graphSettings') === null || localStorage.getItem('graphSettings')  === 'null') {
         var obj = {};
-        obj[graphName] = {
+        obj[combinedGraphName] = {
           viewer: viewerConfig,
           adapter: adapterConfig
         };
@@ -653,16 +656,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           var settings = JSON.parse(localStorage.getItem('graphSettings'));
           this.graphSettings = settings;
 
-          if (settings[graphName].viewer !== undefined) {
-            viewerConfig = settings[graphName].viewer;  
+          if (settings[combinedGraphName].viewer !== undefined) {
+            viewerConfig = settings[combinedGraphName].viewer;  
           }
-          if (settings[graphName].adapter !== undefined) {
-            adapterConfig = settings[graphName].adapter;
+          if (settings[combinedGraphName].adapter !== undefined) {
+            adapterConfig = settings[combinedGraphName].adapter;
           }
         }
         catch (e) {
           console.log("Could not load graph settings, resetting graph settings.");
-          this.graphSettings[graphName] = {
+          this.graphSettings[combinedGraphName] = {
             viewer: viewerConfig,
             adapter: adapterConfig
           };

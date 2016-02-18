@@ -31,13 +31,11 @@ namespace arangodb {
 namespace aql {
 
 class Graph {
-  
  public:
-  Graph(arangodb::basics::Json const&);
+  explicit Graph(arangodb::basics::Json const&);
 
   ~Graph() {}
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the cids of all vertexCollections
@@ -63,7 +61,6 @@ class Graph {
 
   static char const* _attrOrphans;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Graph collection name
@@ -77,7 +74,6 @@ class Graph {
 
   void insertVertexCollectionsFromJsonArray(arangodb::basics::Json& arr);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the cids of all vertexCollections
@@ -109,13 +105,18 @@ class Graph {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the graph
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 };
 
 }  // namespace aql
 }  // namespace arangodb
 
 #endif
-
 
 // Local Variables:
 // mode: outline-minor

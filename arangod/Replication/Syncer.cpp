@@ -23,11 +23,9 @@
 
 #include "Syncer.h"
 
-#include "Basics/files.h"
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -42,6 +40,11 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -62,23 +65,26 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr),
       _endpoint(nullptr),
       _connection(nullptr),
-      _client(nullptr) {
-  if (configuration->_database != nullptr) {
-    // use name from configuration
-    _databaseName = std::string(configuration->_database);
-  } else {
+      _client(nullptr),
+      _barrierId(0),
+      _barrierUpdateTime(0),
+      _barrierTtl(600) {
+
+  if (configuration->_database.empty()) {
     // use name of current database
     _databaseName = std::string(vocbase->_name);
+  } else {
+    // use name from configuration
+    _databaseName = configuration->_database;
   }
 
   // get our own server-id
   _localServerId = TRI_GetIdServer();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  TRI_InitConfigurationReplicationApplier(&_configuration);
-  TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
+  _configuration.update(configuration);
 
-  TRI_InitMasterInfoReplication(&_masterInfo, configuration->_endpoint);
+  _masterInfo._endpoint = configuration->_endpoint;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
@@ -94,16 +100,8 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
                                      _configuration._requestTimeout, false);
 
       if (_client != nullptr) {
-        std::string username;
-        std::string password;
-
-        if (_configuration._username != nullptr) {
-          username = std::string(_configuration._username);
-        }
-
-        if (_configuration._password != nullptr) {
-          password = std::string(_configuration._password);
-        }
+        std::string username = _configuration._username;
+        std::string password = _configuration._password;
 
         _client->setUserNamePassword("/", username, password);
         _client->setLocationRewriter(this, &rewriteLocation);
@@ -121,12 +119,16 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
 }
 
 Syncer::~Syncer() {
+  try {
+    sendRemoveBarrier();
+  }
+  catch (...) {
+  }
+
   // shutdown everything properly
   delete _client;
   delete _connection;
   delete _endpoint;
-
-  TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,8 +147,149 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
 
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
+  } 
+  return "/_db/" + s->_databaseName + "/" + location;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the barrier id from the syncer
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t Syncer::stealBarrier() {
+  auto id = _barrierId;
+  _barrierId = 0;
+  _barrierUpdateTime = 0;
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "create barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
+  _barrierId = 0;
+
+  std::string const url = BaseUrl + "/barrier";
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
+
+  // send request
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
+      HttpRequest::HTTP_REQUEST_POST, url, body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " +
+               _masterInfo._endpoint + ": " +
+               _client->getErrorMessage();
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+
+    errorMsg = "got invalid response from master at " +
+               _masterInfo._endpoint + ": HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
   } else {
-    return "/_db/" + s->_databaseName + "/" + location;
+    std::unique_ptr<TRI_json_t> json(
+        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+
+    if (json == nullptr) {
+      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    } else {
+      std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
+
+      if (id.empty()) {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      } else {
+        _barrierId = StringUtils::uint64(id);
+        _barrierUpdateTime = TRI_microtime();
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << _barrierId;
+      }
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send an "extend barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
+  if (_barrierId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  double now = TRI_microtime();
+
+  if (now <= _barrierUpdateTime + _barrierTtl - 120.0) {
+    // no need to extend the barrier yet
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
+
+  // send request
+  std::unique_ptr<SimpleHttpResult> response(_client->request(
+      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (response->wasHttpError()) {
+    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+  } else {
+    _barrierUpdateTime = TRI_microtime();
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a "remove barrier" command
+////////////////////////////////////////////////////////////////////////////////
+
+int Syncer::sendRemoveBarrier() {
+  if (_barrierId == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  try {
+    std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+
+    // send request
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
+        HttpRequest::HTTP_REQUEST_DELETE, url, nullptr, 0));
+
+    if (response == nullptr || !response->isComplete()) {
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    TRI_ASSERT(response != nullptr);
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    if (response->wasHttpError()) {
+      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    } else {
+      _barrierId = 0;
+      _barrierUpdateTime = 0;
+    }
+    return res;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 }
 
@@ -206,8 +349,7 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::applyCollectionDumpMarker(
-    arangodb::Transaction* trx,
-    TRI_transaction_collection_t* trxCollection,
+    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
@@ -324,8 +466,8 @@ int Syncer::applyCollectionDumpMarker(
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "document removal operation failed: " + std::string(TRI_errno_string(res));
+      errorMsg = "document removal operation failed: " +
+                 std::string(TRI_errno_string(res));
     }
 
     return res;
@@ -376,44 +518,19 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_json_t* keyOptions = nullptr;
-
-  if (JsonHelper::isObject(JsonHelper::getObjectElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE,
-                              JsonHelper::getObjectElement(json, "keyOptions"));
-  }
-
-  std::shared_ptr<VPackBuilder> opts = JsonHelper::toVelocyPack(keyOptions);
-
-  if (keyOptions != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-  }
 
   std::shared_ptr<VPackBuilder> builder =
       arangodb::basics::JsonHelper::toVelocyPack(json);
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
+  // merge in "isSystem" attribute
+  VPackBuilder s;
+  s.openObject();
+  s.add("isSystem", VPackValue(true));
+  s.close();
 
-  // wait for "old" collection to be dropped
-  char* dirName =
-      TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
+  VPackBuilder merged = VPackCollection::merge(s.slice(), builder->slice(), true);
 
-  if (dirName != nullptr) {
-    char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
-
-    if (parameterName != nullptr) {
-      int iterations = 0;
-
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
-             iterations++ < 1200) {
-        usleep(1000 * 100);
-      }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
-  }
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice());
 
   col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
@@ -594,7 +711,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
-               std::string(_masterInfo._endpoint) + ": " +
+               _masterInfo._endpoint + ": " +
                _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -606,7 +723,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
+               _masterInfo._endpoint + ": HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
   } else {
@@ -619,7 +736,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
       errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) + ": invalid JSON";
+                 _masterInfo._endpoint + ": invalid JSON";
     }
   }
 
@@ -632,7 +749,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
 
 int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   std::string const endpointString =
-      " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
+      " from endpoint '" + _masterInfo._endpoint + "'";
 
   // process "state" section
   TRI_json_t const* state = JsonHelper::getObjectElement(json, "state");
@@ -732,8 +849,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   _masterInfo._lastLogTick = lastLogTick;
   _masterInfo._active = running;
 
-  TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "connected to master at " << _masterInfo._endpoint << ", id " << _masterInfo._serverId << ", version " << _masterInfo._majorVersion << "." << _masterInfo._minorVersion << ", last log tick " << _masterInfo._lastLogTick;
 
   return TRI_ERROR_NO_ERROR;
 }
-

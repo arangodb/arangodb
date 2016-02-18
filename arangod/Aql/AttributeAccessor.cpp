@@ -33,7 +33,6 @@
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +80,6 @@ AttributeAccessor::AttributeAccessor(
 ////////////////////////////////////////////////////////////////////////////////
 
 AttributeAccessor::~AttributeAccessor() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the accessor
@@ -136,7 +134,7 @@ AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
         size_t i = 0;
 
         while (TRI_IsObjectJson(json)) {
-          TRI_ASSERT_EXPENSIVE(i < n);
+          TRI_ASSERT(i < n);
 
           json = TRI_LookupObjectJson(json, _attributeParts[i]);
 
@@ -276,7 +274,7 @@ AqlValue AttributeAccessor::extractRegular(
 
   if (_pid != 0) {
     // attribute exists
-    TRI_ASSERT_EXPENSIVE(_shaper != nullptr);
+    TRI_ASSERT(_shaper != nullptr);
 
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, src._marker);
@@ -301,5 +299,3 @@ AqlValue AttributeAccessor::extractRegular(
 
   return AqlValue(new Json(Json::Null));
 }
-
-

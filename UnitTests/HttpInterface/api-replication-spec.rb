@@ -347,7 +347,7 @@ describe ArangoDB do
       it "fetches a create collection action from the follow log" do
         ArangoDB.drop_collection("UnitTestsReplication")
         
-        sleep 1
+        sleep 5
 
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "")
@@ -357,7 +357,8 @@ describe ArangoDB do
 
         cid = ArangoDB.create_collection("UnitTestsReplication")
 
-        sleep 1
+        sleep 5
+
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
@@ -408,7 +409,7 @@ describe ArangoDB do
       it "fetches some collection operations from the follow log" do
         ArangoDB.drop_collection("UnitTestsReplication")
         
-        sleep 1
+        sleep 5
 
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
@@ -435,7 +436,7 @@ describe ArangoDB do
         doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd) 
         doc.code.should eq(200)
         
-        sleep 1
+        sleep 5
 
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)

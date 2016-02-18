@@ -23,9 +23,6 @@
 
 #include "terminal-utils.h"
 
-#include "Basics/conversions.h"
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,5 +66,3 @@ void TRI_SetStdinVisibility(bool visible) {
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
 }
-
-

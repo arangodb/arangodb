@@ -36,15 +36,11 @@ class Dispatcher;
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestShardHandler : public admin::RestBaseHandler {
-  
+class RestShardHandler : public RestBaseHandler {
  public:
-
   RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +49,6 @@ class RestShardHandler : public admin::RestBaseHandler {
 
   status_t execute() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -64,5 +59,3 @@ class RestShardHandler : public admin::RestBaseHandler {
 }
 
 #endif
-
-

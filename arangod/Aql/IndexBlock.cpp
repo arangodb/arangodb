@@ -35,7 +35,6 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -56,7 +55,6 @@ using Json = arangodb::basics::Json;
 #define ENTER_BLOCK
 #define LEAVE_BLOCK
 #endif
-
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
@@ -624,4 +622,3 @@ void IndexBlock::cleanupNonConstExpressions() {
   }
   _nonConstExpressions.clear();
 }
-

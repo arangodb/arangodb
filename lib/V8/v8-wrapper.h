@@ -53,16 +53,13 @@
 
 #include <v8.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 wrapper helper
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename STRUCT, uint16_t CID>
 class V8Wrapper {
-  
  public:
-
   V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
             v8::Handle<v8::Object> result)
       : _refs(0), _object(object), _free(free), _isolate(isolate) {
@@ -80,7 +77,6 @@ class V8Wrapper {
     makeWeak();
   }
 
-
   virtual ~V8Wrapper() {
     if (!_handle.IsEmpty()) {
       TRI_ASSERT(_handle.IsNearDeath());
@@ -97,7 +93,6 @@ class V8Wrapper {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unwraps a structure
@@ -115,7 +110,6 @@ class V8Wrapper {
 
   static void deleteObject(STRUCT* object) { delete object; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increases reference count
@@ -153,7 +147,6 @@ class V8Wrapper {
     }
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief persistent handle for V8 object
@@ -161,7 +154,6 @@ class V8Wrapper {
 
   v8::Persistent<v8::Object> _handle;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief weak callback
@@ -190,7 +182,6 @@ class V8Wrapper {
 
   void makeWeak() { _handle.SetWeak(&_handle, weakCallback); }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reference count
@@ -216,10 +207,6 @@ class V8Wrapper {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Isolate* _isolate;
-
-  
 };
 
 #endif
-
-

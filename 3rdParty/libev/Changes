@@ -2,6 +2,103 @@ Revision history for libev, a high-performance and full-featured event loop.
 
 TODO: ev_loop_wakeup
 TODO: EV_STANDALONE == NO_HASSEL (do not use clock_gettime in ev_standalone)
+TODO: faq, process a thing in each iteration
+TODO: dbeugging tips, ev_verify, ev_init twice
+TODO: ev_break for immediate exit (EVBREAK_NOW?)
+TODO: ev_feed_child_event
+TODO: document the special problem of signals around fork.
+TODO: store pid for each signal
+TODO: document file descriptor usage per loop
+TODO: store loop pid_t and compare isndie signal handler,store 1 for same, 2 for differign pid, clean up in loop_fork
+TODO: embed watchers need updating when fd changes
+TODO: document portability requirements for atomic pointer access
+TODO: document requirements for function pointers and calling conventions.
+
+4.22 Sun Dec 20 22:11:50 CET 2015
+	- when epoll detects unremovable fds in the fd set, rebuild
+          only the epoll descriptor, not the signal pipe, to avoid
+          SIGPIPE in ev_async_send. This doesn't solve it on fork,
+          so document what needs to be done in ev_loop_fork
+          (analyzed by Benjamin Mahler).
+	- remove superfluous sys/timeb.h include on win32
+          (analyzed by Jason Madden).
+        - updated libecb.
+
+4.20 Sat Jun 20 13:01:43 CEST 2015
+	- prefer noexcept over throw () with C++ 11.
+        - update ecb.h due to incompatibilities with c11.
+        - fix a potential aliasing issue when reading and writing
+          watcher callbacks.
+
+4.19 Thu Sep 25 08:18:25 CEST 2014
+	- ev.h wasn't valid C++ anymore, which tripped compilers other than
+          clang, msvc or gcc (analyzed by Raphael 'kena' Poss). Unfortunately,
+          C++ doesn't support typedefs for function pointers fully, so the affected
+          declarations have to spell out the types each time.
+	- when not using autoconf, tighten the check for clock_gettime and related
+          functionality.
+
+4.18 Fri Sep  5 17:55:26 CEST 2014
+	- events on files were not always generated properly with the
+          epoll backend (testcase by Assaf Inbal).
+	- mark event pipe fd as cloexec after a fork (analyzed by Sami Farin).
+        - (ecb) support m68k, m88k and sh (patch by Miod Vallat).
+        - use a reasonable fallback for EV_NSIG instead of erroring out
+          when we can't detect the signal set size.
+        - in the absence of autoconf, do not use the clock syscall
+          on glibc >= 2.17 (avoids the syscall AND -lrt on systems
+          doing clock_gettime in userspace).
+        - ensure extern "C" function pointers are used for externally-visible
+          loop callbacks (not watcher callbacks yet).
+        - (ecb) work around memory barriers and volatile apparently both being
+          broken in visual studio 2008 and later (analysed and patch by Nicolas Noble).
+
+4.15 Fri Mar  1 12:04:50 CET 2013
+        - destroying a non-default loop would stop the global waitpid
+          watcher (Denis Bilenko).
+	- queueing pending watchers of higher priority from a watcher now invokes
+          them in a timely fashion (reported by Denis Bilenko).
+	- add throw() to all libev functions that cannot throw exceptions, for
+          further code size decrease when compiling for C++.
+        - add throw () to callbacks that must not throw exceptions (allocator,
+          syserr, loop acquire/release, periodic reschedule cbs).
+	- fix event_base_loop return code, add event_get_callback, event_base_new,
+          event_base_get_method calls to improve libevent 1.x emulation and add
+          some libevent 2.x functionality (based on a patch by Jeff Davey).
+        - add more memory fences to fix a bug reported by Jeff Davey. Better
+          be overfenced than underprotected.
+	- ev_run now returns a boolean status (true meaning watchers are
+          still active).
+	- ev_once: undef EV_ERROR in ev_kqueue.c, to avoid clashing with
+          libev's EV_ERROR (reported by 191919).
+	- (ecb) add memory fence support for xlC (Darin McBride).
+	- (ecb) add memory fence support for gcc-mips (Anton Kirilov).
+	- (ecb) add memory fence support for gcc-alpha (Christian Weisgerber).
+        - work around some kernels losing file descriptors by leaking
+          the kqueue descriptor in the child.
+        - work around linux inotify not reporting IN_ATTRIB changes for directories
+          in many cases.
+        - include sys/syscall.h instead of plain syscall.h.
+        - check for io watcher loops in ev_verify, check for the most
+          common reported usage bug in ev_io_start.
+        - choose socket vs. WSASocket at compiletime using EV_USE_WSASOCKET.
+        - always use WSASend/WSARecv directly on windows, hoping that this
+          works in all cases (unlike read/write/send/recv...).
+        - try to detect signals around a fork faster (test program by
+          Denis Bilenko).
+        - work around recent glibc versions that leak memory in realloc.
+        - rename ev::embed::set to ev::embed::set_embed to avoid clashing
+          the watcher base set (loop) method.
+        - rewrite the async/signal pipe logic to always keep a valid fd, which
+          simplifies (and hopefully correctifies :) the race checking
+          on fork, at the cost of one extra fd.
+        - add fat, msdos, jffs2, ramfs, ntfs and btrfs to the list of
+          inotify-supporting filesystems.
+        - move orig_CFLAGS assignment to after AC_INIT, as newer autoconf
+          versions ignore it before
+          (https://bugzilla.redhat.com/show_bug.cgi?id=908096).
+        - add some untested android support.
+        - enum expressions must be of type int (reported by Juan Pablo L).
 
 4.11 Sat Feb  4 19:52:39 CET 2012
 	- INCOMPATIBLE CHANGE: ev_timer_again now clears the pending status, as
@@ -195,7 +292,7 @@ TODO: EV_STANDALONE == NO_HASSEL (do not use clock_gettime in ev_standalone)
         - implement ev_suspend and ev_resume.
         - new EV_CUSTOM revents flag for use by applications.
         - add documentation section about priorities.
-        - add a glossary to the dcoumentation.
+        - add a glossary to the documentation.
         - extend the ev_fork description slightly.
         - optimize a jump out of call_pending.
 

@@ -34,6 +34,9 @@
 #include <iosfwd>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace basics {
 class StringBuffer;
 }
@@ -189,12 +192,20 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_DIRECTION = 61,
   NODE_TYPE_OPERATOR_NARY_AND = 62,
   NODE_TYPE_OPERATOR_NARY_OR = 63,
-  NODE_TYPE_AGGREGATIONS = 64
+  NODE_TYPE_AGGREGATIONS = 64,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ = 65,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_NE = 66,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_LT = 67,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_LE = 68,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_GT = 69,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_GE = 70,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_IN = 71,
+  NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN = 72,
+  NODE_TYPE_QUANTIFIER = 73
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
 static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node
@@ -207,7 +218,6 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the node
   //////////////////////////////////////////////////////////////////////////////
@@ -218,25 +228,25 @@ struct AstNode {
   /// @brief create a node, with defining a value type
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AstNode(AstNodeType, AstNodeValueType);
+  AstNode(AstNodeType, AstNodeValueType);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a boolean node, with defining a value type
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AstNode(bool, AstNodeValueType);
+  AstNode(bool, AstNodeValueType);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a boolean node, with defining a value type
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AstNode(int64_t, AstNodeValueType);
+  AstNode(int64_t, AstNodeValueType);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a string node, with defining a value type
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AstNode(char const*, size_t, AstNodeValueType);
+  AstNode(char const*, size_t, AstNodeValueType);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the node from JSON
@@ -258,7 +268,6 @@ struct AstNode {
 
   ~AstNode();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if all members of a node are equality comparisons
@@ -345,6 +354,31 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_json_t* toJson(TRI_memory_zone_t*, bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the node value
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VelocyPack representation of the node value
+  ///        Can throw Out of Memory Error
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPackValue(arangodb::velocypack::Builder&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a VelocyPack representation of the node
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a VelocyPack representation of the node
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a JSON representation of the node to the JSON array specified
@@ -608,6 +642,12 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isComparisonOperator() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not a node is an array comparison operator
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isArrayComparisonOperator() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a node (and its subnodes) may throw a runtime
@@ -862,7 +902,6 @@ struct AstNode {
 
   std::string toString() const;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stringify the value of a node into a string buffer
   /// this method is used when generated JavaScript code for the node!
@@ -871,7 +910,6 @@ struct AstNode {
 
   void appendValue(arangodb::basics::StringBuffer*) const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the node type
@@ -891,7 +929,6 @@ struct AstNode {
 
   AstNodeValue value;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief precomputed JSON value (used when executing expressions)
@@ -941,5 +978,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
 
 #endif
-
-

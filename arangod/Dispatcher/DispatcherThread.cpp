@@ -25,26 +25,16 @@
 #include "DispatcherThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
-#include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a global, but thread-local place to hold the current dispatcher
-/// thread. If we are not in a dispatcher thread this is set to nullptr.
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
-    nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
@@ -52,21 +42,19 @@ thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
 
 DispatcherThread::DispatcherThread(DispatcherQueue* queue)
     : Thread("Dispatcher" + (queue->_id == Dispatcher::STANDARD_QUEUE
-                             ? std::string("Std")
-                             : (queue->_id == Dispatcher::AQL_QUEUE
-                                    ? std::string("Aql")
-                                    : ("_" + to_string(queue->_id))))),
+                                 ? std::string("Std")
+                                 : (queue->_id == Dispatcher::AQL_QUEUE
+                                        ? std::string("Aql")
+                                        : ("_" + std::to_string(queue->_id))))),
       _queue(queue) {
-  allowAsynchronousCancelation();
 }
 
 void DispatcherThread::run() {
-  currentDispatcherThread = this;
   double worked = 0;
   double grace = 0.2;
 
   // iterate until we are shutting down
-  while (!_queue->_stopping.load(memory_order_relaxed)) {
+  while (!_queue->_stopping.load(std::memory_order_relaxed)) {
     double now = TRI_microtime();
 
     // drain the job queue
@@ -116,12 +104,11 @@ void DispatcherThread::run() {
     }
   }
 
-  LOG_TRACE("dispatcher thread has finished");
+  LOG(TRACE) << "dispatcher thread has finished";
 
   // this will delete the thread
   _queue->removeStartedThread(this);
 }
-
 
 void DispatcherThread::addStatus(VPackBuilder* b) {
   Thread::addStatus(b);
@@ -132,7 +119,6 @@ void DispatcherThread::addStatus(VPackBuilder* b) {
   b->add("numberWaiting", VPackValue((int)_queue->_nrWaiting.load()));
   b->add("numberBlocked", VPackValue((int)_queue->_nrBlocked.load()));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread is doing a blocking operation
@@ -146,13 +132,12 @@ void DispatcherThread::block() { _queue->blockThread(); }
 
 void DispatcherThread::unblock() { _queue->unblockThread(); }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do the real work
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::handleJob(Job* job) {
-  LOG_DEBUG("starting to run job: %s", job->getName().c_str());
+  LOG(DEBUG) << "starting to run job: " << job->getName().c_str();
 
   // start all the dirty work
   try {
@@ -162,38 +147,38 @@ void DispatcherThread::handleJob(Job* job) {
     try {
       job->handleError(ex);
     } catch (Exception const& ex) {
-      LOG_WARNING("caught error while handling error: %s", ex.what());
+      LOG(WARN) << "caught error while handling error: " << ex.what();
     } catch (std::exception const& ex) {
-      LOG_WARNING("caught error while handling error: %s", ex.what());
+      LOG(WARN) << "caught error while handling error: " << ex.what();
     } catch (...) {
-      LOG_WARNING("caught unknown error while handling error!");
+      LOG(WARN) << "caught unknown error while handling error!";
     }
   } catch (std::bad_alloc const& ex) {
     try {
       Exception ex2(TRI_ERROR_OUT_OF_MEMORY,
-                    std::string("job failed with bad_alloc: ") + ex.what(), __FILE__,
-                    __LINE__);
+                    std::string("job failed with bad_alloc: ") + ex.what(),
+                    __FILE__, __LINE__);
 
       job->handleError(ex2);
-      LOG_WARNING("caught exception in work(): %s", ex2.what());
+      LOG(WARN) << "caught exception in work(): " << ex2.what();
     } catch (...) {
-      LOG_WARNING("caught unknown error while handling error!");
+      LOG(WARN) << "caught unknown error while handling error!";
     }
   } catch (std::exception const& ex) {
     try {
       Exception ex2(TRI_ERROR_INTERNAL,
-                    std::string("job failed with error: ") + ex.what(), __FILE__,
-                    __LINE__);
+                    std::string("job failed with error: ") + ex.what(),
+                    __FILE__, __LINE__);
 
       job->handleError(ex2);
-      LOG_WARNING("caught exception in work(): %s", ex2.what());
+      LOG(WARN) << "caught exception in work(): " << ex2.what();
     } catch (...) {
-      LOG_WARNING("caught unknown error while handling error!");
+      LOG(WARN) << "caught unknown error while handling error!";
     }
   } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-    if (_queue->_stopping.load(memory_order_relaxed)) {
-      LOG_WARNING("caught cancelation exception during work");
+    if (_queue->_stopping.load(std::memory_order_relaxed)) {
+      LOG(WARN) << "caught cancelation exception during work";
       throw;
     }
 #endif
@@ -203,9 +188,9 @@ void DispatcherThread::handleJob(Job* job) {
                    __FILE__, __LINE__);
 
       job->handleError(ex);
-      LOG_WARNING("caught unknown exception in work()");
+      LOG(WARN) << "caught unknown exception in work()";
     } catch (...) {
-      LOG_WARNING("caught unknown error while handling error!");
+      LOG(WARN) << "caught unknown error while handling error!";
     }
   }
 
@@ -214,14 +199,12 @@ void DispatcherThread::handleJob(Job* job) {
     job->cleanup(_queue);
   } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
-    if (_queue->_stopping.load(memory_order_relaxed)) {
-      LOG_WARNING("caught cancelation exception during cleanup");
+    if (_queue->_stopping.load(std::memory_order_relaxed)) {
+      LOG(WARN) << "caught cancelation exception during cleanup";
       throw;
     }
 #endif
 
-    LOG_WARNING("caught error while cleaning up!");
+    LOG(WARN) << "caught error while cleaning up!";
   }
 }
-
-

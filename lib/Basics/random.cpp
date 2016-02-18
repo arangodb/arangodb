@@ -25,13 +25,11 @@
 
 #include "Basics/threads.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool Initialized = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a seed
@@ -45,20 +43,25 @@ static unsigned long SeedRandom(void) {
 
   /* ignore result */ gettimeofday(&tv, 0);
 
-  seed = (unsigned long)(tv.tv_sec);
-  seed ^= (unsigned long)(tv.tv_usec);
+  seed = static_cast<decltype(seed)>(tv.tv_sec);
+  seed ^= static_cast<decltype(seed)>(tv.tv_usec);
 #else
-  seed = (unsigned long)time(0);
+  seed = static_cast<decltype(seed)>(time(0));
 #endif
 
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 8);
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 16);
-  seed ^= (unsigned long)(TRI_CurrentProcessId() << 24);
-  seed ^= (unsigned long)(TRI_CurrentThreadId());
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 8);
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 16);
+  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 24);
+
+#ifdef __APPLE__
+  auto tid = reinterpret_cast<uintptr_t>(TRI_CurrentThreadId());
+  seed ^= static_cast<decltype(seed)>(tid);
+#else
+  seed ^= static_cast<decltype(seed)>(TRI_CurrentThreadId());
+#endif
 
   return seed;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a 16 bit random unsigned integer
@@ -122,8 +125,6 @@ uint32_t TRI_UInt32Random(void) {
 #endif
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the random components
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,5 +150,3 @@ void TRI_ShutdownRandom(void) {
 
   Initialized = false;
 }
-
-

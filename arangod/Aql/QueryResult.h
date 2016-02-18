@@ -27,12 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace aql {
-
 
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
@@ -52,7 +51,7 @@ struct QueryResult {
 
     other.warnings = nullptr;
     other.json = nullptr;
-    other.stats = other.stats;
+    other.stats = nullptr;
     other.profile = nullptr;
     other.clusterplan = nullptr;
   }
@@ -91,7 +90,7 @@ struct QueryResult {
   TRI_memory_zone_t* zone;
   TRI_json_t* warnings;
   TRI_json_t* json;
-  VPackBuilder stats;
+  std::shared_ptr<arangodb::velocypack::Builder> stats;
   TRI_json_t* profile;
   TRI_json_t* clusterplan;
 };
@@ -99,5 +98,3 @@ struct QueryResult {
 }
 
 #endif
-
-

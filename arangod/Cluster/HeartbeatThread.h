@@ -28,7 +28,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Cluster/AgencyComm.h"
 
 struct TRI_server_t;
@@ -41,8 +41,7 @@ class ApplicationDispatcher;
 
 class ApplicationV8;
 
-class HeartbeatThread : public basics::Thread {
-  
+class HeartbeatThread : public Thread {
  private:
   HeartbeatThread(HeartbeatThread const&);
   HeartbeatThread& operator=(HeartbeatThread const&);
@@ -61,32 +60,12 @@ class HeartbeatThread : public basics::Thread {
 
   ~HeartbeatThread();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the heartbeat
   //////////////////////////////////////////////////////////////////////////////
 
   bool init();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief stops the heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-
-  void stop() {
-    if (_stop > 0) {
-      return;
-    }
-
-    LOG_TRACE("stopping heartbeat thread");
-
-    _stop = 1;
-    _condition.signal();
-
-    while (_stop != 2) {
-      usleep(1000);
-    }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread is ready
@@ -120,7 +99,6 @@ class HeartbeatThread : public basics::Thread {
 
   static bool hasRunOnce() { return (HasRunOnce == 1); }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -128,7 +106,6 @@ class HeartbeatThread : public basics::Thread {
 
   void run();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, coordinator version
@@ -178,7 +155,6 @@ class HeartbeatThread : public basics::Thread {
 
   bool fetchUsers(TRI_vocbase_t*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -202,7 +178,7 @@ class HeartbeatThread : public basics::Thread {
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _statusLock;
+  arangodb::Mutex _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -287,5 +263,3 @@ class HeartbeatThread : public basics::Thread {
 }
 
 #endif
-
-

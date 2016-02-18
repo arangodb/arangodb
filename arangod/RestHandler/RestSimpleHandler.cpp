@@ -40,18 +40,15 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request, std::pair<arangodb::ApplicationV8*,
-                                    arangodb::aql::QueryRegistry*>* pair)
+    HttpRequest* request,
+    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
       _queryRegistry(pair->second),
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
-
-
 
 HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
@@ -97,16 +94,14 @@ HttpHandler::status_t RestSimpleHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 bool RestSimpleHandler::cancel() { return cancelQuery(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   TRI_ASSERT(_query == nullptr);
   _query = query;
@@ -117,7 +112,7 @@ void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::unregisterQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   _query = nullptr;
 }
@@ -127,7 +122,7 @@ void RestSimpleHandler::unregisterQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::cancelQuery() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
     _query->killed(true);
@@ -143,7 +138,7 @@ bool RestSimpleHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestSimpleHandler::wasCanceled() {
-  MUTEX_LOCKER(_queryLock);
+  MUTEX_LOCKER(mutexLocker, _queryLock);
   return _queryKilled;
 }
 
@@ -234,18 +229,20 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
       size_t ignored = 0;
       size_t removed = 0;
-      VPackSlice stats = queryResult.stats.slice();
+      if (queryResult.stats != nullptr) {
+        VPackSlice stats = queryResult.stats->slice();
 
-      if (!stats.isNone()) {
-        TRI_ASSERT(stats.isObject());
-        VPackSlice found = stats.get("writesIgnored");
-        if (found.isNumber()) {
-          ignored = found.getNumericValue<size_t>();
-        }
+        if (!stats.isNone()) {
+          TRI_ASSERT(stats.isObject());
+          VPackSlice found = stats.get("writesIgnored");
+          if (found.isNumber()) {
+            ignored = found.getNumericValue<size_t>();
+          }
 
-        found = stats.get("writesExecuted");
-        if (found.isNumber()) {
-          removed = found.getNumericValue<size_t>();
+          found = stats.get("writesExecuted");
+          if (found.isNumber()) {
+            removed = found.getNumericValue<size_t>();
+          }
         }
       }
 
@@ -359,8 +356,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         if (postFilter.isArray()) {
-          std::vector<arangodb::traverser::TraverserExpression*>
-              expressions;
+          std::vector<arangodb::traverser::TraverserExpression*> expressions;
           arangodb::basics::ScopeGuard guard{[]() -> void {},
                                              [&expressions]() -> void {
                                                for (auto& e : expressions) {
@@ -449,5 +445,3 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
-
-

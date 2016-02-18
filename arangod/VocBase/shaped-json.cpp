@@ -24,7 +24,7 @@
 #include "shaped-json.h"
 
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
@@ -33,7 +33,6 @@
 #include "VocBase/VocShaper.h"
 
 // #define DEBUG_JSON_SHAPER 1
-
 
 static bool FillShapeValueJson(VocShaper*, TRI_shape_value_t*,
                                TRI_json_t const*, size_t, bool);
@@ -45,7 +44,6 @@ template <typename T>
 static bool StringifyJsonShapeData(T*, TRI_string_buffer_t*, TRI_shape_t const*,
                                    char const*, uint64_t);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shape cache (caches pointer to last shape)
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +52,6 @@ typedef struct shape_cache_s {
   TRI_shape_sid_t _sid;
   TRI_shape_t const* _shape;
 } shape_cache_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -287,7 +284,7 @@ static int WeightShapeType(TRI_shape_type_t type) {
       return 900;
   }
 
-  LOG_ERROR("invalid shape type: %d\n", (int)type);
+  LOG(ERR) << "invalid shape type: " << type << "\n";
 
   TRI_ASSERT(false);
   return 0;
@@ -580,7 +577,10 @@ static bool FillShapeValueList(VocShaper* shaper, TRI_shape_value_t* dst,
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values; p < e; ++p) {
-      memcpy(ptr, p->_value, (size_t)p->_size);
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t)p->_size);
+      }
       ptr += p->_size;
     }
   }
@@ -640,7 +640,10 @@ static bool FillShapeValueList(VocShaper* shaper, TRI_shape_value_t* dst,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, (size_t)p->_size);
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t)p->_size);
+      }
       ptr += p->_size;
     }
 
@@ -681,7 +684,10 @@ static bool FillShapeValueList(VocShaper* shaper, TRI_shape_value_t* dst,
       *offsets++ = offset;
       offset += p->_size;
 
-      memcpy(ptr, p->_value, (size_t)p->_size);
+      TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+      if (p->_value != nullptr) {
+        memcpy(ptr, p->_value, (size_t)p->_size);
+      }
       ptr += p->_size;
     }
 
@@ -877,7 +883,10 @@ static bool FillShapeValueArray(VocShaper* shaper, TRI_shape_value_t* dst,
     *aids++ = p->_aid;
     *sids++ = p->_sid;
 
-    memcpy(ptr, p->_value, (size_t)p->_size);
+    TRI_ASSERT(p->_value != nullptr || p->_size == 0);
+    if (p->_value != nullptr) {
+      memcpy(ptr, p->_value, (size_t)p->_size);
+    }
     ptr += p->_size;
 
     dst->_fixedSized &= p->_fixedSized;
@@ -917,6 +926,8 @@ static bool FillShapeValueArray(VocShaper* shaper, TRI_shape_value_t* dst,
 static bool FillShapeValueJson(VocShaper* shaper, TRI_shape_value_t* dst,
                                TRI_json_t const* json, size_t level,
                                bool create) {
+  TRI_ASSERT(json != nullptr);
+
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return false;
@@ -1052,14 +1063,14 @@ static int JsonShapeDataArray(VocShaper* shaper, TRI_shape_t const* shape,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1107,14 +1118,14 @@ static int JsonShapeDataArray(VocShaper* shaper, TRI_shape_t const* shape,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     char const* name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1193,7 +1204,7 @@ static int JsonShapeDataList(VocShaper* shaper, TRI_shape_t const* shape,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1227,7 +1238,7 @@ static int JsonShapeDataHomogeneousList(VocShaper* shaper,
   TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARN) << "cannot find shape #" << sid;
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1280,7 +1291,7 @@ static int JsonShapeDataHomogeneousSizedList(VocShaper* shaper,
   TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARN) << "cannot find shape #" << sid;
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1585,14 +1596,14 @@ static bool StringifyJsonShapeDataArray(T* shaper, TRI_string_buffer_t* buffer,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1628,7 +1639,7 @@ static bool StringifyJsonShapeDataArray(T* shaper, TRI_string_buffer_t* buffer,
                                    offsetsF[1] - offset);
 
     if (!ok) {
-      LOG_WARNING("cannot decode element for shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot decode element for shape #" << sid;
       continue;
     }
   }
@@ -1656,14 +1667,14 @@ static bool StringifyJsonShapeDataArray(T* shaper, TRI_string_buffer_t* buffer,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     name = shaper->lookupAttributeId(aid);
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -1699,7 +1710,7 @@ static bool StringifyJsonShapeDataArray(T* shaper, TRI_string_buffer_t* buffer,
                                    offsetsV[1] - offset);
 
     if (!ok) {
-      LOG_WARNING("cannot decode element for shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot decode element for shape #" << sid;
       continue;
     }
   }
@@ -1769,7 +1780,7 @@ static bool StringifyJsonShapeDataList(T* shaper, TRI_string_buffer_t* buffer,
     }
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
@@ -1787,7 +1798,7 @@ static bool StringifyJsonShapeDataList(T* shaper, TRI_string_buffer_t* buffer,
                                    offsets[1] - offset);
 
     if (!ok) {
-      LOG_WARNING("cannot decode element for shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot decode element for shape #" << sid;
       continue;
     }
   }
@@ -1823,7 +1834,7 @@ static bool StringifyJsonShapeDataHomogeneousList(T* shaper,
   TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARN) << "cannot find shape #" << sid;
 
     return false;
   }
@@ -1862,7 +1873,7 @@ static bool StringifyJsonShapeDataHomogeneousList(T* shaper,
                                    offsets[1] - offset);
 
     if (!ok) {
-      LOG_WARNING("cannot decode element for shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot decode element for shape #" << sid;
       continue;
     }
   }
@@ -1898,7 +1909,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList(
   TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
   if (subshape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+    LOG(WARN) << "cannot find shape #" << sid;
 
     return false;
   }
@@ -1934,7 +1945,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList(
                                    length);
 
     if (!ok) {
-      LOG_WARNING("cannot decode element for shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot decode element for shape #" << sid;
       continue;
     }
   }
@@ -1998,7 +2009,6 @@ static bool StringifyJsonShapeData(T* shaper, TRI_string_buffer_t* buffer,
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -2015,7 +2025,6 @@ void TRI_FreeShapedJson(TRI_memory_zone_t* zone, TRI_shaped_json_t* shaped) {
   TRI_DestroyShapedJson(zone, shaped);
   TRI_Free(zone, shaped);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
@@ -2043,6 +2052,8 @@ TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper* shaper,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper* shaper, TRI_json_t const* json,
                                       bool create) {
+  TRI_ASSERT(json != nullptr);
+
   TRI_shape_value_t dst;
 
   dst._value = nullptr;
@@ -2083,10 +2094,14 @@ TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper* shaper, TRI_json_t const* json,
 
 TRI_json_t* TRI_JsonShapedJson(VocShaper* shaper,
                                TRI_shaped_json_t const* shaped) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(shaped != nullptr);
+#endif
+
   TRI_shape_t const* shape = shaper->lookupShapeId(shaped->_sid);
 
   if (shape == nullptr) {
-    LOG_WARNING("cannot find shape #%u", (unsigned int)shaped->_sid);
+    LOG(WARN) << "cannot find shape #" << shaped->_sid;
     return nullptr;
   }
 
@@ -2106,6 +2121,17 @@ TRI_json_t* TRI_JsonShapedJson(VocShaper* shaper,
   }
 
   return dst;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a shaped json object into a VelocyPack Object
+///        NOTE: Transforms via TRI_json_t.
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> TRI_VelocyPackShapedJson(
+    VocShaper* shaper, TRI_shaped_json_t const* shaped) {
+  std::unique_ptr<TRI_json_t> tmp(TRI_JsonShapedJson(shaper, shaped));
+  return arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2393,12 +2419,12 @@ void TRI_IterateShapeDataArray(VocShaper* shaper, TRI_shape_t const* shape,
     name = shaper->lookupAttributeId(aid);
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -2432,12 +2458,12 @@ void TRI_IterateShapeDataArray(VocShaper* shaper, TRI_shape_t const* shape,
     name = shaper->lookupAttributeId(aid);
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       continue;
     }
 
     if (name == nullptr) {
-      LOG_WARNING("cannot find attribute #%u", (unsigned int)aid);
+      LOG(WARN) << "cannot find attribute #" << aid;
       continue;
     }
 
@@ -2489,7 +2515,7 @@ void TRI_IterateShapeDataList(VocShaper* shaper, TRI_shape_t const* shape,
       }
 
       if (subshape == nullptr) {
-        LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+        LOG(WARN) << "cannot find shape #" << sid;
         continue;
       }
 
@@ -2505,7 +2531,7 @@ void TRI_IterateShapeDataList(VocShaper* shaper, TRI_shape_t const* shape,
     TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       return;
     }
 
@@ -2530,7 +2556,7 @@ void TRI_IterateShapeDataList(VocShaper* shaper, TRI_shape_t const* shape,
     TRI_shape_t const* subshape = shaper->lookupShapeId(sid);
 
     if (subshape == nullptr) {
-      LOG_WARNING("cannot find shape #%u", (unsigned int)sid);
+      LOG(WARN) << "cannot find shape #" << sid;
       return;
     }
 
@@ -2569,5 +2595,3 @@ template bool TRI_StringifyArrayShapedJson<VocShaper>(
 template bool TRI_StringifyArrayShapedJson<arangodb::basics::LegendReader>(
     arangodb::basics::LegendReader*, struct TRI_string_buffer_s*,
     TRI_shaped_json_t const*, bool);
-
-

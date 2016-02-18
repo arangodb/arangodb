@@ -38,6 +38,10 @@
   z-index: 9999999;
 }
 
+.modal-tabbar {
+  border-bottom: 1px solid $c-darker-grey;
+}
+
 .modal-body {
   color: $c-btn-inverse;
   font-family: 'Open Sans', sans-serif !important;
@@ -269,7 +273,7 @@
   }
 
   .collectionTh {
-    height: 55px;
+    height: 50px;
   }
 
   .tab-content {
@@ -279,6 +283,10 @@
       border-top: 1px solid $c-darker-grey !important;
       margin-left: 0 !important;
       padding-top: 10px;
+    }
+
+    .tab-pane-modal {
+      border-top: none !important;
     }
 
     #appstore {

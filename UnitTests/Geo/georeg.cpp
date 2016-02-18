@@ -172,7 +172,7 @@ double tolerance (double a, double b, double c) {
 
 #define gccheck(e, gc, ct, bytes)                       \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((long) (ct),(long) (gc)->length);                \
+  BOOST_CHECK_EQUAL((long) (ct),(long) (gc)->length);   \
   BOOST_CHECK_EQUAL(GCCHECK((gc), (ct), (bytes)), 1)
 
 #ifdef DEBUG
@@ -185,8 +185,7 @@ double tolerance (double a, double b, double c) {
 
 #define gcmass(e, gc, ct, hash)                         \
   BOOST_TEST_CHECKPOINT(StringUtils::itoa((e)));        \
-  BOOST_CHECK_EQUAL((long) (ct), (long) (gc)->length);                \
-  BOOST_TEST_CHECKPOINT(StringUtils::itoa((e + 1)));    \
+  BOOST_CHECK_EQUAL((long) (ct), (long) (gc)->length);  \
   BOOST_CHECK_EQUAL(GCMASS((gc), (ct), (hash)), 1)
 
 void coonum(GeoCoordinate * gc, int num)
@@ -614,7 +613,7 @@ icheck(86,-3,i);
 gcp.latitude  = 800.0;
 gcp.longitude = 80.0;
 i = GeoIndex_remove(gi,&gcp);
-icheck(87,-1,i);
+icheck(87,-3,i);
 
 gcp.latitude  = 1.0;
 gcp.longitude = 40.0;

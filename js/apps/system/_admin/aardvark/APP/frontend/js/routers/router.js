@@ -17,6 +17,7 @@
       "shell": "shell",
       "query": "query",
       "queryManagement": "queryManagement",
+      "workMonitor": "workMonitor",
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
@@ -24,7 +25,8 @@
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs"
+      "logs": "logs",
+      "test": "test"
     },
 
     initialize: function () {
@@ -223,6 +225,33 @@
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
+    },
+    
+    test: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.testView) {
+        this.testView = new window.testView({
+        });
+      }
+      this.testView.render();
+    },
+
+    workMonitor: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.workMonitorCollection) {
+        this.workMonitorCollection = new window.WorkMonitorCollection();
+      }
+      if (!this.workMonitorView) {
+        this.workMonitorView = new window.workMonitorView({
+          collection: this.workMonitorCollection
+        });
+      }
+      this.workMonitorView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     queryManagement: function () {

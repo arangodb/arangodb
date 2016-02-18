@@ -25,10 +25,12 @@
 #include "TimerTask.h"
 
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace std;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -46,15 +48,12 @@ TimerTask::~TimerTask() { cleanup(); }
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a task specific description in JSON format
+/// @brief get a task specific description in VelocyPack format
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimerTask::getDescription(TRI_json_t* json) const {
-  TRI_Insert3ObjectJson(
-      TRI_UNKNOWN_MEM_ZONE, json, "type",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset",
-                        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _seconds));
+void TimerTask::getDescription(VPackBuilder& builder) const {
+  builder.add("type", VPackValue("timed"));
+  builder.add("offset", VPackValue(_seconds));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +66,7 @@ bool TimerTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   if (0.0 < _seconds) {
     _watcher = _scheduler->installTimerEvent(loop, this, _seconds);
-    LOG_TRACE("armed TimerTask with %f seconds", _seconds);
+    LOG(TRACE) << "armed TimerTask with " << _seconds << " seconds";
   } else {
     _watcher = nullptr;
   }
@@ -94,5 +93,3 @@ bool TimerTask::handleEvent(EventToken token, EventType revents) {
 
   return result;
 }
-
-

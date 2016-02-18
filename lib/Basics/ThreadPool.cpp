@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ThreadPool.h"
+
 #include "Basics/WorkerThread.h"
 
 using namespace arangodb::basics;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a pool with the specified size of worker threads
@@ -51,7 +50,7 @@ ThreadPool::ThreadPool(size_t size, std::string const& name)
       throw;
     }
   }
-  
+
   // now start them all
   for (auto& it : _threads) {
     it->start();
@@ -69,12 +68,11 @@ ThreadPool::~ThreadPool() {
   for (auto* it : _threads) {
     it->waitForDone();
   }
-  
+
   for (auto* it : _threads) {
     delete it;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dequeue a task
@@ -101,5 +99,3 @@ bool ThreadPool::dequeue(std::function<void()>& result) {
 
   return false;
 }
-
-

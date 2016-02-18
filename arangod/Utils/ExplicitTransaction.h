@@ -36,7 +36,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class ExplicitTransaction : public Transaction {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -106,5 +105,3 @@ class ExplicitTransaction : public Transaction {
 }
 
 #endif
-
-

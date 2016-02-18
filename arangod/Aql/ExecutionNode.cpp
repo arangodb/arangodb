@@ -38,8 +38,24 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-const static bool Optional = true;
+// uncomment the following to get some debugging information
+#if 0
+#define ENTER_BLOCK \
+  try {             \
+    (void)0;
+#define LEAVE_BLOCK                                                            \
+  }                                                                            \
+  catch (...) {                                                                \
+    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
+              << ":" << __LINE__ << "!\n";                                     \
+    throw;                                                                     \
+  }
+#else
+#define ENTER_BLOCK
+#define LEAVE_BLOCK
+#endif
 
+static bool const Optional = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum register id that can be assigned.
@@ -76,7 +92,6 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"}};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type name of the node
@@ -169,7 +184,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                        "invalid groups definition");
       }
-      
+
       arangodb::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (!jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -189,8 +204,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         }
       }
 
-      std::vector<std::pair<Variable const*, Variable const*>>
-        groupVariables;
+      std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
       {
         size_t const len = jsonGroups.size();
         groupVariables.reserve(len);
@@ -205,9 +219,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
       }
-      
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>
-        aggregateVariables;
+
+      std::vector<
+          std::pair<Variable const*, std::pair<Variable const*, std::string>>>
+          aggregateVariables;
       {
         size_t const len = jsonAggregates.size();
         aggregateVariables.reserve(len);
@@ -219,8 +234,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
           Variable* inVar =
               varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-          std::string const type = JsonHelper::checkAndGetStringValue(oneJsonAggregate.json(), "type");
-          aggregateVariables.emplace_back(std::make_pair(outVar, std::make_pair(inVar, type)));
+          std::string const type = JsonHelper::checkAndGetStringValue(
+              oneJsonAggregate.json(), "type");
+          aggregateVariables.emplace_back(
+              std::make_pair(outVar, std::make_pair(inVar, type)));
         }
       }
 
@@ -411,20 +428,21 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, export an ExecutionNode to JSON
+/// @brief toVelocyPack, export an ExecutionNode to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
-                                             bool verbose) const {
-  arangodb::basics::Json nodes =
-      arangodb::basics::Json(arangodb::basics::Json::Array, 10);
-  toJsonHelper(nodes, zone, verbose);
-
-  arangodb::basics::Json json =
-      arangodb::basics::Json(arangodb::basics::Json::Object, 1)("nodes", nodes);
-
-  return json;
+void ExecutionNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+  ENTER_BLOCK
+  VPackObjectBuilder obj(&builder);
+  builder.add(VPackValue("nodes"));
+  {
+    VPackArrayBuilder guard(&builder);
+    toVelocyPackHelper(builder, verbose);
+  }
+  LEAVE_BLOCK
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
@@ -625,127 +643,132 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    } 
-    
+    }
+
     std::string msg;
     msg +=
         "Mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-  } 
+  }
 
   return ast->variables()->createVariable(variableJson);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJsonHelper, for a generic node
+/// @brief toVelocyPackHelper, for a generic node
+/// Note: The input nodes has to be an Array Element that is still Open.
+///       At the end of this function the current-nodes Object is OPEN and
+///       has to be closed. The initial caller of toVelocyPackHelper
+///       has to close the array.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json ExecutionNode::toJsonHelperGeneric(
-    arangodb::basics::Json& nodes, TRI_memory_zone_t* zone,
-    bool verbose) const {
+void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
+                                              bool verbose) const {
+  ENTER_BLOCK
+  TRI_ASSERT(nodes.isOpenArray());
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
-    _dependencies[i]->toJsonHelper(nodes, zone, verbose);
+    _dependencies[i]->toVelocyPackHelper(nodes, verbose);
   }
-
-  arangodb::basics::Json json(arangodb::basics::Json::Object, 5);
-  json("type", arangodb::basics::Json(getTypeString()));
-
+  nodes.openObject();
+  nodes.add("type", VPackValue(getTypeString()));
   if (verbose) {
-    json("typeID", arangodb::basics::Json(static_cast<int>(getType())));
+    nodes.add("typeID", VPackValue(static_cast<int>(getType())));
   }
-
-  arangodb::basics::Json deps(arangodb::basics::Json::Array, n);
-  for (size_t i = 0; i < n; i++) {
-    deps(arangodb::basics::Json(static_cast<double>(_dependencies[i]->id())));
-  }
-  json("dependencies", deps);
-
-  if (verbose) {
-    arangodb::basics::Json parents(arangodb::basics::Json::Array,
-                                   _parents.size());
-    for (size_t i = 0; i < _parents.size(); i++) {
-      parents(arangodb::basics::Json(static_cast<double>(_parents[i]->id())));
+  nodes.add(VPackValue("dependencies")); // Open Key
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& it : _dependencies) {
+      nodes.add(VPackValue(static_cast<double>(it->id())));
     }
-    json("parents", parents);
   }
-
-  json("id", arangodb::basics::Json(static_cast<double>(id())));
+  if (verbose) {
+    nodes.add(VPackValue("parents")); // Open Key
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& it : _parents) {
+      nodes.add(VPackValue(static_cast<double>(it->id())));
+    }
+  }
+  nodes.add("id", VPackValue(static_cast<double>(id())));
   size_t nrItems = 0;
-  json("estimatedCost", arangodb::basics::Json(getCost(nrItems)));
-  json("estimatedNrItems",
-       arangodb::basics::Json(static_cast<double>(nrItems)));
+  nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
+  nodes.add("estimatedNrItems", VPackValue(nrItems));
 
   if (verbose) {
-    json("depth", arangodb::basics::Json(static_cast<double>(_depth)));
+    nodes.add("depth", VPackValue(static_cast<double>(_depth)));
 
     if (_registerPlan) {
-      arangodb::basics::Json jsonVarInfoList(arangodb::basics::Json::Array,
-                                             _registerPlan->varInfo.size());
-      for (auto const& oneVarInfo : _registerPlan->varInfo) {
-        arangodb::basics::Json jsonOneVarInfoArray(
-            arangodb::basics::Json::Object, 2);
-        jsonOneVarInfoArray(
-            "VariableId",
-            arangodb::basics::Json(static_cast<double>(oneVarInfo.first)))(
-            "depth", arangodb::basics::Json(
-                         static_cast<double>(oneVarInfo.second.depth)))(
-            "RegisterId", arangodb::basics::Json(static_cast<double>(
-                              oneVarInfo.second.registerId)));
-        jsonVarInfoList(jsonOneVarInfoArray);
+      nodes.add(VPackValue("varInfoList"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        for (auto const& oneVarInfo : _registerPlan->varInfo) {
+          VPackObjectBuilder guardInner(&nodes);
+          nodes.add("VariableId",
+                    VPackValue(static_cast<double>(oneVarInfo.first)));
+          nodes.add("depth",
+                    VPackValue(static_cast<double>(oneVarInfo.second.depth)));
+          nodes.add(
+              "RegisterId",
+              VPackValue(static_cast<double>(oneVarInfo.second.registerId)));
+        }
       }
-      json("varInfoList", jsonVarInfoList);
-
-      arangodb::basics::Json jsonNRRegsList(arangodb::basics::Json::Array,
-                                            _registerPlan->nrRegs.size());
-      for (auto const& oneRegisterID : _registerPlan->nrRegs) {
-        jsonNRRegsList(
-            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
+      nodes.add(VPackValue("nrRegs"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        for (auto const& oneRegisterID : _registerPlan->nrRegs) {
+          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+        }
       }
-      json("nrRegs", jsonNRRegsList);
-
-      arangodb::basics::Json jsonNRRegsHereList(
-          arangodb::basics::Json::Array, _registerPlan->nrRegsHere.size());
-      for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
-        jsonNRRegsHereList(
-            arangodb::basics::Json(static_cast<double>(oneRegisterID)));
+      nodes.add(VPackValue("nrRegsHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
+          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+        }
       }
-      json("nrRegsHere", jsonNRRegsHereList);
-      json("totalNrRegs", arangodb::basics::Json(
-                              static_cast<double>(_registerPlan->totalNrRegs)));
+      nodes.add("totalNrRegs", VPackValue(_registerPlan->totalNrRegs));
     } else {
-      json("varInfoList",
-           arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("nrRegs", arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("nrRegsHere", arangodb::basics::Json(arangodb::basics::Json::Array));
-      json("totalNrRegs", arangodb::basics::Json(0.0));
+      nodes.add(VPackValue("varInfoList"));
+      {
+        VPackArrayBuilder guard(&nodes);
+      }
+      nodes.add(VPackValue("nrRegs"));
+      {
+        VPackArrayBuilder guard(&nodes);
+      }
+      nodes.add(VPackValue("nrRegsHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+      }
+      nodes.add("totalNrRegs", VPackValue(0));
     }
 
-    arangodb::basics::Json jsonRegsToClearList(arangodb::basics::Json::Array,
-                                               _regsToClear.size());
-    for (auto const& oneRegisterID : _regsToClear) {
-      jsonRegsToClearList(
-          arangodb::basics::Json(static_cast<double>(oneRegisterID)));
-    }
-    json("regsToClear", jsonRegsToClearList);
-
-    arangodb::basics::Json jsonVarsUsedLaterList(arangodb::basics::Json::Array,
-                                                 _varsUsedLater.size());
-    for (auto const& oneVarUsedLater : _varsUsedLater) {
-      jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
+    nodes.add(VPackValue("regsToClear"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      for (auto const& oneRegisterID : _regsToClear) {
+        nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+      }
     }
 
-    json("varsUsedLater", jsonVarsUsedLaterList);
-
-    arangodb::basics::Json jsonvarsValidList(arangodb::basics::Json::Array,
-                                             _varsValid.size());
-    for (auto const& oneVarUsedLater : _varsValid) {
-      jsonvarsValidList.add(oneVarUsedLater->toJson());
+    nodes.add(VPackValue("varsUsedLater"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      for (auto const& oneVar : _varsUsedLater) {
+        oneVar->toVelocyPack(nodes);
+      }
     }
 
-    json("varsValid", jsonvarsValidList);
+    nodes.add(VPackValue("varsValid"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      for (auto const& oneVar : _varsValid) {
+        oneVar->toVelocyPack(nodes);
+      }
+    }
   }
-  return json;
+  TRI_ASSERT(nodes.isOpenObject());
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -828,7 +851,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   std::cout << std::endl;
   */
 }
-
 
 // Copy constructor used for a subquery:
 ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
@@ -1171,6 +1193,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
       if (it == varsUsedLater.end()) {
         auto it2 = varInfo.find(v->id);
+
+        if (it2 == varInfo.end()) {
+          // report an error here to prevent crashing
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " while planning registers"); 
+        }
+
+        // finally adjust the variable inside the IN calculation
         TRI_ASSERT(it2 != varInfo.end());
         RegisterId r = it2->second.registerId;
         regsToClear.emplace(r);
@@ -1180,7 +1209,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1189,18 +1217,21 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::basics::Json const& base)
     : ExecutionNode(plan, base) {}
 
-void SingletonNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toVelocyPack, for SingletonNode
+////////////////////////////////////////////////////////////////////////////////
 
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // And add it:
-  nodes(json);
+void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                       bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+  // This node has no own information.
+  nodes.close();
+  LEAVE_BLOCK
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a singleton is 1, it produces one item only
@@ -1210,7 +1241,6 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
   nrItems = 1;
   return 1.0;
 }
-
 
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::basics::Json const& base)
@@ -1222,27 +1252,25 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateCollectionNode
+/// @brief toVelocyPack, for EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateCollectionNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                           TRI_memory_zone_t* zone,
-                                           bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-
-  if (json.isEmpty()) {
-    return;
-  }
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                                 bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
   // Now put info about vocbase and cid in there
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "collection", arangodb::basics::Json(_collection->getName()))(
-      "outVariable", _outVariable->toJson())("random",
-                                             arangodb::basics::Json(_random));
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("collection", VPackValue(_collection->getName()));
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+  nodes.add("random", VPackValue(_random));
 
-  // And add it:
-  nodes(json);
+  // And close it:
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1272,6 +1300,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
   size_t count = _collection->count();
@@ -1279,8 +1308,8 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   return depCost + nrItems * (_random ? 1.005 : 1.0);
+  LEAVE_BLOCK
 }
-
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::basics::Json const& base)
@@ -1289,22 +1318,23 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateListNode
+/// @brief toVelocyPack, for EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateListNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                     TRI_memory_zone_t* zone,
-                                     bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  json("inVariable", _inVariable->toJson())("outVariable",
-                                            _outVariable->toJson());
+void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                           bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+  nodes.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(nodes);
 
-  // And add it:
-  nodes(json);
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+
+  // And close it:
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1334,6 +1364,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EnumerateListNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1382,8 +1413,8 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming;
+  LEAVE_BLOCK
 }
-
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1395,23 +1426,20 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
           JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief toJson, for LimitNode
+// @brief toVelocyPack, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
-                             TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  // Now put info about offset and limit in
-  json("offset", arangodb::basics::Json(static_cast<double>(_offset)))(
-      "limit", arangodb::basics::Json(static_cast<double>(_limit)))(
-      "fullCount", arangodb::basics::Json(_fullCount));
+void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ENTER_BLOCK
 
-  // And add it:
-  nodes(json);
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+  nodes.add("offset", VPackValue(static_cast<double>(_offset)));
+  nodes.add("limit", VPackValue(static_cast<double>(_limit)));
+  nodes.add("fullCount", VPackValue(_fullCount));
+
+  // And close it:
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1419,14 +1447,15 @@ void LimitNode::toJsonHelper(arangodb::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 double LimitNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit,
                        (std::max)(static_cast<size_t>(0), incoming - _offset));
 
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::basics::Json const& base)
@@ -1438,31 +1467,32 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
       _canRemoveIfThrows(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CalculationNode
+/// @brief toVelocyPack, for CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CalculationNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone,
-                                   bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
+void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                         bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+  nodes.add(VPackValue("expression"));
+  _expression->toVelocyPack(nodes, verbose);
 
-  if (json.isEmpty()) {
-    return;
-  }
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
 
-  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-       "outVariable", _outVariable->toJson())(
-       "canThrow", arangodb::basics::Json(_expression->canThrow()));
+  nodes.add("canThrow", VPackValue(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
-    json("conditionVariable", _conditionVariable->toJson());
+    nodes.add(VPackValue("conditionVariable"));
+    _conditionVariable->toVelocyPack(nodes);
   }
 
-  json("expressionType", arangodb::basics::Json(_expression->typeString()));
+  nodes.add("expressionType", VPackValue(_expression->typeString()));
 
-  // And add it:
-  nodes(json);
+  // And close it
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
@@ -1493,11 +1523,12 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 double CalculationNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
                            arangodb::basics::Json const& base)
@@ -1506,21 +1537,22 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SubqueryNode
+/// @brief toVelocyPack, for SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
-  json("subquery", _subquery->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
-      "outVariable", _outVariable->toJson());
+void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add(VPackValue("subquery"));
+  _subquery->toVelocyPack(nodes, verbose);
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
 
   // And add it:
-  nodes(json);
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1572,10 +1604,12 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double SubqueryNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
   return depCost + nrItems * subCost;
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1692,27 +1726,25 @@ bool SubqueryNode::canThrow() {
   return finder._canThrow;
 }
 
-
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for FilterNode
+/// @brief toVelocyPack, for FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void FilterNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
-  if (json.isEmpty()) {
-    return;
-  }
+void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
-  json("inVariable", _inVariable->toJson());
+  nodes.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(nodes);
 
-  // And add it:
-  nodes(json);
+  // And close it:
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1734,6 +1766,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 ////////////////////////////////////////////////////////////////////////////////
 
 double FilterNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1745,30 +1778,29 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   // the rule throwing away a FilterNode that is already covered by an
   // IndexNode cannot reduce the costs.
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
-
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for ReturnNode
+/// @brief toVelocyPack, for ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReturnNode::toJsonHelper(arangodb::basics::Json& nodes,
-                              TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
+void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
-  if (json.isEmpty()) {
-    return;
-  }
 
-  json("inVariable", _inVariable->toJson());
+  nodes.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(nodes);
 
-  // And add it:
-  nodes(json);
+  // And close it:
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1795,26 +1827,24 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 ////////////////////////////////////////////////////////////////////////////////
 
 double ReturnNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
+  LEAVE_BLOCK
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for NoResultsNode
+/// @brief toVelocyPack, for NoResultsNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
+void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                       bool verbose) const {
+  ENTER_BLOCK
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
 
-  if (json.isEmpty()) {
-    return;
-  }
-
-  // And add it:
-  nodes(json);
+  //And close it
+  nodes.close();
+  LEAVE_BLOCK
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1822,7 +1852,9 @@ void NoResultsNode::toJsonHelper(arangodb::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 double NoResultsNode::estimateCost(size_t& nrItems) const {
+  ENTER_BLOCK
   nrItems = 0;
   return 0.5;  // just to make it non-zero
+  LEAVE_BLOCK
 }
 

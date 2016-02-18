@@ -22,29 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
 #include <iostream>
 
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ArangoShell/ArangoClient.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
+#include "Basics/init.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -179,7 +179,8 @@ static void ParseProgramOptions(int argc, char* argv[]) {
       "import-data", &ImportData, "import data into collection")(
       "recycle-ids", &RecycleIds,
       "recycle collection and revision ids from dump")(
-      "default-number-of-shards", &DefaultNumberOfShards, "default value for numberOfShards if not specified")(
+      "default-number-of-shards", &DefaultNumberOfShards,
+      "default value for numberOfShards if not specified")(
       "force", &Force,
       "continue restore even in the face of some server-side errors")(
       "create-collection", &ImportStructure, "create collection structure")(
@@ -202,7 +203,6 @@ static void ParseProgramOptions(int argc, char* argv[]) {
     InputDirectory = arguments[0];
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -424,20 +424,25 @@ static bool GetArangoIsCluster() {
 /// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreCollection(VPackSlice const& slice, std::string const& name, std::string& errorMsg) {
+static int SendRestoreCollection(VPackSlice const& slice,
+                                 std::string const& name,
+                                 std::string& errorMsg) {
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
       std::string(Overwrite ? "true" : "false") + "&recycleIds=" +
       std::string(RecycleIds ? "true" : "false") + "&force=" +
       std::string(Force ? "true" : "false");
-        
-  if (ClusterMode && 
-      ! slice.hasKey(std::vector<std::string>({ "parameters", "shards" })) && 
-      ! slice.hasKey(std::vector<std::string>({ "parameters", "numberOfShards" }))) {
+
+  if (ClusterMode &&
+      !slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
+      !slice.hasKey(
+          std::vector<std::string>({"parameters", "numberOfShards"}))) {
     // no "shards" and no "numberOfShards" attribute present. now assume
     // default value from --default-number-of-shards
-    std::cerr << "# no sharding information specified for collection '" << name << "', using default number of shards " << DefaultNumberOfShards << std::endl;
+    std::cerr << "# no sharding information specified for collection '" << name
+              << "', using default number of shards " << DefaultNumberOfShards
+              << std::endl;
     url += "&numberOfShards=" + std::to_string(DefaultNumberOfShards);
   }
 
@@ -677,10 +682,10 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         if (Progress) {
           if (Overwrite) {
             std::cout << "# Re-creating " << collectionType << " collection '"
-                 << cname << "'..." << std::endl;
+                      << cname << "'..." << std::endl;
           } else {
-            std::cout << "# Creating " << collectionType << " collection '" << cname
-                 << "'..." << std::endl;
+            std::cout << "# Creating " << collectionType << " collection '"
+                      << cname << "'..." << std::endl;
           }
         }
 
@@ -710,8 +715,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
           // found a datafile
 
           if (Progress) {
-            std::cout << "# Loading data into " << collectionType << " collection '"
-                 << cname << "'..." << std::endl;
+            std::cout << "# Loading data into " << collectionType
+                      << " collection '" << cname << "'..." << std::endl;
           }
 
           int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -786,7 +791,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
                 if (errorMsg.empty()) {
                   errorMsg = std::string(TRI_errno_string(res));
                 } else {
-                  errorMsg = std::string(TRI_errno_string(res)) + ": " + errorMsg;
+                  errorMsg =
+                      std::string(TRI_errno_string(res)) + ": " + errorMsg;
                 }
 
                 if (Force) {
@@ -815,8 +821,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
         if (indexes.length() > 0) {
           // we actually have indexes
           if (Progress) {
-            std::cout << "# Creating indexes for collection '" << cname << "'..."
-                 << std::endl;
+            std::cout << "# Creating indexes for collection '" << cname
+                      << "'..." << std::endl;
           }
 
           int res = SendRestoreIndexes(collection, errorMsg);
@@ -867,7 +873,7 @@ int main(int argc, char* argv[]) {
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitializeLogging(false);
+  Logger::initialize(false);
 
   // .............................................................................
   // set defaults
@@ -899,14 +905,15 @@ int main(int argc, char* argv[]) {
   // .............................................................................
 
   if (InputDirectory == "" || !TRI_IsDirectory(InputDirectory.c_str())) {
-    std::cerr << "Error: input directory '" << InputDirectory << "' does not exist"
-         << std::endl;
+    std::cerr << "Error: input directory '" << InputDirectory
+              << "' does not exist" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (!ImportStructure && !ImportData) {
-    std::cerr << "Error: must specify either --create-collection or --import-data"
-         << std::endl;
+    std::cerr
+        << "Error: must specify either --create-collection or --import-data"
+        << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -918,7 +925,7 @@ int main(int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == nullptr) {
     std::cerr << "Error: invalid value for --server.endpoint ('"
-         << BaseClient.endpointString() << "')" << std::endl;
+              << BaseClient.endpointString() << "')" << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -947,7 +954,8 @@ int main(int argc, char* argv[]) {
 
     if (res != TRI_ERROR_NO_ERROR) {
       std::cerr << "Could not create database '" << old << "'" << std::endl;
-      std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
+      std::cerr << "Error message: '" << Client->getErrorMessage() << "'"
+                << std::endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
@@ -960,8 +968,9 @@ int main(int argc, char* argv[]) {
 
   if (!Connection->isConnected()) {
     std::cerr << "Could not connect to endpoint "
-         << BaseClient.endpointServer()->getSpecification() << std::endl;
-    std::cerr << "Error message: '" << Client->getErrorMessage() << "'" << std::endl;
+              << BaseClient.endpointServer()->getSpecification() << std::endl;
+    std::cerr << "Error message: '" << Client->getErrorMessage() << "'"
+              << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -973,14 +982,15 @@ int main(int argc, char* argv[]) {
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    std::cerr << "Error: invalid server version '" << versionString << "'" << std::endl;
+    std::cerr << "Error: invalid server version '" << versionString << "'"
+              << std::endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 || major > 2 || (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    std::cerr << "Error: got incompatible server version '" << versionString << "'"
-         << std::endl;
+    std::cerr << "Error: got incompatible server version '" << versionString
+              << "'" << std::endl;
     if (!Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -993,7 +1003,8 @@ int main(int argc, char* argv[]) {
 
   if (Progress) {
     std::cout << "# Connected to ArangoDB '"
-         << BaseClient.endpointServer()->getSpecification() << "'" << std::endl;
+              << BaseClient.endpointServer()->getSpecification() << "'"
+              << std::endl;
   }
 
   memset(&Stats, 0, sizeof(Stats));
@@ -1023,11 +1034,11 @@ int main(int argc, char* argv[]) {
   if (Progress) {
     if (ImportData) {
       std::cout << "Processed " << Stats._totalCollections << " collection(s), "
-           << "read " << Stats._totalRead << " byte(s) from datafiles, "
-           << "sent " << Stats._totalBatches << " batch(es)" << std::endl;
+                << "read " << Stats._totalRead << " byte(s) from datafiles, "
+                << "sent " << Stats._totalBatches << " batch(es)" << std::endl;
     } else if (ImportStructure) {
       std::cout << "Processed " << Stats._totalCollections << " collection(s)"
-           << std::endl;
+                << std::endl;
     }
   }
 
@@ -1041,5 +1052,3 @@ int main(int argc, char* argv[]) {
 
   return ret;
 }
-
-

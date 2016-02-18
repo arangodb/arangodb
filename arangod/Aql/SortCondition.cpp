@@ -21,20 +21,34 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/SortCondition.h"
+#include "SortCondition.h"
 #include "Aql/AstNode.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb::aql;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not an attribute is contained in a vector
+////////////////////////////////////////////////////////////////////////////////
+      
+static bool IsContained (std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+                         std::vector<arangodb::basics::AttributeName> const& attribute) {
+  for (auto const& it : attributes) {
+    if (arangodb::basics::AttributeName::isIdentical(it, attribute, false)) {
+      return true;
+    }
+  }
 
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an empty condition
 ////////////////////////////////////////////////////////////////////////////////
 
 SortCondition::SortCondition()
-    : _expressions(),
-      _fields(),
+    : _fields(),
+      _constAttributes(),
       _unidirectional(false),
       _onlyAttributeAccess(false),
       _ascending(true) {}
@@ -44,72 +58,21 @@ SortCondition::SortCondition()
 ////////////////////////////////////////////////////////////////////////////////
 
 SortCondition::SortCondition(
-    std::vector<std::pair<AstNode const*, bool>> const& expressions)
-    : _expressions(expressions),
-      _fields(),
-      _unidirectional(true),
-      _onlyAttributeAccess(true),
-      _ascending(true) {
-  size_t const n = _expressions.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    if (_unidirectional && i > 0 &&
-        _expressions[i].second != _expressions[i - 1].second) {
-      _unidirectional = false;
-    }
-
-    bool handled = false;
-    auto node = _expressions[i].first;
-
-    if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::vector<arangodb::basics::AttributeName> fieldNames;
-      while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        fieldNames.emplace_back(
-            arangodb::basics::AttributeName(node->getStringValue()));
-        node = node->getMember(0);
-      }
-      if (node->type == NODE_TYPE_REFERENCE) {
-        handled = true;
-
-        _fields.emplace_back(std::make_pair(
-            static_cast<Variable const*>(node->getData()), fieldNames));
-      }
-    }
-
-    if (!handled) {
-      _fields.emplace_back(
-          std::pair<Variable const*,
-                    std::vector<arangodb::basics::AttributeName>>());
-      _onlyAttributeAccess = false;
-    }
-  }
-
-  if (n == 0) {
-    _onlyAttributeAccess = false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the sort condition
-////////////////////////////////////////////////////////////////////////////////
-
-SortCondition::SortCondition(
     std::vector<std::pair<VariableId, bool>> const& sorts,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
-    : _expressions(),
+    : _fields(),
+      _constAttributes(constAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
+
+  bool foundDirection = false;
+
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
-    if (_unidirectional && i > 0 && sorts[i].second != sorts[i - 1].second) {
-      _unidirectional = false;
-    }
-    if (i == 0) {
-      _ascending = sorts[i].second;
-    }
-
+    bool isConst = false; // const attribute?
     bool handled = false;
     auto variableId = sorts[i].first;
 
@@ -131,7 +94,27 @@ SortCondition::SortCondition(
 
           _fields.emplace_back(std::make_pair(
               static_cast<Variable const*>(node->getData()), fieldNames));
+
+          for (auto const& it2 : constAttributes) {
+            if (it2 == fieldNames) {
+              // const attribute
+              isConst = true;
+              break;
+            }
+          } 
         }
+      }
+    }
+
+    if (!isConst) {
+      // const attributes can be ignored for sorting
+      if (!foundDirection) {
+        // first attribute that we found
+        foundDirection = true;
+        _ascending = sorts[i].second;
+      }
+      else if (_unidirectional && sorts[i].second != _ascending) {
+        _unidirectional = false;
       }
     }
 
@@ -154,7 +137,6 @@ SortCondition::SortCondition(
 
 SortCondition::~SortCondition() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields
@@ -164,42 +146,54 @@ size_t SortCondition::coveredAttributes(
     Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const&
         indexAttributes) const {
-  size_t numAttributes = 0;
+  size_t numCovered = 0;
+  size_t fieldsPosition = 0;
+  
+  // iterate over all fields of the index definition
+  size_t const n = indexAttributes.size();
 
-  for (size_t i = 0; i < indexAttributes.size(); ++i) {
-    if (i >= _fields.size()) {
+  for (size_t i = 0; i < n; /* no hoisting */) {
+    if (fieldsPosition >= _fields.size()) { 
+      // done
       break;
     }
+    
+    auto const& field = _fields[fieldsPosition];
 
-    if (reference != _fields[i].first) {
-      break;
+    // ...and check if the field is present in the index definition too
+    if (reference == field.first &&
+        arangodb::basics::AttributeName::isIdentical(field.second, indexAttributes[i], false)) {
+      // field match
+      ++fieldsPosition;
+      ++numCovered;
+      ++i; // next index field
+      continue;
     }
 
-    auto const& fieldNames = _fields[i].second;
-    if (fieldNames.size() != indexAttributes[i].size()) {
-      // different attribute path
-      break;
+    // no match
+    bool isConstant = false;
+
+    if (IsContained(_constAttributes, indexAttributes[i])) {
+      // no field match, but a constant attribute
+      isConstant = true;
+      ++i; // next index field
     }
 
-    bool found = true;
-    for (size_t j = 0; j < indexAttributes[i].size(); ++j) {
-      if (indexAttributes[i][j].shouldExpand ||
-          fieldNames[j] != indexAttributes[i][j]) {
-        // expanded attribute or different attribute
-        found = false;
-        break;
+    if (!isConstant) {
+      if (IsContained(indexAttributes, field.second) &&
+          IsContained(_constAttributes, field.second)) {
+        // no field match, but a constant attribute
+        isConstant = true;
+        ++fieldsPosition;
+        ++numCovered;
       }
     }
-
-    if (!found) {
+          
+    if (!isConstant) {
       break;
     }
-
-    // same attribute
-    ++numAttributes;
   }
 
-  return numAttributes;
+  TRI_ASSERT(numCovered <= _fields.size());
+  return numCovered;
 }
-
-

@@ -21,12 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/InitializeBasics.h"
-
+#include "InitializeBasics.h"
 #include "Basics/init.h"
 #include "Basics/error.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/RandomGenerator.h"
 
@@ -52,5 +50,3 @@ void InitializeBasics(int argv, char* argc[]) {
 void ShutdownBasics() { TRIAGENS_C_SHUTDOWN; }
 }
 }
-
-

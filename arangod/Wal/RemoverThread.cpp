@@ -23,92 +23,69 @@
 
 #include "RemoverThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb::wal;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the remover thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t const RemoverThread::Interval = 500000;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the remover thread
-////////////////////////////////////////////////////////////////////////////////
+uint64_t const RemoverThread::Interval = 2000000;
 
 RemoverThread::RemoverThread(LogfileManager* logfileManager)
-    : Thread("WalRemover"),
-      _logfileManager(logfileManager),
-      _condition(),
-      _stop(0) {
-  allowAsynchronousCancelation();
+    : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
+
+RemoverThread::~RemoverThread() {
+  shutdown(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the remover thread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoverThread::~RemoverThread() {}
+void RemoverThread::beginShutdown() {
+  Thread::beginShutdown();
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the remover thread
-////////////////////////////////////////////////////////////////////////////////
-
-void RemoverThread::stop() {
-  if (_stop > 0) {
-    return;
-  }
-
-  _stop = 1;
-  _condition.signal();
-
-  while (_stop != 2) {
-    usleep(10000);
-  }
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
 void RemoverThread::run() {
-  while (true) {
-    int stop = (int)_stop;
+  int64_t iterations = 0;
+
+  while (!isStopping()) {
     bool worked = false;
 
     try {
-      if (stop == 0) {
-        worked = _logfileManager->removeLogfiles();
+      worked = _logfileManager->removeLogfiles();
+
+      if (++iterations == 5) {
+        iterations = 0;
+        _logfileManager->collectLogfileBarriers();
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_ERROR("got unexpected error in removerThread::run: %s",
-                TRI_errno_string(res));
+      LOG(ERR) << "got unexpected error in removerThread::run: "
+               << TRI_errno_string(res);
     } catch (...) {
-      LOG_ERROR("got unspecific error in removerThread::run");
+      LOG(ERR) << "got unspecific error in removerThread::run";
     }
 
-    if (stop == 0 && !worked) {
-      // sleep only if there was nothing to do
+    // sleep only if there was nothing to do
+    if (!worked) {
       CONDITION_LOCKER(guard, _condition);
 
-      guard.wait(Interval);
-    } else if (stop == 1) {
-      break;
+      if (!isStopping()) {
+        guard.wait(Interval);
+      }
     }
-
-    // next iteration
   }
-
-  _stop = 2;
 }
-
-

@@ -35,19 +35,20 @@
 #include "VocBase/vocbase.h"
 
 #include <mutex>
-#include <velocypack/Slice.h>
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 class ClusterInfo;
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
-
 
 class CollectionInfo {
   friend class ClusterInfo;
@@ -67,8 +68,36 @@ class CollectionInfo {
 
   ~CollectionInfo();
 
-  
- public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the replication factor
+  //////////////////////////////////////////////////////////////////////////////
+
+  int replicationFactor () const {
+    TRI_json_t* const node 
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
+                                                         "replicationFactor");
+
+    if (TRI_IsNumberJson(node)) {
+      return (int) (node->_value._number);
+    }
+    return 1;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the replication quorum
+  //////////////////////////////////////////////////////////////////////////////
+
+  int replicationQuorum () const {
+    TRI_json_t* const node 
+        = arangodb::basics::JsonHelper::getObjectElement(_json,
+                                                         "replicationQuorum");
+
+    if (TRI_IsNumberJson(node)) {
+      return (int) (node->_value._number);
+    }
+    return 1;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether there is no info contained
   //////////////////////////////////////////////////////////////////////////////
@@ -320,8 +349,6 @@ class CollectionInfo {
 
   TRI_json_t const* getJson() const { return _json; }
 
-  
-  
  private:
   TRI_json_t* _json;
 
@@ -332,11 +359,9 @@ class CollectionInfo {
   mutable std::shared_ptr<ShardMap> _shardMapCache;
 };
 
-
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
-  
  public:
   CollectionInfoCurrent();
 
@@ -357,7 +382,6 @@ class CollectionInfoCurrent {
 
   void copyAllJsons();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a new shardID and JSON pair, returns true if OK and false
   /// if the shardID already exists. In the latter case nothing happens.
@@ -460,7 +484,6 @@ class CollectionInfoCurrent {
     return std::string();
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief local helper to return boolean flags
   //////////////////////////////////////////////////////////////////////////////
@@ -490,12 +513,9 @@ class CollectionInfoCurrent {
     return m;
   }
 
-  
  private:
   std::unordered_map<ShardID, TRI_json_t*> _jsons;
 };
-
-
 
 class ClusterInfo {
  private:
@@ -507,9 +527,7 @@ class ClusterInfo {
       DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
       AllCollectionsCurrent;
-  typedef std::shared_ptr<std::vector<ServerID> const> FollowerInfo;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -533,7 +551,6 @@ class ClusterInfo {
 
   ~ClusterInfo();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
@@ -541,7 +558,6 @@ class ClusterInfo {
 
   static ClusterInfo* instance();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -640,8 +656,9 @@ class ClusterInfo {
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int createDatabaseCoordinator(std::string const& name, TRI_json_t const* json,
-                                std::string& errorMsg, double timeout);
+  int createDatabaseCoordinator(std::string const&,
+                                arangodb::velocypack::Slice const&,
+                                std::string&, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
@@ -657,8 +674,8 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
-                                  VPackSlice const json, std::string& errorMsg,
-                                  double timeout);
+                                  arangodb::velocypack::Slice const json,
+                                  std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
@@ -690,9 +707,10 @@ class ClusterInfo {
 
   int ensureIndexCoordinator(
       std::string const& databaseName, std::string const& collectionID,
-      VPackSlice const& slice, bool create,
-      bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
+      arangodb::velocypack::Slice const& slice, bool create,
+      bool (*compare)(arangodb::velocypack::Slice const&,
+                      arangodb::velocypack::Slice const&),
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -702,7 +720,7 @@ class ClusterInfo {
       std::string const& databaseName, std::string const& collectionID,
       TRI_json_t const* json, bool create,
       bool (*compare)(TRI_json_t const*, TRI_json_t const*),
-      TRI_json_t*& resultJson, std::string& errorMsg, double timeout);
+      TRI_json_t*& resultJson, std::string& errorMsg, double timeout) = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -832,50 +850,9 @@ class ClusterInfo {
   double getReloadServerListTimeout() const { return 60.0; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get information about current followers of a shard, the first
-  /// overloaded method is supposed to be very fast, whereas the second
-  /// needs a hash lookup, on the other hand one only needs the shardID.
-  /// Returns an empty shared_ptr if the follower information of the
-  /// shard has been dropped (see `dropFollowerInfo` below).
+  /// @brief object for agency communication
   //////////////////////////////////////////////////////////////////////////////
 
-  FollowerInfo getFollowerInfo(TRI_collection_t& coll);
-  FollowerInfo getFollowerInfo(ShardID& c);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a follower to a shard, this is only done by the server side
-  /// of the "get-in-sync" capabilities. This reports to the agency under
-  /// `/Current` but in asynchronous "fire-and-forget" way. The method
-  /// fails silently, if the follower information has since been dropped
-  /// (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void addFollower(ShardID& c, ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove a follower from a shard, this is only done by the
-  /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in asynchronous "fire-and-forget"
-  /// way. The method fails silently, if the follower information has
-  /// since been dropped (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void removeFollower(ShardID& c, ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop information about current followers of a shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  void dropFollowerInfo(ShardID& c);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal method to add a follower info entry
-  //////////////////////////////////////////////////////////////////////////////
-
-  FollowerInfo newFollowerInfo(ShardID& c, int64_t& index);
-
-  
- private:
   AgencyComm _agency;
 
   // Cached data from the agency, we reload whenever necessary:
@@ -897,7 +874,7 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    arangodb::basics::Mutex mutex;
+    arangodb::Mutex mutex;
     std::atomic<uint64_t> version;
     arangodb::basics::ReadWriteLock lock;
 
@@ -953,13 +930,6 @@ class ClusterInfo {
   std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
       _shardIds;  // from Current/Collections/
 
-  // The following is a special case, it is the current information
-  // about synchronous followers for each shard, for which we are
-  // responsible as a leader.
-  std::vector<FollowerInfo> _followerInfos;
-  std::unordered_map<ShardID, int64_t> _followerInfoTable;
-  std::mutex _followerInfoMutex;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
@@ -973,9 +943,8 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _idLock;
+  arangodb::Mutex _idLock;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
   //////////////////////////////////////////////////////////////////////////////
@@ -1001,8 +970,47 @@ class ClusterInfo {
   static double const reloadServerListTimeout;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a class to track followers that are in sync for a shard
+////////////////////////////////////////////////////////////////////////////////
+
+class FollowerInfo {
+  std::shared_ptr<std::vector<ServerID> const> _followers;
+  std::mutex                                   _mutex;
+  TRI_document_collection_t*                   _docColl;
+
+ public:
+
+  FollowerInfo(TRI_document_collection_t* d) 
+    : _followers(new std::vector<ServerID>()), _docColl(d) { }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get information about current followers of a shard.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID> const> get();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a follower to a shard, this is only done by the server side
+  /// of the "get-in-sync" capabilities. This reports to the agency under
+  /// `/Current` but in asynchronous "fire-and-forget" way. The method
+  /// fails silently, if the follower information has since been dropped
+  /// (see `dropFollowerInfo` below).
+  //////////////////////////////////////////////////////////////////////////////
+
+  void add(ServerID const& s);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a follower from a shard, this is only done by the
+  /// server if a synchronous replication request fails. This reports to
+  /// the agency under `/Current` but in an asynchronous "fire-and-forget"
+  /// way.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void remove(ServerID const& s);
+
+};
+
 }  // end namespace arangodb
 
 #endif
-
-

@@ -25,12 +25,13 @@
 #define ARANGOD_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
+struct TRI_datafile_t;
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @page DurhamDatafiles Datafiles
+/// @brief Datafiles
 ///
 /// All data is stored in datafiles. A set of datafiles forms a collection.
 /// In the following sections the internal structure of a datafile is
@@ -84,7 +85,6 @@
 /// @copydetails TRI_CreateDatafile
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_MARKER_MAXIMAL_SIZE (256 * 1024 * 1024)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
@@ -195,12 +194,6 @@ typedef uint32_t TRI_df_marker_type_t;
 typedef uint32_t TRI_df_version_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief boolean flag
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint32_t TRI_df_flag_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief scan result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -245,7 +238,7 @@ typedef struct TRI_df_scan_entry_s {
 /// @brief datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_datafile_s {
+struct TRI_datafile_t {
   TRI_voc_fid_t _fid;  // datafile identifier
 
   TRI_df_state_e _state;  // state of the datafile (READ or WRITE)
@@ -253,8 +246,9 @@ typedef struct TRI_datafile_s {
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
-  TRI_voc_size_t _initSize;      // initial size of the datafile (constant)
-  TRI_voc_size_t _maximalSize;   // maximal size of the datafile (adjusted (=reduced) at runtime)
+  TRI_voc_size_t _initSize;     // initial size of the datafile (constant)
+  TRI_voc_size_t _maximalSize;  // maximal size of the datafile (adjusted
+                                // (=reduced) at runtime)
   TRI_voc_size_t _currentSize;  // current size of the datafile
   TRI_voc_size_t _footerSize;   // size of the final footer
 
@@ -269,14 +263,14 @@ typedef struct TRI_datafile_s {
   char* _filename;  // underlying filename
 
   // function pointers
-  bool (*isPhysical)(const struct TRI_datafile_s* const);  // returns true if
-                                                           // the datafile is a
-                                                           // physical file
+  bool (*isPhysical)(struct TRI_datafile_t const*);  // returns true if
+                                                     // the datafile is a
+                                                     // physical file
   char const* (*getName)(
-      const struct TRI_datafile_s* const);  // returns the name of a datafile
-  void (*close)(struct TRI_datafile_s* const);  // close the datafile
-  void (*destroy)(struct TRI_datafile_s*);      // destroys the datafile
-  bool (*sync)(const struct TRI_datafile_s* const, char const*,
+      struct TRI_datafile_t const*);        // returns the name of a datafile
+  void (*close)(struct TRI_datafile_t*);    // close the datafile
+  void (*destroy)(struct TRI_datafile_t*);  // destroys the datafile
+  bool (*sync)(struct TRI_datafile_t*, char const*,
                char const*);  // syncs the datafile
 
   int _lastError;  // last (critical) error
@@ -290,7 +284,7 @@ typedef struct TRI_datafile_s {
 
   char* _synced;   // currently synced upto, not including
   char* _written;  // currently written upto, not including
-} TRI_datafile_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile marker
@@ -547,7 +541,6 @@ typedef struct TRI_doc_prepare_transaction_marker_s {
   TRI_voc_tid_t _tid;
 } TRI_doc_prepare_transaction_marker_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
 ///
@@ -597,7 +590,6 @@ void TRI_DestroyDatafile(TRI_datafile_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeDatafile(TRI_datafile_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a marker is a data marker in the WAL
@@ -727,5 +719,3 @@ TRI_df_scan_t TRI_ScanDatafile(char const* path);
 void TRI_DestroyDatafileScan(TRI_df_scan_t* scan);
 
 #endif
-
-

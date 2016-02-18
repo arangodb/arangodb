@@ -95,13 +95,21 @@
 
     createModalHotkeys: function() {
       //submit modal
+      $(this.el).unbind('keydown');
+      $(this.el).unbind('return');
       $(this.el).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("input", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body input').unbind('keydown');
+      $('.modal-body input').unbind('return');
+      $(".modal-body input", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("select", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body select').unbind('keydown');
+      $('.modal-body select').unbind('return');
+      $(".modal-body select", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },
@@ -234,7 +242,7 @@
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm) {
+    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm, tabBar) {
       var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -261,7 +269,8 @@
         title: title,
         buttons: buttons,
         hideFooter: this.hideFooter,
-        confirm: confirmMsg
+        confirm: confirmMsg,
+        tabBar: tabBar
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
@@ -277,16 +286,34 @@
         }
         $("#modalButton" + i).bind("click", b.callback);
       });
+
       $(this.confirm.no).bind("click", function() {
         $(self.confirm.list).css("display", "none");
       });
 
-      var template = templateEngine.createTemplate(templateName);
-      $(".createModalDialog .modal-body").html(template.render({
-        content: tableContent,
-        advancedContent: advancedContent,
-        info: extraInfo
-      }));
+      var template;
+      if (typeof templateName === 'string') {
+        template = templateEngine.createTemplate(templateName);
+        $(".createModalDialog .modal-body").html(template.render({
+          content: tableContent,
+          advancedContent: advancedContent,
+          info: extraInfo
+        }));
+      }
+      else {
+        var counter = 0;
+        _.each(templateName, function(v) {
+          template = templateEngine.createTemplate(v);
+          $(".createModalDialog .modal-body .tab-content #" + tabBar[counter]).html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+
+          counter++;
+        });
+      }
+
       $('.createModalDialog .modalTooltips').tooltip({
         position: {
           my: "left top",

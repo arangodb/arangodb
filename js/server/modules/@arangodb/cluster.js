@@ -35,6 +35,119 @@ var ArangoError = arangodb.ArangoError;
 var PortFinder = require("@arangodb/cluster/planner").PortFinder;
 var Planner = require("@arangodb/cluster/planner").Planner;
 var Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
+var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
+var request = require("@arangodb/request").request;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a unique identifier
+////////////////////////////////////////////////////////////////////////////////
+
+function getUUID () {
+  var rand = require("internal").rand;
+  var sha1 = require("internal").sha1;
+  return sha1("blabla"+rand());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create and post an AQL query that will fetch a READ lock on a
+/// collection and will time out after a number of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+function startReadingQuery (endpoint, collName, timeout) {
+  var uuid = getUUID();
+  var query = {"query": `LET t=SLEEP(${timeout})
+                         FOR x IN ${collName}
+                         LIMIT 1
+                         RETURN "${uuid}" + t`};
+  var url = endpointToURL(endpoint);
+  var r = request({ url: url + "/_api/cursor", body: JSON.stringify(query),
+                    method: "POST", headers:  {"x-arango-async": true} });
+  if (r.status !== 202) {
+    console.error("startReadingQuery: Could not start read transaction for shard", collName, r);
+    return false;
+  }
+  var count = 0;
+  while (true) {
+    count += 1;
+    if (count > 500) {
+      console.error("startReadingQuery: Read transaction did not begin. Giving up");
+      return false;
+    }
+    require("internal").wait(0.2);
+    r = request({ url: url + "/_api/query/current", method: "GET" });
+    if (r.status !== 200) {
+      console.error("startReadingQuery: Bad response from /_api/query/current",
+                    r);
+      continue;
+    }
+    try {
+      r = JSON.parse(r.body);
+    }
+    catch (err) {
+      console.error("startReadingQuery: Bad response body from",
+                    "/_api/query/current", r);
+      continue;
+    }
+    for (var i = 0; i < r.length; i++) {
+      if (r[i].query.indexOf(uuid) !== -1) {
+        // Bingo, found it: 
+        if (r[i].state === "executing") {
+          console.info("startReadingQuery: OK");
+          return r[i].id;
+        }
+        console.info("startReadingQuery: query found but not yet executing");
+        break;
+      }
+    }
+    console.error("startReadingQuery: Did not find query.");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel such a query, return whether or not the query was found
+////////////////////////////////////////////////////////////////////////////////
+
+function cancelReadingQuery (endpoint, queryid) {
+  var url = endpointToURL(endpoint) + "/_api/query/" + queryid;
+  var r = request({url, method: "DELETE" });
+  if (r.status !== 200) {
+    console.error("CancelReadingQuery: error", r);
+    return false;
+  }
+  console.info("CancelReadingQuery: success");
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel barrier from sync
+////////////////////////////////////////////////////////////////////////////////
+
+function cancelBarrier (endpoint, barrierId) {
+  var url = endpointToURL(endpoint) + "/_api/replication/barrier/" + barrierId;
+  var r = request({url, method: "DELETE" });
+  if (r.status !== 200 && r.status !== 204) {
+    console.error("CancelBarrier: error", r);
+    return false;
+  }
+  console.info("cancelBarrier: success");
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tell leader that we are in sync
+////////////////////////////////////////////////////////////////////////////////
+
+function addShardFollower(endpoint, shard) {
+  console.info("addShardFollower: tell the leader to put us into the follower list...");
+  var url = endpointToURL(endpoint) + "/_api/replication/addFollower";
+  var body = {followerId: ArangoServerState.id(), shard };
+  var r = request({url, body: JSON.stringify(body), method: "PUT"});
+  if (r.status !== 200) {
+    console.error("addShardFollower: could not add us to the leader's follower list.", r);
+    return false;
+  }
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get values from Plan or Current by a prefix
@@ -108,6 +221,23 @@ function getByPrefix4d (values, prefix) {
     }
   }
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup for 4-dimensional nested dictionary data
+////////////////////////////////////////////////////////////////////////////////
+
+function lookup4d (data, a, b, c) {
+  if (! data.hasOwnProperty(a)) {
+    return undefined;
+  }
+  if (! data[a].hasOwnProperty(b)) {
+    return undefined;
+  }
+  if (! data[a][b].hasOwnProperty(c)) {
+    return undefined;
+  }
+  return data[a][b][c];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +380,6 @@ function getLocalCollections () {
 
 function createLocalDatabases (plannedDatabases) {
   var ourselves = global.ArangoServerState.id();
-
   var createDatabaseAgency = function (payload) {
     global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
                      payload);
@@ -457,6 +586,7 @@ function createLocalCollections (plannedCollections, planVersion) {
               var shard;
 
               collInfo.planId = collInfo.id;
+              var save = [collInfo.id, collInfo.name];
               delete collInfo.id;  // must not actually set it here
               delete collInfo.name;  // name is now shard
 
@@ -637,6 +767,8 @@ function createLocalCollections (plannedCollections, planVersion) {
                   }
                 }
               }
+              collInfo.id = save[0];
+              collInfo.name = save[1];
             }
           }
         }
@@ -759,11 +891,12 @@ function cleanupCurrentCollections (plannedCollections) {
           for (shard in shards) {
             if (shards.hasOwnProperty(shard)) {
 
-              if (shards[shard].DBServer === ourselves &&
+              if (shards[shard].servers[0] === ourselves &&
                   (! shardMap.hasOwnProperty(shard) ||
-                   shardMap[shard].indexOf(ourselves) === -1)) {
-                // found a shard we are entered for but that we don't have locally
-                console.info("cleaning up entry for unknown shard '%s' of '%s/%s",
+                   shardMap[shard].indexOf(ourselves) !== 0)) {
+                // found an entry in current of a shard that we used to be 
+                // leader for but that we are no longer leader for
+                console.info("cleaning up entry for shard '%s' of '%s/%s",
                              shard,
                              database,
                              collection);
@@ -782,6 +915,150 @@ function cleanupCurrentCollections (plannedCollections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief synchronize collections for which we are followers (synchronously
+/// replicated shards)
+////////////////////////////////////////////////////////////////////////////////
+
+function synchronizeLocalFollowerCollections (plannedCollections) {
+  var ourselves = global.ArangoServerState.id();
+
+  var db = require("internal").db;
+  db._useDatabase("_system");
+  var localDatabases = getLocalDatabases();
+  var database;
+
+  // Get current information about collections from agency:
+  var all = global.ArangoAgency.get("Current/Collections", true);
+  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+
+  var rep = require("@arangodb/replication");
+
+  // iterate over all matching databases
+  for (database in plannedCollections) {
+    if (plannedCollections.hasOwnProperty(database)) {
+      if (localDatabases.hasOwnProperty(database)) {
+        // save old database name
+        var previousDatabase = db._name();
+        // switch into other database
+        db._useDatabase(database);
+
+        try {
+          // iterate over collections of database
+          var collections = plannedCollections[database];
+          var collection;
+
+          // diff the collections
+          for (collection in collections) {
+            if (collections.hasOwnProperty(collection)) {
+              var collInfo = collections[collection];
+              var shards = collInfo.shards;   // this is the Plan
+              var shard;
+
+              collInfo.planId = collInfo.id;
+
+              for (shard in shards) {
+                if (shards.hasOwnProperty(shard)) {
+                  var pos = shards[shard].indexOf(ourselves);
+                  if (pos > 0) {   // found and not in position 0
+                    // found a shard we have to replicate synchronously
+                    // now see whether we are in sync by looking at the
+                    // current entry in the agency:
+                    var inCurrent = lookup4d(currentCollections, database, 
+                                             collection, shard);
+                    var count = 0;
+                    while (inCurrent === undefined ||
+                           ! inCurrent.hasOwnProperty("servers") ||
+                           typeof inCurrent.servers !== "object" ||
+                           typeof inCurrent.servers[0] !== "string" ||
+                           inCurrent.servers[0] === "") {
+                      count++;
+                      if (count > 30) {
+                        throw new Error("timeout waiting for leader for shard "
+                                        + shard);
+                      }
+                      console.info("Waiting for 3 seconds for leader to create shard...");
+                      require("internal").wait(3);
+                      all = global.ArangoAgency.get("Current/Collections",
+                                                    true);
+                      currentCollections = getByPrefix4d(all,
+                                                   "Current/Collections/");
+                      inCurrent = lookup4d(currentCollections, database, 
+                                           collection, shard);
+                    }
+                    if (inCurrent.servers.indexOf(ourselves) === -1) {
+                      // we not in there - must synchronize this shard from
+                      // the leader
+                      console.info("trying to synchronize local shard '%s/%s' for central '%s/%s'",
+                                   database,
+                                   shard,
+                                   database,
+                                   collInfo.planId);
+                      try {
+                        var ep = ArangoClusterInfo.getServerEndpoint(
+                              inCurrent.servers[0]);
+                        // First once without a read transaction:
+                        var sy = rep.syncCollection(shard, 
+                          { endpoint: ep, incremental: true,
+                            keepBarrier: true });
+                        // Now start a read transaction to stop writes:
+                        var queryid;
+                        try {
+                          queryid = startReadingQuery(ep, shard, 300);
+                        }
+                        finally {
+                          cancelBarrier(ep, sy.barrierId);
+                        }
+                        var ok = false;
+                        try {
+                          var sy2 = rep.syncCollectionFinalize(
+                            shard, sy.collections[0].id, sy.lastLogTick, 
+                            { endpoint: ep });
+                          if (sy2.error) {
+                            console.error("Could not synchronize shard", shard,
+                                          sy2);
+                          }
+                          ok = addShardFollower(ep, shard);
+                        }
+                        finally {
+                          if (!cancelReadingQuery(ep, queryid)) {
+                            console.error("Read transaction has timed out for shard", shard);
+                            ok = false;
+                          }
+                        }
+                        if (ok) {
+                          console.info("Synchronization worked for shard", shard);
+                        } else {
+                          throw "Did not work.";  // just to log below in catch
+                        }
+                      }
+                      catch (err2) {
+                        console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
+                                      database,
+                                      shard,
+                                      database,
+                                      collInfo.planId,
+                                      JSON.stringify(err2));
+                      }
+                    }
+
+                  }
+                }
+              }
+            }
+          }
+        }
+        catch (err) {
+          // always return to previous database
+          db._useDatabase(previousDatabase);
+          throw err;
+        }
+
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -794,6 +1071,7 @@ function handleCollectionChanges (plan) {
     createLocalCollections(plannedCollections, plan["Plan/Version"]);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
+    synchronizeLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
@@ -992,7 +1270,7 @@ var shardList = function (dbName, collectionName) {
 /// @brief wait for a distributed response
 ////////////////////////////////////////////////////////////////////////////////
 
-var wait = function (data, shards) {
+var waitForDistributedResponse = function (data, shards) {
   var received = [ ];
 
   while (received.length < shards.length) {
@@ -1211,7 +1489,7 @@ exports.isCoordinatorRequest          = isCoordinatorRequest;
 exports.role                          = role;
 exports.shardList                     = shardList;
 exports.status                        = status;
-exports.wait                          = wait;
+exports.wait                          = waitForDistributedResponse;
 
 exports.Kickstarter = Kickstarter;
 exports.Planner = Planner;

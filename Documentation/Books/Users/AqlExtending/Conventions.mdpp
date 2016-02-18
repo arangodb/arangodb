@@ -25,8 +25,8 @@ will fail.
 !SECTION Variables and side effects
 
 User functions can take any number of input arguments and should
-provide one result. They should be kept purely functional and thus free of
-side effects and state, and state modification.
+provide one result via a `return` statement. User functions should be kept 
+purely functional and thus free of side effects and state, and state modification.
 
 Modification of global variables is unsupported, as is changing
 the data of any collection from inside an AQL user function.
@@ -56,8 +56,8 @@ function (values) {
 }
 ```
 
-The above function can be made free of side effects by using the `var`
-keyword, so the variables become function-local variables:
+The above function can be made free of side effects by using the `var` or
+`let` keywords, so the variables become function-local variables:
 
 ```js
 function (values) {
@@ -71,19 +71,55 @@ function (values) {
 }
 ```
 
+!SECTION Input parameters
+
+In order to return a result, a user function should use a `return` instruction 
+rather than modifying its input parameters.
+
+AQL user functions are allowed to modify their input parameters for input 
+parameters that are null, boolean, numeric or string values. Modifying these
+input parameter types inside a user function should be free of side effects. 
+However, user functions should not modify input parameters if the parameters are 
+arrays or objects and as such passed by reference, as that may modify variables 
+and state outside of the user function itself. 
+
 !SECTION Return values
 
 User functions must only return primitive types (i.e. *null*, boolean
-values, numeric values, string values) or aggregate types (lists or
-documents) composed of these types.
+values, numeric values, string values) or aggregate types (arrays or
+objects) composed of these types.
 Returning any other JavaScript object type from a user function may lead
 to undefined behavior and should be avoided.
+
+!SECTION Enforcing strict mode
+
+By default, any user function code will not be executed in *strict mode* or 
+*strong mode*. In order to make a user function being run in strict 
+mode, use `use strict` explicitly inside the user function, e.g.:
+
+```js
+function (values) {
+  "use strict"
+
+  for (var i = 0; i < values.length; ++i) {
+    var name = values[i];
+    if (name === "foo") {
+      return i;
+    }
+  }
+  return null;
+}
+```
+
+Any violation of the strict mode will trigger a runtime error.
 
 !SECTION Miscellaneous
 
 Internally, user functions are stored in a system collection named
 *_aqlfunctions*  of the selected database. 
-That means that by default they are excluded from dumps
-created with [arangodump](../HttpBulkImports/Arangodump.md).
-To include AQL user functions in a dump, the dump should be started
-with the option *--include-system-collections true*.
+Documents in this collection should not be accessed directly, but 
+only via the dedicated interfaces.
+Also system collection are excluded from dumps created with 
+[arangodump](../HttpBulkImports/Arangodump.md). To include AQL user 
+functions in a dump, the dump should be started with the 
+option *--include-system-collections true*.

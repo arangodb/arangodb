@@ -36,9 +36,7 @@ class AqlItemBlock;
 class Query;
 struct Variable;
 
-
 struct V8Expression {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the v8 expression
   //////////////////////////////////////////////////////////////////////////////
@@ -52,7 +50,6 @@ struct V8Expression {
 
   ~V8Expression();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets attribute restrictions. these prevent input variables to be
   /// fully constructed as V8 objects (which can be very expensive), but limits
@@ -72,11 +69,10 @@ struct V8Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                   arangodb::AqlTransaction*, AqlItemBlock const*,
-                   size_t, std::vector<Variable const*> const&,
+                   arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+                   std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the isolate used when executing and destroying the expression
   //////////////////////////////////////////////////////////////////////////////
@@ -120,5 +116,3 @@ struct V8Expression {
 }
 
 #endif
-
-

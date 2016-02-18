@@ -39,7 +39,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/messages.h"
 #include "Basics/ThreadPool.h"
 #include "Basics/tri-strings.h"
@@ -92,14 +92,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
-
-using namespace std;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 bool IGNORE_DATAFILE_ERRORS;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts list of size_t to string
@@ -219,49 +215,45 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   // And now some handlers which are registered in both /_api and /_admin
   factory->addPrefixHandler(
       "/_api/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_api/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_api/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // And now the _admin handlers
   factory->addPrefixHandler(
       "/_admin/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
           std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_admin/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_admin/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData,
       nullptr);
 
-  factory->addHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData,
-      nullptr);
+  factory->addPrefixHandler("/_admin/work-monitor",
+                            RestHandlerCreator<WorkMonitorHandler>::createNoData,
+                            nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
 #ifdef TRI_ENABLE_FAILURE_TESTS
-  factory->addPrefixHandler(
-      "/_admin/debug",
-      RestHandlerCreator<RestDebugHandler>::createNoData,
-      nullptr);
+  factory->addPrefixHandler("/_admin/debug",
+                            RestHandlerCreator<RestDebugHandler>::createNoData,
+                            nullptr);
 #endif
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::admin::RestShutdownHandler>::createData<
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createData<
           void*>,
       static_cast<void*>(_applicationServer));
 }
@@ -349,8 +341,7 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
     return false;
   }
 
-  VocbaseContext* ctx =
-      new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory
@@ -362,9 +353,6 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
 
   return true;
 }
-
-
-
 
 ArangoServer::ArangoServer(int argc, char** argv)
     : _argc(argc),
@@ -421,7 +409,6 @@ ArangoServer::ArangoServer(int argc, char** argv)
   _server = new TRI_server_t;
 }
 
-
 ArangoServer::~ArangoServer() {
   delete _indexPool;
   delete _jobManager;
@@ -429,8 +416,6 @@ ArangoServer::~ArangoServer() {
 
   Nonce::destroy();
 }
-
-
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -444,7 +429,7 @@ void ArangoServer::buildApplicationServer() {
   // arangod allows defining a user-specific configuration file. arangosh and
   // the other binaries don't
   _applicationServer->setUserConfigFile(
-      ".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
+      ".arango" + std::string(1, TRI_DIR_SEPARATOR_CHAR) + std::string(conf));
 
   // initialize the server's write ahead log
   wal::LogfileManager::initialize(&_databasePath, _server);
@@ -670,7 +655,7 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   if (!_applicationServer->parse(_argc, _argv, additional)) {
-    LOG_FATAL_AND_EXIT("cannot parse command line arguments");
+    LOG(FATAL) << "cannot parse command line arguments"; FATAL_ERROR_EXIT();
   }
 
   // set the temp-path
@@ -682,8 +667,7 @@ void ArangoServer::buildApplicationServer() {
 
   // must be used after drop privileges and be called to set it to avoid raise
   // conditions
-  char* pp = TRI_GetTempPath();
-  TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
+  TRI_GetTempPath();
 
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
 
@@ -695,14 +679,13 @@ void ArangoServer::buildApplicationServer() {
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'",
-                       (ICU_env) ? ICU_env : "");
+    LOG(FATAL) << "failed to initialize ICU; ICU_DATA='" << (ICU_env != nullptr ? ICU_env : "") << "'"; FATAL_ERROR_EXIT();
   }
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-               Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   } else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
@@ -714,7 +697,7 @@ void ArangoServer::buildApplicationServer() {
   uint32_t optionNonceHashSize = 0;
 
   if (optionNonceHashSize > 0) {
-    LOG_DEBUG("setting nonce hash size to %d", (int)optionNonceHashSize);
+    LOG(DEBUG) << "setting nonce hash size to " << optionNonceHashSize;
     Nonce::create(optionNonceHashSize);
   }
 
@@ -724,15 +707,12 @@ void ArangoServer::buildApplicationServer() {
 
   // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for '--database.maximal-journal-size'. expected at "
-        "least %d",
-        (int)TRI_JOURNAL_MINIMAL_SIZE);
+    LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. expected at least " << TRI_JOURNAL_MINIMAL_SIZE; FATAL_ERROR_EXIT();
   }
 
   // validate queue size
   if (_dispatcherQueueSize <= 128) {
-    LOG_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
+    LOG(FATAL) << "invalid value for `--server.maximal-queue-size'"; FATAL_ERROR_EXIT();
   }
 
   // .............................................................................
@@ -742,15 +722,14 @@ void ArangoServer::buildApplicationServer() {
   std::vector<std::string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
-    LOG_FATAL_AND_EXIT("expected at most one database directory, got %d",
-                       (int)arguments.size());
+    LOG(FATAL) << "expected at most one database directory, got " << arguments.size(); FATAL_ERROR_EXIT();
   } else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
   if (_databasePath.empty()) {
-    LOG_INFO("please use the '--database.directory' option");
-    LOG_FATAL_AND_EXIT("no database path has been supplied, giving up");
+    LOG(INFO) << "please use the '--database.directory' option";
+    LOG(FATAL) << "no database path has been supplied, giving up"; FATAL_ERROR_EXIT();
   }
 
   runStartupChecks();
@@ -792,9 +771,9 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   // dump version details
-  LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
+  LOG(INFO) << "" << rest::Version::getVerboseVersionString().c_str();
 
-  LOG_INFO("using default language '%s'", languageName.c_str());
+  LOG(INFO) << "using default language '" << languageName.c_str() << "'";
 
   // if we got here, then we are in server mode
 
@@ -812,17 +791,14 @@ void ArangoServer::buildApplicationServer() {
 
   if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      LOG_INFO("please use the '--pid-file' option");
-      LOG_FATAL_AND_EXIT(
-          "no pid-file defined, but daemon or supervisor mode was requested");
+      LOG(INFO) << "please use the '--pid-file' option";
+      LOG(FATAL) << "no pid-file defined, but daemon or supervisor mode was requested"; FATAL_ERROR_EXIT();
     }
 
     OperationMode::server_operation_mode_e mode =
         OperationMode::determineMode(_applicationServer->programOptions());
     if (mode != OperationMode::MODE_SERVER) {
-      LOG_FATAL_AND_EXIT(
-          "invalid mode. must not specify --console together with --daemon or "
-          "--supervisor");
+      LOG(FATAL) << "invalid mode. must not specify --console together with --daemon or --supervisor"; FATAL_ERROR_EXIT();
     }
 
     // make the pid filename absolute
@@ -835,9 +811,9 @@ void ArangoServer::buildApplicationServer() {
       _pidFile = std::string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
-      LOG_DEBUG("using absolute pid file '%s'", _pidFile.c_str());
+      LOG(DEBUG) << "using absolute pid file '" << _pidFile.c_str() << "'";
     } else {
-      LOG_FATAL_AND_EXIT("cannot determine current directory");
+      LOG(FATAL) << "cannot determine current directory"; FATAL_ERROR_EXIT();
     }
   }
 
@@ -848,7 +824,6 @@ void ArangoServer::buildApplicationServer() {
     }
   }
 }
-
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();
@@ -897,12 +872,12 @@ int ArangoServer::startupServer() {
 
   // special treatment for the write-ahead log
   // the log must exist before all other server operations can start
-  LOG_TRACE("starting WAL logfile manager");
+  LOG(TRACE) << "starting WAL logfile manager";
 
   if (!wal::LogfileManager::instance()->prepare() ||
       !wal::LogfileManager::instance()->start()) {
     // unable to initialize & start WAL logfile manager
-    LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
+    LOG(FATAL) << "unable to start WAL logfile manager"; FATAL_ERROR_EXIT();
   }
 
   // .............................................................................
@@ -925,7 +900,7 @@ int ArangoServer::startupServer() {
 
   if (!checkVersion) {
     if (!wal::LogfileManager::instance()->open()) {
-      LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+      LOG(FATAL) << "Unable to finish WAL recovery procedure"; FATAL_ERROR_EXIT();
     }
   }
 
@@ -936,8 +911,7 @@ int ArangoServer::startupServer() {
       TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "No _system database found in database directory. Cannot start!");
+    LOG(FATAL) << "No _system database found in database directory. Cannot start!"; FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(vocbase != nullptr);
@@ -1093,10 +1067,7 @@ int ArangoServer::startupServer() {
     size_t nd = _applicationDispatcher->numberOfThreads();
 
     if (ns != 0 && nd != 0) {
-      LOG_INFO(
-          "the server has %d (hyper) cores, using %d scheduler threads, %d "
-          "dispatcher threads",
-          (int)n, (int)ns, (int)nd);
+      LOG(INFO) << "the server has " << n << " (hyper) cores, using " << ns << " scheduler threads, " << nd << " dispatcher threads";
     } else {
       _threadAffinity = 0;
     }
@@ -1186,15 +1157,22 @@ int ArangoServer::startupServer() {
       }
 
       if (0 < ns) {
-        LOG_INFO("scheduler cores: %s", ToString(ps).c_str());
+        LOG(INFO) << "scheduler cores: " << ToString(ps).c_str();
       }
       if (0 < nd) {
-        LOG_INFO("dispatcher cores: %s", ToString(pd).c_str());
+        LOG(INFO) << "dispatcher cores: " << ToString(pd).c_str();
       }
     } else {
-      LOG_INFO("the server has %d (hyper) cores", (int)n);
+      LOG(INFO) << "the server has " << n << " (hyper) cores";
     }
   }
+
+
+  // active deadlock detection in case we're not running in cluster mode
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    TRI_EnableDeadlockDetectionDatabasesServer(_server);
+  }
+
 
   // .............................................................................
   // start the work monitor
@@ -1218,16 +1196,15 @@ int ArangoServer::startupServer() {
     // turned on,
     // then we refuse to start
     if (!vocbase->_authInfoLoaded && !_disableAuthentication) {
-      LOG_FATAL_AND_EXIT("could not load required authentication information");
+      LOG(FATAL) << "could not load required authentication information"; FATAL_ERROR_EXIT();
     }
   }
 
   if (_disableAuthentication) {
-    LOG_INFO("Authentication is turned off");
+    LOG(INFO) << "Authentication is turned off";
   }
 
-  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL
-           ") is ready for business. Have fun!");
+  LOG(INFO) << "ArangoDB (version " << TRI_VERSION_FULL << ") is ready for business. Have fun!";
 
   startupFinished();
 
@@ -1262,8 +1239,8 @@ int ArangoServer::startupServer() {
   closeDatabases();
 
   if (mode == OperationMode::MODE_CONSOLE) {
-    cout << endl
-         << TRI_BYE_MESSAGE << endl;
+    std::cout << std::endl
+         << TRI_BYE_MESSAGE << std::endl;
   }
 
   TRI_ShutdownStatistics();
@@ -1271,7 +1248,6 @@ int ArangoServer::startupServer() {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run arbitrary checks at startup
@@ -1327,11 +1303,7 @@ void ArangoServer::runStartupChecks() {
         int64_t alignment =
             std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG_FATAL_AND_EXIT(
-              "possibly incompatible CPU alignment settings found in '%s'. "
-              "this may cause arangod to abort with SIGBUS. please set the "
-              "value in '%s' to 2",
-              filename.c_str(), filename.c_str());
+          LOG(FATAL) << "possibly incompatible CPU alignment settings found in '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. please set the value in '" << filename.c_str() << "' to 2"; FATAL_ERROR_EXIT();
         }
 
         alignmentDetected = true;
@@ -1339,18 +1311,11 @@ void ArangoServer::runStartupChecks() {
 
     } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG_TRACE(
-          "unable to detect CPU alignment settings. could not process file "
-          "'%s'",
-          filename.c_str());
+      LOG(TRACE) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'";
     }
 
     if (!alignmentDetected) {
-      LOG_WARNING(
-          "unable to detect CPU alignment settings. could not process file "
-          "'%s'. this may cause arangod to abort with SIGBUS. it may be "
-          "necessary to set the value in '%s' to 2",
-          filename.c_str(), filename.c_str());
+      LOG(WARN) << "unable to detect CPU alignment settings. could not process file '" << filename.c_str() << "'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '" << filename.c_str() << "' to 2";
     }
   }
 #endif
@@ -1423,12 +1388,12 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   // .............................................................................
 
   console.userAbort();
-  console.stop();
+  console.beginShutdown();
 
   int iterations = 0;
 
-  while (!console.done() && ++iterations < 30) {
-    usleep(100000);  // spin while console is still needed
+  while (console.isRunning() && ++iterations < 30) {
+    usleep(100 * 1000);  // spin while console is still needed
   }
 
   return EXIT_SUCCESS;
@@ -1515,8 +1480,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
 
         if (!r) {
-          LOG_FATAL_AND_EXIT("cannot load script '%s', giving up",
-                             _scriptFile[i].c_str());
+          LOG(FATAL) << "cannot load script '" << _scriptFile[i].c_str() << "', giving up"; FATAL_ERROR_EXIT();
         }
       }
 
@@ -1538,7 +1502,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
           localContext->Global()->Get(mainFuncName));
 
       if (main.IsEmpty() || main->IsUndefined()) {
-        LOG_FATAL_AND_EXIT("no main function defined, giving up");
+        LOG(FATAL) << "no main function defined, giving up"; FATAL_ERROR_EXIT();
       } else {
         v8::Handle<v8::Value> args[] = {params};
 
@@ -1556,15 +1520,13 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             ok = TRI_ObjectToDouble(result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()),
-                    ex.what());
+          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s",
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          LOG(ERR) << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG_ERROR("caught unknown exception");
+          LOG(ERR) << "caught unknown exception";
           ok = false;
         }
       }
@@ -1607,7 +1569,7 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
                            _disableReplicationApplier, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
+    LOG(FATAL) << "cannot create server instance: out of memory"; FATAL_ERROR_EXIT();
   }
 
   res = TRI_StartServer(_server, checkVersion, performUpgrade);
@@ -1617,10 +1579,10 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
       TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
     }
 
-    LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
+    LOG(FATAL) << "cannot start server: " << TRI_errno_string(res); FATAL_ERROR_EXIT();
   }
 
-  LOG_TRACE("found system database");
+  LOG(TRACE) << "found system database";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1641,7 +1603,5 @@ void ArangoServer::closeDatabases() {
 
   TRI_StopServer(_server);
 
-  LOG_INFO("ArangoDB has been shut down");
+  LOG(INFO) << "ArangoDB has been shut down";
 }
-
-

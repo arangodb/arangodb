@@ -24,7 +24,7 @@
 
 #include "SocketTask.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
@@ -34,7 +34,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task with a given socket
@@ -83,14 +82,11 @@ SocketTask::~SocketTask() {
   ConnectionStatisticsAgent::release();
 }
 
-
-
 void SocketTask::setKeepAliveTimeout(double timeout) {
   if (_keepAliveWatcher != nullptr && timeout > 0.0) {
     _scheduler->rearmTimer(_keepAliveWatcher, timeout);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the read buffer
@@ -100,7 +96,7 @@ bool SocketTask::fillReadBuffer() {
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
     // out of memory
-    LOG_TRACE("out of memory");
+    LOG(TRACE) << "out of memory";
 
     return false;
   }
@@ -113,7 +109,7 @@ bool SocketTask::fillReadBuffer() {
   }
 
   if (nr == 0) {
-    LOG_TRACE("read returned 0");
+    LOG(TRACE) << "read returned 0";
     _clientClosed = true;
 
     return false;
@@ -127,8 +123,7 @@ bool SocketTask::fillReadBuffer() {
   }
 
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
-    LOG_DEBUG("read from socket failed with %d: %s", (int)myerrno,
-              strerror(myerrno));
+    LOG(DEBUG) << "read from socket failed with " << myerrno << ": " << strerror(myerrno);
 
     return false;
   }
@@ -142,7 +137,7 @@ bool SocketTask::fillReadBuffer() {
   // either error to be returned for this case, and does not require these
   // constants to have the same value,
   // so a  portable  application  should check for both possibilities.
-  LOG_TRACE("read would block with %d: %s", (int)myerrno, strerror(myerrno));
+  LOG(TRACE) << "read would block with " << myerrno << ": " << strerror(myerrno);
 
   return true;
 }
@@ -174,8 +169,7 @@ bool SocketTask::handleWrite() {
       }
 
       if (myerrno != EWOULDBLOCK || myerrno != EAGAIN) {
-        LOG_DEBUG("writing to socket failed with %d: %s", (int)myerrno,
-                  strerror(myerrno));
+        LOG(DEBUG) << "writing to socket failed with " << myerrno << ": " << strerror(myerrno);
 
         return false;
       }
@@ -218,7 +212,6 @@ bool SocketTask::handleWrite() {
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an active write buffer
@@ -269,20 +262,16 @@ void SocketTask::setWriteBuffer(StringBuffer* buffer,
 
 bool SocketTask::hasWriteBuffer() const { return _writeBuffer != nullptr; }
 
-
-
 bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 #ifdef _WIN32
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
-  LOG_TRACE("attempting to convert socket handle to socket descriptor");
+  LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
 
   if (!TRI_isvalidsocket(_commSocket)) {
-    LOG_ERROR(
-        "In SocketTask::setup could not convert socket handle to socket "
-        "descriptor -- invalid socket handle");
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
     return false;
   }
 
@@ -295,16 +284,12 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
   int res = (int)_commSocket.fileHandle;
 
   if (res == -1) {
-    LOG_ERROR(
-        "In SocketTask::setup could not convert socket handle to socket "
-        "descriptor -- _open_osfhandle(...) failed");
+    LOG(ERR) << "In SocketTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
     res = TRI_CLOSE_SOCKET(_commSocket);
 
     if (res != 0) {
       res = WSAGetLastError();
-      LOG_ERROR(
-          "In SocketTask::setup closesocket(...) failed with error code: %d",
-          (int)res);
+      LOG(ERR) << "In SocketTask::setup closesocket(...) failed with error code: " << res;
     }
 
     TRI_invalidatesocket(&_commSocket);
@@ -358,13 +343,12 @@ void SocketTask::cleanup() {
   _writeWatcher = nullptr;
 }
 
-
 bool SocketTask::handleEvent(EventToken token, EventType revents) {
   bool result = true;
 
   if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
-    LOG_TRACE("got keep-alive timeout signal, closing connection");
+    LOG(TRACE) << "got keep-alive timeout signal, closing connection";
 
     _scheduler->clearTimer(token);
 
@@ -398,5 +382,3 @@ bool SocketTask::handleEvent(EventToken token, EventType revents) {
 
   return result;
 }
-
-

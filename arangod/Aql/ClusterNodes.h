@@ -39,7 +39,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 struct Collection;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RemoteNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,11 +92,11 @@ class RemoteNode : public ExecutionNode {
   NodeType getType() const override final { return REMOTE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -215,7 +214,6 @@ class RemoteNode : public ExecutionNode {
   bool _isResponsibleForInitCursor;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ScatterNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,11 +240,11 @@ class ScatterNode : public ExecutionNode {
   NodeType getType() const override final { return SCATTER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -293,7 +291,6 @@ class ScatterNode : public ExecutionNode {
   Collection const* _collection;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class DistributeNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,11 +333,11 @@ class DistributeNode : public ExecutionNode {
   NodeType getType() const override final { return DISTRIBUTE; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -414,7 +411,6 @@ class DistributeNode : public ExecutionNode {
   bool const _allowKeyConversionToObject;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class GatherNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,11 +438,11 @@ class GatherNode : public ExecutionNode {
   NodeType getType() const override final { return GATHER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -537,4 +533,3 @@ class GatherNode : public ExecutionNode {
 }  // namespace arangodb
 
 #endif
-

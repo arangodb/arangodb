@@ -25,6 +25,7 @@
 #define LIB_BASICS_WIN_UTILS_H 1
 
 #include <WinSock2.h>
+#include <string>
 
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
@@ -98,15 +99,35 @@ void TRI_FixIcuDataEnv();
 int TRI_MapSystemError(DWORD);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief open/close the windows eventlog. Call on start / shutdown
+////////////////////////////////////////////////////////////////////////////////
+bool TRI_InitWindowsEventLog(void);
+void TRI_CloseWindowsEventlog(void);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
 /// with fancy dynamic buffers; thus we work with a static buffer.
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
+
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message to the windows event log.
+/// this wrapper (and the macro) are similar to regular log facilities.
+/// they should however only be used in panic situations.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
+                             char const* fmt, ...);
+
+#define LOG_FATAL_WINDOWS(...)                                              \
+  do {                                                                      \
+    TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
+  } while (0)
+
 #endif
-
-

@@ -119,7 +119,6 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   return TRANSACTION(data);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDatabaseDrop
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +134,18 @@ ArangoDatabase.prototype._drop = function(name) {
     return;
   }
 
-  return collection.drop();
+  try {
+    return collection.drop();
+  }
+  catch (err) {
+    // ignore if the collection does not exist
+    if (err instanceof ArangoError && 
+        err.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+      return;
+    }
+    // rethrow exception
+    throw err;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +165,6 @@ ArangoDatabase.prototype._truncate = function(name) {
 
   collection.truncate();
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex

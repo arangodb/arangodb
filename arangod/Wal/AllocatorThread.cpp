@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllocatorThread.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb::wal;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the allocator thread when idle
@@ -36,30 +35,19 @@ using namespace arangodb::wal;
 
 uint64_t const AllocatorThread::Interval = 500 * 1000;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the allocator thread
-////////////////////////////////////////////////////////////////////////////////
-
 AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
     : Thread("WalAllocator"),
       _logfileManager(logfileManager),
       _condition(),
       _recoveryLock(),
       _requestedSize(0),
-      _stop(0),
       _inRecovery(true),
       _allocatorResultCondition(),
-      _allocatorResult(TRI_ERROR_NO_ERROR) {
-  allowAsynchronousCancelation();
+      _allocatorResult(TRI_ERROR_NO_ERROR) {}
+
+AllocatorThread::~AllocatorThread() {
+  shutdown(true);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the allocator thread
-////////////////////////////////////////////////////////////////////////////////
-
-AllocatorThread::~AllocatorThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
@@ -78,20 +66,14 @@ int AllocatorThread::waitForResult(uint64_t timeout) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the allocator thread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-void AllocatorThread::stop() {
-  if (_stop > 0) {
-    return;
-  }
+void AllocatorThread::beginShutdown() {
+  Thread::beginShutdown();
 
-  _stop = 1;
-  _condition.signal();
-
-  while (_stop != 2) {
-    usleep(10000);
-  }
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +91,6 @@ void AllocatorThread::signal(uint32_t markerSize) {
   guard.signal();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new reserve logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,13 +99,12 @@ int AllocatorThread::createReserveLogfile(uint32_t size) {
   return _logfileManager->createReserveLogfile(size);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
 void AllocatorThread::run() {
-  while (_stop == 0) {
+  while (!isStopping()) {
     uint32_t requestedSize = 0;
 
     {
@@ -145,9 +125,9 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG_ERROR(
-            "unable to create new WAL reserve logfile for sized marker: %s",
-            TRI_errno_string(res));
+        LOG(ERR)
+            << "unable to create new WAL reserve logfile for sized marker: "
+            << TRI_errno_string(res);
       } else if (requestedSize > 0 &&
                  _logfileManager->logfileCreationAllowed(requestedSize)) {
         res = createReserveLogfile(requestedSize);
@@ -156,15 +136,15 @@ void AllocatorThread::run() {
           continue;
         }
 
-        LOG_ERROR("unable to create new WAL reserve logfile: %s",
-                  TRI_errno_string(res));
+        LOG(ERR) << "unable to create new WAL reserve logfile: "
+                 << TRI_errno_string(res);
       }
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-      LOG_ERROR("got unexpected error in allocatorThread: %s",
-                TRI_errno_string(res));
+      LOG(ERR) << "got unexpected error in allocatorThread: "
+               << TRI_errno_string(res);
     } catch (...) {
-      LOG_ERROR("got unspecific error in allocatorThread");
+      LOG(ERR) << "got unspecific error in allocatorThread";
     }
 
     // reset allocator status
@@ -179,8 +159,4 @@ void AllocatorThread::run() {
       guard.wait(Interval);
     }
   }
-
-  _stop = 2;
 }
-
-

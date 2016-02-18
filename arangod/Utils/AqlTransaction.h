@@ -33,12 +33,10 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include <v8.h>
 
 namespace arangodb {
 
 class AqlTransaction : public Transaction {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction and add all collections from the query
@@ -128,8 +126,8 @@ class AqlTransaction : public Transaction {
       cid = col->_cid;
     }
 
-    int res = this->addCollection(cid, collection->getName().c_str(),
-                                  collection->accessType);
+    int res =
+        this->addCollection(cid, collection->getName(), collection->accessType);
 
     if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
       collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
@@ -205,4 +203,3 @@ class AqlTransaction : public Transaction {
 }
 
 #endif
-

@@ -31,7 +31,6 @@
 namespace arangodb {
 namespace aql {
 
-
 class TraversalBlock : public ExecutionBlock {
  public:
   TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep);
@@ -70,7 +69,6 @@ class TraversalBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vertices buffer
@@ -179,8 +177,7 @@ class TraversalBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<
-      size_t,
-      std::vector<arangodb::traverser::TraverserExpression*>> const*
+      size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
       _expressions;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -203,7 +200,6 @@ class TraversalBlock : public ExecutionBlock {
 
   std::vector<std::vector<RegisterId>> _inRegs;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief continue fetching of paths
   //////////////////////////////////////////////////////////////////////////////

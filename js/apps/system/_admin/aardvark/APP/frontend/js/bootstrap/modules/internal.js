@@ -1,7 +1,7 @@
 /*eslint camelcase:0 */
 /*jshint esnext:true, -W051:true */
 /*eslint-disable */
-global.DEFINE_MODULE('internal', (function () {
+global.DEFINE_MODULE('internal', (function() {
 'use strict';
 /*eslint-enable */
 
@@ -41,31 +41,35 @@ const exports = {};
 if (global.ArangoError) {
   exports.ArangoError = global.ArangoError;
   delete global.ArangoError;
-}
-else {
-  exports.ArangoError = function (error) {
+} else {
+  exports.ArangoError = function(error) {
     if (error !== undefined) {
       this.error = error.error;
       this.code = error.code;
       this.errorNum = error.errorNum;
       this.errorMessage = error.errorMessage;
     }
-
-    this.message = this.toString();
   };
 
   exports.ArangoError.prototype = new Error();
 }
 
-exports.ArangoError.prototype._PRINT = function (context) {
-  context.output += this.toString();
+Object.defineProperty(exports.ArangoError.prototype, 'message', {
+  configurable: true,
+  enumerable: true,
+  get() {
+    return this.errorMessage;
+  }
+});
+
+exports.ArangoError.prototype.name = 'ArangoError';
+
+exports.ArangoError.prototype._PRINT = function(context) {
+  context.output += '[' + this.toString() + ']';
 };
 
 exports.ArangoError.prototype.toString = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage || this.message;
-
-  return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
+  return `${this.name} ${this.errorNum}: ${this.message}`;
 };
 
 
@@ -85,15 +89,6 @@ if (global.THREAD_NUMBER) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.developmentMode = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logfilePath
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.LOGFILE_PATH) {
-  exports.logfilePath = global.LOGFILE_PATH;
-  delete global.LOGFILE_PATH;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quiet
@@ -340,16 +335,16 @@ if (global.SYS_GET_CURRENT_RESPONSE) {
 /// @brief extend
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.extend = function (target, source) {
+exports.extend = function(target, source) {
 
   Object.getOwnPropertyNames(source)
-  .forEach(function(propName) {
-    Object.defineProperty(
-      target,
-      propName,
-      Object.getOwnPropertyDescriptor(source, propName)
-    );
-  });
+    .forEach(function(propName) {
+      Object.defineProperty(
+        target,
+        propName,
+        Object.getOwnPropertyDescriptor(source, propName)
+      );
+    });
 
   return target;
 };
@@ -712,7 +707,7 @@ if (global.SYS_IS_IP) {
 /// @brief unitTests
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.unitTests = function () {
+exports.unitTests = function() {
   return global.SYS_UNIT_TESTS;
 };
 
@@ -720,7 +715,7 @@ exports.unitTests = function () {
 /// @brief setUnitTestsResult
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.setUnitTestsResult = function (value) {
+exports.setUnitTestsResult = function(value) {
   global.SYS_UNIT_TESTS_RESULT = value;
 };
 
@@ -731,7 +726,7 @@ exports.setUnitTestsResult = function (value) {
 ///                      or --opt value
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.toArgv = function (structure, longOptsEqual) {
+exports.toArgv = function(structure, longOptsEqual) {
   if (typeof longOptsEqual === 'undefined') {
     longOptsEqual = false;
   }
@@ -743,33 +738,27 @@ exports.toArgv = function (structure, longOptsEqual) {
         for (let i = 0; i < structure[key].length; i++) {
           if (structure[key][i].length > 1) {
             vec.push(structure[key][i]);
-          }
-          else {
+          } else {
             multivec += structure[key][i];
           }
         }
         if (multivec.length > 0) {
           vec.push(multivec);
         }
-      }
-      else if (key === 'flatCommands') {
+      } else if (key === 'flatCommands') {
         vec = vec.concat(structure[key]);
-      }
-      else {
+      } else {
         if (longOptsEqual) {
           vec.push('--' + key + '=' + structure[key]);
-        }
-        else {
+        } else {
           vec.push('--' + key);
           if (structure[key] !== false) {
             if (structure[key] !== true) {
               vec.push(structure[key]);
-            }
-            else {
+            } else {
               vec.push('true');
             }
-          }
-          else {
+          } else {
             vec.push('false');
           }
         }
@@ -783,8 +772,9 @@ exports.toArgv = function (structure, longOptsEqual) {
 /// @brief argv to structured
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.parseArgv = function (argv, startOffset) {
+exports.parseArgv = function(argv, startOffset) {
   var i;
+
   function setOption(ret, option, value) {
     if (option.indexOf(':') > 0) {
       var n = option.indexOf(':');
@@ -793,20 +783,17 @@ exports.parseArgv = function (argv, startOffset) {
         ret[topOption] = {};
       }
       setOption(ret[topOption], option.slice(n + 1, option.length), value);
-    }
-    else if (argv[i + 1] === 'true') {
+    } else if (argv[i + 1] === 'true') {
       ret[option] = true;
-    }
-    else if (argv[i + 1] === 'false') {
+    } else if (argv[i + 1] === 'false') {
       ret[option] = false;
-    }
-    else if (!isNaN(argv[i + 1])) {
+    } else if (!isNaN(argv[i + 1])) {
       ret[option] = parseInt(argv[i + 1]);
-    }
-    else {
+    } else {
       ret[option] = argv[i + 1];
     }
   }
+
   function setSwitch(ret, option) {
     if (!ret.hasOwnProperty('commandSwitches')) {
       ret.commandSwitches = [];
@@ -833,29 +820,24 @@ exports.parseArgv = function (argv, startOffset) {
     let thisString = argv[i];
     if (!inFlat) {
       if ((thisString.length > 2) &&
-          (thisString.slice(0, 2) === '--')) {
+        (thisString.slice(0, 2) === '--')) {
         let option = thisString.slice(2, thisString.length);
         if ((argv.length > i) &&
-            (argv[i + 1].slice(0, 1) !== '-')) {
+          (argv[i + 1].slice(0, 1) !== '-')) {
           setOption(ret, option, argv[i + 1]);
           i++;
-        }
-        else {
+        } else {
           setSwitch(ret, option);
         }
-      }
-      else if (thisString === '--') {
+      } else if (thisString === '--') {
         inFlat = true;
-      }
-      else if ((thisString.length > 1) &&
-              (thisString.slice(0, 1) === '-')) {
+      } else if ((thisString.length > 1) &&
+        (thisString.slice(0, 1) === '-')) {
         setSwitchVec(ret, thisString.slice(1, thisString.length));
-      }
-      else {
+      } else {
         setFlatCommand(ret, thisString);
       }
-    }
-    else {
+    } else {
       setFlatCommand(ret, thisString);
     }
   }
@@ -873,15 +855,15 @@ exports.COLORS = {};
 if (global.COLORS) {
   exports.COLORS = global.COLORS;
   delete global.COLORS;
-}
-else {
-  [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
+} else {
+  ['COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
     'COLOR_BLUE', 'COLOR_BOLD_BLUE', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW',
     'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN',
     'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK',
-    'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-      exports.COLORS[color] = '';
-    });
+    'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET'
+  ].forEach(function(color) {
+    exports.COLORS[color] = '';
+  });
 }
 
 exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
@@ -943,7 +925,7 @@ var printRecursive;
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-function quoteSingleJsonCharacter (c) {
+function quoteSingleJsonCharacter(c) {
 
   if (characterQuoteCache.hasOwnProperty(c)) {
     return characterQuoteCache[c];
@@ -954,14 +936,11 @@ function quoteSingleJsonCharacter (c) {
 
   if (charCode < 16) {
     result = '\\u000';
-  }
-  else if (charCode < 256) {
+  } else if (charCode < 256) {
     result = '\\u00';
-  }
-  else if (charCode < 4096) {
+  } else if (charCode < 4096) {
     result = '\\u0';
-  }
-  else {
+  } else {
     result = '\\u';
   }
 
@@ -977,7 +956,7 @@ function quoteSingleJsonCharacter (c) {
 
 var quotable = /[\\\"\x00-\x1f]/g;
 
-function quoteJsonString (str) {
+function quoteJsonString(str) {
 
   return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
 }
@@ -986,7 +965,7 @@ function quoteJsonString (str) {
 /// @brief prints the ident for pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-function printIndent (context) {
+function printIndent(context) {
 
   var j;
   var indent = '';
@@ -1006,7 +985,7 @@ function printIndent (context) {
 /// @brief prints the JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-function printArray (object, context) {
+function printArray(object, context) {
 
   var useColor = context.useColor;
 
@@ -1020,8 +999,7 @@ function printArray (object, context) {
     if (useColor) {
       context.output += colors.COLOR_RESET;
     }
-  }
-  else {
+  } else {
     if (useColor) {
       context.output += colors.COLOR_PUNCTUATION;
     }
@@ -1085,7 +1063,7 @@ function printArray (object, context) {
 /// @brief prints an object
 ////////////////////////////////////////////////////////////////////////////////
 
-function printObject (object, context) {
+function printObject(object, context) {
 
   var useColor = context.useColor;
   var sep = ' ';
@@ -1107,8 +1085,7 @@ function printObject (object, context) {
   var keys;
   try {
     keys = Object.keys(object);
-  }
-  catch (err) {
+  } catch (err) {
     // ES6 proxy objects don't support key enumeration
     keys = [];
   }
@@ -1178,8 +1155,7 @@ function printObject (object, context) {
 var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
 var func2RE = /function ([^\(]*)?\((.*)\) \{/;
 
-exports.printRecursive = printRecursive = function (value, context) {
-
+exports.printRecursive = printRecursive = function(value, context) {
   var useColor = context.useColor;
   var customInspect = context.customInspect;
   var useToString = context.useToString;
@@ -1195,8 +1171,7 @@ exports.printRecursive = printRecursive = function (value, context) {
 
   if (p >= 0) {
     context.output += context.names[p];
-  }
-  else {
+  } else {
     if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
       context.seen.push(value);
       context.names.push(context.path);
@@ -1207,27 +1182,24 @@ exports.printRecursive = printRecursive = function (value, context) {
           exports.output(context.output);
           context.output = '';
         }
-      }
-      else if (value instanceof Array) {
+      } else if (value instanceof Array) {
         printArray(value, context);
-      }
-      else if (
-        value.toString === Object.prototype.toString
-        || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
+      } else if (
+        value.toString === Object.prototype.toString ||
+          (typeof value === 'object' && Object.getPrototypeOf(value) === null)
       ) {
         var handled = false;
         try {
           if (value instanceof Set ||
-              value instanceof Map ||
-              value instanceof WeakSet ||
-              value instanceof WeakMap ||
-              typeof value[Symbol.iterator] === 'function') {
+            value instanceof Map ||
+            value instanceof WeakSet ||
+            value instanceof WeakMap ||
+            typeof value[Symbol.iterator] === 'function') {
             // ES6 iterators
             context.output += value.toString();
             handled = true;
           }
-        }
-        catch (err) {
+        } catch (err) {
           // ignore any errors thrown above, and simply fall back to normal printing
         }
 
@@ -1240,8 +1212,7 @@ exports.printRecursive = printRecursive = function (value, context) {
           exports.output(context.output);
           context.output = '';
         }
-      }
-      else if (typeof value === 'function') {
+      } else if (typeof value === 'function') {
         // it's possible that toString() throws, and this looks quite ugly
         try {
           var s = value.toString();
@@ -1255,54 +1226,44 @@ exports.printRecursive = printRecursive = function (value, context) {
             if (m !== null) {
               if (m[1] === undefined) {
                 context.output += 'function { [native code] }';
-              }
-              else {
+              } else {
                 context.output += 'function ' + m[1] + ' { [native code] }';
               }
-            }
-            else {
+            } else {
               m = func2RE.exec(f);
 
               if (m !== null) {
                 if (m[1] === undefined) {
                   context.output += 'function ' + '(' + m[2] + ') { ... }';
-                }
-                else {
+                } else {
                   context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
                 }
-              }
-              else {
+              } else {
                 f = f.substr(8, f.length - 10).trim();
                 context.output += '[Function "' + f + '" ...]';
               }
             }
-          }
-          else {
+          } else {
             context.output += s;
           }
-        }
-        catch (e1) {
+        } catch (e1) {
           exports.stdOutput(String(e1));
           context.output += '[Function]';
         }
-      }
-      else if (useToString && typeof value.toString === 'function') {
+      } else if (useToString && typeof value.toString === 'function') {
         try {
           context.output += value.toString();
-        }
-        catch (e2) {
+        } catch (e2) {
           context.output += '[Object ';
           printObject(value, context);
           context.output += ']';
         }
-      }
-      else {
+      } else {
         context.output += '[Object ';
         printObject(value, context);
         context.output += ']';
       }
-    }
-    else if (value === undefined) {
+    } else if (value === undefined) {
       if (useColor) {
         context.output += colors.COLOR_UNDEFINED;
       }
@@ -1312,8 +1273,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
-    }
-    else if (typeof value === 'string') {
+    } else if (typeof value === 'string') {
       if (useColor) {
         context.output += colors.COLOR_STRING;
       }
@@ -1329,8 +1289,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
-    }
-    else if (typeof value === 'boolean') {
+    } else if (typeof value === 'boolean') {
       if (useColor) {
         context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
       }
@@ -1340,8 +1299,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
-    }
-    else if (typeof value === 'number') {
+    } else if (typeof value === 'number') {
       if (useColor) {
         context.output += colors.COLOR_NUMBER;
       }
@@ -1351,8 +1309,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
-    }
-    else if (value === null) {
+    } else if (value === null) {
       if (useColor) {
         context.output += colors.COLOR_NULL;
       }
@@ -1365,7 +1322,7 @@ exports.printRecursive = printRecursive = function (value, context) {
     }
     /* jshint notypeof: true */
     else if (typeof value === 'symbol') {
-    /* jshint notypeof: false */
+      /* jshint notypeof: false */
       // handle ES6 symbols
       if (useColor) {
         context.output += colors.COLOR_NULL;
@@ -1376,8 +1333,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
-    }
-    else {
+    } else {
       context.output += String(value);
     }
   }
@@ -1387,7 +1343,7 @@ exports.printRecursive = printRecursive = function (value, context) {
 /// @brief buffers output instead of printing it
 ////////////////////////////////////////////////////////////////////////////////
 
-function bufferOutput () {
+function bufferOutput() {
 
   for (let i = 0; i < arguments.length; ++i) {
     var value = arguments[i];
@@ -1395,19 +1351,15 @@ function bufferOutput () {
 
     if (value === null) {
       text = 'null';
-    }
-    else if (value === undefined) {
+    } else if (value === undefined) {
       text = 'undefined';
-    }
-    else if (typeof value === 'object') {
+    } else if (typeof value === 'object') {
       try {
         text = JSON.stringify(value);
-      }
-      catch (err) {
+      } catch (err) {
         text = String(value);
       }
-    }
-    else {
+    } else {
       text = String(value);
     }
 
@@ -1426,8 +1378,7 @@ function bufferOutput () {
 /// @FN{_PRINT}, then this function is called. A final newline is printed.
 ////////////////////////////////////////////////////////////////////////////////
 
-function printShell () {
-
+function printShell() {
   var output = exports.output;
 
   for (let i = 0; i < arguments.length; ++i) {
@@ -1437,13 +1388,12 @@ function printShell () {
 
     if (typeof arguments[i] === 'string') {
       output(arguments[i]);
-    }
-    else {
+    } else {
       var context = {
         customInspect: true,
         emit: 16384,
         level: 0,
-        limitString: 80,
+        limitString: printShell.limitString,
         names: [],
         output: '',
         path: '~',
@@ -1463,6 +1413,8 @@ function printShell () {
   output('\n');
 }
 
+printShell.limitString = 80;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flatten
@@ -1470,8 +1422,7 @@ function printShell () {
 
 var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
 
-exports.flatten = function (obj, seen) {
-
+exports.flatten = function(obj, seen) {
   if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
     return obj;
   }
@@ -1496,8 +1447,7 @@ exports.flatten = function (obj, seen) {
 
   while (src) {
     if (
-      seen.indexOf(src) !== -1
-        || (obj.constructor && src === obj.constructor.prototype)
+      seen.indexOf(src) !== -1 || (obj.constructor && src === obj.constructor.prototype)
     ) {
       break;
     }
@@ -1506,13 +1456,13 @@ exports.flatten = function (obj, seen) {
     for (let i = 0; i < keys.length; i++) {
       key = keys[i];
       if (typeof src !== 'function' || (
-        key !== 'arguments' && key !== 'caller' && key !== 'callee'
-      )) {
+          key !== 'arguments' && key !== 'caller' && key !== 'callee'
+        )) {
         if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
           val = obj[key];
           if (seen.indexOf(val) !== -1 && (
-            typeof val === 'object' || typeof val === 'function'
-          )) {
+              typeof val === 'object' || typeof val === 'function'
+            )) {
             result[key] = '[Circular]';
           } else {
             result[key] = exports.flatten(val, seen);
@@ -1527,7 +1477,9 @@ exports.flatten = function (obj, seen) {
     if (obj instanceof Error && obj.name === Error.name) {
       result.name = obj.constructor.name;
     } else if (!hasOwnProperty(result, 'constructor')) {
-      result.constructor = {name: obj.constructor.name};
+      result.constructor = {
+        name: obj.constructor.name
+      };
     }
   }
 
@@ -1538,8 +1490,7 @@ exports.flatten = function (obj, seen) {
 /// @brief inspect
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.inspect = function (object, options) {
-
+exports.inspect = function(object, options) {
   var context = {
     customInspect: options && options.customInspect,
     emit: false,
@@ -1579,7 +1530,7 @@ if (global.SYS_SPRINTF) {
 
 var sprintf = exports.sprintf;
 
-exports.printf = function () {
+exports.printf = function() {
   exports.output(sprintf.apply(sprintf, arguments));
 };
 
@@ -1603,7 +1554,7 @@ exports.isCaptureMode = function() {
 /// @brief startCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startCaptureMode = function () {
+exports.startCaptureMode = function() {
   var old = exports.output;
 
   exports.outputBuffer = '';
@@ -1616,14 +1567,13 @@ exports.startCaptureMode = function () {
 /// @brief stopCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.stopCaptureMode = function (old) {
+exports.stopCaptureMode = function(old) {
   var buffer = exports.outputBuffer;
 
   exports.outputBuffer = '';
   if (old !== undefined) {
     exports.output = old;
-  }
-  else {
+  } else {
     exports.output = exports.stdOutput;
   }
 
@@ -1634,7 +1584,7 @@ exports.stopCaptureMode = function (old) {
 /// @brief startPager
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startPager = function () {};
+exports.startPager = function() {};
 
 if (global.SYS_START_PAGER) {
   exports.startPager = global.SYS_START_PAGER;
@@ -1645,7 +1595,7 @@ if (global.SYS_START_PAGER) {
 /// @brief stopPager
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.stopPager = function () {};
+exports.stopPager = function() {};
 
 if (global.SYS_STOP_PAGER) {
   exports.stopPager = global.SYS_STOP_PAGER;
@@ -1656,7 +1606,7 @@ if (global.SYS_STOP_PAGER) {
 /// @brief startPrettyPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startPrettyPrint = function (silent) {
+exports.startPrettyPrint = function(silent) {
   if (!usePrettyPrint && !silent) {
     exports.print('using pretty printing');
   }
@@ -1668,7 +1618,7 @@ exports.startPrettyPrint = function (silent) {
 /// @brief stopPrettyPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.stopPrettyPrint = function (silent) {
+exports.stopPrettyPrint = function(silent) {
   if (usePrettyPrint && !silent) {
     exports.print('disabled pretty printing');
   }
@@ -1680,7 +1630,7 @@ exports.stopPrettyPrint = function (silent) {
 /// @brief startColorPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startColorPrint = function (color, silent) {
+exports.startColorPrint = function(color, silent) {
   var schemes = {
     arangodb: {
       COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
@@ -1700,8 +1650,7 @@ exports.startColorPrint = function (color, silent) {
 
   if (color === undefined || color === null) {
     color = null;
-  }
-  else if (typeof color === 'string') {
+  } else if (typeof color === 'string') {
     color = color.toLowerCase();
     var c;
 
@@ -1713,20 +1662,20 @@ exports.startColorPrint = function (color, silent) {
           colors[c] = exports.COLORS[c];
         }
       }
-    }
-    else {
+    } else {
       colors = exports.COLORS;
 
-      var setColor = function (key) {
-        [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
-          'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
+      var setColor = function(key) {
+        ['COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
+          'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED'
+        ].forEach(function(what) {
           colors[what] = exports.COLORS[key];
         });
       };
 
       for (c in exports.COLORS) {
         if (exports.COLORS.hasOwnProperty(c) &&
-            c.replace(/^COLOR_/, '').toLowerCase() === color) {
+          c.replace(/^COLOR_/, '').toLowerCase() === color) {
           setColor(c);
           break;
         }
@@ -1741,7 +1690,7 @@ exports.startColorPrint = function (color, silent) {
 /// @brief stopColorPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.stopColorPrint = function (silent) {
+exports.stopColorPrint = function(silent) {
   if (useColor && !silent) {
     exports.print('disabled color printing');
   }
@@ -1773,16 +1722,13 @@ if (typeof SYS_OPTIONS !== 'undefined') {
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-global.print = function print () {
-  var internal = require('internal');
-  internal.print.apply(internal.print, arguments);
-};
+global.print = exports.print;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 
-global.printf = function printf () {
+global.printf = function printf() {
   var internal = require('internal');
   internal.printf.apply(internal.printf, arguments);
 };
@@ -1802,8 +1748,7 @@ global.print_plain = function print_plain() {
 
     if (typeof arguments[i] === 'string') {
       output(arguments[i]);
-    }
-    else {
+    } else {
       var context = {
         names: [],
         seen: [],
@@ -1828,7 +1773,7 @@ global.print_plain = function print_plain() {
 /// @brief start_pretty_print
 ////////////////////////////////////////////////////////////////////////////////
 
-global.start_pretty_print = function start_pretty_print () {
+global.start_pretty_print = function start_pretty_print() {
   require('internal').startPrettyPrint();
 };
 
@@ -1836,7 +1781,7 @@ global.start_pretty_print = function start_pretty_print () {
 /// @brief stop_pretty_print
 ////////////////////////////////////////////////////////////////////////////////
 
-global.stop_pretty_print = function stop_pretty_print () {
+global.stop_pretty_print = function stop_pretty_print() {
   require('internal').stopPrettyPrint();
 };
 
@@ -1844,7 +1789,7 @@ global.stop_pretty_print = function stop_pretty_print () {
 /// @brief start_color_print
 ////////////////////////////////////////////////////////////////////////////////
 
-global.start_color_print = function start_color_print (color) {
+global.start_color_print = function start_color_print(color) {
   require('internal').startColorPrint(color, false);
 };
 
@@ -1852,13 +1797,13 @@ global.start_color_print = function start_color_print (color) {
 /// @brief stop_color_print
 ////////////////////////////////////////////////////////////////////////////////
 
-global.stop_color_print = function stop_color_print () {
+global.stop_color_print = function stop_color_print() {
   require('internal').stopColorPrint();
 };
 
 
 if (global.EXPORTS_SLOW_BUFFER) {
-  Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function (key) {
+  Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function(key) {
     exports[key] = global.EXPORTS_SLOW_BUFFER[key];
   });
   delete global.EXPORTS_SLOW_BUFFER;
@@ -1869,13 +1814,5 @@ if (global.APP_PATH) {
   delete global.APP_PATH;
 }
 
-if (global.DEV_APP_PATH) {
-  exports.devAppPath = global.APP_PATH;
-  delete global.DEV_APP_PATH;
-}
-
 return exports;
-
 }()));
-
-

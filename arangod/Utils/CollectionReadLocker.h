@@ -26,11 +26,11 @@
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/transaction.h"
 
 namespace arangodb {
 
 class CollectionReadLocker {
-  
  public:
   CollectionReadLocker(CollectionReadLocker const&) = delete;
   CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
@@ -42,7 +42,7 @@ class CollectionReadLocker {
   CollectionReadLocker(TRI_document_collection_t* document, bool doLock)
       : _document(document), _doLock(false) {
     if (doLock) {
-      _document->beginRead();
+      _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
       _doLock = true;
     }
   }
@@ -53,7 +53,6 @@ class CollectionReadLocker {
 
   ~CollectionReadLocker() { unlock(); }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release the lock
   //////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,6 @@ class CollectionReadLocker {
     }
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection pointer
@@ -82,4 +80,3 @@ class CollectionReadLocker {
 }
 
 #endif
-

@@ -7002,15 +7002,17 @@ function EdgeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            if (!toStore[graphName].viewer.hasOwnProperty('edgeShaper')) {
-              toStore[graphName].viewer.edgeShaper = {};
+            if (!toStore[combinedGraphName].viewer.hasOwnProperty('edgeShaper')) {
+              toStore[combinedGraphName].viewer.edgeShaper = {};
             } 
-            toStore[graphName].viewer.edgeShaper[key] = value;
+            toStore[combinedGraphName].viewer.edgeShaper[key] = value;
           }
         });
 
@@ -8628,10 +8630,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     this.graphSettings = {};
 
     this.loadLocalStorage = function() {
-      var graphName = adapterConfig.graphName;
+      //graph name not enough, need to set db name also
+      var dbName = adapterConfig.baseUrl.split('/')[2],
+      combinedGraphName = adapterConfig.graphName + dbName;
+      
       if (localStorage.getItem('graphSettings') === null || localStorage.getItem('graphSettings')  === 'null') {
         var obj = {};
-        obj[graphName] = {
+        obj[combinedGraphName] = {
           viewer: viewerConfig,
           adapter: adapterConfig
         };
@@ -8642,16 +8647,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           var settings = JSON.parse(localStorage.getItem('graphSettings'));
           this.graphSettings = settings;
 
-          if (settings[graphName].viewer !== undefined) {
-            viewerConfig = settings[graphName].viewer;  
+          if (settings[combinedGraphName].viewer !== undefined) {
+            viewerConfig = settings[combinedGraphName].viewer;  
           }
-          if (settings[graphName].adapter !== undefined) {
-            adapterConfig = settings[graphName].adapter;
+          if (settings[combinedGraphName].adapter !== undefined) {
+            adapterConfig = settings[combinedGraphName].adapter;
           }
         }
         catch (e) {
           console.log("Could not load graph settings, resetting graph settings.");
-          this.graphSettings[graphName] = {
+          this.graphSettings[combinedGraphName] = {
             viewer: viewerConfig,
             adapter: adapterConfig
           };
@@ -9597,12 +9602,14 @@ function NodeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            toStore[graphName].viewer.nodeShaper[key] = value;
+            toStore[combinedGraphName].viewer.nodeShaper[key] = value;
           }
         });
 
@@ -10342,7 +10349,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 }
 
 /*jshint unused: false */
-/*global window, $, document */
+/*global window, $, document, _ */
 
 (function() {
   "use strict";
@@ -10398,7 +10405,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     },
 
     setCheckboxStatus: function(id) {
-      $.each($(id).find('ul').find('li'), function(key, element) {
+      _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
            if ($(element).find('input').attr('checked')) {
              if ($(element).find('i').hasClass('css-round-label')) {
@@ -10624,6 +10631,150 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       $('.arangoFrame .outerDiv .fa-times').remove();
       $('.arangoFrame').hide();
     },
+
+    addAardvarkJob: function (object, callback) {
+      $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_admin/aardvark/job",
+          data: JSON.stringify(object),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAardvarkJob: function (id, callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job/" + encodeURIComponent(id),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAllAardvarkJobs: function (callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    getAardvarkJobs: function (callback) {
+      var result;
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+            result = data;
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+      return result;
+    },
+
+    getPendingJobs: function() {
+      var result; 
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_api/job/pending",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            result = data;
+          },
+          error: function(data) {
+            console.log("pending jobs error: " + data);
+          }
+      });
+      return result;
+    },
+
+    syncAndReturnUninishedAardvarkJobs: function(type) {
+
+      var AaJobs = this.getAardvarkJobs(),
+      pendingJobs = this.getPendingJobs(),
+      array = [];
+
+      if (pendingJobs.length > 0) {
+        _.each(AaJobs, function(aardvark) {
+          if (aardvark.type === type || aardvark.type === undefined) {
+
+             var found = false; 
+            _.each(pendingJobs, function(pending) {
+              if (aardvark.id === pending) {
+                found = true;
+              } 
+            });
+
+            if (found) {
+              array.push({
+                collection: aardvark.collection,
+                id: aardvark.id,
+                type: aardvark.type,
+                desc: aardvark.desc 
+              });
+            }
+            else {
+              window.arangoHelper.deleteAardvarkJob(aardvark.id);
+            }
+          }
+        });
+      }
+      else {
+        this.deleteAllAardvarkJobs(); 
+      }
+
+      return array;
+    }, 
 
     getRandomToken: function () {
       return Math.round(new Date().getTime());
@@ -10914,6 +11065,10 @@ Module.prototype.define = function (path, definition) {
 
   // first get rid of any ".." and "."
   path = this.normalise(path);
+  var match = path.match(/(.+)\/index$/);
+  if (match) {
+    path = match[1];
+  }
 
   // check if you already know the module, return the exports
   if (! Module.prototype.moduleCache.hasOwnProperty(path)) {
@@ -11344,6 +11499,1557 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}"
 // End:
 
+module.define("underscore", function(exports, module) {
+//     Underscore.js 1.8.3
+//     http://underscorejs.org
+//     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+//     Underscore may be freely distributed under the MIT license.
+
+(function() {
+
+  // Baseline setup
+  // --------------
+
+  // Establish the root object, `window` in the browser, or `exports` on the server.
+  var root = this;
+
+  // Save the previous value of the `_` variable.
+  var previousUnderscore = root._;
+
+  // Save bytes in the minified (but not gzipped) version:
+  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
+
+  // Create quick reference variables for speed access to core prototypes.
+  var
+    push             = ArrayProto.push,
+    slice            = ArrayProto.slice,
+    toString         = ObjProto.toString,
+    hasOwnProperty   = ObjProto.hasOwnProperty;
+
+  // All **ECMAScript 5** native function implementations that we hope to use
+  // are declared here.
+  var
+    nativeIsArray      = Array.isArray,
+    nativeKeys         = Object.keys,
+    nativeBind         = FuncProto.bind,
+    nativeCreate       = Object.create;
+
+  // Naked function reference for surrogate-prototype-swapping.
+  var Ctor = function(){};
+
+  // Create a safe reference to the Underscore object for use below.
+  var _ = function(obj) {
+    if (obj instanceof _) return obj;
+    if (!(this instanceof _)) return new _(obj);
+    this._wrapped = obj;
+  };
+
+  // Export the Underscore object for **Node.js**, with
+  // backwards-compatibility for the old `require()` API. If we're in
+  // the browser, add `_` as a global object.
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = _;
+    }
+    exports._ = _;
+  } else {
+    root._ = _;
+  }
+
+  // Current version.
+  _.VERSION = '1.8.3';
+
+  // Internal function that returns an efficient (for current engines) version
+  // of the passed-in callback, to be repeatedly applied in other Underscore
+  // functions.
+  var optimizeCb = function(func, context, argCount) {
+    if (context === void 0) return func;
+    switch (argCount == null ? 3 : argCount) {
+      case 1: return function(value) {
+        return func.call(context, value);
+      };
+      case 2: return function(value, other) {
+        return func.call(context, value, other);
+      };
+      case 3: return function(value, index, collection) {
+        return func.call(context, value, index, collection);
+      };
+      case 4: return function(accumulator, value, index, collection) {
+        return func.call(context, accumulator, value, index, collection);
+      };
+    }
+    return function() {
+      return func.apply(context, arguments);
+    };
+  };
+
+  // A mostly-internal function to generate callbacks that can be applied
+  // to each element in a collection, returning the desired result — either
+  // identity, an arbitrary callback, a property matcher, or a property accessor.
+  var cb = function(value, context, argCount) {
+    if (value == null) return _.identity;
+    if (_.isFunction(value)) return optimizeCb(value, context, argCount);
+    if (_.isObject(value)) return _.matcher(value);
+    return _.property(value);
+  };
+  _.iteratee = function(value, context) {
+    return cb(value, context, Infinity);
+  };
+
+  // An internal function for creating assigner functions.
+  var createAssigner = function(keysFunc, undefinedOnly) {
+    return function(obj) {
+      var length = arguments.length;
+      if (length < 2 || obj == null) return obj;
+      for (var index = 1; index < length; index++) {
+        var source = arguments[index],
+            keys = keysFunc(source),
+            l = keys.length;
+        for (var i = 0; i < l; i++) {
+          var key = keys[i];
+          if (!undefinedOnly || obj[key] === void 0) obj[key] = source[key];
+        }
+      }
+      return obj;
+    };
+  };
+
+  // An internal function for creating a new object that inherits from another.
+  var baseCreate = function(prototype) {
+    if (!_.isObject(prototype)) return {};
+    if (nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  };
+
+  var property = function(key) {
+    return function(obj) {
+      return obj == null ? void 0 : obj[key];
+    };
+  };
+
+  // Helper for collection methods to determine whether a collection
+  // should be iterated as an array or as an object
+  // Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+  // Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
+  var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
+  var getLength = property('length');
+  var isArrayLike = function(collection) {
+    var length = getLength(collection);
+    return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  };
+
+  // Collection Functions
+  // --------------------
+
+  // The cornerstone, an `each` implementation, aka `forEach`.
+  // Handles raw objects in addition to array-likes. Treats all
+  // sparse array-likes as if they were dense.
+  _.each = _.forEach = function(obj, iteratee, context) {
+    iteratee = optimizeCb(iteratee, context);
+    var i, length;
+    if (isArrayLike(obj)) {
+      for (i = 0, length = obj.length; i < length; i++) {
+        iteratee(obj[i], i, obj);
+      }
+    } else {
+      var keys = _.keys(obj);
+      for (i = 0, length = keys.length; i < length; i++) {
+        iteratee(obj[keys[i]], keys[i], obj);
+      }
+    }
+    return obj;
+  };
+
+  // Return the results of applying the iteratee to each element.
+  _.map = _.collect = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = Array(length);
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      results[index] = iteratee(obj[currentKey], currentKey, obj);
+    }
+    return results;
+  };
+
+  // Create a reducing function iterating left or right.
+  function createReduce(dir) {
+    // Optimized iterator function as using arguments.length
+    // in the main function will deoptimize the, see #1991.
+    function iterator(obj, iteratee, memo, keys, index, length) {
+      for (; index >= 0 && index < length; index += dir) {
+        var currentKey = keys ? keys[index] : index;
+        memo = iteratee(memo, obj[currentKey], currentKey, obj);
+      }
+      return memo;
+    }
+
+    return function(obj, iteratee, memo, context) {
+      iteratee = optimizeCb(iteratee, context, 4);
+      var keys = !isArrayLike(obj) && _.keys(obj),
+          length = (keys || obj).length,
+          index = dir > 0 ? 0 : length - 1;
+      // Determine the initial value if none is provided.
+      if (arguments.length < 3) {
+        memo = obj[keys ? keys[index] : index];
+        index += dir;
+      }
+      return iterator(obj, iteratee, memo, keys, index, length);
+    };
+  }
+
+  // **Reduce** builds up a single result from a list of values, aka `inject`,
+  // or `foldl`.
+  _.reduce = _.foldl = _.inject = createReduce(1);
+
+  // The right-associative version of reduce, also known as `foldr`.
+  _.reduceRight = _.foldr = createReduce(-1);
+
+  // Return the first value which passes a truth test. Aliased as `detect`.
+  _.find = _.detect = function(obj, predicate, context) {
+    var key;
+    if (isArrayLike(obj)) {
+      key = _.findIndex(obj, predicate, context);
+    } else {
+      key = _.findKey(obj, predicate, context);
+    }
+    if (key !== void 0 && key !== -1) return obj[key];
+  };
+
+  // Return all the elements that pass a truth test.
+  // Aliased as `select`.
+  _.filter = _.select = function(obj, predicate, context) {
+    var results = [];
+    predicate = cb(predicate, context);
+    _.each(obj, function(value, index, list) {
+      if (predicate(value, index, list)) results.push(value);
+    });
+    return results;
+  };
+
+  // Return all the elements for which a truth test fails.
+  _.reject = function(obj, predicate, context) {
+    return _.filter(obj, _.negate(cb(predicate)), context);
+  };
+
+  // Determine whether all of the elements match a truth test.
+  // Aliased as `all`.
+  _.every = _.all = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      if (!predicate(obj[currentKey], currentKey, obj)) return false;
+    }
+    return true;
+  };
+
+  // Determine if at least one element in the object matches a truth test.
+  // Aliased as `any`.
+  _.some = _.any = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      if (predicate(obj[currentKey], currentKey, obj)) return true;
+    }
+    return false;
+  };
+
+  // Determine if the array or object contains a given item (using `===`).
+  // Aliased as `includes` and `include`.
+  _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
+    if (!isArrayLike(obj)) obj = _.values(obj);
+    if (typeof fromIndex != 'number' || guard) fromIndex = 0;
+    return _.indexOf(obj, item, fromIndex) >= 0;
+  };
+
+  // Invoke a method (with arguments) on every item in a collection.
+  _.invoke = function(obj, method) {
+    var args = slice.call(arguments, 2);
+    var isFunc = _.isFunction(method);
+    return _.map(obj, function(value) {
+      var func = isFunc ? method : value[method];
+      return func == null ? func : func.apply(value, args);
+    });
+  };
+
+  // Convenience version of a common use case of `map`: fetching a property.
+  _.pluck = function(obj, key) {
+    return _.map(obj, _.property(key));
+  };
+
+  // Convenience version of a common use case of `filter`: selecting only objects
+  // containing specific `key:value` pairs.
+  _.where = function(obj, attrs) {
+    return _.filter(obj, _.matcher(attrs));
+  };
+
+  // Convenience version of a common use case of `find`: getting the first object
+  // containing specific `key:value` pairs.
+  _.findWhere = function(obj, attrs) {
+    return _.find(obj, _.matcher(attrs));
+  };
+
+  // Return the maximum element (or element-based computation).
+  _.max = function(obj, iteratee, context) {
+    var result = -Infinity, lastComputed = -Infinity,
+        value, computed;
+    if (iteratee == null && obj != null) {
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for (var i = 0, length = obj.length; i < length; i++) {
+        value = obj[i];
+        if (value > result) {
+          result = value;
+        }
+      }
+    } else {
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index, list) {
+        computed = iteratee(value, index, list);
+        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
+          result = value;
+          lastComputed = computed;
+        }
+      });
+    }
+    return result;
+  };
+
+  // Return the minimum element (or element-based computation).
+  _.min = function(obj, iteratee, context) {
+    var result = Infinity, lastComputed = Infinity,
+        value, computed;
+    if (iteratee == null && obj != null) {
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for (var i = 0, length = obj.length; i < length; i++) {
+        value = obj[i];
+        if (value < result) {
+          result = value;
+        }
+      }
+    } else {
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index, list) {
+        computed = iteratee(value, index, list);
+        if (computed < lastComputed || computed === Infinity && result === Infinity) {
+          result = value;
+          lastComputed = computed;
+        }
+      });
+    }
+    return result;
+  };
+
+  // Shuffle a collection, using the modern version of the
+  // [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
+  _.shuffle = function(obj) {
+    var set = isArrayLike(obj) ? obj : _.values(obj);
+    var length = set.length;
+    var shuffled = Array(length);
+    for (var index = 0, rand; index < length; index++) {
+      rand = _.random(0, index);
+      if (rand !== index) shuffled[index] = shuffled[rand];
+      shuffled[rand] = set[index];
+    }
+    return shuffled;
+  };
+
+  // Sample **n** random values from a collection.
+  // If **n** is not specified, returns a single random element.
+  // The internal `guard` argument allows it to work with `map`.
+  _.sample = function(obj, n, guard) {
+    if (n == null || guard) {
+      if (!isArrayLike(obj)) obj = _.values(obj);
+      return obj[_.random(obj.length - 1)];
+    }
+    return _.shuffle(obj).slice(0, Math.max(0, n));
+  };
+
+  // Sort the object's values by a criterion produced by an iteratee.
+  _.sortBy = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    return _.pluck(_.map(obj, function(value, index, list) {
+      return {
+        value: value,
+        index: index,
+        criteria: iteratee(value, index, list)
+      };
+    }).sort(function(left, right) {
+      var a = left.criteria;
+      var b = right.criteria;
+      if (a !== b) {
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index - right.index;
+    }), 'value');
+  };
+
+  // An internal function used for aggregate "group by" operations.
+  var group = function(behavior) {
+    return function(obj, iteratee, context) {
+      var result = {};
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index) {
+        var key = iteratee(value, index, obj);
+        behavior(result, value, key);
+      });
+      return result;
+    };
+  };
+
+  // Groups the object's values by a criterion. Pass either a string attribute
+  // to group by, or a function that returns the criterion.
+  _.groupBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key].push(value); else result[key] = [value];
+  });
+
+  // Indexes the object's values by a criterion, similar to `groupBy`, but for
+  // when you know that your index values will be unique.
+  _.indexBy = group(function(result, value, key) {
+    result[key] = value;
+  });
+
+  // Counts instances of an object that group by a certain criterion. Pass
+  // either a string attribute to count by, or a function that returns the
+  // criterion.
+  _.countBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key]++; else result[key] = 1;
+  });
+
+  // Safely create a real, live array from anything iterable.
+  _.toArray = function(obj) {
+    if (!obj) return [];
+    if (_.isArray(obj)) return slice.call(obj);
+    if (isArrayLike(obj)) return _.map(obj, _.identity);
+    return _.values(obj);
+  };
+
+  // Return the number of elements in an object.
+  _.size = function(obj) {
+    if (obj == null) return 0;
+    return isArrayLike(obj) ? obj.length : _.keys(obj).length;
+  };
+
+  // Split a collection into two arrays: one whose elements all satisfy the given
+  // predicate, and one whose elements all do not satisfy the predicate.
+  _.partition = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var pass = [], fail = [];
+    _.each(obj, function(value, key, obj) {
+      (predicate(value, key, obj) ? pass : fail).push(value);
+    });
+    return [pass, fail];
+  };
+
+  // Array Functions
+  // ---------------
+
+  // Get the first element of an array. Passing **n** will return the first N
+  // values in the array. Aliased as `head` and `take`. The **guard** check
+  // allows it to work with `_.map`.
+  _.first = _.head = _.take = function(array, n, guard) {
+    if (array == null) return void 0;
+    if (n == null || guard) return array[0];
+    return _.initial(array, array.length - n);
+  };
+
+  // Returns everything but the last entry of the array. Especially useful on
+  // the arguments object. Passing **n** will return all the values in
+  // the array, excluding the last N.
+  _.initial = function(array, n, guard) {
+    return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
+  };
+
+  // Get the last element of an array. Passing **n** will return the last N
+  // values in the array.
+  _.last = function(array, n, guard) {
+    if (array == null) return void 0;
+    if (n == null || guard) return array[array.length - 1];
+    return _.rest(array, Math.max(0, array.length - n));
+  };
+
+  // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
+  // Especially useful on the arguments object. Passing an **n** will return
+  // the rest N values in the array.
+  _.rest = _.tail = _.drop = function(array, n, guard) {
+    return slice.call(array, n == null || guard ? 1 : n);
+  };
+
+  // Trim out all falsy values from an array.
+  _.compact = function(array) {
+    return _.filter(array, _.identity);
+  };
+
+  // Internal implementation of a recursive `flatten` function.
+  var flatten = function(input, shallow, strict, startIndex) {
+    var output = [], idx = 0;
+    for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
+      var value = input[i];
+      if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
+        //flatten current level of array or arguments object
+        if (!shallow) value = flatten(value, shallow, strict);
+        var j = 0, len = value.length;
+        output.length += len;
+        while (j < len) {
+          output[idx++] = value[j++];
+        }
+      } else if (!strict) {
+        output[idx++] = value;
+      }
+    }
+    return output;
+  };
+
+  // Flatten out an array, either recursively (by default), or just one level.
+  _.flatten = function(array, shallow) {
+    return flatten(array, shallow, false);
+  };
+
+  // Return a version of the array that does not contain the specified value(s).
+  _.without = function(array) {
+    return _.difference(array, slice.call(arguments, 1));
+  };
+
+  // Produce a duplicate-free version of the array. If the array has already
+  // been sorted, you have the option of using a faster algorithm.
+  // Aliased as `unique`.
+  _.uniq = _.unique = function(array, isSorted, iteratee, context) {
+    if (!_.isBoolean(isSorted)) {
+      context = iteratee;
+      iteratee = isSorted;
+      isSorted = false;
+    }
+    if (iteratee != null) iteratee = cb(iteratee, context);
+    var result = [];
+    var seen = [];
+    for (var i = 0, length = getLength(array); i < length; i++) {
+      var value = array[i],
+          computed = iteratee ? iteratee(value, i, array) : value;
+      if (isSorted) {
+        if (!i || seen !== computed) result.push(value);
+        seen = computed;
+      } else if (iteratee) {
+        if (!_.contains(seen, computed)) {
+          seen.push(computed);
+          result.push(value);
+        }
+      } else if (!_.contains(result, value)) {
+        result.push(value);
+      }
+    }
+    return result;
+  };
+
+  // Produce an array that contains the union: each distinct element from all of
+  // the passed-in arrays.
+  _.union = function() {
+    return _.uniq(flatten(arguments, true, true));
+  };
+
+  // Produce an array that contains every item shared between all the
+  // passed-in arrays.
+  _.intersection = function(array) {
+    var result = [];
+    var argsLength = arguments.length;
+    for (var i = 0, length = getLength(array); i < length; i++) {
+      var item = array[i];
+      if (_.contains(result, item)) continue;
+      for (var j = 1; j < argsLength; j++) {
+        if (!_.contains(arguments[j], item)) break;
+      }
+      if (j === argsLength) result.push(item);
+    }
+    return result;
+  };
+
+  // Take the difference between one array and a number of other arrays.
+  // Only the elements present in just the first array will remain.
+  _.difference = function(array) {
+    var rest = flatten(arguments, true, true, 1);
+    return _.filter(array, function(value){
+      return !_.contains(rest, value);
+    });
+  };
+
+  // Zip together multiple lists into a single array -- elements that share
+  // an index go together.
+  _.zip = function() {
+    return _.unzip(arguments);
+  };
+
+  // Complement of _.zip. Unzip accepts an array of arrays and groups
+  // each array's elements on shared indices
+  _.unzip = function(array) {
+    var length = array && _.max(array, getLength).length || 0;
+    var result = Array(length);
+
+    for (var index = 0; index < length; index++) {
+      result[index] = _.pluck(array, index);
+    }
+    return result;
+  };
+
+  // Converts lists into objects. Pass either a single array of `[key, value]`
+  // pairs, or two parallel arrays of the same length -- one of keys, and one of
+  // the corresponding values.
+  _.object = function(list, values) {
+    var result = {};
+    for (var i = 0, length = getLength(list); i < length; i++) {
+      if (values) {
+        result[list[i]] = values[i];
+      } else {
+        result[list[i][0]] = list[i][1];
+      }
+    }
+    return result;
+  };
+
+  // Generator function to create the findIndex and findLastIndex functions
+  function createPredicateIndexFinder(dir) {
+    return function(array, predicate, context) {
+      predicate = cb(predicate, context);
+      var length = getLength(array);
+      var index = dir > 0 ? 0 : length - 1;
+      for (; index >= 0 && index < length; index += dir) {
+        if (predicate(array[index], index, array)) return index;
+      }
+      return -1;
+    };
+  }
+
+  // Returns the first index on an array-like that passes a predicate test
+  _.findIndex = createPredicateIndexFinder(1);
+  _.findLastIndex = createPredicateIndexFinder(-1);
+
+  // Use a comparator function to figure out the smallest index at which
+  // an object should be inserted so as to maintain order. Uses binary search.
+  _.sortedIndex = function(array, obj, iteratee, context) {
+    iteratee = cb(iteratee, context, 1);
+    var value = iteratee(obj);
+    var low = 0, high = getLength(array);
+    while (low < high) {
+      var mid = Math.floor((low + high) / 2);
+      if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
+    }
+    return low;
+  };
+
+  // Generator function to create the indexOf and lastIndexOf functions
+  function createIndexFinder(dir, predicateFind, sortedIndex) {
+    return function(array, item, idx) {
+      var i = 0, length = getLength(array);
+      if (typeof idx == 'number') {
+        if (dir > 0) {
+            i = idx >= 0 ? idx : Math.max(idx + length, i);
+        } else {
+            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
+        }
+      } else if (sortedIndex && idx && length) {
+        idx = sortedIndex(array, item);
+        return array[idx] === item ? idx : -1;
+      }
+      if (item !== item) {
+        idx = predicateFind(slice.call(array, i, length), _.isNaN);
+        return idx >= 0 ? idx + i : -1;
+      }
+      for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
+        if (array[idx] === item) return idx;
+      }
+      return -1;
+    };
+  }
+
+  // Return the position of the first occurrence of an item in an array,
+  // or -1 if the item is not included in the array.
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
+  _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
+  // Generate an integer Array containing an arithmetic progression. A port of
+  // the native Python `range()` function. See
+  // [the Python documentation](http://docs.python.org/library/functions.html#range).
+  _.range = function(start, stop, step) {
+    if (stop == null) {
+      stop = start || 0;
+      start = 0;
+    }
+    step = step || 1;
+
+    var length = Math.max(Math.ceil((stop - start) / step), 0);
+    var range = Array(length);
+
+    for (var idx = 0; idx < length; idx++, start += step) {
+      range[idx] = start;
+    }
+
+    return range;
+  };
+
+  // Function (ahem) Functions
+  // ------------------
+
+  // Determines whether to execute a function as a constructor
+  // or a normal function with the provided arguments
+  var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
+    if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self, args);
+    if (_.isObject(result)) return result;
+    return self;
+  };
+
+  // Create a function bound to a given object (assigning `this`, and arguments,
+  // optionally). Delegates to **ECMAScript 5**'s native `Function.bind` if
+  // available.
+  _.bind = function(func, context) {
+    if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
+    var args = slice.call(arguments, 2);
+    var bound = function() {
+      return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
+    };
+    return bound;
+  };
+
+  // Partially apply a function by creating a version that has had some of its
+  // arguments pre-filled, without changing its dynamic `this` context. _ acts
+  // as a placeholder, allowing any combination of arguments to be pre-filled.
+  _.partial = function(func) {
+    var boundArgs = slice.call(arguments, 1);
+    var bound = function() {
+      var position = 0, length = boundArgs.length;
+      var args = Array(length);
+      for (var i = 0; i < length; i++) {
+        args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
+      }
+      while (position < arguments.length) args.push(arguments[position++]);
+      return executeBound(func, bound, this, this, args);
+    };
+    return bound;
+  };
+
+  // Bind a number of an object's methods to that object. Remaining arguments
+  // are the method names to be bound. Useful for ensuring that all callbacks
+  // defined on an object belong to it.
+  _.bindAll = function(obj) {
+    var i, length = arguments.length, key;
+    if (length <= 1) throw new Error('bindAll must be passed function names');
+    for (i = 1; i < length; i++) {
+      key = arguments[i];
+      obj[key] = _.bind(obj[key], obj);
+    }
+    return obj;
+  };
+
+  // Memoize an expensive function by storing its results.
+  _.memoize = function(func, hasher) {
+    var memoize = function(key) {
+      var cache = memoize.cache;
+      var address = '' + (hasher ? hasher.apply(this, arguments) : key);
+      if (!_.has(cache, address)) cache[address] = func.apply(this, arguments);
+      return cache[address];
+    };
+    memoize.cache = {};
+    return memoize;
+  };
+
+  // Delays a function for the given number of milliseconds, and then calls
+  // it with the arguments supplied.
+  _.delay = function(func, wait) {
+    var args = slice.call(arguments, 2);
+    return setTimeout(function(){
+      return func.apply(null, args);
+    }, wait);
+  };
+
+  // Defers a function, scheduling it to run after the current call stack has
+  // cleared.
+  _.defer = _.partial(_.delay, _, 1);
+
+  // Returns a function, that, when invoked, will only be triggered at most once
+  // during a given window of time. Normally, the throttled function will run
+  // as much as it can, without ever going more than once per `wait` duration;
+  // but if you'd like to disable the execution on the leading edge, pass
+  // `{leading: false}`. To disable execution on the trailing edge, ditto.
+  _.throttle = function(func, wait, options) {
+    var context, args, result;
+    var timeout = null;
+    var previous = 0;
+    if (!options) options = {};
+    var later = function() {
+      previous = options.leading === false ? 0 : _.now();
+      timeout = null;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    };
+    return function() {
+      var now = _.now();
+      if (!previous && options.leading === false) previous = now;
+      var remaining = wait - (now - previous);
+      context = this;
+      args = arguments;
+      if (remaining <= 0 || remaining > wait) {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        previous = now;
+        result = func.apply(context, args);
+        if (!timeout) context = args = null;
+      } else if (!timeout && options.trailing !== false) {
+        timeout = setTimeout(later, remaining);
+      }
+      return result;
+    };
+  };
+
+  // Returns a function, that, as long as it continues to be invoked, will not
+  // be triggered. The function will be called after it stops being called for
+  // N milliseconds. If `immediate` is passed, trigger the function on the
+  // leading edge, instead of the trailing.
+  _.debounce = function(func, wait, immediate) {
+    var timeout, args, context, timestamp, result;
+
+    var later = function() {
+      var last = _.now() - timestamp;
+
+      if (last < wait && last >= 0) {
+        timeout = setTimeout(later, wait - last);
+      } else {
+        timeout = null;
+        if (!immediate) {
+          result = func.apply(context, args);
+          if (!timeout) context = args = null;
+        }
+      }
+    };
+
+    return function() {
+      context = this;
+      args = arguments;
+      timestamp = _.now();
+      var callNow = immediate && !timeout;
+      if (!timeout) timeout = setTimeout(later, wait);
+      if (callNow) {
+        result = func.apply(context, args);
+        context = args = null;
+      }
+
+      return result;
+    };
+  };
+
+  // Returns the first function passed as an argument to the second,
+  // allowing you to adjust arguments, run code before and after, and
+  // conditionally execute the original function.
+  _.wrap = function(func, wrapper) {
+    return _.partial(wrapper, func);
+  };
+
+  // Returns a negated version of the passed-in predicate.
+  _.negate = function(predicate) {
+    return function() {
+      return !predicate.apply(this, arguments);
+    };
+  };
+
+  // Returns a function that is the composition of a list of functions, each
+  // consuming the return value of the function that follows.
+  _.compose = function() {
+    var args = arguments;
+    var start = args.length - 1;
+    return function() {
+      var i = start;
+      var result = args[start].apply(this, arguments);
+      while (i--) result = args[i].call(this, result);
+      return result;
+    };
+  };
+
+  // Returns a function that will only be executed on and after the Nth call.
+  _.after = function(times, func) {
+    return function() {
+      if (--times < 1) {
+        return func.apply(this, arguments);
+      }
+    };
+  };
+
+  // Returns a function that will only be executed up to (but not including) the Nth call.
+  _.before = function(times, func) {
+    var memo;
+    return function() {
+      if (--times > 0) {
+        memo = func.apply(this, arguments);
+      }
+      if (times <= 1) func = null;
+      return memo;
+    };
+  };
+
+  // Returns a function that will be executed at most one time, no matter how
+  // often you call it. Useful for lazy initialization.
+  _.once = _.partial(_.before, 2);
+
+  // Object Functions
+  // ----------------
+
+  // Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
+  var hasEnumBug = !{toString: null}.propertyIsEnumerable('toString');
+  var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
+                      'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
+
+  function collectNonEnumProps(obj, keys) {
+    var nonEnumIdx = nonEnumerableProps.length;
+    var constructor = obj.constructor;
+    var proto = (_.isFunction(constructor) && constructor.prototype) || ObjProto;
+
+    // Constructor is a special case.
+    var prop = 'constructor';
+    if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
+
+    while (nonEnumIdx--) {
+      prop = nonEnumerableProps[nonEnumIdx];
+      if (prop in obj && obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
+        keys.push(prop);
+      }
+    }
+  }
+
+  // Retrieve the names of an object's own properties.
+  // Delegates to **ECMAScript 5**'s native `Object.keys`
+  _.keys = function(obj) {
+    if (!_.isObject(obj)) return [];
+    if (nativeKeys) return nativeKeys(obj);
+    var keys = [];
+    for (var key in obj) if (_.has(obj, key)) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
+    return keys;
+  };
+
+  // Retrieve all the property names of an object.
+  _.allKeys = function(obj) {
+    if (!_.isObject(obj)) return [];
+    var keys = [];
+    for (var key in obj) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
+    return keys;
+  };
+
+  // Retrieve the values of an object's properties.
+  _.values = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var values = Array(length);
+    for (var i = 0; i < length; i++) {
+      values[i] = obj[keys[i]];
+    }
+    return values;
+  };
+
+  // Returns the results of applying the iteratee to each element of the object
+  // In contrast to _.map it returns an object
+  _.mapObject = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    var keys =  _.keys(obj),
+          length = keys.length,
+          results = {},
+          currentKey;
+      for (var index = 0; index < length; index++) {
+        currentKey = keys[index];
+        results[currentKey] = iteratee(obj[currentKey], currentKey, obj);
+      }
+      return results;
+  };
+
+  // Convert an object into a list of `[key, value]` pairs.
+  _.pairs = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var pairs = Array(length);
+    for (var i = 0; i < length; i++) {
+      pairs[i] = [keys[i], obj[keys[i]]];
+    }
+    return pairs;
+  };
+
+  // Invert the keys and values of an object. The values must be serializable.
+  _.invert = function(obj) {
+    var result = {};
+    var keys = _.keys(obj);
+    for (var i = 0, length = keys.length; i < length; i++) {
+      result[obj[keys[i]]] = keys[i];
+    }
+    return result;
+  };
+
+  // Return a sorted list of the function names available on the object.
+  // Aliased as `methods`
+  _.functions = _.methods = function(obj) {
+    var names = [];
+    for (var key in obj) {
+      if (_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  };
+
+  // Extend a given object with all the properties in passed-in object(s).
+  _.extend = createAssigner(_.allKeys);
+
+  // Assigns a given object with all the own properties in the passed-in object(s)
+  // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+  _.extendOwn = _.assign = createAssigner(_.keys);
+
+  // Returns the first key on an object that passes a predicate test
+  _.findKey = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = _.keys(obj), key;
+    for (var i = 0, length = keys.length; i < length; i++) {
+      key = keys[i];
+      if (predicate(obj[key], key, obj)) return key;
+    }
+  };
+
+  // Return a copy of the object only containing the whitelisted properties.
+  _.pick = function(object, oiteratee, context) {
+    var result = {}, obj = object, iteratee, keys;
+    if (obj == null) return result;
+    if (_.isFunction(oiteratee)) {
+      keys = _.allKeys(obj);
+      iteratee = optimizeCb(oiteratee, context);
+    } else {
+      keys = flatten(arguments, false, false, 1);
+      iteratee = function(value, key, obj) { return key in obj; };
+      obj = Object(obj);
+    }
+    for (var i = 0, length = keys.length; i < length; i++) {
+      var key = keys[i];
+      var value = obj[key];
+      if (iteratee(value, key, obj)) result[key] = value;
+    }
+    return result;
+  };
+
+   // Return a copy of the object without the blacklisted properties.
+  _.omit = function(obj, iteratee, context) {
+    if (_.isFunction(iteratee)) {
+      iteratee = _.negate(iteratee);
+    } else {
+      var keys = _.map(flatten(arguments, false, false, 1), String);
+      iteratee = function(value, key) {
+        return !_.contains(keys, key);
+      };
+    }
+    return _.pick(obj, iteratee, context);
+  };
+
+  // Fill in a given object with default properties.
+  _.defaults = createAssigner(_.allKeys, true);
+
+  // Creates an object that inherits from the given prototype object.
+  // If additional properties are provided then they will be added to the
+  // created object.
+  _.create = function(prototype, props) {
+    var result = baseCreate(prototype);
+    if (props) _.extendOwn(result, props);
+    return result;
+  };
+
+  // Create a (shallow-cloned) duplicate of an object.
+  _.clone = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
+  };
+
+  // Invokes interceptor with the obj, and then returns obj.
+  // The primary purpose of this method is to "tap into" a method chain, in
+  // order to perform operations on intermediate results within the chain.
+  _.tap = function(obj, interceptor) {
+    interceptor(obj);
+    return obj;
+  };
+
+  // Returns whether an object has a given set of `key:value` pairs.
+  _.isMatch = function(object, attrs) {
+    var keys = _.keys(attrs), length = keys.length;
+    if (object == null) return !length;
+    var obj = Object(object);
+    for (var i = 0; i < length; i++) {
+      var key = keys[i];
+      if (attrs[key] !== obj[key] || !(key in obj)) return false;
+    }
+    return true;
+  };
+
+
+  // Internal recursive comparison function for `isEqual`.
+  var eq = function(a, b, aStack, bStack) {
+    // Identical objects are equal. `0 === -0`, but they aren't identical.
+    // See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
+    if (a === b) return a !== 0 || 1 / a === 1 / b;
+    // A strict comparison is necessary because `null == undefined`.
+    if (a == null || b == null) return a === b;
+    // Unwrap any wrapped objects.
+    if (a instanceof _) a = a._wrapped;
+    if (b instanceof _) b = b._wrapped;
+    // Compare `[[Class]]` names.
+    var className = toString.call(a);
+    if (className !== toString.call(b)) return false;
+    switch (className) {
+      // Strings, numbers, regular expressions, dates, and booleans are compared by value.
+      case '[object RegExp]':
+      // RegExps are coerced to strings for comparison (Note: '' + /a/i === '/a/i')
+      case '[object String]':
+        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
+        // equivalent to `new String("5")`.
+        return '' + a === '' + b;
+      case '[object Number]':
+        // `NaN`s are equivalent, but non-reflexive.
+        // Object(NaN) is equivalent to NaN
+        if (+a !== +a) return +b !== +b;
+        // An `egal` comparison is performed for other numeric values.
+        return +a === 0 ? 1 / +a === 1 / b : +a === +b;
+      case '[object Date]':
+      case '[object Boolean]':
+        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
+        // millisecond representations. Note that invalid dates with millisecond representations
+        // of `NaN` are not equivalent.
+        return +a === +b;
+    }
+
+    var areArrays = className === '[object Array]';
+    if (!areArrays) {
+      if (typeof a != 'object' || typeof b != 'object') return false;
+
+      // Objects with different constructors are not equivalent, but `Object`s or `Array`s
+      // from different frames are.
+      var aCtor = a.constructor, bCtor = b.constructor;
+      if (aCtor !== bCtor && !(_.isFunction(aCtor) && aCtor instanceof aCtor &&
+                               _.isFunction(bCtor) && bCtor instanceof bCtor)
+                          && ('constructor' in a && 'constructor' in b)) {
+        return false;
+      }
+    }
+    // Assume equality for cyclic structures. The algorithm for detecting cyclic
+    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
+
+    // Initializing stack of traversed objects.
+    // It's done here since we only need them for objects and arrays comparison.
+    aStack = aStack || [];
+    bStack = bStack || [];
+    var length = aStack.length;
+    while (length--) {
+      // Linear search. Performance is inversely proportional to the number of
+      // unique nested structures.
+      if (aStack[length] === a) return bStack[length] === b;
+    }
+
+    // Add the first object to the stack of traversed objects.
+    aStack.push(a);
+    bStack.push(b);
+
+    // Recursively compare objects and arrays.
+    if (areArrays) {
+      // Compare array lengths to determine if a deep comparison is necessary.
+      length = a.length;
+      if (length !== b.length) return false;
+      // Deep compare the contents, ignoring non-numeric properties.
+      while (length--) {
+        if (!eq(a[length], b[length], aStack, bStack)) return false;
+      }
+    } else {
+      // Deep compare objects.
+      var keys = _.keys(a), key;
+      length = keys.length;
+      // Ensure that both objects contain the same number of properties before comparing deep equality.
+      if (_.keys(b).length !== length) return false;
+      while (length--) {
+        // Deep compare each member
+        key = keys[length];
+        if (!(_.has(b, key) && eq(a[key], b[key], aStack, bStack))) return false;
+      }
+    }
+    // Remove the first object from the stack of traversed objects.
+    aStack.pop();
+    bStack.pop();
+    return true;
+  };
+
+  // Perform a deep comparison to check if two objects are equal.
+  _.isEqual = function(a, b) {
+    return eq(a, b);
+  };
+
+  // Is a given array, string, or object empty?
+  // An "empty" object has no enumerable own-properties.
+  _.isEmpty = function(obj) {
+    if (obj == null) return true;
+    if (isArrayLike(obj) && (_.isArray(obj) || _.isString(obj) || _.isArguments(obj))) return obj.length === 0;
+    return _.keys(obj).length === 0;
+  };
+
+  // Is a given value a DOM element?
+  _.isElement = function(obj) {
+    return !!(obj && obj.nodeType === 1);
+  };
+
+  // Is a given value an array?
+  // Delegates to ECMA5's native Array.isArray
+  _.isArray = nativeIsArray || function(obj) {
+    return toString.call(obj) === '[object Array]';
+  };
+
+  // Is a given variable an object?
+  _.isObject = function(obj) {
+    var type = typeof obj;
+    return type === 'function' || type === 'object' && !!obj;
+  };
+
+  // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp, isError.
+  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function(name) {
+    _['is' + name] = function(obj) {
+      return toString.call(obj) === '[object ' + name + ']';
+    };
+  });
+
+  // Define a fallback version of the method in browsers (ahem, IE < 9), where
+  // there isn't any inspectable "Arguments" type.
+  if (!_.isArguments(arguments)) {
+    _.isArguments = function(obj) {
+      return _.has(obj, 'callee');
+    };
+  }
+
+  // Optimize `isFunction` if appropriate. Work around some typeof bugs in old v8,
+  // IE 11 (#1621), and in Safari 8 (#1929).
+  if (typeof /./ != 'function' && typeof Int8Array != 'object') {
+    _.isFunction = function(obj) {
+      return typeof obj == 'function' || false;
+    };
+  }
+
+  // Is a given object a finite number?
+  _.isFinite = function(obj) {
+    return isFinite(obj) && !isNaN(parseFloat(obj));
+  };
+
+  // Is the given value `NaN`? (NaN is the only number which does not equal itself).
+  _.isNaN = function(obj) {
+    return _.isNumber(obj) && obj !== +obj;
+  };
+
+  // Is a given value a boolean?
+  _.isBoolean = function(obj) {
+    return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
+  };
+
+  // Is a given value equal to null?
+  _.isNull = function(obj) {
+    return obj === null;
+  };
+
+  // Is a given variable undefined?
+  _.isUndefined = function(obj) {
+    return obj === void 0;
+  };
+
+  // Shortcut function for checking if an object has a given property directly
+  // on itself (in other words, not on a prototype).
+  _.has = function(obj, key) {
+    return obj != null && hasOwnProperty.call(obj, key);
+  };
+
+  // Utility Functions
+  // -----------------
+
+  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
+  // previous owner. Returns a reference to the Underscore object.
+  _.noConflict = function() {
+    root._ = previousUnderscore;
+    return this;
+  };
+
+  // Keep the identity function around for default iteratees.
+  _.identity = function(value) {
+    return value;
+  };
+
+  // Predicate-generating functions. Often useful outside of Underscore.
+  _.constant = function(value) {
+    return function() {
+      return value;
+    };
+  };
+
+  _.noop = function(){};
+
+  _.property = property;
+
+  // Generates a function for a given object that returns a given property.
+  _.propertyOf = function(obj) {
+    return obj == null ? function(){} : function(key) {
+      return obj[key];
+    };
+  };
+
+  // Returns a predicate for checking whether an object has a given set of
+  // `key:value` pairs.
+  _.matcher = _.matches = function(attrs) {
+    attrs = _.extendOwn({}, attrs);
+    return function(obj) {
+      return _.isMatch(obj, attrs);
+    };
+  };
+
+  // Run a function **n** times.
+  _.times = function(n, iteratee, context) {
+    var accum = Array(Math.max(0, n));
+    iteratee = optimizeCb(iteratee, context, 1);
+    for (var i = 0; i < n; i++) accum[i] = iteratee(i);
+    return accum;
+  };
+
+  // Return a random integer between min and max (inclusive).
+  _.random = function(min, max) {
+    if (max == null) {
+      max = min;
+      min = 0;
+    }
+    return min + Math.floor(Math.random() * (max - min + 1));
+  };
+
+  // A (possibly faster) way to get the current timestamp as an integer.
+  _.now = Date.now || function() {
+    return new Date().getTime();
+  };
+
+   // List of HTML entities for escaping.
+  var escapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '`': '&#x60;'
+  };
+  var unescapeMap = _.invert(escapeMap);
+
+  // Functions for escaping and unescaping strings to/from HTML interpolation.
+  var createEscaper = function(map) {
+    var escaper = function(match) {
+      return map[match];
+    };
+    // Regexes for identifying a key that needs to be escaped
+    var source = '(?:' + _.keys(map).join('|') + ')';
+    var testRegexp = RegExp(source);
+    var replaceRegexp = RegExp(source, 'g');
+    return function(string) {
+      string = string == null ? '' : '' + string;
+      return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
+    };
+  };
+  _.escape = createEscaper(escapeMap);
+  _.unescape = createEscaper(unescapeMap);
+
+  // If the value of the named `property` is a function then invoke it with the
+  // `object` as context; otherwise, return it.
+  _.result = function(object, property, fallback) {
+    var value = object == null ? void 0 : object[property];
+    if (value === void 0) {
+      value = fallback;
+    }
+    return _.isFunction(value) ? value.call(object) : value;
+  };
+
+  // Generate a unique integer id (unique within the entire client session).
+  // Useful for temporary DOM ids.
+  var idCounter = 0;
+  _.uniqueId = function(prefix) {
+    var id = ++idCounter + '';
+    return prefix ? prefix + id : id;
+  };
+
+  // By default, Underscore uses ERB-style template delimiters, change the
+  // following template settings to use alternative delimiters.
+  _.templateSettings = {
+    evaluate    : /<%([\s\S]+?)%>/g,
+    interpolate : /<%=([\s\S]+?)%>/g,
+    escape      : /<%-([\s\S]+?)%>/g
+  };
+
+  // When customizing `templateSettings`, if you don't want to define an
+  // interpolation, evaluation or escaping regex, we need one that is
+  // guaranteed not to match.
+  var noMatch = /(.)^/;
+
+  // Certain characters need to be escaped so that they can be put into a
+  // string literal.
+  var escapes = {
+    "'":      "'",
+    '\\':     '\\',
+    '\r':     'r',
+    '\n':     'n',
+    '\u2028': 'u2028',
+    '\u2029': 'u2029'
+  };
+
+  var escaper = /\\|'|\r|\n|\u2028|\u2029/g;
+
+  var escapeChar = function(match) {
+    return '\\' + escapes[match];
+  };
+
+  // JavaScript micro-templating, similar to John Resig's implementation.
+  // Underscore templating handles arbitrary delimiters, preserves whitespace,
+  // and correctly escapes quotes within interpolated code.
+  // NB: `oldSettings` only exists for backwards compatibility.
+  _.template = function(text, settings, oldSettings) {
+    if (!settings && oldSettings) settings = oldSettings;
+    settings = _.defaults({}, settings, _.templateSettings);
+
+    // Combine delimiters into one regular expression via alternation.
+    var matcher = RegExp([
+      (settings.escape || noMatch).source,
+      (settings.interpolate || noMatch).source,
+      (settings.evaluate || noMatch).source
+    ].join('|') + '|$', 'g');
+
+    // Compile the template source, escaping string literals appropriately.
+    var index = 0;
+    var source = "__p+='";
+    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+      source += text.slice(index, offset).replace(escaper, escapeChar);
+      index = offset + match.length;
+
+      if (escape) {
+        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
+      } else if (interpolate) {
+        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
+      } else if (evaluate) {
+        source += "';\n" + evaluate + "\n__p+='";
+      }
+
+      // Adobe VMs need the match returned to produce the correct offest.
+      return match;
+    });
+    source += "';\n";
+
+    // If a variable is not specified, place data values in local scope.
+    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
+
+    source = "var __t,__p='',__j=Array.prototype.join," +
+      "print=function(){__p+=__j.call(arguments,'');};\n" +
+      source + 'return __p;\n';
+
+    try {
+      var render = new Function(settings.variable || 'obj', '_', source);
+    } catch (e) {
+      e.source = source;
+      throw e;
+    }
+
+    var template = function(data) {
+      return render.call(this, data, _);
+    };
+
+    // Provide the compiled source as a convenience for precompilation.
+    var argument = settings.variable || 'obj';
+    template.source = 'function(' + argument + '){\n' + source + '}';
+
+    return template;
+  };
+
+  // Add a "chain" function. Start chaining a wrapped Underscore object.
+  _.chain = function(obj) {
+    var instance = _(obj);
+    instance._chain = true;
+    return instance;
+  };
+
+  // OOP
+  // ---------------
+  // If Underscore is called as a function, it returns a wrapped object that
+  // can be used OO-style. This wrapper holds altered versions of all the
+  // underscore functions. Wrapped objects may be chained.
+
+  // Helper function to continue chaining intermediate results.
+  var result = function(instance, obj) {
+    return instance._chain ? _(obj).chain() : obj;
+  };
+
+  // Add your own custom functions to the Underscore object.
+  _.mixin = function(obj) {
+    _.each(_.functions(obj), function(name) {
+      var func = _[name] = obj[name];
+      _.prototype[name] = function() {
+        var args = [this._wrapped];
+        push.apply(args, arguments);
+        return result(this, func.apply(_, args));
+      };
+    });
+  };
+
+  // Add all of the Underscore functions to the wrapper object.
+  _.mixin(_);
+
+  // Add all mutator Array functions to the wrapper.
+  _.each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      var obj = this._wrapped;
+      method.apply(obj, arguments);
+      if ((name === 'shift' || name === 'splice') && obj.length === 0) delete obj[0];
+      return result(this, obj);
+    };
+  });
+
+  // Add all accessor Array functions to the wrapper.
+  _.each(['concat', 'join', 'slice'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      return result(this, method.apply(this._wrapped, arguments));
+    };
+  });
+
+  // Extracts the result from a wrapped and chained object.
+  _.prototype.value = function() {
+    return this._wrapped;
+  };
+
+  // Provide unwrapping proxy for some methods used in engine operations
+  // such as arithmetic and JSON stringification.
+  _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
+
+  _.prototype.toString = function() {
+    return '' + this._wrapped;
+  };
+
+  // AMD registration happens at the end for compatibility with AMD loaders
+  // that may not enforce next-turn semantics on modules. Even though general
+  // practice for AMD registration is to be anonymous, underscore registers
+  // as a named module because, like jQuery, it is a base library that is
+  // popular enough to be bundled in a third party lib, but not be part of
+  // an AMD load request. Those cases could generate an error when an
+  // anonymous define() is called outside of a loader request.
+  if (typeof define === 'function' && define.amd) {
+    define('underscore', [], function() {
+      return _;
+    });
+  }
+}.call(this));
+});
+
 /*eslint camelcase:0 */ /*jshint esnext:true, -W051:true */ /*eslint-disable */'use strict';global.DEFINE_MODULE('internal',(function(){'use strict'; /*eslint-enable */var exports={}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
 ///
@@ -11373,16 +13079,13 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
-if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}this.message = this.toString();};exports.ArangoError.prototype = new Error();}exports.ArangoError.prototype._PRINT = function(context){context.output += this.toString();};exports.ArangoError.prototype.toString = function(){var errorNum=this.errorNum;var errorMessage=this.errorMessage || this.message;return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';}; ////////////////////////////////////////////////////////////////////////////////
+if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 exports.threadNumber = 0;if(global.THREAD_NUMBER){exports.threadNumber = global.THREAD_NUMBER;delete global.THREAD_NUMBER;} ////////////////////////////////////////////////////////////////////////////////
 /// @brief developmentMode. this is only here for backwards compatibility
 ////////////////////////////////////////////////////////////////////////////////
 exports.developmentMode = false; ////////////////////////////////////////////////////////////////////////////////
-/// @brief logfilePath
-////////////////////////////////////////////////////////////////////////////////
-if(global.LOGFILE_PATH){exports.logfilePath = global.LOGFILE_PATH;delete global.LOGFILE_PATH;} ////////////////////////////////////////////////////////////////////////////////
 /// @brief quiet
 ////////////////////////////////////////////////////////////////////////////////
 exports.quiet = false;if(global.ARANGO_QUIET){exports.quiet = global.ARANGO_QUIET;delete global.ARANGO_QUIET;} ////////////////////////////////////////////////////////////////////////////////
@@ -11646,7 +13349,7 @@ function bufferOutput(){for(var _i4=0;_i4 < arguments.length;++_i4) {var value=a
 /// Prints the arguments. If an argument is an object having a function
 /// @FN{_PRINT}, then this function is called. A final newline is printed.
 ////////////////////////////////////////////////////////////////////////////////
-function printShell(){var output=exports.output;for(var _i5=0;_i5 < arguments.length;++_i5) {if(_i5 > 0){output(' ');}if(typeof arguments[_i5] === 'string'){output(arguments[_i5]);}else {var context={customInspect:true,emit:16384,level:0,limitString:80,names:[],output:'',path:'~',prettyPrint:usePrettyPrint,seen:[],showFunction:false,useColor:useColor,useToString:true};printRecursive(arguments[_i5],context);output(context.output);}}output('\n');} ////////////////////////////////////////////////////////////////////////////////
+function printShell(){var output=exports.output;for(var _i5=0;_i5 < arguments.length;++_i5) {if(_i5 > 0){output(' ');}if(typeof arguments[_i5] === 'string'){output(arguments[_i5]);}else {var context={customInspect:true,emit:16384,level:0,limitString:printShell.limitString,names:[],output:'',path:'~',prettyPrint:usePrettyPrint,seen:[],showFunction:false,useColor:useColor,useToString:true};printRecursive(arguments[_i5],context);output(context.output);}}output('\n');}printShell.limitString = 80; ////////////////////////////////////////////////////////////////////////////////
 /// @brief flatten
 ////////////////////////////////////////////////////////////////////////////////
 var hasOwnProperty=Function.prototype.call.bind(Object.prototype.hasOwnProperty);exports.flatten = function(obj,seen){if(!obj || typeof obj !== 'object' && typeof obj !== 'function'){return obj;}if(obj instanceof Date){return obj.toJSON();}if(!seen){seen = [];}var result=Object.create(null),src=obj,keys,key,val;if(typeof obj === 'function'){result.__exec = String(obj);}while(src) {if(seen.indexOf(src) !== -1 || obj.constructor && src === obj.constructor.prototype){break;}seen.push(src);keys = Object.getOwnPropertyNames(src);for(var _i6=0;_i6 < keys.length;_i6++) {key = keys[_i6];if(typeof src !== 'function' || key !== 'arguments' && key !== 'caller' && key !== 'callee'){if(key.charAt(0) !== '_' && !hasOwnProperty(result,key)){val = obj[key];if(seen.indexOf(val) !== -1 && (typeof val === 'object' || typeof val === 'function')){result[key] = '[Circular]';}else {result[key] = exports.flatten(val,seen);}}}}src = Object.getPrototypeOf(src);}if(obj.constructor && obj.constructor.name){if(obj instanceof Error && obj.name === Error.name){result.name = obj.constructor.name;}else if(!hasOwnProperty(result,'constructor')){result.constructor = {name:obj.constructor.name};}}return result;}; ////////////////////////////////////////////////////////////////////////////////
@@ -11697,7 +13400,7 @@ if(typeof ENV !== 'undefined'){exports.env = new global.ENV();delete global.ENV;
 if(typeof SYS_OPTIONS !== 'undefined'){exports.options = global.SYS_OPTIONS;delete global.SYS_OPTIONS;} ////////////////////////////////////////////////////////////////////////////////
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
-global.print = function print(){var internal=require('internal');internal.print.apply(internal.print,arguments);}; ////////////////////////////////////////////////////////////////////////////////
+global.print = exports.print; ////////////////////////////////////////////////////////////////////////////////
 /// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 global.printf = function printf(){var internal=require('internal');internal.printf.apply(internal.printf,arguments);}; ////////////////////////////////////////////////////////////////////////////////
@@ -11715,10 +13418,10 @@ global.stop_pretty_print = function stop_pretty_print(){require('internal').stop
 global.start_color_print = function start_color_print(color){require('internal').startColorPrint(color,false);}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop_color_print
 ////////////////////////////////////////////////////////////////////////////////
-global.stop_color_print = function stop_color_print(){require('internal').stopColorPrint();};if(global.EXPORTS_SLOW_BUFFER){Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function(key){exports[key] = global.EXPORTS_SLOW_BUFFER[key];});delete global.EXPORTS_SLOW_BUFFER;}if(global.APP_PATH){exports.appPath = global.APP_PATH;delete global.APP_PATH;}if(global.DEV_APP_PATH){exports.devAppPath = global.APP_PATH;delete global.DEV_APP_PATH;}return exports;})()); /*jshint maxlen: 240 */ /*global require */ ////////////////////////////////////////////////////////////////////////////////
+global.stop_color_print = function stop_color_print(){require('internal').stopColorPrint();};if(global.EXPORTS_SLOW_BUFFER){Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function(key){exports[key] = global.EXPORTS_SLOW_BUFFER[key];});delete global.EXPORTS_SLOW_BUFFER;}if(global.APP_PATH){exports.appPath = global.APP_PATH;delete global.APP_PATH;}return exports;})()); /*jshint maxlen: 240 */ /*global require */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
-(function(){"use strict";var internal=require("internal");internal.errors = {"ERROR_NO_ERROR":{"code":0,"message":"no error"},"ERROR_FAILED":{"code":1,"message":"failed"},"ERROR_SYS_ERROR":{"code":2,"message":"system error"},"ERROR_OUT_OF_MEMORY":{"code":3,"message":"out of memory"},"ERROR_INTERNAL":{"code":4,"message":"internal error"},"ERROR_ILLEGAL_NUMBER":{"code":5,"message":"illegal number"},"ERROR_NUMERIC_OVERFLOW":{"code":6,"message":"numeric overflow"},"ERROR_ILLEGAL_OPTION":{"code":7,"message":"illegal option"},"ERROR_DEAD_PID":{"code":8,"message":"dead process identifier"},"ERROR_NOT_IMPLEMENTED":{"code":9,"message":"not implemented"},"ERROR_BAD_PARAMETER":{"code":10,"message":"bad parameter"},"ERROR_FORBIDDEN":{"code":11,"message":"forbidden"},"ERROR_OUT_OF_MEMORY_MMAP":{"code":12,"message":"out of memory in mmap"},"ERROR_CORRUPTED_CSV":{"code":13,"message":"csv is corrupt"},"ERROR_FILE_NOT_FOUND":{"code":14,"message":"file not found"},"ERROR_CANNOT_WRITE_FILE":{"code":15,"message":"cannot write file"},"ERROR_CANNOT_OVERWRITE_FILE":{"code":16,"message":"cannot overwrite file"},"ERROR_TYPE_ERROR":{"code":17,"message":"type error"},"ERROR_LOCK_TIMEOUT":{"code":18,"message":"lock timeout"},"ERROR_CANNOT_CREATE_DIRECTORY":{"code":19,"message":"cannot create directory"},"ERROR_CANNOT_CREATE_TEMP_FILE":{"code":20,"message":"cannot create temporary file"},"ERROR_REQUEST_CANCELED":{"code":21,"message":"canceled request"},"ERROR_DEBUG":{"code":22,"message":"intentional debug error"},"ERROR_AID_NOT_FOUND":{"code":23,"message":"internal error with attribute ID in shaper"},"ERROR_LEGEND_INCOMPLETE":{"code":24,"message":"internal error if a legend could not be created"},"ERROR_IP_ADDRESS_INVALID":{"code":25,"message":"IP address is invalid"},"ERROR_LEGEND_NOT_IN_WAL_FILE":{"code":26,"message":"internal error if a legend for a marker does not yet exist in the same WAL file"},"ERROR_FILE_EXISTS":{"code":27,"message":"file exists"},"ERROR_LOCKED":{"code":28,"message":"locked"},"ERROR_DEADLOCK":{"code":29,"message":"deadlock detected"},"ERROR_HTTP_BAD_PARAMETER":{"code":400,"message":"bad parameter"},"ERROR_HTTP_UNAUTHORIZED":{"code":401,"message":"unauthorized"},"ERROR_HTTP_FORBIDDEN":{"code":403,"message":"forbidden"},"ERROR_HTTP_NOT_FOUND":{"code":404,"message":"not found"},"ERROR_HTTP_METHOD_NOT_ALLOWED":{"code":405,"message":"method not supported"},"ERROR_HTTP_PRECONDITION_FAILED":{"code":412,"message":"precondition failed"},"ERROR_HTTP_SERVER_ERROR":{"code":500,"message":"internal server error"},"ERROR_HTTP_CORRUPTED_JSON":{"code":600,"message":"invalid JSON object"},"ERROR_HTTP_SUPERFLUOUS_SUFFICES":{"code":601,"message":"superfluous URL suffices"},"ERROR_ARANGO_ILLEGAL_STATE":{"code":1000,"message":"illegal state"},"ERROR_ARANGO_SHAPER_FAILED":{"code":1001,"message":"could not shape document"},"ERROR_ARANGO_DATAFILE_SEALED":{"code":1002,"message":"datafile sealed"},"ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE":{"code":1003,"message":"unknown type"},"ERROR_ARANGO_READ_ONLY":{"code":1004,"message":"read only"},"ERROR_ARANGO_DUPLICATE_IDENTIFIER":{"code":1005,"message":"duplicate identifier"},"ERROR_ARANGO_DATAFILE_UNREADABLE":{"code":1006,"message":"datafile unreadable"},"ERROR_ARANGO_DATAFILE_EMPTY":{"code":1007,"message":"datafile empty"},"ERROR_ARANGO_RECOVERY":{"code":1008,"message":"logfile recovery error"},"ERROR_ARANGO_CORRUPTED_DATAFILE":{"code":1100,"message":"corrupted datafile"},"ERROR_ARANGO_ILLEGAL_PARAMETER_FILE":{"code":1101,"message":"illegal or unreadable parameter file"},"ERROR_ARANGO_CORRUPTED_COLLECTION":{"code":1102,"message":"corrupted collection"},"ERROR_ARANGO_MMAP_FAILED":{"code":1103,"message":"mmap failed"},"ERROR_ARANGO_FILESYSTEM_FULL":{"code":1104,"message":"filesystem full"},"ERROR_ARANGO_NO_JOURNAL":{"code":1105,"message":"no journal"},"ERROR_ARANGO_DATAFILE_ALREADY_EXISTS":{"code":1106,"message":"cannot create/rename datafile because it already exists"},"ERROR_ARANGO_DATADIR_LOCKED":{"code":1107,"message":"database directory is locked"},"ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS":{"code":1108,"message":"cannot create/rename collection because directory already exists"},"ERROR_ARANGO_MSYNC_FAILED":{"code":1109,"message":"msync failed"},"ERROR_ARANGO_DATADIR_UNLOCKABLE":{"code":1110,"message":"cannot lock database directory"},"ERROR_ARANGO_SYNC_TIMEOUT":{"code":1111,"message":"sync timeout"},"ERROR_ARANGO_CONFLICT":{"code":1200,"message":"conflict"},"ERROR_ARANGO_DATADIR_INVALID":{"code":1201,"message":"invalid database directory"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND":{"code":1202,"message":"document not found"},"ERROR_ARANGO_COLLECTION_NOT_FOUND":{"code":1203,"message":"collection not found"},"ERROR_ARANGO_COLLECTION_PARAMETER_MISSING":{"code":1204,"message":"parameter 'collection' not found"},"ERROR_ARANGO_DOCUMENT_HANDLE_BAD":{"code":1205,"message":"illegal document handle"},"ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL":{"code":1206,"message":"maximal size of journal too small"},"ERROR_ARANGO_DUPLICATE_NAME":{"code":1207,"message":"duplicate name"},"ERROR_ARANGO_ILLEGAL_NAME":{"code":1208,"message":"illegal name"},"ERROR_ARANGO_NO_INDEX":{"code":1209,"message":"no suitable index known"},"ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED":{"code":1210,"message":"unique constraint violated"},"ERROR_ARANGO_INDEX_NOT_FOUND":{"code":1212,"message":"index not found"},"ERROR_ARANGO_CROSS_COLLECTION_REQUEST":{"code":1213,"message":"cross collection request not allowed"},"ERROR_ARANGO_INDEX_HANDLE_BAD":{"code":1214,"message":"illegal index handle"},"ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED":{"code":1215,"message":"cap constraint already defined"},"ERROR_ARANGO_DOCUMENT_TOO_LARGE":{"code":1216,"message":"document too large"},"ERROR_ARANGO_COLLECTION_NOT_UNLOADED":{"code":1217,"message":"collection must be unloaded"},"ERROR_ARANGO_COLLECTION_TYPE_INVALID":{"code":1218,"message":"collection type invalid"},"ERROR_ARANGO_VALIDATION_FAILED":{"code":1219,"message":"validator failed"},"ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED":{"code":1220,"message":"parsing attribute name definition failed"},"ERROR_ARANGO_DOCUMENT_KEY_BAD":{"code":1221,"message":"illegal document key"},"ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED":{"code":1222,"message":"unexpected document key"},"ERROR_ARANGO_DATADIR_NOT_WRITABLE":{"code":1224,"message":"server database directory not writable"},"ERROR_ARANGO_OUT_OF_KEYS":{"code":1225,"message":"out of keys"},"ERROR_ARANGO_DOCUMENT_KEY_MISSING":{"code":1226,"message":"missing document key"},"ERROR_ARANGO_DOCUMENT_TYPE_INVALID":{"code":1227,"message":"invalid document type"},"ERROR_ARANGO_DATABASE_NOT_FOUND":{"code":1228,"message":"database not found"},"ERROR_ARANGO_DATABASE_NAME_INVALID":{"code":1229,"message":"database name invalid"},"ERROR_ARANGO_USE_SYSTEM_DATABASE":{"code":1230,"message":"operation only allowed in system database"},"ERROR_ARANGO_ENDPOINT_NOT_FOUND":{"code":1231,"message":"endpoint not found"},"ERROR_ARANGO_INVALID_KEY_GENERATOR":{"code":1232,"message":"invalid key generator"},"ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE":{"code":1233,"message":"edge attribute missing"},"ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING":{"code":1234,"message":"index insertion warning - attribute missing in document"},"ERROR_ARANGO_INDEX_CREATION_FAILED":{"code":1235,"message":"index creation failed"},"ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT":{"code":1236,"message":"write-throttling timeout"},"ERROR_ARANGO_COLLECTION_TYPE_MISMATCH":{"code":1237,"message":"collection type mismatch"},"ERROR_ARANGO_COLLECTION_NOT_LOADED":{"code":1238,"message":"collection not loaded"},"ERROR_ARANGO_DATAFILE_FULL":{"code":1300,"message":"datafile full"},"ERROR_ARANGO_EMPTY_DATADIR":{"code":1301,"message":"server database directory is empty"},"ERROR_REPLICATION_NO_RESPONSE":{"code":1400,"message":"no response"},"ERROR_REPLICATION_INVALID_RESPONSE":{"code":1401,"message":"invalid response"},"ERROR_REPLICATION_MASTER_ERROR":{"code":1402,"message":"master error"},"ERROR_REPLICATION_MASTER_INCOMPATIBLE":{"code":1403,"message":"master incompatible"},"ERROR_REPLICATION_MASTER_CHANGE":{"code":1404,"message":"master change"},"ERROR_REPLICATION_LOOP":{"code":1405,"message":"loop detected"},"ERROR_REPLICATION_UNEXPECTED_MARKER":{"code":1406,"message":"unexpected marker"},"ERROR_REPLICATION_INVALID_APPLIER_STATE":{"code":1407,"message":"invalid applier state"},"ERROR_REPLICATION_UNEXPECTED_TRANSACTION":{"code":1408,"message":"invalid transaction"},"ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION":{"code":1410,"message":"invalid replication applier configuration"},"ERROR_REPLICATION_RUNNING":{"code":1411,"message":"cannot perform operation while applier is running"},"ERROR_REPLICATION_APPLIER_STOPPED":{"code":1412,"message":"replication stopped"},"ERROR_REPLICATION_NO_START_TICK":{"code":1413,"message":"no start tick"},"ERROR_REPLICATION_START_TICK_NOT_PRESENT":{"code":1414,"message":"start tick not present"},"ERROR_CLUSTER_NO_AGENCY":{"code":1450,"message":"could not connect to agency"},"ERROR_CLUSTER_NO_COORDINATOR_HEADER":{"code":1451,"message":"missing coordinator header"},"ERROR_CLUSTER_COULD_NOT_LOCK_PLAN":{"code":1452,"message":"could not lock plan in agency"},"ERROR_CLUSTER_COLLECTION_ID_EXISTS":{"code":1453,"message":"collection ID already exists"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN":{"code":1454,"message":"could not create collection in plan"},"ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION":{"code":1455,"message":"could not read version in current in agency"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION":{"code":1456,"message":"could not create collection"},"ERROR_CLUSTER_TIMEOUT":{"code":1457,"message":"timeout in cluster operation"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN":{"code":1458,"message":"could not remove collection from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT":{"code":1459,"message":"could not remove collection from current"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN":{"code":1460,"message":"could not create database in plan"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE":{"code":1461,"message":"could not create database"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN":{"code":1462,"message":"could not remove database from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT":{"code":1463,"message":"could not remove database from current"},"ERROR_CLUSTER_SHARD_GONE":{"code":1464,"message":"no responsible shard found"},"ERROR_CLUSTER_CONNECTION_LOST":{"code":1465,"message":"cluster internal HTTP connection broken"},"ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY":{"code":1466,"message":"must not specify _key for this collection"},"ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS":{"code":1467,"message":"got contradicting answers from different shards"},"ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN":{"code":1468,"message":"not all sharding attributes given"},"ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES":{"code":1469,"message":"must not change the value of a shard key attribute"},"ERROR_CLUSTER_UNSUPPORTED":{"code":1470,"message":"unsupported operation or parameter"},"ERROR_CLUSTER_ONLY_ON_COORDINATOR":{"code":1471,"message":"this operation is only valid on a coordinator in a cluster"},"ERROR_CLUSTER_READING_PLAN_AGENCY":{"code":1472,"message":"error reading Plan in agency"},"ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION":{"code":1473,"message":"could not truncate collection"},"ERROR_CLUSTER_AQL_COMMUNICATION":{"code":1474,"message":"error in cluster internal communication for AQL"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED":{"code":1475,"message":"document not found or sharding attributes changed"},"ERROR_CLUSTER_COULD_NOT_DETERMINE_ID":{"code":1476,"message":"could not determine my ID from my local info"},"ERROR_QUERY_KILLED":{"code":1500,"message":"query killed"},"ERROR_QUERY_PARSE":{"code":1501,"message":"%s"},"ERROR_QUERY_EMPTY":{"code":1502,"message":"query is empty"},"ERROR_QUERY_SCRIPT":{"code":1503,"message":"runtime error '%s'"},"ERROR_QUERY_NUMBER_OUT_OF_RANGE":{"code":1504,"message":"number out of range"},"ERROR_QUERY_VARIABLE_NAME_INVALID":{"code":1510,"message":"variable name '%s' has an invalid format"},"ERROR_QUERY_VARIABLE_REDECLARED":{"code":1511,"message":"variable '%s' is assigned multiple times"},"ERROR_QUERY_VARIABLE_NAME_UNKNOWN":{"code":1512,"message":"unknown variable '%s'"},"ERROR_QUERY_COLLECTION_LOCK_FAILED":{"code":1521,"message":"unable to read-lock collection %s"},"ERROR_QUERY_TOO_MANY_COLLECTIONS":{"code":1522,"message":"too many collections"},"ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED":{"code":1530,"message":"document attribute '%s' is assigned multiple times"},"ERROR_QUERY_FUNCTION_NAME_UNKNOWN":{"code":1540,"message":"usage of unknown function '%s()'"},"ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH":{"code":1541,"message":"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d"},"ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH":{"code":1542,"message":"invalid argument type in call to function '%s()'"},"ERROR_QUERY_INVALID_REGEX":{"code":1543,"message":"invalid regex value"},"ERROR_QUERY_BIND_PARAMETERS_INVALID":{"code":1550,"message":"invalid structure of bind parameters"},"ERROR_QUERY_BIND_PARAMETER_MISSING":{"code":1551,"message":"no value specified for declared bind parameter '%s'"},"ERROR_QUERY_BIND_PARAMETER_UNDECLARED":{"code":1552,"message":"bind parameter '%s' was not declared in the query"},"ERROR_QUERY_BIND_PARAMETER_TYPE":{"code":1553,"message":"bind parameter '%s' has an invalid value or type"},"ERROR_QUERY_INVALID_LOGICAL_VALUE":{"code":1560,"message":"invalid logical value"},"ERROR_QUERY_INVALID_ARITHMETIC_VALUE":{"code":1561,"message":"invalid arithmetic value"},"ERROR_QUERY_DIVISION_BY_ZERO":{"code":1562,"message":"division by zero"},"ERROR_QUERY_ARRAY_EXPECTED":{"code":1563,"message":"array expected"},"ERROR_QUERY_FAIL_CALLED":{"code":1569,"message":"FAIL(%s) called"},"ERROR_QUERY_GEO_INDEX_MISSING":{"code":1570,"message":"no suitable geo index found for geo restriction on '%s'"},"ERROR_QUERY_FULLTEXT_INDEX_MISSING":{"code":1571,"message":"no suitable fulltext index found for fulltext query on '%s'"},"ERROR_QUERY_INVALID_DATE_VALUE":{"code":1572,"message":"invalid date value"},"ERROR_QUERY_MULTI_MODIFY":{"code":1573,"message":"multi-modify query"},"ERROR_QUERY_COMPILE_TIME_OPTIONS":{"code":1575,"message":"query options must be readable at query compile time"},"ERROR_QUERY_EXCEPTION_OPTIONS":{"code":1576,"message":"query options expected"},"ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION":{"code":1577,"message":"collection '%s' used as expression operand"},"ERROR_QUERY_DISALLOWED_DYNAMIC_CALL":{"code":1578,"message":"disallowed dynamic call to '%s'"},"ERROR_QUERY_ACCESS_AFTER_MODIFICATION":{"code":1579,"message":"access after data-modification"},"ERROR_QUERY_FUNCTION_INVALID_NAME":{"code":1580,"message":"invalid user function name"},"ERROR_QUERY_FUNCTION_INVALID_CODE":{"code":1581,"message":"invalid user function code"},"ERROR_QUERY_FUNCTION_NOT_FOUND":{"code":1582,"message":"user function '%s()' not found"},"ERROR_QUERY_FUNCTION_RUNTIME_ERROR":{"code":1583,"message":"user function runtime error: %s"},"ERROR_QUERY_BAD_JSON_PLAN":{"code":1590,"message":"bad execution plan JSON"},"ERROR_QUERY_NOT_FOUND":{"code":1591,"message":"query ID not found"},"ERROR_QUERY_IN_USE":{"code":1592,"message":"query with this ID is in use"},"ERROR_CURSOR_NOT_FOUND":{"code":1600,"message":"cursor not found"},"ERROR_CURSOR_BUSY":{"code":1601,"message":"cursor is busy"},"ERROR_TRANSACTION_INTERNAL":{"code":1650,"message":"internal transaction error"},"ERROR_TRANSACTION_NESTED":{"code":1651,"message":"nested transactions detected"},"ERROR_TRANSACTION_UNREGISTERED_COLLECTION":{"code":1652,"message":"unregistered collection used in transaction"},"ERROR_TRANSACTION_DISALLOWED_OPERATION":{"code":1653,"message":"disallowed operation inside transaction"},"ERROR_TRANSACTION_ABORTED":{"code":1654,"message":"transaction aborted"},"ERROR_USER_INVALID_NAME":{"code":1700,"message":"invalid user name"},"ERROR_USER_INVALID_PASSWORD":{"code":1701,"message":"invalid password"},"ERROR_USER_DUPLICATE":{"code":1702,"message":"duplicate user"},"ERROR_USER_NOT_FOUND":{"code":1703,"message":"user not found"},"ERROR_USER_CHANGE_PASSWORD":{"code":1704,"message":"user must change his password"},"ERROR_APPLICATION_INVALID_NAME":{"code":1750,"message":"invalid application name"},"ERROR_APPLICATION_INVALID_MOUNT":{"code":1751,"message":"invalid mount"},"ERROR_APPLICATION_DOWNLOAD_FAILED":{"code":1752,"message":"application download failed"},"ERROR_APPLICATION_UPLOAD_FAILED":{"code":1753,"message":"application upload failed"},"ERROR_KEYVALUE_INVALID_KEY":{"code":1800,"message":"invalid key declaration"},"ERROR_KEYVALUE_KEY_EXISTS":{"code":1801,"message":"key already exists"},"ERROR_KEYVALUE_KEY_NOT_FOUND":{"code":1802,"message":"key not found"},"ERROR_KEYVALUE_KEY_NOT_UNIQUE":{"code":1803,"message":"key is not unique"},"ERROR_KEYVALUE_KEY_NOT_CHANGED":{"code":1804,"message":"key value not changed"},"ERROR_KEYVALUE_KEY_NOT_REMOVED":{"code":1805,"message":"key value not removed"},"ERROR_KEYVALUE_NO_VALUE":{"code":1806,"message":"missing value"},"ERROR_TASK_INVALID_ID":{"code":1850,"message":"invalid task id"},"ERROR_TASK_DUPLICATE_ID":{"code":1851,"message":"duplicate task id"},"ERROR_TASK_NOT_FOUND":{"code":1852,"message":"task not found"},"ERROR_GRAPH_INVALID_GRAPH":{"code":1901,"message":"invalid graph"},"ERROR_GRAPH_COULD_NOT_CREATE_GRAPH":{"code":1902,"message":"could not create graph"},"ERROR_GRAPH_INVALID_VERTEX":{"code":1903,"message":"invalid vertex"},"ERROR_GRAPH_COULD_NOT_CREATE_VERTEX":{"code":1904,"message":"could not create vertex"},"ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX":{"code":1905,"message":"could not change vertex"},"ERROR_GRAPH_INVALID_EDGE":{"code":1906,"message":"invalid edge"},"ERROR_GRAPH_COULD_NOT_CREATE_EDGE":{"code":1907,"message":"could not create edge"},"ERROR_GRAPH_COULD_NOT_CHANGE_EDGE":{"code":1908,"message":"could not change edge"},"ERROR_GRAPH_TOO_MANY_ITERATIONS":{"code":1909,"message":"too many iterations - try increasing the value of 'maxIterations'"},"ERROR_GRAPH_INVALID_FILTER_RESULT":{"code":1910,"message":"invalid filter result"},"ERROR_GRAPH_COLLECTION_MULTI_USE":{"code":1920,"message":"multi use of edge collection in edge def"},"ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS":{"code":1921,"message":"edge collection already used in edge def"},"ERROR_GRAPH_CREATE_MISSING_NAME":{"code":1922,"message":"missing graph name"},"ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION":{"code":1923,"message":"malformed edge definition"},"ERROR_GRAPH_NOT_FOUND":{"code":1924,"message":"graph not found"},"ERROR_GRAPH_DUPLICATE":{"code":1925,"message":"graph already exists"},"ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST":{"code":1926,"message":"vertex collection does not exist or is not part of the graph"},"ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX":{"code":1927,"message":"not a vertex collection"},"ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION":{"code":1928,"message":"not in orphan collection"},"ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF":{"code":1929,"message":"collection already used in edge def"},"ERROR_GRAPH_EDGE_COLLECTION_NOT_USED":{"code":1930,"message":"edge collection not used in graph"},"ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION":{"code":1931,"message":" is not an ArangoCollection"},"ERROR_GRAPH_NO_GRAPH_COLLECTION":{"code":1932,"message":"collection _graphs does not exist"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING":{"code":1933,"message":"Invalid example type. Has to be String, Array or Object"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT":{"code":1934,"message":"Invalid example type. Has to be Array or Object"},"ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS":{"code":1935,"message":"Invalid number of arguments. Expected: "},"ERROR_GRAPH_INVALID_PARAMETER":{"code":1936,"message":"Invalid parameter type."},"ERROR_GRAPH_INVALID_ID":{"code":1937,"message":"Invalid id"},"ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS":{"code":1938,"message":"collection used in orphans"},"ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST":{"code":1939,"message":"edge collection does not exist or is not part of the graph"},"ERROR_SESSION_UNKNOWN":{"code":1950,"message":"unknown session"},"ERROR_SESSION_EXPIRED":{"code":1951,"message":"session expired"},"SIMPLE_CLIENT_UNKNOWN_ERROR":{"code":2000,"message":"unknown client error"},"SIMPLE_CLIENT_COULD_NOT_CONNECT":{"code":2001,"message":"could not connect to server"},"SIMPLE_CLIENT_COULD_NOT_WRITE":{"code":2002,"message":"could not write to server"},"SIMPLE_CLIENT_COULD_NOT_READ":{"code":2003,"message":"could not read from server"},"ERROR_MALFORMED_MANIFEST_FILE":{"code":3000,"message":"malformed manifest file"},"ERROR_INVALID_APPLICATION_MANIFEST":{"code":3001,"message":"manifest file is invalid"},"ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING":{"code":3002,"message":"missing manifest attribute"},"ERROR_CANNOT_EXTRACT_APPLICATION_ROOT":{"code":3003,"message":"unable to extract app root path"},"ERROR_INVALID_FOXX_OPTIONS":{"code":3004,"message":"invalid foxx options"},"ERROR_FAILED_TO_EXECUTE_SCRIPT":{"code":3005,"message":"failed to execute script"},"ERROR_SYNTAX_ERROR_IN_SCRIPT":{"code":3006,"message":"syntax error in script"},"ERROR_INVALID_MOUNTPOINT":{"code":3007,"message":"mountpoint is invalid"},"ERROR_NO_FOXX_FOUND":{"code":3008,"message":"No foxx found at this location"},"ERROR_APP_NOT_FOUND":{"code":3009,"message":"App not found"},"ERROR_APP_NEEDS_CONFIGURATION":{"code":3010,"message":"App not configured"},"ERROR_MODULE_NOT_FOUND":{"code":3100,"message":"cannot locate module"},"ERROR_MODULE_SYNTAX_ERROR":{"code":3101,"message":"syntax error in module"},"ERROR_MODULE_BAD_WRAPPER":{"code":3102,"message":"failed to wrap module"},"ERROR_MODULE_FAILURE":{"code":3103,"message":"failed to invoke module"},"ERROR_MODULE_UNKNOWN_FILE_TYPE":{"code":3110,"message":"unknown file type"},"ERROR_MODULE_PATH_MUST_BE_ABSOLUTE":{"code":3111,"message":"path must be absolute"},"ERROR_MODULE_CAN_NOT_ESCAPE":{"code":3112,"message":"cannot use '..' to escape top-level-directory"},"ERROR_MODULE_DRIVE_LETTER":{"code":3113,"message":"drive local path is not supported"},"ERROR_MODULE_BAD_MODULE_ORIGIN":{"code":3120,"message":"corrupted module origin"},"ERROR_MODULE_BAD_PACKAGE_ORIGIN":{"code":3121,"message":"corrupted package origin"},"ERROR_MODULE_DOCUMENT_IS_EMPTY":{"code":3125,"message":"no content"},"ERROR_MODULE_MAIN_NOT_READABLE":{"code":3130,"message":"cannot read main file"},"ERROR_MODULE_MAIN_NOT_JS":{"code":3131,"message":"main file is not of type 'js'"},"RESULT_ELEMENT_EXISTS":{"code":10000,"message":"element not inserted into structure, because it already exists"},"RESULT_ELEMENT_NOT_FOUND":{"code":10001,"message":"element not found in structure"},"ERROR_APP_ALREADY_EXISTS":{"code":20000,"message":"newest version of app already installed"},"ERROR_QUEUE_ALREADY_EXISTS":{"code":21000,"message":"named queue already exists"},"ERROR_DISPATCHER_IS_STOPPING":{"code":21001,"message":"dispatcher stopped"},"ERROR_QUEUE_UNKNOWN":{"code":21002,"message":"named queue does not exist"},"ERROR_QUEUE_FULL":{"code":21003,"message":"named queue is full"}};})(); /*jshint -W051:true */ /*global jqconsole, Symbol */ /*eslint-disable */global.DEFINE_MODULE('console',(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
+(function(){"use strict";var internal=require("internal");internal.errors = {"ERROR_NO_ERROR":{"code":0,"message":"no error"},"ERROR_FAILED":{"code":1,"message":"failed"},"ERROR_SYS_ERROR":{"code":2,"message":"system error"},"ERROR_OUT_OF_MEMORY":{"code":3,"message":"out of memory"},"ERROR_INTERNAL":{"code":4,"message":"internal error"},"ERROR_ILLEGAL_NUMBER":{"code":5,"message":"illegal number"},"ERROR_NUMERIC_OVERFLOW":{"code":6,"message":"numeric overflow"},"ERROR_ILLEGAL_OPTION":{"code":7,"message":"illegal option"},"ERROR_DEAD_PID":{"code":8,"message":"dead process identifier"},"ERROR_NOT_IMPLEMENTED":{"code":9,"message":"not implemented"},"ERROR_BAD_PARAMETER":{"code":10,"message":"bad parameter"},"ERROR_FORBIDDEN":{"code":11,"message":"forbidden"},"ERROR_OUT_OF_MEMORY_MMAP":{"code":12,"message":"out of memory in mmap"},"ERROR_CORRUPTED_CSV":{"code":13,"message":"csv is corrupt"},"ERROR_FILE_NOT_FOUND":{"code":14,"message":"file not found"},"ERROR_CANNOT_WRITE_FILE":{"code":15,"message":"cannot write file"},"ERROR_CANNOT_OVERWRITE_FILE":{"code":16,"message":"cannot overwrite file"},"ERROR_TYPE_ERROR":{"code":17,"message":"type error"},"ERROR_LOCK_TIMEOUT":{"code":18,"message":"lock timeout"},"ERROR_CANNOT_CREATE_DIRECTORY":{"code":19,"message":"cannot create directory"},"ERROR_CANNOT_CREATE_TEMP_FILE":{"code":20,"message":"cannot create temporary file"},"ERROR_REQUEST_CANCELED":{"code":21,"message":"canceled request"},"ERROR_DEBUG":{"code":22,"message":"intentional debug error"},"ERROR_AID_NOT_FOUND":{"code":23,"message":"internal error with attribute ID in shaper"},"ERROR_LEGEND_INCOMPLETE":{"code":24,"message":"internal error if a legend could not be created"},"ERROR_IP_ADDRESS_INVALID":{"code":25,"message":"IP address is invalid"},"ERROR_LEGEND_NOT_IN_WAL_FILE":{"code":26,"message":"internal error if a legend for a marker does not yet exist in the same WAL file"},"ERROR_FILE_EXISTS":{"code":27,"message":"file exists"},"ERROR_LOCKED":{"code":28,"message":"locked"},"ERROR_DEADLOCK":{"code":29,"message":"deadlock detected"},"ERROR_HTTP_BAD_PARAMETER":{"code":400,"message":"bad parameter"},"ERROR_HTTP_UNAUTHORIZED":{"code":401,"message":"unauthorized"},"ERROR_HTTP_FORBIDDEN":{"code":403,"message":"forbidden"},"ERROR_HTTP_NOT_FOUND":{"code":404,"message":"not found"},"ERROR_HTTP_METHOD_NOT_ALLOWED":{"code":405,"message":"method not supported"},"ERROR_HTTP_PRECONDITION_FAILED":{"code":412,"message":"precondition failed"},"ERROR_HTTP_SERVER_ERROR":{"code":500,"message":"internal server error"},"ERROR_HTTP_CORRUPTED_JSON":{"code":600,"message":"invalid JSON object"},"ERROR_HTTP_SUPERFLUOUS_SUFFICES":{"code":601,"message":"superfluous URL suffices"},"ERROR_ARANGO_ILLEGAL_STATE":{"code":1000,"message":"illegal state"},"ERROR_ARANGO_SHAPER_FAILED":{"code":1001,"message":"could not shape document"},"ERROR_ARANGO_DATAFILE_SEALED":{"code":1002,"message":"datafile sealed"},"ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE":{"code":1003,"message":"unknown type"},"ERROR_ARANGO_READ_ONLY":{"code":1004,"message":"read only"},"ERROR_ARANGO_DUPLICATE_IDENTIFIER":{"code":1005,"message":"duplicate identifier"},"ERROR_ARANGO_DATAFILE_UNREADABLE":{"code":1006,"message":"datafile unreadable"},"ERROR_ARANGO_DATAFILE_EMPTY":{"code":1007,"message":"datafile empty"},"ERROR_ARANGO_RECOVERY":{"code":1008,"message":"logfile recovery error"},"ERROR_ARANGO_CORRUPTED_DATAFILE":{"code":1100,"message":"corrupted datafile"},"ERROR_ARANGO_ILLEGAL_PARAMETER_FILE":{"code":1101,"message":"illegal or unreadable parameter file"},"ERROR_ARANGO_CORRUPTED_COLLECTION":{"code":1102,"message":"corrupted collection"},"ERROR_ARANGO_MMAP_FAILED":{"code":1103,"message":"mmap failed"},"ERROR_ARANGO_FILESYSTEM_FULL":{"code":1104,"message":"filesystem full"},"ERROR_ARANGO_NO_JOURNAL":{"code":1105,"message":"no journal"},"ERROR_ARANGO_DATAFILE_ALREADY_EXISTS":{"code":1106,"message":"cannot create/rename datafile because it already exists"},"ERROR_ARANGO_DATADIR_LOCKED":{"code":1107,"message":"database directory is locked"},"ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS":{"code":1108,"message":"cannot create/rename collection because directory already exists"},"ERROR_ARANGO_MSYNC_FAILED":{"code":1109,"message":"msync failed"},"ERROR_ARANGO_DATADIR_UNLOCKABLE":{"code":1110,"message":"cannot lock database directory"},"ERROR_ARANGO_SYNC_TIMEOUT":{"code":1111,"message":"sync timeout"},"ERROR_ARANGO_CONFLICT":{"code":1200,"message":"conflict"},"ERROR_ARANGO_DATADIR_INVALID":{"code":1201,"message":"invalid database directory"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND":{"code":1202,"message":"document not found"},"ERROR_ARANGO_COLLECTION_NOT_FOUND":{"code":1203,"message":"collection not found"},"ERROR_ARANGO_COLLECTION_PARAMETER_MISSING":{"code":1204,"message":"parameter 'collection' not found"},"ERROR_ARANGO_DOCUMENT_HANDLE_BAD":{"code":1205,"message":"illegal document handle"},"ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL":{"code":1206,"message":"maximal size of journal too small"},"ERROR_ARANGO_DUPLICATE_NAME":{"code":1207,"message":"duplicate name"},"ERROR_ARANGO_ILLEGAL_NAME":{"code":1208,"message":"illegal name"},"ERROR_ARANGO_NO_INDEX":{"code":1209,"message":"no suitable index known"},"ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED":{"code":1210,"message":"unique constraint violated"},"ERROR_ARANGO_INDEX_NOT_FOUND":{"code":1212,"message":"index not found"},"ERROR_ARANGO_CROSS_COLLECTION_REQUEST":{"code":1213,"message":"cross collection request not allowed"},"ERROR_ARANGO_INDEX_HANDLE_BAD":{"code":1214,"message":"illegal index handle"},"ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED":{"code":1215,"message":"cap constraint already defined"},"ERROR_ARANGO_DOCUMENT_TOO_LARGE":{"code":1216,"message":"document too large"},"ERROR_ARANGO_COLLECTION_NOT_UNLOADED":{"code":1217,"message":"collection must be unloaded"},"ERROR_ARANGO_COLLECTION_TYPE_INVALID":{"code":1218,"message":"collection type invalid"},"ERROR_ARANGO_VALIDATION_FAILED":{"code":1219,"message":"validator failed"},"ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED":{"code":1220,"message":"parsing attribute name definition failed"},"ERROR_ARANGO_DOCUMENT_KEY_BAD":{"code":1221,"message":"illegal document key"},"ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED":{"code":1222,"message":"unexpected document key"},"ERROR_ARANGO_DATADIR_NOT_WRITABLE":{"code":1224,"message":"server database directory not writable"},"ERROR_ARANGO_OUT_OF_KEYS":{"code":1225,"message":"out of keys"},"ERROR_ARANGO_DOCUMENT_KEY_MISSING":{"code":1226,"message":"missing document key"},"ERROR_ARANGO_DOCUMENT_TYPE_INVALID":{"code":1227,"message":"invalid document type"},"ERROR_ARANGO_DATABASE_NOT_FOUND":{"code":1228,"message":"database not found"},"ERROR_ARANGO_DATABASE_NAME_INVALID":{"code":1229,"message":"database name invalid"},"ERROR_ARANGO_USE_SYSTEM_DATABASE":{"code":1230,"message":"operation only allowed in system database"},"ERROR_ARANGO_ENDPOINT_NOT_FOUND":{"code":1231,"message":"endpoint not found"},"ERROR_ARANGO_INVALID_KEY_GENERATOR":{"code":1232,"message":"invalid key generator"},"ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE":{"code":1233,"message":"edge attribute missing"},"ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING":{"code":1234,"message":"index insertion warning - attribute missing in document"},"ERROR_ARANGO_INDEX_CREATION_FAILED":{"code":1235,"message":"index creation failed"},"ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT":{"code":1236,"message":"write-throttling timeout"},"ERROR_ARANGO_COLLECTION_TYPE_MISMATCH":{"code":1237,"message":"collection type mismatch"},"ERROR_ARANGO_COLLECTION_NOT_LOADED":{"code":1238,"message":"collection not loaded"},"ERROR_ARANGO_DATAFILE_FULL":{"code":1300,"message":"datafile full"},"ERROR_ARANGO_EMPTY_DATADIR":{"code":1301,"message":"server database directory is empty"},"ERROR_REPLICATION_NO_RESPONSE":{"code":1400,"message":"no response"},"ERROR_REPLICATION_INVALID_RESPONSE":{"code":1401,"message":"invalid response"},"ERROR_REPLICATION_MASTER_ERROR":{"code":1402,"message":"master error"},"ERROR_REPLICATION_MASTER_INCOMPATIBLE":{"code":1403,"message":"master incompatible"},"ERROR_REPLICATION_MASTER_CHANGE":{"code":1404,"message":"master change"},"ERROR_REPLICATION_LOOP":{"code":1405,"message":"loop detected"},"ERROR_REPLICATION_UNEXPECTED_MARKER":{"code":1406,"message":"unexpected marker"},"ERROR_REPLICATION_INVALID_APPLIER_STATE":{"code":1407,"message":"invalid applier state"},"ERROR_REPLICATION_UNEXPECTED_TRANSACTION":{"code":1408,"message":"invalid transaction"},"ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION":{"code":1410,"message":"invalid replication applier configuration"},"ERROR_REPLICATION_RUNNING":{"code":1411,"message":"cannot perform operation while applier is running"},"ERROR_REPLICATION_APPLIER_STOPPED":{"code":1412,"message":"replication stopped"},"ERROR_REPLICATION_NO_START_TICK":{"code":1413,"message":"no start tick"},"ERROR_REPLICATION_START_TICK_NOT_PRESENT":{"code":1414,"message":"start tick not present"},"ERROR_CLUSTER_NO_AGENCY":{"code":1450,"message":"could not connect to agency"},"ERROR_CLUSTER_NO_COORDINATOR_HEADER":{"code":1451,"message":"missing coordinator header"},"ERROR_CLUSTER_COULD_NOT_LOCK_PLAN":{"code":1452,"message":"could not lock plan in agency"},"ERROR_CLUSTER_COLLECTION_ID_EXISTS":{"code":1453,"message":"collection ID already exists"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN":{"code":1454,"message":"could not create collection in plan"},"ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION":{"code":1455,"message":"could not read version in current in agency"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION":{"code":1456,"message":"could not create collection"},"ERROR_CLUSTER_TIMEOUT":{"code":1457,"message":"timeout in cluster operation"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN":{"code":1458,"message":"could not remove collection from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT":{"code":1459,"message":"could not remove collection from current"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN":{"code":1460,"message":"could not create database in plan"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE":{"code":1461,"message":"could not create database"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN":{"code":1462,"message":"could not remove database from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT":{"code":1463,"message":"could not remove database from current"},"ERROR_CLUSTER_SHARD_GONE":{"code":1464,"message":"no responsible shard found"},"ERROR_CLUSTER_CONNECTION_LOST":{"code":1465,"message":"cluster internal HTTP connection broken"},"ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY":{"code":1466,"message":"must not specify _key for this collection"},"ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS":{"code":1467,"message":"got contradicting answers from different shards"},"ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN":{"code":1468,"message":"not all sharding attributes given"},"ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES":{"code":1469,"message":"must not change the value of a shard key attribute"},"ERROR_CLUSTER_UNSUPPORTED":{"code":1470,"message":"unsupported operation or parameter"},"ERROR_CLUSTER_ONLY_ON_COORDINATOR":{"code":1471,"message":"this operation is only valid on a coordinator in a cluster"},"ERROR_CLUSTER_READING_PLAN_AGENCY":{"code":1472,"message":"error reading Plan in agency"},"ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION":{"code":1473,"message":"could not truncate collection"},"ERROR_CLUSTER_AQL_COMMUNICATION":{"code":1474,"message":"error in cluster internal communication for AQL"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED":{"code":1475,"message":"document not found or sharding attributes changed"},"ERROR_CLUSTER_COULD_NOT_DETERMINE_ID":{"code":1476,"message":"could not determine my ID from my local info"},"ERROR_CLUSTER_ONLY_ON_DBSERVER":{"code":1477,"message":"this operation is only valid on a DBserver in a cluster"},"ERROR_QUERY_KILLED":{"code":1500,"message":"query killed"},"ERROR_QUERY_PARSE":{"code":1501,"message":"%s"},"ERROR_QUERY_EMPTY":{"code":1502,"message":"query is empty"},"ERROR_QUERY_SCRIPT":{"code":1503,"message":"runtime error '%s'"},"ERROR_QUERY_NUMBER_OUT_OF_RANGE":{"code":1504,"message":"number out of range"},"ERROR_QUERY_VARIABLE_NAME_INVALID":{"code":1510,"message":"variable name '%s' has an invalid format"},"ERROR_QUERY_VARIABLE_REDECLARED":{"code":1511,"message":"variable '%s' is assigned multiple times"},"ERROR_QUERY_VARIABLE_NAME_UNKNOWN":{"code":1512,"message":"unknown variable '%s'"},"ERROR_QUERY_COLLECTION_LOCK_FAILED":{"code":1521,"message":"unable to read-lock collection %s"},"ERROR_QUERY_TOO_MANY_COLLECTIONS":{"code":1522,"message":"too many collections"},"ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED":{"code":1530,"message":"document attribute '%s' is assigned multiple times"},"ERROR_QUERY_FUNCTION_NAME_UNKNOWN":{"code":1540,"message":"usage of unknown function '%s()'"},"ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH":{"code":1541,"message":"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d"},"ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH":{"code":1542,"message":"invalid argument type in call to function '%s()'"},"ERROR_QUERY_INVALID_REGEX":{"code":1543,"message":"invalid regex value"},"ERROR_QUERY_BIND_PARAMETERS_INVALID":{"code":1550,"message":"invalid structure of bind parameters"},"ERROR_QUERY_BIND_PARAMETER_MISSING":{"code":1551,"message":"no value specified for declared bind parameter '%s'"},"ERROR_QUERY_BIND_PARAMETER_UNDECLARED":{"code":1552,"message":"bind parameter '%s' was not declared in the query"},"ERROR_QUERY_BIND_PARAMETER_TYPE":{"code":1553,"message":"bind parameter '%s' has an invalid value or type"},"ERROR_QUERY_INVALID_LOGICAL_VALUE":{"code":1560,"message":"invalid logical value"},"ERROR_QUERY_INVALID_ARITHMETIC_VALUE":{"code":1561,"message":"invalid arithmetic value"},"ERROR_QUERY_DIVISION_BY_ZERO":{"code":1562,"message":"division by zero"},"ERROR_QUERY_ARRAY_EXPECTED":{"code":1563,"message":"array expected"},"ERROR_QUERY_FAIL_CALLED":{"code":1569,"message":"FAIL(%s) called"},"ERROR_QUERY_GEO_INDEX_MISSING":{"code":1570,"message":"no suitable geo index found for geo restriction on '%s'"},"ERROR_QUERY_FULLTEXT_INDEX_MISSING":{"code":1571,"message":"no suitable fulltext index found for fulltext query on '%s'"},"ERROR_QUERY_INVALID_DATE_VALUE":{"code":1572,"message":"invalid date value"},"ERROR_QUERY_MULTI_MODIFY":{"code":1573,"message":"multi-modify query"},"ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION":{"code":1574,"message":"invalid aggregate expression"},"ERROR_QUERY_COMPILE_TIME_OPTIONS":{"code":1575,"message":"query options must be readable at query compile time"},"ERROR_QUERY_EXCEPTION_OPTIONS":{"code":1576,"message":"query options expected"},"ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION":{"code":1577,"message":"collection '%s' used as expression operand"},"ERROR_QUERY_DISALLOWED_DYNAMIC_CALL":{"code":1578,"message":"disallowed dynamic call to '%s'"},"ERROR_QUERY_ACCESS_AFTER_MODIFICATION":{"code":1579,"message":"access after data-modification"},"ERROR_QUERY_FUNCTION_INVALID_NAME":{"code":1580,"message":"invalid user function name"},"ERROR_QUERY_FUNCTION_INVALID_CODE":{"code":1581,"message":"invalid user function code"},"ERROR_QUERY_FUNCTION_NOT_FOUND":{"code":1582,"message":"user function '%s()' not found"},"ERROR_QUERY_FUNCTION_RUNTIME_ERROR":{"code":1583,"message":"user function runtime error: %s"},"ERROR_QUERY_BAD_JSON_PLAN":{"code":1590,"message":"bad execution plan JSON"},"ERROR_QUERY_NOT_FOUND":{"code":1591,"message":"query ID not found"},"ERROR_QUERY_IN_USE":{"code":1592,"message":"query with this ID is in use"},"ERROR_CURSOR_NOT_FOUND":{"code":1600,"message":"cursor not found"},"ERROR_CURSOR_BUSY":{"code":1601,"message":"cursor is busy"},"ERROR_TRANSACTION_INTERNAL":{"code":1650,"message":"internal transaction error"},"ERROR_TRANSACTION_NESTED":{"code":1651,"message":"nested transactions detected"},"ERROR_TRANSACTION_UNREGISTERED_COLLECTION":{"code":1652,"message":"unregistered collection used in transaction"},"ERROR_TRANSACTION_DISALLOWED_OPERATION":{"code":1653,"message":"disallowed operation inside transaction"},"ERROR_TRANSACTION_ABORTED":{"code":1654,"message":"transaction aborted"},"ERROR_USER_INVALID_NAME":{"code":1700,"message":"invalid user name"},"ERROR_USER_INVALID_PASSWORD":{"code":1701,"message":"invalid password"},"ERROR_USER_DUPLICATE":{"code":1702,"message":"duplicate user"},"ERROR_USER_NOT_FOUND":{"code":1703,"message":"user not found"},"ERROR_USER_CHANGE_PASSWORD":{"code":1704,"message":"user must change his password"},"ERROR_APPLICATION_INVALID_NAME":{"code":1750,"message":"invalid application name"},"ERROR_APPLICATION_INVALID_MOUNT":{"code":1751,"message":"invalid mount"},"ERROR_APPLICATION_DOWNLOAD_FAILED":{"code":1752,"message":"application download failed"},"ERROR_APPLICATION_UPLOAD_FAILED":{"code":1753,"message":"application upload failed"},"ERROR_KEYVALUE_INVALID_KEY":{"code":1800,"message":"invalid key declaration"},"ERROR_KEYVALUE_KEY_EXISTS":{"code":1801,"message":"key already exists"},"ERROR_KEYVALUE_KEY_NOT_FOUND":{"code":1802,"message":"key not found"},"ERROR_KEYVALUE_KEY_NOT_UNIQUE":{"code":1803,"message":"key is not unique"},"ERROR_KEYVALUE_KEY_NOT_CHANGED":{"code":1804,"message":"key value not changed"},"ERROR_KEYVALUE_KEY_NOT_REMOVED":{"code":1805,"message":"key value not removed"},"ERROR_KEYVALUE_NO_VALUE":{"code":1806,"message":"missing value"},"ERROR_TASK_INVALID_ID":{"code":1850,"message":"invalid task id"},"ERROR_TASK_DUPLICATE_ID":{"code":1851,"message":"duplicate task id"},"ERROR_TASK_NOT_FOUND":{"code":1852,"message":"task not found"},"ERROR_GRAPH_INVALID_GRAPH":{"code":1901,"message":"invalid graph"},"ERROR_GRAPH_COULD_NOT_CREATE_GRAPH":{"code":1902,"message":"could not create graph"},"ERROR_GRAPH_INVALID_VERTEX":{"code":1903,"message":"invalid vertex"},"ERROR_GRAPH_COULD_NOT_CREATE_VERTEX":{"code":1904,"message":"could not create vertex"},"ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX":{"code":1905,"message":"could not change vertex"},"ERROR_GRAPH_INVALID_EDGE":{"code":1906,"message":"invalid edge"},"ERROR_GRAPH_COULD_NOT_CREATE_EDGE":{"code":1907,"message":"could not create edge"},"ERROR_GRAPH_COULD_NOT_CHANGE_EDGE":{"code":1908,"message":"could not change edge"},"ERROR_GRAPH_TOO_MANY_ITERATIONS":{"code":1909,"message":"too many iterations - try increasing the value of 'maxIterations'"},"ERROR_GRAPH_INVALID_FILTER_RESULT":{"code":1910,"message":"invalid filter result"},"ERROR_GRAPH_COLLECTION_MULTI_USE":{"code":1920,"message":"multi use of edge collection in edge def"},"ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS":{"code":1921,"message":"edge collection already used in edge def"},"ERROR_GRAPH_CREATE_MISSING_NAME":{"code":1922,"message":"missing graph name"},"ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION":{"code":1923,"message":"malformed edge definition"},"ERROR_GRAPH_NOT_FOUND":{"code":1924,"message":"graph not found"},"ERROR_GRAPH_DUPLICATE":{"code":1925,"message":"graph already exists"},"ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST":{"code":1926,"message":"vertex collection does not exist or is not part of the graph"},"ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX":{"code":1927,"message":"not a vertex collection"},"ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION":{"code":1928,"message":"not in orphan collection"},"ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF":{"code":1929,"message":"collection already used in edge def"},"ERROR_GRAPH_EDGE_COLLECTION_NOT_USED":{"code":1930,"message":"edge collection not used in graph"},"ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION":{"code":1931,"message":" is not an ArangoCollection"},"ERROR_GRAPH_NO_GRAPH_COLLECTION":{"code":1932,"message":"collection _graphs does not exist"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING":{"code":1933,"message":"Invalid example type. Has to be String, Array or Object"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT":{"code":1934,"message":"Invalid example type. Has to be Array or Object"},"ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS":{"code":1935,"message":"Invalid number of arguments. Expected: "},"ERROR_GRAPH_INVALID_PARAMETER":{"code":1936,"message":"Invalid parameter type."},"ERROR_GRAPH_INVALID_ID":{"code":1937,"message":"Invalid id"},"ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS":{"code":1938,"message":"collection used in orphans"},"ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST":{"code":1939,"message":"edge collection does not exist or is not part of the graph"},"ERROR_GRAPH_EMPTY":{"code":1940,"message":"empty graph"},"ERROR_SESSION_UNKNOWN":{"code":1950,"message":"unknown session"},"ERROR_SESSION_EXPIRED":{"code":1951,"message":"session expired"},"SIMPLE_CLIENT_UNKNOWN_ERROR":{"code":2000,"message":"unknown client error"},"SIMPLE_CLIENT_COULD_NOT_CONNECT":{"code":2001,"message":"could not connect to server"},"SIMPLE_CLIENT_COULD_NOT_WRITE":{"code":2002,"message":"could not write to server"},"SIMPLE_CLIENT_COULD_NOT_READ":{"code":2003,"message":"could not read from server"},"ERROR_MALFORMED_MANIFEST_FILE":{"code":3000,"message":"malformed manifest file"},"ERROR_INVALID_APPLICATION_MANIFEST":{"code":3001,"message":"manifest file is invalid"},"ERROR_INVALID_FOXX_OPTIONS":{"code":3004,"message":"invalid foxx options"},"ERROR_INVALID_MOUNTPOINT":{"code":3007,"message":"mountpoint is invalid"},"ERROR_APP_NOT_FOUND":{"code":3009,"message":"App not found"},"ERROR_APP_NEEDS_CONFIGURATION":{"code":3010,"message":"App not configured"},"ERROR_MODULE_NOT_FOUND":{"code":3100,"message":"cannot locate module"},"ERROR_MODULE_FAILURE":{"code":3103,"message":"failed to invoke module"},"RESULT_ELEMENT_EXISTS":{"code":10000,"message":"element not inserted into structure, because it already exists"},"RESULT_ELEMENT_NOT_FOUND":{"code":10001,"message":"element not found in structure"},"ERROR_QUEUE_ALREADY_EXISTS":{"code":21000,"message":"named queue already exists"},"ERROR_DISPATCHER_IS_STOPPING":{"code":21001,"message":"dispatcher stopped"},"ERROR_QUEUE_UNKNOWN":{"code":21002,"message":"named queue does not exist"},"ERROR_QUEUE_FULL":{"code":21003,"message":"named queue is full"}};})(); /*jshint -W051:true */ /*global jqconsole, Symbol */ /*eslint-disable */global.DEFINE_MODULE('console',(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
 ///
 /// @file
@@ -12052,7 +13755,8 @@ ArangoCollection.prototype.checksum = function(withRevisions,withData){var appen
 ArangoCollection.prototype.revision = function(){var requestResult=this._database._connection.GET(this._baseurl("revision"));arangosh.checkRequestResult(requestResult);return requestResult.revision;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
 ////////////////////////////////////////////////////////////////////////////////
-ArangoCollection.prototype.drop = function(){var requestResult=this._database._connection.DELETE(this._baseurl());arangosh.checkRequestResult(requestResult);this._status = ArangoCollection.STATUS_DELETED;var database=this._database;var name;for(name in database) {if(database.hasOwnProperty(name)){var collection=database[name];if(collection instanceof ArangoCollection){if(collection.name() === this.name()){delete database[name];}}}}}; ////////////////////////////////////////////////////////////////////////////////
+ArangoCollection.prototype.drop = function(){var requestResult=this._database._connection.DELETE(this._baseurl());if(requestResult !== null && requestResult.error === true && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code){ // check error in case we got anything else but "collection not found"
+arangosh.checkRequestResult(requestResult);}this._status = ArangoCollection.STATUS_DELETED;var database=this._database;var name;for(name in database) {if(database.hasOwnProperty(name)){var collection=database[name];if(collection instanceof ArangoCollection){if(collection.name() === this.name()){delete database[name];}}}}}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 ArangoCollection.prototype.truncate = function(){var requestResult=this._database._connection.PUT(this._baseurl("truncate"),"");arangosh.checkRequestResult(requestResult);this._status = null;}; ////////////////////////////////////////////////////////////////////////////////
@@ -12275,7 +13979,7 @@ if(requestResult !== null && requestResult.error === true && requestResult.error
 arangosh.checkRequestResult(requestResult);var name=requestResult.name;if(name !== undefined){this._registerCollection(name,new this._collectionConstructor(this,requestResult));return this[name];}return null;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
-ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
+ArangoDatabase.prototype._create = function(name,properties,type){var body={"name":name,"type":ArangoCollection.TYPE_DOCUMENT};if(properties !== undefined){["waitForSync","journalSize","isSystem","isVolatile","doCompact","keyOptions","shardKeys","numberOfShards","distributeShardsLike","indexBuckets","id","replicationFactor","replicationQuorum"].forEach(function(p){if(properties.hasOwnProperty(p)){body[p] = properties[p];}});}if(type !== undefined){body.type = type;}var requestResult=this._connection.POST(this._collectionurl(),JSON.stringify(body));arangosh.checkRequestResult(requestResult);var nname=requestResult.name;if(nname !== undefined){this._registerCollection(nname,new this._collectionConstructor(this,requestResult));return this[nname];}return undefined;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
 ////////////////////////////////////////////////////////////////////////////////
 ArangoDatabase.prototype._createDocumentCollection = function(name,properties){return this._create(name,properties,ArangoCollection.TYPE_DOCUMENT);}; ////////////////////////////////////////////////////////////////////////////////
@@ -12531,7 +14235,7 @@ exports.createHelpHeadline = function(text){var i;var p="";var x=Math.abs(78 - t
 /// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
 // must came after the export of createHelpHeadline
-var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}throw new ArangoError(requestResult);} // remove the property from the original object
+var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}var error=new ArangoError(requestResult);error.message = requestResult.message;throw error;} // remove the property from the original object
 delete requestResult.error;}return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief general help
 ////////////////////////////////////////////////////////////////////////////////
@@ -12693,7 +14397,7 @@ if(typeof internal.arango !== 'undefined'){try{exports.arango = internal.arango;
 }catch(err) {internal.print("cannot connect to server: " + String(err));}} ////////////////////////////////////////////////////////////////////////////////
 /// @brief the server version
 ////////////////////////////////////////////////////////////////////////////////
-exports.plainServerVersion = function(){if(internal.arango){var version=internal.arango.getVersion();var devel=version.match(/(.*)-(rc[0-9]*|devel)$/);if(devel !== null){version = devel[1];}return version;}else {return undefined;}};});module.define("@arangodb/replication",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+exports.plainServerVersion = function(){if(internal.arango){var version=internal.arango.getVersion();var devel=version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);if(devel !== null){version = devel[1];}return version;}else {return undefined;}};});module.define("@arangodb/replication",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
 ///
 /// @file
@@ -12731,7 +14435,7 @@ logger.tickRanges = function(){var db=internal.db;var requestResult=db._connecti
 logger.firstTick = function(){var db=internal.db;var requestResult=db._connection.GET("/_api/replication/logger-first-tick");arangosh.checkRequestResult(requestResult);return requestResult.firstTick;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
-applier.start = function(initialTick){var db=internal.db;var append="";if(initialTick !== undefined){append = "?from=" + encodeURIComponent(initialTick);}var requestResult=db._connection.PUT("/_api/replication/applier-start" + append,"");arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+applier.start = function(initialTick,barrierId){var db=internal.db;var append="";if(initialTick !== undefined){append = "?from=" + encodeURIComponent(initialTick);}if(barrierId !== undefined){if(append === ""){append += "?";}else {append += "&";}append += "barrierId=" + encodeURIComponent(barrierId);}var requestResult=db._connection.PUT("/_api/replication/applier-start" + append,"");arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 applier.stop = applier.shutdown = function(){var db=internal.db;var requestResult=db._connection.PUT("/_api/replication/applier-stop","");arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
@@ -12744,16 +14448,26 @@ applier.forget = function(){var db=internal.db;var requestResult=db._connection.
 /// @brief configures the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 applier.properties = function(config){var db=internal.db;var requestResult;if(config === undefined){requestResult = db._connection.GET("/_api/replication/applier-config");}else {requestResult = db._connection.PUT("/_api/replication/applier-config",JSON.stringify(config));}arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for fetching the result of an async job
+////////////////////////////////////////////////////////////////////////////////
+var waitForResult=function waitForResult(config,id){var db=internal.db;if(!config.hasOwnProperty("progress")){config.progress = true;}internal.sleep(1);var iterations=0;while(true) {var jobResult=db._connection.PUT("/_api/job/" + encodeURIComponent(id),"");arangosh.checkRequestResult(jobResult);if(jobResult.code !== 204){return jobResult;}++iterations;if(iterations < 6){internal.sleep(2);}else {internal.sleep(3);}if(config.progress && iterations % 3 === 0){try{var progress=applier.state().state.progress;var msg=progress.time + ": " + progress.message;internal.print("still sychronizing... last received status: " + msg);}catch(err) {}}}}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
-var sync=function sync(config){var db=internal.db;var body=JSON.stringify(config || {});var requestResult;if(config.async){var headers={"X-Arango-Async":"store"};requestResult = db._connection.PUT_RAW("/_api/replication/sync",body,headers);}else {requestResult = db._connection.PUT("/_api/replication/sync",body);}arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+var sync=function sync(config){var db=internal.db;var body=JSON.stringify(config || {});var headers={"X-Arango-Async":"store"};var requestResult=db._connection.PUT_RAW("/_api/replication/sync",body,headers);arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return waitForResult(config,requestResult.headers["x-arango-async-id"]);}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint, for
 /// a single collection
 ////////////////////////////////////////////////////////////////////////////////
-var syncCollection=function syncCollection(collection,config){var db=internal.db;config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;var body=JSON.stringify(config);var requestResult;if(config.async){var headers={"X-Arango-Async":"store"};requestResult = db._connection.PUT_RAW("/_api/replication/sync",body,headers);}else {requestResult = db._connection.PUT("/_api/replication/sync",body);}arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return requestResult;};var getSyncResult=function getSyncResult(id){var db=internal.db;var requestResult=db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id),"");arangosh.checkRequestResult(requestResult);if(requestResult.headers.hasOwnProperty("x-arango-async-id")){return JSON.parse(requestResult.body);}return false;}; ////////////////////////////////////////////////////////////////////////////////
+var syncCollection=function syncCollection(collection,config){config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;return sync(config);}; ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the replication (all-in-one function for initial
+/// synchronization and continuous replication)
+////////////////////////////////////////////////////////////////////////////////
+var setupReplication=function setupReplication(config){config = config || {};if(!config.hasOwnProperty('autoStart')){config.autoStart = true;}if(!config.hasOwnProperty('includeSystem')){config.includeSystem = true;}if(!config.hasOwnProperty('verbose')){config.verbose = false;}var db=internal.db;var body=JSON.stringify(config);var headers={"X-Arango-Async":"store"};var requestResult=db._connection.PUT_RAW("/_api/replication/make-slave",body,headers);arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return waitForResult(config,requestResult.headers["x-arango-async-id"]);}; ////////////////////////////////////////////////////////////////////////////////
+/// @brief queries the sync result status
+////////////////////////////////////////////////////////////////////////////////
+var getSyncResult=function getSyncResult(id){var db=internal.db;var requestResult=db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id),"");arangosh.checkRequestResult(requestResult);if(requestResult.headers.hasOwnProperty("x-arango-async-id")){return JSON.parse(requestResult.body);}return false;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a server's id
 ////////////////////////////////////////////////////////////////////////////////
-var serverId=function serverId(){var db=internal.db;var requestResult=db._connection.GET("/_api/replication/server-id");arangosh.checkRequestResult(requestResult);return requestResult.serverId;};exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.syncCollection = syncCollection;exports.getSyncResult = getSyncResult;exports.serverId = serverId;});module.define("@arangodb/simple-query",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+var serverId=function serverId(){var db=internal.db;var requestResult=db._connection.GET("/_api/replication/server-id");arangosh.checkRequestResult(requestResult);return requestResult.serverId;};exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.syncCollection = syncCollection;exports.setupReplication = setupReplication;exports.getSyncResult = getSyncResult;exports.serverId = serverId;});module.define("@arangodb/simple-query",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
 /// @file
@@ -12832,20 +14546,21 @@ SimpleQueryFulltext.prototype.execute = function(batchSize){if(this._execution =
 var index=0;var next="Type 'tutorial' again to get to the next chapter.";var lessons=[{title:"Welcome to the tutorial!",text:"This is a user-interactive tutorial on ArangoDB and the ArangoDB shell.\n" + "It will give you a first look into ArangoDB and how it works."},{title:"JavaScript Shell",text:"On this shell's prompt, you can issue arbitrary JavaScript commands.\n" + "So you are able to do things like...:\n\n" + "  number = 123;\n" + "  number = number * 10;"},{title:"Running Complex Instructions",text:"You can also run more complex instructions, such as for loops:\n\n" + "  for (i = 0; i < 10; i++) { number = number + 1; }"},{title:"Printing Results",text:"As you can see, the result of the last command executed is printed automatically. " + "To explicitly print a value at any other time, there is the print function:\n\n" + "  for (i = 0; i < 5; ++i) { print(\"I am a JavaScript shell\"); }"},{title:"Creating Collections",text:"ArangoDB is a document database. This means that we store data as documents " + "(which are similar to JavaScript objects) in so-called 'collections'. " + "Let's create a collection named 'places' now:\n\n" + "  db._create('places');\n\n" + "Note: each collection is identified by a unique name. Trying to create a " + "collection that already exists will produce an error."},{title:"Displaying Collections",text:"Now you can take a look at the collection(s) you just created:\n\n" + "  db._collections();\n\n" + "Please note that all collections will be returned, including ArangoDB's pre-defined " + "system collections."},{title:"Creating Documents",text:"Now we have a collection, but it is empty. So let's create some documents!\n\n" + "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" + "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"},{title:"Displaying All Documents",text:"You want to take a look at your docs? No problem:\n\n" + "  db.places.toArray();"},{title:"Counting Documents",text:"To see how many documents there are in a collection, use the 'count' method:\n\n" + "  db.places.count();"},{title:"Retrieving Single Documents",text:"As you can see, each document has some meta attributes '_id', '_key' and '_rev'.\n" + "The '_key' attribute can be used to quickly retrieve a single document from " + "a collection:\n\n" + "  db.places.document(\"foo\");\n" + "  db.places.document(\"example5\");"},{title:"Retrieving Single Documents",text:"The '_id' attribute can also be used to retrieve documents using the 'db' object:\n\n" + "  db._document(\"places/foo\");\n" + "  db._document(\"places/example5\");"},{title:"Modifying Documents",text:"You can modify existing documents. Try to add a new attribute to a document and " + "verify whether it has been added:\n\n" + "  db._update(\"places/foo\", { zipcode: 39535 });\n" + "  db._document(\"places/foo\");"},{title:"Document Revisions",text:"Note that after updating the document, its '_rev' attribute changed automatically.\n" + "The '_rev' attribute contains a document revision number, and it can be used for " + "conditional modifications. Here's an example of how to avoid lost updates in case " + "multiple clients are accessing the documents in parallel:\n\n" + "  doc = db._document(\"places/example1\");\n" + "  db._update(\"places/example1\", { someValue: 23 });\n" + "  db._update(doc, { someValue: 42 });\n\n" + "Note that the first update will succeed because it was unconditional. The second " + "update however is conditional because we're also passing the document's revision " + "id in the first parameter to _update. As the revision id we're passing to update " + "does not match the document's current revision anymore, the update is rejected."},{title:"Removing Documents",text:"Deleting single documents can be achieved by providing the document _id or _key:\n\n" + "  db._remove(\"places/example7\");\n" + "  db.places.remove(\"example8\");\n" + "  db.places.count();"},{title:"Searching Documents",text:"Searching for documents with specific attributes can be done by using the " + "byExample method:\n\n" + "  db._create(\"users\");\n" + "  for (i = 0; i < 10; ++i) { " + "db.users.save({ name: \"username\" + i, active: (i % 3 == 0), age: 30 + i }); }\n" + "  db.users.byExample({ active: false }).toArray();\n" + "  db.users.byExample({ name: \"username3\", active: true }).toArray();\n"},{title:"Running AQL Queries",text:"ArangoDB also provides a query language for more complex matching:\n\n" + "  db._query(\"FOR u IN users FILTER u.active == true && u.age >= 33 " + "RETURN { username: u.name, age: u.age }\").toArray();"},{title:"Using Databases",text:"By default, the ArangoShell connects to the default database. The default database " + "is named '_system'. To create another database, use the '_createDatabase' method of the " + "'db' object. To switch into an existing database, use '_useDatabase'. To get rid of a " + "database and all of its collections, use '_dropDatabase':\n\n" + "  db._createDatabase(\"mydb\");\n" + "  db._useDatabase(\"mydb\");\n" + "  db._dropDatabase(\"mydb\");"}]; ////////////////////////////////////////////////////////////////////////////////
 /// @brief print tutorial contents
 ////////////////////////////////////////////////////////////////////////////////
-exports._PRINT = function(context){var colors=require("internal").COLORS; /*jslint regexp: true */function process(text){return text.replace(/\n {2}(.+?)(?=\n)/g,"\n  " + colors.COLOR_MAGENTA + "$1" + colors.COLOR_RESET);} /*jslint regexp: false */var headline=colors.COLOR_BOLD_BLUE + (index + 1) + ". " + lessons[index].title + colors.COLOR_RESET;context.output += "\n\n" + headline + "\n\n" + process(lessons[index].text + "\n") + "\n";++index;if(index >= lessons.length){context.output += "Congratulations! You finished the tutorial.\n";index = 0;}else {context.output += next + "\n";}};});module.define("@arangodb/aql/explainer",function(exports,module){ /*jshint strict: false, maxlen: 300 */var db=require("@arangodb").db,internal=require("internal"),systemColors=internal.COLORS,print=internal.print,colors={};if(typeof internal.printBrowser === "function"){print = internal.printBrowser;}var stringBuilder={output:"",appendLine:function appendLine(line){if(!line){this.output += "\n";}else {this.output += line + "\n";}},getOutput:function getOutput(){return this.output;},clearOutput:function clearOutput(){this.output = "";}}; /* set colors for output */function setColors(useSystemColors){'use strict';["COLOR_RESET","COLOR_CYAN","COLOR_BLUE","COLOR_GREEN","COLOR_MAGENTA","COLOR_YELLOW","COLOR_RED","COLOR_WHITE","COLOR_BOLD_CYAN","COLOR_BOLD_BLUE","COLOR_BOLD_GREEN","COLOR_BOLD_MAGENTA","COLOR_BOLD_YELLOW","COLOR_BOLD_RED","COLOR_BOLD_WHITE"].forEach(function(c){colors[c] = useSystemColors?systemColors[c]:"";});} /* colorizer and output helper functions */function attributeUncolored(v){'use strict';return "`" + v + "`";}function keyword(v){'use strict';return colors.COLOR_CYAN + v + colors.COLOR_RESET;}function annotation(v){'use strict';return colors.COLOR_BLUE + v + colors.COLOR_RESET;}function value(v){'use strict';if(typeof v === 'string' && v.length > 1024){return colors.COLOR_GREEN + v.substr(0,1024) + "..." + colors.COLOR_RESET;}return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function variable(v){'use strict';if(v[0] === "#"){return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}return colors.COLOR_YELLOW + v + colors.COLOR_RESET;}function func(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function collection(v){'use strict';return colors.COLOR_RED + v + colors.COLOR_RESET;}function attribute(v){'use strict';return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";}function header(v){'use strict';return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}function section(v){'use strict';return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;}function pad(n){'use strict';if(n < 0){ // value seems invalid...
+exports._PRINT = function(context){var colors=require("internal").COLORS; /*jslint regexp: true */function process(text){return text.replace(/\n {2}(.+?)(?=\n)/g,"\n  " + colors.COLOR_MAGENTA + "$1" + colors.COLOR_RESET);} /*jslint regexp: false */var headline=colors.COLOR_BOLD_BLUE + (index + 1) + ". " + lessons[index].title + colors.COLOR_RESET;context.output += "\n\n" + headline + "\n\n" + process(lessons[index].text + "\n") + "\n";++index;if(index >= lessons.length){context.output += "Congratulations! You finished the tutorial.\n";index = 0;}else {context.output += next + "\n";}};});module.define("@arangodb/aql/explainer",function(exports,module){ /*jshint strict: false, maxlen: 300 */var db=require("@arangodb").db,internal=require("internal"),systemColors=internal.COLORS,print=internal.print,colors={};if(typeof internal.printBrowser === "function"){print = internal.printBrowser;}var stringBuilder={output:"",appendLine:function appendLine(line){if(!line){this.output += "\n";}else {this.output += line + "\n";}},getOutput:function getOutput(){return this.output;},clearOutput:function clearOutput(){this.output = "";}}; /* set colors for output */function setColors(useSystemColors){'use strict';["COLOR_RESET","COLOR_CYAN","COLOR_BLUE","COLOR_GREEN","COLOR_MAGENTA","COLOR_YELLOW","COLOR_RED","COLOR_WHITE","COLOR_BOLD_CYAN","COLOR_BOLD_BLUE","COLOR_BOLD_GREEN","COLOR_BOLD_MAGENTA","COLOR_BOLD_YELLOW","COLOR_BOLD_RED","COLOR_BOLD_WHITE"].forEach(function(c){colors[c] = useSystemColors?systemColors[c]:"";});} /* colorizer and output helper functions */function bracketize(node,v){'use strict';if(node && node.subNodes && node.subNodes.length > 1){return "(" + v + ")";}return v;}function attributeUncolored(v){'use strict';return "`" + v + "`";}function keyword(v){'use strict';return colors.COLOR_CYAN + v + colors.COLOR_RESET;}function annotation(v){'use strict';return colors.COLOR_BLUE + v + colors.COLOR_RESET;}function value(v){'use strict';if(typeof v === 'string' && v.length > 1024){return colors.COLOR_GREEN + v.substr(0,1024) + "..." + colors.COLOR_RESET;}return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function variable(v){'use strict';if(v[0] === "#"){return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}return colors.COLOR_YELLOW + v + colors.COLOR_RESET;}function func(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function collection(v){'use strict';return colors.COLOR_RED + v + colors.COLOR_RESET;}function attribute(v){'use strict';return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";}function header(v){'use strict';return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}function section(v){'use strict';return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;}function pad(n){'use strict';if(n < 0){ // value seems invalid...
 n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var re=".{1," + width + "}(\\s|$)|\\S+?(\\s|$)";return str.match(new RegExp(re,"g")).join("\n");} /* print functions */ /* print query string */function printQuery(query){'use strict'; // restrict max length of printed query to avoid endless printing for
 // very long query strings
 var maxLength=4096;if(query.length > maxLength){stringBuilder.appendLine(section("Query string (truncated):"));query = query.substr(0,maxLength / 2) + " ... " + query.substr(query.length - maxLength / 2);}else {stringBuilder.appendLine(section("Query string:"));}stringBuilder.appendLine(" " + value(wrap(query,100).replace(/\n+/g,"\n ",query)));stringBuilder.appendLine();} /* print write query modification flags */function printModificationFlags(flags){'use strict';if(flags === undefined){return;}stringBuilder.appendLine(section("Write query options:"));var keys=Object.keys(flags),maxLen="Option".length;keys.forEach(function(k){if(k.length > maxLen){maxLen = k.length;}});stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));keys.forEach(function(k){stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k])));});stringBuilder.appendLine();} /* print optimizer rules */function printRules(rules){'use strict';stringBuilder.appendLine(section("Optimization rules applied:"));if(rules.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("Id").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("RuleName"));for(var i=0;i < rules.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + keyword(rules[i]));}}stringBuilder.appendLine();} /* print warnings */function printWarnings(warnings){'use strict';if(!Array.isArray(warnings) || warnings.length === 0){return;}stringBuilder.appendLine(section("Warnings:"));var maxIdLen=String("Code").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));for(var i=0;i < warnings.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));}stringBuilder.appendLine();} /* print indexes used */function printIndexes(indexes){'use strict';stringBuilder.appendLine(section("Indexes used:"));if(indexes.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("By").length;var maxCollectionLen=String("Collection").length;var maxUniqueLen=String("Unique").length;var maxSparseLen=String("Sparse").length;var maxTypeLen=String("Type").length;var maxSelectivityLen=String("Selectivity").length;var maxFieldsLen=String("Fields").length;indexes.forEach(function(index){var l=String(index.node).length;if(l > maxIdLen){maxIdLen = l;}l = index.type.length;if(l > maxTypeLen){maxTypeLen = l;}l = index.fields.map(attributeUncolored).join(", ").length + "[  ]".length;if(l > maxFieldsLen){maxFieldsLen = l;}l = index.collection.length;if(l > maxCollectionLen){maxCollectionLen = l;}});var line=" " + pad(1 + maxIdLen - String("By").length) + header("By") + "   " + header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " + header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " + header("Selectivity") + "   " + header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " + header("Ranges");stringBuilder.appendLine(line);for(var i=0;i < indexes.length;++i) {var uniqueness=indexes[i].unique?"true":"false";var sparsity=indexes[i].hasOwnProperty("sparse")?indexes[i].sparse?"true":"false":"n/a";var fields="[ " + indexes[i].fields.map(attribute).join(", ") + " ]";var fieldsLen=indexes[i].fields.map(attributeUncolored).join(", ").length + "[  ]".length;var ranges;if(indexes[i].hasOwnProperty("condition")){ranges = indexes[i].condition;}else {ranges = "[ " + indexes[i].ranges + " ]";}var selectivity=indexes[i].hasOwnProperty("selectivityEstimate")?(indexes[i].selectivityEstimate * 100).toFixed(2) + " %":"n/a";line = " " + pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + "   " + keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " + collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " + value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " + value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + "   " + pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " + fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + ranges;stringBuilder.appendLine(line);}}} /* print traversal info */function printTraversalDetails(traversals){'use strict';if(traversals.length === 0){return;}stringBuilder.appendLine();stringBuilder.appendLine(section("Traversals on graphs:"));var maxIdLen=String("Id").length;var maxMinMaxDepth=String("Depth").length;var maxVertexCollectionNameStrLen=String("Vertex collections").length;var maxEdgeCollectionNameStrLen=String("Edge collections").length;var maxConditionsLen=String("Filter conditions").length;traversals.forEach(function(node){var l=String(node.id).length;if(l > maxIdLen){maxIdLen = l;}if(node.minMaxDepthLen > maxMinMaxDepth){maxMinMaxDepth = node.minMaxDepthLen;}if(node.hasOwnProperty('ConditionStr')){if(node.ConditionStr.length > maxConditionsLen){maxConditionsLen = node.ConditionStr.length;}}if(node.hasOwnProperty('vertexCollectionNameStr')){if(node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen){maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;}}if(node.hasOwnProperty('edgeCollectionNameStr')){if(node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen){maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;}}});var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("Depth") + pad(1 + maxMinMaxDepth - String("Depth").length) + "   " + header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " + header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " + header("Filter conditions");stringBuilder.appendLine(line);for(var i=0;i < traversals.length;++i) {line = " " + pad(1 + maxIdLen - String(traversals[i].id).length) + traversals[i].id + "   ";line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) + "   ";if(traversals[i].hasOwnProperty('vertexCollectionNameStr')){line += traversals[i].vertexCollectionNameStr + pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";}else {line += pad(1 + maxVertexCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('edgeCollectionNameStr')){line += traversals[i].edgeCollectionNameStr + pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";}else {line += pad(1 + maxEdgeCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('ConditionStr')){line += traversals[i].ConditionStr;}stringBuilder.appendLine(line);}} /* analzye and print execution plan */function processQuery(query,explain){'use strict';var nodes={},parents={},rootNode=null,maxTypeLen=0,maxSiteLen=0,maxIdLen=String("Id").length,maxEstimateLen=String("Est.").length,plan=explain.plan,cluster=require("@arangodb/cluster");var recursiveWalk=function recursiveWalk(n,level){n.forEach(function(node){nodes[node.id] = node;if(level === 0 && node.dependencies.length === 0){rootNode = node.id;}if(node.type === "SubqueryNode"){recursiveWalk(node.subquery.nodes,level + 1);}node.dependencies.forEach(function(d){if(!parents.hasOwnProperty(d)){parents[d] = [];}parents[d].push(node.id);});if(String(node.id).length > maxIdLen){maxIdLen = String(node.id).length;}if(String(node.type).length > maxTypeLen){maxTypeLen = String(node.type).length;}if(String(node.site).length > maxSiteLen){maxSiteLen = String(node.site).length;}if(String(node.estimatedNrItems).length > maxEstimateLen){maxEstimateLen = String(node.estimatedNrItems).length;}});var count=n.length,site="COOR";while(count > 0) {--count;var node=n[count];node.site = site;if(node.type === "RemoteNode"){site = site === "COOR"?"DBS":"COOR";}}};recursiveWalk(plan.nodes,0);var references={},collectionVariables={},usedVariables={},indexes=[],traversalDetails=[],modificationFlags,isConst=true,currentNode=null;var variableName=function variableName(node){try{if(/^[0-9_]/.test(node.name)){return variable("#" + node.name);}}catch(x) {print(node);throw x;}if(collectionVariables.hasOwnProperty(node.id)){usedVariables[node.name] = collectionVariables[node.id];}return variable(node.name);};var addHint=function addHint(){}; // uncomment this to show "style" hints
 // var addHint = function (dst, currentNode, msg) {
 //   dst.push({ code: "Hint", message: "Node #" + currentNode + ": " + msg });
 // };
-var buildExpression=function buildExpression(_x){var _again=true;_function: while(_again) {var node=_x;i = ref = out = collectionName = collectionObject = isEdgeCollection = isSystem = undefined;_again = false;isConst = isConst && ["value","object","object element","array"].indexOf(node.type) !== -1;if(node.type !== "attribute access" && node.hasOwnProperty("subNodes")){for(var i=0;i < node.subNodes.length;++i) {if(node.subNodes[i].type === "reference" && collectionVariables.hasOwnProperty(node.subNodes[i].id)){addHint(explain.warnings,currentNode,"reference to collection document variable '" + node.subNodes[i].name + "' used in potentially non-working way");break;}}}switch(node.type){case "reference":if(references.hasOwnProperty(node.name)){var ref=references[node.name];delete references[node.name];if(Array.isArray(ref)){var out=buildExpression(ref[1]) + "[" + new Array(ref[0] + 1).join('*');if(ref[2].type !== "no-op"){out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);}if(ref[3].type !== "no-op"){out += " " + keyword("LIMIT ") + " " + buildExpression(ref[3]);}if(ref[4].type !== "no-op"){out += " " + keyword("RETURN ") + " " + buildExpression(ref[4]);}out += "]";return out;}return buildExpression(ref) + "[*]";}return variableName(node);case "collection":addHint(explain.warnings,currentNode,"using all documents from collection '" + node.name + "' in expression");return collection(node.name) + "   " + annotation("/* all collection documents */");case "value":return value(JSON.stringify(node.value));case "object":if(node.hasOwnProperty("subNodes")){if(node.subNodes.length > 20){ // print only the first 20 values from the objects
+var buildExpression=function buildExpression(_x){var _again=true;_function: while(_again) {var node=_x;binaryOperator = i = ref = out = collectionName = collectionObject = isEdgeCollection = isSystem = undefined;_again = false;var binaryOperator=function binaryOperator(node,name){var lhs=buildExpression(node.subNodes[0]);var rhs=buildExpression(node.subNodes[1]);if(node.subNodes.length === 3){ // array operator node... prepend "all" | "any" | "none" to node type
+name = node.subNodes[2].quantifier + " " + name;}if(node.sorted){return lhs + " " + name + " " + annotation("/* sorted */") + " " + rhs;}return lhs + " " + name + " " + rhs;};isConst = isConst && ["value","object","object element","array"].indexOf(node.type) !== -1;if(node.type !== "attribute access" && node.hasOwnProperty("subNodes")){for(var i=0;i < node.subNodes.length;++i) {if(node.subNodes[i].type === "reference" && collectionVariables.hasOwnProperty(node.subNodes[i].id)){addHint(explain.warnings,currentNode,"reference to collection document variable '" + node.subNodes[i].name + "' used in potentially non-working way");break;}}}switch(node.type){case "reference":if(references.hasOwnProperty(node.name)){var ref=references[node.name];delete references[node.name];if(Array.isArray(ref)){var out=buildExpression(ref[1]) + "[" + new Array(ref[0] + 1).join('*');if(ref[2].type !== "no-op"){out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);}if(ref[3].type !== "no-op"){out += " " + keyword("LIMIT ") + " " + buildExpression(ref[3]);}if(ref[4].type !== "no-op"){out += " " + keyword("RETURN ") + " " + buildExpression(ref[4]);}out += "]";return out;}return buildExpression(ref) + "[*]";}return variableName(node);case "collection":addHint(explain.warnings,currentNode,"using all documents from collection '" + node.name + "' in expression");return collection(node.name) + "   " + annotation("/* all collection documents */");case "value":return value(JSON.stringify(node.value));case "object":if(node.hasOwnProperty("subNodes")){if(node.subNodes.length > 20){ // print only the first 20 values from the objects
 return "{ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + ", ... }";}return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";}return "{ }";case "object element":return value(JSON.stringify(node.name)) + " : " + buildExpression(node.subNodes[0]);case "calculated object element":return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);case "array":if(node.hasOwnProperty("subNodes")){if(node.subNodes.length > 20){ // print only the first 20 values from the array
 return "[ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + ", ... ]";}return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";}return "[ ]";case "unary not":return "! " + buildExpression(node.subNodes[0]);case "unary plus":return "+ " + buildExpression(node.subNodes[0]);case "unary minus":return "- " + buildExpression(node.subNodes[0]);case "array limit":return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);case "attribute access":if(node.subNodes[0].type === "reference" && collectionVariables.hasOwnProperty(node.subNodes[0].id)){ // top-level attribute access
 var collectionName=collectionVariables[node.subNodes[0].id],collectionObject=db._collection(collectionName);if(collectionObject !== null){var isEdgeCollection=collectionObject.type() === 3,isSystem=node.name[0] === '_';if(isSystem && ["_key","_id","_rev"].concat(isEdgeCollection?["_from","_to"]:[]).indexOf(node.name) === -1 || !isSystem && isEdgeCollection && ["from","to"].indexOf(node.name) !== -1){addHint(explain.warnings,currentNode,"reference to potentially non-existing attribute '" + node.name + "'");}}}return buildExpression(node.subNodes[0]) + "." + attribute(node.name);case "indexed access":return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";case "range":return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");case "expand":case "expansion":if(node.subNodes.length > 2){ // [FILTER ...]
 references[node.subNodes[0].subNodes[0].name] = [node.levels,node.subNodes[0].subNodes[1],node.subNodes[2],node.subNodes[3],node.subNodes[4]];}else { // [*]
-references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);case "minus":return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);case "times":return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);case "division":return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);case "modulus":return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);case "compare not in":if(node.sorted){return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);}return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);case "compare in":if(node.sorted){return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);}return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);case "compare ==":return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);case "compare !=":return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);case "compare >":return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);case "compare >=":return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);case "compare <":return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);case "compare <=":return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);case "logical or":return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);case "logical and":return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);case "ternary":return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);case "n-ary or":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || ");}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && ");}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildSimpleExpression=function buildSimpleExpression(simpleExpressions){var rc="";for(var indexNo in simpleExpressions) {if(simpleExpressions.hasOwnProperty(indexNo)){if(rc.length > 0){rc += " AND ";}for(var i=0;i < simpleExpressions[indexNo].length;i++) {var item=simpleExpressions[indexNo][i];rc += attribute("Path") + ".";if(item.isEdgeAccess){rc += attribute("edges");}else {rc += attribute("vertices");}rc += "[" + value(indexNo) + "] -> ";rc += buildExpression(item.varAccess);rc += " " + item.comparisonTypeStr + " ";rc += buildExpression(item.compareTo);}}}return rc;};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){var what=(idx.reverse?"reverse ":"") + idx.type + " index scan";if(types.length === 0 || what !== types[types.length - 1]){types.push(what);}idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
-}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "TraversalNode":node.minMaxDepth = node.minDepth + ".." + node.maxDepth;node.minMaxDepthLen = node.minMaxDepth.length;var rc=keyword("FOR ") + variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */");if(node.hasOwnProperty('edgeOutVariable')){rc += "  , " + variableName(node.edgeOutVariable) + "  " + annotation("/* edge */");}if(node.hasOwnProperty('pathOutVariable')){rc += "  , " + variableName(node.pathOutVariable) + "  " + annotation("/* paths */");}rc += "  " + keyword("IN") + " " + value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";var translate=["ANY","INBOUND","OUTBOUND"];rc += keyword(translate[node.direction]);if(node.hasOwnProperty("vertexId")){rc += " '" + value(node.vertexId) + "' ";}else {rc += " " + variableName(node.inVariable) + " ";}rc += annotation("/* startnode */") + "  ";if(Array.isArray(node.graph)){rc += node.graph.map(function(g){return collection(g);}).join(", ");}else {rc += keyword("GRAPH") + " '" + value(node.graph) + "'";}traversalDetails.push(node);if(node.hasOwnProperty('simpleExpressions')){node.ConditionStr = buildSimpleExpression(node.simpleExpressions);}var e=[];if(node.hasOwnProperty('graphDefinition')){var v=[];node.graphDefinition.vertexCollectionNames.forEach(function(vcn){v.push(collection(vcn));});node.vertexCollectionNameStr = v.join(", ");node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;node.graphDefinition.edgeCollectionNames.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;}else {var edgeCols=node.graph;edgeCols.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = edgeCols.join(", ").length;node.graph = "<anonymous>";}return rc;case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode": /* old-style COLLECT node */return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "CollectNode":return keyword("COLLECT") + " " + node.groups.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.collectOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};currentNode = node.id;isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){var isLeafNode=!parents.hasOwnProperty(node.id);if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(isLeafNode && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";}line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";}line += pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);printTraversalDetails(traversalDetails);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("@arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return "(" + binaryOperator(node,"+") + ")";case "minus":return "(" + binaryOperator(node,"-") + ")";case "times":return "(" + binaryOperator(node,"*") + ")";case "division":return "(" + binaryOperator(node,"/") + ")";case "modulus":return "(" + binaryOperator(node,"%") + ")";case "compare not in":case "array compare not in":return "(" + binaryOperator(node,"not in") + ")";case "compare in":case "array compare in":return "(" + binaryOperator(node,"in") + ")";case "compare ==":case "array compare ==":return "(" + binaryOperator(node,"==") + ")";case "compare !=":case "array compare !=":return "(" + binaryOperator(node,"!=") + ")";case "compare >":case "array compare >":return "(" + binaryOperator(node,">") + ")";case "compare >=":case "array compare >=":return "(" + binaryOperator(node,">=") + ")";case "compare <":case "array compare <":return "(" + binaryOperator(node,"<") + ")";case "compare <=":case "array compare <=":return "(" + binaryOperator(node,"<=") + ")";case "logical or":return "(" + binaryOperator(node,"||") + ")";case "logical and":return "(" + binaryOperator(node,"&&") + ")";case "ternary":return "(" + buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]) + ")";case "n-ary or":if(node.hasOwnProperty("subNodes")){return bracketize(node,node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || "));}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return bracketize(node,node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && "));}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildSimpleExpression=function buildSimpleExpression(simpleExpressions){var rc="";for(var indexNo in simpleExpressions) {if(simpleExpressions.hasOwnProperty(indexNo)){if(rc.length > 0){rc += " AND ";}for(var i=0;i < simpleExpressions[indexNo].length;i++) {var item=simpleExpressions[indexNo][i];rc += attribute("Path") + ".";if(item.isEdgeAccess){rc += attribute("edges");}else {rc += attribute("vertices");}rc += "[" + value(indexNo) + "] -> ";rc += buildExpression(item.varAccess);rc += " " + item.comparisonTypeStr + " ";rc += buildExpression(item.compareTo);}}}return rc;};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){var what=(node.reverse?"reverse ":"") + idx.type + " index scan";if(types.length === 0 || what !== types[types.length - 1]){types.push(what);}idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
+}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "TraversalNode":node.minMaxDepth = node.minDepth + ".." + node.maxDepth;node.minMaxDepthLen = node.minMaxDepth.length;var rc=keyword("FOR ") + variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */");if(node.hasOwnProperty('edgeOutVariable')){rc += "  , " + variableName(node.edgeOutVariable) + "  " + annotation("/* edge */");}if(node.hasOwnProperty('pathOutVariable')){rc += "  , " + variableName(node.pathOutVariable) + "  " + annotation("/* paths */");}rc += "  " + keyword("IN") + " " + value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";var translate=["ANY","INBOUND","OUTBOUND"];var defaultDirection=node.directions[0];rc += keyword(translate[defaultDirection]);if(node.hasOwnProperty("vertexId")){rc += " '" + value(node.vertexId) + "' ";}else {rc += " " + variableName(node.inVariable) + " ";}rc += annotation("/* startnode */") + "  ";if(Array.isArray(node.graph)){rc += node.graph.map(function(g,index){var tmp="";if(node.directions[index] !== defaultDirection){tmp += keyword(translate[node.directions[index]]);tmp += " ";}return tmp + collection(g);}).join(", ");}else {rc += keyword("GRAPH") + " '" + value(node.graph) + "'";}traversalDetails.push(node);if(node.hasOwnProperty('simpleExpressions')){node.ConditionStr = buildSimpleExpression(node.simpleExpressions);}var e=[];if(node.hasOwnProperty('graphDefinition')){var v=[];node.graphDefinition.vertexCollectionNames.forEach(function(vcn){v.push(collection(vcn));});node.vertexCollectionNameStr = v.join(", ");node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;node.graphDefinition.edgeCollectionNames.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;}else {var edgeCols=node.graph || [];edgeCols.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = edgeCols.join(", ").length;node.graph = "<anonymous>";}return rc;case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode": /* old-style COLLECT node */return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + " */");case "CollectNode":var collect=keyword("COLLECT") + " " + node.groups.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ");if(node.hasOwnProperty("aggregates") && node.aggregates.length > 0){if(node.groups.length > 0){collect += " ";}collect += keyword("AGGREGATE") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + func(node.type) + "(" + variableName(node.inVariable) + ")";}).join(", ");}collect += (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.collectOptions.method + "*/");return collect;case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};currentNode = node.id;isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){var isLeafNode=!parents.hasOwnProperty(node.id);if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(isLeafNode && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";}line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";}line += pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);printTraversalDetails(traversalDetails);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("@arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
 /// @file
@@ -14332,7 +16047,307 @@ this._index = index.id;}}}}if(this._index === null){var err=new ArangoError();er
 SimpleQueryFulltext.prototype.clone = function(){var query;query = new SimpleQueryFulltext(this._collection,this._attribute,this._query,this._index);query._skip = this._skip;query._limit = this._limit;return query;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
-SimpleQueryFulltext.prototype._PRINT = function(context){var text;text = "SimpleQueryFulltext(" + this._collection.name() + ", " + this._attribute + ", \"" + this._query + "\")";if(this._skip !== null && this._skip !== 0){text += ".skip(" + this._skip + ")";}if(this._limit !== null){text += ".limit(" + this._limit + ")";}context.output += text;};exports.GeneralArrayCursor = GeneralArrayCursor;exports.SimpleQueryAll = SimpleQueryAll;exports.SimpleQueryArray = SimpleQueryArray;exports.SimpleQueryByExample = SimpleQueryByExample;exports.SimpleQueryByCondition = SimpleQueryByCondition;exports.SimpleQueryRange = SimpleQueryRange;exports.SimpleQueryGeo = SimpleQueryGeo;exports.SimpleQueryNear = SimpleQueryNear;exports.SimpleQueryWithin = SimpleQueryWithin;exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;exports.SimpleQueryFulltext = SimpleQueryFulltext;}); /*jshint -W051:true */ /*global global:true, window, require */'use strict'; ////////////////////////////////////////////////////////////////////////////////
+SimpleQueryFulltext.prototype._PRINT = function(context){var text;text = "SimpleQueryFulltext(" + this._collection.name() + ", " + this._attribute + ", \"" + this._query + "\")";if(this._skip !== null && this._skip !== 0){text += ".skip(" + this._skip + ")";}if(this._limit !== null){text += ".limit(" + this._limit + ")";}context.output += text;};exports.GeneralArrayCursor = GeneralArrayCursor;exports.SimpleQueryAll = SimpleQueryAll;exports.SimpleQueryArray = SimpleQueryArray;exports.SimpleQueryByExample = SimpleQueryByExample;exports.SimpleQueryByCondition = SimpleQueryByCondition;exports.SimpleQueryRange = SimpleQueryRange;exports.SimpleQueryGeo = SimpleQueryGeo;exports.SimpleQueryNear = SimpleQueryNear;exports.SimpleQueryWithin = SimpleQueryWithin;exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;exports.SimpleQueryFulltext = SimpleQueryFulltext;});module.define("underscore",function(exports,module){ //     Underscore.js 1.8.3
+//     http://underscorejs.org
+//     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+//     Underscore may be freely distributed under the MIT license.
+(function(){ // Baseline setup
+// --------------
+// Establish the root object, `window` in the browser, or `exports` on the server.
+var root=this; // Save the previous value of the `_` variable.
+var previousUnderscore=root._; // Save bytes in the minified (but not gzipped) version:
+var ArrayProto=Array.prototype,ObjProto=Object.prototype,FuncProto=Function.prototype; // Create quick reference variables for speed access to core prototypes.
+var push=ArrayProto.push,slice=ArrayProto.slice,toString=ObjProto.toString,hasOwnProperty=ObjProto.hasOwnProperty; // All **ECMAScript 5** native function implementations that we hope to use
+// are declared here.
+var nativeIsArray=Array.isArray,nativeKeys=Object.keys,nativeBind=FuncProto.bind,nativeCreate=Object.create; // Naked function reference for surrogate-prototype-swapping.
+var Ctor=function Ctor(){}; // Create a safe reference to the Underscore object for use below.
+var _=function _(obj){if(obj instanceof _)return obj;if(!(this instanceof _))return new _(obj);this._wrapped = obj;}; // Export the Underscore object for **Node.js**, with
+// backwards-compatibility for the old `require()` API. If we're in
+// the browser, add `_` as a global object.
+if(typeof exports !== 'undefined'){if(typeof module !== 'undefined' && module.exports){exports = module.exports = _;}exports._ = _;}else {root._ = _;} // Current version.
+_.VERSION = '1.8.3'; // Internal function that returns an efficient (for current engines) version
+// of the passed-in callback, to be repeatedly applied in other Underscore
+// functions.
+var optimizeCb=function optimizeCb(func,context,argCount){if(context === void 0)return func;switch(argCount == null?3:argCount){case 1:return function(value){return func.call(context,value);};case 2:return function(value,other){return func.call(context,value,other);};case 3:return function(value,index,collection){return func.call(context,value,index,collection);};case 4:return function(accumulator,value,index,collection){return func.call(context,accumulator,value,index,collection);};}return function(){return func.apply(context,arguments);};}; // A mostly-internal function to generate callbacks that can be applied
+// to each element in a collection, returning the desired result — either
+// identity, an arbitrary callback, a property matcher, or a property accessor.
+var cb=function cb(value,context,argCount){if(value == null)return _.identity;if(_.isFunction(value))return optimizeCb(value,context,argCount);if(_.isObject(value))return _.matcher(value);return _.property(value);};_.iteratee = function(value,context){return cb(value,context,Infinity);}; // An internal function for creating assigner functions.
+var createAssigner=function createAssigner(keysFunc,undefinedOnly){return function(obj){var length=arguments.length;if(length < 2 || obj == null)return obj;for(var index=1;index < length;index++) {var source=arguments[index],keys=keysFunc(source),l=keys.length;for(var i=0;i < l;i++) {var key=keys[i];if(!undefinedOnly || obj[key] === void 0)obj[key] = source[key];}}return obj;};}; // An internal function for creating a new object that inherits from another.
+var baseCreate=function baseCreate(prototype){if(!_.isObject(prototype))return {};if(nativeCreate)return nativeCreate(prototype);Ctor.prototype = prototype;var result=new Ctor();Ctor.prototype = null;return result;};var property=function property(key){return function(obj){return obj == null?void 0:obj[key];};}; // Helper for collection methods to determine whether a collection
+// should be iterated as an array or as an object
+// Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+// Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
+var MAX_ARRAY_INDEX=Math.pow(2,53) - 1;var getLength=property('length');var isArrayLike=function isArrayLike(collection){var length=getLength(collection);return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;}; // Collection Functions
+// --------------------
+// The cornerstone, an `each` implementation, aka `forEach`.
+// Handles raw objects in addition to array-likes. Treats all
+// sparse array-likes as if they were dense.
+_.each = _.forEach = function(obj,iteratee,context){iteratee = optimizeCb(iteratee,context);var i,length;if(isArrayLike(obj)){for(i = 0,length = obj.length;i < length;i++) {iteratee(obj[i],i,obj);}}else {var keys=_.keys(obj);for(i = 0,length = keys.length;i < length;i++) {iteratee(obj[keys[i]],keys[i],obj);}}return obj;}; // Return the results of applying the iteratee to each element.
+_.map = _.collect = function(obj,iteratee,context){iteratee = cb(iteratee,context);var keys=!isArrayLike(obj) && _.keys(obj),length=(keys || obj).length,results=Array(length);for(var index=0;index < length;index++) {var currentKey=keys?keys[index]:index;results[index] = iteratee(obj[currentKey],currentKey,obj);}return results;}; // Create a reducing function iterating left or right.
+function createReduce(dir){ // Optimized iterator function as using arguments.length
+// in the main function will deoptimize the, see #1991.
+function iterator(obj,iteratee,memo,keys,index,length){for(;index >= 0 && index < length;index += dir) {var currentKey=keys?keys[index]:index;memo = iteratee(memo,obj[currentKey],currentKey,obj);}return memo;}return function(obj,iteratee,memo,context){iteratee = optimizeCb(iteratee,context,4);var keys=!isArrayLike(obj) && _.keys(obj),length=(keys || obj).length,index=dir > 0?0:length - 1; // Determine the initial value if none is provided.
+if(arguments.length < 3){memo = obj[keys?keys[index]:index];index += dir;}return iterator(obj,iteratee,memo,keys,index,length);};} // **Reduce** builds up a single result from a list of values, aka `inject`,
+// or `foldl`.
+_.reduce = _.foldl = _.inject = createReduce(1); // The right-associative version of reduce, also known as `foldr`.
+_.reduceRight = _.foldr = createReduce(-1); // Return the first value which passes a truth test. Aliased as `detect`.
+_.find = _.detect = function(obj,predicate,context){var key;if(isArrayLike(obj)){key = _.findIndex(obj,predicate,context);}else {key = _.findKey(obj,predicate,context);}if(key !== void 0 && key !== -1)return obj[key];}; // Return all the elements that pass a truth test.
+// Aliased as `select`.
+_.filter = _.select = function(obj,predicate,context){var results=[];predicate = cb(predicate,context);_.each(obj,function(value,index,list){if(predicate(value,index,list))results.push(value);});return results;}; // Return all the elements for which a truth test fails.
+_.reject = function(obj,predicate,context){return _.filter(obj,_.negate(cb(predicate)),context);}; // Determine whether all of the elements match a truth test.
+// Aliased as `all`.
+_.every = _.all = function(obj,predicate,context){predicate = cb(predicate,context);var keys=!isArrayLike(obj) && _.keys(obj),length=(keys || obj).length;for(var index=0;index < length;index++) {var currentKey=keys?keys[index]:index;if(!predicate(obj[currentKey],currentKey,obj))return false;}return true;}; // Determine if at least one element in the object matches a truth test.
+// Aliased as `any`.
+_.some = _.any = function(obj,predicate,context){predicate = cb(predicate,context);var keys=!isArrayLike(obj) && _.keys(obj),length=(keys || obj).length;for(var index=0;index < length;index++) {var currentKey=keys?keys[index]:index;if(predicate(obj[currentKey],currentKey,obj))return true;}return false;}; // Determine if the array or object contains a given item (using `===`).
+// Aliased as `includes` and `include`.
+_.contains = _.includes = _.include = function(obj,item,fromIndex,guard){if(!isArrayLike(obj))obj = _.values(obj);if(typeof fromIndex != 'number' || guard)fromIndex = 0;return _.indexOf(obj,item,fromIndex) >= 0;}; // Invoke a method (with arguments) on every item in a collection.
+_.invoke = function(obj,method){var args=slice.call(arguments,2);var isFunc=_.isFunction(method);return _.map(obj,function(value){var func=isFunc?method:value[method];return func == null?func:func.apply(value,args);});}; // Convenience version of a common use case of `map`: fetching a property.
+_.pluck = function(obj,key){return _.map(obj,_.property(key));}; // Convenience version of a common use case of `filter`: selecting only objects
+// containing specific `key:value` pairs.
+_.where = function(obj,attrs){return _.filter(obj,_.matcher(attrs));}; // Convenience version of a common use case of `find`: getting the first object
+// containing specific `key:value` pairs.
+_.findWhere = function(obj,attrs){return _.find(obj,_.matcher(attrs));}; // Return the maximum element (or element-based computation).
+_.max = function(obj,iteratee,context){var result=-Infinity,lastComputed=-Infinity,value,computed;if(iteratee == null && obj != null){obj = isArrayLike(obj)?obj:_.values(obj);for(var i=0,length=obj.length;i < length;i++) {value = obj[i];if(value > result){result = value;}}}else {iteratee = cb(iteratee,context);_.each(obj,function(value,index,list){computed = iteratee(value,index,list);if(computed > lastComputed || computed === -Infinity && result === -Infinity){result = value;lastComputed = computed;}});}return result;}; // Return the minimum element (or element-based computation).
+_.min = function(obj,iteratee,context){var result=Infinity,lastComputed=Infinity,value,computed;if(iteratee == null && obj != null){obj = isArrayLike(obj)?obj:_.values(obj);for(var i=0,length=obj.length;i < length;i++) {value = obj[i];if(value < result){result = value;}}}else {iteratee = cb(iteratee,context);_.each(obj,function(value,index,list){computed = iteratee(value,index,list);if(computed < lastComputed || computed === Infinity && result === Infinity){result = value;lastComputed = computed;}});}return result;}; // Shuffle a collection, using the modern version of the
+// [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
+_.shuffle = function(obj){var set=isArrayLike(obj)?obj:_.values(obj);var length=set.length;var shuffled=Array(length);for(var index=0,rand;index < length;index++) {rand = _.random(0,index);if(rand !== index)shuffled[index] = shuffled[rand];shuffled[rand] = set[index];}return shuffled;}; // Sample **n** random values from a collection.
+// If **n** is not specified, returns a single random element.
+// The internal `guard` argument allows it to work with `map`.
+_.sample = function(obj,n,guard){if(n == null || guard){if(!isArrayLike(obj))obj = _.values(obj);return obj[_.random(obj.length - 1)];}return _.shuffle(obj).slice(0,Math.max(0,n));}; // Sort the object's values by a criterion produced by an iteratee.
+_.sortBy = function(obj,iteratee,context){iteratee = cb(iteratee,context);return _.pluck(_.map(obj,function(value,index,list){return {value:value,index:index,criteria:iteratee(value,index,list)};}).sort(function(left,right){var a=left.criteria;var b=right.criteria;if(a !== b){if(a > b || a === void 0)return 1;if(a < b || b === void 0)return -1;}return left.index - right.index;}),'value');}; // An internal function used for aggregate "group by" operations.
+var group=function group(behavior){return function(obj,iteratee,context){var result={};iteratee = cb(iteratee,context);_.each(obj,function(value,index){var key=iteratee(value,index,obj);behavior(result,value,key);});return result;};}; // Groups the object's values by a criterion. Pass either a string attribute
+// to group by, or a function that returns the criterion.
+_.groupBy = group(function(result,value,key){if(_.has(result,key))result[key].push(value);else result[key] = [value];}); // Indexes the object's values by a criterion, similar to `groupBy`, but for
+// when you know that your index values will be unique.
+_.indexBy = group(function(result,value,key){result[key] = value;}); // Counts instances of an object that group by a certain criterion. Pass
+// either a string attribute to count by, or a function that returns the
+// criterion.
+_.countBy = group(function(result,value,key){if(_.has(result,key))result[key]++;else result[key] = 1;}); // Safely create a real, live array from anything iterable.
+_.toArray = function(obj){if(!obj)return [];if(_.isArray(obj))return slice.call(obj);if(isArrayLike(obj))return _.map(obj,_.identity);return _.values(obj);}; // Return the number of elements in an object.
+_.size = function(obj){if(obj == null)return 0;return isArrayLike(obj)?obj.length:_.keys(obj).length;}; // Split a collection into two arrays: one whose elements all satisfy the given
+// predicate, and one whose elements all do not satisfy the predicate.
+_.partition = function(obj,predicate,context){predicate = cb(predicate,context);var pass=[],fail=[];_.each(obj,function(value,key,obj){(predicate(value,key,obj)?pass:fail).push(value);});return [pass,fail];}; // Array Functions
+// ---------------
+// Get the first element of an array. Passing **n** will return the first N
+// values in the array. Aliased as `head` and `take`. The **guard** check
+// allows it to work with `_.map`.
+_.first = _.head = _.take = function(array,n,guard){if(array == null)return void 0;if(n == null || guard)return array[0];return _.initial(array,array.length - n);}; // Returns everything but the last entry of the array. Especially useful on
+// the arguments object. Passing **n** will return all the values in
+// the array, excluding the last N.
+_.initial = function(array,n,guard){return slice.call(array,0,Math.max(0,array.length - (n == null || guard?1:n)));}; // Get the last element of an array. Passing **n** will return the last N
+// values in the array.
+_.last = function(array,n,guard){if(array == null)return void 0;if(n == null || guard)return array[array.length - 1];return _.rest(array,Math.max(0,array.length - n));}; // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
+// Especially useful on the arguments object. Passing an **n** will return
+// the rest N values in the array.
+_.rest = _.tail = _.drop = function(array,n,guard){return slice.call(array,n == null || guard?1:n);}; // Trim out all falsy values from an array.
+_.compact = function(array){return _.filter(array,_.identity);}; // Internal implementation of a recursive `flatten` function.
+var flatten=function flatten(input,shallow,strict,startIndex){var output=[],idx=0;for(var i=startIndex || 0,length=getLength(input);i < length;i++) {var value=input[i];if(isArrayLike(value) && (_.isArray(value) || _.isArguments(value))){ //flatten current level of array or arguments object
+if(!shallow)value = flatten(value,shallow,strict);var j=0,len=value.length;output.length += len;while(j < len) {output[idx++] = value[j++];}}else if(!strict){output[idx++] = value;}}return output;}; // Flatten out an array, either recursively (by default), or just one level.
+_.flatten = function(array,shallow){return flatten(array,shallow,false);}; // Return a version of the array that does not contain the specified value(s).
+_.without = function(array){return _.difference(array,slice.call(arguments,1));}; // Produce a duplicate-free version of the array. If the array has already
+// been sorted, you have the option of using a faster algorithm.
+// Aliased as `unique`.
+_.uniq = _.unique = function(array,isSorted,iteratee,context){if(!_.isBoolean(isSorted)){context = iteratee;iteratee = isSorted;isSorted = false;}if(iteratee != null)iteratee = cb(iteratee,context);var result=[];var seen=[];for(var i=0,length=getLength(array);i < length;i++) {var value=array[i],computed=iteratee?iteratee(value,i,array):value;if(isSorted){if(!i || seen !== computed)result.push(value);seen = computed;}else if(iteratee){if(!_.contains(seen,computed)){seen.push(computed);result.push(value);}}else if(!_.contains(result,value)){result.push(value);}}return result;}; // Produce an array that contains the union: each distinct element from all of
+// the passed-in arrays.
+_.union = function(){return _.uniq(flatten(arguments,true,true));}; // Produce an array that contains every item shared between all the
+// passed-in arrays.
+_.intersection = function(array){var result=[];var argsLength=arguments.length;for(var i=0,length=getLength(array);i < length;i++) {var item=array[i];if(_.contains(result,item))continue;for(var j=1;j < argsLength;j++) {if(!_.contains(arguments[j],item))break;}if(j === argsLength)result.push(item);}return result;}; // Take the difference between one array and a number of other arrays.
+// Only the elements present in just the first array will remain.
+_.difference = function(array){var rest=flatten(arguments,true,true,1);return _.filter(array,function(value){return !_.contains(rest,value);});}; // Zip together multiple lists into a single array -- elements that share
+// an index go together.
+_.zip = function(){return _.unzip(arguments);}; // Complement of _.zip. Unzip accepts an array of arrays and groups
+// each array's elements on shared indices
+_.unzip = function(array){var length=array && _.max(array,getLength).length || 0;var result=Array(length);for(var index=0;index < length;index++) {result[index] = _.pluck(array,index);}return result;}; // Converts lists into objects. Pass either a single array of `[key, value]`
+// pairs, or two parallel arrays of the same length -- one of keys, and one of
+// the corresponding values.
+_.object = function(list,values){var result={};for(var i=0,length=getLength(list);i < length;i++) {if(values){result[list[i]] = values[i];}else {result[list[i][0]] = list[i][1];}}return result;}; // Generator function to create the findIndex and findLastIndex functions
+function createPredicateIndexFinder(dir){return function(array,predicate,context){predicate = cb(predicate,context);var length=getLength(array);var index=dir > 0?0:length - 1;for(;index >= 0 && index < length;index += dir) {if(predicate(array[index],index,array))return index;}return -1;};} // Returns the first index on an array-like that passes a predicate test
+_.findIndex = createPredicateIndexFinder(1);_.findLastIndex = createPredicateIndexFinder(-1); // Use a comparator function to figure out the smallest index at which
+// an object should be inserted so as to maintain order. Uses binary search.
+_.sortedIndex = function(array,obj,iteratee,context){iteratee = cb(iteratee,context,1);var value=iteratee(obj);var low=0,high=getLength(array);while(low < high) {var mid=Math.floor((low + high) / 2);if(iteratee(array[mid]) < value)low = mid + 1;else high = mid;}return low;}; // Generator function to create the indexOf and lastIndexOf functions
+function createIndexFinder(dir,predicateFind,sortedIndex){return function(array,item,idx){var i=0,length=getLength(array);if(typeof idx == 'number'){if(dir > 0){i = idx >= 0?idx:Math.max(idx + length,i);}else {length = idx >= 0?Math.min(idx + 1,length):idx + length + 1;}}else if(sortedIndex && idx && length){idx = sortedIndex(array,item);return array[idx] === item?idx:-1;}if(item !== item){idx = predicateFind(slice.call(array,i,length),_.isNaN);return idx >= 0?idx + i:-1;}for(idx = dir > 0?i:length - 1;idx >= 0 && idx < length;idx += dir) {if(array[idx] === item)return idx;}return -1;};} // Return the position of the first occurrence of an item in an array,
+// or -1 if the item is not included in the array.
+// If the array is large and already in sort order, pass `true`
+// for **isSorted** to use binary search.
+_.indexOf = createIndexFinder(1,_.findIndex,_.sortedIndex);_.lastIndexOf = createIndexFinder(-1,_.findLastIndex); // Generate an integer Array containing an arithmetic progression. A port of
+// the native Python `range()` function. See
+// [the Python documentation](http://docs.python.org/library/functions.html#range).
+_.range = function(start,stop,step){if(stop == null){stop = start || 0;start = 0;}step = step || 1;var length=Math.max(Math.ceil((stop - start) / step),0);var range=Array(length);for(var idx=0;idx < length;idx++,start += step) {range[idx] = start;}return range;}; // Function (ahem) Functions
+// ------------------
+// Determines whether to execute a function as a constructor
+// or a normal function with the provided arguments
+var executeBound=function executeBound(sourceFunc,boundFunc,context,callingContext,args){if(!(callingContext instanceof boundFunc))return sourceFunc.apply(context,args);var self=baseCreate(sourceFunc.prototype);var result=sourceFunc.apply(self,args);if(_.isObject(result))return result;return self;}; // Create a function bound to a given object (assigning `this`, and arguments,
+// optionally). Delegates to **ECMAScript 5**'s native `Function.bind` if
+// available.
+_.bind = function(func,context){if(nativeBind && func.bind === nativeBind)return nativeBind.apply(func,slice.call(arguments,1));if(!_.isFunction(func))throw new TypeError('Bind must be called on a function');var args=slice.call(arguments,2);var bound=function bound(){return executeBound(func,bound,context,this,args.concat(slice.call(arguments)));};return bound;}; // Partially apply a function by creating a version that has had some of its
+// arguments pre-filled, without changing its dynamic `this` context. _ acts
+// as a placeholder, allowing any combination of arguments to be pre-filled.
+_.partial = function(func){var boundArgs=slice.call(arguments,1);var bound=function bound(){var position=0,length=boundArgs.length;var args=Array(length);for(var i=0;i < length;i++) {args[i] = boundArgs[i] === _?arguments[position++]:boundArgs[i];}while(position < arguments.length) args.push(arguments[position++]);return executeBound(func,bound,this,this,args);};return bound;}; // Bind a number of an object's methods to that object. Remaining arguments
+// are the method names to be bound. Useful for ensuring that all callbacks
+// defined on an object belong to it.
+_.bindAll = function(obj){var i,length=arguments.length,key;if(length <= 1)throw new Error('bindAll must be passed function names');for(i = 1;i < length;i++) {key = arguments[i];obj[key] = _.bind(obj[key],obj);}return obj;}; // Memoize an expensive function by storing its results.
+_.memoize = function(func,hasher){var memoize=function memoize(key){var cache=memoize.cache;var address='' + (hasher?hasher.apply(this,arguments):key);if(!_.has(cache,address))cache[address] = func.apply(this,arguments);return cache[address];};memoize.cache = {};return memoize;}; // Delays a function for the given number of milliseconds, and then calls
+// it with the arguments supplied.
+_.delay = function(func,wait){var args=slice.call(arguments,2);return setTimeout(function(){return func.apply(null,args);},wait);}; // Defers a function, scheduling it to run after the current call stack has
+// cleared.
+_.defer = _.partial(_.delay,_,1); // Returns a function, that, when invoked, will only be triggered at most once
+// during a given window of time. Normally, the throttled function will run
+// as much as it can, without ever going more than once per `wait` duration;
+// but if you'd like to disable the execution on the leading edge, pass
+// `{leading: false}`. To disable execution on the trailing edge, ditto.
+_.throttle = function(func,wait,options){var context,args,result;var timeout=null;var previous=0;if(!options)options = {};var later=function later(){previous = options.leading === false?0:_.now();timeout = null;result = func.apply(context,args);if(!timeout)context = args = null;};return function(){var now=_.now();if(!previous && options.leading === false)previous = now;var remaining=wait - (now - previous);context = this;args = arguments;if(remaining <= 0 || remaining > wait){if(timeout){clearTimeout(timeout);timeout = null;}previous = now;result = func.apply(context,args);if(!timeout)context = args = null;}else if(!timeout && options.trailing !== false){timeout = setTimeout(later,remaining);}return result;};}; // Returns a function, that, as long as it continues to be invoked, will not
+// be triggered. The function will be called after it stops being called for
+// N milliseconds. If `immediate` is passed, trigger the function on the
+// leading edge, instead of the trailing.
+_.debounce = function(func,wait,immediate){var timeout,args,context,timestamp,result;var later=function later(){var last=_.now() - timestamp;if(last < wait && last >= 0){timeout = setTimeout(later,wait - last);}else {timeout = null;if(!immediate){result = func.apply(context,args);if(!timeout)context = args = null;}}};return function(){context = this;args = arguments;timestamp = _.now();var callNow=immediate && !timeout;if(!timeout)timeout = setTimeout(later,wait);if(callNow){result = func.apply(context,args);context = args = null;}return result;};}; // Returns the first function passed as an argument to the second,
+// allowing you to adjust arguments, run code before and after, and
+// conditionally execute the original function.
+_.wrap = function(func,wrapper){return _.partial(wrapper,func);}; // Returns a negated version of the passed-in predicate.
+_.negate = function(predicate){return function(){return !predicate.apply(this,arguments);};}; // Returns a function that is the composition of a list of functions, each
+// consuming the return value of the function that follows.
+_.compose = function(){var args=arguments;var start=args.length - 1;return function(){var i=start;var result=args[start].apply(this,arguments);while(i--) result = args[i].call(this,result);return result;};}; // Returns a function that will only be executed on and after the Nth call.
+_.after = function(times,func){return function(){if(--times < 1){return func.apply(this,arguments);}};}; // Returns a function that will only be executed up to (but not including) the Nth call.
+_.before = function(times,func){var memo;return function(){if(--times > 0){memo = func.apply(this,arguments);}if(times <= 1)func = null;return memo;};}; // Returns a function that will be executed at most one time, no matter how
+// often you call it. Useful for lazy initialization.
+_.once = _.partial(_.before,2); // Object Functions
+// ----------------
+// Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
+var hasEnumBug=!({toString:null}).propertyIsEnumerable('toString');var nonEnumerableProps=['valueOf','isPrototypeOf','toString','propertyIsEnumerable','hasOwnProperty','toLocaleString'];function collectNonEnumProps(obj,keys){var nonEnumIdx=nonEnumerableProps.length;var constructor=obj.constructor;var proto=_.isFunction(constructor) && constructor.prototype || ObjProto; // Constructor is a special case.
+var prop='constructor';if(_.has(obj,prop) && !_.contains(keys,prop))keys.push(prop);while(nonEnumIdx--) {prop = nonEnumerableProps[nonEnumIdx];if(prop in obj && obj[prop] !== proto[prop] && !_.contains(keys,prop)){keys.push(prop);}}} // Retrieve the names of an object's own properties.
+// Delegates to **ECMAScript 5**'s native `Object.keys`
+_.keys = function(obj){if(!_.isObject(obj))return [];if(nativeKeys)return nativeKeys(obj);var keys=[];for(var key in obj) if(_.has(obj,key))keys.push(key); // Ahem, IE < 9.
+if(hasEnumBug)collectNonEnumProps(obj,keys);return keys;}; // Retrieve all the property names of an object.
+_.allKeys = function(obj){if(!_.isObject(obj))return [];var keys=[];for(var key in obj) keys.push(key); // Ahem, IE < 9.
+if(hasEnumBug)collectNonEnumProps(obj,keys);return keys;}; // Retrieve the values of an object's properties.
+_.values = function(obj){var keys=_.keys(obj);var length=keys.length;var values=Array(length);for(var i=0;i < length;i++) {values[i] = obj[keys[i]];}return values;}; // Returns the results of applying the iteratee to each element of the object
+// In contrast to _.map it returns an object
+_.mapObject = function(obj,iteratee,context){iteratee = cb(iteratee,context);var keys=_.keys(obj),length=keys.length,results={},currentKey;for(var index=0;index < length;index++) {currentKey = keys[index];results[currentKey] = iteratee(obj[currentKey],currentKey,obj);}return results;}; // Convert an object into a list of `[key, value]` pairs.
+_.pairs = function(obj){var keys=_.keys(obj);var length=keys.length;var pairs=Array(length);for(var i=0;i < length;i++) {pairs[i] = [keys[i],obj[keys[i]]];}return pairs;}; // Invert the keys and values of an object. The values must be serializable.
+_.invert = function(obj){var result={};var keys=_.keys(obj);for(var i=0,length=keys.length;i < length;i++) {result[obj[keys[i]]] = keys[i];}return result;}; // Return a sorted list of the function names available on the object.
+// Aliased as `methods`
+_.functions = _.methods = function(obj){var names=[];for(var key in obj) {if(_.isFunction(obj[key]))names.push(key);}return names.sort();}; // Extend a given object with all the properties in passed-in object(s).
+_.extend = createAssigner(_.allKeys); // Assigns a given object with all the own properties in the passed-in object(s)
+// (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+_.extendOwn = _.assign = createAssigner(_.keys); // Returns the first key on an object that passes a predicate test
+_.findKey = function(obj,predicate,context){predicate = cb(predicate,context);var keys=_.keys(obj),key;for(var i=0,length=keys.length;i < length;i++) {key = keys[i];if(predicate(obj[key],key,obj))return key;}}; // Return a copy of the object only containing the whitelisted properties.
+_.pick = function(object,oiteratee,context){var result={},obj=object,iteratee,keys;if(obj == null)return result;if(_.isFunction(oiteratee)){keys = _.allKeys(obj);iteratee = optimizeCb(oiteratee,context);}else {keys = flatten(arguments,false,false,1);iteratee = function(value,key,obj){return key in obj;};obj = Object(obj);}for(var i=0,length=keys.length;i < length;i++) {var key=keys[i];var value=obj[key];if(iteratee(value,key,obj))result[key] = value;}return result;}; // Return a copy of the object without the blacklisted properties.
+_.omit = function(obj,iteratee,context){if(_.isFunction(iteratee)){iteratee = _.negate(iteratee);}else {var keys=_.map(flatten(arguments,false,false,1),String);iteratee = function(value,key){return !_.contains(keys,key);};}return _.pick(obj,iteratee,context);}; // Fill in a given object with default properties.
+_.defaults = createAssigner(_.allKeys,true); // Creates an object that inherits from the given prototype object.
+// If additional properties are provided then they will be added to the
+// created object.
+_.create = function(prototype,props){var result=baseCreate(prototype);if(props)_.extendOwn(result,props);return result;}; // Create a (shallow-cloned) duplicate of an object.
+_.clone = function(obj){if(!_.isObject(obj))return obj;return _.isArray(obj)?obj.slice():_.extend({},obj);}; // Invokes interceptor with the obj, and then returns obj.
+// The primary purpose of this method is to "tap into" a method chain, in
+// order to perform operations on intermediate results within the chain.
+_.tap = function(obj,interceptor){interceptor(obj);return obj;}; // Returns whether an object has a given set of `key:value` pairs.
+_.isMatch = function(object,attrs){var keys=_.keys(attrs),length=keys.length;if(object == null)return !length;var obj=Object(object);for(var i=0;i < length;i++) {var key=keys[i];if(attrs[key] !== obj[key] || !(key in obj))return false;}return true;}; // Internal recursive comparison function for `isEqual`.
+var eq=function eq(a,b,aStack,bStack){ // Identical objects are equal. `0 === -0`, but they aren't identical.
+// See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
+if(a === b)return a !== 0 || 1 / a === 1 / b; // A strict comparison is necessary because `null == undefined`.
+if(a == null || b == null)return a === b; // Unwrap any wrapped objects.
+if(a instanceof _)a = a._wrapped;if(b instanceof _)b = b._wrapped; // Compare `[[Class]]` names.
+var className=toString.call(a);if(className !== toString.call(b))return false;switch(className){ // Strings, numbers, regular expressions, dates, and booleans are compared by value.
+case '[object RegExp]': // RegExps are coerced to strings for comparison (Note: '' + /a/i === '/a/i')
+case '[object String]': // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
+// equivalent to `new String("5")`.
+return '' + a === '' + b;case '[object Number]': // `NaN`s are equivalent, but non-reflexive.
+// Object(NaN) is equivalent to NaN
+if(+a !== +a)return +b !== +b; // An `egal` comparison is performed for other numeric values.
+return +a === 0?1 / +a === 1 / b:+a === +b;case '[object Date]':case '[object Boolean]': // Coerce dates and booleans to numeric primitive values. Dates are compared by their
+// millisecond representations. Note that invalid dates with millisecond representations
+// of `NaN` are not equivalent.
+return +a === +b;}var areArrays=className === '[object Array]';if(!areArrays){if(typeof a != 'object' || typeof b != 'object')return false; // Objects with different constructors are not equivalent, but `Object`s or `Array`s
+// from different frames are.
+var aCtor=a.constructor,bCtor=b.constructor;if(aCtor !== bCtor && !(_.isFunction(aCtor) && aCtor instanceof aCtor && _.isFunction(bCtor) && bCtor instanceof bCtor) && ('constructor' in a && 'constructor' in b)){return false;}} // Assume equality for cyclic structures. The algorithm for detecting cyclic
+// structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
+// Initializing stack of traversed objects.
+// It's done here since we only need them for objects and arrays comparison.
+aStack = aStack || [];bStack = bStack || [];var length=aStack.length;while(length--) { // Linear search. Performance is inversely proportional to the number of
+// unique nested structures.
+if(aStack[length] === a)return bStack[length] === b;} // Add the first object to the stack of traversed objects.
+aStack.push(a);bStack.push(b); // Recursively compare objects and arrays.
+if(areArrays){ // Compare array lengths to determine if a deep comparison is necessary.
+length = a.length;if(length !== b.length)return false; // Deep compare the contents, ignoring non-numeric properties.
+while(length--) {if(!eq(a[length],b[length],aStack,bStack))return false;}}else { // Deep compare objects.
+var keys=_.keys(a),key;length = keys.length; // Ensure that both objects contain the same number of properties before comparing deep equality.
+if(_.keys(b).length !== length)return false;while(length--) { // Deep compare each member
+key = keys[length];if(!(_.has(b,key) && eq(a[key],b[key],aStack,bStack)))return false;}} // Remove the first object from the stack of traversed objects.
+aStack.pop();bStack.pop();return true;}; // Perform a deep comparison to check if two objects are equal.
+_.isEqual = function(a,b){return eq(a,b);}; // Is a given array, string, or object empty?
+// An "empty" object has no enumerable own-properties.
+_.isEmpty = function(obj){if(obj == null)return true;if(isArrayLike(obj) && (_.isArray(obj) || _.isString(obj) || _.isArguments(obj)))return obj.length === 0;return _.keys(obj).length === 0;}; // Is a given value a DOM element?
+_.isElement = function(obj){return !!(obj && obj.nodeType === 1);}; // Is a given value an array?
+// Delegates to ECMA5's native Array.isArray
+_.isArray = nativeIsArray || function(obj){return toString.call(obj) === '[object Array]';}; // Is a given variable an object?
+_.isObject = function(obj){var type=typeof obj;return type === 'function' || type === 'object' && !!obj;}; // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp, isError.
+_.each(['Arguments','Function','String','Number','Date','RegExp','Error'],function(name){_['is' + name] = function(obj){return toString.call(obj) === '[object ' + name + ']';};}); // Define a fallback version of the method in browsers (ahem, IE < 9), where
+// there isn't any inspectable "Arguments" type.
+if(!_.isArguments(arguments)){_.isArguments = function(obj){return _.has(obj,'callee');};} // Optimize `isFunction` if appropriate. Work around some typeof bugs in old v8,
+// IE 11 (#1621), and in Safari 8 (#1929).
+if(typeof /./ != 'function' && typeof Int8Array != 'object'){_.isFunction = function(obj){return typeof obj == 'function' || false;};} // Is a given object a finite number?
+_.isFinite = function(obj){return isFinite(obj) && !isNaN(parseFloat(obj));}; // Is the given value `NaN`? (NaN is the only number which does not equal itself).
+_.isNaN = function(obj){return _.isNumber(obj) && obj !== +obj;}; // Is a given value a boolean?
+_.isBoolean = function(obj){return obj === true || obj === false || toString.call(obj) === '[object Boolean]';}; // Is a given value equal to null?
+_.isNull = function(obj){return obj === null;}; // Is a given variable undefined?
+_.isUndefined = function(obj){return obj === void 0;}; // Shortcut function for checking if an object has a given property directly
+// on itself (in other words, not on a prototype).
+_.has = function(obj,key){return obj != null && hasOwnProperty.call(obj,key);}; // Utility Functions
+// -----------------
+// Run Underscore.js in *noConflict* mode, returning the `_` variable to its
+// previous owner. Returns a reference to the Underscore object.
+_.noConflict = function(){root._ = previousUnderscore;return this;}; // Keep the identity function around for default iteratees.
+_.identity = function(value){return value;}; // Predicate-generating functions. Often useful outside of Underscore.
+_.constant = function(value){return function(){return value;};};_.noop = function(){};_.property = property; // Generates a function for a given object that returns a given property.
+_.propertyOf = function(obj){return obj == null?function(){}:function(key){return obj[key];};}; // Returns a predicate for checking whether an object has a given set of
+// `key:value` pairs.
+_.matcher = _.matches = function(attrs){attrs = _.extendOwn({},attrs);return function(obj){return _.isMatch(obj,attrs);};}; // Run a function **n** times.
+_.times = function(n,iteratee,context){var accum=Array(Math.max(0,n));iteratee = optimizeCb(iteratee,context,1);for(var i=0;i < n;i++) accum[i] = iteratee(i);return accum;}; // Return a random integer between min and max (inclusive).
+_.random = function(min,max){if(max == null){max = min;min = 0;}return min + Math.floor(Math.random() * (max - min + 1));}; // A (possibly faster) way to get the current timestamp as an integer.
+_.now = Date.now || function(){return new Date().getTime();}; // List of HTML entities for escaping.
+var escapeMap={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','`':'&#x60;'};var unescapeMap=_.invert(escapeMap); // Functions for escaping and unescaping strings to/from HTML interpolation.
+var createEscaper=function createEscaper(map){var escaper=function escaper(match){return map[match];}; // Regexes for identifying a key that needs to be escaped
+var source='(?:' + _.keys(map).join('|') + ')';var testRegexp=RegExp(source);var replaceRegexp=RegExp(source,'g');return function(string){string = string == null?'':'' + string;return testRegexp.test(string)?string.replace(replaceRegexp,escaper):string;};};_.escape = createEscaper(escapeMap);_.unescape = createEscaper(unescapeMap); // If the value of the named `property` is a function then invoke it with the
+// `object` as context; otherwise, return it.
+_.result = function(object,property,fallback){var value=object == null?void 0:object[property];if(value === void 0){value = fallback;}return _.isFunction(value)?value.call(object):value;}; // Generate a unique integer id (unique within the entire client session).
+// Useful for temporary DOM ids.
+var idCounter=0;_.uniqueId = function(prefix){var id=++idCounter + '';return prefix?prefix + id:id;}; // By default, Underscore uses ERB-style template delimiters, change the
+// following template settings to use alternative delimiters.
+_.templateSettings = {evaluate:/<%([\s\S]+?)%>/g,interpolate:/<%=([\s\S]+?)%>/g,escape:/<%-([\s\S]+?)%>/g}; // When customizing `templateSettings`, if you don't want to define an
+// interpolation, evaluation or escaping regex, we need one that is
+// guaranteed not to match.
+var noMatch=/(.)^/; // Certain characters need to be escaped so that they can be put into a
+// string literal.
+var escapes={"'":"'",'\\':'\\','\r':'r','\n':'n','\u2028':'u2028','\u2029':'u2029'};var escaper=/\\|'|\r|\n|\u2028|\u2029/g;var escapeChar=function escapeChar(match){return '\\' + escapes[match];}; // JavaScript micro-templating, similar to John Resig's implementation.
+// Underscore templating handles arbitrary delimiters, preserves whitespace,
+// and correctly escapes quotes within interpolated code.
+// NB: `oldSettings` only exists for backwards compatibility.
+_.template = function(text,settings,oldSettings){if(!settings && oldSettings)settings = oldSettings;settings = _.defaults({},settings,_.templateSettings); // Combine delimiters into one regular expression via alternation.
+var matcher=RegExp([(settings.escape || noMatch).source,(settings.interpolate || noMatch).source,(settings.evaluate || noMatch).source].join('|') + '|$','g'); // Compile the template source, escaping string literals appropriately.
+var index=0;var source="__p+='";text.replace(matcher,function(match,escape,interpolate,evaluate,offset){source += text.slice(index,offset).replace(escaper,escapeChar);index = offset + match.length;if(escape){source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";}else if(interpolate){source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";}else if(evaluate){source += "';\n" + evaluate + "\n__p+='";} // Adobe VMs need the match returned to produce the correct offest.
+return match;});source += "';\n"; // If a variable is not specified, place data values in local scope.
+if(!settings.variable)source = 'with(obj||{}){\n' + source + '}\n';source = "var __t,__p='',__j=Array.prototype.join," + "print=function(){__p+=__j.call(arguments,'');};\n" + source + 'return __p;\n';try{var render=new Function(settings.variable || 'obj','_',source);}catch(e) {e.source = source;throw e;}var template=function template(data){return render.call(this,data,_);}; // Provide the compiled source as a convenience for precompilation.
+var argument=settings.variable || 'obj';template.source = 'function(' + argument + '){\n' + source + '}';return template;}; // Add a "chain" function. Start chaining a wrapped Underscore object.
+_.chain = function(obj){var instance=_(obj);instance._chain = true;return instance;}; // OOP
+// ---------------
+// If Underscore is called as a function, it returns a wrapped object that
+// can be used OO-style. This wrapper holds altered versions of all the
+// underscore functions. Wrapped objects may be chained.
+// Helper function to continue chaining intermediate results.
+var result=function result(instance,obj){return instance._chain?_(obj).chain():obj;}; // Add your own custom functions to the Underscore object.
+_.mixin = function(obj){_.each(_.functions(obj),function(name){var func=_[name] = obj[name];_.prototype[name] = function(){var args=[this._wrapped];push.apply(args,arguments);return result(this,func.apply(_,args));};});}; // Add all of the Underscore functions to the wrapper object.
+_.mixin(_); // Add all mutator Array functions to the wrapper.
+_.each(['pop','push','reverse','shift','sort','splice','unshift'],function(name){var method=ArrayProto[name];_.prototype[name] = function(){var obj=this._wrapped;method.apply(obj,arguments);if((name === 'shift' || name === 'splice') && obj.length === 0)delete obj[0];return result(this,obj);};}); // Add all accessor Array functions to the wrapper.
+_.each(['concat','join','slice'],function(name){var method=ArrayProto[name];_.prototype[name] = function(){return result(this,method.apply(this._wrapped,arguments));};}); // Extracts the result from a wrapped and chained object.
+_.prototype.value = function(){return this._wrapped;}; // Provide unwrapping proxy for some methods used in engine operations
+// such as arithmetic and JSON stringification.
+_.prototype.valueOf = _.prototype.toJSON = _.prototype.value;_.prototype.toString = function(){return '' + this._wrapped;}; // AMD registration happens at the end for compatibility with AMD loaders
+// that may not enforce next-turn semantics on modules. Even though general
+// practice for AMD registration is to be anonymous, underscore registers
+// as a named module because, like jQuery, it is a base library that is
+// popular enough to be bundled in a third party lib, but not be part of
+// an AMD load request. Those cases could generate an error when an
+// anonymous define() is called outside of a loader request.
+if(typeof define === 'function' && define.amd){define('underscore',[],function(){return _;});}}).call(this);}); /*jshint -W051:true */ /*global global:true, window, require */'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
 ///
 /// @file
@@ -14421,7 +16436,9 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       status: "",
       type: "",
       isSystem: false,
-      picture: ""
+      picture: "",
+      locked: false,
+      desc: undefined
     },
 
     getProperties: function () {
@@ -14498,43 +16515,73 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       return data2;
     },
 
-  createIndex: function (postParameter) {
-      var returnVal = false;
+
+    createIndex: function (postParameter, callback) {
+
+      var self = this;
 
       $.ajax({
           cache: false,
           type: "POST",
-          url: "/_api/index?collection="+ this.get("id"),
+          url: "/_api/index?collection="+ self.get("id"),
+          headers: {
+            'x-arango-async': 'store' 
+          },
           data: JSON.stringify(postParameter),
           contentType: "application/json",
           processData: false,
-          async: false,
-          success: function() {
-            returnVal = true;
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Creating Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
           },
           error: function(data) {
-            returnVal = data;
+            callback(true, data);
           }
       });
-      return returnVal;
-  },
+      callback();
+    },
 
-      deleteIndex: function (id) {
-          var returnval = false;
-          $.ajax({
-              cache: false,
-              type: 'DELETE',
-              url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-              async: false,
-              success: function () {
-                returnval = true;
-              },
-              error: function () {
-                returnval = false;
-              }
-          });
-          return returnval;
-      },
+    deleteIndex: function (id, callback) {
+
+      var self = this;
+
+      $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
+          },
+          error: function (data) {
+            callback(true, data);
+          }
+        });
+      callback();
+    },
 
     truncateCollection: function () {
       $.ajax({
@@ -14551,46 +16598,35 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       });
     },
 
-    loadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Loading collection...");
+    loadCollection: function (callback) {
+
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
-          self.set("status", "loaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
-    unloadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Unloading collection...");
+    unloadCollection: function (callback) {
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
         success: function () {
-          self.set("status", "unloaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
     renameCollection: function (name) {
@@ -14608,10 +16644,11 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
           self.set("name", name);
           result = true;
         },
-        error: function(data) {
+        error: function(/*data*/) {
           try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
+            console.log("error");
+            //var parsed = JSON.parse(data.responseText);
+            //result = parsed.errorMessage;
           }
           catch (e) {
             result = false;
@@ -15110,6 +17147,7 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
+
 /*global window, Backbone */
 (function() {
   "use strict";
@@ -15168,6 +17206,22 @@ window.Users = Backbone.Model.extend({
       query: "",
       started: "",
       runTime: ""
+    }
+
+  });
+}());
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.workMonitorModel = Backbone.Model.extend({
+
+    defaults: {
+      name: "",
+      number: "",
+      status: "",
+      type: ""
     }
 
   });
@@ -15823,11 +17877,11 @@ window.arangoDocument = Backbone.Collection.extend({
     collectionID: 1,
 
     filters: [],
+    checkCursorTimer: undefined,
 
     MAX_SORT: 12000,
 
     lastQuery: {},
-
     sortAttribute: "_key",
 
     url: '/_api/documents',
@@ -15875,14 +17929,41 @@ window.arangoDocument = Backbone.Collection.extend({
       if (this.filters.length === 0) {
         return "";
       }
-      var query = " FILTER",
+      var query = " FILTER", res = '',
       parts = _.map(this.filters, function(f, i) {
-        var res = " x.`";
-        res += f.attr;
-        res += "` ";
-        res += f.op;
-        res += " @param";
-        res += i;
+        if (f.op === 'LIKE') {
+          res = " " + f.op + "(x.`" + f.attr + "`, @param";
+          res += i;
+          res += ")";
+        }
+        else {
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res = ' ';
+          }
+          else {
+            res = " x.`";
+          }
+
+          res += f.attr;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += " ";
+          }
+          else {
+            res += "` ";
+          }
+
+          res += f.op;
+
+          if (f.op === 'IN' || f.op === 'NOT IN') {
+            res += " x.@param";
+          }
+          else {
+            res += " @param";
+          }
+          res += i;
+        }
+
         bindVars["param" + i] = f.val;
         return res;
       });
@@ -15898,7 +17979,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave, queryRemove, queryObj, bindVars = {
+      var querySave, queryRemove, bindVars = {
         "@collection": fromCollection,
         "filterid": key
       }, queryObj1, queryObj2;
@@ -15931,7 +18012,7 @@ window.arangoDocument = Backbone.Collection.extend({
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
-        success: function(data) {
+        success: function() {
           // if successful remove unwanted docs
           $.ajax({
             cache: false,
@@ -15940,29 +18021,28 @@ window.arangoDocument = Backbone.Collection.extend({
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
-            success: function(data) {
+            success: function() {
               if (callback) {
                 callback();
               }
               window.progressView.hide();
             },
-            error: function(data) {
+            error: function() {
               window.progressView.hide();
-              arangoHelper.arangoNotification(
+              arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
               );
             }
           });
         },
-        error: function(data) {
+        error: function() {
           window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not move selected documents.");
+          arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
       });
     },
 
     getDocuments: function (callback) {
-      window.progressView.showWithDelay(300, "Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -16010,36 +18090,83 @@ window.arangoDocument = Backbone.Collection.extend({
         };
       }
 
+      var checkCursorStatus = function(jobid) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: '/_api/job/' + encodeURIComponent(jobid),
+          contentType: 'application/json',
+          success: function(data, textStatus, xhr) {
+            if (xhr.status === 201) {
+              window.progressView.toShow = false;
+              self.clearDocuments();
+              if (data.extra && data.extra.stats.fullCount !== undefined) {
+                self.setTotal(data.extra.stats.fullCount);
+              }
+              if (self.getTotal() !== 0) {
+                _.each(data.result, function(v) {
+                  self.add({
+                    "id": v._id,
+                    "rev": v._rev,
+                    "key": v._key,
+                    "content": v
+                  });
+                });
+              }
+              self.lastQuery = queryObj;
+
+              callback(false, data);
+            }
+            else if (xhr.status === 204) {
+              self.checkCursorTimer = window.setTimeout(function() {
+                checkCursorStatus(jobid);
+              }, 500);
+            }
+
+          },
+          error: function(data) {
+            callback(false, data);
+          }
+        });
+      };
+
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
+        headers: {
+          'x-arango-async': 'store'
+        },
         contentType: "application/json",
-        success: function(data) {
-          window.progressView.toShow = false;
-          self.clearDocuments();
-          if (data.extra && data.extra.stats.fullCount !== undefined) {
-            self.setTotal(data.extra.stats.fullCount);
-          }
-          if (self.getTotal() !== 0) {
-            _.each(data.result, function(v) {
-              self.add({
-                "id": v._id,
-                "rev": v._rev,
-                "key": v._key,
-                "content": v
+        success: function (data, textStatus, xhr) {
+
+          if (xhr.getResponseHeader('x-arango-async-id')) {
+            var jobid = xhr.getResponseHeader('x-arango-async-id');
+
+            var cancelRunningCursor = function() {
+              $.ajax({
+                url: '/_api/job/'+ encodeURIComponent(jobid) + "/cancel",
+                type: 'PUT',
+                success: function() {
+                  window.clearTimeout(self.checkCursorTimer);
+                  arangoHelper.arangoNotification("Documents", "Canceled operation.");
+                  $('.dataTables_empty').text('Canceled.');
+                  window.progressView.hide();
+                }
               });
-            });
+            };
+
+            window.progressView.showWithDelay(300, "Fetching documents...", cancelRunningCursor);
+
+            checkCursorStatus(jobid);
           }
-          self.lastQuery = queryObj;
-          callback();
-          window.progressView.hide();
+          else {
+            callback(true, data);
+          }
         },
         error: function(data) {
-          window.progressView.hide();
-          arangoHelper.arangoNotification("Document error", "Could not fetch requested documents.");
+          callback(false, data);
         }
       });
     },
@@ -16049,7 +18176,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     buildDownloadDocumentQuery: function() {
-      var self = this, query, queryObj, bindVars;
+      var query, queryObj, bindVars;
 
       bindVars = {
         "@collection": this.collectionID
@@ -16099,6 +18226,7 @@ window.arangoDocument = Backbone.Collection.extend({
             }
           }
           catch (err) {
+            console.log(err);
           }               
         }
       });
@@ -16747,6 +18875,24 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
+/*global window, Backbone, $ */
+(function() {
+  "use strict";
+  window.WorkMonitorCollection = Backbone.Collection.extend({
+
+    model: window.workMonitorModel,
+
+    url: "/_admin/work-monitor",
+
+    parse: function(response) {
+      return response.work;
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, EJS, $, window, arangoHelper, templateEngine */
 
 (function() {
@@ -16797,8 +18943,15 @@ window.ArangoUsers = Backbone.Collection.extend({
                     page: currentPage,
                     lastPage: totalPages,
                     click: function(i) {
+                      var split = window.location.hash.split("/");
+                      if (split[2] === 'documents') {
+                        options.page = i;
+                        window.location.hash = split[0] + "/" + split[1] + "/" + split[2] + "/" + i;
+                      }
+                      else {
                         self.jumpTo(i);
                         options.page = i;
+                      }
                     }
                 };
             target.html("");
@@ -17415,7 +19568,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
+/*global window, exports, Backbone, EJS, _, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
   "use strict";
@@ -17429,36 +19582,48 @@ window.ArangoUsers = Backbone.Collection.extend({
     initialize: function () {
       this.collectionsView = this.options.collectionsView;
     },
+
     events: {
       'click .iconSet.icon_arangodb_settings2': 'createEditPropertiesModal',
       'click .pull-left' : 'noop',
       'click .icon_arangodb_settings2' : 'editProperties',
-//      'click #editCollection' : 'editProperties',
       'click .spanInfo' : 'showProperties',
       'click': 'selectCollection'
     },
 
     render: function () {
+      if (this.model.get("locked")) {
+        $(this.el).addClass('locked');
+        $(this.el).addClass(this.model.get("lockType"));
+      } 
+      else {
+        $(this.el).removeClass('locked');
+      }
+      if (this.model.get("status") === 'loading') {
+        $(this.el).addClass('locked');
+      }
       $(this.el).html(this.template.render({
         model: this.model
       }));
       $(this.el).attr('id', 'collection_' + this.model.get('name'));
+
       return this;
     },
 
     editProperties: function (event) {
+      if (this.model.get("locked")) {
+        return 0;
+      }
       event.stopPropagation();
       this.createEditPropertiesModal();
     },
 
     showProperties: function(event) {
+      if (this.model.get("locked")) {
+        return 0;
+      }
       event.stopPropagation();
       this.createInfoModal();
-/*
-      window.App.navigate(
-        "collectionInfo/" + encodeURIComponent(this.model.get("id")), {trigger: true}
-      );
-*/
     },
 
     selectCollection: function(event) {
@@ -17467,10 +19632,22 @@ window.ArangoUsers = Backbone.Collection.extend({
       if ($(event.target).hasClass("disabled")) {
         return 0;
       }
+      if (this.model.get("locked")) {
+        return 0;
+      }
+      if (this.model.get("status") === 'loading' ) {
+        return 0;
+      }
 
-      window.App.navigate(
-        "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
-      );
+      if (this.model.get("status") === 'unloaded' ) {
+        this.loadCollection();
+      }
+      else {
+        window.App.navigate(
+          "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
+        );
+      }
+
     },
 
     noop: function(event) {
@@ -17478,12 +19655,52 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     unloadCollection: function () {
-      this.model.unloadCollection();
+
+      var unloadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be unloaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "unloading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "unloaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " unloaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.unloadCollection(unloadCollectionCallback);
       window.modalView.hide();
     },
 
     loadCollection: function () {
-      this.model.loadCollection();
+    
+      var loadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be loaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "loading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "loaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.loadCollection(loadCollectionCallback);
       window.modalView.hide();
     },
 
@@ -17676,7 +19893,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         );
       }
 
-
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           "change-collection-id", "ID", this.model.get('id'), ""
@@ -17727,12 +19943,93 @@ window.ArangoUsers = Backbone.Collection.extend({
         )
       );
 
+      var tabBar = ["General", "Indices"],
+      templates =  ["modalTable.ejs", "indicesView.ejs"];
+
       window.modalView.show(
-        "modalTable.ejs",
+        templates,
         "Modify Collection",
         buttons,
-        tableContent
+        tableContent, null, null,
+        this.events, null,
+        tabBar
       );
+      if (this.model.get("status") === 'loaded') {
+        this.getIndex();
+      }
+      else {
+        $($('#infoTab').children()[1]).remove();
+      }
+      this.bindIndexEvents();
+    },
+
+    bindIndexEvents: function() {
+      this.unbindIndexEvents();
+      var self = this;
+
+      $('#indexEditView #addIndex').bind('click', function() {
+        self.toggleNewIndexView();
+
+        $('#cancelIndex').unbind('click');
+        $('#cancelIndex').bind('click', function() {
+          self.toggleNewIndexView();
+        });
+
+        $('#createIndex').unbind('click');
+        $('#createIndex').bind('click', function() {
+          self.createIndex();
+        });
+
+      });
+
+      $('#newIndexType').bind('change', function() {
+        self.selectIndexType();
+      });
+
+      $('.deleteIndex').bind('click', function(e) {
+        self.prepDeleteIndex(e);
+      });
+
+      $('#infoTab a').bind('click', function(e) {
+        $('#indexDeleteModal').remove();
+        if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
+
+          $('#newIndexView').hide();
+          $('#indexEditView').show();
+
+          $('#modal-dialog .modal-footer .button-danger').hide();  
+          $('#modal-dialog .modal-footer .button-success').hide();  
+          $('#modal-dialog .modal-footer .button-notification').hide();
+          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        }
+        if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
+          $('#modal-dialog .modal-footer .button-danger').show();  
+          $('#modal-dialog .modal-footer .button-success').show();  
+          $('#modal-dialog .modal-footer .button-notification').show();
+          var elem = $('.index-button-bar')[0]; 
+          var elem2 = $('.index-button-bar2')[0]; 
+          $('#addIndex').detach().appendTo(elem);
+          if ($('#cancelIndex').is(':visible')) {
+            $('#cancelIndex').detach().appendTo(elem2);
+            $('#createIndex').detach().appendTo(elem2);
+          }
+        }
+      });
+
+    },
+
+    unbindIndexEvents: function() {
+      $('#indexEditView #addIndex').unbind('click');
+      $('#newIndexType').unbind('change');
+      $('#infoTab a').unbind('click');
+      $('.deleteIndex').unbind('click');
+      /*
+      //$('#documentsToolbar ul').unbind('click');
+      this.markFilterToggle();
+      this.changeEditMode(false);
+     0Ads0asd0sd0f0asdf0sa0f
+      "click #documentsToolbar ul"    : "resetIndexForms"
+      */
     },
 
     createInfoModal: function() {
@@ -17744,6 +20041,257 @@ window.ArangoUsers = Backbone.Collection.extend({
         buttons,
         tableContent
       );
+    },
+    //index functions
+    resetIndexForms: function () {
+      $('#indexHeader input').val('').prop("checked", false);
+      $('#newIndexType').val('Cap').prop('selected',true);
+      this.selectIndexType();
+    },
+
+    createIndex: function () {
+      //e.preventDefault();
+      var self = this;
+      var indexType = $('#newIndexType').val();
+      var result;
+      var postParameter = {};
+      var fields;
+      var unique;
+      var sparse;
+
+      switch (indexType) {
+        case 'Cap':
+          var size = parseInt($('#newCapSize').val(), 10) || 0;
+          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+          postParameter = {
+            type: 'cap',
+            size: size,
+            byteSize: byteSize
+          };
+          break;
+        case 'Geo':
+          //HANDLE ARRAY building
+          fields = $('#newGeoFields').val();
+          var geoJson = self.checkboxToValue('#newGeoJson');
+          var constraint = self.checkboxToValue('#newGeoConstraint');
+          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+          postParameter = {
+            type: 'geo',
+            fields: self.stringToArray(fields),
+            geoJson: geoJson,
+            constraint: constraint,
+            ignoreNull: ignoreNull
+          };
+          break;
+        case 'Hash':
+          fields = $('#newHashFields').val();
+          unique = self.checkboxToValue('#newHashUnique');
+          sparse = self.checkboxToValue('#newHashSparse');
+          postParameter = {
+            type: 'hash',
+            fields: self.stringToArray(fields),
+            unique: unique,
+            sparse: sparse
+          };
+          break;
+        case 'Fulltext':
+          fields = ($('#newFulltextFields').val());
+          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          postParameter = {
+            type: 'fulltext',
+            fields: self.stringToArray(fields),
+            minLength: minLength
+          };
+          break;
+        case 'Skiplist':
+          fields = $('#newSkiplistFields').val();
+          unique = self.checkboxToValue('#newSkiplistUnique');
+          sparse = self.checkboxToValue('#newSkiplistSparse');
+          postParameter = {
+            type: 'skiplist',
+            fields: self.stringToArray(fields),
+            unique: unique,
+            sparse: sparse
+          };
+          break;
+      }
+      var callback = function(error, msg){
+        if (error) {
+          if (msg) {
+            var message = JSON.parse(msg.responseText);
+            arangoHelper.arangoError("Document error", message.errorMessage);
+          }
+          else {
+            arangoHelper.arangoError("Document error", "Could not create index.");
+          }
+        }
+        self.refreshCollectionsView();
+      };
+
+      window.modalView.hide();
+      //$($('#infoTab').children()[1]).find('a').click();
+      self.model.createIndex(postParameter, callback);
+    },
+
+    lastTarget: null,
+
+    prepDeleteIndex: function (e) {
+      var self = this;
+      this.lastTarget = e;
+
+      this.lastId = $(this.lastTarget.currentTarget).
+                    parent().
+                    parent().
+                    first().
+                    children().
+                    first().
+                    text();
+      //window.modalView.hide();
+
+      //delete modal
+      $("#modal-dialog .modal-footer").after(
+        '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
+          '<strong>Really delete?</strong>' +
+          '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
+          '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
+        '</div>');
+      $('#indexConfirmDelete').unbind('click');
+      $('#indexConfirmDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
+        self.deleteIndex();
+      });
+
+      $('#indexAbortDelete').unbind('click');
+      $('#indexAbortDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
+      });
+
+
+    },
+
+    refreshCollectionsView: function() {
+      window.App.arangoCollectionsStore.fetch({
+        success: function () {
+          window.App.collectionsView.render();
+        }
+      });
+    },
+
+    deleteIndex: function () {
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Could not delete index");
+          $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+            '<span class="deleteIndex icon_arangodb_roundminus"' + 
+            ' data-original-title="Delete index" title="Delete index"></span>'
+          );
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
+        }
+        else if (!error && error !== undefined) {
+          $("tr th:contains('"+ this.lastId+"')").parent().remove();
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
+        }
+        this.refreshCollectionsView();
+      }.bind(this);
+
+      this.model.set("locked", true);
+      this.model.deleteIndex(this.lastId, callback);
+
+      $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+        '<i class="fa fa-circle-o-notch fa-spin"></i>'
+      );
+    },
+
+    selectIndexType: function () {
+      $('.newIndexClass').hide();
+      var type = $('#newIndexType').val();
+      $('#newIndexType'+type).show();
+    },
+
+    getIndex: function () {
+      this.index = this.model.getIndex();
+      var cssClass = 'collectionInfoTh modal-text';
+      if (this.index) {
+        var fieldString = '';
+        var actionString = '';
+
+        _.each(this.index.indexes, function(v) {
+          if (v.type === 'primary' || v.type === 'edge') {
+            actionString = '<span class="icon_arangodb_locked" ' +
+              'data-original-title="No action"></span>';
+          }
+          else {
+            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
+              'data-original-title="Delete index" title="Delete index"></span>';
+          }
+
+          if (v.fields !== undefined) {
+            fieldString = v.fields.join(", ");
+          }
+
+          //cut index id
+          var position = v.id.indexOf('/');
+          var indexId = v.id.substr(position + 1, v.id.length);
+          var selectivity = (
+            v.hasOwnProperty("selectivityEstimate") ? 
+            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
+            "n/a"
+          );
+          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
+
+          $('#collectionEditIndexTable').append(
+            '<tr>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
+            '</tr>'
+          );
+        });
+      }
+    },
+
+    toggleNewIndexView: function () {
+      var elem = $('.index-button-bar2')[0];
+      var elem2 = $('.index-button-bar')[0];
+      if ($('#indexEditView').is(':visible')) {
+        $('#indexEditView').hide();
+        $('#newIndexView').show();
+        $('#addIndex').detach().appendTo(elem2);
+        $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
+
+      }
+      else {
+        $('#indexEditView').show();
+        $('#newIndexView').hide();
+        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        $('#cancelIndex').detach().appendTo(elem);
+        $('#createIndex').detach().appendTo(elem);
+      }
+
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
+      this.resetIndexForms();
+    },
+
+    stringToArray: function (fieldString) {
+      var fields = [];
+      fieldString.split(',').forEach(function(field){
+        field = field.replace(/(^\s+|\s+$)/g,'');
+        if (field !== '') {
+          fields.push(field);
+        }
+      });
+      return fields;
+    },
+
+    checkboxToValue: function (id) {
+      return $(id).prop('checked');
     }
 
   });
@@ -17760,11 +20308,61 @@ window.ArangoUsers = Backbone.Collection.extend({
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
+    refreshRate: 2000,
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+    checkLockedCollections: function() {
+
+      var self = this,
+      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+
+      this.collection.each(function(model) {
+        model.set('locked', false);
+      });
+
+      _.each(lockedCollections, function(locked) {
+        var model = self.collection.findWhere({
+          id: locked.collection 
+        });
+        model.set('locked', true);
+        model.set('lockType', locked.type);
+        model.set('desc', locked.desc);
+      });
+
+      this.collection.each(function(model) {
+        if (model.get("locked") || model.get("status") === 'loading') {
+          $('#collection_' + model.get("name")).addClass('locked');
+        }
+        else {
+          $('#collection_' + model.get("name")).removeClass('locked');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+            $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+          }
+        }
+        if (model.get("status") === 'loading') {
+          $('#collection_' + model.get("name")).removeClass('loading');
+        }
+      });
+
+    },
+
+    initialize: function() {
+      var self = this;
+
+      window.setInterval(function() {
+        self.checkLockedCollections();
+      }, self.refreshRate);
+
+    },
+
     render: function () {
+
+      this.checkLockedCollections();
       var dropdownVisible = false;
+
       if ($('#collectionsDropdown').is(':visible')) {
         dropdownVisible = true;
       }
@@ -17808,6 +20406,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
+
 
       return this;
     },
@@ -18035,7 +20634,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
-      if (returnobj.status !== true) {console.log(returnobj);
+      if (returnobj.status !== true) {
         arangoHelper.arangoError("Collection error", returnobj.errorMessage);
       }
       this.updateCollectionsView();
@@ -19796,10 +22395,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.tableView.setRemoveClick(this.remove.bind(this));
     },
 
-    setCollectionId : function (colid, pageid) {
+    setCollectionId : function (colid, page) {
       this.collection.setCollection(colid);
+      this.collection.setPage(page);
       var type = arangoHelper.collectionApiType(colid);
-      this.pageid = pageid;
+      this.page = page;
       this.type = type;
 
       this.checkCollectionState();
@@ -19808,12 +22408,21 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.collectionModel = this.collectionsStore.get(colid);
     },
 
-    getDocsCallback: function() {
+    getDocsCallback: function(error) {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
-      this.drawTable();
-      this.renderPaginationElements();
+
+      if (error) {
+        window.progressView.hide();
+        arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+      }
+      else if (!error || error !== undefined){
+        window.progressView.hide();
+        this.drawTable();
+        this.renderPaginationElements();
+      }
+
     },
 
     events: {
@@ -19821,7 +22430,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #collectionNext"      : "nextCollection",
       "click #filterCollection"    : "filterCollection",
       "click #markDocuments"       : "editDocuments",
-      "click #indexCollection"     : "indexCollection",
       "click #importCollection"    : "importCollection",
       "click #exportCollection"    : "exportCollection",
       "click #filterSend"          : "sendFilter",
@@ -19842,13 +22450,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
       "click #exportDocuments"     : "startDownload",
-      "change #newIndexType"       : "selectIndexType",
-      "click #createIndex"         : "createIndex",
-      "click .deleteIndex"         : "prepDeleteIndex",
-      "click #confirmDeleteIndexBtn"    : "deleteIndex",
-      "click #documentsToolbar ul"      : "resetIndexForms",
-      "click #indexHeader #addIndex"    : "toggleNewIndexView",
-      "click #indexHeader #cancelIndex" : "toggleNewIndexView",
       "change #documentSize"            : "setPagesize",
       "change #docsSort"                : "setSorting"
     },
@@ -19895,11 +22496,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       }
     },
-    toggleNewIndexView: function () {
-      $('#indexEditView').toggle("fast");
-      $('#newIndexView').toggle("fast");
-      this.resetIndexForms();
-    },
+
     nop: function(event) {
       event.stopPropagation();
     },
@@ -20019,7 +22616,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     //need to make following functions automatically!
 
     editDocuments: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       this.markFilterToggle();
@@ -20027,13 +22623,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').slideToggle(200);
       $('#exportHeader').hide();
     },
 
     filterCollection : function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -20041,7 +22635,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.markFilterToggle();
       this.activeFilter = true;
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
       $('#exportHeader').hide();
       $('#filterHeader').slideToggle(200);
@@ -20056,7 +22649,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     exportCollection: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#filterHeader').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -20065,38 +22657,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.markFilterToggle();
       $('#exportHeader').slideToggle(200);
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#filterHeader').hide();
       $('#editHeader').hide();
     },
 
     importCollection: function () {
       this.markFilterToggle();
-      $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
       this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
-      $('#exportHeader').hide();
-    },
-
-    indexCollection: function () {
-      this.markFilterToggle();
-      $('#importCollection').removeClass('activated');
-      $('#exportCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated');
-      this.changeEditMode(false);
-      $('#indexCollection').toggleClass('activated');
-      $('#newIndexView').hide();
-      $('#indexEditView').show();
-      $('#indexHeader').slideToggle(200);
-      $('#importHeader').hide();
-      $('#editHeader').hide();
-      $('#filterHeader').hide();
       $('#exportHeader').hide();
     },
 
@@ -20121,11 +22694,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     getFilterContent: function () {
       var filters = [ ];
-      var i;
+      var i, value;
 
       for (i in this.filters) {
         if (this.filters.hasOwnProperty(i)) {
-          var value = $('#attribute_value' + i).val();
+          value = $('#attribute_value' + i).val();
 
           try {
             value = JSON.parse(value);
@@ -20306,8 +22879,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           buttons,
           tableContent
         );
-
-        return;
       }
       else {
         tableContent.push(
@@ -20543,9 +23114,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     reallyDelete: function () {
-      var self = this;
-      var row = $(self.target).closest("tr").get(0);
-
       var deleted = false;
       var result;
       if (this.type === 'document') {
@@ -20577,7 +23145,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
-
     },
 
     editModeClick: function(event) {
@@ -20642,6 +23209,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (this.lastCollectionName === this.collectionName) {
         if (this.activeFilter) {
           this.filterCollection();
+          console.log("yes");
           this.restoreFilter();
         }
       }
@@ -20663,7 +23231,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.collectionID
       );
 
-      this.getIndex();
       this.breadcrumb();
 
       this.checkCollectionState();
@@ -20692,7 +23259,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -20726,183 +23293,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );
-    },
-
-    resetIndexForms: function () {
-      $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
-      this.selectIndexType();
-    },
-    stringToArray: function (fieldString) {
-      var fields = [];
-      fieldString.split(',').forEach(function(field){
-        field = field.replace(/(^\s+|\s+$)/g,'');
-        if (field !== '') {
-          fields.push(field);
-        }
-      });
-      return fields;
-    },
-    createIndex: function () {
-      //e.preventDefault();
-      var self = this;
-      var indexType = $('#newIndexType').val();
-      var result;
-      var postParameter = {};
-      var fields;
-      var unique;
-      var sparse;
-
-      switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-          postParameter = {
-            type: 'cap',
-            size: size,
-            byteSize: byteSize
-          };
-          break;
-        case 'Geo':
-          //HANDLE ARRAY building
-          fields = $('#newGeoFields').val();
-          var geoJson = self.checkboxToValue('#newGeoJson');
-          var constraint = self.checkboxToValue('#newGeoConstraint');
-          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
-          postParameter = {
-            type: 'geo',
-            fields: self.stringToArray(fields),
-            geoJson: geoJson,
-            constraint: constraint,
-            ignoreNull: ignoreNull
-          };
-          break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-        case 'Fulltext':
-          fields = ($('#newFulltextFields').val());
-          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
-          postParameter = {
-            type: 'fulltext',
-            fields: self.stringToArray(fields),
-            minLength: minLength
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-      }
-      result = self.collectionModel.createIndex(postParameter);
-      if (result === true) {
-        $('#collectionEditIndexTable tbody tr').remove();
-        self.getIndex();
-        self.toggleNewIndexView();
-        self.resetIndexForms();
-      }
-      else {
-        if (result.responseText) {
-          var message = JSON.parse(result.responseText);
-          arangoHelper.arangoError("Document error", message.errorMessage);
-        }
-        else {
-          arangoHelper.arangoError("Document error", "Could not create index.");
-        }
-      }
-    },
-
-    prepDeleteIndex: function (e) {
-      this.lastTarget = e;
-      this.lastId = $(this.lastTarget.currentTarget).
-                    parent().
-                    parent().
-                    first().
-                    children().
-                    first().
-                    text();
-      $("#indexDeleteModal").modal('show');
-    },
-    deleteIndex: function () {
-      var result = this.collectionModel.deleteIndex(this.lastId);
-      if (result === true) {
-        $(this.lastTarget.currentTarget).parent().parent().remove();
-      }
-      else {
-        arangoHelper.arangoError("Could not delete index");
-      }
-      $("#indexDeleteModal").modal('hide');
-    },
-    selectIndexType: function () {
-      $('.newIndexClass').hide();
-      var type = $('#newIndexType').val();
-      $('#newIndexType'+type).show();
-    },
-    checkboxToValue: function (id) {
-      return $(id).prop('checked');
-    },
-    getIndex: function () {
-      this.index = this.collectionModel.getIndex();
-      var cssClass = 'collectionInfoTh modal-text';
-      if (this.index) {
-        var fieldString = '';
-        var actionString = '';
-
-        $.each(this.index.indexes, function(k, v) {
-          if (v.type === 'primary' || v.type === 'edge') {
-            actionString = '<span class="icon_arangodb_locked" ' +
-              'data-original-title="No action"></span>';
-          }
-          else {
-            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
-              'data-original-title="Delete index" title="Delete index"></span>';
-          }
-
-          if (v.fields !== undefined) {
-            fieldString = v.fields.join(", ");
-          }
-
-          //cut index id
-          var position = v.id.indexOf('/');
-          var indexId = v.id.substr(position + 1, v.id.length);
-          var selectivity = (
-            v.hasOwnProperty("selectivityEstimate") ? 
-            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-            "n/a"
-          );
-          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-
-          $('#collectionEditIndexTable').append(
-            '<tr>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
-            '</tr>'
-          );
-        });
-
-        arangoHelper.fixTooltips("deleteIndex", "left");
-      }
     }
+
   });
 }());
 
@@ -21169,7 +23561,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
-/*global $, Joi, _, alert, templateEngine*/
+/*global $, Joi, _, alert, templateEngine, window*/
 (function() {
   "use strict";
 
@@ -21481,6 +23873,34 @@ window.ArangoUsers = Backbone.Collection.extend({
       minimumResultsForSearch: -1,
       width: "336px"
     });
+
+    var checkButton = function() {
+      var button = $("#modalButton1");
+        if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+          button.prop("disabled", true);
+        }
+        else {
+          button.prop("disabled", false);
+        }
+    };
+
+    $('.select2-search-field input').focusout(function() {
+      checkButton();
+      window.setTimeout(function() {
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            $('#s2id_new-app-collections').select2('close');
+            checkButton();
+          }
+        }
+      }, 80);
+    });
+    $('.select2-search-field input').focusin(function() {
+      if ($('.select2-drop').is(':visible')) {
+        var button = $("#modalButton1");
+        button.prop("disabled", true);
+      }
+    });
     $("#upload-foxx-zip").uploadFile({
       url: "/_api/upload?multipart=true",
       allowedTypes: "zip",
@@ -21735,6 +24155,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -21831,9 +24260,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -21996,6 +24437,22 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,
@@ -22584,13 +25041,21 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     createModalHotkeys: function() {
       //submit modal
+      $(this.el).unbind('keydown');
+      $(this.el).unbind('return');
       $(this.el).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("input", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body input').unbind('keydown');
+      $('.modal-body input').unbind('return');
+      $(".modal-body input", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
-      $("select", $(this.el)).bind('keydown', 'return', function(){
+
+      $('.modal-body select').unbind('keydown');
+      $('.modal-body select').unbind('return');
+      $(".modal-body select", $(this.el)).bind('keydown', 'return', function(){
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },
@@ -22723,7 +25188,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm) {
+    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm, tabBar) {
       var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -22750,7 +25215,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         title: title,
         buttons: buttons,
         hideFooter: this.hideFooter,
-        confirm: confirmMsg
+        confirm: confirmMsg,
+        tabBar: tabBar
       }));
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
@@ -22766,16 +25232,34 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         $("#modalButton" + i).bind("click", b.callback);
       });
+
       $(this.confirm.no).bind("click", function() {
         $(self.confirm.list).css("display", "none");
       });
 
-      var template = templateEngine.createTemplate(templateName);
-      $(".createModalDialog .modal-body").html(template.render({
-        content: tableContent,
-        advancedContent: advancedContent,
-        info: extraInfo
-      }));
+      var template;
+      if (typeof templateName === 'string') {
+        template = templateEngine.createTemplate(templateName);
+        $(".createModalDialog .modal-body").html(template.render({
+          content: tableContent,
+          advancedContent: advancedContent,
+          info: extraInfo
+        }));
+      }
+      else {
+        var counter = 0;
+        _.each(templateName, function(v) {
+          template = templateEngine.createTemplate(v);
+          $(".createModalDialog .modal-body .tab-content #" + tabBar[counter]).html(template.render({
+            content: tableContent,
+            advancedContent: advancedContent,
+            info: extraInfo
+          }));
+
+          counter++;
+        });
+      }
+
       $('.createModalDialog .modalTooltips').tooltip({
         position: {
           my: "left top",
@@ -23240,7 +25724,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     performAction: function() {
-      this.action();
+      if (typeof this.action === 'function') {
+        this.action();
+      }
       window.progressView.hide();
     },
 
@@ -23707,7 +26193,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
-      [ 100, 250, 500, 1000, 2500, 5000, 10000 ].forEach(function (value) {
+      [ 100, 250, 500, 1000, 2500, 5000, 10000, "all" ].forEach(function (value) {
         sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
           '>' + _.escape(value) + ' results</option>');
@@ -24196,9 +26682,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         var sizeBox = $('#querySize');
         var data = {
           query: selectedText || inputEditor.getValue(),
-          batchSize: parseInt(sizeBox.val(), 10),
           id: "currentFrontendQuery"
         };
+
+        if (sizeBox.val() !== 'all') {
+          data.batchSize = parseInt(sizeBox.val(), 10);
+        }
 
         var bindVars = varsEditor.getValue();
 
@@ -24410,6 +26899,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (typeof callback === "function") {
                 callback();
               }
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               window.progressView.hide();
@@ -24601,7 +27092,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (xhr.getResponseHeader('x-arango-async-id')) {
                 self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
               }
-
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               self.switchTab("result-switch");
@@ -24967,43 +27459,735 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, $, _, window, document, templateEngine, FileReader */
+/*global Backbone, sigma, templateEngine, document, _, $, arangoHelper, window*/
 
 (function() {
   "use strict";
-
   window.testView = Backbone.View.extend({
     el: '#content',
 
+    graph: {
+      edges: [],
+      nodes: []
+    },
+
     events: {
-      "change #fileInput" : "readJSON"
+    },
+
+    initialize: function () {
+      console.log(undefined);
     },
 
     template: templateEngine.createTemplate("testView.ejs"),
 
-    readJSON: function() {
-      var fileInput = document.getElementById('fileInput');
-      var file = fileInput.files[0];
-      var textType = 'application/json';
-
-      if (file.type.match(textType)) {
-        var reader = new FileReader();
-
-        reader.onload = function(e) {
-          $('#fileDisplayArea pre').text(reader.result);
-        };
-
-        reader.readAsText(file);
-      }
-      else {
-        $('#fileDisplayArea pre').text("File not supported!");
-      }
+    render: function () {
+      $(this.el).html(this.template.render({}));
+      this.renderGraph();
+      return this;
     },
 
-    render: function() {
-      $(this.el).html(this.template.render());
-      return this;
-    }
+    renderGraph: function () {
+
+      this.convertData();
+
+      console.log(this.graph);
+
+      this.s = new sigma({
+        graph: this.graph,
+        container: 'graph-container',
+        verbose: true,
+        renderers: [
+          {
+            container: document.getElementById('graph-container'),
+            type: 'webgl'
+          }
+        ]
+      });
+    },
+
+    convertData: function () {
+
+      var self = this;
+
+      _.each(this.dump, function(value) {
+
+        _.each(value.p, function(lol) {
+          self.graph.nodes.push({
+            id: lol.verticesvalue.v._id,
+            label: value.v._key,
+            x: Math.random(),
+            y: Math.random(),
+            size: Math.random()
+          });
+
+          self.graph.edges.push({
+            id: value.e._id,
+            source: value.e._from,
+            target: value.e._to
+          });
+         
+
+        });
+      });
+
+      return null;
+    },
+		
+    dump: [
+      {
+        "v": {
+          "label": "7",
+          "_id": "circles/G",
+          "_rev": "1841663870851",
+          "_key": "G"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "right_foo",
+          "_id": "edges/1841666099075",
+          "_rev": "1841666099075",
+          "_key": "1841666099075",
+          "_from": "circles/A",
+          "_to": "circles/G"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "7",
+              "_id": "circles/G",
+              "_rev": "1841663870851",
+              "_key": "G"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_foo",
+              "_id": "edges/1841666099075",
+              "_rev": "1841666099075",
+              "_key": "1841666099075",
+              "_from": "circles/A",
+              "_to": "circles/G"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "8",
+          "_id": "circles/H",
+          "_rev": "1841664067459",
+          "_key": "H"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "right_blob",
+          "_id": "edges/1841666295683",
+          "_rev": "1841666295683",
+          "_key": "1841666295683",
+          "_from": "circles/G",
+          "_to": "circles/H"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "7",
+              "_id": "circles/G",
+              "_rev": "1841663870851",
+              "_key": "G"
+            },
+            {
+              "label": "8",
+              "_id": "circles/H",
+              "_rev": "1841664067459",
+              "_key": "H"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_foo",
+              "_id": "edges/1841666099075",
+              "_rev": "1841666099075",
+              "_key": "1841666099075",
+              "_from": "circles/A",
+              "_to": "circles/G"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_blob",
+              "_id": "edges/1841666295683",
+              "_rev": "1841666295683",
+              "_key": "1841666295683",
+              "_from": "circles/G",
+              "_to": "circles/H"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "9",
+          "_id": "circles/I",
+          "_rev": "1841664264067",
+          "_key": "I"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "right_blub",
+          "_id": "edges/1841666492291",
+          "_rev": "1841666492291",
+          "_key": "1841666492291",
+          "_from": "circles/H",
+          "_to": "circles/I"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "7",
+              "_id": "circles/G",
+              "_rev": "1841663870851",
+              "_key": "G"
+            },
+            {
+              "label": "8",
+              "_id": "circles/H",
+              "_rev": "1841664067459",
+              "_key": "H"
+            },
+            {
+              "label": "9",
+              "_id": "circles/I",
+              "_rev": "1841664264067",
+              "_key": "I"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_foo",
+              "_id": "edges/1841666099075",
+              "_rev": "1841666099075",
+              "_key": "1841666099075",
+              "_from": "circles/A",
+              "_to": "circles/G"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_blob",
+              "_id": "edges/1841666295683",
+              "_rev": "1841666295683",
+              "_key": "1841666295683",
+              "_from": "circles/G",
+              "_to": "circles/H"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_blub",
+              "_id": "edges/1841666492291",
+              "_rev": "1841666492291",
+              "_key": "1841666492291",
+              "_from": "circles/H",
+              "_to": "circles/I"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "10",
+          "_id": "circles/J",
+          "_rev": "1841664460675",
+          "_key": "J"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "right_zip",
+          "_id": "edges/1841666688899",
+          "_rev": "1841666688899",
+          "_key": "1841666688899",
+          "_from": "circles/G",
+          "_to": "circles/J"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "7",
+              "_id": "circles/G",
+              "_rev": "1841663870851",
+              "_key": "G"
+            },
+            {
+              "label": "10",
+              "_id": "circles/J",
+              "_rev": "1841664460675",
+              "_key": "J"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_foo",
+              "_id": "edges/1841666099075",
+              "_rev": "1841666099075",
+              "_key": "1841666099075",
+              "_from": "circles/A",
+              "_to": "circles/G"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_zip",
+              "_id": "edges/1841666688899",
+              "_rev": "1841666688899",
+              "_key": "1841666688899",
+              "_from": "circles/G",
+              "_to": "circles/J"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "11",
+          "_id": "circles/K",
+          "_rev": "1841664657283",
+          "_key": "K"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "right_zup",
+          "_id": "edges/1841666885507",
+          "_rev": "1841666885507",
+          "_key": "1841666885507",
+          "_from": "circles/J",
+          "_to": "circles/K"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "7",
+              "_id": "circles/G",
+              "_rev": "1841663870851",
+              "_key": "G"
+            },
+            {
+              "label": "10",
+              "_id": "circles/J",
+              "_rev": "1841664460675",
+              "_key": "J"
+            },
+            {
+              "label": "11",
+              "_id": "circles/K",
+              "_rev": "1841664657283",
+              "_key": "K"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_foo",
+              "_id": "edges/1841666099075",
+              "_rev": "1841666099075",
+              "_key": "1841666099075",
+              "_from": "circles/A",
+              "_to": "circles/G"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_zip",
+              "_id": "edges/1841666688899",
+              "_rev": "1841666688899",
+              "_key": "1841666688899",
+              "_from": "circles/G",
+              "_to": "circles/J"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "right_zup",
+              "_id": "edges/1841666885507",
+              "_rev": "1841666885507",
+              "_key": "1841666885507",
+              "_from": "circles/J",
+              "_to": "circles/K"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "2",
+          "_id": "circles/B",
+          "_rev": "1841662887811",
+          "_key": "B"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "left_bar",
+          "_id": "edges/1841665116035",
+          "_rev": "1841665116035",
+          "_key": "1841665116035",
+          "_from": "circles/A",
+          "_to": "circles/B"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "2",
+              "_id": "circles/B",
+              "_rev": "1841662887811",
+              "_key": "B"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_bar",
+              "_id": "edges/1841665116035",
+              "_rev": "1841665116035",
+              "_key": "1841665116035",
+              "_from": "circles/A",
+              "_to": "circles/B"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "5",
+          "_id": "circles/E",
+          "_rev": "1841663477635",
+          "_key": "E"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "left_blub",
+          "_id": "edges/1841665705859",
+          "_rev": "1841665705859",
+          "_key": "1841665705859",
+          "_from": "circles/B",
+          "_to": "circles/E"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "2",
+              "_id": "circles/B",
+              "_rev": "1841662887811",
+              "_key": "B"
+            },
+            {
+              "label": "5",
+              "_id": "circles/E",
+              "_rev": "1841663477635",
+              "_key": "E"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_bar",
+              "_id": "edges/1841665116035",
+              "_rev": "1841665116035",
+              "_key": "1841665116035",
+              "_from": "circles/A",
+              "_to": "circles/B"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_blub",
+              "_id": "edges/1841665705859",
+              "_rev": "1841665705859",
+              "_key": "1841665705859",
+              "_from": "circles/B",
+              "_to": "circles/E"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "6",
+          "_id": "circles/F",
+          "_rev": "1841663674243",
+          "_key": "F"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "left_schubi",
+          "_id": "edges/1841665902467",
+          "_rev": "1841665902467",
+          "_key": "1841665902467",
+          "_from": "circles/E",
+          "_to": "circles/F"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "2",
+              "_id": "circles/B",
+              "_rev": "1841662887811",
+              "_key": "B"
+            },
+            {
+              "label": "5",
+              "_id": "circles/E",
+              "_rev": "1841663477635",
+              "_key": "E"
+            },
+            {
+              "label": "6",
+              "_id": "circles/F",
+              "_rev": "1841663674243",
+              "_key": "F"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_bar",
+              "_id": "edges/1841665116035",
+              "_rev": "1841665116035",
+              "_key": "1841665116035",
+              "_from": "circles/A",
+              "_to": "circles/B"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_blub",
+              "_id": "edges/1841665705859",
+              "_rev": "1841665705859",
+              "_key": "1841665705859",
+              "_from": "circles/B",
+              "_to": "circles/E"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_schubi",
+              "_id": "edges/1841665902467",
+              "_rev": "1841665902467",
+              "_key": "1841665902467",
+              "_from": "circles/E",
+              "_to": "circles/F"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "3",
+          "_id": "circles/C",
+          "_rev": "1841663084419",
+          "_key": "C"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "left_blarg",
+          "_id": "edges/1841665312643",
+          "_rev": "1841665312643",
+          "_key": "1841665312643",
+          "_from": "circles/B",
+          "_to": "circles/C"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "2",
+              "_id": "circles/B",
+              "_rev": "1841662887811",
+              "_key": "B"
+            },
+            {
+              "label": "3",
+              "_id": "circles/C",
+              "_rev": "1841663084419",
+              "_key": "C"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_bar",
+              "_id": "edges/1841665116035",
+              "_rev": "1841665116035",
+              "_key": "1841665116035",
+              "_from": "circles/A",
+              "_to": "circles/B"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_blarg",
+              "_id": "edges/1841665312643",
+              "_rev": "1841665312643",
+              "_key": "1841665312643",
+              "_from": "circles/B",
+              "_to": "circles/C"
+            }
+          ]
+        }
+      },
+      {
+        "v": {
+          "label": "4",
+          "_id": "circles/D",
+          "_rev": "1841663281027",
+          "_key": "D"
+        },
+        "e": {
+          "theFalse": false,
+          "theTruth": true,
+          "label": "left_blorg",
+          "_id": "edges/1841665509251",
+          "_rev": "1841665509251",
+          "_key": "1841665509251",
+          "_from": "circles/C",
+          "_to": "circles/D"
+        },
+        "p": {
+          "vertices": [
+            {
+              "label": "1",
+              "_id": "circles/A",
+              "_rev": "1841662691203",
+              "_key": "A"
+            },
+            {
+              "label": "2",
+              "_id": "circles/B",
+              "_rev": "1841662887811",
+              "_key": "B"
+            },
+            {
+              "label": "3",
+              "_id": "circles/C",
+              "_rev": "1841663084419",
+              "_key": "C"
+            },
+            {
+              "label": "4",
+              "_id": "circles/D",
+              "_rev": "1841663281027",
+              "_key": "D"
+            }
+          ],
+          "edges": [
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_bar",
+              "_id": "edges/1841665116035",
+              "_rev": "1841665116035",
+              "_key": "1841665116035",
+              "_from": "circles/A",
+              "_to": "circles/B"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_blarg",
+              "_id": "edges/1841665312643",
+              "_rev": "1841665312643",
+              "_key": "1841665312643",
+              "_from": "circles/B",
+              "_to": "circles/C"
+            },
+            {
+              "theFalse": false,
+              "theTruth": true,
+              "label": "left_blorg",
+              "_id": "edges/1841665509251",
+              "_rev": "1841665509251",
+              "_key": "1841665509251",
+              "_from": "circles/C",
+              "_to": "circles/D"
+            }
+          ]
+        }
+      }
+    ],
+
   });
 }());
 
@@ -25670,6 +28854,95 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
+/*jshint browser: true */
+/*jshint unused: false */
+/*global Backbone, EJS, $, window, _ */
+/*global _, arangoHelper, templateEngine, jQuery, Joi*/
+
+(function () {
+  "use strict";
+  window.workMonitorView = Backbone.View.extend({
+
+    el: '#content',
+    id: '#workMonitorContent',
+
+    template: templateEngine.createTemplate("workMonitorView.ejs"),
+    table: templateEngine.createTemplate("arangoTable.ejs"),
+
+    initialize: function () {
+    },
+
+    events: {
+    },
+
+    tableDescription: {
+      id: "workMonitorTable",
+      titles: [
+        "Type", "Database", "Task ID", "Started", "Url", "User", "Description", "Method"
+      ],
+      rows: [],
+      unescaped: [false, false, false, false, false, false, false, false]
+    },
+
+    render: function() {
+
+      var self = this;
+
+      this.$el.html(this.template.render({}));
+      this.collection.fetch({
+        success: function() {
+          self.parseTableData();
+          $(self.id).append(self.table.render({content: self.tableDescription}));
+        }
+      });
+    },
+
+    parseTableData: function() {
+
+      var self = this;
+
+      this.collection.each(function(model) {
+        if (model.get('type') === 'AQL query') {
+
+          var parent = model.get('parent');
+          if (parent) {
+            try {
+
+              self.tableDescription.rows.push([
+                model.get('type'),
+                "(p) " + parent.database,
+                "(p) " + parent.taskId,
+                "(p) " + parent.startTime,
+                "(p) " + parent.url,
+                "(p) " + parent.user,
+                model.get('description'),
+                "(p) " + parent.method
+              ]);
+            }
+            catch (e) {
+              console.log("some parse error");
+            }
+          }
+
+        }
+        else if (model.get('type') !== 'thread') {
+          self.tableDescription.rows.push([
+            model.get('type'),
+            model.get('database'),
+            model.get('taskId'),
+            model.get('startTime'),
+            model.get('url'),
+            model.get('user'),
+            model.get('description'),
+            model.get('method')
+          ]);
+        }
+      });
+    }
+
+  });
+}());
+
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
 /*global arangoHelper,dashboardView,arangoDatabase, _*/
@@ -25689,6 +28962,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "shell": "shell",
       "query": "query",
       "queryManagement": "queryManagement",
+      "workMonitor": "workMonitor",
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
@@ -25696,7 +28970,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs"
+      "logs": "logs",
+      "test": "test"
     },
 
     initialize: function () {
@@ -25895,6 +29170,33 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
+    },
+    
+    test: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.testView) {
+        this.testView = new window.testView({
+        });
+      }
+      this.testView.render();
+    },
+
+    workMonitor: function () {
+      if (!this.checkUser()) {
+        return;
+      }
+      if (!this.workMonitorCollection) {
+        this.workMonitorCollection = new window.WorkMonitorCollection();
+      }
+      if (!this.workMonitorView) {
+        this.workMonitorView = new window.workMonitorView({
+          collection: this.workMonitorCollection
+        });
+      }
+      this.workMonitorView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     queryManagement: function () {

@@ -30,7 +30,6 @@
 
 namespace arangodb {
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8LineEditor
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,16 +38,12 @@ class V8LineEditor : public LineEditor {
   V8LineEditor(LineEditor const&) = delete;
   V8LineEditor& operator=(LineEditor const&) = delete;
 
-  
  public:
-
   V8LineEditor(v8::Isolate*, v8::Handle<v8::Context>,
                std::string const& history);
 
-
   ~V8LineEditor();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the editor's isolate
@@ -68,7 +63,6 @@ class V8LineEditor : public LineEditor {
 
   void setExecutingCommand(bool value) { _executingCommand.store(value); }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief isolate
@@ -91,5 +85,3 @@ class V8LineEditor : public LineEditor {
 }
 
 #endif
-
-

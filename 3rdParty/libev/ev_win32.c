@@ -39,14 +39,21 @@
 
 #ifdef _WIN32
 
-/* timeb.h is actually xsi legacy functionality */
-#include <sys/timeb.h>
-
 /* note: the comment below could not be substantiated, but what would I care */
 /* MSDN says this is required to handle SIGFPE */
 /* my wild guess would be that using something floating-pointy is required */
 /* for the crt to do something about it */
 volatile double SIGFPE_REQ = 0.0f;
+
+static SOCKET
+ev_tcp_socket (void)
+{
+#if EV_USE_WSASOCKET
+  return WSASocket (AF_INET, SOCK_STREAM, 0, 0, 0, 0);
+#else
+  return socket (AF_INET, SOCK_STREAM, 0);
+#endif
+}
 
 /* oh, the humanity! */
 static int
@@ -59,7 +66,7 @@ ev_pipe (int filedes [2])
   SOCKET listener;
   SOCKET sock [2] = { -1, -1 };
 
-  if ((listener = socket (AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+  if ((listener = ev_tcp_socket ()) == INVALID_SOCKET)
     return -1;
 
   addr.sin_family = AF_INET;
@@ -75,12 +82,14 @@ ev_pipe (int filedes [2])
   if (listen (listener, 1))
     goto fail;
 
-  if ((sock [0] = socket (AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+  if ((sock [0] = ev_tcp_socket ()) == INVALID_SOCKET)
     goto fail;
 
   if (connect (sock [0], (struct sockaddr *)&addr, addr_size))
     goto fail;
 
+  /* TODO: returns INVALID_SOCKET on winsock accept, not < 0. fix it */
+  /* when convenient, probably by just removing error checking altogether? */
   if ((sock [1] = accept (listener, 0, 0)) < 0)
     goto fail;
 
@@ -133,7 +142,7 @@ fail:
 
 #undef pipe
 #define pipe(filedes) ev_pipe (filedes)
-  
+
 #define EV_HAVE_EV_TIME 1
 ev_tstamp
 ev_time (void)

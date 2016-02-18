@@ -23,19 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DispatcherQueue.h"
-
 #include "Basics/ConditionLocker.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
-using namespace std;
 using namespace arangodb::rest;
-
-// -----------------------------------------------------------------------------
-// constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new dispatcher queue
@@ -70,7 +64,7 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
       _jobs(),
       _jobPositions(_maxSize) {
   // keep a list of all jobs
-  _jobs = new atomic<Job*>[maxSize];
+  _jobs = new std::atomic<Job*>[maxSize];
 
   // and a list of positions into this array
   for (size_t i = 0; i < maxSize; ++i) {
@@ -79,13 +73,10 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
   }
 }
 
-
 DispatcherQueue::~DispatcherQueue() {
   beginShutdown();
   delete[] _jobs;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a job
@@ -98,6 +89,8 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   size_t pos;
 
   if (!_jobPositions.pop(pos)) {
+    LOG(TRACE) << "cannot add job " << (void*)job.get() << " to queue "
+               << (void*)this << ". queue is full";
     return TRI_ERROR_QUEUE_FULL;
   }
 
@@ -111,15 +104,14 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   bool ok;
   try {
     ok = _readyJobs.push(raw);
-  }
-  catch (...) {
+  } catch (...) {
     ok = false;
   }
 
   if (ok) {
     ++_numberJobs;
   } else {
-    LOG_WARNING("cannot insert job into ready queue, giving up");
+    LOG(WARN) << "cannot insert job into ready queue, giving up";
 
     removeJob(raw);
     delete raw;
@@ -171,7 +163,7 @@ bool DispatcherQueue::cancelJob(uint64_t jobId) {
   }
 
   // and wait until we get set the hazard pointer
-  MUTEX_LOCKER(_hazardLock);
+  MUTEX_LOCKER(mutexLocker, _hazardLock);
 
   // first find the job
   Job* job = nullptr;
@@ -221,7 +213,7 @@ void DispatcherQueue::blockThread() { ++_nrBlocked; }
 
 void DispatcherQueue::unblockThread() {
   if (--_nrBlocked < 0) {
-    LOG_ERROR("internal error, unblocking too many threads");
+    LOG(ERR) << "internal error, unblocking too many threads";
   }
 }
 
@@ -234,8 +226,8 @@ void DispatcherQueue::beginShutdown() {
     return;
   }
 
-  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%lu'",
-            (unsigned long)_id);
+  LOG(DEBUG) << "beginning shutdown sequence of dispatcher queue '" << _id
+             << "'";
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
@@ -257,7 +249,7 @@ void DispatcherQueue::beginShutdown() {
   }
 
   // now try to get rid of the remaining (running) jobs
-  MUTEX_LOCKER(_hazardLock);
+  MUTEX_LOCKER(mutexLocker, _hazardLock);
 
   for (size_t i = 0; i < _maxSize; ++i) {
     Job* job = nullptr;
@@ -293,10 +285,9 @@ void DispatcherQueue::beginShutdown() {
 
   // wait for threads to shutdown
   for (size_t count = 0; count < MAX_TRIES; ++count) {
-    LOG_TRACE(
-        "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
-        "%d waiting threads",
-        (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
+    LOG(TRACE) << "shutdown sequence dispatcher queue '" << _id
+               << "', status: " << _nrRunning.load() << " running threads, "
+               << _nrWaiting.load() << " waiting threads";
 
     if (0 == _nrRunning + _nrWaiting) {
       break;
@@ -310,10 +301,9 @@ void DispatcherQueue::beginShutdown() {
     usleep(10 * 1000);
   }
 
-  LOG_DEBUG(
-      "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
-      "%d waiting threads",
-      (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
+  LOG(DEBUG) << "shutdown sequence dispatcher queue '" << _id
+             << "', status: " << _nrRunning.load() << " running threads, "
+             << _nrWaiting.load() << " waiting threads";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,14 +311,14 @@ void DispatcherQueue::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown() {
-  LOG_DEBUG("shutting down the dispatcher queue '%lu'", (unsigned long)_id);
+  LOG(DEBUG) << "shutting down the dispatcher queue '" << _id << "'";
 
   // try to stop threads forcefully
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     for (auto& it : _startedThreads) {
-      it->stop();
+      it->beginShutdown();
     }
   }
 
@@ -340,7 +330,7 @@ void DispatcherQueue::shutdown() {
 
   // and butcher the remaining threads
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     for (auto& it : _startedThreads) {
       delete it;
@@ -367,7 +357,7 @@ void DispatcherQueue::startQueueThread() {
   if (!_affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
 
-    LOG_DEBUG("using core %d for standard dispatcher thread", (int)c);
+    LOG(DEBUG) << "using core " << c << " for standard dispatcher thread";
 
     thread->setProcessorAffinity(c);
 
@@ -379,7 +369,7 @@ void DispatcherQueue::startQueueThread() {
   }
 
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
 
     if (!notEnoughThreads()) {
       delete thread;
@@ -394,7 +384,8 @@ void DispatcherQueue::startQueueThread() {
   bool ok = thread->start();
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("cannot start dispatcher thread");
+    LOG(FATAL) << "cannot start dispatcher thread";
+    FATAL_ERROR_EXIT();
   } else {
     _lastChanged = TRI_microtime();
   }
@@ -408,7 +399,7 @@ void DispatcherQueue::startQueueThread() {
 
 void DispatcherQueue::removeStartedThread(DispatcherThread* thread) {
   {
-    MUTEX_LOCKER(_threadsLock);
+    MUTEX_LOCKER(mutexLocker, _threadsLock);
     _startedThreads.erase(thread);
   }
 
@@ -422,19 +413,18 @@ void DispatcherQueue::removeStartedThread(DispatcherThread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::tooManyThreads() {
-  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
+  size_t nrRunning = _nrRunning.load(std::memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(std::memory_order_relaxed);
 
   if ((_nrThreads + nrBlocked) < nrRunning) {
     double now = TRI_microtime();
-    double lastChanged = _lastChanged.load(memory_order_relaxed);
+    double lastChanged = _lastChanged.load(std::memory_order_relaxed);
 
     if (lastChanged + _gracePeriod < now) {
-      _lastChanged.store(now, memory_order_relaxed);
+      _lastChanged.store(now, std::memory_order_relaxed);
       return true;
     }
-
-    return false;
+    // fall-through
   }
 
   return false;
@@ -445,8 +435,8 @@ bool DispatcherQueue::tooManyThreads() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::notEnoughThreads() {
-  size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
+  size_t nrRunning = _nrRunning.load(std::memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(std::memory_order_relaxed);
 
   return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
 }
@@ -458,7 +448,6 @@ bool DispatcherQueue::notEnoughThreads() {
 void DispatcherQueue::setProcessorAffinity(std::vector<size_t> const& cores) {
   _affinityCores = cores;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes old threads
@@ -473,5 +462,3 @@ void DispatcherQueue::deleteOldThreads() {
     }
   }
 }
-
-

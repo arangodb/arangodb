@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global window, $, document */
+/*global window, $, document, _ */
 
 (function() {
   "use strict";
@@ -55,7 +55,7 @@
     },
 
     setCheckboxStatus: function(id) {
-      $.each($(id).find('ul').find('li'), function(key, element) {
+      _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
            if ($(element).find('input').attr('checked')) {
              if ($(element).find('i').hasClass('css-round-label')) {
@@ -281,6 +281,150 @@
       $('.arangoFrame .outerDiv .fa-times').remove();
       $('.arangoFrame').hide();
     },
+
+    addAardvarkJob: function (object, callback) {
+      $.ajax({
+          cache: false,
+          type: "POST",
+          url: "/_admin/aardvark/job",
+          data: JSON.stringify(object),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAardvarkJob: function (id, callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job/" + encodeURIComponent(id),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    deleteAllAardvarkJobs: function (callback) {
+      $.ajax({
+          cache: false,
+          type: "DELETE",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+    },
+
+    getAardvarkJobs: function (callback) {
+      var result;
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_admin/aardvark/job",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            if (callback) {
+              callback(false, data);
+            }
+            result = data;
+          },
+          error: function(data) {
+            if (callback) {
+              callback(true, data);
+            }
+          }
+      });
+      return result;
+    },
+
+    getPendingJobs: function() {
+      var result; 
+
+      $.ajax({
+          cache: false,
+          type: "GET",
+          url: "/_api/job/pending",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            result = data;
+          },
+          error: function(data) {
+            console.log("pending jobs error: " + data);
+          }
+      });
+      return result;
+    },
+
+    syncAndReturnUninishedAardvarkJobs: function(type) {
+
+      var AaJobs = this.getAardvarkJobs(),
+      pendingJobs = this.getPendingJobs(),
+      array = [];
+
+      if (pendingJobs.length > 0) {
+        _.each(AaJobs, function(aardvark) {
+          if (aardvark.type === type || aardvark.type === undefined) {
+
+             var found = false; 
+            _.each(pendingJobs, function(pending) {
+              if (aardvark.id === pending) {
+                found = true;
+              } 
+            });
+
+            if (found) {
+              array.push({
+                collection: aardvark.collection,
+                id: aardvark.id,
+                type: aardvark.type,
+                desc: aardvark.desc 
+              });
+            }
+            else {
+              window.arangoHelper.deleteAardvarkJob(aardvark.id);
+            }
+          }
+        });
+      }
+      else {
+        this.deleteAllAardvarkJobs(); 
+      }
+
+      return array;
+    }, 
 
     getRandomToken: function () {
       return Math.round(new Date().getTime());

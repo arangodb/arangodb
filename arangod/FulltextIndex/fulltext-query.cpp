@@ -22,11 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-query.h"
-#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a word for a fulltext search query
@@ -85,7 +83,6 @@ static char* NormaliseWord(char const* word, size_t wordLength) {
 
   return copy3;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query
@@ -155,7 +152,6 @@ void TRI_FreeQueryFulltextIndex(TRI_fulltext_query_t* query) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query from a query string
@@ -229,8 +225,7 @@ int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
     if (split != nullptr) {
       if (TRI_CaseEqualString(start, "prefix:", strlen("prefix:"))) {
         match = TRI_FULLTEXT_PREFIX;
-      }
-      else if (TRI_CaseEqualString(start, "complete:", strlen("complete:"))) {
+      } else if (TRI_CaseEqualString(start, "complete:", strlen("complete:"))) {
         match = TRI_FULLTEXT_COMPLETE;
       }
 
@@ -288,5 +283,3 @@ bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t* query, size_t position,
 
   return true;
 }
-
-

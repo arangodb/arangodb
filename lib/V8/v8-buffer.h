@@ -46,14 +46,12 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef LIB_V8_V8_BUFFER_H
 #define LIB_V8_V8_BUFFER_H 1
 
 #include "Basics/Common.h"
 
 #include "V8/v8-wrapper.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief buffer encoding
@@ -69,7 +67,6 @@ typedef enum TRI_V8_encoding_e {
   BUFFER
 } TRI_V8_encoding_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binary buffer
 ///
@@ -82,7 +79,6 @@ typedef enum TRI_V8_encoding_e {
 #define TRI_V8_BUFFER_CID (0xF000)
 
 class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximal length
@@ -98,7 +94,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   static bool hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the buffer data for a handle
@@ -172,7 +167,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
     return length(val);
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief free callback type
@@ -180,7 +174,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   typedef void (*free_callback_fptr)(char* data, void* hint);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief instance constructor
@@ -194,7 +187,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   static v8::Handle<v8::Object> New(v8::Isolate* isolate,
                                     v8::Handle<v8::String> string);
-
 
   static V8Buffer* New(v8::Isolate* isolate, size_t length);
 
@@ -224,7 +216,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
  private:
   V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper, size_t length);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replaces the buffer
@@ -236,7 +227,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   void replace(v8::Isolate* isolate, char* data, size_t length,
                free_callback_fptr callback, void* hint);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief length
@@ -250,7 +240,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   char* _data;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief free callback
@@ -267,11 +256,8 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-

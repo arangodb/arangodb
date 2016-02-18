@@ -35,7 +35,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-
 class EnumerateListBlock : public ExecutionBlock {
  public:
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
@@ -64,7 +63,6 @@ class EnumerateListBlock : public ExecutionBlock {
   /// @brief create an AqlValue from the inVariable using the current _index
   //////////////////////////////////////////////////////////////////////////////
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an AqlValue from the inVariable using the current _index
@@ -78,7 +76,6 @@ class EnumerateListBlock : public ExecutionBlock {
 
   void throwArrayExpectedException();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in the _inVariable
@@ -122,4 +119,3 @@ class EnumerateListBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

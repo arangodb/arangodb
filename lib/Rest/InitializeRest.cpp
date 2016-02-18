@@ -35,10 +35,8 @@
 #endif
 
 #include "Basics/locks.h"
-#include "Basics/logging.h"
 #include "Basics/InitializeBasics.h"
 #include "Basics/threads.h"
-#include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 
 // -----------------------------------------------------------------------------
@@ -58,10 +56,17 @@ unsigned long opensslThreadId() { return (unsigned long)TRI_CurrentThreadId(); }
 // The compiler chooses the right one from the following two,
 // according to the type of the return value of pthread_self():
 
+#ifndef __sun
 template <typename T>
 void setter(CRYPTO_THREADID* id, T p) {
   CRYPTO_THREADID_set_pointer(id, p);
 }
+#else
+template <typename T>
+void setter(CRYPTO_THREADID* id, T p) {
+  CRYPTO_THREADID_set_pointer(id, (void *) (intptr_t) p);
+}
+#endif
 
 #ifndef __APPLE__
 template <>
@@ -155,5 +160,3 @@ void ShutdownRest() {
 }
 }
 }
-
-

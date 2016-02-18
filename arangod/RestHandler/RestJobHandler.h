@@ -34,23 +34,16 @@ class AsyncJobManager;
 class Dispatcher;
 }
 
-namespace admin {
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestJobHandler : public RestBaseHandler {
-  
  public:
-
   RestJobHandler(rest::HttpRequest* request,
                  std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -59,7 +52,6 @@ class RestJobHandler : public RestBaseHandler {
 
   status_t execute() override;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief put handler
   //////////////////////////////////////////////////////////////////////////////
@@ -96,7 +88,6 @@ class RestJobHandler : public RestBaseHandler {
 
   void deleteJob();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -111,8 +102,5 @@ class RestJobHandler : public RestBaseHandler {
   rest::AsyncJobManager* _jobManager;
 };
 }
-}
 
 #endif
-
-

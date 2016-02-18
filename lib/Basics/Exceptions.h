@@ -29,9 +29,6 @@
 
 #include <errno.h>
 
-#include "Basics/StringUtils.h"
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief diagnostic output
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,10 +72,8 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
-
 namespace arangodb {
 namespace basics {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief arango exception type
@@ -105,6 +100,8 @@ class Exception : public virtual std::exception {
   std::string message() const throw();
   int code() const throw();
   void addToMessage(std::string const&);
+ private:
+  void appendLocation ();
 
  protected:
   std::string _errorMessage;
@@ -116,5 +113,3 @@ class Exception : public virtual std::exception {
 }
 
 #endif
-
-

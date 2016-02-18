@@ -31,7 +31,6 @@ using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -39,13 +38,10 @@ using namespace arangodb::admin;
 
 extern AnyServer* ArangoInstance;
 
-
 RestDebugHandler::RestDebugHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 bool RestDebugHandler::isDirect() const { return false; }
-
 
 HttpHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type

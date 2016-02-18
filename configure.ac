@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  ArangoDB GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([ArangoDB GmbH], [2.8.0-devel], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
+AC_INIT([ArangoDB GmbH], [3.0.0-devel], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
 
 CURRENT_DIR=`pwd`
 
@@ -88,13 +88,15 @@ else:
    echo "Compiling V8 requires a python version 2; please adjust your " `which python`
    exit 1
 fi
-
+PYTHON_EXECUTABLE=`which python`
+AC_SUBST(PYTHON_EXECUTABLE)
 dnl ----------------------------------------------------------------------------
 dnl check for special OS like MacOS X or FreeBSD
 dnl ----------------------------------------------------------------------------
 
 tr_DARWIN="no"
 tr_FREEBSD="no"
+tr_SOLARIS="no"
 tr_ARM="no"
 
 case $target in
@@ -104,6 +106,15 @@ case $target in
 
   *-*-freebsd*)
     tr_FREEBSD="yes"
+    ;;
+
+  *-*-solaris*)
+    tr_SOLARIS="yes"
+    CC="gcc -std=gnu99"
+    CPPFLAGS=" -I/opt/local/include -L/opt/local/lib"
+    CXXFLAGS="-static-libstdc++ -D_GLIBCXX_USE_C99"
+    LDFLAGS="-Wl,-rpath,/opt/local/lib,-lnsl,-lsocket -L/opt/local/lib"
+    LIBEV_FLAGS="${LIBEV_FLAGS} -D _REENTRANT=1 -D HAVE_PORT_H=1 -D EV_USE_PORT=1 -D EV_USE_INOTIFY=0 -D EV_USE_EVENTFD=0"
     ;;
 
   armv7l-*-linux-gnueabihf)
@@ -125,6 +136,7 @@ esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
 AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_SOLARIS, test "x$tr_SOLARIS" = xyes)
 AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
 AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
@@ -167,8 +179,11 @@ AC_PROG_RANLIB
 
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+AX_COMPILER_VENDOR
 
-
+if test "$ax_cv_c_compiler_vendor" == "gnu"; then
+  echo "GNU"
+fi
 dnl ----------------------------------------------------------------------------
 dnl bits
 dnl ----------------------------------------------------------------------------
@@ -402,7 +417,6 @@ dnl ----------------------------------------------------------------------------
 dnl load sub systems
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
@@ -569,11 +583,13 @@ LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev -DTRI_LIBEV_VERSION='\"${LIBEV_VERSIO
 LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
 LIBEV_LDFLAGS=""
 LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
+LIBEV_FLAGS="${LIBEV_FLAGS}"
 
 AC_SUBST(LIBEV_VERSION)
 AC_SUBST(LIBEV_CPPFLAGS)
 AC_SUBST(LIBEV_LDFLAGS)
 AC_SUBST(LIBEV_LIBS)
+AC_SUBST(LIBEV_FLAGS)
 
 LIB_INFO="$LIB_INFO|LIBEV: 3rdParty version"
 LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
@@ -581,6 +597,7 @@ LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
 LIB_INFO="$LIB_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
 LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+LIB_INFO="$LIB_INFO|LIBEV_FLAGS:    ${LIBEV_FLAGS}"
 
 LIB_INFO="$LIB_INFO|."
 
@@ -598,27 +615,9 @@ AC_MSG_NOTICE([-----------------------------------------------------------------
 AC_MSG_NOTICE([CHECKING FOR CONSOLE SUPPORT])
 AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-CONSOLE_CPPFLAGS=""
-
-AC_ARG_ENABLE(console,
-  AS_HELP_STRING([--enable-console], [enable console support (default: linenoise)]),
-  tr_CONSOLE="$enableval",
-  tr_CONSOLE="linenoise"
-)
-
-if test "$tr_CONSOLE" = "dummy"; then
-  LIB_INFO="$LIB_INFO|CONSOLE: dummy"
-elif test "$tr_CONSOLE" = "linenoise"; then
-  LIB_INFO="$LIB_INFO|CONSOLE: linenoise"
-  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src -DTRI_HAVE_LINENOISE"
-fi
-
-LIB_INFO="$LIB_INFO|CONSOLE_CPPFLAGS: ${CONSOLE_CPPFLAGS}"
-LIB_INFO="$LIB_INFO|."
+CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src"
 
 AC_SUBST(CONSOLE_CPPFLAGS)
-
-AM_CONDITIONAL(ENABLE_LINENOISE, test "x$tr_CONSOLE" = xlinenoise)
 
 dnl ----------------------------------------------------------------------------
 dnl tcmalloc

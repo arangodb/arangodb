@@ -23,7 +23,7 @@
 
 #include "SynchronizerThread.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/server.h"
@@ -33,46 +33,29 @@
 
 using namespace arangodb::wal;
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the synchronizer thread
-////////////////////////////////////////////////////////////////////////////////
-
 SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
                                        uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),
       _condition(),
       _waiting(0),
-      _stop(0),
       _syncInterval(syncInterval),
       _logfileCache({0, -1}) {
-  allowAsynchronousCancelation();
+}
+
+SynchronizerThread::~SynchronizerThread() {
+  shutdown(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the synchronizer thread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchronizerThread::~SynchronizerThread() {}
+void SynchronizerThread::beginShutdown() {
+  Thread::beginShutdown();
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the synchronizer thread
-////////////////////////////////////////////////////////////////////////////////
-
-void SynchronizerThread::stop() {
-  if (_stop > 0) {
-    return;
-  }
-
-  _stop = 1;
-  _condition.signal();
-
-  while (_stop != 2) {
-    usleep(10000);
-  }
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +67,6 @@ void SynchronizerThread::signalSync() {
   ++_waiting;
   _condition.signal();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
@@ -103,14 +85,13 @@ void SynchronizerThread::run() {
   // go on without the lock
 
   while (true) {
-    int stop = (int)_stop;
-
     if (waiting > 0 || ++iterations == 10) {
       iterations = 0;
 
       try {
         // sync as much as we can in this loop
         bool checkMore = false;
+
         while (true) {
           int res = doSync(checkMore);
 
@@ -120,10 +101,9 @@ void SynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_ERROR("got unexpected error in synchronizerThread: %s",
-                  TRI_errno_string(res));
+        LOG(ERR) << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
       } catch (...) {
-        LOG_ERROR("got unspecific error in synchronizerThread");
+        LOG(ERR) << "got unspecific error in synchronizerThread";
       }
     }
 
@@ -139,7 +119,7 @@ void SynchronizerThread::run() {
     waiting = _waiting;
 
     if (waiting == 0) {
-      if (stop > 0) {
+      if (isStopping()) {
         // stop requested and all synced, we can exit
         break;
       }
@@ -147,13 +127,8 @@ void SynchronizerThread::run() {
       // sleep if nothing to do
       guard.wait(_syncInterval);
     }
-
-    // next iteration
   }
-
-  _stop = 2;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief synchronize an unsynchronized region
@@ -182,12 +157,10 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
-  LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
-            (unsigned long long)id, region.mem, region.mem + region.size,
-            (unsigned long)region.size, region.waitForSync ? "true" : "false");
+  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - " << (region.mem + region.size) << ", length: " << region.size << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {
-    LOG_ERROR("unable to sync wal logfile region");
+    LOG(ERR) << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }
@@ -241,5 +214,3 @@ int SynchronizerThread::getLogfileDescriptor(Logfile::IdType id) {
 
   return _logfileCache.fd;
 }
-
-

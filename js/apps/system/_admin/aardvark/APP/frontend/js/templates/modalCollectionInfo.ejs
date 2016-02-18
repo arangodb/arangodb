@@ -8,7 +8,6 @@
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
       <li><a href="#figures" data-toggle="tab">Figures</a></li>
-      <li><a href="#index" data-toggle="tab">Indexes</a></li>
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
@@ -20,7 +19,7 @@
             <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=filesize(figuresData.journalSize)%>
+                <%=prettyBytes(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -113,7 +112,7 @@
             <th class="modal-text">Datafiles</th>
             <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.datafiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -127,7 +126,7 @@
             <th class="modal-text">Journals</th>
             <th class="modal-text"><%=figuresData.figures.journals.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.journals.fileSize)%>
+            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -138,7 +137,7 @@
             <th class="modal-text">Compactors</th>
             <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.compactors.fileSize)%>
+            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -149,7 +148,7 @@
             <th class="modal-text">Shape files</th>
             <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -160,7 +159,7 @@
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.indexes.size)%>
+            <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -221,7 +220,7 @@
             <th class="modal-text">Alive</th>
             <th class="modal-text"><%=figuresData.figures.alive.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.alive.size)%>
+            <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -234,7 +233,7 @@
             <th class="modal-text">Dead</th>
             <th class="modal-text"><%=figuresData.figures.dead.count%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.dead.size)%>
+            <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
@@ -250,49 +249,6 @@
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-
-			<div class="tab-pane" id="index">
-        <table id="collectionIndexTable">
-          <tr class="figuresHeader">
-            <th class="collectionInfoTh">ID</th>
-            <th class="collectionInfoTh">Type</th>
-            <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Sparse</th>
-            <th class="collectionInfoTh">Selectivity Est.</th>
-            <th class="collectionInfoTh">Fields</th>
-          </tr>
-          <%
-          if (index) {
-            var fieldString = '';
-            $.each(index.indexes, function(k, v) {
-              if (v.fields !== undefined) {
-                fieldString = v.fields.join(", ");
-              }
-
-              //cut index id
-              var position = v.id.indexOf('/');
-              var indexId = v.id.substr(position+1, v.id.length);
-              var selectivity = (
-                v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-                "n/a"
-              );
-              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-          %>
-          <tr>
-            <th class="collectionInfoTh modal-text"><%=indexId%></th>
-            <th class="collectionInfoTh modal-text"><%=v.type%></th>
-            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
-            <th class="collectionInfoTh modal-text"><%=sparse%></th>
-            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
-            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
-          </tr>
-          <%
-            });
-          }
-          %>
-        </table>
-			</div>
 
 	  </div>
 </script>

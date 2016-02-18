@@ -33,20 +33,17 @@
 namespace arangodb {
 namespace basics {
 
-
-template<size_t Bits>
+template <size_t Bits>
 class BloomFilter {
-
   static_assert(Bits >= 10, "invalid number of bits");
-  
+
  public:
   BloomFilter(BloomFilter const&) = delete;
   BloomFilter& operator=(BloomFilter const&) = delete;
 
-  BloomFilter(size_t numberHashFunctions) 
-    : _numberHashFunctions(numberHashFunctions),
-      _bits(new std::bitset<Bits>()) {
-
+  BloomFilter(size_t numberHashFunctions)
+      : _numberHashFunctions(numberHashFunctions),
+        _bits(new std::bitset<Bits>()) {
     TRI_ASSERT(numberHashFunctions > 0);
   }
 
@@ -69,7 +66,7 @@ class BloomFilter {
     }
 
     uint64_t const h1 = hash1(data, length);
- 
+
     for (size_t i = 0; i < _numberHashFunctions; ++i) {
       size_t position = (h0 + i * h1) % Bits;
       _bits->set(position);
@@ -95,7 +92,7 @@ class BloomFilter {
     }
 
     uint64_t const h1 = hash1(data, length);
- 
+
     for (size_t i = 0; i < _numberHashFunctions; ++i) {
       size_t position = (h0 + i * h1) % Bits;
       if (!_bits->test(position)) {
@@ -109,26 +106,31 @@ class BloomFilter {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the optimal number of hash functions
-  /// (from https://en.wikipedia.org/wiki/Bloom_filter#Optimal_number_of_hash_functions)
+  /// (from
+  /// https://en.wikipedia.org/wiki/Bloom_filter#Optimal_number_of_hash_functions)
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t optimalNumberHashes(size_t numberElements) {
     double bitsPerElement = static_cast<double>(Bits) / numberElements;
-    return static_cast<size_t>(optimalNumberHashes(numberElements, bitsPerElement));
+    return static_cast<size_t>(
+        optimalNumberHashes(numberElements, bitsPerElement));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the optimal number of hash functions
-  /// (from https://en.wikipedia.org/wiki/Bloom_filter#Optimal_number_of_hash_functions)
+  /// (from
+  /// https://en.wikipedia.org/wiki/Bloom_filter#Optimal_number_of_hash_functions)
   //////////////////////////////////////////////////////////////////////////////
 
-  static size_t optimalNumberHashes(size_t numberElements, double bitsPerElement) {
+  static size_t optimalNumberHashes(size_t numberElements,
+                                    double bitsPerElement) {
     if (numberElements <= 1) {
       return 1;
     }
 
     // 0.69xxx = ln 2
-    return static_cast<size_t>((std::max)(bitsPerElement * 0.6931471805599453, 1.0));
+    return static_cast<size_t>(
+        (std::max)(bitsPerElement * 0.6931471805599453, 1.0));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -151,11 +153,11 @@ class BloomFilter {
 
     // 0.69xxx = ln 2
     double const k = (filterSize / numberElements) * 0.6931471805599453;
-    return std::pow((1.0 - std::pow(1.0 - (1.0 / filterSize), k * numberElements)), k);
+    return std::pow(
+        (1.0 - std::pow(1.0 - (1.0 / filterSize), k * numberElements)), k);
   }
 
  private:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief first hash function
   //////////////////////////////////////////////////////////////////////////////
@@ -173,13 +175,12 @@ class BloomFilter {
   }
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of hash functions
   //////////////////////////////////////////////////////////////////////////////
 
   size_t const _numberHashFunctions;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the bitset representing the bloom filter
   //////////////////////////////////////////////////////////////////////////////
@@ -187,9 +188,7 @@ class BloomFilter {
   std::unique_ptr<std::bitset<Bits>> _bits;
 };
 
-
 }  // namespace arangodb::basics
 }  // namespace arangodb
 
 #endif
-

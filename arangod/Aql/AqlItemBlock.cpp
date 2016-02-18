@@ -29,7 +29,6 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +171,7 @@ void AqlItemBlock::destroy() {
         auto it2 = _valueCount.find(it);
         if (it2 !=
             _valueCount.end()) {  // if we know it, we are still responsible
-          TRI_ASSERT_EXPENSIVE(it2->second > 0);
+          TRI_ASSERT(it2->second > 0);
 
           if (--(it2->second) == 0) {
             it.destroy();
@@ -192,7 +191,6 @@ void AqlItemBlock::destroy() {
 
   _valueCount.clear();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shrink the block to the specified number of rows
@@ -221,7 +219,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
         auto it = _valueCount.find(a);
 
         if (it != _valueCount.end()) {
-          TRI_ASSERT_EXPENSIVE(it->second > 0);
+          TRI_ASSERT(it->second > 0);
 
           if (--it->second == 0) {
             a.destroy();
@@ -255,7 +253,7 @@ void AqlItemBlock::clearRegisters(
         auto it = _valueCount.find(a);
 
         if (it != _valueCount.end()) {
-          TRI_ASSERT_EXPENSIVE(it->second > 0);
+          TRI_ASSERT(it->second > 0);
 
           if (--it->second == 0) {
             a.destroy();
@@ -577,4 +575,3 @@ Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
                                                        Json(false));
   return json;
 }
-

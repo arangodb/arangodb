@@ -30,7 +30,6 @@
 
 #include <ostream>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -47,7 +46,6 @@
 #define TRI_IF_FAILURE(what) if (false)
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
@@ -214,5 +212,3 @@ std::ostream& operator<<(std::ostream& stream,
 }
 
 #endif
-
-

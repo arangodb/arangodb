@@ -21,9 +21,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `tcmalloc' library (-ltcmalloc). */
-#undef HAVE_LIBTCMALLOC
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -32,9 +29,6 @@
 
 /* Define if you have POSIX threads libraries and header files. */
 #undef HAVE_PTHREAD
-
-/* Define to 1 if you have the <readline/readline.h> header file. */
-#undef HAVE_READLINE_READLINE_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -100,29 +94,11 @@
 /* true if failure testing ins enabled */
 #undef TRI_ENABLE_FAILURE_TESTS
 
-/* true if figures are enabled */
-#undef TRI_ENABLE_FIGURES
-
-/* true if high resolution clock should be used */
-#undef TRI_ENABLE_HIRES_FIGURES
-
-/* true if logging is enabled */
-#undef TRI_ENABLE_LOGGER
-
-/* true if timing is enabled */
-#undef TRI_ENABLE_LOGGER_TIMING
-
 /* true if maintainer mode is enabled */
 #undef TRI_ENABLE_MAINTAINER_MODE
 
-/* true if timing is enabled */
-#undef TRI_ENABLE_TIMING
-
-/* true if linenoise is used */
-#undef TRI_HAVE_LINENOISE
-
-/* true if readline is used */
-#undef TRI_HAVE_READLINE
+/* true if tcmalloc is used */
+#undef TRI_HAVE_TCMALLOC
 
 /* true if we have the linux splice api */
 #undef TRI_LINUX_SPLICE

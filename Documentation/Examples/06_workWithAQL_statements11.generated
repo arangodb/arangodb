@@ -1,0 +1,4 @@
+arangosh&gt; stmt = db._createStatement( {
+........&gt; <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ 1, 2, 3, 4 ] RETURN i"</span>,
+........&gt; options: {<span class="hljs-string">"profile"</span>: <span class="hljs-literal">true</span>}} );
+[object ArangoStatement]

@@ -33,24 +33,21 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-namespace admin {
+namespace velocypack {
+class Slice;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default handler for error handling and json in-/output
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestBaseHandler : public rest::HttpHandler {
-  
  public:
-
   explicit RestBaseHandler(rest::HttpRequest* request);
 
-  
  public:
-
   void handleError(basics::Exception const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from JSON
@@ -69,14 +66,14 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(VPackSlice const& slice);
+  virtual void generateResult(arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void generateResult(rest::HttpResponse::HttpResponseCode,
-                              VPackSlice const& slice);
+                              arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a cancel message
@@ -104,8 +101,5 @@ class RestBaseHandler : public rest::HttpHandler {
   virtual void generateOOMError();
 };
 }
-}
 
 #endif
-
-

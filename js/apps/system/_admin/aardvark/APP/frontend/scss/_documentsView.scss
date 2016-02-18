@@ -5,7 +5,6 @@
 .new-index-view {
   input[type='checkbox'] {
     float: left;
-    margin-top: -9px;
   }
 
   table {
@@ -48,6 +47,10 @@
     margin-left: 10px;
   }
 
+  .fa {
+    margin-left: 13px;
+  }
+
 }
 
 .contentIn {
@@ -59,11 +62,44 @@
   }
 }
 
+#collectionEditIndexTable {
+  thead {
+    border-bottom: 1px solid $c-grey;
+  }
+}
+
+.newIndexClass {
+  table {
+    border-top: 1px solid $c-modal-table-border-bottom;
+    margin-bottom: 60px;
+
+    select {
+      margin-right: 7px;
+    }
+
+    .arangoicon {
+      float: right;
+      margin-right: -12px;
+      margin-top: 5px;
+    }
+  }
+}
+
 .index-button-bar {
+  bottom: 0;
+  margin-bottom: 15px;
+  margin-right: 17px;
   margin-top: 15px;
+  position: absolute;
+  right: 0;
 
   button {
+    float: right;
     margin-left: 0;
+  }
+
+  #cancelIndex {
+    margin-right: 13px;
   }
 }
 
