@@ -28,7 +28,6 @@
 #include "v8-utils.h"
 #include "v8-buffer.h"
 
-#include <regex.h>
 #include <fstream>
 #include <iostream>
 
@@ -228,13 +227,10 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
                                     bool execute, bool useGlobalContext) {
   v8::HandleScope scope(isolate);
   bool result;
-  regex_t re;
 
   LOG(TRACE) << "loading JavaScript directory: '" << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
-
-  regcomp(&re, "^(.*)\\.js$", REG_ICASE | REG_EXTENDED);
 
   result = true;
 
@@ -243,7 +239,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
     bool ok;
     char* full;
 
-    if (regexec(&re, filename.c_str(), 0, 0, 0) != 0) {
+    if (!StringUtils::isSuffix(filename, ".js")) {
       continue;
     }
 
@@ -263,7 +259,6 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
       }
     }
   }
-  regfree(&re);
 
   return result;
 }
@@ -1612,7 +1607,7 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(content, length),
                                          filename->ToString(), false);
-  
+
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     // restore old values for __dirname and __filename
