@@ -34,12 +34,33 @@
 namespace arangodb {
 
 struct OperationResult {
-  OperationResult() : buffer(), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, VPackCustomTypeHandler* handler) : buffer(buffer), customTypeHandler(handler), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), customTypeHandler(nullptr), code(code), wasSynchronous(false) {}
-  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, bool wasSynchronous) : buffer(buffer), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(wasSynchronous) {}
-  explicit OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer) : OperationResult(TRI_ERROR_NO_ERROR, buffer) {}
-  explicit OperationResult(int code) : OperationResult(code, nullptr) { }
+  // OperationResult() : buffer(), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  //OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, VPackCustomTypeHandler* handler) : buffer(buffer), customTypeHandler(handler), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  //OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), customTypeHandler(nullptr), code(code), wasSynchronous(false) {}
+  //OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, bool wasSynchronous) : buffer(buffer), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(wasSynchronous) {}
+  //explicit OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer) : OperationResult(TRI_ERROR_NO_ERROR, buffer) {}
+
+  explicit OperationResult(int code) 
+      : customTypeHandler(nullptr), code(code), wasSynchronous(false) { 
+    if (code != TRI_ERROR_NO_ERROR) {
+      errorMessage = TRI_errno_string(code);
+    }
+  }
+
+  OperationResult(int code, std::string const& message) 
+      : customTypeHandler(nullptr), errorMessage(message), code(code),
+        wasSynchronous(false) { 
+    TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+  }
+
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+                  VPackCustomTypeHandler* handler,
+                  std::string const& message,
+                  int code,
+                  bool wasSynchronous)
+      : buffer(buffer), customTypeHandler(handler), errorMessage(message),
+        code(code), wasSynchronous(wasSynchronous) {
+  }
 
   ~OperationResult() {
     // TODO: handle destruction of customTypeHandler
@@ -60,6 +81,7 @@ struct OperationResult {
 
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   VPackCustomTypeHandler* customTypeHandler;
+  std::string errorMessage;
   int code;
   bool wasSynchronous;
 };
