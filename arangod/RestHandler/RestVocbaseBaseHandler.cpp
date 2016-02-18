@@ -289,6 +289,48 @@ void RestVocbaseBaseHandler::generateForbidden() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates precondition failed
+///        DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generatePreconditionFailed(
+    VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_ID));
+  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_REV));
+  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_KEY));
+
+  createResponse(HttpResponse::PRECONDITION_FAILED);
+  _response->setContentType("application/json; charset=utf-8");
+  std::string rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
+  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    // _id and _key are safe and do not need to be JSON-encoded
+    builder.add("error", VPackValue(true));
+    builder.add(
+        "code",
+        VPackValue(static_cast<int32_t>(HttpResponse::PRECONDITION_FAILED)));
+    builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
+    builder.add("errorMessage", VPackValue("precondition failed"));
+    builder.add(TRI_VOC_ATTRIBUTE_ID, slice.get(TRI_VOC_ATTRIBUTE_ID));
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, slice.get(TRI_VOC_ATTRIBUTE_KEY));
+    builder.add(TRI_VOC_ATTRIBUTE_REV, slice.get(TRI_VOC_ATTRIBUTE_REV));
+  }
+
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+  VPackDumper dumper(&buffer);
+
+  try {
+    dumper.dump(builder.slice());
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
@@ -315,6 +357,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
       .appendText("\"}");
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,6 +372,7 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates next entry from a result set
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateDocument(
@@ -418,6 +463,52 @@ void RestVocbaseBaseHandler::generateDocument(
     // TODO What should happen on error here?
     // Failed to build the object
     // All other Exceptions were not catched before
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates next entry from a result set
+///        DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
+                                              bool generateBody) {
+  TRI_ASSERT(document.isObject());
+  TRI_ASSERT(document.hasKey(TRI_VOC_ATTRIBUTE_REV));
+
+  std::string rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+
+  // and generate a response
+  createResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("etag", 4, "\"" + rev + "\"");
+
+  if (generateBody) {
+    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+    VPackDumper dumper(&buffer);
+    try {
+      dumper.dump(document);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "cannot generate output");
+    }
+  } else {
+    // TODO can we optimize this?
+    // Just dump some where else to find real length
+    TRI_string_buffer_t tmpBuffer;
+    // convert object to string
+    TRI_InitStringBuffer(&tmpBuffer, TRI_UNKNOWN_MEM_ZONE);
+
+    VPackStringBufferAdapter buffer(&tmpBuffer);
+    VPackDumper dumper(&buffer);
+    try {
+      dumper.dump(document);
+    } catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "cannot generate output");
+    }
+    _response->headResponse(TRI_LengthStringBuffer(&tmpBuffer));
+    TRI_DestroyStringBuffer(&tmpBuffer);
   }
 }
 
