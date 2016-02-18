@@ -27,15 +27,23 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
 struct OperationResult {
-  OperationResult() : buffer(), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  explicit OperationResult(int code) : buffer(), code(code), wasSynchronous(false) {}
-  OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), code(code), wasSynchronous(false) {}
+  OperationResult() : buffer(), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, VPackCustomTypeHandler* handler) : buffer(buffer), customTypeHandler(handler), code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  OperationResult(int code, std::shared_ptr<VPackBuffer<uint8_t>> buffer) : buffer(buffer), customTypeHandler(nullptr), code(code), wasSynchronous(false) {}
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer, bool wasSynchronous) : buffer(buffer), customTypeHandler(nullptr), code(TRI_ERROR_NO_ERROR), wasSynchronous(wasSynchronous) {}
+  explicit OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer) : OperationResult(TRI_ERROR_NO_ERROR, buffer) {}
+  explicit OperationResult(int code) : OperationResult(code, nullptr) { }
+
+  ~OperationResult() {
+    // TODO: handle destruction of customTypeHandler
+  }
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -51,6 +59,7 @@ struct OperationResult {
   }
 
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  VPackCustomTypeHandler* customTypeHandler;
   int code;
   bool wasSynchronous;
 };
