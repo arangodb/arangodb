@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
@@ -30,7 +30,9 @@
 
 	.text
 	.globl	TRI_BlockCrc32_SSE42
+#ifndef  __APPLE__
 	.type	TRI_BlockCrc32_SSE42, @function
+#endif
 TRI_BlockCrc32_SSE42:
         movl    %edi,%eax
 crca1:
@@ -50,7 +52,8 @@ crca4:
         addq    $1,%rsi
         jmp     crca4
 crca9:
-        ret      
+        ret
+#ifndef  __APPLE__
 	.size	TRI_BlockCrc32_SSE42, .-TRI_BlockCrc32_SSE42
-
+#endif
 /* end of TRI_BlockCrc32_SSE42  */
