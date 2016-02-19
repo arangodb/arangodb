@@ -98,7 +98,7 @@ else()
 endif()
 
 
-list(APPEND V8_GYP_ARGS build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
+list(APPEND V8_GYP_ARGS ${V8_DIR}/build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
 
   
 if(WIN32)
@@ -133,7 +133,7 @@ endif ()
 include(ExternalProject)
 set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
   snapshot=off werror=no "${V8_TARGET_ARCH}" CC="${CMAKE_C_COMPILER}"
-  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+  CXX="${CMAKE_CXX_COMPILER}"
   CXXFLAGS=${CMAKE_CXX_FLAGS})
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
