@@ -127,17 +127,27 @@
         return;
       }
 
+      var callback = function() {
+        if (!this.hasOwnProperty('applicationDetailView')) {
+          this.applicationDetailView = new window.ApplicationDetailView({
+            model: this.foxxList.get(decodeURIComponent(mount))
+          });
+        }
+
+        this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
+        this.applicationDetailView.render('swagger');
+      };
+
       if (this.foxxList.length === 0) {
-        this.foxxList.fetch({ async: false });
-      }
-      if (!this.hasOwnProperty('applicationDetailView')) {
-        this.applicationDetailView = new window.ApplicationDetailView({
-          model: this.foxxList.get(decodeURIComponent(mount))
+        this.foxxList.fetch({
+          success: function() {
+            callback();
+          }
         });
       }
-
-      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render('swagger');
+      else {
+        callback();
+      }
     },
 
     login: function () {
