@@ -37,14 +37,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a global, but thread-local place to hold the current dispatcher
-/// thread. If we are not in a dispatcher thread this is set to nullptr.
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
-    nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -55,11 +47,9 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
                                         ? std::string("Aql")
                                         : ("_" + std::to_string(queue->_id))))),
       _queue(queue) {
-  allowAsynchronousCancelation();
 }
 
 void DispatcherThread::run() {
-  currentDispatcherThread = this;
   double worked = 0;
   double grace = 0.2;
 

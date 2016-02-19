@@ -26,6 +26,13 @@
     render: function () {
       if (this.model.get("locked")) {
         $(this.el).addClass('locked');
+        $(this.el).addClass(this.model.get("lockType"));
+      } 
+      else {
+        $(this.el).removeClass('locked');
+      }
+      if (this.model.get("status") === 'loading') {
+        $(this.el).addClass('locked');
       }
       $(this.el).html(this.template.render({
         model: this.model
@@ -60,10 +67,19 @@
       if (this.model.get("locked")) {
         return 0;
       }
+      if (this.model.get("status") === 'loading' ) {
+        return 0;
+      }
 
-      window.App.navigate(
-        "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
-      );
+      if (this.model.get("status") === 'unloaded' ) {
+        this.loadCollection();
+      }
+      else {
+        window.App.navigate(
+          "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
+        );
+      }
+
     },
 
     noop: function(event) {
@@ -416,7 +432,7 @@
           $('#modal-dialog .modal-footer .button-danger').hide();  
           $('#modal-dialog .modal-footer .button-success').hide();  
           $('#modal-dialog .modal-footer .button-notification').hide();
-          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+          //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         }
         if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
           $('#modal-dialog .modal-footer .button-danger').show();  
@@ -424,7 +440,7 @@
           $('#modal-dialog .modal-footer .button-notification').show();
           var elem = $('.index-button-bar')[0]; 
           var elem2 = $('.index-button-bar2')[0]; 
-          $('#addIndex').detach().appendTo(elem);
+          //$('#addIndex').detach().appendTo(elem);
           if ($('#cancelIndex').is(':visible')) {
             $('#cancelIndex').detach().appendTo(elem2);
             $('#createIndex').detach().appendTo(elem2);
@@ -541,18 +557,12 @@
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        self.refreshCollectionsView();
       };
 
       window.modalView.hide();
-      //this.getIndex();
-      //this.createEditPropertiesModal();
       //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          self.collectionsView.render();
-        }
-      });
     },
 
     lastTarget: null,
@@ -591,6 +601,14 @@
 
     },
 
+    refreshCollectionsView: function() {
+      window.App.arangoCollectionsStore.fetch({
+        success: function () {
+          window.App.collectionsView.render();
+        }
+      });
+    },
+
     deleteIndex: function () {
       var callback = function(error) {
         if (error) {
@@ -599,13 +617,20 @@
             '<span class="deleteIndex icon_arangodb_roundminus"' + 
             ' data-original-title="Delete index" title="Delete index"></span>'
           );
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
-        else {
+        else if (!error && error !== undefined) {
           $("tr th:contains('"+ this.lastId+"')").parent().remove();
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
+        this.refreshCollectionsView();
       }.bind(this);
 
+      this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
+
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
@@ -669,7 +694,7 @@
       if ($('#indexEditView').is(':visible')) {
         $('#indexEditView').hide();
         $('#newIndexView').show();
-        $('#addIndex').detach().appendTo(elem2);
+        //$('#addIndex').detach().appendTo(elem2);
         $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
 
@@ -677,7 +702,7 @@
       else {
         $('#indexEditView').show();
         $('#newIndexView').hide();
-        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#cancelIndex').detach().appendTo(elem);
         $('#createIndex').detach().appendTo(elem);
       }

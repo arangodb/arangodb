@@ -163,6 +163,7 @@ describe ArangoDB do
 
     it "should be able to kill a running query" do
       send_queries
+      sleep 3
       doc = ArangoDB.log_get("#{@prefix}-current", @current)
       found = false
       res = JSON.parse doc.body

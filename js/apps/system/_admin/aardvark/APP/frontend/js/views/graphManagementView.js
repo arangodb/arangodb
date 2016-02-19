@@ -210,6 +210,15 @@
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -306,9 +315,21 @@
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -471,6 +492,22 @@
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,

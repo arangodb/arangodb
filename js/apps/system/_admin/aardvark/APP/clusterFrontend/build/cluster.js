@@ -409,7 +409,8 @@
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
-                type: aardvark.type 
+                type: aardvark.type,
+                desc: aardvark.desc 
               });
             }
             else {
@@ -1501,12 +1502,12 @@ window.StatisticsCollection = Backbone.Collection.extend({
     collectionID: 1,
 
     filters: [],
+    checkCursorTimer: undefined,
 
     MAX_SORT: 12000,
 
     lastQuery: {},
-
-    sortAttribute: "_key",
+    sortAttribute: "",
 
     url: '/_api/documents',
     model: window.arangoDocumentModel,
@@ -1550,8 +1551,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     setFiltersForQuery: function(bindVars) {
-      var self = this;
-
       if (this.filters.length === 0) {
         return "";
       }
@@ -1605,7 +1604,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave, queryRemove, queryObj, bindVars = {
+      var querySave, queryRemove, bindVars = {
         "@collection": fromCollection,
         "filterid": key
       }, queryObj1, queryObj2;
@@ -1638,7 +1637,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
-        success: function(data) {
+        success: function() {
           // if successful remove unwanted docs
           $.ajax({
             cache: false,
@@ -1647,13 +1646,13 @@ window.StatisticsCollection = Backbone.Collection.extend({
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
-            success: function(data) {
+            success: function() {
               if (callback) {
                 callback();
               }
               window.progressView.hide();
             },
-            error: function(data) {
+            error: function() {
               window.progressView.hide();
               arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
@@ -1661,7 +1660,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
             }
           });
         },
-        error: function(data) {
+        error: function() {
           window.progressView.hide();
           arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
@@ -1669,7 +1668,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     getDocuments: function (callback) {
-      window.progressView.showWithDelay(300, "Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -1691,7 +1689,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
           query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
                 + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
         }
-        else {
+        else if (this.getSort() !== '') {
           query += " SORT x." + this.getSort();
         }
       }
@@ -1717,36 +1715,83 @@ window.StatisticsCollection = Backbone.Collection.extend({
         };
       }
 
+      var checkCursorStatus = function(jobid) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: '/_api/job/' + encodeURIComponent(jobid),
+          contentType: 'application/json',
+          success: function(data, textStatus, xhr) {
+            if (xhr.status === 201) {
+              window.progressView.toShow = false;
+              self.clearDocuments();
+              if (data.extra && data.extra.stats.fullCount !== undefined) {
+                self.setTotal(data.extra.stats.fullCount);
+              }
+              if (self.getTotal() !== 0) {
+                _.each(data.result, function(v) {
+                  self.add({
+                    "id": v._id,
+                    "rev": v._rev,
+                    "key": v._key,
+                    "content": v
+                  });
+                });
+              }
+              self.lastQuery = queryObj;
+
+              callback(false, data);
+            }
+            else if (xhr.status === 204) {
+              self.checkCursorTimer = window.setTimeout(function() {
+                checkCursorStatus(jobid);
+              }, 500);
+            }
+
+          },
+          error: function(data) {
+            callback(false, data);
+          }
+        });
+      };
+
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
+        headers: {
+          'x-arango-async': 'store'
+        },
         contentType: "application/json",
-        success: function(data) {
-          window.progressView.toShow = false;
-          self.clearDocuments();
-          if (data.extra && data.extra.stats.fullCount !== undefined) {
-            self.setTotal(data.extra.stats.fullCount);
-          }
-          if (self.getTotal() !== 0) {
-            _.each(data.result, function(v) {
-              self.add({
-                "id": v._id,
-                "rev": v._rev,
-                "key": v._key,
-                "content": v
+        success: function (data, textStatus, xhr) {
+
+          if (xhr.getResponseHeader('x-arango-async-id')) {
+            var jobid = xhr.getResponseHeader('x-arango-async-id');
+
+            var cancelRunningCursor = function() {
+              $.ajax({
+                url: '/_api/job/'+ encodeURIComponent(jobid) + "/cancel",
+                type: 'PUT',
+                success: function() {
+                  window.clearTimeout(self.checkCursorTimer);
+                  arangoHelper.arangoNotification("Documents", "Canceled operation.");
+                  $('.dataTables_empty').text('Canceled.');
+                  window.progressView.hide();
+                }
               });
-            });
+            };
+
+            window.progressView.showWithDelay(300, "Fetching documents...", cancelRunningCursor);
+
+            checkCursorStatus(jobid);
           }
-          self.lastQuery = queryObj;
-          callback();
-          window.progressView.hide();
+          else {
+            callback(true, data);
+          }
         },
         error: function(data) {
-          window.progressView.hide();
-          arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+          callback(false, data);
         }
       });
     },
@@ -1756,7 +1801,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     buildDownloadDocumentQuery: function() {
-      var self = this, query, queryObj, bindVars;
+      var query, queryObj, bindVars;
 
       bindVars = {
         "@collection": this.collectionID
@@ -1806,6 +1851,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
             }
           }
           catch (err) {
+            console.log(err);
           }               
         }
       });
@@ -1839,7 +1885,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, arangoHelper, window*/
+/*global Backbone, document, templateEngine, $, arangoHelper, window*/
 
 (function() {
   "use strict";
@@ -1861,6 +1907,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
         self.getVersion();
       }, 15000);
       self.getVersion();
+
+      window.VISIBLE = true;
+      document.addEventListener('visibilitychange', function () {
+        window.VISIBLE = !window.VISIBLE;
+      });
     },
 
     template: templateEngine.createTemplate("footerView.ejs"),
@@ -1910,7 +1961,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
             self.render();
           }
         },
-        error: function (data) {
+        error: function () {
           self.isOffline = true;
           self.isOfflineCounter++;
           if (self.isOfflineCounter >= 1) {

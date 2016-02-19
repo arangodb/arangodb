@@ -41,7 +41,7 @@ class ApplicationDispatcher;
 
 class ApplicationV8;
 
-class HeartbeatThread : public basics::Thread {
+class HeartbeatThread : public Thread {
  private:
   HeartbeatThread(HeartbeatThread const&);
   HeartbeatThread& operator=(HeartbeatThread const&);
@@ -66,25 +66,6 @@ class HeartbeatThread : public basics::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   bool init();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief stops the heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-
-  void stop() {
-    if (_stop > 0) {
-      return;
-    }
-
-    LOG(TRACE) << "stopping heartbeat thread";
-
-    _stop = 1;
-    _condition.signal();
-
-    while (_stop != 2) {
-      usleep(1000);
-    }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread is ready

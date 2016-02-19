@@ -10759,7 +10759,8 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
               array.push({
                 collection: aardvark.collection,
                 id: aardvark.id,
-                type: aardvark.type 
+                type: aardvark.type,
+                desc: aardvark.desc 
               });
             }
             else {
@@ -13078,7 +13079,7 @@ module.define("underscore", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
-if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}this.message = this.toString();};exports.ArangoError.prototype = new Error();}exports.ArangoError.prototype._PRINT = function(context){context.output += this.toString();};exports.ArangoError.prototype.toString = function(){var errorNum=this.errorNum;var errorMessage=this.errorMessage || this.message;return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';}; ////////////////////////////////////////////////////////////////////////////////
+if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 exports.threadNumber = 0;if(global.THREAD_NUMBER){exports.threadNumber = global.THREAD_NUMBER;delete global.THREAD_NUMBER;} ////////////////////////////////////////////////////////////////////////////////
@@ -13420,7 +13421,7 @@ global.start_color_print = function start_color_print(color){require('internal')
 global.stop_color_print = function stop_color_print(){require('internal').stopColorPrint();};if(global.EXPORTS_SLOW_BUFFER){Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function(key){exports[key] = global.EXPORTS_SLOW_BUFFER[key];});delete global.EXPORTS_SLOW_BUFFER;}if(global.APP_PATH){exports.appPath = global.APP_PATH;delete global.APP_PATH;}return exports;})()); /*jshint maxlen: 240 */ /*global require */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
-(function(){"use strict";var internal=require("internal");internal.errors = {"ERROR_NO_ERROR":{"code":0,"message":"no error"},"ERROR_FAILED":{"code":1,"message":"failed"},"ERROR_SYS_ERROR":{"code":2,"message":"system error"},"ERROR_OUT_OF_MEMORY":{"code":3,"message":"out of memory"},"ERROR_INTERNAL":{"code":4,"message":"internal error"},"ERROR_ILLEGAL_NUMBER":{"code":5,"message":"illegal number"},"ERROR_NUMERIC_OVERFLOW":{"code":6,"message":"numeric overflow"},"ERROR_ILLEGAL_OPTION":{"code":7,"message":"illegal option"},"ERROR_DEAD_PID":{"code":8,"message":"dead process identifier"},"ERROR_NOT_IMPLEMENTED":{"code":9,"message":"not implemented"},"ERROR_BAD_PARAMETER":{"code":10,"message":"bad parameter"},"ERROR_FORBIDDEN":{"code":11,"message":"forbidden"},"ERROR_OUT_OF_MEMORY_MMAP":{"code":12,"message":"out of memory in mmap"},"ERROR_CORRUPTED_CSV":{"code":13,"message":"csv is corrupt"},"ERROR_FILE_NOT_FOUND":{"code":14,"message":"file not found"},"ERROR_CANNOT_WRITE_FILE":{"code":15,"message":"cannot write file"},"ERROR_CANNOT_OVERWRITE_FILE":{"code":16,"message":"cannot overwrite file"},"ERROR_TYPE_ERROR":{"code":17,"message":"type error"},"ERROR_LOCK_TIMEOUT":{"code":18,"message":"lock timeout"},"ERROR_CANNOT_CREATE_DIRECTORY":{"code":19,"message":"cannot create directory"},"ERROR_CANNOT_CREATE_TEMP_FILE":{"code":20,"message":"cannot create temporary file"},"ERROR_REQUEST_CANCELED":{"code":21,"message":"canceled request"},"ERROR_DEBUG":{"code":22,"message":"intentional debug error"},"ERROR_AID_NOT_FOUND":{"code":23,"message":"internal error with attribute ID in shaper"},"ERROR_LEGEND_INCOMPLETE":{"code":24,"message":"internal error if a legend could not be created"},"ERROR_IP_ADDRESS_INVALID":{"code":25,"message":"IP address is invalid"},"ERROR_LEGEND_NOT_IN_WAL_FILE":{"code":26,"message":"internal error if a legend for a marker does not yet exist in the same WAL file"},"ERROR_FILE_EXISTS":{"code":27,"message":"file exists"},"ERROR_LOCKED":{"code":28,"message":"locked"},"ERROR_DEADLOCK":{"code":29,"message":"deadlock detected"},"ERROR_HTTP_BAD_PARAMETER":{"code":400,"message":"bad parameter"},"ERROR_HTTP_UNAUTHORIZED":{"code":401,"message":"unauthorized"},"ERROR_HTTP_FORBIDDEN":{"code":403,"message":"forbidden"},"ERROR_HTTP_NOT_FOUND":{"code":404,"message":"not found"},"ERROR_HTTP_METHOD_NOT_ALLOWED":{"code":405,"message":"method not supported"},"ERROR_HTTP_PRECONDITION_FAILED":{"code":412,"message":"precondition failed"},"ERROR_HTTP_SERVER_ERROR":{"code":500,"message":"internal server error"},"ERROR_HTTP_CORRUPTED_JSON":{"code":600,"message":"invalid JSON object"},"ERROR_HTTP_SUPERFLUOUS_SUFFICES":{"code":601,"message":"superfluous URL suffices"},"ERROR_ARANGO_ILLEGAL_STATE":{"code":1000,"message":"illegal state"},"ERROR_ARANGO_SHAPER_FAILED":{"code":1001,"message":"could not shape document"},"ERROR_ARANGO_DATAFILE_SEALED":{"code":1002,"message":"datafile sealed"},"ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE":{"code":1003,"message":"unknown type"},"ERROR_ARANGO_READ_ONLY":{"code":1004,"message":"read only"},"ERROR_ARANGO_DUPLICATE_IDENTIFIER":{"code":1005,"message":"duplicate identifier"},"ERROR_ARANGO_DATAFILE_UNREADABLE":{"code":1006,"message":"datafile unreadable"},"ERROR_ARANGO_DATAFILE_EMPTY":{"code":1007,"message":"datafile empty"},"ERROR_ARANGO_RECOVERY":{"code":1008,"message":"logfile recovery error"},"ERROR_ARANGO_CORRUPTED_DATAFILE":{"code":1100,"message":"corrupted datafile"},"ERROR_ARANGO_ILLEGAL_PARAMETER_FILE":{"code":1101,"message":"illegal or unreadable parameter file"},"ERROR_ARANGO_CORRUPTED_COLLECTION":{"code":1102,"message":"corrupted collection"},"ERROR_ARANGO_MMAP_FAILED":{"code":1103,"message":"mmap failed"},"ERROR_ARANGO_FILESYSTEM_FULL":{"code":1104,"message":"filesystem full"},"ERROR_ARANGO_NO_JOURNAL":{"code":1105,"message":"no journal"},"ERROR_ARANGO_DATAFILE_ALREADY_EXISTS":{"code":1106,"message":"cannot create/rename datafile because it already exists"},"ERROR_ARANGO_DATADIR_LOCKED":{"code":1107,"message":"database directory is locked"},"ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS":{"code":1108,"message":"cannot create/rename collection because directory already exists"},"ERROR_ARANGO_MSYNC_FAILED":{"code":1109,"message":"msync failed"},"ERROR_ARANGO_DATADIR_UNLOCKABLE":{"code":1110,"message":"cannot lock database directory"},"ERROR_ARANGO_SYNC_TIMEOUT":{"code":1111,"message":"sync timeout"},"ERROR_ARANGO_CONFLICT":{"code":1200,"message":"conflict"},"ERROR_ARANGO_DATADIR_INVALID":{"code":1201,"message":"invalid database directory"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND":{"code":1202,"message":"document not found"},"ERROR_ARANGO_COLLECTION_NOT_FOUND":{"code":1203,"message":"collection not found"},"ERROR_ARANGO_COLLECTION_PARAMETER_MISSING":{"code":1204,"message":"parameter 'collection' not found"},"ERROR_ARANGO_DOCUMENT_HANDLE_BAD":{"code":1205,"message":"illegal document handle"},"ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL":{"code":1206,"message":"maximal size of journal too small"},"ERROR_ARANGO_DUPLICATE_NAME":{"code":1207,"message":"duplicate name"},"ERROR_ARANGO_ILLEGAL_NAME":{"code":1208,"message":"illegal name"},"ERROR_ARANGO_NO_INDEX":{"code":1209,"message":"no suitable index known"},"ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED":{"code":1210,"message":"unique constraint violated"},"ERROR_ARANGO_INDEX_NOT_FOUND":{"code":1212,"message":"index not found"},"ERROR_ARANGO_CROSS_COLLECTION_REQUEST":{"code":1213,"message":"cross collection request not allowed"},"ERROR_ARANGO_INDEX_HANDLE_BAD":{"code":1214,"message":"illegal index handle"},"ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED":{"code":1215,"message":"cap constraint already defined"},"ERROR_ARANGO_DOCUMENT_TOO_LARGE":{"code":1216,"message":"document too large"},"ERROR_ARANGO_COLLECTION_NOT_UNLOADED":{"code":1217,"message":"collection must be unloaded"},"ERROR_ARANGO_COLLECTION_TYPE_INVALID":{"code":1218,"message":"collection type invalid"},"ERROR_ARANGO_VALIDATION_FAILED":{"code":1219,"message":"validator failed"},"ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED":{"code":1220,"message":"parsing attribute name definition failed"},"ERROR_ARANGO_DOCUMENT_KEY_BAD":{"code":1221,"message":"illegal document key"},"ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED":{"code":1222,"message":"unexpected document key"},"ERROR_ARANGO_DATADIR_NOT_WRITABLE":{"code":1224,"message":"server database directory not writable"},"ERROR_ARANGO_OUT_OF_KEYS":{"code":1225,"message":"out of keys"},"ERROR_ARANGO_DOCUMENT_KEY_MISSING":{"code":1226,"message":"missing document key"},"ERROR_ARANGO_DOCUMENT_TYPE_INVALID":{"code":1227,"message":"invalid document type"},"ERROR_ARANGO_DATABASE_NOT_FOUND":{"code":1228,"message":"database not found"},"ERROR_ARANGO_DATABASE_NAME_INVALID":{"code":1229,"message":"database name invalid"},"ERROR_ARANGO_USE_SYSTEM_DATABASE":{"code":1230,"message":"operation only allowed in system database"},"ERROR_ARANGO_ENDPOINT_NOT_FOUND":{"code":1231,"message":"endpoint not found"},"ERROR_ARANGO_INVALID_KEY_GENERATOR":{"code":1232,"message":"invalid key generator"},"ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE":{"code":1233,"message":"edge attribute missing"},"ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING":{"code":1234,"message":"index insertion warning - attribute missing in document"},"ERROR_ARANGO_INDEX_CREATION_FAILED":{"code":1235,"message":"index creation failed"},"ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT":{"code":1236,"message":"write-throttling timeout"},"ERROR_ARANGO_COLLECTION_TYPE_MISMATCH":{"code":1237,"message":"collection type mismatch"},"ERROR_ARANGO_COLLECTION_NOT_LOADED":{"code":1238,"message":"collection not loaded"},"ERROR_ARANGO_DATAFILE_FULL":{"code":1300,"message":"datafile full"},"ERROR_ARANGO_EMPTY_DATADIR":{"code":1301,"message":"server database directory is empty"},"ERROR_REPLICATION_NO_RESPONSE":{"code":1400,"message":"no response"},"ERROR_REPLICATION_INVALID_RESPONSE":{"code":1401,"message":"invalid response"},"ERROR_REPLICATION_MASTER_ERROR":{"code":1402,"message":"master error"},"ERROR_REPLICATION_MASTER_INCOMPATIBLE":{"code":1403,"message":"master incompatible"},"ERROR_REPLICATION_MASTER_CHANGE":{"code":1404,"message":"master change"},"ERROR_REPLICATION_LOOP":{"code":1405,"message":"loop detected"},"ERROR_REPLICATION_UNEXPECTED_MARKER":{"code":1406,"message":"unexpected marker"},"ERROR_REPLICATION_INVALID_APPLIER_STATE":{"code":1407,"message":"invalid applier state"},"ERROR_REPLICATION_UNEXPECTED_TRANSACTION":{"code":1408,"message":"invalid transaction"},"ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION":{"code":1410,"message":"invalid replication applier configuration"},"ERROR_REPLICATION_RUNNING":{"code":1411,"message":"cannot perform operation while applier is running"},"ERROR_REPLICATION_APPLIER_STOPPED":{"code":1412,"message":"replication stopped"},"ERROR_REPLICATION_NO_START_TICK":{"code":1413,"message":"no start tick"},"ERROR_REPLICATION_START_TICK_NOT_PRESENT":{"code":1414,"message":"start tick not present"},"ERROR_CLUSTER_NO_AGENCY":{"code":1450,"message":"could not connect to agency"},"ERROR_CLUSTER_NO_COORDINATOR_HEADER":{"code":1451,"message":"missing coordinator header"},"ERROR_CLUSTER_COULD_NOT_LOCK_PLAN":{"code":1452,"message":"could not lock plan in agency"},"ERROR_CLUSTER_COLLECTION_ID_EXISTS":{"code":1453,"message":"collection ID already exists"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN":{"code":1454,"message":"could not create collection in plan"},"ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION":{"code":1455,"message":"could not read version in current in agency"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION":{"code":1456,"message":"could not create collection"},"ERROR_CLUSTER_TIMEOUT":{"code":1457,"message":"timeout in cluster operation"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN":{"code":1458,"message":"could not remove collection from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT":{"code":1459,"message":"could not remove collection from current"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN":{"code":1460,"message":"could not create database in plan"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE":{"code":1461,"message":"could not create database"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN":{"code":1462,"message":"could not remove database from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT":{"code":1463,"message":"could not remove database from current"},"ERROR_CLUSTER_SHARD_GONE":{"code":1464,"message":"no responsible shard found"},"ERROR_CLUSTER_CONNECTION_LOST":{"code":1465,"message":"cluster internal HTTP connection broken"},"ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY":{"code":1466,"message":"must not specify _key for this collection"},"ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS":{"code":1467,"message":"got contradicting answers from different shards"},"ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN":{"code":1468,"message":"not all sharding attributes given"},"ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES":{"code":1469,"message":"must not change the value of a shard key attribute"},"ERROR_CLUSTER_UNSUPPORTED":{"code":1470,"message":"unsupported operation or parameter"},"ERROR_CLUSTER_ONLY_ON_COORDINATOR":{"code":1471,"message":"this operation is only valid on a coordinator in a cluster"},"ERROR_CLUSTER_READING_PLAN_AGENCY":{"code":1472,"message":"error reading Plan in agency"},"ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION":{"code":1473,"message":"could not truncate collection"},"ERROR_CLUSTER_AQL_COMMUNICATION":{"code":1474,"message":"error in cluster internal communication for AQL"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED":{"code":1475,"message":"document not found or sharding attributes changed"},"ERROR_CLUSTER_COULD_NOT_DETERMINE_ID":{"code":1476,"message":"could not determine my ID from my local info"},"ERROR_CLUSTER_ONLY_ON_DBSERVER":{"code":1477,"message":"this operation is only valid on a DBserver in a cluster"},"ERROR_QUERY_KILLED":{"code":1500,"message":"query killed"},"ERROR_QUERY_PARSE":{"code":1501,"message":"%s"},"ERROR_QUERY_EMPTY":{"code":1502,"message":"query is empty"},"ERROR_QUERY_SCRIPT":{"code":1503,"message":"runtime error '%s'"},"ERROR_QUERY_NUMBER_OUT_OF_RANGE":{"code":1504,"message":"number out of range"},"ERROR_QUERY_VARIABLE_NAME_INVALID":{"code":1510,"message":"variable name '%s' has an invalid format"},"ERROR_QUERY_VARIABLE_REDECLARED":{"code":1511,"message":"variable '%s' is assigned multiple times"},"ERROR_QUERY_VARIABLE_NAME_UNKNOWN":{"code":1512,"message":"unknown variable '%s'"},"ERROR_QUERY_COLLECTION_LOCK_FAILED":{"code":1521,"message":"unable to read-lock collection %s"},"ERROR_QUERY_TOO_MANY_COLLECTIONS":{"code":1522,"message":"too many collections"},"ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED":{"code":1530,"message":"document attribute '%s' is assigned multiple times"},"ERROR_QUERY_FUNCTION_NAME_UNKNOWN":{"code":1540,"message":"usage of unknown function '%s()'"},"ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH":{"code":1541,"message":"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d"},"ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH":{"code":1542,"message":"invalid argument type in call to function '%s()'"},"ERROR_QUERY_INVALID_REGEX":{"code":1543,"message":"invalid regex value"},"ERROR_QUERY_BIND_PARAMETERS_INVALID":{"code":1550,"message":"invalid structure of bind parameters"},"ERROR_QUERY_BIND_PARAMETER_MISSING":{"code":1551,"message":"no value specified for declared bind parameter '%s'"},"ERROR_QUERY_BIND_PARAMETER_UNDECLARED":{"code":1552,"message":"bind parameter '%s' was not declared in the query"},"ERROR_QUERY_BIND_PARAMETER_TYPE":{"code":1553,"message":"bind parameter '%s' has an invalid value or type"},"ERROR_QUERY_INVALID_LOGICAL_VALUE":{"code":1560,"message":"invalid logical value"},"ERROR_QUERY_INVALID_ARITHMETIC_VALUE":{"code":1561,"message":"invalid arithmetic value"},"ERROR_QUERY_DIVISION_BY_ZERO":{"code":1562,"message":"division by zero"},"ERROR_QUERY_ARRAY_EXPECTED":{"code":1563,"message":"array expected"},"ERROR_QUERY_FAIL_CALLED":{"code":1569,"message":"FAIL(%s) called"},"ERROR_QUERY_GEO_INDEX_MISSING":{"code":1570,"message":"no suitable geo index found for geo restriction on '%s'"},"ERROR_QUERY_FULLTEXT_INDEX_MISSING":{"code":1571,"message":"no suitable fulltext index found for fulltext query on '%s'"},"ERROR_QUERY_INVALID_DATE_VALUE":{"code":1572,"message":"invalid date value"},"ERROR_QUERY_MULTI_MODIFY":{"code":1573,"message":"multi-modify query"},"ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION":{"code":1574,"message":"invalid aggregate expression"},"ERROR_QUERY_COMPILE_TIME_OPTIONS":{"code":1575,"message":"query options must be readable at query compile time"},"ERROR_QUERY_EXCEPTION_OPTIONS":{"code":1576,"message":"query options expected"},"ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION":{"code":1577,"message":"collection '%s' used as expression operand"},"ERROR_QUERY_DISALLOWED_DYNAMIC_CALL":{"code":1578,"message":"disallowed dynamic call to '%s'"},"ERROR_QUERY_ACCESS_AFTER_MODIFICATION":{"code":1579,"message":"access after data-modification"},"ERROR_QUERY_FUNCTION_INVALID_NAME":{"code":1580,"message":"invalid user function name"},"ERROR_QUERY_FUNCTION_INVALID_CODE":{"code":1581,"message":"invalid user function code"},"ERROR_QUERY_FUNCTION_NOT_FOUND":{"code":1582,"message":"user function '%s()' not found"},"ERROR_QUERY_FUNCTION_RUNTIME_ERROR":{"code":1583,"message":"user function runtime error: %s"},"ERROR_QUERY_BAD_JSON_PLAN":{"code":1590,"message":"bad execution plan JSON"},"ERROR_QUERY_NOT_FOUND":{"code":1591,"message":"query ID not found"},"ERROR_QUERY_IN_USE":{"code":1592,"message":"query with this ID is in use"},"ERROR_CURSOR_NOT_FOUND":{"code":1600,"message":"cursor not found"},"ERROR_CURSOR_BUSY":{"code":1601,"message":"cursor is busy"},"ERROR_TRANSACTION_INTERNAL":{"code":1650,"message":"internal transaction error"},"ERROR_TRANSACTION_NESTED":{"code":1651,"message":"nested transactions detected"},"ERROR_TRANSACTION_UNREGISTERED_COLLECTION":{"code":1652,"message":"unregistered collection used in transaction"},"ERROR_TRANSACTION_DISALLOWED_OPERATION":{"code":1653,"message":"disallowed operation inside transaction"},"ERROR_TRANSACTION_ABORTED":{"code":1654,"message":"transaction aborted"},"ERROR_USER_INVALID_NAME":{"code":1700,"message":"invalid user name"},"ERROR_USER_INVALID_PASSWORD":{"code":1701,"message":"invalid password"},"ERROR_USER_DUPLICATE":{"code":1702,"message":"duplicate user"},"ERROR_USER_NOT_FOUND":{"code":1703,"message":"user not found"},"ERROR_USER_CHANGE_PASSWORD":{"code":1704,"message":"user must change his password"},"ERROR_APPLICATION_INVALID_NAME":{"code":1750,"message":"invalid application name"},"ERROR_APPLICATION_INVALID_MOUNT":{"code":1751,"message":"invalid mount"},"ERROR_APPLICATION_DOWNLOAD_FAILED":{"code":1752,"message":"application download failed"},"ERROR_APPLICATION_UPLOAD_FAILED":{"code":1753,"message":"application upload failed"},"ERROR_KEYVALUE_INVALID_KEY":{"code":1800,"message":"invalid key declaration"},"ERROR_KEYVALUE_KEY_EXISTS":{"code":1801,"message":"key already exists"},"ERROR_KEYVALUE_KEY_NOT_FOUND":{"code":1802,"message":"key not found"},"ERROR_KEYVALUE_KEY_NOT_UNIQUE":{"code":1803,"message":"key is not unique"},"ERROR_KEYVALUE_KEY_NOT_CHANGED":{"code":1804,"message":"key value not changed"},"ERROR_KEYVALUE_KEY_NOT_REMOVED":{"code":1805,"message":"key value not removed"},"ERROR_KEYVALUE_NO_VALUE":{"code":1806,"message":"missing value"},"ERROR_TASK_INVALID_ID":{"code":1850,"message":"invalid task id"},"ERROR_TASK_DUPLICATE_ID":{"code":1851,"message":"duplicate task id"},"ERROR_TASK_NOT_FOUND":{"code":1852,"message":"task not found"},"ERROR_GRAPH_INVALID_GRAPH":{"code":1901,"message":"invalid graph"},"ERROR_GRAPH_COULD_NOT_CREATE_GRAPH":{"code":1902,"message":"could not create graph"},"ERROR_GRAPH_INVALID_VERTEX":{"code":1903,"message":"invalid vertex"},"ERROR_GRAPH_COULD_NOT_CREATE_VERTEX":{"code":1904,"message":"could not create vertex"},"ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX":{"code":1905,"message":"could not change vertex"},"ERROR_GRAPH_INVALID_EDGE":{"code":1906,"message":"invalid edge"},"ERROR_GRAPH_COULD_NOT_CREATE_EDGE":{"code":1907,"message":"could not create edge"},"ERROR_GRAPH_COULD_NOT_CHANGE_EDGE":{"code":1908,"message":"could not change edge"},"ERROR_GRAPH_TOO_MANY_ITERATIONS":{"code":1909,"message":"too many iterations - try increasing the value of 'maxIterations'"},"ERROR_GRAPH_INVALID_FILTER_RESULT":{"code":1910,"message":"invalid filter result"},"ERROR_GRAPH_COLLECTION_MULTI_USE":{"code":1920,"message":"multi use of edge collection in edge def"},"ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS":{"code":1921,"message":"edge collection already used in edge def"},"ERROR_GRAPH_CREATE_MISSING_NAME":{"code":1922,"message":"missing graph name"},"ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION":{"code":1923,"message":"malformed edge definition"},"ERROR_GRAPH_NOT_FOUND":{"code":1924,"message":"graph not found"},"ERROR_GRAPH_DUPLICATE":{"code":1925,"message":"graph already exists"},"ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST":{"code":1926,"message":"vertex collection does not exist or is not part of the graph"},"ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX":{"code":1927,"message":"not a vertex collection"},"ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION":{"code":1928,"message":"not in orphan collection"},"ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF":{"code":1929,"message":"collection already used in edge def"},"ERROR_GRAPH_EDGE_COLLECTION_NOT_USED":{"code":1930,"message":"edge collection not used in graph"},"ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION":{"code":1931,"message":" is not an ArangoCollection"},"ERROR_GRAPH_NO_GRAPH_COLLECTION":{"code":1932,"message":"collection _graphs does not exist"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING":{"code":1933,"message":"Invalid example type. Has to be String, Array or Object"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT":{"code":1934,"message":"Invalid example type. Has to be Array or Object"},"ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS":{"code":1935,"message":"Invalid number of arguments. Expected: "},"ERROR_GRAPH_INVALID_PARAMETER":{"code":1936,"message":"Invalid parameter type."},"ERROR_GRAPH_INVALID_ID":{"code":1937,"message":"Invalid id"},"ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS":{"code":1938,"message":"collection used in orphans"},"ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST":{"code":1939,"message":"edge collection does not exist or is not part of the graph"},"ERROR_GRAPH_EMPTY":{"code":1940,"message":"empty graph"},"ERROR_SESSION_UNKNOWN":{"code":1950,"message":"unknown session"},"ERROR_SESSION_EXPIRED":{"code":1951,"message":"session expired"},"SIMPLE_CLIENT_UNKNOWN_ERROR":{"code":2000,"message":"unknown client error"},"SIMPLE_CLIENT_COULD_NOT_CONNECT":{"code":2001,"message":"could not connect to server"},"SIMPLE_CLIENT_COULD_NOT_WRITE":{"code":2002,"message":"could not write to server"},"SIMPLE_CLIENT_COULD_NOT_READ":{"code":2003,"message":"could not read from server"},"ERROR_MALFORMED_MANIFEST_FILE":{"code":3000,"message":"malformed manifest file"},"ERROR_INVALID_APPLICATION_MANIFEST":{"code":3001,"message":"manifest file is invalid"},"ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING":{"code":3002,"message":"missing manifest attribute"},"ERROR_CANNOT_EXTRACT_APPLICATION_ROOT":{"code":3003,"message":"unable to extract app root path"},"ERROR_INVALID_FOXX_OPTIONS":{"code":3004,"message":"invalid foxx options"},"ERROR_FAILED_TO_EXECUTE_SCRIPT":{"code":3005,"message":"failed to execute script"},"ERROR_SYNTAX_ERROR_IN_SCRIPT":{"code":3006,"message":"syntax error in script"},"ERROR_INVALID_MOUNTPOINT":{"code":3007,"message":"mountpoint is invalid"},"ERROR_NO_FOXX_FOUND":{"code":3008,"message":"No foxx found at this location"},"ERROR_APP_NOT_FOUND":{"code":3009,"message":"App not found"},"ERROR_APP_NEEDS_CONFIGURATION":{"code":3010,"message":"App not configured"},"ERROR_MODULE_NOT_FOUND":{"code":3100,"message":"cannot locate module"},"ERROR_MODULE_SYNTAX_ERROR":{"code":3101,"message":"syntax error in module"},"ERROR_MODULE_BAD_WRAPPER":{"code":3102,"message":"failed to wrap module"},"ERROR_MODULE_FAILURE":{"code":3103,"message":"failed to invoke module"},"ERROR_MODULE_UNKNOWN_FILE_TYPE":{"code":3110,"message":"unknown file type"},"ERROR_MODULE_PATH_MUST_BE_ABSOLUTE":{"code":3111,"message":"path must be absolute"},"ERROR_MODULE_CAN_NOT_ESCAPE":{"code":3112,"message":"cannot use '..' to escape top-level-directory"},"ERROR_MODULE_DRIVE_LETTER":{"code":3113,"message":"drive local path is not supported"},"ERROR_MODULE_BAD_MODULE_ORIGIN":{"code":3120,"message":"corrupted module origin"},"ERROR_MODULE_BAD_PACKAGE_ORIGIN":{"code":3121,"message":"corrupted package origin"},"ERROR_MODULE_DOCUMENT_IS_EMPTY":{"code":3125,"message":"no content"},"ERROR_MODULE_MAIN_NOT_READABLE":{"code":3130,"message":"cannot read main file"},"ERROR_MODULE_MAIN_NOT_JS":{"code":3131,"message":"main file is not of type 'js'"},"RESULT_ELEMENT_EXISTS":{"code":10000,"message":"element not inserted into structure, because it already exists"},"RESULT_ELEMENT_NOT_FOUND":{"code":10001,"message":"element not found in structure"},"ERROR_APP_ALREADY_EXISTS":{"code":20000,"message":"newest version of app already installed"},"ERROR_QUEUE_ALREADY_EXISTS":{"code":21000,"message":"named queue already exists"},"ERROR_DISPATCHER_IS_STOPPING":{"code":21001,"message":"dispatcher stopped"},"ERROR_QUEUE_UNKNOWN":{"code":21002,"message":"named queue does not exist"},"ERROR_QUEUE_FULL":{"code":21003,"message":"named queue is full"}};})(); /*jshint -W051:true */ /*global jqconsole, Symbol */ /*eslint-disable */global.DEFINE_MODULE('console',(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
+(function(){"use strict";var internal=require("internal");internal.errors = {"ERROR_NO_ERROR":{"code":0,"message":"no error"},"ERROR_FAILED":{"code":1,"message":"failed"},"ERROR_SYS_ERROR":{"code":2,"message":"system error"},"ERROR_OUT_OF_MEMORY":{"code":3,"message":"out of memory"},"ERROR_INTERNAL":{"code":4,"message":"internal error"},"ERROR_ILLEGAL_NUMBER":{"code":5,"message":"illegal number"},"ERROR_NUMERIC_OVERFLOW":{"code":6,"message":"numeric overflow"},"ERROR_ILLEGAL_OPTION":{"code":7,"message":"illegal option"},"ERROR_DEAD_PID":{"code":8,"message":"dead process identifier"},"ERROR_NOT_IMPLEMENTED":{"code":9,"message":"not implemented"},"ERROR_BAD_PARAMETER":{"code":10,"message":"bad parameter"},"ERROR_FORBIDDEN":{"code":11,"message":"forbidden"},"ERROR_OUT_OF_MEMORY_MMAP":{"code":12,"message":"out of memory in mmap"},"ERROR_CORRUPTED_CSV":{"code":13,"message":"csv is corrupt"},"ERROR_FILE_NOT_FOUND":{"code":14,"message":"file not found"},"ERROR_CANNOT_WRITE_FILE":{"code":15,"message":"cannot write file"},"ERROR_CANNOT_OVERWRITE_FILE":{"code":16,"message":"cannot overwrite file"},"ERROR_TYPE_ERROR":{"code":17,"message":"type error"},"ERROR_LOCK_TIMEOUT":{"code":18,"message":"lock timeout"},"ERROR_CANNOT_CREATE_DIRECTORY":{"code":19,"message":"cannot create directory"},"ERROR_CANNOT_CREATE_TEMP_FILE":{"code":20,"message":"cannot create temporary file"},"ERROR_REQUEST_CANCELED":{"code":21,"message":"canceled request"},"ERROR_DEBUG":{"code":22,"message":"intentional debug error"},"ERROR_AID_NOT_FOUND":{"code":23,"message":"internal error with attribute ID in shaper"},"ERROR_LEGEND_INCOMPLETE":{"code":24,"message":"internal error if a legend could not be created"},"ERROR_IP_ADDRESS_INVALID":{"code":25,"message":"IP address is invalid"},"ERROR_LEGEND_NOT_IN_WAL_FILE":{"code":26,"message":"internal error if a legend for a marker does not yet exist in the same WAL file"},"ERROR_FILE_EXISTS":{"code":27,"message":"file exists"},"ERROR_LOCKED":{"code":28,"message":"locked"},"ERROR_DEADLOCK":{"code":29,"message":"deadlock detected"},"ERROR_HTTP_BAD_PARAMETER":{"code":400,"message":"bad parameter"},"ERROR_HTTP_UNAUTHORIZED":{"code":401,"message":"unauthorized"},"ERROR_HTTP_FORBIDDEN":{"code":403,"message":"forbidden"},"ERROR_HTTP_NOT_FOUND":{"code":404,"message":"not found"},"ERROR_HTTP_METHOD_NOT_ALLOWED":{"code":405,"message":"method not supported"},"ERROR_HTTP_PRECONDITION_FAILED":{"code":412,"message":"precondition failed"},"ERROR_HTTP_SERVER_ERROR":{"code":500,"message":"internal server error"},"ERROR_HTTP_CORRUPTED_JSON":{"code":600,"message":"invalid JSON object"},"ERROR_HTTP_SUPERFLUOUS_SUFFICES":{"code":601,"message":"superfluous URL suffices"},"ERROR_ARANGO_ILLEGAL_STATE":{"code":1000,"message":"illegal state"},"ERROR_ARANGO_SHAPER_FAILED":{"code":1001,"message":"could not shape document"},"ERROR_ARANGO_DATAFILE_SEALED":{"code":1002,"message":"datafile sealed"},"ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE":{"code":1003,"message":"unknown type"},"ERROR_ARANGO_READ_ONLY":{"code":1004,"message":"read only"},"ERROR_ARANGO_DUPLICATE_IDENTIFIER":{"code":1005,"message":"duplicate identifier"},"ERROR_ARANGO_DATAFILE_UNREADABLE":{"code":1006,"message":"datafile unreadable"},"ERROR_ARANGO_DATAFILE_EMPTY":{"code":1007,"message":"datafile empty"},"ERROR_ARANGO_RECOVERY":{"code":1008,"message":"logfile recovery error"},"ERROR_ARANGO_CORRUPTED_DATAFILE":{"code":1100,"message":"corrupted datafile"},"ERROR_ARANGO_ILLEGAL_PARAMETER_FILE":{"code":1101,"message":"illegal or unreadable parameter file"},"ERROR_ARANGO_CORRUPTED_COLLECTION":{"code":1102,"message":"corrupted collection"},"ERROR_ARANGO_MMAP_FAILED":{"code":1103,"message":"mmap failed"},"ERROR_ARANGO_FILESYSTEM_FULL":{"code":1104,"message":"filesystem full"},"ERROR_ARANGO_NO_JOURNAL":{"code":1105,"message":"no journal"},"ERROR_ARANGO_DATAFILE_ALREADY_EXISTS":{"code":1106,"message":"cannot create/rename datafile because it already exists"},"ERROR_ARANGO_DATADIR_LOCKED":{"code":1107,"message":"database directory is locked"},"ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS":{"code":1108,"message":"cannot create/rename collection because directory already exists"},"ERROR_ARANGO_MSYNC_FAILED":{"code":1109,"message":"msync failed"},"ERROR_ARANGO_DATADIR_UNLOCKABLE":{"code":1110,"message":"cannot lock database directory"},"ERROR_ARANGO_SYNC_TIMEOUT":{"code":1111,"message":"sync timeout"},"ERROR_ARANGO_CONFLICT":{"code":1200,"message":"conflict"},"ERROR_ARANGO_DATADIR_INVALID":{"code":1201,"message":"invalid database directory"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND":{"code":1202,"message":"document not found"},"ERROR_ARANGO_COLLECTION_NOT_FOUND":{"code":1203,"message":"collection not found"},"ERROR_ARANGO_COLLECTION_PARAMETER_MISSING":{"code":1204,"message":"parameter 'collection' not found"},"ERROR_ARANGO_DOCUMENT_HANDLE_BAD":{"code":1205,"message":"illegal document handle"},"ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL":{"code":1206,"message":"maximal size of journal too small"},"ERROR_ARANGO_DUPLICATE_NAME":{"code":1207,"message":"duplicate name"},"ERROR_ARANGO_ILLEGAL_NAME":{"code":1208,"message":"illegal name"},"ERROR_ARANGO_NO_INDEX":{"code":1209,"message":"no suitable index known"},"ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED":{"code":1210,"message":"unique constraint violated"},"ERROR_ARANGO_INDEX_NOT_FOUND":{"code":1212,"message":"index not found"},"ERROR_ARANGO_CROSS_COLLECTION_REQUEST":{"code":1213,"message":"cross collection request not allowed"},"ERROR_ARANGO_INDEX_HANDLE_BAD":{"code":1214,"message":"illegal index handle"},"ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED":{"code":1215,"message":"cap constraint already defined"},"ERROR_ARANGO_DOCUMENT_TOO_LARGE":{"code":1216,"message":"document too large"},"ERROR_ARANGO_COLLECTION_NOT_UNLOADED":{"code":1217,"message":"collection must be unloaded"},"ERROR_ARANGO_COLLECTION_TYPE_INVALID":{"code":1218,"message":"collection type invalid"},"ERROR_ARANGO_VALIDATION_FAILED":{"code":1219,"message":"validator failed"},"ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED":{"code":1220,"message":"parsing attribute name definition failed"},"ERROR_ARANGO_DOCUMENT_KEY_BAD":{"code":1221,"message":"illegal document key"},"ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED":{"code":1222,"message":"unexpected document key"},"ERROR_ARANGO_DATADIR_NOT_WRITABLE":{"code":1224,"message":"server database directory not writable"},"ERROR_ARANGO_OUT_OF_KEYS":{"code":1225,"message":"out of keys"},"ERROR_ARANGO_DOCUMENT_KEY_MISSING":{"code":1226,"message":"missing document key"},"ERROR_ARANGO_DOCUMENT_TYPE_INVALID":{"code":1227,"message":"invalid document type"},"ERROR_ARANGO_DATABASE_NOT_FOUND":{"code":1228,"message":"database not found"},"ERROR_ARANGO_DATABASE_NAME_INVALID":{"code":1229,"message":"database name invalid"},"ERROR_ARANGO_USE_SYSTEM_DATABASE":{"code":1230,"message":"operation only allowed in system database"},"ERROR_ARANGO_ENDPOINT_NOT_FOUND":{"code":1231,"message":"endpoint not found"},"ERROR_ARANGO_INVALID_KEY_GENERATOR":{"code":1232,"message":"invalid key generator"},"ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE":{"code":1233,"message":"edge attribute missing"},"ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING":{"code":1234,"message":"index insertion warning - attribute missing in document"},"ERROR_ARANGO_INDEX_CREATION_FAILED":{"code":1235,"message":"index creation failed"},"ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT":{"code":1236,"message":"write-throttling timeout"},"ERROR_ARANGO_COLLECTION_TYPE_MISMATCH":{"code":1237,"message":"collection type mismatch"},"ERROR_ARANGO_COLLECTION_NOT_LOADED":{"code":1238,"message":"collection not loaded"},"ERROR_ARANGO_DATAFILE_FULL":{"code":1300,"message":"datafile full"},"ERROR_ARANGO_EMPTY_DATADIR":{"code":1301,"message":"server database directory is empty"},"ERROR_REPLICATION_NO_RESPONSE":{"code":1400,"message":"no response"},"ERROR_REPLICATION_INVALID_RESPONSE":{"code":1401,"message":"invalid response"},"ERROR_REPLICATION_MASTER_ERROR":{"code":1402,"message":"master error"},"ERROR_REPLICATION_MASTER_INCOMPATIBLE":{"code":1403,"message":"master incompatible"},"ERROR_REPLICATION_MASTER_CHANGE":{"code":1404,"message":"master change"},"ERROR_REPLICATION_LOOP":{"code":1405,"message":"loop detected"},"ERROR_REPLICATION_UNEXPECTED_MARKER":{"code":1406,"message":"unexpected marker"},"ERROR_REPLICATION_INVALID_APPLIER_STATE":{"code":1407,"message":"invalid applier state"},"ERROR_REPLICATION_UNEXPECTED_TRANSACTION":{"code":1408,"message":"invalid transaction"},"ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION":{"code":1410,"message":"invalid replication applier configuration"},"ERROR_REPLICATION_RUNNING":{"code":1411,"message":"cannot perform operation while applier is running"},"ERROR_REPLICATION_APPLIER_STOPPED":{"code":1412,"message":"replication stopped"},"ERROR_REPLICATION_NO_START_TICK":{"code":1413,"message":"no start tick"},"ERROR_REPLICATION_START_TICK_NOT_PRESENT":{"code":1414,"message":"start tick not present"},"ERROR_CLUSTER_NO_AGENCY":{"code":1450,"message":"could not connect to agency"},"ERROR_CLUSTER_NO_COORDINATOR_HEADER":{"code":1451,"message":"missing coordinator header"},"ERROR_CLUSTER_COULD_NOT_LOCK_PLAN":{"code":1452,"message":"could not lock plan in agency"},"ERROR_CLUSTER_COLLECTION_ID_EXISTS":{"code":1453,"message":"collection ID already exists"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN":{"code":1454,"message":"could not create collection in plan"},"ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION":{"code":1455,"message":"could not read version in current in agency"},"ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION":{"code":1456,"message":"could not create collection"},"ERROR_CLUSTER_TIMEOUT":{"code":1457,"message":"timeout in cluster operation"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN":{"code":1458,"message":"could not remove collection from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT":{"code":1459,"message":"could not remove collection from current"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN":{"code":1460,"message":"could not create database in plan"},"ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE":{"code":1461,"message":"could not create database"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN":{"code":1462,"message":"could not remove database from plan"},"ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT":{"code":1463,"message":"could not remove database from current"},"ERROR_CLUSTER_SHARD_GONE":{"code":1464,"message":"no responsible shard found"},"ERROR_CLUSTER_CONNECTION_LOST":{"code":1465,"message":"cluster internal HTTP connection broken"},"ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY":{"code":1466,"message":"must not specify _key for this collection"},"ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS":{"code":1467,"message":"got contradicting answers from different shards"},"ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN":{"code":1468,"message":"not all sharding attributes given"},"ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES":{"code":1469,"message":"must not change the value of a shard key attribute"},"ERROR_CLUSTER_UNSUPPORTED":{"code":1470,"message":"unsupported operation or parameter"},"ERROR_CLUSTER_ONLY_ON_COORDINATOR":{"code":1471,"message":"this operation is only valid on a coordinator in a cluster"},"ERROR_CLUSTER_READING_PLAN_AGENCY":{"code":1472,"message":"error reading Plan in agency"},"ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION":{"code":1473,"message":"could not truncate collection"},"ERROR_CLUSTER_AQL_COMMUNICATION":{"code":1474,"message":"error in cluster internal communication for AQL"},"ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED":{"code":1475,"message":"document not found or sharding attributes changed"},"ERROR_CLUSTER_COULD_NOT_DETERMINE_ID":{"code":1476,"message":"could not determine my ID from my local info"},"ERROR_CLUSTER_ONLY_ON_DBSERVER":{"code":1477,"message":"this operation is only valid on a DBserver in a cluster"},"ERROR_QUERY_KILLED":{"code":1500,"message":"query killed"},"ERROR_QUERY_PARSE":{"code":1501,"message":"%s"},"ERROR_QUERY_EMPTY":{"code":1502,"message":"query is empty"},"ERROR_QUERY_SCRIPT":{"code":1503,"message":"runtime error '%s'"},"ERROR_QUERY_NUMBER_OUT_OF_RANGE":{"code":1504,"message":"number out of range"},"ERROR_QUERY_VARIABLE_NAME_INVALID":{"code":1510,"message":"variable name '%s' has an invalid format"},"ERROR_QUERY_VARIABLE_REDECLARED":{"code":1511,"message":"variable '%s' is assigned multiple times"},"ERROR_QUERY_VARIABLE_NAME_UNKNOWN":{"code":1512,"message":"unknown variable '%s'"},"ERROR_QUERY_COLLECTION_LOCK_FAILED":{"code":1521,"message":"unable to read-lock collection %s"},"ERROR_QUERY_TOO_MANY_COLLECTIONS":{"code":1522,"message":"too many collections"},"ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED":{"code":1530,"message":"document attribute '%s' is assigned multiple times"},"ERROR_QUERY_FUNCTION_NAME_UNKNOWN":{"code":1540,"message":"usage of unknown function '%s()'"},"ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH":{"code":1541,"message":"invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d"},"ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH":{"code":1542,"message":"invalid argument type in call to function '%s()'"},"ERROR_QUERY_INVALID_REGEX":{"code":1543,"message":"invalid regex value"},"ERROR_QUERY_BIND_PARAMETERS_INVALID":{"code":1550,"message":"invalid structure of bind parameters"},"ERROR_QUERY_BIND_PARAMETER_MISSING":{"code":1551,"message":"no value specified for declared bind parameter '%s'"},"ERROR_QUERY_BIND_PARAMETER_UNDECLARED":{"code":1552,"message":"bind parameter '%s' was not declared in the query"},"ERROR_QUERY_BIND_PARAMETER_TYPE":{"code":1553,"message":"bind parameter '%s' has an invalid value or type"},"ERROR_QUERY_INVALID_LOGICAL_VALUE":{"code":1560,"message":"invalid logical value"},"ERROR_QUERY_INVALID_ARITHMETIC_VALUE":{"code":1561,"message":"invalid arithmetic value"},"ERROR_QUERY_DIVISION_BY_ZERO":{"code":1562,"message":"division by zero"},"ERROR_QUERY_ARRAY_EXPECTED":{"code":1563,"message":"array expected"},"ERROR_QUERY_FAIL_CALLED":{"code":1569,"message":"FAIL(%s) called"},"ERROR_QUERY_GEO_INDEX_MISSING":{"code":1570,"message":"no suitable geo index found for geo restriction on '%s'"},"ERROR_QUERY_FULLTEXT_INDEX_MISSING":{"code":1571,"message":"no suitable fulltext index found for fulltext query on '%s'"},"ERROR_QUERY_INVALID_DATE_VALUE":{"code":1572,"message":"invalid date value"},"ERROR_QUERY_MULTI_MODIFY":{"code":1573,"message":"multi-modify query"},"ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION":{"code":1574,"message":"invalid aggregate expression"},"ERROR_QUERY_COMPILE_TIME_OPTIONS":{"code":1575,"message":"query options must be readable at query compile time"},"ERROR_QUERY_EXCEPTION_OPTIONS":{"code":1576,"message":"query options expected"},"ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION":{"code":1577,"message":"collection '%s' used as expression operand"},"ERROR_QUERY_DISALLOWED_DYNAMIC_CALL":{"code":1578,"message":"disallowed dynamic call to '%s'"},"ERROR_QUERY_ACCESS_AFTER_MODIFICATION":{"code":1579,"message":"access after data-modification"},"ERROR_QUERY_FUNCTION_INVALID_NAME":{"code":1580,"message":"invalid user function name"},"ERROR_QUERY_FUNCTION_INVALID_CODE":{"code":1581,"message":"invalid user function code"},"ERROR_QUERY_FUNCTION_NOT_FOUND":{"code":1582,"message":"user function '%s()' not found"},"ERROR_QUERY_FUNCTION_RUNTIME_ERROR":{"code":1583,"message":"user function runtime error: %s"},"ERROR_QUERY_BAD_JSON_PLAN":{"code":1590,"message":"bad execution plan JSON"},"ERROR_QUERY_NOT_FOUND":{"code":1591,"message":"query ID not found"},"ERROR_QUERY_IN_USE":{"code":1592,"message":"query with this ID is in use"},"ERROR_CURSOR_NOT_FOUND":{"code":1600,"message":"cursor not found"},"ERROR_CURSOR_BUSY":{"code":1601,"message":"cursor is busy"},"ERROR_TRANSACTION_INTERNAL":{"code":1650,"message":"internal transaction error"},"ERROR_TRANSACTION_NESTED":{"code":1651,"message":"nested transactions detected"},"ERROR_TRANSACTION_UNREGISTERED_COLLECTION":{"code":1652,"message":"unregistered collection used in transaction"},"ERROR_TRANSACTION_DISALLOWED_OPERATION":{"code":1653,"message":"disallowed operation inside transaction"},"ERROR_TRANSACTION_ABORTED":{"code":1654,"message":"transaction aborted"},"ERROR_USER_INVALID_NAME":{"code":1700,"message":"invalid user name"},"ERROR_USER_INVALID_PASSWORD":{"code":1701,"message":"invalid password"},"ERROR_USER_DUPLICATE":{"code":1702,"message":"duplicate user"},"ERROR_USER_NOT_FOUND":{"code":1703,"message":"user not found"},"ERROR_USER_CHANGE_PASSWORD":{"code":1704,"message":"user must change his password"},"ERROR_APPLICATION_INVALID_NAME":{"code":1750,"message":"invalid application name"},"ERROR_APPLICATION_INVALID_MOUNT":{"code":1751,"message":"invalid mount"},"ERROR_APPLICATION_DOWNLOAD_FAILED":{"code":1752,"message":"application download failed"},"ERROR_APPLICATION_UPLOAD_FAILED":{"code":1753,"message":"application upload failed"},"ERROR_KEYVALUE_INVALID_KEY":{"code":1800,"message":"invalid key declaration"},"ERROR_KEYVALUE_KEY_EXISTS":{"code":1801,"message":"key already exists"},"ERROR_KEYVALUE_KEY_NOT_FOUND":{"code":1802,"message":"key not found"},"ERROR_KEYVALUE_KEY_NOT_UNIQUE":{"code":1803,"message":"key is not unique"},"ERROR_KEYVALUE_KEY_NOT_CHANGED":{"code":1804,"message":"key value not changed"},"ERROR_KEYVALUE_KEY_NOT_REMOVED":{"code":1805,"message":"key value not removed"},"ERROR_KEYVALUE_NO_VALUE":{"code":1806,"message":"missing value"},"ERROR_TASK_INVALID_ID":{"code":1850,"message":"invalid task id"},"ERROR_TASK_DUPLICATE_ID":{"code":1851,"message":"duplicate task id"},"ERROR_TASK_NOT_FOUND":{"code":1852,"message":"task not found"},"ERROR_GRAPH_INVALID_GRAPH":{"code":1901,"message":"invalid graph"},"ERROR_GRAPH_COULD_NOT_CREATE_GRAPH":{"code":1902,"message":"could not create graph"},"ERROR_GRAPH_INVALID_VERTEX":{"code":1903,"message":"invalid vertex"},"ERROR_GRAPH_COULD_NOT_CREATE_VERTEX":{"code":1904,"message":"could not create vertex"},"ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX":{"code":1905,"message":"could not change vertex"},"ERROR_GRAPH_INVALID_EDGE":{"code":1906,"message":"invalid edge"},"ERROR_GRAPH_COULD_NOT_CREATE_EDGE":{"code":1907,"message":"could not create edge"},"ERROR_GRAPH_COULD_NOT_CHANGE_EDGE":{"code":1908,"message":"could not change edge"},"ERROR_GRAPH_TOO_MANY_ITERATIONS":{"code":1909,"message":"too many iterations - try increasing the value of 'maxIterations'"},"ERROR_GRAPH_INVALID_FILTER_RESULT":{"code":1910,"message":"invalid filter result"},"ERROR_GRAPH_COLLECTION_MULTI_USE":{"code":1920,"message":"multi use of edge collection in edge def"},"ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS":{"code":1921,"message":"edge collection already used in edge def"},"ERROR_GRAPH_CREATE_MISSING_NAME":{"code":1922,"message":"missing graph name"},"ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION":{"code":1923,"message":"malformed edge definition"},"ERROR_GRAPH_NOT_FOUND":{"code":1924,"message":"graph not found"},"ERROR_GRAPH_DUPLICATE":{"code":1925,"message":"graph already exists"},"ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST":{"code":1926,"message":"vertex collection does not exist or is not part of the graph"},"ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX":{"code":1927,"message":"not a vertex collection"},"ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION":{"code":1928,"message":"not in orphan collection"},"ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF":{"code":1929,"message":"collection already used in edge def"},"ERROR_GRAPH_EDGE_COLLECTION_NOT_USED":{"code":1930,"message":"edge collection not used in graph"},"ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION":{"code":1931,"message":" is not an ArangoCollection"},"ERROR_GRAPH_NO_GRAPH_COLLECTION":{"code":1932,"message":"collection _graphs does not exist"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING":{"code":1933,"message":"Invalid example type. Has to be String, Array or Object"},"ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT":{"code":1934,"message":"Invalid example type. Has to be Array or Object"},"ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS":{"code":1935,"message":"Invalid number of arguments. Expected: "},"ERROR_GRAPH_INVALID_PARAMETER":{"code":1936,"message":"Invalid parameter type."},"ERROR_GRAPH_INVALID_ID":{"code":1937,"message":"Invalid id"},"ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS":{"code":1938,"message":"collection used in orphans"},"ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST":{"code":1939,"message":"edge collection does not exist or is not part of the graph"},"ERROR_GRAPH_EMPTY":{"code":1940,"message":"empty graph"},"ERROR_SESSION_UNKNOWN":{"code":1950,"message":"unknown session"},"ERROR_SESSION_EXPIRED":{"code":1951,"message":"session expired"},"SIMPLE_CLIENT_UNKNOWN_ERROR":{"code":2000,"message":"unknown client error"},"SIMPLE_CLIENT_COULD_NOT_CONNECT":{"code":2001,"message":"could not connect to server"},"SIMPLE_CLIENT_COULD_NOT_WRITE":{"code":2002,"message":"could not write to server"},"SIMPLE_CLIENT_COULD_NOT_READ":{"code":2003,"message":"could not read from server"},"ERROR_MALFORMED_MANIFEST_FILE":{"code":3000,"message":"malformed manifest file"},"ERROR_INVALID_APPLICATION_MANIFEST":{"code":3001,"message":"manifest file is invalid"},"ERROR_INVALID_FOXX_OPTIONS":{"code":3004,"message":"invalid foxx options"},"ERROR_INVALID_MOUNTPOINT":{"code":3007,"message":"mountpoint is invalid"},"ERROR_APP_NOT_FOUND":{"code":3009,"message":"App not found"},"ERROR_APP_NEEDS_CONFIGURATION":{"code":3010,"message":"App not configured"},"ERROR_MODULE_NOT_FOUND":{"code":3100,"message":"cannot locate module"},"ERROR_MODULE_FAILURE":{"code":3103,"message":"failed to invoke module"},"RESULT_ELEMENT_EXISTS":{"code":10000,"message":"element not inserted into structure, because it already exists"},"RESULT_ELEMENT_NOT_FOUND":{"code":10001,"message":"element not found in structure"},"ERROR_QUEUE_ALREADY_EXISTS":{"code":21000,"message":"named queue already exists"},"ERROR_DISPATCHER_IS_STOPPING":{"code":21001,"message":"dispatcher stopped"},"ERROR_QUEUE_UNKNOWN":{"code":21002,"message":"named queue does not exist"},"ERROR_QUEUE_FULL":{"code":21003,"message":"named queue is full"}};})(); /*jshint -W051:true */ /*global jqconsole, Symbol */ /*eslint-disable */global.DEFINE_MODULE('console',(function(){'use strict'; /*eslint-enable */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
 ///
 /// @file
@@ -14234,7 +14235,7 @@ exports.createHelpHeadline = function(text){var i;var p="";var x=Math.abs(78 - t
 /// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
 // must came after the export of createHelpHeadline
-var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}throw new ArangoError(requestResult);} // remove the property from the original object
+var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}var error=new ArangoError(requestResult);error.message = requestResult.message;throw error;} // remove the property from the original object
 delete requestResult.error;}return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief general help
 ////////////////////////////////////////////////////////////////////////////////
@@ -16436,7 +16437,8 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       type: "",
       isSystem: false,
       picture: "",
-      locked: false
+      locked: false,
+      desc: undefined
     },
 
     getProperties: function () {
@@ -16528,12 +16530,12 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
           data: JSON.stringify(postParameter),
           contentType: "application/json",
           processData: false,
-          async: true,
           success: function (data, textStatus, xhr) {
             if (xhr.getResponseHeader('x-arango-async-id')) {
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
+                desc: 'Creating Index',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -16550,13 +16552,29 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
     },
 
     deleteIndex: function (id, callback) {
+
+      var self = this;
+
       $.ajax({
           cache: false,
           type: 'DELETE',
           url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-          async: true,
-          success: function () {
-            callback(false);
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
           },
           error: function (data) {
             callback(true, data);
@@ -16583,7 +16601,6 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
     loadCollection: function (callback) {
 
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
@@ -16599,7 +16616,6 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
 
     unloadCollection: function (callback) {
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
@@ -17861,12 +17877,12 @@ window.arangoDocument = Backbone.Collection.extend({
     collectionID: 1,
 
     filters: [],
+    checkCursorTimer: undefined,
 
     MAX_SORT: 12000,
 
     lastQuery: {},
-
-    sortAttribute: "_key",
+    sortAttribute: "",
 
     url: '/_api/documents',
     model: window.arangoDocumentModel,
@@ -17910,8 +17926,6 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     setFiltersForQuery: function(bindVars) {
-      var self = this;
-
       if (this.filters.length === 0) {
         return "";
       }
@@ -17965,7 +17979,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     moveDocument: function (key, fromCollection, toCollection, callback) {
-      var querySave, queryRemove, queryObj, bindVars = {
+      var querySave, queryRemove, bindVars = {
         "@collection": fromCollection,
         "filterid": key
       }, queryObj1, queryObj2;
@@ -17998,7 +18012,7 @@ window.arangoDocument = Backbone.Collection.extend({
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
-        success: function(data) {
+        success: function() {
           // if successful remove unwanted docs
           $.ajax({
             cache: false,
@@ -18007,13 +18021,13 @@ window.arangoDocument = Backbone.Collection.extend({
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
-            success: function(data) {
+            success: function() {
               if (callback) {
                 callback();
               }
               window.progressView.hide();
             },
-            error: function(data) {
+            error: function() {
               window.progressView.hide();
               arangoHelper.arangoError(
                 "Document error", "Documents inserted, but could not be removed."
@@ -18021,7 +18035,7 @@ window.arangoDocument = Backbone.Collection.extend({
             }
           });
         },
-        error: function(data) {
+        error: function() {
           window.progressView.hide();
           arangoHelper.arangoError("Document error", "Could not move selected documents.");
         }
@@ -18029,7 +18043,6 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     getDocuments: function (callback) {
-      window.progressView.showWithDelay(300, "Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -18051,7 +18064,7 @@ window.arangoDocument = Backbone.Collection.extend({
           query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
                 + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
         }
-        else {
+        else if (this.getSort() !== '') {
           query += " SORT x." + this.getSort();
         }
       }
@@ -18077,36 +18090,83 @@ window.arangoDocument = Backbone.Collection.extend({
         };
       }
 
+      var checkCursorStatus = function(jobid) {
+        $.ajax({
+          cache: false,
+          type: 'PUT',
+          url: '/_api/job/' + encodeURIComponent(jobid),
+          contentType: 'application/json',
+          success: function(data, textStatus, xhr) {
+            if (xhr.status === 201) {
+              window.progressView.toShow = false;
+              self.clearDocuments();
+              if (data.extra && data.extra.stats.fullCount !== undefined) {
+                self.setTotal(data.extra.stats.fullCount);
+              }
+              if (self.getTotal() !== 0) {
+                _.each(data.result, function(v) {
+                  self.add({
+                    "id": v._id,
+                    "rev": v._rev,
+                    "key": v._key,
+                    "content": v
+                  });
+                });
+              }
+              self.lastQuery = queryObj;
+
+              callback(false, data);
+            }
+            else if (xhr.status === 204) {
+              self.checkCursorTimer = window.setTimeout(function() {
+                checkCursorStatus(jobid);
+              }, 500);
+            }
+
+          },
+          error: function(data) {
+            callback(false, data);
+          }
+        });
+      };
+
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
+        headers: {
+          'x-arango-async': 'store'
+        },
         contentType: "application/json",
-        success: function(data) {
-          window.progressView.toShow = false;
-          self.clearDocuments();
-          if (data.extra && data.extra.stats.fullCount !== undefined) {
-            self.setTotal(data.extra.stats.fullCount);
-          }
-          if (self.getTotal() !== 0) {
-            _.each(data.result, function(v) {
-              self.add({
-                "id": v._id,
-                "rev": v._rev,
-                "key": v._key,
-                "content": v
+        success: function (data, textStatus, xhr) {
+
+          if (xhr.getResponseHeader('x-arango-async-id')) {
+            var jobid = xhr.getResponseHeader('x-arango-async-id');
+
+            var cancelRunningCursor = function() {
+              $.ajax({
+                url: '/_api/job/'+ encodeURIComponent(jobid) + "/cancel",
+                type: 'PUT',
+                success: function() {
+                  window.clearTimeout(self.checkCursorTimer);
+                  arangoHelper.arangoNotification("Documents", "Canceled operation.");
+                  $('.dataTables_empty').text('Canceled.');
+                  window.progressView.hide();
+                }
               });
-            });
+            };
+
+            window.progressView.showWithDelay(300, "Fetching documents...", cancelRunningCursor);
+
+            checkCursorStatus(jobid);
           }
-          self.lastQuery = queryObj;
-          callback();
-          window.progressView.hide();
+          else {
+            callback(true, data);
+          }
         },
         error: function(data) {
-          window.progressView.hide();
-          arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+          callback(false, data);
         }
       });
     },
@@ -18116,7 +18176,7 @@ window.arangoDocument = Backbone.Collection.extend({
     },
 
     buildDownloadDocumentQuery: function() {
-      var self = this, query, queryObj, bindVars;
+      var query, queryObj, bindVars;
 
       bindVars = {
         "@collection": this.collectionID
@@ -18166,6 +18226,7 @@ window.arangoDocument = Backbone.Collection.extend({
             }
           }
           catch (err) {
+            console.log(err);
           }               
         }
       });
@@ -19439,7 +19500,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       this._showDevel = true;
       this._showProd = true;
       this._showSystem = false;
-      this.reload();
     },
 
     slideToggle: function() {
@@ -19533,6 +19593,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     render: function () {
       if (this.model.get("locked")) {
         $(this.el).addClass('locked');
+        $(this.el).addClass(this.model.get("lockType"));
+      } 
+      else {
+        $(this.el).removeClass('locked');
+      }
+      if (this.model.get("status") === 'loading') {
+        $(this.el).addClass('locked');
       }
       $(this.el).html(this.template.render({
         model: this.model
@@ -19567,10 +19634,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (this.model.get("locked")) {
         return 0;
       }
+      if (this.model.get("status") === 'loading' ) {
+        return 0;
+      }
 
-      window.App.navigate(
-        "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
-      );
+      if (this.model.get("status") === 'unloaded' ) {
+        this.loadCollection();
+      }
+      else {
+        window.App.navigate(
+          "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
+        );
+      }
+
     },
 
     noop: function(event) {
@@ -19923,7 +19999,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#modal-dialog .modal-footer .button-danger').hide();  
           $('#modal-dialog .modal-footer .button-success').hide();  
           $('#modal-dialog .modal-footer .button-notification').hide();
-          $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+          //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         }
         if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
           $('#modal-dialog .modal-footer .button-danger').show();  
@@ -19931,7 +20007,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#modal-dialog .modal-footer .button-notification').show();
           var elem = $('.index-button-bar')[0]; 
           var elem2 = $('.index-button-bar2')[0]; 
-          $('#addIndex').detach().appendTo(elem);
+          //$('#addIndex').detach().appendTo(elem);
           if ($('#cancelIndex').is(':visible')) {
             $('#cancelIndex').detach().appendTo(elem2);
             $('#createIndex').detach().appendTo(elem2);
@@ -20048,18 +20124,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             arangoHelper.arangoError("Document error", "Could not create index.");
           }
         }
+        self.refreshCollectionsView();
       };
 
       window.modalView.hide();
-      //this.getIndex();
-      //this.createEditPropertiesModal();
       //$($('#infoTab').children()[1]).find('a').click();
       self.model.createIndex(postParameter, callback);
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          self.collectionsView.render();
-        }
-      });
     },
 
     lastTarget: null,
@@ -20098,6 +20168,14 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     },
 
+    refreshCollectionsView: function() {
+      window.App.arangoCollectionsStore.fetch({
+        success: function () {
+          window.App.collectionsView.render();
+        }
+      });
+    },
+
     deleteIndex: function () {
       var callback = function(error) {
         if (error) {
@@ -20106,13 +20184,20 @@ window.ArangoUsers = Backbone.Collection.extend({
             '<span class="deleteIndex icon_arangodb_roundminus"' + 
             ' data-original-title="Delete index" title="Delete index"></span>'
           );
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
-        else {
+        else if (!error && error !== undefined) {
           $("tr th:contains('"+ this.lastId+"')").parent().remove();
+          this.model.set("locked", false);
+          this.refreshCollectionsView();
         }
+        this.refreshCollectionsView();
       }.bind(this);
 
+      this.model.set("locked", true);
       this.model.deleteIndex(this.lastId, callback);
+
       $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
@@ -20176,7 +20261,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       if ($('#indexEditView').is(':visible')) {
         $('#indexEditView').hide();
         $('#newIndexView').show();
-        $('#addIndex').detach().appendTo(elem2);
+        //$('#addIndex').detach().appendTo(elem2);
         $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
 
@@ -20184,7 +20269,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       else {
         $('#indexEditView').show();
         $('#newIndexView').hide();
-        $('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+        //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
         $('#cancelIndex').detach().appendTo(elem);
         $('#createIndex').detach().appendTo(elem);
       }
@@ -20226,31 +20311,52 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+
+    refetchCollections: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.checkLockedCollections();
+        }
+      });
+    },
+
     checkLockedCollections: function() {
 
-      var self = this,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+        var self = this,
+        lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
-      this.collection.each(function(model) {
-        model.set('locked', false);
-      });
-
-      _.each(lockedCollections, function(locked) {
-        var model = self.collection.findWhere({
-          id: locked.collection 
+        this.collection.each(function(model) {
+          model.set('locked', false);
         });
-        model.set('locked', true);
-        model.set('lockType', locked.type);
-      });
 
-      this.collection.each(function(model) {
-        if (model.get("locked")) {
-          $('#collection_' + model.get("name")).addClass('locked');
-        }
-        else {
-          $('#collection_' + model.get("name")).removeClass('locked');
-        }
-      });
+        _.each(lockedCollections, function(locked) {
+          var model = self.collection.findWhere({
+            id: locked.collection 
+          });
+          model.set('locked', true);
+          model.set('lockType', locked.type);
+          model.set('desc', locked.desc);
+        });
+
+        this.collection.each(function(model) {
+          
+          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+
+          if (model.get("locked") || model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).addClass('locked');
+          }
+          else {
+            $('#collection_' + model.get("name")).removeClass('locked');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+              $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+            }
+          }
+        });
 
     },
 
@@ -20258,7 +20364,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
 
       window.setInterval(function() {
-        self.checkLockedCollections();
+        if (window.location.hash === '#collections' && window.VISIBLE) {
+          self.refetchCollections();
+        }
       }, self.refreshRate);
 
     },
@@ -22259,6 +22367,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 /*jshint browser: true */
 /*jshint unused: false */
 /*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global numeral */
 
 (function() {
   "use strict";
@@ -22307,18 +22416,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.page = page;
       this.type = type;
 
-      this.checkCollectionState();
-
       this.collection.getDocuments(this.getDocsCallback.bind(this));
       this.collectionModel = this.collectionsStore.get(colid);
     },
 
-    getDocsCallback: function() {
+    getDocsCallback: function(error) {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
-      this.drawTable();
-      this.renderPaginationElements();
+
+      if (error) {
+        window.progressView.hide();
+        arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+      }
+      else if (!error || error !== undefined){
+        window.progressView.hide();
+        this.drawTable();
+        this.renderPaginationElements();
+      }
+
     },
 
     events: {
@@ -22590,11 +22706,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     getFilterContent: function () {
       var filters = [ ];
-      var i;
+      var i, value;
 
       for (i in this.filters) {
         if (this.filters.hasOwnProperty(i)) {
-          var value = $('#attribute_value' + i).val();
+          value = $('#attribute_value' + i).val();
 
           try {
             value = JSON.parse(value);
@@ -22775,8 +22891,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           buttons,
           tableContent
         );
-
-        return;
       }
       else {
         tableContent.push(
@@ -23012,9 +23126,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     reallyDelete: function () {
-      var self = this;
-      var row = $(self.target).closest("tr").get(0);
-
       var deleted = false;
       var result;
       if (this.type === 'document') {
@@ -23046,7 +23157,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
-
     },
 
     editModeClick: function(event) {
@@ -23117,7 +23227,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
-          this.collection.setSort('_key');
+          this.collection.setSort('');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
@@ -23160,7 +23270,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -23178,10 +23288,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(this.collection.getTotal() + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
-        total.html(this.collection.getTotal() + " edge(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");
       }
     },
 
@@ -23259,7 +23369,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, arangoHelper, window*/
+/*global Backbone, document, templateEngine, $, arangoHelper, window*/
 
 (function() {
   "use strict";
@@ -23281,6 +23391,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.getVersion();
       }, 15000);
       self.getVersion();
+
+      window.VISIBLE = true;
+      document.addEventListener('visibilitychange', function () {
+        window.VISIBLE = !window.VISIBLE;
+      });
     },
 
     template: templateEngine.createTemplate("footerView.ejs"),
@@ -23330,7 +23445,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             self.render();
           }
         },
-        error: function (data) {
+        error: function () {
           self.isOffline = true;
           self.isOfflineCounter++;
           if (self.isOfflineCounter >= 1) {
@@ -23453,9 +23568,53 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function(){
+
       $(this.el).html(this.template.render({
         model: this.model
       }));
+
+      var conf = function() {
+        if (this.model.needsConfiguration()) {
+
+          if ($(this.el).find('.warning-icons').length > 0) {
+            $(this.el).find('.warning-icons')
+            .append('<span class="fa fa-cog" title="Needs configuration"></span>');
+          }
+          else {
+            $(this.el).find('img')
+            .after(
+              '<span class="warning-icons"><span class="fa fa-cog" title="Needs configuration"></span></span>'
+            );
+          }
+        }
+      }.bind(this);
+
+      var depend = function() {
+        if (this.model.hasUnconfiguredDependencies()) {
+
+          if ($(this.el).find('.warning-icons').length > 0) {
+            $(this.el).find('.warning-icons')
+            .append('<span class="fa fa-cubes" title="Unconfigured dependencies"></span>');
+          }
+          else {
+            $(this.el).find('img')
+            .after(
+              '<span class="warning-icons"><span class="fa fa-cubes" title="Unconfigured dependencies"></span></span>'
+            );
+          }
+        }
+      }.bind(this);
+
+      /*isBroken function in model doesnt make sense
+      var broken = function() {
+        $(this.el).find('warning-icons')
+        .append('<span class="fa fa-warning" title="Mount error"></span>');
+      }.bind(this);
+       */
+
+      this.model.getConfiguration(conf);
+      this.model.getDependencies(depend);
+
       return $(this.el);
     }
   });
@@ -24056,6 +24215,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       this.events["click #graphTab a"] = this.toggleTab.bind(this);
       this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
+      this.events["focusout .select2-search-field input"] = function(e){
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            window.setTimeout(function() { 
+              $(e.currentTarget).parent().parent().parent().select2('close');
+            }, 80);
+          }
+        } 
+      }.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -24152,9 +24320,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -24317,6 +24497,22 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,
@@ -25588,7 +25784,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     performAction: function() {
-      this.action();
+      if (typeof this.action === 'function') {
+        this.action();
+      }
       window.progressView.hide();
     },
 
@@ -25830,6 +26028,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           if (rowsArray.length === 0) {
             rowsArray.push([
               message,
+              "",
               "",
               "",
               ""
@@ -26761,6 +26960,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (typeof callback === "function") {
                 callback();
               }
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               window.progressView.hide();
@@ -26952,7 +27153,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (xhr.getResponseHeader('x-arango-async-id')) {
                 self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
               }
-
+              $.noty.clearQueue();
+              $.noty.closeAll();
             },
             error: function (data) {
               self.switchTab("result-switch");

@@ -13,26 +13,30 @@ tar xzf 3rdParty.tar.gz
 echo
 echo "$0: setup make-system"
 
-make setup || exit 1
+mkdir build
+ln -s build/bin bin
 
 echo
 echo "$0: configuring ArangoDB"
-./configure --enable-relative
+
+export LDFLAGS="-lrt"
+
+(cd build && cmake .. -DUSE_RELATIVE=ON -DUSE_PRECOMPILED_V8=ON)
 
 echo
 echo "$0: compiling ArangoDB"
 
-make -j1 || exit 1
+(cd build && make -j1)
 
 echo
 echo "$0: linting ArangoDB JS"
 
-ulimit -c unlimited -S # enable core files
-make jslint || exit 1
+./scripts/jslint.sh
 
 echo
 echo "$0: testing ArangoDB"
 
+ulimit -c unlimited -S # enable core files
 ./scripts/unittest all \
   --skipRanges true \
   --skipTimeCritical true \

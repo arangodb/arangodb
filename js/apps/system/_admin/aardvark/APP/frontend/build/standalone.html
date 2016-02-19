@@ -295,9 +295,15 @@
 <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
 <div class="tileBadge">
   <span>
+  <% if(model.get('desc')) { %>
+    <div class="corneredBadge inProgress">
+      <%= model.get('desc') %>
+    </div>
+  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
     <div class="corneredBadge <%= model.get('status') %>">
       <%= model.get('status') %>
     </div>
+  <% } %>
   </span>
 </div>
 
@@ -884,8 +890,7 @@ if (list.length > 0) {
        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
        <button id="resetView" class="button-warning btn-old-padding">Reset</button>
        <button id="filterSend" class="button-success btn-old-padding">Filter</button>
-       <input type="text" id="docsSort" placeholder="_key" style="float: right"></input>
-       <div class="textDiv" style="float: right">Sort by:</div>
+       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
     </div>
   </div>
 
@@ -1031,19 +1036,6 @@ if (list.length > 0) {
 <script id="foxxActiveView.ejs" type="text/template">
   <div class="borderBox"></div>
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
-    <% if (model.needsAttention()) { %>
-      <span class="warning-icons">
-        <% if (model.isBroken()) { %>
-          <span class="fa fa-warning" title="Mount error"></span>
-        <% } %>
-        <% if (model.needsConfiguration()) { %>
-          <span class="fa fa-cog" title="Needs configuration"></span>
-        <% } %>
-        <% if (model.hasUnconfiguredDependencies()) { %>
-          <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
-        <% } %>
-      </span>
-    <% } %>
   <% if(model.isDevelopment()) { %>
     <div class="tileBadge">
       <span>
@@ -1268,10 +1260,18 @@ if (list.length > 0) {
           </thead>
           <tbody>
           </tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td><i class="fa fa-plus-circle" id="addIndex"></i></td>
+            </tr>
+          </tfoot>
         </table>
-        <div class="index-button-bar">
-          <button id="addIndex" class="button-success">Add Index</button>
-        </div>
     </div>
 
       <div id="newIndexView" class="new-index-view" style="display:none">
@@ -1762,7 +1762,6 @@ if (list.length > 0) {
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
       <li><a href="#figures" data-toggle="tab">Figures</a></li>
-      <li><a href="#index" data-toggle="tab">Indexes</a></li>
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
@@ -1865,7 +1864,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
-            <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
@@ -1879,7 +1878,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Journals</th>
-            <th class="modal-text"><%=figuresData.figures.journals.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
@@ -1890,7 +1889,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Compactors</th>
-            <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
@@ -1901,7 +1900,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
@@ -1912,7 +1911,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Indexes</th>
-            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
@@ -1931,7 +1930,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of shapes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1939,7 +1938,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of attributes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1973,7 +1972,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Alive</th>
-            <th class="modal-text"><%=figuresData.figures.alive.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
@@ -1986,7 +1985,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Dead</th>
-            <th class="modal-text"><%=figuresData.figures.dead.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.dead.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
@@ -2004,49 +2003,6 @@ if (list.length > 0) {
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-
-			<div class="tab-pane" id="index">
-        <table id="collectionIndexTable">
-          <tr class="figuresHeader">
-            <th class="collectionInfoTh">ID</th>
-            <th class="collectionInfoTh">Type</th>
-            <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Sparse</th>
-            <th class="collectionInfoTh">Selectivity Est.</th>
-            <th class="collectionInfoTh">Fields</th>
-          </tr>
-          <%
-          if (index) {
-            var fieldString = '';
-            $.each(index.indexes, function(k, v) {
-              if (v.fields !== undefined) {
-                fieldString = v.fields.join(", ");
-              }
-
-              //cut index id
-              var position = v.id.indexOf('/');
-              var indexId = v.id.substr(position+1, v.id.length);
-              var selectivity = (
-                v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-                "n/a"
-              );
-              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-          %>
-          <tr>
-            <th class="collectionInfoTh modal-text"><%=indexId%></th>
-            <th class="collectionInfoTh modal-text"><%=v.type%></th>
-            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
-            <th class="collectionInfoTh modal-text"><%=sparse%></th>
-            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
-            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
-          </tr>
-          <%
-            });
-          }
-          %>
-        </table>
-			</div>
 
 	  </div>
 </script>
@@ -3044,9 +3000,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1455532583470"></script>
-<script src="libs.js?version=1455532583470"></script>
-<script src="app.js?version=1455532583470"></script>
+<script src="sharedLibs.js?version=1455877794814"></script>
+<script src="libs.js?version=1455877794814"></script>
+<script src="app.js?version=1455877794814"></script>
 
   </body>
 </html>

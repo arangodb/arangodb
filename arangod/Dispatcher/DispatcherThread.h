@@ -37,7 +37,7 @@ class Scheduler;
 /// @brief job dispatcher thread
 /////////////////////////////////////////////////////////////////////////////
 
-class DispatcherThread : public basics::Thread {
+class DispatcherThread : public Thread {
   DispatcherThread(DispatcherThread const&) = delete;
   DispatcherThread& operator=(DispatcherThread const&) = delete;
 
@@ -45,18 +45,11 @@ class DispatcherThread : public basics::Thread {
   friend class DispatcherQueue;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a global, but thread-local place to hold the current dispatcher
-  /// thread. If we are not in a dispatcher thread this is set to nullptr.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static thread_local DispatcherThread* currentDispatcherThread;
+  static DispatcherThread* current() {
+    return dynamic_cast<DispatcherThread*>(Thread::CURRENT_THREAD);
+  }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a dispatcher thread
-  //////////////////////////////////////////////////////////////////////////////
-
   explicit DispatcherThread(DispatcherQueue*);
 
  protected:

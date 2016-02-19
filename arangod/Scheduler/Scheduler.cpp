@@ -118,14 +118,6 @@ bool Scheduler::start(ConditionVariable* cv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isStarted() {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  for (size_t i = 0; i < nrThreads; ++i) {
-    if (!threads[i]->isStarted()) {
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -134,14 +126,6 @@ bool Scheduler::isStarted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::open() {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  for (size_t i = 0; i < nrThreads; ++i) {
-    if (!threads[i]->open()) {
-      return false;
-    }
-  }
-
   return true;
 }
 

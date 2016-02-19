@@ -8,7 +8,6 @@
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
       <li><a href="#figures" data-toggle="tab">Figures</a></li>
-      <li><a href="#index" data-toggle="tab">Indexes</a></li>
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
@@ -111,7 +110,7 @@
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
-            <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
@@ -125,7 +124,7 @@
           </tr>
           <tr>
             <th class="modal-text">Journals</th>
-            <th class="modal-text"><%=figuresData.figures.journals.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
@@ -136,7 +135,7 @@
           </tr>
           <tr>
             <th class="modal-text">Compactors</th>
-            <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
@@ -147,7 +146,7 @@
           </tr>
           <tr>
             <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
@@ -158,7 +157,7 @@
           </tr>
           <tr>
             <th class="modal-text">Indexes</th>
-            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
@@ -177,7 +176,7 @@
           </tr>
           <tr>
             <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of shapes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -185,7 +184,7 @@
           </tr>
           <tr>
             <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of attributes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -219,7 +218,7 @@
           </tr>
           <tr>
             <th class="modal-text">Alive</th>
-            <th class="modal-text"><%=figuresData.figures.alive.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
@@ -232,7 +231,7 @@
           </tr>
           <tr>
             <th class="modal-text">Dead</th>
-            <th class="modal-text"><%=figuresData.figures.dead.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.dead.count).format('0,0')%></th>
             <th class="modal-text">
             <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
@@ -250,49 +249,6 @@
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-
-			<div class="tab-pane" id="index">
-        <table id="collectionIndexTable">
-          <tr class="figuresHeader">
-            <th class="collectionInfoTh">ID</th>
-            <th class="collectionInfoTh">Type</th>
-            <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Sparse</th>
-            <th class="collectionInfoTh">Selectivity Est.</th>
-            <th class="collectionInfoTh">Fields</th>
-          </tr>
-          <%
-          if (index) {
-            var fieldString = '';
-            $.each(index.indexes, function(k, v) {
-              if (v.fields !== undefined) {
-                fieldString = v.fields.join(", ");
-              }
-
-              //cut index id
-              var position = v.id.indexOf('/');
-              var indexId = v.id.substr(position+1, v.id.length);
-              var selectivity = (
-                v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-                "n/a"
-              );
-              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-          %>
-          <tr>
-            <th class="collectionInfoTh modal-text"><%=indexId%></th>
-            <th class="collectionInfoTh modal-text"><%=v.type%></th>
-            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
-            <th class="collectionInfoTh modal-text"><%=sparse%></th>
-            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
-            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
-          </tr>
-          <%
-            });
-          }
-          %>
-        </table>
-			</div>
 
 	  </div>
 </script>

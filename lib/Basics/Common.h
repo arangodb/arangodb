@@ -35,9 +35,6 @@
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
-#ifndef _WIN32
-#include "Basics/local-configuration.h"
-#endif
 #include "Basics/application-exit.h"
 
 #include "build.h"

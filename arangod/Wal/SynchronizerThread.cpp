@@ -33,43 +33,29 @@
 
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the synchronizer thread
-////////////////////////////////////////////////////////////////////////////////
-
 SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
                                        uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),
       _condition(),
       _waiting(0),
-      _stop(0),
       _syncInterval(syncInterval),
       _logfileCache({0, -1}) {
-  allowAsynchronousCancelation();
+}
+
+SynchronizerThread::~SynchronizerThread() {
+  shutdown(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the synchronizer thread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchronizerThread::~SynchronizerThread() {}
+void SynchronizerThread::beginShutdown() {
+  Thread::beginShutdown();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the synchronizer thread
-////////////////////////////////////////////////////////////////////////////////
-
-void SynchronizerThread::stop() {
-  if (_stop > 0) {
-    return;
-  }
-
-  _stop = 1;
-  _condition.signal();
-
-  while (_stop != 2) {
-    usleep(10000);
-  }
+  CONDITION_LOCKER(guard, _condition);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,14 +85,13 @@ void SynchronizerThread::run() {
   // go on without the lock
 
   while (true) {
-    int stop = (int)_stop;
-
     if (waiting > 0 || ++iterations == 10) {
       iterations = 0;
 
       try {
         // sync as much as we can in this loop
         bool checkMore = false;
+
         while (true) {
           int res = doSync(checkMore);
 
@@ -134,7 +119,7 @@ void SynchronizerThread::run() {
     waiting = _waiting;
 
     if (waiting == 0) {
-      if (stop > 0) {
+      if (isStopping()) {
         // stop requested and all synced, we can exit
         break;
       }
@@ -142,11 +127,7 @@ void SynchronizerThread::run() {
       // sleep if nothing to do
       guard.wait(_syncInterval);
     }
-
-    // next iteration
   }
-
-  _stop = 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

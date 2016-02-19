@@ -35,12 +35,10 @@ struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Thread;
+
 namespace aql {
 class QueryRegistry;
-}
-
-namespace basics {
-class Thread;
 }
 
 namespace rest {
@@ -523,7 +521,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief garbage collection thread
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::Thread* _gcThread;
+  Thread* _gcThread;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler

@@ -744,7 +744,8 @@ void LogThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-std::atomic_uint_fast16_t NEXT_TOPIC_ID(0);
+//std::atomic_uint_fast16_t NEXT_TOPIC_ID(0);
+  std::atomic<uint16_t> NEXT_TOPIC_ID(0);
 }
 
 LogTopic::LogTopic(std::string const& name)
@@ -1164,7 +1165,15 @@ void Logger::shutdown(bool clearBuffers) {
     LoggingActive.store(false, std::memory_order_relaxed);
 
     // ignore all errors for now as we cannot log them anywhere...
-    LoggingThread->join();
+    LoggingThread->beginShutdown();
+
+    for (size_t i = 0; i < 10; ++i) {
+      if (LoggingThread->isRunning()) {
+        break;
+      }
+
+      usleep(100 * 1000);
+    }
   }
 
   // cleanup appenders

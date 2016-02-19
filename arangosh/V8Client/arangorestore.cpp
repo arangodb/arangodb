@@ -987,8 +987,8 @@ int main(int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
-  if (major < 1 || major > 2 || (major == 1 && minor < 4)) {
-    // we can connect to 1.4, 2.0 and higher only
+  if (major != 3) {
+    // we can connect to 3.x
     std::cerr << "Error: got incompatible server version '" << versionString
               << "'" << std::endl;
     if (!Force) {

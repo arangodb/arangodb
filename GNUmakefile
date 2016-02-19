@@ -4,6 +4,20 @@
 ## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
+.PHONY: warning
+
+warning:
+	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
+	@echo ""
+	@echo "  mkdir build"
+	@echo "  cd build"
+	@echo "  cmake .."
+	@echo "  make"
+	@echo ""
+	@echo "If running on MacOSX, please use OPENSSL from homebrew and"
+	@echo "  cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
+	@echo ""
+
 -include Makefile
 
 VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))

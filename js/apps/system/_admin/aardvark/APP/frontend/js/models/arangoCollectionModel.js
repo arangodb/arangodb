@@ -15,7 +15,8 @@
       type: "",
       isSystem: false,
       picture: "",
-      locked: false
+      locked: false,
+      desc: undefined
     },
 
     getProperties: function () {
@@ -107,12 +108,12 @@
           data: JSON.stringify(postParameter),
           contentType: "application/json",
           processData: false,
-          async: true,
           success: function (data, textStatus, xhr) {
             if (xhr.getResponseHeader('x-arango-async-id')) {
               window.arangoHelper.addAardvarkJob({
                 id: xhr.getResponseHeader('x-arango-async-id'),
                 type: 'index',
+                desc: 'Creating Index',
                 collection: self.get("id")
               });
               callback(false, data);
@@ -129,13 +130,29 @@
     },
 
     deleteIndex: function (id, callback) {
+
+      var self = this;
+
       $.ajax({
           cache: false,
           type: 'DELETE',
           url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-          async: true,
-          success: function () {
-            callback(false);
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
           },
           error: function (data) {
             callback(true, data);
@@ -162,7 +179,6 @@
     loadCollection: function (callback) {
 
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
@@ -178,7 +194,6 @@
 
     unloadCollection: function (callback) {
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",

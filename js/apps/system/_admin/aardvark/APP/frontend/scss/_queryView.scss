@@ -43,6 +43,12 @@ toolbar {
   }
 }
 
+#queryManagementContent,
+#arangoQueryManagementTable {
+  .table-cell1 {
+    word-break: break-all;
+  }
+}
 
 .queryMethods {
 
@@ -445,4 +451,5 @@ toolbar {
   .arango-icon-disk {
     margin-top: 1px;
   }
+
 }

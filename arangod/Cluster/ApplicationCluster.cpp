@@ -454,7 +454,7 @@ void ApplicationCluster::close() {
   }
 
   if (_heartbeat != nullptr) {
-    _heartbeat->stop();
+    _heartbeat->beginShutdown();
   }
 
   // change into shutdown state
@@ -477,7 +477,7 @@ void ApplicationCluster::stop() {
   comm.sendServerState(0.0);
 
   if (_heartbeat != nullptr) {
-    _heartbeat->stop();
+    _heartbeat->beginShutdown();
   }
 
   {

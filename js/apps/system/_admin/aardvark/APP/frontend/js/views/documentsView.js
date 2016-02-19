@@ -1,6 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global numeral */
 
 (function() {
   "use strict";
@@ -49,18 +50,25 @@
       this.page = page;
       this.type = type;
 
-      this.checkCollectionState();
-
       this.collection.getDocuments(this.getDocsCallback.bind(this));
       this.collectionModel = this.collectionsStore.get(colid);
     },
 
-    getDocsCallback: function() {
+    getDocsCallback: function(error) {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
-      this.drawTable();
-      this.renderPaginationElements();
+
+      if (error) {
+        window.progressView.hide();
+        arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+      }
+      else if (!error || error !== undefined){
+        window.progressView.hide();
+        this.drawTable();
+        this.renderPaginationElements();
+      }
+
     },
 
     events: {
@@ -332,11 +340,11 @@
 
     getFilterContent: function () {
       var filters = [ ];
-      var i;
+      var i, value;
 
       for (i in this.filters) {
         if (this.filters.hasOwnProperty(i)) {
-          var value = $('#attribute_value' + i).val();
+          value = $('#attribute_value' + i).val();
 
           try {
             value = JSON.parse(value);
@@ -517,8 +525,6 @@
           buttons,
           tableContent
         );
-
-        return;
       }
       else {
         tableContent.push(
@@ -754,9 +760,6 @@
     },
 
     reallyDelete: function () {
-      var self = this;
-      var row = $(self.target).closest("tr").get(0);
-
       var deleted = false;
       var result;
       if (this.type === 'document') {
@@ -788,7 +791,6 @@
         this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
-
     },
 
     editModeClick: function(event) {
@@ -859,7 +861,7 @@
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
-          this.collection.setSort('_key');
+          this.collection.setSort('');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
@@ -902,7 +904,7 @@
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -920,10 +922,10 @@
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(this.collection.getTotal() + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
-        total.html(this.collection.getTotal() + " edge(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");
       }
     },
 

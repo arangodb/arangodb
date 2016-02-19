@@ -13,31 +13,52 @@
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+
+    refetchCollections: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.checkLockedCollections();
+        }
+      });
+    },
+
     checkLockedCollections: function() {
 
-      var self = this,
-      lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
+        var self = this,
+        lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
-      this.collection.each(function(model) {
-        model.set('locked', false);
-      });
-
-      _.each(lockedCollections, function(locked) {
-        var model = self.collection.findWhere({
-          id: locked.collection 
+        this.collection.each(function(model) {
+          model.set('locked', false);
         });
-        model.set('locked', true);
-        model.set('lockType', locked.type);
-      });
 
-      this.collection.each(function(model) {
-        if (model.get("locked")) {
-          $('#collection_' + model.get("name")).addClass('locked');
-        }
-        else {
-          $('#collection_' + model.get("name")).removeClass('locked');
-        }
-      });
+        _.each(lockedCollections, function(locked) {
+          var model = self.collection.findWhere({
+            id: locked.collection 
+          });
+          model.set('locked', true);
+          model.set('lockType', locked.type);
+          model.set('desc', locked.desc);
+        });
+
+        this.collection.each(function(model) {
+          
+          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+
+          if (model.get("locked") || model.get("status") === 'loading') {
+            $('#collection_' + model.get("name")).addClass('locked');
+          }
+          else {
+            $('#collection_' + model.get("name")).removeClass('locked');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+              $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+            }
+          }
+        });
 
     },
 
@@ -45,7 +66,9 @@
       var self = this;
 
       window.setInterval(function() {
-        self.checkLockedCollections();
+        if (window.location.hash === '#collections' && window.VISIBLE) {
+          self.refetchCollections();
+        }
       }, self.refreshRate);
 
     },

@@ -265,11 +265,11 @@
   }
 
   input {
-    width: 384px;
+    width: 436px;
   }
 
   select {
-    width: 398px;
+    width: 450px;
   }
 
   .collectionTh {
@@ -328,7 +328,8 @@
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: 0;
-  width: 580px;
+  margin-left: -325px !important;
+  width: 650px;
   z-index: 9999999;
 
   .fade.in {
@@ -440,7 +441,7 @@
   .figures1,
   .figures2 {
     margin-bottom: 20px;
-    width: 255px;
+    width: 300px;
   }
 
   .figures2 {
