@@ -5256,7 +5256,7 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(slice);
+  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(newSlice);
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -5330,7 +5330,7 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(slice);
+  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(newSlice);
   
   TRI_voc_tick_t markerTick = 0;
   int res;
