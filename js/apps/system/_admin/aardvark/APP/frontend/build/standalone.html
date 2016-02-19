@@ -300,9 +300,11 @@
       <%= model.get('desc') %>
     </div>
   <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
-    <div class="corneredBadge <%= model.get('status') %>">
-      <%= model.get('status') %>
-    </div>
+    <% if (!model.get('locked')) { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } %>
   <% } %>
   </span>
 </div>
@@ -2520,10 +2522,7 @@ if (list.length > 0) {
 <script id="progressBase.ejs" type="text/template">
   <div class="progress-view">
     <div class="progress-content">
-      <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
-      <div class="pong-loader">
-        Loading…
-      </div>
+      <div class="pong-spinner"><i /></div>
     </div>
     <div class="progress-message">
       <div class="progress-text"></div>
@@ -3000,9 +2999,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1455877794814"></script>
-<script src="libs.js?version=1455877794814"></script>
-<script src="app.js?version=1455877794814"></script>
+<script src="sharedLibs.js?version=1455882035132"></script>
+<script src="libs.js?version=1455882035132"></script>
+<script src="app.js?version=1455882035132"></script>
 
   </body>
 </html>

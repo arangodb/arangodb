@@ -1518,7 +1518,8 @@
           ]},
         ],
         ['OS=="solaris"', {
-            'link_settings': {
+              'defines': ['_GLIBCXX_USE_C99_MATH'],
+              'link_settings': {
               'libraries': [
                 '-lnsl -lrt',
             ]},

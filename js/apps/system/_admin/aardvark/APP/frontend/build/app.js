@@ -20341,17 +20341,26 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         this.collection.each(function(model) {
           
-          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
-          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
-          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+          if (!model.get("locked")) {
+            $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+          }
 
           if (model.get("locked") || model.get("status") === 'loading') {
             $('#collection_' + model.get("name")).addClass('locked');
+            if (model.get("locked")) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("desc"));
+            }
+            else {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            }
           }
           else {
             $('#collection_' + model.get("name")).removeClass('locked');
             $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
             if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
               $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
