@@ -374,6 +374,12 @@ class Index {
                                               arangodb::aql::Variable const*,
                                               bool) const;
 
+  virtual IndexIterator* iteratorForSlices(
+      arangodb::Transaction*, IndexIteratorContext*,
+      std::shared_ptr<std::vector<arangodb::velocypack::Slice>>, bool) const {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
