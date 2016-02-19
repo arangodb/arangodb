@@ -1281,8 +1281,9 @@ OperationResult Transaction::truncate(std::string const& collectionName,
 
 OperationResult Transaction::truncateCoordinator(std::string const& collectionName,
                                                  OperationOptions& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return OperationResult(
+      arangodb::truncateCollectionOnCoordinator(_vocbase->_name,
+                                                collectionName));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
