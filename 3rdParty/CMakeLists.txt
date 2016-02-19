@@ -117,8 +117,8 @@ endif()
 list(APPEND V8_GYP_ARGS -Dv8_target_arch=${TARGET_ARCH} -S.${V8_TARGET_ARCH})
 
 if (UNIX)
-  set(V8_PLATFORM "native")
-  set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
+  #set(V8_PLATFORM "native")
+  set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
   set(ICU_BIN_DIR "${V8_BIN_DIR}")
   if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
@@ -132,7 +132,7 @@ endif ()
 
 include(ExternalProject)
 set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
-  snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
+  snapshot=off werror=no "${V8_TARGET_ARCH}" CC="${CMAKE_C_COMPILER}"
   CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   CXXFLAGS=${CMAKE_CXX_FLAGS})
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
