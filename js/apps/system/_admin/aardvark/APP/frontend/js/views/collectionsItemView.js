@@ -138,7 +138,6 @@
 
     truncateCollection: function () {
       this.model.truncateCollection();
-      this.render();
       window.modalView.hide();
     },
 
@@ -189,50 +188,48 @@
           return 0;
         }
 
-        var result;
-        if (this.model.get('name') !== newname) {
-          result = this.model.renameCollection(newname);
-        }
-
-        if (result !== true) {
-          if (result !== undefined) {
-            arangoHelper.arangoError("Collection error: " + result);
-            return 0;
+        var callbackChange = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Collection error: " + error.responseText);
           }
-        }
-
-        var wfs = $('#change-collection-sync').val();
-        var changeResult = this.model.changeCollection(wfs, journalSize, indexBuckets);
-
-        if (changeResult !== true) {
-          arangoHelper.arangoNotification("Collection error", changeResult);
-          return 0;
-        }
-
-        this.collectionsView.render();
-        window.modalView.hide();
-      }
-      else if (status === 'unloaded') {
-        if (this.model.get('name') !== newname) {
-          var result2 = this.model.renameCollection(newname);
-
-          if (result2 === true) {
+          else {
             this.collectionsView.render();
             window.modalView.hide();
           }
-          else {
-            arangoHelper.arangoError("Collection error: " + result2);
+        }.bind(this);
+
+        var callbackRename = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Collection error: " + error.responseText);
           }
+          else {
+            var wfs = $('#change-collection-sync').val();
+            this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+          }
+        }.bind(this);
+
+        this.model.renameCollection(newname, callbackRename);
+      }
+      else if (status === 'unloaded') {
+        if (this.model.get('name') !== newname) {
+
+          var callbackRename2 = function(error, data) {
+            if (error) {
+              arangoHelper.arangoError("Collection error: " + data.responseText);
+            }
+            else {
+              this.collectionsView.render();
+              window.modalView.hide();
+            }
+          }.bind(this);
+          
+          this.model.renameCollection(newname, callbackRename2);
         }
         else {
           window.modalView.hide();
         }
       }
     },
-
-
-
-    //modal dialogs
 
     createEditPropertiesModal: function() {
 
@@ -392,7 +389,6 @@
       else {
         $($('#infoTab').children()[1]).remove();
       }
-      this.bindIndexEvents();
     },
 
     bindIndexEvents: function() {
@@ -419,6 +415,7 @@
       });
 
       $('.deleteIndex').bind('click', function(e) {
+        console.log("asdasd");
         self.prepDeleteIndex(e);
       });
 
@@ -643,7 +640,23 @@
     },
 
     getIndex: function () {
-      this.index = this.model.getIndex();
+
+      var callback = function(error, data) {
+        if (error) {
+          window.arangoHelper.arangoError('Index', data.errorMessage);
+        }
+        else {
+          this.renderIndex(data);
+        }
+      }.bind(this);
+
+      this.model.getIndex(callback);
+    },
+
+    renderIndex: function(data) {
+
+      this.index = data;
+
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldString = '';
@@ -686,6 +699,7 @@
           );
         });
       }
+      this.bindIndexEvents();
     },
 
     toggleNewIndexView: function () {
