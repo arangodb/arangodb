@@ -701,7 +701,6 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
   OperationOptions opOptions;
-  bool const waitForSync = extractWaitForSync();
 
   TRI_doc_update_policy_e const policy = extractUpdatePolicy();
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {

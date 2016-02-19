@@ -149,11 +149,10 @@ void RestVocbaseBaseHandler::generateSaved(
 void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type) {
-  rest::HttpResponse::HttpResponseCode statusCode;
   if (result.wasSynchronous) {
-    statusCode = rest::HttpResponse::OK;
+    createResponse(rest::HttpResponse::OK);
   } else {
-    statusCode = rest::HttpResponse::ACCEPTED;
+    createResponse(rest::HttpResponse::ACCEPTED);
   }
   generate20x(result, collectionName, type);
 }
