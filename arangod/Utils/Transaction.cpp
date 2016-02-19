@@ -842,7 +842,10 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
         parser.parse(resultBody);
         auto bui = parser.steal();
         auto buf = bui->steal();
-        return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, true);
+        return OperationResult(buf, nullptr, "", 
+            responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED ?
+            TRI_ERROR_ARANGO_CONFLICT : TRI_ERROR_NO_ERROR,
+            responseCode == arangodb::rest::HttpResponse::CREATED);
       }
       catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
@@ -925,7 +928,17 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
 
   res = document->update(this, &oldValue, &sanitized, &mptr, &policy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_ARANGO_CONFLICT) {
+    // still return 
+    VPackBuilder resultBuilder;
+    buildDocumentIdentity(resultBuilder, cid,
+                          oldValue.get("_key").copyString(), 
+                          mptr._rid, "");
+
+    return OperationResult(resultBuilder.steal(), nullptr, "",
+        TRI_ERROR_ARANGO_CONFLICT,
+        options.waitForSync || document->_info.waitForSync()); 
+  } else if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
 
@@ -1016,7 +1029,10 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
         parser.parse(resultBody);
         auto bui = parser.steal();
         auto buf = bui->steal();
-        return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, true);
+        return OperationResult(buf, nullptr, "",
+            responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED ?
+            TRI_ERROR_ARANGO_CONFLICT : TRI_ERROR_NO_ERROR,
+            responseCode == arangodb::rest::HttpResponse::CREATED);
       }
       catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
@@ -1099,7 +1115,17 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
 
   res = document->replace(this, &oldValue, &sanitized, &mptr, &policy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_ARANGO_CONFLICT) {
+    // still return 
+    VPackBuilder resultBuilder;
+    buildDocumentIdentity(resultBuilder, cid, 
+                          oldValue.get("_key").copyString(), 
+                          mptr._rid, "");
+
+    return OperationResult(resultBuilder.steal(), nullptr, "",
+        TRI_ERROR_ARANGO_CONFLICT,
+        options.waitForSync || document->_info.waitForSync()); 
+  } else if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
 
