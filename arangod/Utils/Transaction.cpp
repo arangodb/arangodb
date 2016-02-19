@@ -84,6 +84,37 @@ TRI_voc_rid_t Transaction::extractRevisionId(VPackSlice const* slice) {
   return 0;
 }
   
+//////////////////////////////////////////////////////////////////////////////
+/// @brief build a VPack object with _id, _key and _rev, the result is
+/// added to the builder in the argument as a single object.
+//////////////////////////////////////////////////////////////////////////////
+
+void Transaction::buildDocumentIdentity(VPackBuilder& builder,
+                                        TRI_voc_cid_t cid,
+                                        std::string const& key,
+                                        std::string const& rid,
+                                        std::string const& oldRid) {
+  std::string collectionName = resolver()->getCollectionName(cid);
+
+  builder.openObject();
+  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(collectionName + "/" + key));
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rid));
+  if (!oldRid.empty()) {
+    builder.add("_oldRev", VPackValue(oldRid));
+  }
+  builder.close();
+}
+
+void Transaction::buildDocumentIdentity(VPackBuilder& builder,
+                                        TRI_voc_cid_t cid,
+                                        std::string const& key,
+                                        TRI_voc_rid_t rid,
+                                        std::string const& oldRid) {
+  std::string ridSt = std::to_string(rid);
+  buildDocumentIdentity(builder, cid, key, ridSt, oldRid);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the declared collections of the transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,11 +590,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   if (expectedRevision != 0 && expectedRevision != mptr._rid) {
     // still return 
     VPackBuilder resultBuilder;
-    resultBuilder.openObject();
-    resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + key)));
-    resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(mptr._rid)));
-    resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-    resultBuilder.close();
+    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,
@@ -716,11 +743,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
   VPackBuilder resultBuilder;
-  resultBuilder.openObject();
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
-  resultBuilder.close();
+  buildDocumentIdentity(resultBuilder, cid, resultKey, mptr._rid, "");
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -852,12 +875,8 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
   VPackBuilder resultBuilder;
-  resultBuilder.openObject();
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
-  resultBuilder.add("_oldRev", VPackValue(idString));
-  resultBuilder.close();
+  buildDocumentIdentity(resultBuilder, cid, resultKey,
+      vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString(), idString);
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -989,12 +1008,8 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
   std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
 
   VPackBuilder resultBuilder;
-  resultBuilder.openObject();
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + resultKey)));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(resultKey));
-  resultBuilder.add("_oldRev", VPackValue(idString));
-  resultBuilder.close();
+  buildDocumentIdentity(resultBuilder, cid, resultKey, 
+      vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString(), idString);
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -1093,11 +1108,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   }
 
   VPackBuilder resultBuilder;
-  resultBuilder.openObject();
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(std::string(collectionName + "/" + key)));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(actualRevision)));
-  resultBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-  resultBuilder.close();
+  buildDocumentIdentity(resultBuilder, cid, key,
+      std::to_string(actualRevision), "");
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 

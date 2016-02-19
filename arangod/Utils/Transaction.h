@@ -308,6 +308,24 @@ class Transaction {
   static TRI_voc_rid_t extractRevisionId(VPackSlice const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VPack object with _id, _key and _rev and possibly
+  /// oldRef (if given), the result is added to the builder in the
+  /// argument as a single object.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildDocumentIdentity(VPackBuilder& builder,
+                             TRI_voc_cid_t cid,
+                             std::string const& key,
+                             std::string const& rid,
+                             std::string const& oldRid);
+
+  void buildDocumentIdentity(VPackBuilder& builder,
+                             TRI_voc_cid_t cid,
+                             std::string const& key,
+                             TRI_voc_rid_t rid,
+                             std::string const& oldRid);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
