@@ -348,12 +348,15 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_READ
 /// @brief reads a single edge
 ///
-/// @RESTHEADER{GET /_api/edge/{document-handle}, Read edge}
+/// @RESTHEADER{GET /_api/edge/{collection-name}/{document-key}, Read edge}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the edge document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the edge collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the edge document.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -428,12 +431,15 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_READ_HEAD
 /// @brief reads a single edge head
 ///
-/// @RESTHEADER{HEAD /_api/edge/{document-handle}, Read edge header}
+/// @RESTHEADER{HEAD /_api/edge/{collection-name}/{document-key}, Read edge header}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the edge document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the edge collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the edge document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -481,15 +487,18 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_REPLACE
 /// @brief replaces an edge
 ///
-/// @RESTHEADER{PUT /_api/edge/{document-handle},replaces an edge}
+/// @RESTHEADER{PUT /_api/edge/{collection-name}/{document-key},replaces an edge}
 ///
 /// @RESTALLBODYPARAM{edge,json,required}
 /// A JSON representation of the new edge data.
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the edge document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the edge collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the edge document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -559,7 +568,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// For example, to conditionally replace an edge document based on a specific revision
 /// id, you can use the following request:
 ///
-/// - PUT /_api/document/*document-handle*?rev=*etag*
+/// - PUT /_api/document/*collection-name*/*document-key*?rev=*etag*
 ///
 /// If a target revision id is provided in the request (e.g. via the *etag* value
 /// in the *rev* URL query parameter above), ArangoDB will check that
@@ -570,7 +579,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
-/// - PUT /_api/document/*document-handle*?policy=*policy*
+/// - PUT /_api/document/*collection-name*/*document-key*?policy=*policy*
 ///
 /// If *policy* is set to *error*, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
@@ -610,15 +619,18 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_UPDATES
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
+/// @RESTHEADER{PATCH /_api/edge/{collection-name}/{document-key}, Patches edge}
 ///
 /// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the edge update.
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the edge document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the edge collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the edge document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -721,12 +733,15 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_DELETE
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/edge/{document-handle}, Deletes edge}
+/// @RESTHEADER{DELETE /_api/edge/{collection-name}/{document-key}, Deletes edge}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the edge document identified by *document-handle*.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the edge collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the edge document.
 ///
 /// @RESTQUERYPARAMETERS
 ///

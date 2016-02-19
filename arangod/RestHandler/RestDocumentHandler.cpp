@@ -409,7 +409,7 @@ bool RestDocumentHandler::readDocument () {
     case 1:
       generateError(HttpResponse::BAD,
                     TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /_api/document/<document-handle>");
+                    "expecting GET /_api/document/<collection-name>/<document-key>");
       return false;
 
     case 2:
@@ -418,7 +418,7 @@ bool RestDocumentHandler::readDocument () {
     default:
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle> or GET /_api/document?collection=<collection-name>");
+                    "expecting GET /_api/document/<collection-name>/<document-key> or GET /_api/document?collection=<collection-name>");
       return false;
   }
 }
@@ -427,12 +427,15 @@ bool RestDocumentHandler::readDocument () {
 /// @startDocuBlock REST_DOCUMENT_READ
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document/{document-handle},Read document}
+/// @RESTHEADER{GET /_api/document/{collection-name}/{document-key},Read document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the document.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -878,12 +881,15 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
 /// @startDocuBlock REST_DOCUMENT_READ_HEAD
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document/{document-handle},Read document header}
+/// @RESTHEADER{HEAD /_api/document/{collection-name}/{document-key},Read document header}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -950,7 +956,7 @@ bool RestDocumentHandler::checkDocument () {
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting URI /_api/document/<document-handle>");
+                  "expecting URI /_api/document/<collection-name>/<document-key>");
     return false;
   }
 
@@ -961,15 +967,18 @@ bool RestDocumentHandler::checkDocument () {
 /// @startDocuBlock REST_DOCUMENT_REPLACE
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document/{document-handle},Replace document}
+/// @RESTHEADER{PUT /_api/document/{collection-name}/{document-key},Replace document}
 ///
 /// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the new document.
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -996,7 +1005,8 @@ bool RestDocumentHandler::checkDocument () {
 /// and the "ETag" header field contains the new revision of the document.
 ///
 /// If the new document passed in the body of the request contains the
-/// *document-handle* in the attribute *_id* and the revision in *_rev*,
+/// *document-handle* in the attribute *_id* and the revision
+/// in *_rev*,
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
@@ -1041,7 +1051,7 @@ bool RestDocumentHandler::checkDocument () {
 /// id, you can use the following request:
 ///
 ///
-/// `PUT /_api/document/document-handle?rev=etag`
+/// `PUT /_api/document/collection-name/document-key?rev=etag`
 ///
 ///
 /// If a target revision id is provided in the request (e.g. via the *etag* value
@@ -1055,7 +1065,7 @@ bool RestDocumentHandler::checkDocument () {
 /// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
 ///
-/// `PUT /_api/document/document-handle?policy=policy`
+/// `PUT /_api/document/collection-name/document-key?policy=policy`
 ///
 ///
 /// If *policy* is set to *error*, then the behavior is as before: replacements
@@ -1196,15 +1206,18 @@ bool RestDocumentHandler::replaceDocument () {
 /// @startDocuBlock REST_DOCUMENT_UPDATE
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document/{document-handle}, Patch document}
+/// @RESTHEADER{PATCH /_api/document/{collection-name}/{document-key}, Patch document}
 ///
 /// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the document update.
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The handle of the document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1376,7 +1389,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (suffix.size() != 2) {
     string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
-    msg.append(" /_api/document/<document-handle>");
+    msg.append(" /_api/document/<collection-name>/<document-key>");
 
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1665,12 +1678,15 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @startDocuBlock REST_DOCUMENT_DELETE
 /// @brief removes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}
+/// @RESTHEADER{DELETE /_api/document/{collection-name}/{document-key}, Removes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// Removes the document identified by *document-handle*.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The name of the collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The key of the document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1695,7 +1711,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the removed document, *_key* contains the key which 
+/// *document-handle* of the removed document, *_key* contains the key which
 /// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
@@ -1792,7 +1808,7 @@ bool RestDocumentHandler::deleteDocument () {
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/document/<document-handle>");
+                  "expecting DELETE /_api/document/<collection-name>/<document-key>");
     return false;
   }
 

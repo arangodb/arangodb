@@ -3567,15 +3567,23 @@
                 "x-filename": "Documents - arangod/RestHandler/RestDocumentHandler.cpp"
             }
         }, 
-        "/_api/document/{document-handle}": {
+        "/_api/document/{collection-name}/{document-key}": {
             "delete": {
-                "description": "\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the removed document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\n\n<details><summary>Example: Using document handle:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/720683686\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/720683686\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"720683686\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"720683686\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Unknown document handle:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/722387622\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">404</span> Not Found\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"document not found\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">404</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1202</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Revision conflict:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --header 'If-Match: \"721732262\"' --dump - http://localhost:8529/_api/document/products/721404582\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"721404582\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/721404582\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"721404582\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"721404582\"</span> \n}\n</code></pre><br></details>\n\n", 
+                "description": "\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the removed document, *_key* contains the key which\nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\n\n<details><summary>Example: Using document handle:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/720683686\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/720683686\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"720683686\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"720683686\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Unknown document handle:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --dump - http://localhost:8529/_api/document/products/722387622\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">404</span> Not Found\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"document not found\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">404</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1202</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Revision conflict:</summary><br><br><pre><code class=\"json\">shell> curl -X DELETE --header 'If-Match: \"721732262\"' --dump - http://localhost:8529/_api/document/products/721404582\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"721404582\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/721404582\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"721404582\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"721404582\"</span> \n}\n</code></pre><br></details>\n\n", 
                 "parameters": [
                     {
-                        "description": "Removes the document identified by *document-handle*.\n\n", 
+                        "description": "The name of the collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -3632,10 +3640,18 @@
                 "description": "\n\nReturns the document identified by *document-handle*. The returned\ndocument contains three special attributes: *_id* containing the document\nhandle, *_key* containing key which uniquely identifies a document\nin a given collection and *_rev* containing the revision.\n\n\n<details><summary>Example: Use a document handle:</summary><br><br><pre><code class=\"json\">shell> curl --dump - http://localhost:8529/_api/document/products/729137830\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"729137830\"</span>\n\n{ \n  <span class=\"hljs-string\">\"hello\"</span> : <span class=\"hljs-string\">\"world\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/729137830\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"729137830\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"729137830\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Use a document handle and an etag:</summary><br><br><pre><code class=\"json\">shell> curl --header 'If-None-Match: \"732807846\"' --dump - http://localhost:8529/_api/document/products/732807846\n\n</code></pre><br></details>\n<details><summary>Example: Unknown document handle:</summary><br><br><pre><code class=\"json\">shell> curl --dump - http://localhost:8529/_api/document/products/unknownhandle\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">404</span> Not Found\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"collection 'products' not found\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">404</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1203</span> \n}\n</code></pre><br></details>\n\n", 
                 "parameters": [
                     {
-                        "description": "The handle of the document.\n\n", 
+                        "description": "The name of the collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -3677,10 +3693,18 @@
                 "description": "\n\nLike *GET*, but only returns the header fields and not the body. You\ncan use this call to get the current revision of a document or check if\nthe document was deleted.\n\n\n<details><summary>Example: </summary><br><br><pre><code class=\"json\">shell> curl -X HEAD --dump - http://localhost:8529/_api/document/products/732218022\n\n</code></pre><br></details>\n\n\n", 
                 "parameters": [
                     {
-                        "description": "The handle of the document.\n\n", 
+                        "description": "The name of the collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -3740,10 +3764,18 @@
                         "x-description-offset": 0
                     }, 
                     {
-                        "description": "The handle of the document.\n\n", 
+                        "description": "The name of the collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -3814,7 +3846,7 @@
                 "x-filename": "Documents - arangod/RestHandler/RestDocumentHandler.cpp"
             }, 
             "put": {
-                "description": "\nfree style json body\n\n\n\nCompletely updates (i.e. replaces) the document identified by *document-handle*.\nIf the document exists and can be updated, then a *HTTP 201* is returned\nand the \"ETag\" header field contains the new revision of the document.\n\nIf the new document passed in the body of the request contains the\n*document-handle* in the attribute *_id* and the revision in *_rev*,\nthese attributes will be ignored. Only the URI and the \"ETag\" header are\nrelevant in order to avoid confusion when using proxies.\n\n\nOptionally, the query parameter *waitForSync* can be used to force\nsynchronization of the document replacement operation to disk even in case\nthat the *waitForSync* flag had been disabled for the entire collection.\nThus, the *waitForSync* query parameter can be used to force synchronization\nof just specific operations. To use this, set the *waitForSync* parameter\nto *true*. If the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the updated document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the document does not exist, then a *HTTP 404* is returned and the\nbody of the response contains an error document.\n\nThere are two ways for specifying the targeted document revision id for\nconditional replacements (i.e. replacements that will only be executed if\nthe revision id found in the database matches the document revision id specified\nin the request):\n- specifying the target revision in the *rev* URL query parameter\n- specifying the target revision in the *if-match* HTTP header\n\n\nSpecifying a target revision is optional, however, if done, only one of the\ndescribed mechanisms must be used (either the *rev* query parameter or the\n*if-match* HTTP header).\nRegardless which mechanism is used, the parameter needs to contain the target\ndocument revision id as returned in the *_rev* attribute of a document or\nby an HTTP *etag* header.\n\nFor example, to conditionally replace a document based on a specific revision\nid, you can use the following request:\n\n\n`PUT /_api/document/document-handle?rev=etag`\n\n\nIf a target revision id is provided in the request (e.g. via the *etag* value\nin the *rev* URL query parameter above), ArangoDB will check that\nthe revision id of the document found in the database is equal to the target\nrevision id provided in the request. If there is a mismatch between the revision\nid, then by default a *HTTP 412* conflict is returned and no replacement is\nperformed.\n\n\nThe conditional update behavior can be overridden with the *policy* URL query parameter:\n\n\n`PUT /_api/document/document-handle?policy=policy`\n\n\nIf *policy* is set to *error*, then the behavior is as before: replacements\nwill fail if the revision id found in the database does not match the target\nrevision id specified in the request.\n\nIf *policy* is set to *last*, then the replacement will succeed, even if the\nrevision id found in the database does not match the target revision id specified\nin the request. You can use the *last* *policy* to force replacements.\n\n\n<details><summary>Example: Using a document handle</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/733397670 &lt;&lt;EOF\n{\"Hello\": \"you\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">202</span> Accepted\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"733725350\"</span>\nlocation: <span class=\"hljs-regexp\">/_db/</span>_system/_api/<span class=\"hljs-built_in\">document</span>/products/<span class=\"hljs-number\">733397670</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/733397670\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"733725350\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"733397670\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Unknown document handle</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/737591974 &lt;&lt;EOF\n{}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">404</span> Not Found\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"document not found\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">404</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1202</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Produce a revision conflict</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --header 'If-Match: \"734577318\"' --data-binary @- --dump - http://localhost:8529/_api/document/products/734249638 &lt;&lt;EOF\n{\"other\":\"content\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"734249638\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/734249638\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"734249638\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"734249638\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Last write wins</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --header 'If-Match: \"735691430\"' --data-binary @- --dump - http://localhost:8529/_api/document/products/735363750?policy=last &lt;&lt;EOF\n{}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">202</span> Accepted\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"735953574\"</span>\nlocation: <span class=\"hljs-regexp\">/_db/</span>_system/_api/<span class=\"hljs-built_in\">document</span>/products/<span class=\"hljs-number\">735363750</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/735363750\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"735953574\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"735363750\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Alternative to header fields</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/736477862?rev=736805542 &lt;&lt;EOF\n{\"other\":\"content\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"736477862\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/736477862\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"736477862\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"736477862\"</span> \n}\n</code></pre><br></details>\n\n", 
+                "description": "\nfree style json body\n\n\n\nCompletely updates (i.e. replaces) the document identified by *document-handle*.\nIf the document exists and can be updated, then a *HTTP 201* is returned\nand the \"ETag\" header field contains the new revision of the document.\n\nIf the new document passed in the body of the request contains the\n*document-handle* in the attribute *_id* and the revision\nin *_rev*,\nthese attributes will be ignored. Only the URI and the \"ETag\" header are\nrelevant in order to avoid confusion when using proxies.\n\n\nOptionally, the query parameter *waitForSync* can be used to force\nsynchronization of the document replacement operation to disk even in case\nthat the *waitForSync* flag had been disabled for the entire collection.\nThus, the *waitForSync* query parameter can be used to force synchronization\nof just specific operations. To use this, set the *waitForSync* parameter\nto *true*. If the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the updated document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the document does not exist, then a *HTTP 404* is returned and the\nbody of the response contains an error document.\n\nThere are two ways for specifying the targeted document revision id for\nconditional replacements (i.e. replacements that will only be executed if\nthe revision id found in the database matches the document revision id specified\nin the request):\n- specifying the target revision in the *rev* URL query parameter\n- specifying the target revision in the *if-match* HTTP header\n\n\nSpecifying a target revision is optional, however, if done, only one of the\ndescribed mechanisms must be used (either the *rev* query parameter or the\n*if-match* HTTP header).\nRegardless which mechanism is used, the parameter needs to contain the target\ndocument revision id as returned in the *_rev* attribute of a document or\nby an HTTP *etag* header.\n\nFor example, to conditionally replace a document based on a specific revision\nid, you can use the following request:\n\n\n`PUT /_api/document/collection-name/document-key?rev=etag`\n\n\nIf a target revision id is provided in the request (e.g. via the *etag* value\nin the *rev* URL query parameter above), ArangoDB will check that\nthe revision id of the document found in the database is equal to the target\nrevision id provided in the request. If there is a mismatch between the revision\nid, then by default a *HTTP 412* conflict is returned and no replacement is\nperformed.\n\n\nThe conditional update behavior can be overridden with the *policy* URL query parameter:\n\n\n`PUT /_api/document/collection-name/document-key?policy=policy`\n\n\nIf *policy* is set to *error*, then the behavior is as before: replacements\nwill fail if the revision id found in the database does not match the target\nrevision id specified in the request.\n\nIf *policy* is set to *last*, then the replacement will succeed, even if the\nrevision id found in the database does not match the target revision id specified\nin the request. You can use the *last* *policy* to force replacements.\n\n\n<details><summary>Example: Using a document handle</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/733397670 &lt;&lt;EOF\n{\"Hello\": \"you\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">202</span> Accepted\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"733725350\"</span>\nlocation: <span class=\"hljs-regexp\">/_db/</span>_system/_api/<span class=\"hljs-built_in\">document</span>/products/<span class=\"hljs-number\">733397670</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/733397670\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"733725350\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"733397670\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Unknown document handle</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/737591974 &lt;&lt;EOF\n{}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">404</span> Not Found\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"document not found\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">404</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1202</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Produce a revision conflict</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --header 'If-Match: \"734577318\"' --data-binary @- --dump - http://localhost:8529/_api/document/products/734249638 &lt;&lt;EOF\n{\"other\":\"content\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"734249638\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/734249638\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"734249638\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"734249638\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Last write wins</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --header 'If-Match: \"735691430\"' --data-binary @- --dump - http://localhost:8529/_api/document/products/735363750?policy=last &lt;&lt;EOF\n{}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">202</span> Accepted\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"735953574\"</span>\nlocation: <span class=\"hljs-regexp\">/_db/</span>_system/_api/<span class=\"hljs-built_in\">document</span>/products/<span class=\"hljs-number\">735363750</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/735363750\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"735953574\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"735363750\"</span> \n}\n</code></pre><br></details>\n<details><summary>Example: Alternative to header fields</summary><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/736477862?rev=736805542 &lt;&lt;EOF\n{\"other\":\"content\"}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">412</span> Precondition Failed\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\netag: <span class=\"hljs-string\">\"736477862\"</span>\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">412</span>, \n  <span class=\"hljs-string\">\"errorNum\"</span> : <span class=\"hljs-number\">1200</span>, \n  <span class=\"hljs-string\">\"errorMessage\"</span> : <span class=\"hljs-string\">\"precondition failed\"</span>, \n  <span class=\"hljs-string\">\"_id\"</span> : <span class=\"hljs-string\">\"products/736477862\"</span>, \n  <span class=\"hljs-string\">\"_rev\"</span> : <span class=\"hljs-string\">\"736477862\"</span>, \n  <span class=\"hljs-string\">\"_key\"</span> : <span class=\"hljs-string\">\"736477862\"</span> \n}\n</code></pre><br></details>\n\n", 
                 "parameters": [
                     {
                         "description": "A JSON representation of the new document.\n\n", 
@@ -3828,10 +3860,18 @@
                         "x-description-offset": 0
                     }, 
                     {
-                        "description": "The handle of the document.\n\n", 
+                        "description": "The name of the collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -3987,15 +4027,23 @@
                 "x-filename": "Graph edges - arangod/RestHandler/RestEdgeHandler.cpp, arangod/RestHandler/RestEdgesHandler.cpp"
             }
         }, 
-        "/_api/edge/{document-handle}": {
+        "/_api/edge/{collection-name}/{document-key}": {
             "delete": {
                 "description": "\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the deleted edge document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\n", 
                 "parameters": [
                     {
-                        "description": "Deletes the edge document identified by *document-handle*.\n\n", 
+                        "description": "The name of the edge collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the edge document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -4052,10 +4100,18 @@
                 "description": "\n\nReturns the edge identified by *document-handle*. The returned\nedge contains a few special attributes:\n\n- *_id* contains the document handle\n\n- *_rev* contains the revision\n\n- *_from* and *to* contain the document handles of the connected\n  vertex documents\n\n", 
                 "parameters": [
                     {
-                        "description": "The handle of the edge document.\n\n", 
+                        "description": "The name of the edge collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the edge document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -4097,10 +4153,18 @@
                 "description": "\n\nLike *GET*, but only returns the header fields and not the body. You\ncan use this call to get the current revision of an edge document or check if\nit was deleted.\n\n", 
                 "parameters": [
                     {
-                        "description": "The handle of the edge document.\n\n", 
+                        "description": "The name of the edge collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the edge document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -4160,10 +4224,18 @@
                         "x-description-offset": 0
                     }, 
                     {
-                        "description": "The handle of the edge document.\n\n", 
+                        "description": "The name of the edge collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the edge document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 
@@ -4234,7 +4306,7 @@
                 "x-filename": "Graph edges - arangod/RestHandler/RestEdgeHandler.cpp, arangod/RestHandler/RestEdgesHandler.cpp"
             }, 
             "put": {
-                "description": "\nfree style json body\n\n\n\nCompletely updates (i.e. replaces) the edge document identified by *document-handle*.\nIf the edge document exists and can be updated, then a *HTTP 201* is returned\nand the \"ETag\" header field contains the new revision of the edge document.\n\nIf the new edge document passed in the body of the request contains the\n*document-handle* in the attribute *_id* and the revision in *_rev*,\nthese attributes will be ignored. Only the URI and the \"ETag\" header are\nrelevant in order to avoid confusion when using proxies. \n**Note**: The attributes\n*_from* and *_to* of an edge are immutable and cannot be updated either.\n\nOptionally, the query parameter *waitForSync* can be used to force\nsynchronization of the edge document replacement operation to disk even in case\nthat the *waitForSync* flag had been disabled for the entire collection.\nThus, the *waitForSync* query parameter can be used to force synchronization\nof just specific operations. To use this, set the *waitForSync* parameter\nto *true*. If the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the updated edge document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the edge document does not exist, then a *HTTP 404* is returned and the\nbody of the response contains an error document.\n\nThere are two ways for specifying the targeted revision id for\nconditional replacements (i.e. replacements that will only be executed if\nthe revision id found in the database matches the revision id specified\nin the request):\n- specifying the target revision in the *rev* URL query parameter\n- specifying the target revision in the *if-match* HTTP header\n\nSpecifying a target revision is optional, however, if done, only one of the\ndescribed mechanisms must be used (either the *rev* query parameter or the\n*if-match* HTTP header).\nRegardless which mechanism is used, the parameter needs to contain the target\nrevision id as returned in the *_rev* attribute of an edge document or\nby an HTTP *etag* header.\n\nFor example, to conditionally replace an edge document based on a specific revision\nid, you can use the following request:\n\n- PUT /_api/document/*document-handle*?rev=*etag*\n\nIf a target revision id is provided in the request (e.g. via the *etag* value\nin the *rev* URL query parameter above), ArangoDB will check that\nthe revision id of the edge document found in the database is equal to the target\nrevision id provided in the request. If there is a mismatch between the revision\nid, then by default a *HTTP 412* conflict is returned and no replacement is\nperformed.\n\nThe conditional update behavior can be overridden with the *policy* URL query parameter:\n\n- PUT /_api/document/*document-handle*?policy=*policy*\n\nIf *policy* is set to *error*, then the behavior is as before: replacements\nwill fail if the revision id found in the database does not match the target\nrevision id specified in the request.\n\nIf *policy* is set to *last*, then the replacement will succeed, even if the\nrevision id found in the database does not match the target revision id specified\nin the request. You can use the *last* *policy* to force replacements.\n\n", 
+                "description": "\nfree style json body\n\n\n\nCompletely updates (i.e. replaces) the edge document identified by *document-handle*.\nIf the edge document exists and can be updated, then a *HTTP 201* is returned\nand the \"ETag\" header field contains the new revision of the edge document.\n\nIf the new edge document passed in the body of the request contains the\n*document-handle* in the attribute *_id* and the revision in *_rev*,\nthese attributes will be ignored. Only the URI and the \"ETag\" header are\nrelevant in order to avoid confusion when using proxies. \n**Note**: The attributes\n*_from* and *_to* of an edge are immutable and cannot be updated either.\n\nOptionally, the query parameter *waitForSync* can be used to force\nsynchronization of the edge document replacement operation to disk even in case\nthat the *waitForSync* flag had been disabled for the entire collection.\nThus, the *waitForSync* query parameter can be used to force synchronization\nof just specific operations. To use this, set the *waitForSync* parameter\nto *true*. If the *waitForSync* parameter is not specified or set to\n*false*, then the collection's default *waitForSync* behavior is\napplied. The *waitForSync* query parameter cannot be used to disable\nsynchronization for collections that have a default *waitForSync* value\nof *true*.\n\nThe body of the response contains a JSON object with the information about\nthe handle and the revision. The attribute *_id* contains the known\n*document-handle* of the updated edge document, *_key* contains the key which \nuniquely identifies a document in a given collection, and the attribute *_rev*\ncontains the new document revision.\n\nIf the edge document does not exist, then a *HTTP 404* is returned and the\nbody of the response contains an error document.\n\nThere are two ways for specifying the targeted revision id for\nconditional replacements (i.e. replacements that will only be executed if\nthe revision id found in the database matches the revision id specified\nin the request):\n- specifying the target revision in the *rev* URL query parameter\n- specifying the target revision in the *if-match* HTTP header\n\nSpecifying a target revision is optional, however, if done, only one of the\ndescribed mechanisms must be used (either the *rev* query parameter or the\n*if-match* HTTP header).\nRegardless which mechanism is used, the parameter needs to contain the target\nrevision id as returned in the *_rev* attribute of an edge document or\nby an HTTP *etag* header.\n\nFor example, to conditionally replace an edge document based on a specific revision\nid, you can use the following request:\n\n- PUT /_api/document/*collection-name*/*document-key*?rev=*etag*\n\nIf a target revision id is provided in the request (e.g. via the *etag* value\nin the *rev* URL query parameter above), ArangoDB will check that\nthe revision id of the edge document found in the database is equal to the target\nrevision id provided in the request. If there is a mismatch between the revision\nid, then by default a *HTTP 412* conflict is returned and no replacement is\nperformed.\n\nThe conditional update behavior can be overridden with the *policy* URL query parameter:\n\n- PUT /_api/document/*collection-name*/*document-key*?policy=*policy*\n\nIf *policy* is set to *error*, then the behavior is as before: replacements\nwill fail if the revision id found in the database does not match the target\nrevision id specified in the request.\n\nIf *policy* is set to *last*, then the replacement will succeed, even if the\nrevision id found in the database does not match the target revision id specified\nin the request. You can use the *last* *policy* to force replacements.\n\n", 
                 "parameters": [
                     {
                         "description": "A JSON representation of the new edge data.\n\n", 
@@ -4248,10 +4320,18 @@
                         "x-description-offset": 0
                     }, 
                     {
-                        "description": "The handle of the edge document.\n\n", 
+                        "description": "The name of the edge collection.\n\n", 
                         "format": "string", 
                         "in": "path", 
-                        "name": "document-handle", 
+                        "name": "collection-name", 
+                        "required": true, 
+                        "type": "string"
+                    }, 
+                    {
+                        "description": "The key of the edge document.\n\n", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "document-key", 
                         "required": true, 
                         "type": "string"
                     }, 

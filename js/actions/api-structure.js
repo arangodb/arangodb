@@ -1199,12 +1199,15 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 /// @start DocuBlock JSF_read_single_document
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/structure/{document-handle},reads a document}
+/// @RESTHEADER{GET /_api/structure/{collection-name}/{document-key},reads a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The Name of the Collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The Key of the Document.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally select a document based on a target revision id by
@@ -1289,12 +1292,15 @@ function get_api_structure(req, res)  {
 /// @start DocuBlock JSF_read_single_document_head
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/structure/{document-handle},reads a document header}
+/// @RESTHEADER{HEAD /_api/structure/{collection-name}/{document-key},reads a document header}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The Name of the Collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The Key of the Document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1357,12 +1363,15 @@ function head_api_structure(req, res)  {
 /// @start DocuBlock JSF_delete_single_document
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/structure/{document-handle},deletes a document}
+/// @RESTHEADER{DELETE /_api/structure/{collection-name}/{document-key},deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by `document-handle`.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The Name of the Collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The Key of the Document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1452,12 +1461,15 @@ function delete_api_structure (req, res) {
 /// @start DocuBlock JSF_update_single_document
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/structure/{document-handle},patches a document}
+/// @RESTHEADER{PATCH /_api/structure/{collection-name}/{document-key},patches a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The Name of the Collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The Key of the Document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1588,12 +1600,15 @@ function patch_api_structure (req, res) {
 /// @start DocuBlock JSF_replace_single_document
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/structure/{document-handle},replaces a document}
+/// @RESTHEADER{PUT /_api/structure/{collection-name}/{document-key},replaces a document}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// The Handle of the Document.
+/// @RESTURLPARAM{collection-name,string,required}
+/// The Name of the Collection.
+///
+/// @RESTURLPARAM{document-key,string,required}
+/// The Key of the Document.
 ///
 /// @RESTQUERYPARAMETERS
 ///
