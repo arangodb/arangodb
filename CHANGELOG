@@ -22,6 +22,10 @@ v2.8.3 (2016-02-19)
 
 * Improved Windows stability
 
+* Fixed a bug in the interactive API documentation that would escape slashes
+  in document-handle fields. Document handles are now provided as separate
+  fields for collection name and document key.
+
 
 v2.8.2 (2016-02-09)
 -------------------
