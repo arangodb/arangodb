@@ -1004,6 +1004,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   bool doCompact = false;
   uint64_t totalSize = 0;
   char const* reason = nullptr;
+  char const* firstReason = nullptr;
 
   for (size_t i = start; i < n; ++i) {
     TRI_datafile_t* df =
@@ -1060,23 +1061,36 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
       numAlive += static_cast<int64_t>(dfi.numberAlive);
       continue;
     }
+    
+
+    TRI_ASSERT(doCompact);
+
+    if (firstReason == nullptr) {
+      firstReason = reason;
+    }
+
 
     // remember for next compaction
     start = i + 1;
 
-    if (!toCompact.empty() && 
-        totalSize + (uint64_t)df->_maximalSize >= maxSize &&
-        (toCompact.size() != 1 || reason != ReasonDatafileSmall)) {
-      // found enough files to compact (in terms of cumulated size)
-      // there's one exception to this: if we're merging multiple datafiles, 
-      // then we don't stop at the first one even if the merge of file #1 and #2
-      // would be too big. if we wouldn't stop in this case, then file #1 would
-      // be selected for compaction over and over
-      // normally this case won't happen at all, it can occur however if one
-      // decreases the journalSize configuration for the collection afterwards, and
-      // there are already datafiles which are more than 3 times bigger than the
-      // new (smaller) journalSize value
-      break;
+    // if we got only deletions then it's safe to continue compaction, regardless of
+    // the size of the resulting file. this is because deletions will reduce the
+    // size of the resulting file
+    if (reason != ReasonOnlyDeletions) {
+      if (!toCompact.empty() && 
+          totalSize + (uint64_t)df->_maximalSize >= maxSize &&
+          (toCompact.size() != 1 || reason != ReasonDatafileSmall)) {
+        // found enough files to compact (in terms of cumulated size)
+        // there's one exception to this: if we're merging multiple datafiles, 
+        // then we don't stop at the first one even if the merge of file #1 and #2
+        // would be too big. if we wouldn't stop in this case, then file #1 would
+        // be selected for compaction over and over
+        // normally this case won't happen at all, it can occur however if one
+        // decreases the journalSize configuration for the collection afterwards, and
+        // there are already datafiles which are more than 3 times bigger than the
+        // new (smaller) journalSize value
+        break;
+      }
     }
 
     TRI_ASSERT(reason != nullptr);
