@@ -437,28 +437,6 @@
 
     isSystemCollection: function (val) {
       return val.name.substr(0, 1) === '_';
-      // the below code is completely inappropriate as it will
-      // load the collection just for the check whether it
-      // is a system collection. as a consequence, the below
-      // code would load ALL collections when the web interface
-      // is called
-      /*
-         var returnVal = false;
-         $.ajax({
-type: "GET",
-url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
-contentType: "application/json",
-processData: false,
-async: false,
-success: function(data) {
-returnVal = data.isSystem;
-},
-error: function(data) {
-returnVal = false;
-}
-});
-return returnVal;
-*/
     },
 
     setDocumentStore : function (a) {
