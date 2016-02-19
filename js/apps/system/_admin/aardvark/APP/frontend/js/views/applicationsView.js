@@ -115,7 +115,6 @@
     },
 
     render: function() {
-      console.log("RENDERER");
       this.collection.sort();
 
       $(this.el).html(this.template.render({}));
