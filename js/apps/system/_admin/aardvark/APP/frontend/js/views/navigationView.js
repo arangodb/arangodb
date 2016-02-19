@@ -9,11 +9,15 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
+      "click li": "switchTab",
       "mouseenter .dropdown > *": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
+    renderFirst: true,
+
     initialize: function () {
+
       this.userCollection = this.options.userCollection;
       this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
@@ -52,6 +56,10 @@
       // if demo content not available, do not show demo menu tab
       if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
         $('.demo-menu').css("display","none");
+      }
+      if (this.renderFirst) {
+        this.renderFirst = false;
+        this.selectMenuItem((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
       }
 
       return this;
@@ -102,6 +110,14 @@
       $("#arangoCollectionSelect").change(function() {
         self.navigateBySelect();
       });
+    },
+
+    switchTab: function(e) {
+      var id = $(e.currentTarget).children().first().attr('id');
+
+      if (id) {
+        this.selectMenuItem(id + '-menu');
+      }
     },
 
     selectMenuItem: function (menuItem) {
