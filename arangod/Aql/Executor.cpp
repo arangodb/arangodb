@@ -523,8 +523,9 @@ Executor::~Executor () {
 
 V8Expression* Executor::generateExpression (AstNode const* node) {
   ISOLATE;
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+
+  v8::TryCatch tryCatch;
 
   _constantRegisters.clear();
   detectConstantValues(node, node->type);
@@ -570,8 +571,8 @@ TRI_json_t* Executor::executeExpression (Query* query,
   generateCodeExpression(node);
 
   // std::cout << "Executor::ExecuteExpression: " << std::string(_buffer->c_str(), _buffer->length()) << "\n";
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch;
 
   // compile the expression
   v8::Handle<v8::Value> func(compileExpression());
