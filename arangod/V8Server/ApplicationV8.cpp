@@ -445,7 +445,6 @@ void ApplicationV8::exitContext(V8Context* context) {
   TRI_ASSERT(context->_locker->IsLocked(isolate));
   TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-  TRI_vocbase_t* vocbase = nullptr;
   bool canceled = false;
 
   // update data for later garbage collection
@@ -453,11 +452,11 @@ void ApplicationV8::exitContext(V8Context* context) {
     TRI_GET_GLOBALS();
     context->_hasActiveExternals = v8g->hasActiveExternals();
     ++context->_numExecutions;
-    vocbase = v8g->_vocbase;
+    TRI_vocbase_t* vocbase = v8g->_vocbase;
 
     TRI_ASSERT(vocbase != nullptr);
     // release last recently used vocbase
-    TRI_ReleaseVocBase(static_cast<TRI_vocbase_t*>(v8g->_vocbase));
+    TRI_ReleaseVocBase(vocbase);
   
     // check for cancelation requests
     canceled = v8g->_canceled;
