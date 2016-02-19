@@ -3,18 +3,29 @@ AC_INIT
 orig_CFLAGS="$CFLAGS"
 
 AC_CONFIG_SRCDIR([ev_epoll.c])
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
 
 dnl also update ev.h!
 AM_INIT_AUTOMAKE(libev,4.22)
 AC_CONFIG_HEADERS([config.h])
 AM_MAINTAINER_MODE
 
-AC_PROG_CC
+AC_PROG_CXXCPP
+AC_PROG_CC($list_cc)
+AC_PROG_CXX($list_cxx)
+AC_PROG_CPP
+AM_PROG_CC_C_O
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_RANLIB
 
 dnl Supply default CFLAGS, if not specified
 if test -z "$orig_CFLAGS"; then
   if test x$GCC = xyes; then
-    CFLAGS="-g -O3"
+    CFLAGS="-g -O3 "
   fi
 fi
 
