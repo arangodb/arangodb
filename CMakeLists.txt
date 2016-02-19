@@ -127,10 +127,6 @@ elseif(UNIX AND NOT APPLE)
     set(SOLARIS TRUE)
     list(APPEND CMAKE_C_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
     list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
-    list(APPEND CMAKE_STATIC_LINKER_FLAGS -L/opt/csw/lib\ -march=x86-64\ -m64)
-    #list(APPEND CMAKE_SHARED_LINKER_FLAGS -L/opt/csw/lib\ -march=x86-64\ -m64)
-    #list(APPEND CMAKE_SHARED_LIBRARY_LINK_C_FLAGS -L/opt/csw/lib\ -march=x86-64\ -m64)
-    list(APPEND CMAKE_STATIC_LINKER_FLAGS -L/opt/csw/lib\ -march=x86-64\ -m64)
     set(THIRDP_BUILDFLAGS --target=x86_64-pc-solaris2.11
       --host=x86_64-pc-solaris2.11
       --build=x86_64-pc-solaris2.11
