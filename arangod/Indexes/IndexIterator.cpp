@@ -33,7 +33,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase,
-                                           CollectionNameResolver* resolver)
+                                           CollectionNameResolver const* resolver)
     : vocbase(vocbase), resolver(resolver), ownsResolver(resolver == nullptr) {}
 
 IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase)
@@ -98,3 +98,15 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexIterator::reset() {}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for skip
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexIterator::skip(uint64_t count) {
+  // Skip the first count-many entries
+  // TODO: Can be improved
+  while (count > 0 && next() != nullptr) {
+    --count;
+  }
+}

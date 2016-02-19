@@ -36,7 +36,7 @@ class CollectionNameResolver;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct IndexIteratorContext {
-  IndexIteratorContext(TRI_vocbase_t*, CollectionNameResolver*);
+  IndexIteratorContext(TRI_vocbase_t*, CollectionNameResolver const*);
 
   explicit IndexIteratorContext(TRI_vocbase_t*);
 
@@ -70,6 +70,8 @@ class IndexIterator {
   virtual TRI_doc_mptr_t* next();
 
   virtual void reset();
+
+  virtual void skip(uint64_t count);
 };
 }
 

@@ -45,6 +45,15 @@ thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
   
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Index Iterator Context
+////////////////////////////////////////////////////////////////////////////////
+
+struct OpenIndexIteratorContext {
+  arangodb::Transaction* trx;
+  TRI_document_collection_t* collection;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1302,11 +1311,22 @@ OperationCursor Transaction::indexScan(
       }
       
       // We have successfully found an index with the requested id.
-      // TODO second operator is a IndexIteratorContext. build it!
+      // Now collect the Iterator
+      IndexIteratorContext ctxt(_vocbase, resolver());
       IndexIterator* iterator =
-          idx->iteratorForSlices(this, nullptr, search, reverse);
+          idx->iteratorForSlices(this, &ctxt, search, reverse);
 
-      break;
+      if (iterator == nullptr) {
+        // We could not create an ITERATOR and it did not throw an error itself
+        return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      iterator->skip(skip);
+
+      return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
+                             iterator,
+                             limit,
+                             batchSize);
     }
   }
 

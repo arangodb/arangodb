@@ -40,8 +40,11 @@ struct OperationCursor : public OperationResult {
 
  private:
 
-  std::unique_ptr<IndexIterator> _indexIterator;
+  std::shared_ptr<IndexIterator> _indexIterator;
+  arangodb::velocypack::Builder  _builder;
   bool                           _hasMore;
+  uint64_t                       _limit;
+  uint64_t                       _batchSize;
 
  public:
 
@@ -59,8 +62,22 @@ struct OperationCursor : public OperationResult {
                   int code,
                   bool wasSynchronous)
       : OperationResult(buffer, handler, message, code, wasSynchronous),
-        _hasMore(true) {
+        _hasMore(false) {
   }
+
+  OperationCursor(VPackCustomTypeHandler* handler, IndexIterator* iterator,
+                  uint64_t limit, uint64_t batchSize)
+      : OperationResult(std::make_shared<VPackBuffer<uint8_t>>(), handler, "",
+                        TRI_ERROR_NO_ERROR, false),
+        _indexIterator(iterator),
+        _builder(buffer),
+        _hasMore(true),
+        _limit(limit),
+        _batchSize(batchSize) {
+          if (_indexIterator == nullptr) {
+            _hasMore = false;
+          }
+        }
 
   ~OperationCursor() {
   }
@@ -69,7 +86,20 @@ struct OperationCursor : public OperationResult {
     return _hasMore;
   }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get next batchSize many elements.
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
   int getMore(uint64_t batchSize);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get next default batchSize many elements.
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
   int getMore();
 };
 
