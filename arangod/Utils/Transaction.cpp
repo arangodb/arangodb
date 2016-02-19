@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/transactions.h"
+#include "Basics/conversions.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
 #include "VocBase/KeyGenerator.h"
@@ -1237,5 +1238,78 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   resultBuilder.add(VPackValue(document->size()));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief factory for OperationCursor objects
+//////////////////////////////////////////////////////////////////////////////
+
+OperationCursor Transaction::indexScan(
+    std::string const& collection, CursorType cursorType,
+    std::string const& indexId, std::shared_ptr<std::vector<VPackSlice>> search,
+    uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
+
+  // TODO Who checks if indexId is valid and is used for this collection?
+  // For now we assume indexId is the iid part of the index.
+
+  if (ServerState::instance()->isCoordinator()) {
+    // The index scan is only available on DBServers and Single Server.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+  }
+
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collection);
+
+  if (cid == 0) {
+    return OperationCursor(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  switch (cursorType) {
+    case CursorType::ANY:
+      // TODO implement
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    case CursorType::ALL:
+      // TODO implement
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    case CursorType::INDEX: {
+      if (indexId.empty()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "The index id cannot be empty.");
+      }
+      arangodb::Index* idx = nullptr;
+
+      if (!arangodb::Index::validateId(indexId.c_str())) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      }
+      TRI_idx_iid_t iid = TRI_UInt64String(indexId.c_str());
+      idx = document->lookupIndex(iid);
+
+      if (idx == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                       "Could not find index '" + indexId +
+                                           "' in collection '" +
+                                           collection + "'.");
+      }
+      
+      // We have successfully found an index with the requested id.
+      // TODO second operator is a IndexIteratorContext. build it!
+      IndexIterator* iterator =
+          idx->iteratorForSlices(this, nullptr, search, reverse);
+
+      break;
+    }
+  }
+
+  return OperationCursor(TRI_ERROR_NO_ERROR);
 }
 

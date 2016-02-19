@@ -750,7 +750,8 @@ class Transaction {
                             std::shared_ptr<std::vector<VPackSlice>> search,
                             uint64_t skip,
                             uint64_t limit,
-                            uint64_t batchSize);
+                            uint64_t batchSize,
+                            bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
