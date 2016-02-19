@@ -46,29 +46,31 @@
         this.initOnce = function() {};
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
-        this.currentDB.fetch({
-          async: false
-        });
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-        this.arangoCollectionsStore.fetch({async: false});
+        this.arangoCollectionsStore.fetch();
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();
-        this.naviView = new window.NavigationView({
-          database: this.arangoDatabase,
-          currentDB: this.currentDB,
-          notificationCollection: self.notificationList,
-          userCollection: this.userCollection
+
+        this.currentDB.fetch({
+          success: function() {
+            self.naviView = new window.NavigationView({
+              database: self.arangoDatabase,
+              currentDB: self.currentDB,
+              notificationCollection: self.notificationList,
+              userCollection: self.userCollection
+            });
+            self.naviView.render();
+          }
         });
 
         this.queryCollection = new window.ArangoQueries();
 
         this.footerView.render();
-        this.naviView.render();
 
         window.checkVersion();
       }.bind(this);
@@ -118,14 +120,12 @@
         });
       }
       this.logsView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
     applicationDetail: function (mount) {
       if (!this.checkUser()) {
         return;
       }
-      this.naviView.selectMenuItem('applications-menu');
 
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({ async: false });
@@ -157,7 +157,7 @@
       if (!this.checkUser()) {
         return;
       }
-      var naviView = this.naviView, self = this;
+      var self = this;
       if (!this.collectionsView) {
         this.collectionsView = new window.CollectionsView({
           collection: this.arangoCollectionsStore
@@ -166,7 +166,6 @@
       this.arangoCollectionsStore.fetch({
         success: function () {
           self.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
         }
       });
     },
@@ -211,7 +210,6 @@
         this.shellView = new window.shellView();
       }
       this.shellView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
     query: function () {
@@ -224,7 +222,6 @@
         });
       }
       this.queryView.render();
-      this.naviView.selectMenuItem('query-menu');
     },
     
     test: function () {
@@ -251,7 +248,6 @@
         });
       }
       this.workMonitorView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
     queryManagement: function () {
@@ -264,7 +260,6 @@
         });
       }
       this.queryManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
     databases: function () {
@@ -279,10 +274,8 @@
           });
         }
         this.databaseView.render();
-        this.naviView.selectMenuItem('databases-menu');
       } else {
         this.navigate("#", {trigger: true});
-        this.naviView.selectMenuItem('dashboard-menu');
         $('#databaseNavi').css('display', 'none');
         $('#databaseNaviSelect').css('display', 'none');
       }
@@ -292,7 +285,6 @@
       if (!this.checkUser()) {
         return;
       }
-      this.naviView.selectMenuItem('dashboard-menu');
       if (this.dashboardView === undefined) {
         this.dashboardView = new window.DashboardView({
           dygraphConfig: window.dygraphConfig,
@@ -316,7 +308,6 @@
         );
       }
       this.graphManagementView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     showGraph: function (name) {
@@ -334,7 +325,6 @@
       }
       this.graphManagementView.render();
       this.graphManagementView.loadGraphViewer(name);
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     applications: function () {
@@ -347,7 +337,6 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
     },
 
     handleSelectDatabase: function () {
@@ -379,7 +368,6 @@
         });
       }
       this.userManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
     userProfile: function () {
@@ -392,7 +380,6 @@
         });
       }
       this.userManagementView.render(true);
-      this.naviView.selectMenuItem('tools-menu');
     }
   });
 
