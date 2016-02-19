@@ -795,8 +795,38 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                VPackSlice const& oldValue,
                                                VPackSlice const& newValue,
                                                OperationOptions& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto headers = std::make_unique<std::map<std::string, std::string>>();
+  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
+
+  std::string key(Transaction::extractKey(&oldValue));
+  if (key.empty()) {
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
+  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&oldValue);
+
+  int res = arangodb::modifyDocumentOnCoordinator(
+      _vocbase->_name, collectionName, key, expectedRevision,
+      TRI_DOC_UPDATE_ERROR, options.waitForSync, true /* isPatch */,
+      options.keepNull, options.mergeObjects, newValue,
+      headers, responseCode, resultHeaders, resultBody);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    VPackParser parser;
+    try {
+      parser.parse(resultBody);
+      auto bui = parser.steal();
+      auto buf = bui->steal();
+      return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, true);
+    }
+    catch (VPackException& e) {
+      std::string message = "JSON from DBserver not parseable: "
+                            + resultBody + ":" + e.what();
+      return OperationResult(TRI_ERROR_INTERNAL, message);
+    }
+  }
+  return OperationResult(res);
 }
 
 //////////////////////////////////////////////////////////////////////////////
