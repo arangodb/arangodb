@@ -2021,7 +2021,8 @@ static void JS_TruncateVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  bool const forceSync = ExtractWaitForSync(args, 1);
+  OperationOptions opOptions;
+  opOptions.waitForSync = ExtractWaitForSync(args, 1);
 
   TRI_vocbase_col_t* collection =
       TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -2030,22 +2031,22 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
   SingleCollectionWriteTransaction<UINT64_MAX> trx(
       new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  OperationResult result = trx.truncate(collection->_name, opOptions);
 
-  res = trx.truncate(trx.trxCollection(), forceSync);
-  res = trx.finish(res);
+  res = trx.finish(result.code);
+
+  if (result.failed()) {
+    TRI_V8_THROW_EXCEPTION(result.code);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
