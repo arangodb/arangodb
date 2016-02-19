@@ -54,10 +54,35 @@ public:
   /**
    * @brief Log
    */
-
-  ret_t log (std::shared_ptr<arangodb::velocypack::Builder> const);
+  template<typename T> ret_t log (T const&);
   
 private:
+
+  /**
+   * @brief         Write transaction
+   * @param state   State demanded
+   * @param expiry  Time of expiration
+   * @param update  Update state
+   */
+   template<typename T> std::shared_ptr<T> readTransaction (
+     T const& state, T const& update);
+    
+  /**
+   * @brief         Write transaction
+   * @param state   State demanded
+   * @param expiry  Time of expiration
+   * @param update  Update state
+   */
+   template<typename T> std::shared_ptr<T> writeTransaction (
+     T const& state, duration_t expiry, T const& update);
+    
+  /**
+   * @brief         Check transaction condition
+   * @param state   State demanded
+   * @param pre     Prerequisite
+   */
+  template<typename T> bool checkTransactionPrecondition (
+    T const& state, T const& pre);
   
   index_t _commit_id;      /**< @brief: index of highest log entry known
                               to be committed (initialized to 0, increases monotonically) */

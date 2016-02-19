@@ -23,35 +23,28 @@
 
 #include "Agent.h"
 
-using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+namespace arangodb {
+  namespace consensus {
 
-Agent::Agent () {
-}
+Agent::Agent () {}
 
 Agent::Agent (config_t const& config) : _config(config) {
   _constituent.configure(this);
-
 }
 
-Agent::~Agent () {
-	_constituent.stop();
-}
+Agent::~Agent () {}
 
 void Agent::start() {
   _constituent.start();
 }
 
-Constituent::term_t Agent::term () const {
+term_t Agent::term () const {
   return _constituent.term();
 }
 
-bool Agent::vote(Constituent::id_t id, Constituent::term_t term) {
+bool Agent::vote(id_t id, term_t term) {
 	return _constituent.vote(id, term);
-}
-
-Log::ret_t Agent::log (std::shared_ptr<Builder> const builder) {
-    return _log.log(builder);
 }
 
 Config<double> const& Agent::config () const {
@@ -62,7 +55,21 @@ void Agent::print (arangodb::LoggerStream& logger) const {
   logger << _config;
 }
 
+void Agent::report(status_t status) {
+  _status = status;
+}
+
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
   a.print(l);
   return l;
 }
+
+
+template<> Log::ret_t Agent::log (std::shared_ptr<Builder> const& builder) {
+  if (_constituent.leading())
+    return _log.log(builder);
+  else
+    return redirect;
+}
+
+  }}

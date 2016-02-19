@@ -35,9 +35,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
-	  _max_election_timeout(.3) {
-
+  : ApplicationFeature("agency"), _size(5), _min_election_timeout(.5),
+	  _max_election_timeout(1.), _election_call_rate_mul(.75) {
+  
 }
 
 
@@ -56,7 +56,10 @@ void ApplicationAgency::setupOptions(
 		 "timeout before an agent calls for new election [s]")
 		("agency.election-timeout-max", &_max_election_timeout, "Minimum "
 		 "timeout before an agent calls for new election [s]")
-		("agency.endpoint", &_agency_endpoints, "Agency endpoints");
+		("agency.endpoint", &_agency_endpoints, "Agency endpoints")
+    ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
+     "Multiplier (<1.0) defining how long the election timeout is with respect "
+     "to the minumum election timeout");
 }
 
 

@@ -25,7 +25,6 @@
 #define __ARANGODB_CONSENSUS_CONSTITUENT__
 
 #include <cstdint>
-#include <chrono>
 #include <string>
 #include <vector>
 #include <random>
@@ -33,8 +32,6 @@
 
 #include "AgencyCommon.h"
 #include "Basics/Thread.h"
-
-
 
 namespace arangodb {
 namespace consensus {
@@ -44,61 +41,72 @@ class Agent;
 /**
  * @brief Raft leader election
  */
-class Constituent : public arangodb::basics::Thread {
+class Constituent : public arangodb::Thread {
   
 public:
 
-  enum mode_t {
-    APPRENTICE = -1, FOLLOWER, CANDIDATE, LEADER
-  };
-  typedef std::chrono::duration<double> duration_t;
   typedef std::uniform_real_distribution<double> dist_t; 
   
-  Constituent ();
+  Constituent();
   
   /**
    * @brief Clean up and exit election
    */
-  virtual ~Constituent ();
+  virtual ~Constituent();
   
-  void configure (Agent*);
+  void configure(Agent*);
 
   term_t term() const;
   
   void runForLeaderShip (bool b);
   
-  state_t state () const;
-  
-  mode_t mode () const;
+  role_t role() const;
   
   /**
    * @brief Gossip protocol: listen
    */
-  void gossip (Constituent::constituency_t const& constituency);
+  void gossip(constituency_t const&);
   
   /**
    * @brief Gossip protocol: talk
    */
-  const Constituent::constituency_t& gossip ();
-  
-  bool leader() const;
+  const constituency_t& gossip();
 
+  bool leading() const;
+  bool following() const;
+  bool running() const;
+
+  /**
+   * @brief Called by REST handler
+   */
   bool vote(id_t, term_t);
 
+  /**
+   * @brief My daily business
+   */
   void run();
 
 private:
   
-  void becomeFollower ();
+  /**
+   * @brief Become follower
+   */
+  void follow(term_t);
 
-  void becomeCadidate ();
+  /**
+   * @brief Run for leadership
+   */
+  void candidate();
 
-  void becomeLeader ();
+  /**
+   * @brief Become leader
+   */
+  void lead();
 
   /**
    * @brief Call for vote (by leader or candidates after timeout)
    */
-  void callElection ();
+  void callElection();
   
   /**
    * @brief Count my votes
@@ -110,31 +118,26 @@ private:
    *        This is the task of the last process starting up.
    *        Will be taken care of by gossip
    */
-  size_t notifyAll ();
+  size_t notifyAll();
   
   /**
    * @brief Sleep for how long
    */
-  duration_t sleepFor ();
-  
-  term_t _term;                /**< @brief term number */
-  id_t _leader_id;           /**< @brief Current leader */
-  id_t _cur_vote;            /**< @brief My current vote */
-  id_t _id;
-  constituency_t _constituency; /**< @brief List of consituents */
-  uint32_t _nvotes;            /**< @brief Votes in my favour
-                                * (candidate/leader) */
-  state_t _state;             /**< @brief State (follower,
-                               * candidate, leader)*/
-  std::mt19937 _gen;
-  
-  mode_t _mode;
-  
-  bool _run;
+  duration_t sleepFor();
 
-  std::vector<bool> _votes; 
-  
-  Agent* _agent;
+  // mission critical
+  std::atomic<term_t>  _term;         /**< @brief term number */
+  std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
+  std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
+
+  // just critical
+  id_t                 _leader_id;    /**< @brief Current leader */
+  id_t                 _id;           /**< @brief My own id */
+  constituency_t       _constituency; /**< @brief List of consituents */
+  std::mt19937         _gen;          /**< @brief Random number generator */
+  role_t               _role;         /**< @brief My role */
+  std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
+  Agent*               _agent;        /**< @brief My boss */
 
 };
   

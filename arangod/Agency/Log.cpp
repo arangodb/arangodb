@@ -23,11 +23,15 @@
 
 #include "Log.h"
 
-using namespace arangodb::consensus;
+namespace arangodb {
+namespace consensus {
 
 Log::Log() {}
 Log::~Log() {}
 
-Log::ret_t Log::log (std::shared_ptr<arangodb::velocypack::Builder> const builder) {
+template<> Log::ret_t Log::log (
+  std::shared_ptr<arangodb::velocypack::Builder> const& builder) {
     return OK;
 }
+
+}}

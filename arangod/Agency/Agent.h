@@ -53,17 +53,17 @@ namespace consensus {
     /**
      * @brief Get current term
      */
-    Constituent::term_t term() const;
+    term_t term() const;
     
     /**
      * @brief 
      */
-    Log::ret_t log (std::shared_ptr<arangodb::velocypack::Builder> const);
+    template<typename T> Log::ret_t log (T const&);
 
     /**
      * @brief Vote request
      */
-    bool vote(Constituent::id_t, Constituent::term_t);
+    bool vote(id_t, term_t);
 
     /**
      * @brief Provide configuration
@@ -88,12 +88,13 @@ namespace consensus {
     /**
      * @brief 
      */
-    bool report ( ) const;
+    void report (status_t);
     
   private:
     Constituent _constituent; /**< @brief Leader election delegate */
     Log         _log;         /**< @brief Log replica              */
-    Config<double> _config;
+    config_t    _config;
+    status_t    _status;
     
   };
   

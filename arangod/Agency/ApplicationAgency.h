@@ -113,6 +113,7 @@ class Task;
   uint64_t _size; /**< @brief: agency size (default: 5)*/
   double   _min_election_timeout; /**< @brief: min election timeout */
   double   _max_election_timeout; /**< @brief: max election timeout */
+      double   _election_call_rate_mul; /**< @brief: */
   std::vector<std::string> _agency_endpoints;
   std::unique_ptr<consensus::Agent> _agent;
   uint32_t _agent_id;

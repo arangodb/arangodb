@@ -26,8 +26,9 @@
 
 #include "Basics/Logger.h"
 
-#include <vector>
+#include <chrono>
 #include <string>
+#include <vector>
 
 namespace arangodb {
 namespace consensus {
@@ -40,15 +41,21 @@ namespace consensus {
                                          // while leading. Very bad!
   } status_t;
 
+  typedef uint64_t term_t;                           // Term type
+  typedef uint32_t id_t;                             // Id type
 
-    
+  enum role_t {                                      // Role
+    APPRENTICE = -1, FOLLOWER, CANDIDATE, LEADER
+  };
+
   /**
    * @brief Agent configuration
    */
-  template<class T> struct Config {
+  template<class T> struct Config {               
     T min_ping;
     T max_ping;
-    uint32_t id;
+    T election_timeout;
+    id_t id;
     std::vector<std::string> end_points;
     Config () : min_ping(.15), max_ping(.3) {};
     Config (uint32_t i, T min_p, T max_p, std::vector<std::string>& end_p) :
@@ -60,19 +67,19 @@ namespace consensus {
         << "size(" << end_points.size() << ")"
         << end_points;
     }
+    inline size_t size() const {return end_points.size();}
   };
-
-  using config_t = Config<double>;
   
-  typedef uint64_t term_t;
-  typedef uint32_t id_t;
-  struct  constituent_t {
+  using config_t = Config<double>;                   // Configuration type
+  
+  struct  constituent_t {                            // Constituent type
     id_t id;
     std::string endpoint;
   };
-  typedef std::vector<constituent_t> constituency_t;
-  typedef uint32_t state_t;
-  
+  typedef std::vector<constituent_t> constituency_t; // Constituency type
+  typedef uint32_t state_t;                          // State type
+  typedef std::chrono::duration<double> duration_t;  // Duration type
+
   
 }
   
