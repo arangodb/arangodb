@@ -833,7 +833,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  if (major == 3) {
+  if (major != 3) {
     // we can connect to 3.x onyl
     errorMsg = "got incompatible master version" + endpointString + ": '" +
                versionString + "'";
