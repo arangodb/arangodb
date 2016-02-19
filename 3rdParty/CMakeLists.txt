@@ -1,3 +1,7 @@
+# ------------------------------------------------------------------------------
+# External Projects used by ArangoDB
+# ------------------------------------------------------------------------------
+
 include(ExternalProject)
 
 macro(import_target tname tdep tinclude tpath)
