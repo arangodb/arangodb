@@ -2194,10 +2194,10 @@ static void JS_QueryShortestPath(
   CollectionNameResolver const* resolver = resolverGuard.getResolver();
 
   for (auto const& it : edgeCollectionNames) {
-    readCollections.emplace_back(resolver->getCollectionId(it));
+    readCollections.emplace_back(resolver->getCollectionIdLocal(it));
   }
   for (auto const& it : vertexCollectionNames) {
-    readCollections.emplace_back(resolver->getCollectionId(it));
+    readCollections.emplace_back(resolver->getCollectionIdLocal(it));
   }
 
   // Start the transaction and order ditches
@@ -2228,7 +2228,7 @@ static void JS_QueryShortestPath(
 
   if (opts.useWeight) {
     for (auto const& it : edgeCollectionNames) {
-      auto cid = resolver->getCollectionId(it);
+      auto cid = resolver->getCollectionIdLocal(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
           trx.get(), cid, colObj,
@@ -2237,7 +2237,7 @@ static void JS_QueryShortestPath(
     }
   } else {
     for (auto const& it : edgeCollectionNames) {
-      auto cid = resolver->getCollectionId(it);
+      auto cid = resolver->getCollectionIdLocal(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
           trx.get(), cid, colObj, HopWeightCalculator()));
@@ -2245,7 +2245,7 @@ static void JS_QueryShortestPath(
   }
 
   for (auto const& it : vertexCollectionNames) {
-    auto cid = resolver->getCollectionId(it);
+    auto cid = resolver->getCollectionIdLocal(it);
     auto colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(cid, colObj));
   }
@@ -2519,10 +2519,10 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   CollectionNameResolver const* resolver = resolverGuard.getResolver();
 
   for (auto const& it : edgeCollectionNames) {
-    readCollections.emplace_back(resolver->getCollectionId(it));
+    readCollections.emplace_back(resolver->getCollectionIdLocal(it));
   }
   for (auto const& it : vertexCollectionNames) {
-    readCollections.emplace_back(resolver->getCollectionId(it));
+    readCollections.emplace_back(resolver->getCollectionIdLocal(it));
   }
 
   std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
@@ -2550,7 +2550,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }};
 
   for (auto const& it : edgeCollectionNames) {
-    auto cid = resolver->getCollectionId(it);
+    auto cid = resolver->getCollectionIdLocal(it);
     auto colObj = ditches.find(cid)->second.col->_collection->_collection;
     edgeCollectionInfos.emplace_back(
         new EdgeCollectionInfo(trx.get(), cid, colObj, HopWeightCalculator()));
@@ -2560,7 +2560,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   for (auto it : vertexCollectionNames) {
-    auto cid = resolver->getCollectionId(it);
+    auto cid = resolver->getCollectionIdLocal(it);
     auto colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(cid, colObj));
     // Explicitly allow all collections.
@@ -3601,7 +3601,7 @@ int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (ServerState::instance()->isDBServer()) {
     cid = resolver->getCollectionIdCluster(collectionName);
   } else {
-    cid = resolver->getCollectionId(collectionName);
+    cid = resolver->getCollectionIdLocal(collectionName);
   }
 
   if (cid == 0) {

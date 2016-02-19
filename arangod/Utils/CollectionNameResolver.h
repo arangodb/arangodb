@@ -54,7 +54,7 @@ class CollectionNameResolver {
   /// @brief look up a collection id for a collection name (local case)
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_cid_t getCollectionId(std::string const& name) const {
+  TRI_voc_cid_t getCollectionIdLocal(std::string const& name) const {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
       return static_cast<TRI_voc_cid_t>(
@@ -115,7 +115,7 @@ class CollectionNameResolver {
 
   TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
     if (!ServerState::instance()->isRunningInCluster()) {
-      return getCollectionId(name);
+      return getCollectionIdLocal(name);
     }
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id

@@ -954,7 +954,7 @@ class Transaction {
                            name.c_str(), type);
     }
 
-    return addCollection(this->resolver()->getCollectionId(name), name.c_str(),
+    return addCollection(this->resolver()->getCollectionIdLocal(name), name.c_str(),
                          type);
   }
 

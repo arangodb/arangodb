@@ -109,15 +109,15 @@ void ExampleMatcher::fillExampleDefinition(
             if (TRI_VOC_ATTRIBUTE_ID == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::id,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::from,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_TO == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::to,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else {
               // no attribute path found. this means the result will be empty
               THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
@@ -197,15 +197,15 @@ void ExampleMatcher::fillExampleDefinition(
             if (TRI_VOC_ATTRIBUTE_ID == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::id,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::from,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else if (TRI_VOC_ATTRIBUTE_TO == key) {
               def._internal.insert(std::make_pair(
                   internalAttr::to,
-                  DocumentId(resolver->getCollectionId(colName), keyVal)));
+                  DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
             } else {
               // no attribute path found. this means the result will be empty
               THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
@@ -283,15 +283,15 @@ void ExampleMatcher::fillExampleDefinition(
           if (TRI_VOC_ATTRIBUTE_ID == key) {
             def._internal.insert(std::make_pair(
                 internalAttr::id,
-                DocumentId(resolver->getCollectionId(colName), keyVal)));
+                DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
           } else if (TRI_VOC_ATTRIBUTE_FROM == key) {
             def._internal.insert(std::make_pair(
                 internalAttr::from,
-                DocumentId(resolver->getCollectionId(colName), keyVal)));
+                DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
           } else if (TRI_VOC_ATTRIBUTE_TO == key) {
             def._internal.insert(std::make_pair(
                 internalAttr::to,
-                DocumentId(resolver->getCollectionId(colName), keyVal)));
+                DocumentId(resolver->getCollectionIdLocal(colName), keyVal)));
           } else {
             // no attribute path found. this means the result will be empty
             THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);

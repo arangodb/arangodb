@@ -2239,7 +2239,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
 
   CollectionNameResolver resolver(_vocbase);
 
-  TRI_voc_cid_t cid = resolver.getCollectionId(value);
+  TRI_voc_cid_t cid = resolver.getCollectionIdLocal(value);
 
   if (cid == 0) {
     std::string msg = "invalid collection parameter: '";

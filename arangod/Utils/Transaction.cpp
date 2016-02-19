@@ -578,7 +578,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const& value,
                                            OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -712,7 +712,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions& options) {
   
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -884,7 +884,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
                                          VPackSlice const& oldValue,
                                          VPackSlice const& newValue,
                                          OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1071,7 +1071,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
                                           VPackSlice const& oldValue,
                                           VPackSlice const& newValue,
                                           OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1246,7 +1246,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1369,7 +1369,7 @@ OperationResult Transaction::countCoordinator(std::string const& collectionName)
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::countLocal(std::string const& collectionName) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1407,7 +1407,7 @@ OperationCursor Transaction::indexScan(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collection);
 
   if (cid == 0) {
     return OperationCursor(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

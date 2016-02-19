@@ -92,7 +92,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   } else {
     std::vector<TRI_document_collection_t*> edgeCollections;
     for (auto const& coll : ep->edgeColls()) {
-      TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
+      TRI_voc_cid_t cid = _resolver->getCollectionIdLocal(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
 
       auto trxCollection = _trx->trxCollection(cid);

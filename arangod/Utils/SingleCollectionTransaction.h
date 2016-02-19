@@ -73,7 +73,7 @@ class SingleCollectionTransaction : public Transaction {
       if (ServerState::instance()->isCoordinator()) {
         _cid = this->resolver()->getCollectionIdCluster(name);
       } else {
-        _cid = this->resolver()->getCollectionId(name);
+        _cid = this->resolver()->getCollectionIdLocal(name);
       }
 
       this->addCollection(_cid, _accessType);

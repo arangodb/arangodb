@@ -984,7 +984,7 @@ EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
     TRI_voc_cid_t& cid) {
   auto it = _indexCache.find(eColName);
   if (it == _indexCache.end()) {
-    cid = _resolver->getCollectionId(eColName);
+    cid = _resolver->getCollectionIdLocal(eColName);
     TRI_transaction_collection_t* trxCollection = _trx->trxCollection(cid);
     TRI_ASSERT(trxCollection != nullptr);
     TRI_document_collection_t* ecl = trxCollection->_collection->_collection;

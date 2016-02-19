@@ -976,7 +976,7 @@ static void RequestEdges(arangodb::basics::Json const& vertexJson,
                                    vertexId);
   }
 
-  TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
+  TRI_voc_cid_t startCid = resolver->getCollectionIdLocal(parts[0]);
   if (startCid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   parts[0].c_str());
@@ -1059,7 +1059,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
                                    vertexId);
   }
 
-  TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
+  TRI_voc_cid_t startCid = resolver->getCollectionIdLocal(parts[0]);
   if (startCid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   parts[0].c_str());
@@ -4519,7 +4519,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
       VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
       opts.start = v;
     } else {
-      VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+      VertexId v(resolver->getCollectionIdLocal(vColName), vertexId.c_str());
       opts.start = v;
     }
   } else if (vertexInfo.isObject()) {
@@ -4597,7 +4597,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+  TRI_voc_cid_t eCid = resolver->getCollectionIdLocal(eColName);
 
   {
     // ensure the collection is loaded
@@ -4736,7 +4736,7 @@ AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
     VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
     opts.start = v;
   } else {
-    VertexId v(resolver->getCollectionId(vColName), vertexId.c_str());
+    VertexId v(resolver->getCollectionIdLocal(vColName), vertexId.c_str());
     opts.start = v;
   }
 
@@ -4783,7 +4783,7 @@ AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
+  TRI_voc_cid_t eCid = resolver->getCollectionIdLocal(eColName);
 
   {
     // ensure the collection is loaded
@@ -4912,7 +4912,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   auto collection = trx->trxCollection(cid);
 
   // ensure the collection is loaded
@@ -5084,7 +5084,7 @@ AqlValue$ Functions::NearVPack(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   VocShaper* shaper = nullptr;
   arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
 
@@ -5155,7 +5155,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   auto collection = trx->trxCollection(cid);
 
   // ensure the collection is loaded
@@ -5314,7 +5314,7 @@ AqlValue$ Functions::WithinVPack(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   VocShaper* shaper = nullptr;
   arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
 
@@ -5709,7 +5709,7 @@ static void RegisterCollectionInTransaction(
     arangodb::AqlTransaction* trx, std::string const& collectionName,
     TRI_voc_cid_t& cid, TRI_transaction_collection_t*& collection) {
   TRI_ASSERT(collection == nullptr);
-  cid = trx->resolver()->getCollectionId(collectionName);
+  cid = trx->resolver()->getCollectionIdLocal(collectionName);
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
@@ -7666,7 +7666,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
       basics::JsonHelper::getStringValue(element.json(), "");
 
   auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
@@ -7721,7 +7721,7 @@ AqlValue$ Functions::CollectionCountVPack(
       basics::VelocyPackHelper::getStringValue(element, "");
 
   auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
@@ -8708,7 +8708,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   auto collection = trx->trxCollection(cid);
 
   // ensure the collection is loaded
@@ -8862,7 +8862,7 @@ AqlValue$ Functions::FulltextVPack(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   auto collection = trx->trxCollection(cid);
 
   // ensure the collection is loaded
