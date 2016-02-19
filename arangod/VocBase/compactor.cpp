@@ -1046,6 +1046,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   bool doCompact = false;
   uint64_t totalSize = 0; 
   char const* reason = nullptr;
+  char const* firstReason = nullptr;
 
   for (size_t i = start;  i < n;  ++i) {
     TRI_datafile_t* df = static_cast<TRI_datafile_t*>(document->_datafiles._buffer[i]);
@@ -1096,6 +1097,10 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       reason = ReasonDeadCount;
     }
 
+    if (doCompact && firstReason == nullptr) {
+      firstReason = reason;
+    }
+
     if (! doCompact) {
       numAlive += (int64_t) dfi.numberAlive;
       continue;
@@ -1104,11 +1109,35 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     // remember for next compaction
     start = i + 1;
 
-    if (totalSize + (uint64_t) df->_maximalSize >= maxSize &&
-        TRI_LengthVector(&vector) >= 1) {
-      // found enough files to compact
-      break;
+    // if we got only deletions then it's safe to continue compaction, regardless of
+    // the size of the resulting file. this is because deletions will reduce the
+    // size of the resulting file
+    if (reason != ReasonOnlyDeletions) {
+      size_t const numFiles = TRI_LengthVector(&vector);
+
+      if (numFiles > 0 && 
+          totalSize + (uint64_t)df->_maximalSize >= maxSize &&
+          (numFiles > 1 || firstReason != ReasonDatafileSmall)) {
+        // found enough files to compact (in terms of cumulated size)
+        // there's one exception to this: if we're merging multiple datafiles, 
+        // then we don't stop at the first one even if the merge of file #1 and #2
+        // would be too big. if we wouldn't stop in this case, then file #1 would
+        // be selected for compaction over and over
+        // normally this case won't happen at all, it can occur however if one
+        // decreases the journalSize configuration for the collection afterwards, and
+        // there are already datafiles which are more than 3 times bigger than the
+        // new (smaller) journalSize value
+
+        LOG_TRACE("aborting because of too high cumulated size. reason: %s, numFiles: %llu, totalSize: %llu, maxSize: %llu, df maxSize: %llu", 
+                  reason, 
+                  (unsigned long long) numFiles, 
+                  (unsigned long long) totalSize, 
+                  (unsigned long long) maxSize, 
+                  (unsigned long long) df->_maximalSize);
+        break;
+      }
     }
+
 
     TRI_ASSERT(reason != nullptr);
      
