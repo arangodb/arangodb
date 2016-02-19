@@ -139,16 +139,16 @@ if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
 endif ()
 
-set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER})
+set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
 #set(RUN_V8_GYP "PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE};\ ${PYTHON_EXECUTABLE}")
 set(RUN_V8_GYP "${PYTHON_EXECUTABLE}")
 
 #--------------------------------------------------------------------------------
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach ()
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach ()
 #--------------------------------------------------------------------------------
 
 if (NOT USE_PRECOMPILED_V8)
@@ -199,3 +199,4 @@ import_target(icu_i18n v8_build
   "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
   "${ICU_BIN_DIR}/libicui18n.a"
 )
+

@@ -93,6 +93,8 @@ set(MAKE make)
 set(USE_TCMALLOC, TRUE)
 set(THIRDP_BUILDFLAGS "CC=${CMAKE_C_COMPILER}")
 set(HOST_BITS ${BITS})
+set(ICU_BIN_DIR "unset")
+set(V8_BIN_DIR "unset")
 # OS type (Convenience) --------------------------------------------------------
 if(WIN32)
   if(NOT WINDOWS)
@@ -153,6 +155,19 @@ elseif (APPLE)
 endif ()
 
 # TODO: Exclude non-supported?
+
+# BISON&FLEX -------------------------------------------------------------------
+find_package (BISON)
+
+# FLEX -------------------------------------------------------------------------
+find_package (FLEX)
+
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
+
+# Python
+find_package(PythonInterp 2)
+set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
 ## Compiler flags --------------------------------------------------------------
 
@@ -447,6 +462,9 @@ endif ()
 option(USE_PRECOMPILED_V8
   "whether we want to use a precompiled V8" OFF)
 
+# 3rd party libraries
+add_subdirectory(3rdParty)
+
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
@@ -551,6 +569,14 @@ if (MSVC_LIB_PATH)
   link_directories(${MSVC_LIB_PATH})
 endif ()
 
+
+#--------------------------------------------------------------------------------
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach ()
+#--------------------------------------------------------------------------------
+
 # ICU ---------------------------------------------------------------------------
 if (MSVC)
   set(ICU_LIBS "icui18n;icuuc" CACHE path "ICU libraries")
@@ -560,7 +586,7 @@ elseif (RASPBIAN)
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
   set(ICU_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "ICU library path")
+  set(ICU_LIB_PATH ${ICU_BIN_DIR} CACHE path "ICU library path")
   if (LINUX)
     set(ICU_LIB_PATH "${ICU_LIB_PATH}/obj.target/third_party/icu")
   endif ()
@@ -581,10 +607,7 @@ if (MSVC OR RASPBIAN)
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 else ()
   set(V8_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/include CACHE path "V8 include path")
-  set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "V8 library path")
-  if (LINUX)
-    set(V8_LIB_PATH "${V8_LIB_PATH}/obj.target/tools/gyp")
-  endif ()
+  set(V8_LIB_PATH ${V8_BIN_DIR} CACHE path "V8 library path")
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
@@ -652,19 +675,6 @@ if (OPENSSL_VERSION)
   endif ()				
 endif ()
 
-# BISON&FLEX -------------------------------------------------------------------
-find_package (BISON)
-
-# FLEX -------------------------------------------------------------------------
-find_package (FLEX)
-
-# GO ---------------------------------------------------------------------------
-find_package(Go 1.2)
-
-# Python
-find_package(PythonInterp 2)
-set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
-
 # zlib -------------------------------------------------------------------------
 set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
 
@@ -687,9 +697,6 @@ if (ZLIB_LIB_PATH)
 endif ()
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-
-# 3rd party libraries
-add_subdirectory(3rdParty)
 
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
