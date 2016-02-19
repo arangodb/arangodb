@@ -90,7 +90,6 @@ add_library(
     Basics/DataProtector.cpp
     Basics/Exceptions.cpp
     Basics/FileUtils.cpp
-    Basics/InitializeBasics.cpp
     Basics/JsonHelper.cpp
     Basics/Logger.cpp
     Basics/Mutex.cpp
@@ -102,7 +101,6 @@ add_library(
     Basics/files.cpp
     Basics/fpconv.cpp
     Basics/hashes.cpp
-    Basics/init.cpp
     Basics/json-utilities.cpp
     Basics/json.cpp
     Basics/levenshtein.cpp 
