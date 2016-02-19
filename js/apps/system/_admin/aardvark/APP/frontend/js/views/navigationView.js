@@ -10,6 +10,7 @@
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
       "click li": "switchTab",
+      "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
@@ -43,6 +44,8 @@
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function () {
+      var self = this;
+
       $(this.el).html(this.template.render({
         currentDB: this.currentDB
       }));
@@ -60,6 +63,10 @@
       if (this.renderFirst) {
         this.renderFirst = false;
         this.selectMenuItem((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
+
+        $('.arangodbLogo').on('click', function() {
+          self.selectMenuItem();
+        });
       }
 
       return this;
@@ -122,8 +129,10 @@
 
     selectMenuItem: function (menuItem) {
       $('.navlist li').removeClass('active');
-      if (menuItem) {
-        $('.' + menuItem).addClass('active');
+      if (typeof menuItem === 'string') {
+        if (menuItem) {
+          $('.' + menuItem).addClass('active');
+        }
       }
     },
 
