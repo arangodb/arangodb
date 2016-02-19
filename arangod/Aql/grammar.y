@@ -272,6 +272,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> T_INTEGER
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER; 
+%type <node> with_collection;
 %type <node> sort_list;
 %type <node> sort_element;
 %type <node> sort_direction;
@@ -322,9 +323,56 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 
 
 /* define start token of language */
-%start query
+%start queryStart
 
 %%
+
+with_collection:
+    T_STRING {
+      $$ = parser->ast()->createNodeValueString($1.value, $1.length);
+    }
+  | bind_parameter {
+      char const* p = $1->getStringValue();
+      size_t const len = $1->getStringLength();
+      if (len < 1 || *p != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
+      $$ = $1;
+    }
+  ;
+
+with_collection_list:
+     with_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($1);
+     }
+   | with_collection_list T_COMMA with_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($3);
+     }
+   | with_collection_list with_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($2);
+     }
+   ;
+
+optional_with:
+     /* empty */ {
+     }
+   | T_WITH {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+     } with_collection_list {
+      auto node = static_cast<AstNode*>(parser->popStack());
+      auto withNode = parser->ast()->createNodeWithCollections(node);
+      parser->ast()->addOperation(withNode);
+     }
+   ;
+
+queryStart: 
+    optional_with query {
+    }
+  ;
 
 query: 
     optional_statement_block_statements final_statement {

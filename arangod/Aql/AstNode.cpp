@@ -160,7 +160,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_COLLECTION_LIST),          "collection list" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND),        "n-ary and" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR),         "n-ary or" },
-  { static_cast<int>(NODE_TYPE_AGGREGATIONS),             "aggregations array"}
+  { static_cast<int>(NODE_TYPE_AGGREGATIONS),             "aggregations array"},
+  { static_cast<int>(NODE_TYPE_WITH),                     "with collections" }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,6 +627,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_WITH:
       break;
   }
 
@@ -743,7 +745,8 @@ AstNode::AstNode (std::function<void (AstNode*)> registerNode,
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
-    case NODE_TYPE_PASSTHRU: {
+    case NODE_TYPE_PASSTHRU: 
+    case NODE_TYPE_WITH: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Unsupported node type");
     }
     case NODE_TYPE_OBJECT:
@@ -2474,6 +2477,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_WITH:
       break;
   }
 
@@ -2630,6 +2634,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const
   case NODE_TYPE_DIRECTION:
   case NODE_TYPE_OPERATOR_NARY_AND:
   case NODE_TYPE_OPERATOR_NARY_OR:
+  case NODE_TYPE_WITH:
     break;
   }
   return ret;

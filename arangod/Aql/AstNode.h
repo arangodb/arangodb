@@ -183,7 +183,8 @@ namespace triagens {
       NODE_TYPE_DIRECTION                     = 61,
       NODE_TYPE_OPERATOR_NARY_AND             = 62,
       NODE_TYPE_OPERATOR_NARY_OR              = 63,
-      NODE_TYPE_AGGREGATIONS                  = 64
+      NODE_TYPE_AGGREGATIONS                  = 64,
+      NODE_TYPE_WITH                          = 65
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY,  "incorrect node types order");

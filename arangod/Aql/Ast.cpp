@@ -1131,6 +1131,31 @@ AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST with collections node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
+  AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
+
+  TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
+
+  for (size_t i = 0; i < collections->numMembers(); ++i) {
+    auto c = collections->getMember(i);
+
+    if (c->isStringValue()) {
+      _query->collections()->add(c->getStringValue(), TRI_TRANSACTION_READ);
+    }// else bindParameter use default for collection bindVar
+    // We do not need to propagate these members
+    node->addMember(c);
+  }
+  
+  AstNode* with = createNode(NODE_TYPE_WITH);
+  with->addMember(node);
+
+  return with;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collection list node
 ////////////////////////////////////////////////////////////////////////////////
 
