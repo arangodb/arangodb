@@ -29,7 +29,7 @@ using namespace arangodb::velocypack;
 Agent::Agent () {
 }
 
-Agent::Agent (Config<double> const& config) : _config(config) {
+Agent::Agent (config_t const& config) : _config(config) {
   _constituent.configure(this);
 
 }
@@ -56,4 +56,13 @@ Log::ret_t Agent::log (std::shared_ptr<Builder> const builder) {
 
 Config<double> const& Agent::config () const {
   return _config;
+}
+
+void Agent::print (arangodb::LoggerStream& logger) const {
+  logger << _config;
+}
+
+arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
+  a.print(l);
+  return l;
 }

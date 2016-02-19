@@ -36,10 +36,12 @@ using namespace arangodb::rest;
 void Constituent::configure(Agent* agent) {
   _agent = agent;
   _votes.resize(_agent->config().end_points.size());
+  if (_agent->config().id == (_votes.size()-1)) // Last will notify eveyone
+    notifyAll();
 }
 
 Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
-  _gen(std::random_device()()), _mode(CANDIDATE), _run(true), _agent(0) {}
+  _gen(std::random_device()()), _mode(APPRENTICE), _run(true), _agent(0) {}
 
 Constituent::~Constituent() {}
 
@@ -63,30 +65,35 @@ Constituent::mode_t Constituent::mode () const {
   return _mode;
 }
 
-void Constituent::becomeFollower() {
+void Constituent::follow() {
   _votes.assign(_votes.size(),false); // void all votes
   _mode = FOLLOWER;
 }
 
-void Constituent::becomeLeader() {
-
+void Constituent::lead() {
+  _mode = LEADER;
 }
 
-void Constituent::becomeCadidate() {
+void Constituent::candidate() {
+  _mode = CANDIDATE;
+}
 
+size_t Constituent::notifyAll () {
 }
 
 // Vote for the requester if and only if I am follower
 bool Constituent::vote(id_t id, term_t term) {
-	if (id == _id) { // Won't vote for myself
+	if (id == _id) {       // Won't vote for myself
 		return false;
 	} else {
-	  if (term > _term) {  // Candidate with higher term: ALWAYS turn
-      if (_mode > FOLLOWER)
+	  if (term > _term) {  // Candidate with higher term: ALWAYS turn follower
+      if (_mode > FOLLOWER) {
         LOG(WARN) << "Cadidate with higher term. Becoming follower";
-	    becomeFollower ();
+      }
+	    follow ();
+      _term = term;      // Raise term
 			return true;
-		} else {
+		} else {             // Myself running or leading
 			return false;
 		}
 	}
@@ -146,14 +153,13 @@ void Constituent::callElection() {
             _votes[i] = false;
             continue;
           } else {
-            LOG(WARN) << body->slice().get("vote");
+            _votes[i] = (body->slice().get("vote").isEqualString("TRUE")); // Record vote
           }
         }
-        //LOG(WARN) << body->toString();
+        LOG(WARN) << body->toString();
       } else { // Request failed
         _votes[i] = false;
       }
-
     }
   }
 }
@@ -161,7 +167,7 @@ void Constituent::callElection() {
 void Constituent::run() {
   while (true) {
     LOG(WARN) << _mode;
-    if (_mode == FOLLOWER) {
+    if (_mode == FOLLOWER || _mode == APPRENTICE) {
       LOG(WARN) << "sleeping ... ";
       std::this_thread::sleep_for(sleepFor());
     } else {

@@ -24,12 +24,24 @@
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
+#include "Basics/Logger.h"
+
 #include <vector>
 #include <string>
 
 namespace arangodb {
 namespace consensus {
-  
+
+  typedef enum AGENCY_STATUS {
+    OK = 0,
+    RETRACTED_CANDIDACY_FOR_HIGHER_TERM, // Vote for higher term candidate
+                                         // while running. Strange!
+    RESIGNED_LEADERSHIP_FOR_HIGHER_TERM  // Vote for higher term candidate
+                                         // while leading. Very bad!
+  } status_t;
+
+
+    
   /**
    * @brief Agent configuration
    */
@@ -41,8 +53,34 @@ namespace consensus {
     Config () : min_ping(.15), max_ping(.3) {};
     Config (uint32_t i, T min_p, T max_p, std::vector<std::string>& end_p) :
       id(i), min_ping(min_p), max_ping(max_p), end_points(end_p) {}
-  }; 
+    void print (arangodb::LoggerStream& l) const {
+      l << "Config: "
+        << "min_ping(" << min_ping << ")"
+        << "max_ping(" << max_ping << ")"
+        << "size(" << end_points.size() << ")"
+        << end_points;
+    }
+  };
+
+  using config_t = Config<double>;
   
-}}
+  typedef uint64_t term_t;
+  typedef uint32_t id_t;
+  struct  constituent_t {
+    id_t id;
+    std::string endpoint;
+  };
+  typedef std::vector<constituent_t> constituency_t;
+  typedef uint32_t state_t;
+  
+  
+}
+  
+  template<typename T> LoggerStream& operator<< (LoggerStream& l,
+        arangodb::consensus::Config<T> const& c) {
+    
+  }
+
+}
 #endif // __ARANGODB_CONSENSUS_AGENT__
 

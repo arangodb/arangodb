@@ -35,10 +35,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-    : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
-	  _max_election_timeout(.3) /*, _agent(new consensus::Agent())*/{
-	//arangodb::consensus::Config<double> config (5, .15, .9);
-	//_agent = std::uniqe_ptr<agent>(new config);
+  : ApplicationFeature("agency"), _size(5), _min_election_timeout(.15),
+	  _max_election_timeout(.3) {
 
 }
 
@@ -63,15 +61,33 @@ void ApplicationAgency::setupOptions(
 
 
 
-
 bool ApplicationAgency::prepare() {
+  
   if (_disabled) {
     return true;
   }
+
+  if (_min_election_timeout <= 0.) {
+    LOG(FATAL) << "agency.election-timeout-min must not be negative!";
+  } else if (_min_election_timeout < .15) {
+    LOG(WARN)  << "very short agency.election-timeout-min!";
+  }
+  
+  if (_max_election_timeout <= _min_election_timeout) {
+    LOG(FATAL) << "agency.election-timeout-max must not be shorter than or"
+               << "equal to agency.election-timeout-min.";
+  }
+  
+  if (_max_election_timeout <= 2*_min_election_timeout) {
+    LOG(WARN)  << "agency.election-timeout-max should probably be chosen longer!";
+  }
+    
   _agent = std::unique_ptr<consensus::Agent>(new consensus::Agent(
      consensus::Config<double>(_agent_id, _min_election_timeout,
        _max_election_timeout, _agency_endpoints)));
+  
   return true;
+  
 }
 
 

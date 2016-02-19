@@ -41,10 +41,9 @@ namespace consensus {
     Agent ();
     
     /**
-     * @brief Construct with program options \n
-     *        One process starts with options, the \n remaining start with list of peers and gossip.
+     * @brief Construct with program options
      */
-    Agent (Config<double> const&);
+    Agent (config_t const&);
 
     /**
      * @brief Clean up
@@ -59,17 +58,38 @@ namespace consensus {
     /**
      * @brief 
      */
-    Log::ret_t
-      log (std::shared_ptr<arangodb::velocypack::Builder> const);
+    Log::ret_t log (std::shared_ptr<arangodb::velocypack::Builder> const);
 
-    Slice const& redirect (Slice const&);
-
+    /**
+     * @brief Vote request
+     */
     bool vote(Constituent::id_t, Constituent::term_t);
 
+    /**
+     * @brief Provide configuration
+     */
     Config<double> const& config () const;
-
+    
+    /**
+     * @brief Start thread
+     */
     void start ();
-      
+
+    /**
+     * @brief Verbose print of myself
+     */ 
+    void print (arangodb::LoggerStream&) const;
+
+    /**
+     * @brief Are we fit to run?
+     */
+    bool fitness () const;
+    
+    /**
+     * @brief 
+     */
+    bool report ( ) const;
+    
   private:
     Constituent _constituent; /**< @brief Leader election delegate */
     Log         _log;         /**< @brief Log replica              */
@@ -77,6 +97,12 @@ namespace consensus {
     
   };
   
-}}
+}
+
+  LoggerStream& operator<< (LoggerStream&, arangodb::consensus::Agent const&);
+  
+}
+
+
 
 #endif

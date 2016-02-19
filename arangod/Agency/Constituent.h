@@ -49,17 +49,9 @@ class Constituent : public arangodb::basics::Thread {
 public:
 
   enum mode_t {
-    FOLLOWER, CANDIDATE, LEADER
+    APPRENTICE = -1, FOLLOWER, CANDIDATE, LEADER
   };
   typedef std::chrono::duration<double> duration_t;
-  typedef uint64_t term_t;
-  typedef uint32_t id_t;
-  struct  constituent_t {
-    id_t id;
-    std::string endpoint;
-  };
-  typedef std::vector<constituent_t> constituency_t;
-  typedef uint32_t state_t;
   typedef std::uniform_real_distribution<double> dist_t; 
   
   Constituent ();
@@ -112,6 +104,13 @@ private:
    * @brief Count my votes
    */
   void countVotes();
+
+  /**
+   * @brief Notify everyone, that we are good to go.
+   *        This is the task of the last process starting up.
+   *        Will be taken care of by gossip
+   */
+  size_t notifyAll ();
   
   /**
    * @brief Sleep for how long
