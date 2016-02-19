@@ -62,7 +62,7 @@ if (UNIX)
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libev
     BUILD_IN_SOURCE 1
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libev
-    CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared
+    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared ${THIRDP_BUILDFLAGS}
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
   )  
@@ -77,12 +77,49 @@ import_target(ev ev_build
 ## V8 and ICU
 ################################################################################
 
+set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
+# doesn't work?
+set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
+#set(V8_TARGET_DIR "out")
+
+
+if ("${HOST_BITS}" STREQUAL "64")
+  set(TARGET_ARCH "x64")
+else()
+  message(ERROR "WHAT THE FUCK!")
+  set(TARGET_ARCH "ia32")
+endif() # TODO: ARM? Win32?
+
+if(DEBUG)
+  list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
+  set(V8_TARGET_ARCH "${TARGET_ARCH}.debug")
+else()
+  set(V8_TARGET_ARCH "${TARGET_ARCH}.release")
+endif()
+
+
+list(APPEND V8_GYP_ARGS build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
+
+  
+if(WIN32)
+  # TODO: get this from the main configure paramentrisation
+  # CMAKE_BUILD_TYPE:STRING=RelWithDebInfo
+  # -G\ msvs_version=2013
+  #  -Dtarget_arch=x64
+  # -Dmode=release
+  list(APPEND V8_GYP_ARGS -Dcomponent=static_library -Dlibrary=static_library)
+else()
+  # -Dwerror='' breaks shit... rather...   -Dwerror= 
+  list(APPEND V8_GYP_ARGS -Ibuild/standalone.gypi --depth=. -Dstandalone_static_library=1  -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0-Dv8_no_strict_aliasing=1)
+endif()
+
+
+list(APPEND V8_GYP_ARGS -Dv8_target_arch=${TARGET_ARCH} -S.${V8_TARGET_ARCH})
+
 if (UNIX)
-  set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
   set(V8_PLATFORM "native")
   set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
   set(ICU_BIN_DIR "${V8_BIN_DIR}")
-
   if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
     set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
@@ -91,25 +128,36 @@ else ()
   message(ERROR "Not implemented for your OS")
 endif ()
 
-set(V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
-  strictaliasing=off snapshot=off werror=no
-  ${V8_PLATFORM}
-  CC=${CMAKE_C_COMPILER}
-  CXX=${CMAKE_CXX_COMPILER}
-  PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
-)
 
+
+include(ExternalProject)
+set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
+  snapshot=off werror=no "${V8_PLATFORM}" CC="${CMAKE_C_COMPILER}"
+  CXX="${CMAKE_CXX_COMPILER}" PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+  CXXFLAGS=${CMAKE_CXX_FLAGS})
 if (APPLE AND CMAKE_COMPILER_IS_CLANG)
   set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
 endif ()
 
+set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER})
+
+#set(RUN_V8_GYP "PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE};\ ${PYTHON_EXECUTABLE}")
+set(RUN_V8_GYP "${PYTHON_EXECUTABLE}")
+
+#--------------------------------------------------------------------------------
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach ()
+#--------------------------------------------------------------------------------
+
 if (NOT USE_PRECOMPILED_V8)
   ExternalProject_Add(v8_build
-    SOURCE_DIR "${V8_DIR}"
     BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND "${V8_BUILD_COMMAND}" 
-    INSTALL_COMMAND ""
-  )
+    SOURCE_DIR "${V8_DIR}"
+    CONFIGURE_COMMAND ${RUN_V8_GYP} ${V8_GYP_ARGS}
+    BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS}
+    INSTALL_COMMAND "")
 endif ()
 
 import_target(v8_base v8_build

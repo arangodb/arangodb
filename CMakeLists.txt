@@ -83,13 +83,24 @@ set(BIN_ARANGOSH      arangosh)
 # Google V8 engine including ICU
 set(V8_VERSION        4.3.61)
 
+message(STATUS ${CMAKE_SYSTEM_TYPE})
+
+# Architecture
+math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
+add_definitions("-DTRI_BITS=${BITS}")
+
+set(MAKE make)
+set(USE_TCMALLOC, TRUE)
+set(THIRDP_BUILDFLAGS "CC=${CMAKE_C_COMPILER}")
+set(HOST_BITS ${BITS})
 # OS type (Convenience) --------------------------------------------------------
-if (WIN32)
-  if (NOT WINDOWS)
+if(WIN32)
+  if(NOT WINDOWS)
+    set(USE_TCMALLOC, FALSE)
     set(WINDOWS TRUE)
-  endif ()
-elseif (UNIX AND NOT APPLE)
-  if (CMAKE_SYSTEM_NAME MATCHES ".*Linux")
+  endif()
+elseif(UNIX AND NOT APPLE)
+  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
     set(FREEBSD TRUE)
@@ -105,7 +116,20 @@ elseif (UNIX AND NOT APPLE)
     set(FREEBSD TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Solaris.*")
+  elseif ((CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
+    set(USE_TCMALLOC, FALSE)
+    set(THIRDP_BUILDFLAGS --target=x86_64-pc-solaris2.11
+      --host=x86_64-pc-solaris2.11
+      --build=x86_64-pc-solaris2.11
+      # TODO: is this CMAKE_C_COMPILER? CC=/opt/csw/bin/gcc
+      CC=/opt/csw/bin/gcc
+      CXX=/opt/csw/bin/g++
+      CFLAGS=-I\ /opt/csw/include\ -D_REENTRANT\ -m64
+      CXXFLAGS=-I\ /opt/csw/include\ -D_REENTRANT\ -m64
+      LDFLAGS=-L/opt/csw/lib\ -march=x86-64\ -m64
+      )
+    set(MAKE gmake)
+    set(HOST_BITS 64)
     set(SOLARIS TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
     set(HPUX TRUE)
@@ -131,13 +155,19 @@ endif ()
 ################################################################################
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
+message (${CMAKE_BUILD_TYPE_TL})
+set(DEBUG FALSE)
 if (CMAKE_BUILD_TYPE_TL MATCHES debug)
+  set(DEBUG TRUE)
+  set(WIN_RELEASE_TYPE Debug)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
 elseif (CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
+  set(WIN_RELEASE_TYPE RelWithDebInfo)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
 elseif (CMAKE_BUILD_TYPE_TL MATCHES release)
+  set(WIN_RELEASE_TYPE Release)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 endif () 
@@ -217,10 +247,6 @@ if (MSVC)
 
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /ignore:4099")
 endif ()
-
-# Architecture
-math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DTRI_BITS=${BITS}")
 
 include (TargetArch)
 target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -519,20 +545,6 @@ if (MSVC_LIB_PATH)
   link_directories(${MSVC_LIB_PATH})
 endif ()
 
-# Raspberry Pi ------------------------------------------------------------------
-if (RASPBIAN)
-  set(ARM_INCLUDE ${PROJECT_SOURCE_DIR}/ArmLibraries/include
-    CACHE path "ARM 3rd party include path") 
-  set(ARM_LIB_PATH ${PROJECT_SOURCE_DIR}/ArmLibraries/lib
-    CACHE path "ARM 3rd party library path") 
-endif ()
-if (ARM_INCLUDE)
-  include_directories(${ARM_INCLUDE})
-endif ()
-if (ARM_LIB_PATH)
-  link_directories(${ARM_LIB_PATH})
-endif ()
-
 # ICU ---------------------------------------------------------------------------
 if (MSVC)
   set(ICU_LIBS "icui18n;icuuc" CACHE path "ICU libraries")
@@ -616,6 +628,11 @@ else ()
   message ("Boost unit test framework not found. Unit tests are disabled.")
 endif ()
 
+# Tcmalloc ---------------------------------------------------------------------
+if (USE_TCMALLOC)
+  find_package(tcmalloc)
+endif()
+
 # OpenSSL ----------------------------------------------------------------------
 #set(OPENSSL_USE_STATIC_LIBS "TRUE")
 find_package(OpenSSL REQUIRED)
@@ -634,6 +651,9 @@ find_package (BISON)
 
 # FLEX -------------------------------------------------------------------------
 find_package (FLEX)
+
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
 
 # Python
 find_package(PythonInterp 2)
@@ -704,14 +724,6 @@ add_subdirectory(UnitTests)
 # - raspbian: raspberry debian package
 set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
 
-# Raspberry Pi
-if (BUILD_PACKAGE STREQUAL "raspbian")
-  add_definitions("-DTRI_FORCE_ARMV6")
-  option(RASPBIAN "Building for Raspberry PI" ON)
-else ()
-  option(RASPBIAN "Building for Raspberry PI" OFF)
-endif ()
-
 # OSX
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   option(DARWIN "Building for MacOS" ON)
@@ -752,10 +764,10 @@ if ((BUILD_PACKAGE STREQUAL "debian") OR RASPBIAN)
 
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
-    "${PROJECT_SOURCE_DIR}/Installation/ARM/postinst;${PROJECT_SOURCE_DIR}/Installation/ARM/preinst;${PROJECT_SOURCE_DIR}/Installation/ARM/postrm;${PROJECT_SOURCE_DIR}/Installation/ARM/prerm;")
+    "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
   
   install(
-    FILES ${PROJECT_SOURCE_DIR}/Installation/ARM/rc.arangodb
+    FILES ${PROJECT_SOURCE_DIR}/Installation/Debian/rc.arangodb
     PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     DESTINATION /etc/init.d
     RENAME arangodb)
