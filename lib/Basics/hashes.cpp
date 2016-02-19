@@ -463,6 +463,10 @@ static bool HasSSE42() {
   }
 }
 
+// The following is currently not used, it is a fallback for the case
+// that the pure assembler source cannot be assembled or linked for
+// some reason.
+
 extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
                                               char const* data,
                                               size_t length) {

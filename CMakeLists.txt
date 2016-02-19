@@ -227,13 +227,21 @@ else()
 endif()
 
 # Allow to prohibit assembler optimization code explicitly
+if(MSVC)
+  SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
+else(MSVC)
+  SET(ASM_OPTIMIZATIONS_DEFAULT ON)
+endif(MSVC)
+
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
-  ON)
+  ${ASM_OPTIMIZATIONS_DEFAULT})
+
 if (ASM_OPTIMIZATIONS)
   add_definitions("-DASM_OPTIMIZATIONS=1")
 else (ASM_OPTIMIZATIONS)
   add_definitions("-DASM_OPTIMIZATIONS=0")
 endif(ASM_OPTIMIZATIONS)
+
 
 # Maintainer mode (Assertions) -------------------------------------------------
 option(USE_MAINTAINER_MODE
