@@ -66,6 +66,9 @@
               $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
+            if (model.get('status') === 'unloaded') {
+              $('#collection_' + model.get("name") + ' .icon_arangodb_info').addClass('disabled');
+            }
           }
         });
 
