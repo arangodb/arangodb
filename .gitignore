@@ -32,6 +32,14 @@ js-*.h
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
+3rdParty/libev/.libs/
+3rdParty/libev/config.h
+3rdParty/libev/ev.lo
+3rdParty/libev/event.lo
+3rdParty/libev/libev.la
+3rdParty/libev/libtool
+3rdParty/libev/stamp-h1
+3rdParty/libev/BUILD/
 
 build/
 Build64/
