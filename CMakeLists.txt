@@ -93,8 +93,6 @@ set(MAKE make)
 set(USE_TCMALLOC, TRUE)
 set(THIRDP_BUILDFLAGS "CC=${CMAKE_C_COMPILER}")
 set(HOST_BITS ${BITS})
-set(ICU_BIN_DIR "unset")
-set(V8_BIN_DIR "unset")
 # OS type (Convenience) --------------------------------------------------------
 if(WIN32)
   if(NOT WINDOWS)

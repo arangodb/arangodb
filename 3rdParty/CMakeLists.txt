@@ -128,6 +128,8 @@ else ()
   message(ERROR "Not implemented for your OS")
 endif ()
 
+set (ICU_BIN_DIR ${ICU_BIN_DIR} PARENT_SCOPE)
+set (V8_BIN_DIR ${V8_BIN_DIR} PARENT_SCOPE)
 
 
 include(ExternalProject)
