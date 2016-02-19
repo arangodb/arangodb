@@ -174,7 +174,6 @@ add_executable(
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
-    Rest/AnyServer.cpp
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
