@@ -60,6 +60,7 @@
           'libraries': [ '-lreadline', ],
           'sources': [ 'd8-readline.cc' ],
         }],
+	['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH'], 'ldflags': ['-march=x86-64', '-m64']}],
         ['(OS=="linux" or OS=="mac" or OS=="freebsd" or OS=="netbsd" \
            or OS=="openbsd" or OS=="solaris" or OS=="android" \
            or OS=="qnx" or OS=="aix")', {
