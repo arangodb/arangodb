@@ -7,7 +7,7 @@ Execution plan:
  Id   NodeType                  Est.   Comment
   1   SingletonNode                1   * ROOT
   2   EnumerateCollectionNode    302     - FOR doc IN mycollection   /* full collection scan */
-  3   CalculationNode            302       - LET #1 = doc.`value` &gt; 42   /* simple expression */   /* collections used: doc : mycollection */
+  3   CalculationNode            302       - LET #1 = (doc.`value` &gt; 42)   /* simple expression */   /* collections used: doc : mycollection */
   4   FilterNode                 302       - FILTER #1
   5   ReturnNode                 302       - RETURN doc
 

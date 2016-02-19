@@ -1,4 +1,4 @@
-v2.8.3 (XXXX-XX-XX)
+v2.8.3 (2016-02-19)
 -------------------
 
 * fixed AQL filter condition collapsing for deeply-nested cases, potentially
@@ -19,6 +19,8 @@ v2.8.3 (XXXX-XX-XX)
 * The `org/arangodb/request` response object now sets a property `json` to the
   parsed JSON response body in addition to overwriting the `body` property when
   the request was made using the `json` option.
+
+* Improved Windows stability
 
 
 v2.8.2 (2016-02-09)

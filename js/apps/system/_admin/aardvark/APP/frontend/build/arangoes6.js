@@ -9004,51 +9004,51 @@ function processQuery (query, explain) {
       case "function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")";
       case "plus":
-        return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]) + ")";
       case "minus":
-        return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]) + ")";
       case "times":
-        return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]) + ")";
       case "division":
-        return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]) + ")";
       case "modulus":
-        return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]) + ")";
       case "compare not in":
         if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+          return "(" + buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]) + ")";
         }
-        return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]) + ")";
       case "compare in":
         if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+          return "(" + buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]) + ")";
         }
-        return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]) + ")";
       case "compare ==":
-        return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]) + ")";
       case "compare !=":
-        return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]) + ")";
       case "compare >":
-        return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]) + ")";
       case "compare >=":
-        return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]) + ")";
       case "compare <":
-        return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]) + ")";
       case "compare <=":
-        return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]) + ")";
       case "logical or":
-        return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]) + ")";
       case "logical and":
-        return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);
+        return "(" + buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]) + ")";
       case "ternary":
-        return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
+        return "(" + buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]) + ")";
       case "n-ary or":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ") + ")";
         }
         return "";
       case "n-ary and":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+          return "(" + node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ") + ")";
         }
         return "";
       default: 
@@ -9151,7 +9151,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [ ];
         node.indexes.forEach(function (idx, i) {
-          var what = (idx.reverse ? "reverse " : "") + idx.type + " index scan";
+          var what = (node.reverse ? "reverse " : "") + idx.type + " index scan";
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
