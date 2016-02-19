@@ -5,9 +5,9 @@ project(ArangoDB CXX C ASM)
 set (ArangoDB_VERSION_MAJOR 3)
 set (ArangoDB_VERSION_MINOR 0)
 
-if(POLICY CMP0037)
+if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
-endif()
+endif ()
 
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
@@ -43,7 +43,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 # Where 2 find CMAKE modules
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # ArangoDB needs c++11
 set(CMAKE_CXX_STANDARD 11)
@@ -71,62 +71,68 @@ set(BIN_ARANGOSH      arangosh)
 set(V8_VERSION        4.3.61)
 
 # OS type (Convenience) --------------------------------------------------------
-if(WIN32)
-  if(NOT WINDOWS)
+if (WIN32)
+  if (NOT WINDOWS)
     set(WINDOWS TRUE)
-  endif()
-elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
+  endif ()
+elseif (UNIX AND NOT APPLE)
+  if (CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
     set(FREEBSD TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
     set(NETBSD TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
     set(OPENBSD TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
     set(GNU TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
     set(BSDI TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
     set(FREEBSD TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "Solaris.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "Solaris.*")
     set(SOLARIS TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
     set(HPUX TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "AIX.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
     set(AIX TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES "Minix.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES "Minix.*")
     set(MINIX TRUE)
-  endif()
-elseif(APPLE)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
+  endif ()
+elseif (APPLE)
+  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
     set(DARWIN TRUE)
-  elseif(CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
+  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
     set(MACOSX TRUE)
-  endif()
-endif()
+  endif ()
+endif ()
 
 # TODO: Exclude non-supported?
 
 ## Compiler flags --------------------------------------------------------------
 
-# Build types
+################################################################################
+# BUILD TYPES
+################################################################################
+
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
-if(CMAKE_BUILD_TYPE_TL MATCHES debug)
+if (CMAKE_BUILD_TYPE_TL MATCHES debug)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-elseif(CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
+elseif (CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
-elseif(CMAKE_BUILD_TYPE_TL MATCHES release)
+elseif (CMAKE_BUILD_TYPE_TL MATCHES release)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-endif() 
+endif () 
 
+################################################################################
 # GCC 
+################################################################################
+
 if (CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
@@ -135,24 +141,37 @@ if (CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif ()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set (CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-  set (CMAKE_COMPILER_IS_INTEL 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-  set (CMAKE_COMPILER_IS_INTEL 1)
-endif()
+################################################################################
+# OTHER COMPILERS
+################################################################################
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_COMPILER_IS_CLANG 1)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+  set(CMAKE_COMPILER_IS_CLANG 1)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_COMPILER_IS_INTEL 1)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  set(CMAKE_COMPILER_IS_INTEL 1)
+endif ()
+
+################################################################################
 # OSX
+################################################################################
+
 if (APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
   if (CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     add_definitions("-Wno-deprecated-declarations")
-  endif()
+  endif ()
 endif ()
 
+################################################################################
 # Visual Studio
+################################################################################
+
 if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
@@ -172,7 +191,7 @@ if (MSVC)
            CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     if (${flag_var} MATCHES "/MD")
       string(REGEX REPLACE "/MDd?" "" ${flag_var} "${${flag_var}}")
-    endif()
+    endif ()
 
     if (flag_var MATCHES "DEBUG")
       set(${flag_var} "${${flag_var}} /MTd")
@@ -193,13 +212,13 @@ add_definitions("-DTRI_BITS=${BITS}")
 include (TargetArch)
 target_architecture(CMAKE_TARGET_ARCHITECTURES)
 list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
-if(NOT "${cmake_target_arch_len}" STREQUAL "1")
+if (NOT "${cmake_target_arch_len}" STREQUAL "1")
   set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
   set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
-else()
+else ()
   set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL FALSE)
   set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
-endif()
+endif ()
 
 include (VcMacros)
 include (OptimizeForArchitecture)
@@ -210,7 +229,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 find_package(Go 1.2)
 if (NOT GO_FOUND)
   message ("Go version >=1.2 not found. etcd will not be built.")
-endif()
+endif ()
 
 # Enable Backtrace -------------------------------------------------------------
 option(USE_BACKTRACE "whether we should try to generate c-level stacktraces"
@@ -220,11 +239,11 @@ if (USE_BACKTRACE)
     set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
   else ()
     set(BT_LIBS "" CACHE path "Debug Helper libraries")
-  endif()
+  endif ()
   add_definitions("-DHAVE_BACKTRACE=1")
-else()
+else ()
   set(BT_LIBS "" CACHE path "Debug Helper libraries")
-endif()
+endif ()
 
 # Allow to prohibit assembler optimization code explicitly
 if(MSVC)
@@ -248,14 +267,14 @@ option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features" OFF)
 if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
-endif()
+endif ()
 
 # Maintainer mode (Failure Tests) ----------------------------------------------
 option(USE_FAILURE_TESTS
   "whether we want to have failure tests compiled in" OFF)
 if (USE_FAILURE_TESTS)
   add_definitions("-DTRI_ENABLE_FAILURE_TESTS=1")
-endif()
+endif ()
 
 # Enable relative paths to binaries --------------------------------------------
 option(USE_RELATIVE "Do you want to have all path are relative to the binary" OFF)
@@ -302,7 +321,7 @@ if (USE_RELATIVE)
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
   add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
-else(USE_RELATIVE) 
+else () 
   # etcd -------------------------------
   set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
   # /etc -------------------------------
@@ -320,7 +339,7 @@ else(USE_RELATIVE)
   else ()
     file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
     STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
-  endif()
+  endif ()
   
   add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
   # arango directories -----------------
@@ -394,7 +413,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
-endif()
+endif ()
 
 # Libraries --------------------------------------------------------------------
 option(USE_PRECOMPILED_V8
@@ -530,7 +549,7 @@ else ()
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "ICU library path")
   if (LINUX)
     set(ICU_LIB_PATH "${ICU_LIB_PATH}/obj.target/third_party/icu")
-  endif()
+  endif ()
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
@@ -551,7 +570,7 @@ else ()
   set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "V8 library path")
   if (LINUX)
     set(V8_LIB_PATH "${V8_LIB_PATH}/obj.target/tools/gyp")
-  endif()
+  endif ()
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
@@ -597,12 +616,12 @@ if (${Boost_FOUND})
   add_definitions(-DBoost_MAJOR_VERSION=${Boost_MAJOR_VERSION})
   add_definitions(-DBoost_MINOR_VERSION=${Boost_MINOR_VERSION})
   link_directories (${BOOST_LIBRARYDIR})
-else()
+else ()
   message ("Boost unit test framework not found. Unit tests are disabled.")
-endif()
+endif ()
 
 # OpenSSL ----------------------------------------------------------------------
-#set (OPENSSL_USE_STATIC_LIBS "TRUE")
+#set(OPENSSL_USE_STATIC_LIBS "TRUE")
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 if (OPENSSL_VERSION)
@@ -611,8 +630,8 @@ if (OPENSSL_VERSION)
   list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
   if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
     add_definitions(-DOPENSSL_NO_SSL2)
-  endif()				
-endif()
+  endif ()				
+endif ()
 
 # BISON&FLEX -------------------------------------------------------------------
 find_package (BISON)
@@ -768,13 +787,13 @@ if (MSVC)
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
   set(BITS 64)
 
-  if(CMAKE_CL_64)
+  if (CMAKE_CL_64)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     SET(BITS 64)
-  else()
+  else ()
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
     SET(BITS 32)
-  endif()
+  endif ()
 
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
@@ -802,21 +821,21 @@ if (MSVC)
   set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
 
   # etcd
-  if(CMAKE_CL_64)
+  if (CMAKE_CL_64)
     install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
 
     install(FILES WindowsLibraries/64/icudtl.dat
             DESTINATION share/arangodb
             RENAME icudt54l.dat)
-  else()
+  else ()
     install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
 
     install(FILES WindowsLibraries/32/icudtl.dat
             DESTINATION share/arangodb
             RENAME icudt54l.dat)
-  endif()
+  endif ()
 
 endif ()
 

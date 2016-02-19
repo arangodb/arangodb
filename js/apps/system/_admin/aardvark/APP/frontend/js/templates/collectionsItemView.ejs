@@ -17,7 +17,7 @@
     <div class="corneredBadge inProgress">
       <%= model.get('desc') %>
     </div>
-  <% } else if (model.get('status') === "loaded") { %>
+  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
     <div class="corneredBadge <%= model.get('status') %>">
       <%= model.get('status') %>
     </div>

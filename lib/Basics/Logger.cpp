@@ -744,7 +744,8 @@ void LogThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-std::atomic_uint_fast16_t NEXT_TOPIC_ID(0);
+//std::atomic_uint_fast16_t NEXT_TOPIC_ID(0);
+  std::atomic<uint16_t> NEXT_TOPIC_ID(0);
 }
 
 LogTopic::LogTopic(std::string const& name)

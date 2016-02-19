@@ -229,13 +229,25 @@ class DeadlockDetector {
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        auto erased =
+#endif
         _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(erased == 1);
+#endif
       }
 
       return res;
     } catch (...) {
       // clean up
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      auto erased =
+#endif
       _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(erased == 1);
+#endif
       throw;
     }
   }
@@ -253,7 +265,13 @@ class DeadlockDetector {
       return;
     }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    auto erased =
+#endif
     _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(erased == 1);
+#endif
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -276,20 +294,57 @@ class DeadlockDetector {
       return;
     }
 
+    bool wasLast;
+
     if (isWrite) {
+      // the thread should have held the resource in write mode
       TRI_ASSERT((*it).second.second);
+      // nobody else should have registered for the same resource
       TRI_ASSERT((*it).second.first.size() == 1);
-      // remove whole entry
-      _active.erase(value);
+      // a writer is exclusive, so we're always the last one
+      wasLast = true;
     } else {
+      // we shouldn't have another writer
       TRI_ASSERT(!(*it).second.second);
+      // there should be at least one (reader) entry (this can be ourselves)
       TRI_ASSERT((*it).second.first.size() >= 1);
 
-      (*it).second.first.erase(tid);
-      if ((*it).second.first.empty()) {
-        // remove last reader
-        _active.erase(value);
+      // we ourselves should be present in the threads list
+      TRI_ASSERT((*it).second.first.find(tid) != (*it).second.first.end());
+      // if there's only only thread registered, it must be us
+      wasLast = ((*it).second.first.size() == 1);
+
+      if (!wasLast) {
+        // we're not the last thread, so we simply unregister ourselves from the list
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        auto erased =
+#endif
+        (*it).second.first.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(erased == 1);
+#endif
+        // we shouldn't be in the list anymore
+        TRI_ASSERT((*it).second.first.find(tid) == (*it).second.first.end());
       }
+      // still the write bit shouldn't be set
+      TRI_ASSERT(! (*it).second.second);
+      // and there should be at least one entry now:
+      // if we were last, it will remain there and the cleanup will happen below
+      // if we were not last, we have removed ourselves from the list, but there
+      // must be at least one other thread in the list - otherwise we would have
+      // been last!
+      TRI_ASSERT((*it).second.first.size() >= 1);
+    }
+
+    if (wasLast) {
+      // delete last reader/writer
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      auto erased =
+#endif
+      _active.erase(value);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(erased == 1);
+#endif
     }
   }
 
@@ -309,11 +364,16 @@ class DeadlockDetector {
     auto it = _active.find(value);
 
     if (it == _active.end()) {
+      // no one else there. simply register us
       _active.emplace(
           value, std::make_pair(std::unordered_set<TRI_tid_t>({tid}), isWrite));
     } else {
+      // someone else is already there
+      // we're expecting one or many readers
       TRI_ASSERT(!(*it).second.first.empty());
       TRI_ASSERT(!(*it).second.second);
+      // if someone else is already there, this must be a reader, as readers can
+      // share a resource, but writers are exclusive
       TRI_ASSERT(!isWrite);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       auto result =
@@ -322,10 +382,18 @@ class DeadlockDetector {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(result.second);
 #endif
+      TRI_ASSERT(!(*it).second.second);
+      TRI_ASSERT((*it).second.first.find(tid) != (*it).second.first.end());
     }
 
     if (wasBlockedBefore) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      auto erased = 
+#endif
       _blocked.erase(tid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(erased == 1);
+#endif
     }
   }
 
