@@ -70,7 +70,11 @@ class SingleCollectionTransaction : public Transaction {
         _accessType(accessType) {
     // add the (sole) collection
     if (setupState() == TRI_ERROR_NO_ERROR) {
-      _cid = this->resolver()->getCollectionId(name);
+      if (ServerState::instance()->isCoordinator()) {
+        _cid = this->resolver()->getCollectionIdCluster(name);
+      } else {
+        _cid = this->resolver()->getCollectionId(name);
+      }
 
       this->addCollection(_cid, _accessType);
     }
