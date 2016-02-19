@@ -63,14 +63,14 @@ struct OperationCursor : public OperationResult {
   }
 
   ~OperationCursor() {
-    // TODO: handle destruction of customTypeHandler
   }
 
-  bool hasMore() {
+  bool hasMore() const {
     return _hasMore;
   }
 
-  int getMore(uint64_t count);
+  int getMore(uint64_t batchSize);
+  int getMore();
 };
 
 }

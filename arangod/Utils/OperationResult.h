@@ -57,7 +57,7 @@ struct OperationResult {
         code(code), wasSynchronous(wasSynchronous) {
   }
 
-  ~OperationResult() {
+  virtual ~OperationResult() {
     // TODO: handle destruction of customTypeHandler
   }
 
