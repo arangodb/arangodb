@@ -763,8 +763,8 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
       console->addHistory(input);
 
       {
-	v8::TryCatch tryCatch;
 	v8::HandleScope scope(isolate);
+	v8::TryCatch tryCatch;
 
 	TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), 
 				    TRI_V8_STRING(input.c_str()), name, true);
