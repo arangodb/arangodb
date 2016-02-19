@@ -31,23 +31,27 @@ window.ArangoUsers = Backbone.Collection.extend({
     return a > b ? 1 : a < b ? -1 : 0;
   },
 
-  login: function (username, password) {
-    var result = null;
+  login: function (username, password, callback) {
+    var self = this;
+
     $.ajax("login", {
-      async: false,
       method: "POST",
       data: JSON.stringify({
         username: username,
         password: password
       }),
       dataType: "json"
-    }).done(
+    }).success(
       function (data) {
-        result = data.user;
+        self.activeUser = data.user;
+        callback(false, self.activeUser);
+      }
+    ).error(
+      function () {
+        self.activeUser = null;
+        callback(true, null);
       }
     );
-    this.activeUser = result;
-    return this.activeUser;
   },
 
   setSortingDesc: function(yesno) {
@@ -55,7 +59,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
-    $.ajax("logout", {async:false,method:"POST"});
+    $.ajax("logout", {method:"POST"});
     this.activeUser = null;
     this.reset();
     window.App.navigate("");
@@ -108,18 +112,21 @@ window.ArangoUsers = Backbone.Collection.extend({
     return result;
   },
 
-  whoAmI: function() {
+  whoAmI: function(callback) {
     if (this.activeUser) {
-      return this.activeUser;
+      callback(false, this.activeUser);
+      return;
     }
-    var result;
-    $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+    $.ajax("whoAmI?_=" + Date.now())
+    .success(
       function(data) {
-        result = data.user;
+        callback(false, data.user);
+      }
+    ).error(
+      function(data) {
+        callback(true, null);
       }
     );
-    this.activeUser = result;
-    return this.activeUser;
   }
 
 
