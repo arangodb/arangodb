@@ -358,14 +358,27 @@
         return 0;
       }
 
-      var returnobj = this.collection.newCollection(
-        collName, wfs, isSystem, collSize, collType, shards, shardBy
-      );
-      if (returnobj.status !== true) {
-        arangoHelper.arangoError("Collection error", returnobj.errorMessage);
-      }
-      this.updateCollectionsView();
-      window.modalView.hide();
+      var callback = function(error, data) {
+
+        if (error) {
+          arangoHelper.arangoError("Collection error", data.errorMessage);
+        }
+        else {
+          this.updateCollectionsView();
+        }
+        window.modalView.hide();
+
+      }.bind(this);
+
+      this.collection.newCollection({
+        collName: collName,
+        wfs: wfs,
+        isSystem: isSystem,
+        collSize: collSize,
+        collType: collType,
+        shards: shards,
+        shardBy: shardBy
+      }, callback);
     },
 
     createNewCollectionModal: function() {

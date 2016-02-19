@@ -10787,28 +10787,6 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
     isSystemCollection: function (val) {
       return val.name.substr(0, 1) === '_';
-      // the below code is completely inappropriate as it will
-      // load the collection just for the check whether it
-      // is a system collection. as a consequence, the below
-      // code would load ALL collections when the web interface
-      // is called
-      /*
-         var returnVal = false;
-         $.ajax({
-type: "GET",
-url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
-contentType: "application/json",
-processData: false,
-async: false,
-success: function(data) {
-returnVal = data.isSystem;
-},
-error: function(data) {
-returnVal = false;
-}
-});
-return returnVal;
-*/
     },
 
     setDocumentStore : function (a) {
@@ -17347,7 +17325,7 @@ window.Users = Backbone.Model.extend({
           case 3:
             return 'loaded';
           case 4:
-            return 'will be unloaded';
+            return 'in the process of being unloaded';
           case 5:
             return 'deleted';
           case 6:
@@ -20364,6 +20342,9 @@ window.ArangoUsers = Backbone.Collection.extend({
               $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
+            if (model.get('status') === 'unloaded') {
+              $('#collection_' + model.get("name") + ' .icon_arangodb_info').addClass('disabled');
+            }
           }
         });
 
@@ -22283,40 +22264,67 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     saveDocument: function () {
+      if ($('#saveDocumentButton').attr('disabled') === undefined) {
+        if (this.collection.first().attributes._id.substr(0, 1) === '_') {
+
+          var buttons = [], tableContent = [];
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'doc-save-system-button',
+              'Caution',
+              'You are modifying a system collection. Really continue?',
+              undefined,
+              undefined,
+              false,
+              /[<>&'"]/
+          )
+          );
+          buttons.push(
+            window.modalView.createSuccessButton('Save', this.confirmSaveDocument.bind(this))
+          );
+          window.modalView.show('modalTable.ejs', 'Modify System Collection', buttons, tableContent);
+        }
+        else {
+          this.confirmSaveDocument();
+        }
+      }
+    },
+
+    confirmSaveDocument: function () {
+
+      window.modalView.hide();
+
       var model, result;
 
-      if ($('#saveDocumentButton').attr('disabled') === undefined) {
+      try {
+        model = this.editor.get();
+      }
+      catch (e) {
+        this.errorConfirmation(e);
+        this.disableSaveButton();
+        return;
+      }
 
-        try {
-          model = this.editor.get();
-        }
-        catch (e) {
-          this.errorConfirmation(e);
-          this.disableSaveButton();
+      model = JSON.stringify(model);
+
+      if (this.type === 'document') {
+        result = this.collection.saveDocument(this.colid, this.docid, model);
+        if (result === false) {
+          arangoHelper.arangoError('Document error:','Could not save');
           return;
         }
-
-        model = JSON.stringify(model);
-
-        if (this.type === 'document') {
-          result = this.collection.saveDocument(this.colid, this.docid, model);
-          if (result === false) {
-            arangoHelper.arangoError('Document error:','Could not save');
-            return;
-          }
+      }
+      else if (this.type === 'edge') {
+        result = this.collection.saveEdge(this.colid, this.docid, model);
+        if (result === false) {
+          arangoHelper.arangoError('Edge error:', 'Could not save');
+          return;
         }
-        else if (this.type === 'edge') {
-          result = this.collection.saveEdge(this.colid, this.docid, model);
-          if (result === false) {
-            arangoHelper.arangoError('Edge error:', 'Could not save');
-            return;
-          }
-        }
+      }
 
-        if (result === true) {
-          this.successConfirmation();
-          this.disableSaveButton();
-        }
+      if (result === true) {
+        this.successConfirmation();
+        this.disableSaveButton();
       }
     },
 
@@ -25866,11 +25874,29 @@ window.ArangoUsers = Backbone.Collection.extend({
     templateSlow: templateEngine.createTemplate("queryManagementViewSlow.ejs"),
     table: templateEngine.createTemplate("arangoTable.ejs"),
     tabbar: templateEngine.createTemplate("arangoTabbar.ejs"),
+    active: true,
+    shouldRender: true,
+    timer: 0,
+    refreshRate: 2000,
 
     initialize: function () {
+      var self = this; 
       this.activeCollection = new window.QueryManagementActive();
       this.slowCollection = new window.QueryManagementSlow();
       this.convertModelToJSON(true);
+
+      window.setInterval(function() {
+        if (window.location.hash === '#queryManagement' && window.VISIBLE && self.shouldRender) {
+          if (self.active) {
+            self.convertModelToJSON(true);
+            self.renderActive();
+          }
+          else {
+            self.convertModelToJSON(false);
+            self.renderSlow();
+          }
+        }
+      }, self.refreshRate);
     },
 
     events: {
@@ -25896,9 +25922,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     switchTab: function(e) {
       if (e.currentTarget.id === 'activequeries') {
+        this.active = true;
         this.convertModelToJSON(true);
       }
       else if (e.currentTarget.id === 'slowqueries') {
+        this.active = false;
         this.convertModelToJSON(false);
       }
     },
@@ -25985,11 +26013,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.convertModelToJSON(true);
     },
 
+    addEvents: function() {
+      var self = this;
+      $('#queryManagementContent tbody').on('mousedown', function() {
+        clearTimeout(self.timer);
+        self.shouldRender = false;
+      });
+      $('#queryManagementContent tbody').on('mouseup', function() {
+        self.timer = window.setTimeout(function() {
+          self.shouldRender = true;
+        }, 3000);
+      });
+    },
+
     renderActive: function() {
       this.$el.html(this.templateActive.render({}));
       $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
       $('#activequeries').addClass("arango-active-tab");
+      this.addEvents();
     },
 
     renderSlow: function() {
@@ -25999,6 +26041,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         content: this.tableDescription,
       }));
       $('#slowqueries').addClass("arango-active-tab");
+      this.addEvents();
     },
 
     convertModelToJSON: function (active) {

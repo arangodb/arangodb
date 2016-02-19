@@ -304,6 +304,10 @@
       <div class="corneredBadge <%= model.get('status') %>">
         <%= model.get('status') %>
       </div>
+    <% } else { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('status') %>
+      </div>
     <% } %>
   <% } %>
   </span>

@@ -2,8 +2,6 @@
 (function() {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
-    initialize: function () {
-    },
 
     idAttribute: "name",
 
@@ -74,25 +72,21 @@
       return data2;
     },
 
-    getIndex: function () {
-      var data2;
+    getIndex: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/index/?collection=" + this.get("id"),
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
-
 
     createIndex: function (postParameter, callback) {
 
@@ -163,15 +157,14 @@
 
     truncateCollection: function () {
       $.ajax({
-        async: false,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/truncate",
         success: function () {
-          arangoHelper.arangoNotification('Collection truncated');
+          arangoHelper.arangoNotification('Collection truncated.');
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          arangoHelper.arangoError('Collection error.');
         }
       });
     },
@@ -207,36 +200,27 @@
       callback();
     },
 
-    renameCollection: function (name) {
-      var self = this,
-        result = false;
+    renameCollection: function (name, callback) {
+      var self = this;
+
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/rename",
         data: JSON.stringify({ name: name }),
         contentType: "application/json",
         processData: false,
         success: function() {
           self.set("name", name);
-          result = true;
+          callback(false);
         },
-        error: function(/*data*/) {
-          try {
-            console.log("error");
-            //var parsed = JSON.parse(data.responseText);
-            //result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+        error: function(data) {
+          callback(true, data);
         }
       });
-      return result;
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets) {
+    changeCollection: function (wfs, journalSize, indexBuckets, callback) {
       var result = false;
       if (wfs === "true") {
         wfs = true;
@@ -253,22 +237,15 @@
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/properties",
         data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
         success: function() {
-          result = true;
+          callback(false);
         },
         error: function(data) {
-          try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+          callback(false, data);
         }
       });
       return result;

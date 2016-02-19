@@ -188,40 +188,67 @@
     },
 
     saveDocument: function () {
+      if ($('#saveDocumentButton').attr('disabled') === undefined) {
+        if (this.collection.first().attributes._id.substr(0, 1) === '_') {
+
+          var buttons = [], tableContent = [];
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'doc-save-system-button',
+              'Caution',
+              'You are modifying a system collection. Really continue?',
+              undefined,
+              undefined,
+              false,
+              /[<>&'"]/
+          )
+          );
+          buttons.push(
+            window.modalView.createSuccessButton('Save', this.confirmSaveDocument.bind(this))
+          );
+          window.modalView.show('modalTable.ejs', 'Modify System Collection', buttons, tableContent);
+        }
+        else {
+          this.confirmSaveDocument();
+        }
+      }
+    },
+
+    confirmSaveDocument: function () {
+
+      window.modalView.hide();
+
       var model, result;
 
-      if ($('#saveDocumentButton').attr('disabled') === undefined) {
+      try {
+        model = this.editor.get();
+      }
+      catch (e) {
+        this.errorConfirmation(e);
+        this.disableSaveButton();
+        return;
+      }
 
-        try {
-          model = this.editor.get();
-        }
-        catch (e) {
-          this.errorConfirmation(e);
-          this.disableSaveButton();
+      model = JSON.stringify(model);
+
+      if (this.type === 'document') {
+        result = this.collection.saveDocument(this.colid, this.docid, model);
+        if (result === false) {
+          arangoHelper.arangoError('Document error:','Could not save');
           return;
         }
-
-        model = JSON.stringify(model);
-
-        if (this.type === 'document') {
-          result = this.collection.saveDocument(this.colid, this.docid, model);
-          if (result === false) {
-            arangoHelper.arangoError('Document error:','Could not save');
-            return;
-          }
+      }
+      else if (this.type === 'edge') {
+        result = this.collection.saveEdge(this.colid, this.docid, model);
+        if (result === false) {
+          arangoHelper.arangoError('Edge error:', 'Could not save');
+          return;
         }
-        else if (this.type === 'edge') {
-          result = this.collection.saveEdge(this.colid, this.docid, model);
-          if (result === false) {
-            arangoHelper.arangoError('Edge error:', 'Could not save');
-            return;
-          }
-        }
+      }
 
-        if (result === true) {
-          this.successConfirmation();
-          this.disableSaveButton();
-        }
+      if (result === true) {
+        this.successConfirmation();
+        this.disableSaveButton();
       }
     },
 
