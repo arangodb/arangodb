@@ -949,13 +949,8 @@ class Transaction {
       return _setupState;
     }
 
-    if (!_isReal) {
-      return addCollection(this->resolver()->getCollectionIdCluster(name),
-                           name.c_str(), type);
-    }
-
-    return addCollection(this->resolver()->getCollectionIdLocal(name), name.c_str(),
-                         type);
+    return addCollection(this->resolver()->getCollectionId(name),
+                         name.c_str(), type);
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -51,7 +51,9 @@ class CollectionNameResolver {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection id for a collection name (local case)
+  /// @brief look up a collection id for a collection name (local case),
+  /// use this if you know you are on a single server or on a DBserver
+  /// and need to look up a local collection name (or shard name).
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t getCollectionIdLocal(std::string const& name) const {
@@ -67,6 +69,47 @@ class CollectionNameResolver {
       return collection->_cid;
     }
     return 0;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a cluster collection id for a cluster collection name,
+  /// only use this is in cluster mode on a coordinator or DBserver, in both
+  /// cases the name is resolved as a cluster wide collection name and the
+  /// cluster wide collection id is returned.
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
+    if (!ServerState::instance()->isRunningInCluster()) {
+      return getCollectionIdLocal(name);
+    }
+    if (name[0] >= '0' && name[0] <= '9') {
+      // name is a numeric id
+      return (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
+    }
+
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::shared_ptr<CollectionInfo> cinfo =
+        ci->getCollection(DatabaseID(_vocbase->_name), name);
+    if (cinfo->empty()) {
+      return 0;
+    }
+    return cinfo->id();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a collection id for a collection name, this is the
+  /// default one to use, which will usually do the right thing. On a
+  /// single server or DBserver it will use the local lookup and on a
+  /// coordinator it will use the cluster wide lookup.
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getCollectionId(std::string const& name) const {
+    if (!ServerState::instance()->isRunningInCluster() ||
+        ServerState::instance()->isDBServer()) {
+      return getCollectionIdLocal(name);
+    }
+    return getCollectionIdCluster(name);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -107,29 +150,6 @@ class CollectionNameResolver {
     }
 
     return collection;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster collection id for a cluster collection name
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
-      return getCollectionIdLocal(name);
-    }
-    if (name[0] >= '0' && name[0] <= '9') {
-      // name is a numeric id
-      return (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
-    }
-
-    // We have to look up the collection info:
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
-    if (cinfo->empty()) {
-      return 0;
-    }
-    return cinfo->id();
   }
 
   //////////////////////////////////////////////////////////////////////////////

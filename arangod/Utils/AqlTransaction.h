@@ -107,7 +107,7 @@ class AqlTransaction : public Transaction {
 
   int processCollectionCoordinator(arangodb::aql::Collection* collection) {
     TRI_voc_cid_t cid =
-        this->resolver()->getCollectionIdCluster(collection->getName());
+        this->resolver()->getCollectionId(collection->getName());
 
     return this->addCollection(cid, collection->getName().c_str(),
                                collection->accessType);
