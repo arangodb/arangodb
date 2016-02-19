@@ -19500,7 +19500,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       this._showDevel = true;
       this._showProd = true;
       this._showSystem = false;
-      this.reload();
     },
 
     slideToggle: function() {
@@ -20312,9 +20311,18 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+
+    refetchCollections: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.checkLockedCollections();
+        }
+      });
+    },
+
     checkLockedCollections: function() {
 
-      if (window.location.hash === '#collections') {
         var self = this,
         lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
@@ -20332,6 +20340,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
 
         this.collection.each(function(model) {
+          
+          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+
           if (model.get("locked") || model.get("status") === 'loading') {
             $('#collection_' + model.get("name")).addClass('locked');
           }
@@ -20343,11 +20356,7 @@ window.ArangoUsers = Backbone.Collection.extend({
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
           }
-          if (model.get("status") === 'loading') {
-            $('#collection_' + model.get("name")).removeClass('loading');
-          }
         });
-      }
 
     },
 
@@ -20355,7 +20364,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
 
       window.setInterval(function() {
-        self.checkLockedCollections();
+        if (window.location.hash === '#collections' && window.VISIBLE) {
+          self.refetchCollections();
+        }
       }, self.refreshRate);
 
     },
@@ -23358,7 +23369,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, arangoHelper, window*/
+/*global Backbone, document, templateEngine, $, arangoHelper, window*/
 
 (function() {
   "use strict";
@@ -23380,6 +23391,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.getVersion();
       }, 15000);
       self.getVersion();
+
+      window.VISIBLE = true;
+      document.addEventListener('visibilitychange', function () {
+        window.VISIBLE = !window.VISIBLE;
+      });
     },
 
     template: templateEngine.createTemplate("footerView.ejs"),
@@ -23429,7 +23445,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             self.render();
           }
         },
-        error: function (data) {
+        error: function () {
           self.isOffline = true;
           self.isOfflineCounter++;
           if (self.isOfflineCounter >= 1) {

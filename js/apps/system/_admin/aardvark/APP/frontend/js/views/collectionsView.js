@@ -13,9 +13,18 @@
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+
+    refetchCollections: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.checkLockedCollections();
+        }
+      });
+    },
+
     checkLockedCollections: function() {
 
-      if (window.location.hash === '#collections') {
         var self = this,
         lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
@@ -33,6 +42,11 @@
         });
 
         this.collection.each(function(model) {
+          
+          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+
           if (model.get("locked") || model.get("status") === 'loading') {
             $('#collection_' + model.get("name")).addClass('locked');
           }
@@ -44,11 +58,7 @@
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
           }
-          if (model.get("status") === 'loading') {
-            $('#collection_' + model.get("name")).removeClass('loading');
-          }
         });
-      }
 
     },
 
@@ -56,7 +66,9 @@
       var self = this;
 
       window.setInterval(function() {
-        self.checkLockedCollections();
+        if (window.location.hash === '#collections' && window.VISIBLE) {
+          self.refetchCollections();
+        }
       }, self.refreshRate);
 
     },

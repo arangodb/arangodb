@@ -1885,7 +1885,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, arangoHelper, window*/
+/*global Backbone, document, templateEngine, $, arangoHelper, window*/
 
 (function() {
   "use strict";
@@ -1907,6 +1907,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
         self.getVersion();
       }, 15000);
       self.getVersion();
+
+      window.VISIBLE = true;
+      document.addEventListener('visibilitychange', function () {
+        window.VISIBLE = !window.VISIBLE;
+      });
     },
 
     template: templateEngine.createTemplate("footerView.ejs"),
@@ -1956,7 +1961,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
             self.render();
           }
         },
-        error: function (data) {
+        error: function () {
           self.isOffline = true;
           self.isOfflineCounter++;
           if (self.isOfflineCounter >= 1) {
