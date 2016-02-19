@@ -669,8 +669,8 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, HttpRequest* request) {
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch;
 
   TRI_GET_GLOBALS();
 

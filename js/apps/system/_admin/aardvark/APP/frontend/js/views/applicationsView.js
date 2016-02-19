@@ -102,7 +102,6 @@
       this._showDevel = true;
       this._showProd = true;
       this._showSystem = false;
-      this.reload();
     },
 
     slideToggle: function() {

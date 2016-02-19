@@ -143,10 +143,18 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a HTTP 201 or 202 response
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(rest::HttpResponse::HttpResponseCode, std::string const&,
                    TRI_voc_key_t, TRI_voc_rid_t, TRI_col_type_e);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates a HTTP 201 or 202 response
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generate20x(arangodb::OperationResult const&, std::string const&,
+                   TRI_col_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message without content
@@ -193,6 +201,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDeleted(arangodb::SingleCollectionWriteTransaction<1>& trx,
@@ -209,6 +218,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid,
                 type);
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates deleted message
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateDeleted(arangodb::OperationResult const& result,
+                       std::string const& collectionName, TRI_col_type_e type);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, read transaction

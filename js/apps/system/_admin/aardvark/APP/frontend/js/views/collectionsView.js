@@ -13,9 +13,18 @@
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
+
+    refetchCollections: function() {
+      var self = this;
+      this.collection.fetch({
+        success: function() {
+          self.checkLockedCollections();
+        }
+      });
+    },
+
     checkLockedCollections: function() {
 
-      if (window.location.hash === '#collections') {
         var self = this,
         lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
 
@@ -33,22 +42,35 @@
         });
 
         this.collection.each(function(model) {
+          
+          if (!model.get("locked")) {
+            $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+          }
+
           if (model.get("locked") || model.get("status") === 'loading') {
             $('#collection_' + model.get("name")).addClass('locked');
+            if (model.get("locked")) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("desc"));
+            }
+            else {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+            }
           }
           else {
             $('#collection_' + model.get("name")).removeClass('locked');
             $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
             if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
               $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
               $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
             }
-          }
-          if (model.get("status") === 'loading') {
-            $('#collection_' + model.get("name")).removeClass('loading');
+            if (model.get('status') === 'unloaded') {
+              $('#collection_' + model.get("name") + ' .icon_arangodb_info').addClass('disabled');
+            }
           }
         });
-      }
 
     },
 
@@ -56,7 +78,9 @@
       var self = this;
 
       window.setInterval(function() {
-        self.checkLockedCollections();
+        if (window.location.hash === '#collections' && window.VISIBLE) {
+          self.refetchCollections();
+        }
       }, self.refreshRate);
 
     },

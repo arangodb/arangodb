@@ -15,7 +15,7 @@ warning:
 	@echo "  make"
 	@echo ""
 	@echo "If running on MacOSX, please use OPENSSL from homebrew and"
-	@echo "  cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+	@echo "  cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
 	@echo ""
 
 -include Makefile

@@ -17,10 +17,16 @@
     <div class="corneredBadge inProgress">
       <%= model.get('desc') %>
     </div>
-  <% } else if (model.get('status') === "loaded") { %>
-    <div class="corneredBadge <%= model.get('status') %>">
-      <%= model.get('status') %>
-    </div>
+  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
+    <% if (!model.get('locked')) { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } else { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('status') %>
+      </div>
+    <% } %>
   <% } %>
   </span>
 </div>

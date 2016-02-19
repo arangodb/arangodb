@@ -550,6 +550,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // extract or chose the update policy
+  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
+
+  // extract or chose the update policy
   OperationOptions opOptions;
   opOptions.waitForSync = extractWaitForSync();
 
@@ -557,7 +560,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-    if (revision != 0) {
+    if (revision != 0 && policy != TRI_DOC_UPDATE_LAST_WRITE) {
       builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
     }
   }
@@ -697,20 +700,13 @@ bool RestDocumentHandler::deleteDocument() {
                   "invalid revision number");
     return false;
   }
+  OperationOptions opOptions;
 
-  // extract or choose the update policy
   TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-  bool const waitForSync = extractWaitForSync();
-
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "policy must be 'error' or 'last'");
     return false;
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return deleteDocumentCoordinator(collection, key, revision, policy,
-                                     waitForSync);
   }
 
   SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
@@ -726,34 +722,33 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    if (revision != 0 && policy != TRI_DOC_UPDATE_LAST_WRITE) {
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
+    }
   }
+  VPackSlice search = builder.slice();
 
-  TRI_voc_rid_t rid = 0;
-  res = trx.remove(trx.trxCollection(), key, 0, policy, revision, &rid, waitForSync);
+  OperationResult result = trx.remove(collection, search, opOptions);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = trx.commit();
-  } else {
-    trx.abort();
-  }
+  res = trx.finish(result.code);
 
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                             rid);
+  if(!result.successful()) {
+    generateTransactionError(result);
     return false;
   }
 
-  generateDeleted(trx, cid, (TRI_voc_key_t)key.c_str(), rid);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
+    return false;
+  }
+
+  // TODO Fix Collection Type!
+  generateDeleted(result, collection, TRI_COL_TYPE_DOCUMENT);
 
   return true;
 }

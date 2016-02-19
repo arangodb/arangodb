@@ -51,7 +51,7 @@ static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 #ifndef TRI_HAVE_GETTID
 
 namespace {
-std::atomic_uint_fast64_t NEXT_THREAD_ID(1);
+  std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
 
 #endif

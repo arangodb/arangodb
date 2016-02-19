@@ -389,11 +389,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   TRI_document_collection_t* document = trx.documentCollection();
   bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
-  trx.lockWrite();
-
   if (overwrite) {
+    OperationOptions truncateOpts;
+    truncateOpts.waitForSync = false;
     // truncate collection first
-    trx.truncate(trx.trxCollection(), false);
+    trx.truncate(collection, truncateOpts);
+    // Ignore the result ...
   }
 
   if (linewise) {
@@ -641,11 +642,13 @@ bool RestImportHandler::createFromKeyValueList() {
   TRI_document_collection_t* document = trx.documentCollection();
   bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
-  trx.lockWrite();
-
   if (overwrite) {
+    OperationOptions truncateOpts;
+    truncateOpts.waitForSync = false;
     // truncate collection first
-    trx.truncate(trx.trxCollection(), false);
+    trx.truncate(collection, truncateOpts);
+    // Ignore the result ...
+    // truncate collection first
   }
 
   size_t i = (size_t)lineNumber;

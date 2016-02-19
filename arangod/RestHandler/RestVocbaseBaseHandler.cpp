@@ -132,46 +132,29 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateSaved(
-    arangodb::OperationResult const& result,
-    std::string const& collectionName,
+    arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type) {
-  VPackSlice slice = result.slice();
-  TRI_ASSERT(slice.isObject());
-
   if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::ACCEPTED);
   } else {
     createResponse(rest::HttpResponse::CREATED);
   }
-  _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
+  generate20x(result, collectionName, type);
+}
 
-  std::string escapedHandle(DocumentHelper::assembleDocumentId(
-      collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
-  if (_request->compatibility() < 10400L) {
-    // pre-1.4 location header (e.g. /_api/document/xyz)
-    _response->setHeader("location", 8,
-                         std::string(DOCUMENT_PATH + "/" + escapedHandle));
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Generate a result for successful delete
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateDeleted(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type) {
+  if (result.wasSynchronous) {
+    createResponse(rest::HttpResponse::OK);
   } else {
-    // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
-    if (type == TRI_COL_TYPE_EDGE) {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       EDGE_PATH + "/" + escapedHandle));
-    } else {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       DOCUMENT_PATH + "/" + escapedHandle));
-    }
+    createResponse(rest::HttpResponse::ACCEPTED);
   }
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
-  try {
-    dumper.dump(slice);
-  } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
+  generate20x(result, collectionName, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +202,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
@@ -267,6 +251,48 @@ void RestVocbaseBaseHandler::generate20x(
       .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
       .appendText(key)
       .appendText("\"}");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a HTTP 20x response
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generate20x(
+    arangodb::OperationResult const& result,
+    std::string const& collectionName,
+    TRI_col_type_e type) {
+
+  VPackSlice slice = result.slice();
+  TRI_ASSERT(slice.isObject());
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
+
+  std::string escapedHandle(DocumentHelper::assembleDocumentId(
+      collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
+  if (_request->compatibility() < 10400L) {
+    // pre-1.4 location header (e.g. /_api/document/xyz)
+    _response->setHeader("location", 8,
+                         std::string(DOCUMENT_PATH + "/" + escapedHandle));
+  } else {
+    // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
+    if (type == TRI_COL_TYPE_EDGE) {
+      _response->setHeader("location", 8,
+                           std::string("/_db/" + _request->databaseName() +
+                                       EDGE_PATH + "/" + escapedHandle));
+    } else {
+      _response->setHeader("location", 8,
+                           std::string("/_db/" + _request->databaseName() +
+                                       DOCUMENT_PATH + "/" + escapedHandle));
+    }
+  }
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+  VPackDumper dumper(&buffer);
+  try {
+    dumper.dump(slice);
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
