@@ -10,7 +10,6 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: 'DELETE',
-      async: false,
       contentType: "application/json",
       url: "/_api/edge/" + colid + "/" + docid,
       success: function () {
@@ -25,7 +24,6 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: 'DELETE',
-      async: false,
       contentType: "application/json",
       url: "/_api/document/" + colid + "/" + docid,
       success: function () {
@@ -112,84 +110,73 @@ window.arangoDocument = Backbone.Collection.extend({
       }
     });
   },
-  getEdge: function (colid, docid){
-    var result = false, self = this;
+  getEdge: function (colid, docid, callback){
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/edge/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'edge');
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  getDocument: function (colid, docid) {
-    var result = false, self = this;
+  getDocument: function (colid, docid, callback) {
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/document/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'document');
       },
       error: function(data) {
-        result = false;
+        self.add(true, data);
       }
     });
-    return result;
   },
-  saveEdge: function (colid, docid, model) {
-    var result = false;
+  saveEdge: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/edge/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = true;
+        callback(false, data);
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  saveDocument: function (colid, docid, model) {
-    var result = false;
+  saveDocument: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/document/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          result = true;
+        callback(false, data);
       },
       error: function(data) {
-          result = false;
+        callback(true, data);
       }
     });
-    return result;
-
   },
 
   updateLocalDocument: function (data) {

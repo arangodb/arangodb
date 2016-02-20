@@ -60,20 +60,24 @@
         type = 'edge';
       }
 
-      var result, type2;
+      var callback = function(error, data, type) {
+        if (error) {
+          console.log(data);
+          arangoHelper.arangoError("Error", "Could not fetch data.");
+        }
+        else {
+          var type2 = type + ': '; 
+          this.type = type;
+          this.fillInfo(type2);
+          this.fillEditor();
+        }
+      }.bind(this);
+
       if (type === 'edge') {
-        result = this.collection.getEdge(this.colid, this.docid);
-        type2 = "Edge: ";
+        this.collection.getEdge(this.colid, this.docid, callback);
       }
       else if (type === 'document') {
-        result = this.collection.getDocument(this.colid, this.docid);
-        type2 = "Document: ";
-      }
-      if (result === true) {
-        this.type = type;
-        this.fillInfo(type2);
-        this.fillEditor();
-        return true;
+        this.collection.getDocument(this.colid, this.docid, callback);
       }
     },
 
@@ -232,7 +236,7 @@
 
       window.modalView.hide();
 
-      var model, result;
+      var model;
 
       try {
         model = this.editor.get();
@@ -246,23 +250,30 @@
       model = JSON.stringify(model);
 
       if (this.type === 'document') {
-        result = this.collection.saveDocument(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Document error:','Could not save');
-          return;
-        }
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not save document.');
+          }
+          else {
+            this.successConfirmation();
+            this.disableSaveButton();
+          }
+        }.bind(this);
+
+        this.collection.saveDocument(this.colid, this.docid, model, callback);
       }
       else if (this.type === 'edge') {
-        result = this.collection.saveEdge(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Edge error:', 'Could not save');
-          return;
-        }
-      }
+        var callbackE = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not save edge.');
+          }
+          else {
+            this.successConfirmation();
+            this.disableSaveButton();
+          }
+        }.bind(this);
 
-      if (result === true) {
-        this.successConfirmation();
-        this.disableSaveButton();
+        this.collection.saveEdge(this.colid, this.docid, model, callbackE);
       }
     },
 

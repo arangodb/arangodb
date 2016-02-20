@@ -717,37 +717,42 @@
       var deleted = [], self = this;
 
       _.each(toDelete, function(key) {
-        var result = false;
         if (self.type === 'document') {
-          result = self.documentStore.deleteDocument(
-            self.collection.collectionID, key
-          );
-          if (result) {
-            //on success
-            deleted.push(true);
-            self.collection.setTotalMinusOne();
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Document error', 'Could not delete document.');
-          }
+          var callback = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Document error', 'Could not delete document.');
+            }
+            else {
+              deleted.push(true);
+              self.collection.setTotalMinusOne();
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+          self.documentStore.deleteDocument(self.collection.collectionID, key, callback);
         }
         else if (self.type === 'edge') {
-          result = self.documentStore.deleteEdge(self.collection.collectionID, key);
-          if (result === true) {
-            //on success
-            self.collection.setTotalMinusOne();
-            deleted.push(true);
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Edge error', 'Could not delete edge');
-          }
+
+          var callback2 = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Edge error', 'Could not delete edge');
+            }
+            else {
+              self.collection.setTotalMinusOne();
+              deleted.push(true);
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+
+          self.documentStore.deleteEdge(self.collection.collectionID, key, callback2);
         }
       });
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      $('#markDocuments').click();
-      window.modalView.hide();
+
     },
 
     getSelectedDocs: function() {
@@ -777,36 +782,35 @@
     },
 
     reallyDelete: function () {
-      var deleted = false;
-      var result;
       if (this.type === 'document') {
-        result = this.documentStore.deleteDocument(
-          this.collection.collectionID, this.docid
-        );
-        if (result) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Doc error');
-        }
+
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
+
+        this.documentStore.deleteDocument(this.collection.collectionID, this.docid, callback);
       }
       else if (this.type === 'edge') {
-        result = this.documentStore.deleteEdge(this.collection.collectionID, this.docid);
-        if (result === true) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Edge error');
-        }
-      }
 
-      if (deleted === true) {
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        $('#docDeleteModal').modal('hide');
+        var callback2 = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Edge error', "Could not delete edge");
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
+
+        this.documentStore.deleteEdge(this.collection.collectionID, this.docid, callback2);
       }
     },
 
