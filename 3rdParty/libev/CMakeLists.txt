@@ -58,7 +58,7 @@ add_library(
   ${LIBEV_DIR}/event.c
 )
 
-set(${PROJECT_NAME}_INCLUDE_DIRS
+set(${PROJECT_NAME}_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR}/${LIBEV_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"
