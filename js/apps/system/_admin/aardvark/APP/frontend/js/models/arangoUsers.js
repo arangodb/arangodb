@@ -28,29 +28,27 @@ window.Users = Backbone.Model.extend({
     return "/_api/user";
   },
 
-  checkPassword: function(passwd) {
-    var result = false;
-
+  checkPassword: function(passwd, callback) {
     $.ajax({
       cache: false,
       type: "POST",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data.result;
+        callback(false, data);
+      },
+      error: function(data) {
+        callback(true, data);
       }
     });
-    return result;
   },
 
   setPassword: function(passwd) {
     $.ajax({
       cache: false,
       type: "PATCH",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
@@ -58,15 +56,20 @@ window.Users = Backbone.Model.extend({
     });
   },
 
-  setExtras: function(name, img) {
+  setExtras: function(name, img, callback) {
     $.ajax({
       cache: false,
       type: "PATCH",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({"extra": {"name":name, "img":img}}),
       contentType: "application/json",
-      processData: false
+      processData: false,
+      success: function() {
+        callback(false);
+      },
+      error: function() {
+        callback(true);
+      }
     });
   }
 

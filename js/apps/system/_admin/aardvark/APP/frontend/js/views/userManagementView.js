@@ -339,49 +339,54 @@
       $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
       $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
 
-
       //check
       var hasError = false;
-      //Check old password
-      if (!this.validateCurrentPassword(oldPasswd)) {
-        $('#oldCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check confirmation
-      if (newPasswd !== confirmPasswd) {
-        $('#confirmCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check new password
-      if (!this.validatePassword(newPasswd)) {
-        $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
 
-      if (hasError) {
-        return;
-      }
-      this.currentUser.setPassword(newPasswd);
-      window.modalView.hide();
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not verify old password");
+        }
+        else {
+          if (data) {
+            //check confirmation
+            if (newPasswd !== confirmPasswd) {
+              arangoHelper.arangoError("User", "New passwords do not match");
+              hasError = true;
+            }
+            //check new password
+            /*if (!this.validatePassword(newPasswd)) {
+              $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
+              hasError = true;
+            }*/
+
+            if (!hasError) {
+              this.currentUser.setPassword(newPasswd);
+              arangoHelper.arangoNotification("User", "Password changed");
+              window.modalView.hide();
+            }
+          }
+        }
+      }.bind(this);
+      this.currentUser.checkPassword(oldPasswd, callback);
     },
-
-    validateCurrentPassword : function (pwd) {
-      return this.currentUser.checkPassword(pwd);
-    },
-
 
     submitEditCurrentUserProfile: function() {
       var name    = $('#editCurrentName').val();
       var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
 
-      /*      if (!this.validateName(name)) {
-       $('#editName').closest("th").css("backgroundColor", "red");
-       return;
-       }*/
 
-      this.currentUser.setExtras(name, img);
-      this.updateUserProfile();
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not edit user settings");
+        }
+        else {
+          arangoHelper.arangoNotification("User", "Changes confirmed.");
+          this.updateUserProfile();
+        }
+      }.bind(this);
+
+      this.currentUser.setExtras(name, img, callback);
       window.modalView.hide();
     },
 

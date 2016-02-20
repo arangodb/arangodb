@@ -169,6 +169,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND), "n-ary and"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR), "n-ary or"},
     {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"},
+    {static_cast<int>(NODE_TYPE_WITH), "with collections"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "array compare =="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "array compare !="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "array compare <"},
@@ -639,6 +640,7 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_WITH:
       break;
   }
 
@@ -762,7 +764,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
-    case NODE_TYPE_PASSTHRU: {
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_WITH: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -2720,6 +2723,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_WITH:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
@@ -2872,6 +2876,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_WITH:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:

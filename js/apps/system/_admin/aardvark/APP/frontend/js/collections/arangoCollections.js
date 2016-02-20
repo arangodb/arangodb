@@ -154,21 +154,20 @@
         return result;
       },
 
-      newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
-        var returnobj = {};
+      newCollection: function (object, callback) {
         var data = {};
-        data.name = collName;
-        data.waitForSync = wfs;
-        if (journalSize > 0) {
-          data.journalSize = journalSize;
+        data.name = object.collName;
+        data.waitForSync = object.wfs;
+        if (object.journalSize > 0) {
+          data.journalSize = object.journalSize;
         }
-        data.isSystem = isSystem;
-        data.type = parseInt(collType, 10);
-        if (shards) {
-          data.numberOfShards = shards;
-          data.shardKeys = keys;
+        data.isSystem = object.isSystem;
+        data.type = parseInt(object.collType, 10);
+        if (object.shards) {
+          data.numberOfShards = object.shards;
+          data.shardKeys = object.keys;
         }
-        returnobj.status = false;
+
         $.ajax({
           cache: false,
           type: "POST",
@@ -176,17 +175,13 @@
           data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function(data) {
-            returnobj.status = true;
-            returnobj.data = data;
+            callback(false, data);
           },
           error: function(data) {
-            returnobj.status = false;
-            returnobj.errorMessage = JSON.parse(data.responseText).errorMessage;
+            callback(false, data);
           }
         });
-        return returnobj;
       }
   });
 }());
