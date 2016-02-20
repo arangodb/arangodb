@@ -91,21 +91,25 @@ const optionsDocumentation = [
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `clusterNodes`: number of DB-Servers to use',
-  '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
-  '        Coordinator - flag to run Coordinator with valgrind',
-  '        DBServer    - flag to run DBServers with valgrind',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
   '   - benchargs : additional commandline arguments to arangob',
   '',
+  '',
+  '   - `sanitizer`: if set the programs are run with enabled sanitizer',
+  '     and need longer tomeouts',
+  '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
   '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
   '   - `valgrindArgs`: list of commandline parameters to add to valgrind',
+  '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
+  '        Coordinator - flag to run Coordinator with valgrind',
+  '        DBServer    - flag to run DBServers with valgrind',
   '',
-  '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `extraArgs`: list of extra commandline arguments to add to arangod',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   ''
@@ -118,7 +122,7 @@ const optionsDefaults = {
   "concurrency": 3,
   "coreDirectory": "/var/tmp",
   "duration": 10,
-  "extraargs": [],
+  "extraArgs": [],
   "extremeVerbosity": false,
   "force": true,
   "jsonReply": false,
@@ -128,6 +132,7 @@ const optionsDefaults = {
   "onlyNightly": false,
   "password": "",
   "replication": false,
+  "sanitizer": false,
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": true,
@@ -182,13 +187,13 @@ const TOP_DIR = (function findTopDir() {
   return topDir;
 }());
 
-const BIN_DIR = (fs.exists("build") && fs.exists(fs.join("build", "bin")))
-        ? fs.join(TOP_DIR, "build", "bin")
-        : fs.join(TOP_DIR, "bin");
+const BIN_DIR = (fs.exists("build") && fs.exists(fs.join("build", "bin"))) ?
+  fs.join(TOP_DIR, "build", "bin") :
+  fs.join(TOP_DIR, "bin");
 
-const CONFIG_DIR = (fs.exists("build") && fs.exists(fs.join("build", "etc")))
-        ? fs.join(TOP_DIR, "build", "etc", "arangodb")
-        : fs.join(TOP_DIR, "etc", "arangodb");
+const CONFIG_DIR = (fs.exists("build") && fs.exists(fs.join("build", "etc"))) ?
+  fs.join(TOP_DIR, "build", "etc", "arangodb") :
+  fs.join(TOP_DIR, "etc", "arangodb");
 
 const ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
 const ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
@@ -1147,8 +1152,15 @@ function shutdownInstance(instanceInfo, options) {
       let count = 0;
       let bar = "[";
 
+      let timeout = 600;
+
+      if (options.sanitizer) {
+        timeout *= 2;
+      }
+
       while (true) {
         instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
+
         if (instanceInfo.exitStatus.status === "RUNNING") {
           ++count;
 
@@ -1163,7 +1175,7 @@ function shutdownInstance(instanceInfo, options) {
 
           if (count > 600) {
             print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
-              " after 600 s grace period; marking crashy.");
+              " after " + timeout + "s grace period; marking crashy.");
             serverCrashed = true;
             killExternal(instanceInfo.pid);
             break;
@@ -1261,14 +1273,14 @@ function startDispatcher(instanceInfo) {
 /// protocol must be one of ["tcp", "ssl", "unix"]
 ////////////////////////////////////////////////////////////////////////////////
 
-function startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+function startInstanceCluster(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   startDispatcher(instanceInfo, options);
 
   const clusterNodes = options.clusterNodes;
 
   let extraArgs = makeArgsArangod(options, appDir);
-  extraArgs = _.extend(extraArgs, optionsExtraArgs);
+  extraArgs = _.extend(extraArgs, options.extraArgs);
 
   if (addArgs !== undefined) {
     extraArgs = _.extend(extraArgs, addArgs);
@@ -1385,7 +1397,7 @@ function valgrindArgsSingleServer(options, testname, run) {
   return toArgv(valgrindOpts, true).concat([run]);
 }
 
-function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   const port = findFreePort();
   instanceInfo.port = port;
@@ -1405,7 +1417,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options, optionsExtra
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
   }
 
-  args = _.extend(args, optionsExtraArgs);
+  args = _.extend(args, options.extraArgs);
 
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
@@ -1438,24 +1450,17 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
-  // build extra / valgrind arguments
-  let optionsExtraArgs = {};
-
-  if (typeof(options.extraArgs) === 'object') {
-    optionsExtraArgs = options.extraArgs;
-  }
-
   // startup in cluster mode
   let res = false;
 
   if (options.cluster) {
-    res = startInstanceCluster(instanceInfo, protocol, options, optionsExtraArgs,
+    res = startInstanceCluster(instanceInfo, protocol, options,
       addArgs, testname, appDir, tmpDataDir);
   }
 
   // single instance mode
   else {
-    res = startInstanceSingleServer(instanceInfo, protocol, options, optionsExtraArgs,
+    res = startInstanceSingleServer(instanceInfo, protocol, options,
       addArgs, testname, appDir, tmpDataDir);
   }
 
