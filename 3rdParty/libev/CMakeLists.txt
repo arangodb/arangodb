@@ -7,7 +7,8 @@
 cmake_minimum_required(VERSION 2.6)
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE string
+  set(CMAKE_BUILD_TYPE Release
+      CACHE string
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
 endif ()
@@ -47,7 +48,8 @@ endif ()
 ## libev library
 ################################################################################
 
-set(LIBEV_DIR libev-4.22)
+set(LIBEV_VERSION 4.22)
+set(LIBEV_DIR libev-${LIBEV_VERSION})
 
 include_directories(${LIBEV_DIR})
 
@@ -58,7 +60,7 @@ add_library(
   ${LIBEV_DIR}/event.c
 )
 
-set(${PROJECT_NAME}_INCLUDE_DIR
+set(LIBEV_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR}/${LIBEV_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"

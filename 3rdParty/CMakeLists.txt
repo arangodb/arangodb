@@ -37,7 +37,7 @@ endif ()
 ## ZLIB
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib-1.2.7)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
 
 ################################################################################
 ## EV
@@ -129,8 +129,8 @@ if (NOT USE_PRECOMPILED_V8)
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE TRUE
     SOURCE_DIR "${V8_DIR}"
-    CONFIGURE_COMMAND ${RUN_V8_GYP} ${V8_GYP_ARGS}
-    BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS}
+    CONFIGURE_COMMAND ${RUN_V8_GYP} ${V8_GYP_ARGS} --format make
+    BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++
     INSTALL_COMMAND "")
 endif ()
 
