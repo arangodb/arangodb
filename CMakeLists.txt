@@ -431,8 +431,11 @@ if (DARWIN)
 endif ()
 
 # Global include directories ---------------------------------------------------
+
 include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
+
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
 endif ()
