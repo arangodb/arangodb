@@ -449,6 +449,9 @@ if (DARWIN)
     ${TRI_BINDIR_INSTALL}) 
 endif ()
 
+# 3rd party libraries
+add_subdirectory(3rdParty)
+
 # Global include directories ---------------------------------------------------
 
 include_directories(${PROJECT_SOURCE_DIR})
@@ -462,9 +465,6 @@ endif ()
 # Libraries --------------------------------------------------------------------
 option(USE_PRECOMPILED_V8
   "whether we want to use a precompiled V8" OFF)
-
-# 3rd party libraries
-add_subdirectory(3rdParty)
 
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
@@ -643,6 +643,8 @@ endif ()
 if (LIBEV_LIB_PATH)
   link_directories(${LIBEV_LIB_PATH})
 endif ()
+
+include_directories(${libev_INCLUDE_DIR})
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
