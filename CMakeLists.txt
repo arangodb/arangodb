@@ -118,6 +118,15 @@ elseif(UNIX AND NOT APPLE)
     set(SYSV5 TRUE)
   elseif ((CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
     set(USE_TCMALLOC, FALSE)
+    set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
+    set(CMAKE_SIZEOF_VOID_P 8)
+    set(BITS 64)
+    set(CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES /lib;/lib64;/lib64;/usr/lib;/usr/lib64;/usr/lib64)
+    set(MAKE gmake)
+    set(HOST_BITS 64)
+    set(SOLARIS TRUE)
+    list(APPEND CMAKE_C_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
+    list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
     set(THIRDP_BUILDFLAGS --target=x86_64-pc-solaris2.11
       --host=x86_64-pc-solaris2.11
       --build=x86_64-pc-solaris2.11
@@ -128,10 +137,7 @@ elseif(UNIX AND NOT APPLE)
       CXXFLAGS=-I\ /opt/csw/include\ -D_REENTRANT\ -m64
       LDFLAGS=-L/opt/csw/lib\ -march=x86-64\ -m64
       )
-    set(MAKE gmake)
-    set(HOST_BITS 64)
-    set(SOLARIS TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
+   elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
     set(HPUX TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
     set(AIX TRUE)
@@ -147,6 +153,19 @@ elseif (APPLE)
 endif ()
 
 # TODO: Exclude non-supported?
+
+# BISON&FLEX -------------------------------------------------------------------
+find_package (BISON)
+
+# FLEX -------------------------------------------------------------------------
+find_package (FLEX)
+
+# GO ---------------------------------------------------------------------------
+find_package(Go 1.2)
+
+# Python
+find_package(PythonInterp 2)
+set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
 ## Compiler flags --------------------------------------------------------------
 
@@ -444,6 +463,9 @@ endif ()
 option(USE_PRECOMPILED_V8
   "whether we want to use a precompiled V8" OFF)
 
+# 3rd party libraries
+add_subdirectory(3rdParty)
+
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
@@ -548,6 +570,14 @@ if (MSVC_LIB_PATH)
   link_directories(${MSVC_LIB_PATH})
 endif ()
 
+
+#--------------------------------------------------------------------------------
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach ()
+#--------------------------------------------------------------------------------
+
 # ICU ---------------------------------------------------------------------------
 if (MSVC)
   set(ICU_LIBS "icui18n;icuuc" CACHE path "ICU libraries")
@@ -557,9 +587,9 @@ elseif (RASPBIAN)
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
   set(ICU_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "ICU library path")
+  set(ICU_LIB_PATH ${ICU_BIN_DIR} CACHE path "ICU library path")
   if (LINUX)
-    set(ICU_LIB_PATH "${ICU_LIB_PATH}/obj.target/third_party/icu")
+    set(ICU_LIB_PATH "${ICU_LIB_PATH}")
   endif ()
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
@@ -578,10 +608,7 @@ if (MSVC OR RASPBIAN)
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 else ()
   set(V8_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/include CACHE path "V8 include path")
-  set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/out/native CACHE path "V8 library path")
-  if (LINUX)
-    set(V8_LIB_PATH "${V8_LIB_PATH}/obj.target/tools/gyp")
-  endif ()
+  set(V8_LIB_PATH ${V8_BIN_DIR} CACHE path "V8 library path")
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
@@ -649,19 +676,6 @@ if (OPENSSL_VERSION)
   endif ()				
 endif ()
 
-# BISON&FLEX -------------------------------------------------------------------
-find_package (BISON)
-
-# FLEX -------------------------------------------------------------------------
-find_package (FLEX)
-
-# GO ---------------------------------------------------------------------------
-find_package(Go 1.2)
-
-# Python
-find_package(PythonInterp 2)
-set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
-
 # zlib -------------------------------------------------------------------------
 set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
 
@@ -684,9 +698,6 @@ if (ZLIB_LIB_PATH)
 endif ()
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-
-# 3rd party libraries
-add_subdirectory(3rdParty)
 
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
