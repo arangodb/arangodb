@@ -53,6 +53,13 @@
     editor: 0,
 
     setType: function (type) {
+      if (type === 2) {
+        type = 'document';
+      }
+      else {
+        type = 'edge';
+      }
+
       var result, type2;
       if (type === 'edge') {
         result = this.collection.getEdge(this.colid, this.docid);
@@ -91,23 +98,7 @@
 
     deleteDocument: function() {
 
-      var result;
-
-      if (this.type === 'document') {
-        result = this.collection.deleteDocument(this.colid, this.docid);
-        if (result === false) {
-          arangoHelper.arangoError('Document error:','Could not delete');
-          return;
-        }
-      }
-      else if (this.type === 'edge') {
-        result = this.collection.deleteEdge(this.colid, this.docid);
-        if (result === false) {
-          arangoHelper.arangoError('Edge error:', 'Could not delete');
-          return;
-        }
-      }
-      if (result === true) {
+      var successFunction = function() {
         if (this.customView) {
           this.customDeleteFunction();
         }
@@ -116,6 +107,29 @@
           window.modalView.hide();
           window.App.navigate(navigateTo, {trigger: true});
         }
+      }.bind(this);
+
+      if (this.type === 'document') {
+        var callbackDoc = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            successFunction();
+          }
+        }.bind(this);
+        this.collection.deleteDocument(this.colid, this.docid, callbackDoc);
+      }
+      else if (this.type === 'edge') {
+        var callbackEdge = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Edge error', 'Could not delete edge');
+          }
+          else {
+            successFunction();
+          }
+        }.bind(this);
+        this.collection.deleteEdge(this.colid, this.docid, callbackEdge);
       }
     },
 

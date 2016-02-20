@@ -254,8 +254,17 @@
       this.documentView.colid = colid;
       this.documentView.docid = docid;
       this.documentView.render();
-      var type = arangoHelper.collectionApiType(colid);
-      this.documentView.setType(type);
+
+      var callback = function(error, type) {
+        if (!error) {
+          this.documentView.setType(type);
+        }
+        else {
+          console.log("Error", "Could not fetch collection type");
+        }
+      }.bind(this);
+
+      arangoHelper.collectionApiType(colid, null, callback);
     },
 
     shell: function (initialized) {

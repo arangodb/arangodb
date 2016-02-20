@@ -105,8 +105,9 @@
           }
           else {
             window.modalView.hide();
+            arangoHelper.arangoError("Graph", "Could not delete Graph.");
           }
-        };
+        }.bind(this);
 
         this.collection.dropAndDeleteGraph(name, callback);
       }
@@ -187,39 +188,42 @@
     },
 
     render: function() {
+
+      var self = this;
       this.collection.fetch({
-        async: false
-      });
 
-      this.collection.sort();
+        success: function() {
+          self.collection.sort();
 
-      $(this.el).html(this.template.render({
-        graphs: this.collection,
-        searchString : ''
-      }));
+          $(self.el).html(self.template.render({
+            graphs: self.collection,
+            searchString : ''
+          }));
 
-      if (this.dropdownVisible === true) {
-        $('#graphManagementDropdown2').show();
-        $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
-        $('#graphManagementToggle').toggleClass('activated');
-        $('#graphManagementDropdown').show();
-      }
-
-      this.events["click .tableRow"] = this.showHideDefinition.bind(this);
-      this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
-      this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
-      this.events["click #graphTab a"] = this.toggleTab.bind(this);
-      this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
-      this.events["focusout .select2-search-field input"] = function(e){
-        if ($('.select2-drop').is(':visible')) {
-          if (!$('#select2-search-field input').is(':focus')) {
-            window.setTimeout(function() { 
-              $(e.currentTarget).parent().parent().parent().select2('close');
-            }, 80);
+          if (self.dropdownVisible === true) {
+            $('#graphManagementDropdown2').show();
+            $('#graphSortDesc').attr('checked', self.collection.sortOptions.desc);
+            $('#graphManagementToggle').toggleClass('activated');
+            $('#graphManagementDropdown').show();
           }
-        } 
-      }.bind(this);
-      arangoHelper.setCheckboxStatus("#graphManagementDropdown");
+
+          self.events["click .tableRow"] = self.showHideDefinition.bind(self);
+          self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
+          self.events["click .graphViewer-icon-button"] = self.addRemoveDefinition.bind(self);
+          self.events["click #graphTab a"] = self.toggleTab.bind(self);
+          self.events["click .createExampleGraphs"] = self.createExampleGraphs.bind(self);
+          self.events["focusout .select2-search-field input"] = function(e){
+            if ($('.select2-drop').is(':visible')) {
+              if (!$('#select2-search-field input').is(':focus')) {
+                window.setTimeout(function() { 
+                  $(e.currentTarget).parent().parent().parent().select2('close');
+                }, 80);
+              }
+            } 
+          }.bind(self);
+          arangoHelper.setCheckboxStatus("#graphManagementDropdown");
+        }
+      });
 
       return this;
     },

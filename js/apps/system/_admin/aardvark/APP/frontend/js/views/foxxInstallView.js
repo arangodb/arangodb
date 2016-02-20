@@ -11,10 +11,16 @@
   };
 
   var installCallback = function(result) {
+    var self = this;
+
     if (result.error === false) {
-      this.collection.fetch({ async: false });
-      window.modalView.hide();
-      this.reload();
+      this.collection.fetch({
+        success: function() {
+          window.modalView.hide();
+          self.reload();
+        }
+      });
+                           
     } else {
       var res = result;
       if (result.hasOwnProperty("responseJSON")) {
