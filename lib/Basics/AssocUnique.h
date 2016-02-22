@@ -841,13 +841,33 @@ class AssocUnique {
 
     return old;
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a method to iterate over all elements in the hash. this method
+  /// can NOT be used for deleting elements
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invokeOnAllElements(CallbackElementFuncType callback) {
+    for (auto& b : _buckets) {
+      if (b._table == nullptr) {
+        continue;
+      }
+      for (size_t i = 0; i < b._nrAlloc; ++i) {
+        if (b._table[i] == nullptr) {
+          continue;
+        }
+        // don't increment i
+        callback(b._table[i]);
+      }
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the hash. this method
   /// can be used for deleting elements as well
   //////////////////////////////////////////////////////////////////////////////
 
-  void invokeOnAllElements(CallbackElementFuncType callback) {
+  void invokeOnAllElementsForRemoval(CallbackElementFuncType callback) {
     for (auto& b : _buckets) {
       if (b._table == nullptr) {
         continue;
@@ -857,10 +877,14 @@ class AssocUnique {
           ++i;
           continue;
         }
-        // don't increment i
+        // intentionally don't increment i
+        auto old = b._table[i];
         callback(b._table[i]);
         if (b._nrUsed == 0) {
           break;
+        }
+        if (b._table[i] == old) {
+          ++i;
         }
       }
     }

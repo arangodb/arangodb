@@ -1481,7 +1481,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   };
 
   try {
-    primaryIndex->invokeOnAllElements(callback);
+    primaryIndex->invokeOnAllElementsForRemoval(callback);
   }
   catch (basics::Exception const& ex) {
     unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
