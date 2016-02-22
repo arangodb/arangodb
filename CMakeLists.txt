@@ -1,15 +1,30 @@
-# General -----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# General
+# ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 2.8)
+
+if (APPLE)
+  if (NOT DEFINED CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER /usr/bin/clang)
+  endif ()
+  
+  if (NOT DEFINED CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+  endif ()
+endif ()
+
 project(ArangoDB)
 
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
+
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
 set(ARANGODB_CONTACT            "hackers@arangodb.org")
+
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
 set(ARANGODB_VERSION_REVISION   "0-devel")
@@ -18,11 +33,11 @@ set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
 configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/build.h.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/build.h")
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h")
 
 configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
 set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")

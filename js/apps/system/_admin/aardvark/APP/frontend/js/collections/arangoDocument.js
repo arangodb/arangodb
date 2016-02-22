@@ -6,56 +6,40 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},
-  deleteEdge: function (colid, docid) {
-    var returnval = false;
-    try {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        async: false,
-        contentType: "application/json",
-        url: "/_api/edge/" + colid + "/" + docid,
-        success: function () {
-          returnval = true;
-        },
-        error: function () {
-          returnval = false;
-        }
-      });
-    }
-    catch (e) {
-          returnval = false;
-    }
-    return returnval;
+  deleteEdge: function (colid, docid, callback) {
+    $.ajax({
+      cache: false,
+      type: 'DELETE',
+      contentType: "application/json",
+      url: "/_api/edge/" + colid + "/" + docid,
+      success: function () {
+        callback(false);
+      },
+      error: function () {
+        callback(true);
+      }
+    });
   },
-  deleteDocument: function (colid, docid){
-    var returnval = false;
-    try {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        async: false,
-        contentType: "application/json",
-        url: "/_api/document/" + colid + "/" + docid,
-        success: function () {
-          returnval = true;
-        },
-        error: function () {
-          returnval = false;
-        }
-      });
-    }
-    catch (e) {
-          returnval = false;
-    }
-    return returnval;
+  deleteDocument: function (colid, docid, callback) {
+    $.ajax({
+      cache: false,
+      type: 'DELETE',
+      contentType: "application/json",
+      url: "/_api/document/" + colid + "/" + docid,
+      success: function () {
+        callback(false);
+      },
+      error: function () {
+        callback(true);
+      }
+    });
   },
   addDocument: function (collectionID, key) {
     var self = this;
     self.createTypeDocument(collectionID, key);
   },
-  createTypeEdge: function (collectionID, from, to, key) {
-    var result = false, newEdge;
+  createTypeEdge: function (collectionID, from, to, key, callback) {
+    var newEdge;
 
     if (key) {
       newEdge = JSON.stringify({
@@ -69,22 +53,20 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      async: false,
       url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
       data: newEdge,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data._id;
+        callback(false, data);
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  createTypeDocument: function (collectionID, key) {
-    var result = false, newDocument;
+  createTypeDocument: function (collectionID, key, callback) {
+    var newDocument;
 
     if (key) {
       newDocument = JSON.stringify({
@@ -98,21 +80,19 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      async: false,
       url: "/_api/document?collection=" + encodeURIComponent(collectionID),
       data: newDocument,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data._id;
+        callback(false, data._id);
       },
       error: function(data) {
-        result = false;
+        callback(true, data._id);
       }
     });
-    return result;
   },
-  getCollectionInfo: function (identifier) {
+  getCollectionInfo: function (identifier, callback, toRun) {
     var self = this;
 
     $.ajax({
@@ -121,94 +101,82 @@ window.arangoDocument = Backbone.Collection.extend({
       url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
       contentType: "application/json",
       processData: false,
-      async: false,
       success: function(data) {
         self.collectionInfo = data;
+        callback(false, data, toRun);
       },
       error: function(data) {
+        callback(true, data, toRun);
       }
     });
-
-    return self.collectionInfo;
   },
-  getEdge: function (colid, docid){
-    var result = false, self = this;
+  getEdge: function (colid, docid, callback){
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/edge/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'edge');
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  getDocument: function (colid, docid) {
-    var result = false, self = this;
+  getDocument: function (colid, docid, callback) {
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/document/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'document');
       },
       error: function(data) {
-        result = false;
+        self.add(true, data);
       }
     });
-    return result;
   },
-  saveEdge: function (colid, docid, model) {
-    var result = false;
+  saveEdge: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/edge/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = true;
+        callback(false, data);
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  saveDocument: function (colid, docid, model) {
-    var result = false;
+  saveDocument: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/document/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          result = true;
+        callback(false, data);
       },
       error: function(data) {
-          result = false;
+        callback(true, data);
       }
     });
-    return result;
-
   },
 
   updateLocalDocument: function (data) {

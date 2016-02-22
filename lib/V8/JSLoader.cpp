@@ -43,8 +43,8 @@ JSLoader::JSLoader() {}
 v8::Handle<v8::Value> JSLoader::executeGlobalScript(
     v8::Isolate* isolate, v8::Handle<v8::Context> context,
     std::string const& name) {
-  v8::TryCatch tryCatch;
   v8::EscapableHandleScope scope(isolate);
+  v8::TryCatch tryCatch;
   v8::Handle<v8::Value> result;
 
   findScript(name);
@@ -83,8 +83,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
                                       v8::Handle<v8::Context>& context,
                                       std::string const& name) {
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch;
 
   findScript(name);
 
@@ -148,8 +148,8 @@ bool JSLoader::loadAllScripts(v8::Isolate* isolate,
 bool JSLoader::executeScript(v8::Isolate* isolate,
                              v8::Handle<v8::Context>& context,
                              std::string const& name) {
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch;
 
   findScript(name);
 
@@ -182,15 +182,14 @@ bool JSLoader::executeScript(v8::Isolate* isolate,
 
 bool JSLoader::executeAllScripts(v8::Isolate* isolate,
                                  v8::Handle<v8::Context>& context) {
-  v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
-  bool ok;
+  v8::TryCatch tryCatch;
 
   if (_directory.empty()) {
     return true;
   }
 
-  ok = TRI_ExecuteLocalJavaScriptDirectory(isolate, _directory.c_str());
+  bool ok = TRI_ExecuteLocalJavaScriptDirectory(isolate, _directory.c_str());
 
   return ok;
 }

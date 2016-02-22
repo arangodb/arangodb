@@ -1,3 +1,7 @@
+# ------------------------------------------------------------------------------
+# External Projects used by ArangoDB
+# ------------------------------------------------------------------------------
+
 include(ExternalProject)
 
 macro(import_target tname tdep tinclude tpath)
@@ -25,7 +29,7 @@ if (GO_FOUND)
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE TRUE
     BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
-    INSTALL_COMMAND ""
+    INSTALL_COMMAND "cp" ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
   )
 endif ()
 

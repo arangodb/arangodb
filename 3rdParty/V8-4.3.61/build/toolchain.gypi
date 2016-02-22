@@ -897,6 +897,7 @@
           },
         },
       }],
+      ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH'], 'ldflags': ['-march=x86-64', '-m64']}],
       ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
          or OS=="netbsd" or OS=="mac" or OS=="android" or OS=="qnx") and \
         v8_target_arch=="ia32"', {
@@ -974,7 +975,7 @@
          or OS=="netbsd" or OS=="qnx" or OS=="aix"', {
         'conditions': [
           [ 'v8_no_strict_aliasing==1', {
-            'cflags': [ '-fno-strict-aliasing' ],
+            'cflags': [ '-fno-strict-aliasing -m64' ],
           }],
         ],  # conditions
       }],

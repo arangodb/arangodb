@@ -1,23 +1,30 @@
 /*jshint unused: false */
-/*global window, $, document, _ */
+/*global window, $, document, arangoHelper, _ */
 
 (function() {
   "use strict";
-  var isCoordinator;
+  var isCoordinator = null;
 
-  window.isCoordinator = function() {
-    if (isCoordinator === undefined) {
+  window.isCoordinator = function(callback) {
+    if (isCoordinator === null) {
       $.ajax(
         "cluster/amICoordinator",
         {
-          async: false,
+          async: true,
           success: function(d) {
             isCoordinator = d;
+            callback(false, d);
+          },
+          error: function(d) {
+            isCoordinator = d;
+            callback(true, d);
           }
         }
       );
     }
-    return isCoordinator;
+    else {
+      callback(false, isCoordinator);
+    }
   };
 
   window.versionHelper = {
@@ -93,23 +100,20 @@
       });
     },
 
-    currentDatabase: function () {
-      var returnVal = false;
+    currentDatabase: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/database/current",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          returnVal = data.result.name;
+          callback(false, data.result.name);
         },
-        error: function() {
-          returnVal = false;
+        error: function(data) {
+          callback(true, data);
         }
       });
-      return returnVal;
     },
 
     allHotkeys: {
@@ -199,24 +203,30 @@
       }
     },
 
-    databaseAllowed: function () {
-      var currentDB = this.currentDatabase(),
-      returnVal = false;
-      $.ajax({
-        type: "GET",
-        cache: false,
-        url: "/_db/"+ encodeURIComponent(currentDB) + "/_api/database/",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function() {
-          returnVal = true;
-        },
-        error: function() {
-          returnVal = false;
+    databaseAllowed: function (callback) {
+
+      var dbCallback = function(error, db) {
+        if (error) {
+          arangoHelper.arangoError("","");
         }
-      });
-      return returnVal;
+        else {
+          $.ajax({
+            type: "GET",
+            cache: false,
+            url: "/_db/"+ encodeURIComponent(db) + "/_api/database/",
+            contentType: "application/json",
+            processData: false,
+            success: function() {
+              callback(false, true);
+            },
+            error: function() {
+              callback(true, false);
+            }
+          });
+        }
+      }.bind(this);
+
+      this.currentDatabase(dbCallback);
     },
 
     arangoNotification: function (title, content, info) {
@@ -344,20 +354,16 @@
     },
 
     getAardvarkJobs: function (callback) {
-      var result;
-
       $.ajax({
           cache: false,
           type: "GET",
           url: "/_admin/aardvark/job",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
             if (callback) {
               callback(false, data);
             }
-            result = data;
           },
           error: function(data) {
             if (callback) {
@@ -365,11 +371,9 @@
             }
           }
       });
-      return result;
     },
 
-    getPendingJobs: function() {
-      var result; 
+    getPendingJobs: function(callback) {
 
       $.ajax({
           cache: false,
@@ -377,53 +381,67 @@
           url: "/_api/job/pending",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
-            result = data;
+            callback(false, data);
           },
           error: function(data) {
-            console.log("pending jobs error: " + data);
+            callback(true, data);
           }
       });
-      return result;
     },
 
-    syncAndReturnUninishedAardvarkJobs: function(type) {
+    syncAndReturnUninishedAardvarkJobs: function(type, callback) {
 
-      var AaJobs = this.getAardvarkJobs(),
-      pendingJobs = this.getPendingJobs(),
-      array = [];
+      var callbackInner = function(error, AaJobs) {
+        if (error) {
+          callback(true);
+        }
+        else {
 
-      if (pendingJobs.length > 0) {
-        _.each(AaJobs, function(aardvark) {
-          if (aardvark.type === type || aardvark.type === undefined) {
-
-             var found = false; 
-            _.each(pendingJobs, function(pending) {
-              if (aardvark.id === pending) {
-                found = true;
-              } 
-            });
-
-            if (found) {
-              array.push({
-                collection: aardvark.collection,
-                id: aardvark.id,
-                type: aardvark.type,
-                desc: aardvark.desc 
-              });
+          var callbackInner2 = function(error, pendingJobs) {
+            if (error) {
+              arangoHelper.arangoError("", "");
             }
             else {
-              window.arangoHelper.deleteAardvarkJob(aardvark.id);
-            }
-          }
-        });
-      }
-      else {
-        this.deleteAllAardvarkJobs(); 
-      }
+              var array = [];
+              if (pendingJobs.length > 0) {
+                _.each(AaJobs, function(aardvark) {
+                  if (aardvark.type === type || aardvark.type === undefined) {
 
-      return array;
+                     var found = false; 
+                    _.each(pendingJobs, function(pending) {
+                      if (aardvark.id === pending) {
+                        found = true;
+                      } 
+                    });
+
+                    if (found) {
+                      array.push({
+                        collection: aardvark.collection,
+                        id: aardvark.id,
+                        type: aardvark.type,
+                        desc: aardvark.desc 
+                      });
+                    }
+                    else {
+                      window.arangoHelper.deleteAardvarkJob(aardvark.id);
+                    }
+                  }
+                });
+              }
+              else {
+                this.deleteAllAardvarkJobs(); 
+              }
+              callback(false, array);
+            }
+          }.bind(this);
+
+          this.getPendingJobs(callbackInner2);
+
+        }
+      }.bind(this);
+
+      this.getAardvarkJobs(callbackInner);
     }, 
 
     getRandomToken: function () {
@@ -437,44 +455,34 @@
 
     isSystemCollection: function (val) {
       return val.name.substr(0, 1) === '_';
-      // the below code is completely inappropriate as it will
-      // load the collection just for the check whether it
-      // is a system collection. as a consequence, the below
-      // code would load ALL collections when the web interface
-      // is called
-      /*
-         var returnVal = false;
-         $.ajax({
-type: "GET",
-url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
-contentType: "application/json",
-processData: false,
-async: false,
-success: function(data) {
-returnVal = data.isSystem;
-},
-error: function(data) {
-returnVal = false;
-}
-});
-return returnVal;
-*/
     },
 
     setDocumentStore : function (a) {
       this.arangoDocumentStore = a;
     },
 
-    collectionApiType: function (identifier, refresh) {
+    collectionApiType: function (identifier, refresh, toRun) {
       // set "refresh" to disable caching collection type
       if (refresh || this.CollectionTypes[identifier] === undefined) {
-        this.CollectionTypes[identifier] = this.arangoDocumentStore
-        .getCollectionInfo(identifier).type;
+        var callback = function(error, data, toRun) {
+          if (error) {
+            arangoHelper.arangoError("Error", "Could not detect collection type");
+          }
+          else {
+            this.CollectionTypes[identifier] = data.type;
+            if (this.CollectionTypes[identifier] === 3) {
+              toRun(false, "edge");
+            }
+            else {
+              toRun(false, "document");
+            }
+          }
+        }.bind(this);
+        this.arangoDocumentStore.getCollectionInfo(identifier, callback, toRun);
       }
-      if (this.CollectionTypes[identifier] === 3) {
-        return "edge";
+      else {
+        toRun(false, this.CollectionTypes[identifier]);
       }
-      return "document";
     },
 
     collectionType: function (val) {

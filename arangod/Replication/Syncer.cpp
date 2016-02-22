@@ -69,7 +69,6 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierId(0),
       _barrierUpdateTime(0),
       _barrierTtl(600) {
-
   if (configuration->_database.empty()) {
     // use name of current database
     _databaseName = std::string(vocbase->_name);
@@ -121,8 +120,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
 Syncer::~Syncer() {
   try {
     sendRemoveBarrier();
-  }
-  catch (...) {
+  } catch (...) {
   }
 
   // shutdown everything properly
@@ -147,7 +145,7 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
 
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
-  } 
+  }
   return "/_db/" + s->_databaseName + "/" + location;
 }
 
@@ -170,16 +168,16 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
   _barrierId = 0;
 
   std::string const url = BaseUrl + "/barrier";
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
+                           ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       HttpRequest::HTTP_REQUEST_POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " +
-               _masterInfo._endpoint + ": " +
-               _client->getErrorMessage();
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+               ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -191,10 +189,9 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " +
-               _masterInfo._endpoint + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
   } else {
     std::unique_ptr<TRI_json_t> json(
         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
@@ -209,7 +206,8 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
       } else {
         _barrierId = StringUtils::uint64(id);
         _barrierUpdateTime = TRI_microtime();
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier " << _barrierId;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier "
+                                              << _barrierId;
       }
     }
   }
@@ -234,7 +232,8 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
   }
 
   std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) + ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
+                           ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
@@ -267,7 +266,8 @@ int Syncer::sendRemoveBarrier() {
   }
 
   try {
-    std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+    std::string const url =
+        BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
@@ -518,7 +518,6 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
     return TRI_ERROR_NO_ERROR;
   }
 
-
   std::shared_ptr<VPackBuilder> builder =
       arangodb::basics::JsonHelper::toVelocyPack(json);
 
@@ -528,7 +527,8 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
   s.add("isSystem", VPackValue(true));
   s.close();
 
-  VPackBuilder merged = VPackCollection::merge(s.slice(), builder->slice(), true);
+  VPackBuilder merged =
+      VPackCollection::merge(s.slice(), builder->slice(), true);
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice());
 
@@ -710,9 +710,8 @@ int Syncer::getMasterState(std::string& errorMsg) {
   _client->_retryWaitTime = retryWaitTime;
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " +
-               _masterInfo._endpoint + ": " +
-               _client->getErrorMessage();
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+               ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -722,10 +721,9 @@ int Syncer::getMasterState(std::string& errorMsg) {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " +
-               _masterInfo._endpoint + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
+    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
   } else {
     std::unique_ptr<TRI_json_t> json(
         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
@@ -835,8 +833,8 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  if (major < 2 || major > 2 || (major == 2 && minor < 2)) {
-    // we can connect to 1.4, 2.0 and higher only
+  if (major != 3) {
+    // we can connect to 3.x onyl
     errorMsg = "got incompatible master version" + endpointString + ": '" +
                versionString + "'";
 
@@ -849,7 +847,11 @@ int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
   _masterInfo._lastLogTick = lastLogTick;
   _masterInfo._active = running;
 
-  LOG_TOPIC(INFO, Logger::REPLICATION) << "connected to master at " << _masterInfo._endpoint << ", id " << _masterInfo._serverId << ", version " << _masterInfo._majorVersion << "." << _masterInfo._minorVersion << ", last log tick " << _masterInfo._lastLogTick;
+  LOG_TOPIC(INFO, Logger::REPLICATION)
+      << "connected to master at " << _masterInfo._endpoint << ", id "
+      << _masterInfo._serverId << ", version " << _masterInfo._majorVersion
+      << "." << _masterInfo._minorVersion << ", last log tick "
+      << _masterInfo._lastLogTick;
 
   return TRI_ERROR_NO_ERROR;
 }

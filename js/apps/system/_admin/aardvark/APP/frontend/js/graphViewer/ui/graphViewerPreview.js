@@ -191,8 +191,8 @@ function GraphViewerPreview(container, viewerConfig) {
   * Execution start
   *******************************************************************************/
 
-  width = container.offsetWidth;
-  height = container.offsetHeight;
+  width = container.getBoundingClientRect().width;
+  height = container.getBoundingClientRect().height;
   adapterConfig = {
     type: "preview"
   };

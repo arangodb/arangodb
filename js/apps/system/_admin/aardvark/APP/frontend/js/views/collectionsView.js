@@ -24,42 +24,58 @@
     },
 
     checkLockedCollections: function() {
-
-        var self = this,
-        lockedCollections = window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index');
-
-        this.collection.each(function(model) {
-          model.set('locked', false);
-        });
-
-        _.each(lockedCollections, function(locked) {
-          var model = self.collection.findWhere({
-            id: locked.collection 
-          });
-          model.set('locked', true);
-          model.set('lockType', locked.type);
-          model.set('desc', locked.desc);
-        });
-
-        this.collection.each(function(model) {
-          
-          $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
-          $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
-          $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
-
-          if (model.get("locked") || model.get("status") === 'loading') {
-            $('#collection_' + model.get("name")).addClass('locked');
+        var callback = function(error, lockedCollections) {
+          var self = this;
+          if (error) {
+            arangoHelper.arangoError("Collections", "Could not check locked collections");
           }
           else {
-            $('#collection_' + model.get("name")).removeClass('locked');
-            $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
-            if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
-              $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
-              $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
-            }
-          }
-        });
+            this.collection.each(function(model) {
+              model.set('locked', false);
+            });
 
+            _.each(lockedCollections, function(locked) {
+              var model = self.collection.findWhere({
+                id: locked.collection 
+              });
+              model.set('locked', true);
+              model.set('lockType', locked.type);
+              model.set('desc', locked.desc);
+            });
+
+            this.collection.each(function(model) {
+              if (!model.get("locked")) {
+                $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+                $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+                $('#collection_' + model.get("name") + ' .corneredBadge').addClass(model.get("status"));
+              }
+
+              if (model.get("locked") || model.get("status") === 'loading') {
+                $('#collection_' + model.get("name")).addClass('locked');
+                if (model.get("locked")) {
+                  $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("desc"));
+                }
+                else {
+                  $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+                }
+              }
+              else {
+                $('#collection_' + model.get("name")).removeClass('locked');
+                $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+                if ($('#collection_' + model.get("name") + ' .corneredBadge').hasClass('inProgress')) {
+                  $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("status"));
+                  $('#collection_' + model.get("name") + ' .corneredBadge').removeClass('inProgress');
+                  $('#collection_' + model.get("name") + ' .corneredBadge').addClass('loaded');
+                }
+                if (model.get('status') === 'unloaded') {
+                  $('#collection_' + model.get("name") + ' .icon_arangodb_info').addClass('disabled');
+                }
+              }
+            });
+          }
+        }.bind(this);
+
+        window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
     },
 
     initialize: function() {
@@ -301,165 +317,205 @@
     },
 
     submitCreateCollection: function() {
-      var collName = $('#new-collection-name').val();
-      var collSize = $('#new-collection-size').val();
-      var collType = $('#new-collection-type').val();
-      var collSync = $('#new-collection-sync').val();
-      var shards = 1;
-      var shardBy = [];
-      if (window.isCoordinator()) {
-        shards = $('#new-collection-shards').val();
-        if (shards === "") {
-          shards = 1;
-        }
-        shards = parseInt(shards, 10);
-        if (shards < 1) {
-          arangoHelper.arangoError(
-            "Number of shards has to be an integer value greater or equal 1"
-          );
-          return 0;
-        }
-        shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
-        if (shardBy.length === 0) {
-          shardBy.push("_key");
-        }
-      }
-      //no new system collections via webinterface
-      //var isSystem = (collName.substr(0, 1) === '_');
-      if (collName.substr(0, 1) === '_') {
-        arangoHelper.arangoError('No "_" allowed as first character!');
-        return 0;
-      }
-      var isSystem = false;
-      var wfs = (collSync === "true");
-      if (collSize > 0) {
-        try {
-          collSize = JSON.parse(collSize) * 1024 * 1024;
-        }
-        catch (e) {
-          arangoHelper.arangoError('Please enter a valid number');
-          return 0;
-        }
-      }
-      if (collName === '') {
-        arangoHelper.arangoError('No collection name entered!');
-        return 0;
-      }
 
-      var returnobj = this.collection.newCollection(
-        collName, wfs, isSystem, collSize, collType, shards, shardBy
-      );
-      if (returnobj.status !== true) {
-        arangoHelper.arangoError("Collection error", returnobj.errorMessage);
-      }
-      this.updateCollectionsView();
-      window.modalView.hide();
+      var callbackCoord = function(error, isCoordinator) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not check coordinator state");
+        }
+        else {
+          var collName = $('#new-collection-name').val(),
+          collSize = $('#new-collection-size').val(),
+          collType = $('#new-collection-type').val(),
+          collSync = $('#new-collection-sync').val(),
+          shards = 1,
+          shardBy = [];
+
+          if (isCoordinator) {
+            shards = $('#new-collection-shards').val();
+
+            if (shards === "") {
+              shards = 1;
+            }
+            shards = parseInt(shards, 10);
+            if (shards < 1) {
+              arangoHelper.arangoError(
+                "Number of shards has to be an integer value greater or equal 1"
+              );
+              return 0;
+            }
+            shardBy = _.pluck($('#new-collection-shardBy').select2("data"), "text");
+            if (shardBy.length === 0) {
+              shardBy.push("_key");
+            }
+          }
+          if (collName.substr(0, 1) === '_') {
+            arangoHelper.arangoError('No "_" allowed as first character!');
+            return 0;
+          }
+          var isSystem = false;
+          var wfs = (collSync === "true");
+          if (collSize > 0) {
+            try {
+              collSize = JSON.parse(collSize) * 1024 * 1024;
+            }
+            catch (e) {
+              arangoHelper.arangoError('Please enter a valid number');
+              return 0;
+            }
+          }
+          if (collName === '') {
+            arangoHelper.arangoError('No collection name entered!');
+            return 0;
+          }
+          //no new system collections via webinterface
+          //var isSystem = (collName.substr(0, 1) === '_');
+          var callback = function(error, data) {
+            if (error) {
+              try {
+                data = JSON.parse(data.responseText);
+                arangoHelper.arangoError("Error", data.errorMessage);
+              }
+              catch (e) {
+                console.log(e);
+              }
+            }
+            else {
+              this.updateCollectionsView();
+            }
+            window.modalView.hide();
+
+          }.bind(this);
+
+          this.collection.newCollection({
+            collName: collName,
+            wfs: wfs,
+            isSystem: isSystem,
+            collSize: collSize,
+            collType: collType,
+            shards: shards,
+            shardBy: shardBy
+          }, callback);
+        }
+      }.bind(this);
+
+      window.isCoordinator(callbackCoord);
     },
 
     createNewCollectionModal: function() {
-      var buttons = [],
-        tableContent = [],
-        advanced = {},
-        advancedTableContent = [];
 
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "new-collection-name",
-          "Name",
-          "",
-          false,
-          "",
-          true,
-          [
-            {
-              rule: Joi.string().regex(/^[a-zA-Z]/),
-              msg: "Collection name must always start with a letter."
-            },
-            {
-              rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-              msg: 'Only symbols, "_" and "-" are allowed.'
-            },
-            {
-              rule: Joi.string().required(),
-              msg: "No collection name given."
-            }
-          ]
-        )
-      );
-      tableContent.push(
-        window.modalView.createSelectEntry(
-          "new-collection-type",
-          "Type",
-          "",
-          "The type of the collection to create.",
-          [{value: 2, label: "Document"}, {value: 3, label: "Edge"}]
-        )
-      );
-      if (window.isCoordinator()) {
-        tableContent.push(
-          window.modalView.createTextEntry(
-            "new-collection-shards",
-            "Shards",
-            "",
-            "The number of shards to create. You cannot change this afterwards. "
-              + "Recommended: DBServers squared",
-            "",
-            true
-          )
-        );
-        tableContent.push(
-          window.modalView.createSelect2Entry(
-            "new-collection-shardBy",
-            "shardBy",
-            "",
-            "The keys used to distribute documents on shards. "
-              + "Type the key and press return to add it.",
-            "_key",
-            false
-          )
-        );
-      }
-      buttons.push(
-        window.modalView.createSuccessButton(
-          "Save",
-          this.submitCreateCollection.bind(this)
-        )
-      );
-      advancedTableContent.push(
-        window.modalView.createTextEntry(
-          "new-collection-size",
-          "Journal size",
-          "",
-          "The maximal size of a journal or datafile (in MB). Must be at least 1.",
-          "",
-          false,
-          [
-            {
-              rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-              msg: "Must be a number."
-            }
-          ]
-      )
-      );
-      advancedTableContent.push(
-        window.modalView.createSelectEntry(
-          "new-collection-sync",
-          "Sync",
-          "",
-          "Synchronize to disk before returning from a create or update of a document.",
-          [{value: false, label: "No"}, {value: true, label: "Yes"}]
-        )
-      );
-      advanced.header = "Advanced";
-      advanced.content = advancedTableContent;
-      window.modalView.show(
-        "modalTable.ejs",
-        "New Collection",
-        buttons,
-        tableContent,
-        advanced
-      );
+      var callbackCoord2 = function(error, isCoordinator) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not check coordinator state");
+        }
+        else {
+          var buttons = [],
+            tableContent = [],
+            advanced = {},
+            advancedTableContent = [];
+
+          tableContent.push(
+            window.modalView.createTextEntry(
+              "new-collection-name",
+              "Name",
+              "",
+              false,
+              "",
+              true,
+              [
+                {
+                  rule: Joi.string().regex(/^[a-zA-Z]/),
+                  msg: "Collection name must always start with a letter."
+                },
+                {
+                  rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                  msg: 'Only symbols, "_" and "-" are allowed.'
+                },
+                {
+                  rule: Joi.string().required(),
+                  msg: "No collection name given."
+                }
+              ]
+            )
+          );
+          tableContent.push(
+            window.modalView.createSelectEntry(
+              "new-collection-type",
+              "Type",
+              "",
+              "The type of the collection to create.",
+              [{value: 2, label: "Document"}, {value: 3, label: "Edge"}]
+            )
+          );
+
+          if (isCoordinator) {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                "new-collection-shards",
+                "Shards",
+                "",
+                "The number of shards to create. You cannot change this afterwards. "
+                + "Recommended: DBServers squared",
+                "",
+                true
+              )
+            );
+            tableContent.push(
+              window.modalView.createSelect2Entry(
+                "new-collection-shardBy",
+                "shardBy",
+                "",
+                "The keys used to distribute documents on shards. "
+                + "Type the key and press return to add it.",
+                "_key",
+                false
+              )
+            );
+          }
+
+          buttons.push(
+            window.modalView.createSuccessButton(
+              "Save",
+              this.submitCreateCollection.bind(this)
+            )
+          );
+          advancedTableContent.push(
+            window.modalView.createTextEntry(
+              "new-collection-size",
+              "Journal size",
+              "",
+              "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+              "",
+              false,
+              [
+                {
+                  rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                  msg: "Must be a number."
+                }
+              ]
+            )
+          );
+          advancedTableContent.push(
+            window.modalView.createSelectEntry(
+              "new-collection-sync",
+              "Sync",
+              "",
+              "Synchronize to disk before returning from a create or update of a document.",
+              [{value: false, label: "No"}, {value: true, label: "Yes"}]
+            )
+          );
+          advanced.header = "Advanced";
+          advanced.content = advancedTableContent;
+          window.modalView.show(
+            "modalTable.ejs",
+            "New Collection",
+            buttons,
+            tableContent,
+            advanced
+          );
+        }
+      }.bind(this);
+
+      window.isCoordinator(callbackCoord2);
     }
-
   });
 }());

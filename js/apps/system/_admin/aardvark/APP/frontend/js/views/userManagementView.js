@@ -35,9 +35,22 @@
     dropdownVisible: false,
 
     initialize: function() {
+      var self = this,
+      callback = function(error, user) {
+        if (error || user === null) {
+          arangoHelper.arangoError("User", "Could not fetch user data");
+        }
+        else {
+          this.currentUser = this.collection.findWhere({user: user});
+        }
+      }.bind(this);
+
       //fetch collection defined in router
-      this.collection.fetch({async:false});
-      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
+      this.collection.fetch({
+        success: function() {
+          self.collection.whoAmI(callback);
+        }
+      });
     },
 
     checkBoxes: function (e) {
@@ -204,6 +217,10 @@
 
     editUser : function(e) {
 
+      if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
+        return;
+      }
+
       if ($(e.currentTarget).hasClass('tile')) {
         e.currentTarget = $(e.currentTarget).find('img');
       }
@@ -316,10 +333,11 @@
     },
 
     evaluateUserName : function(str, substr) {
-      var index = str.lastIndexOf(substr);
-      return str.substring(0, index);
+      if (str) {
+        var index = str.lastIndexOf(substr);
+        return str.substring(0, index);
+      }
     },
-
 
     editUserPassword : function () {
       window.modalView.hide();
@@ -339,49 +357,54 @@
       $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
       $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
 
-
       //check
       var hasError = false;
-      //Check old password
-      if (!this.validateCurrentPassword(oldPasswd)) {
-        $('#oldCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check confirmation
-      if (newPasswd !== confirmPasswd) {
-        $('#confirmCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check new password
-      if (!this.validatePassword(newPasswd)) {
-        $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
 
-      if (hasError) {
-        return;
-      }
-      this.currentUser.setPassword(newPasswd);
-      window.modalView.hide();
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not verify old password");
+        }
+        else {
+          if (data) {
+            //check confirmation
+            if (newPasswd !== confirmPasswd) {
+              arangoHelper.arangoError("User", "New passwords do not match");
+              hasError = true;
+            }
+            //check new password
+            /*if (!this.validatePassword(newPasswd)) {
+              $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
+              hasError = true;
+            }*/
+
+            if (!hasError) {
+              this.currentUser.setPassword(newPasswd);
+              arangoHelper.arangoNotification("User", "Password changed");
+              window.modalView.hide();
+            }
+          }
+        }
+      }.bind(this);
+      this.currentUser.checkPassword(oldPasswd, callback);
     },
-
-    validateCurrentPassword : function (pwd) {
-      return this.currentUser.checkPassword(pwd);
-    },
-
 
     submitEditCurrentUserProfile: function() {
       var name    = $('#editCurrentName').val();
       var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
 
-      /*      if (!this.validateName(name)) {
-       $('#editName').closest("th").css("backgroundColor", "red");
-       return;
-       }*/
 
-      this.currentUser.setExtras(name, img);
-      this.updateUserProfile();
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not edit user settings");
+        }
+        else {
+          arangoHelper.arangoNotification("User", "Changes confirmed.");
+          this.updateUserProfile();
+        }
+      }.bind(this);
+
+      this.currentUser.setExtras(name, img, callback);
       window.modalView.hide();
     },
 

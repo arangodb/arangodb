@@ -1426,44 +1426,44 @@ int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
 
   bool ok = false;
   {
-    v8::TryCatch tryCatch;
     v8::HandleScope scope(isolate);
+    v8::TryCatch tryCatch;
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
+    {
+      v8::Context::Scope contextScope(localContext);
+      // set-up unit tests array
+      v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
 
-    v8::Context::Scope contextScope(localContext);
-    // set-up unit tests array
-    v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
-
-    for (size_t i = 0; i < _unitTests.size(); ++i) {
-      sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
-    }
-
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
-                                sysTestFiles);
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
-                                v8::True(isolate));
-
-    v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
-
-    // run tests
-    auto input = TRI_V8_ASCII_STRING(
-        "require(\"@arangodb/testrunner\").runCommandLineTests();");
-    TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
-
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-      } else {
-        // will stop, so need for v8g->_canceled = true;
-        TRI_ASSERT(!ok);
+      for (size_t i = 0; i < _unitTests.size(); ++i) {
+        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
       }
-    } else {
-      ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-          TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
-    }
 
+      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
+                                  sysTestFiles);
+      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
+                                  v8::True(isolate));
+
+      v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
+
+      // run tests
+      auto input = TRI_V8_ASCII_STRING(
+          "require(\"@arangodb/testrunner\").runCommandLineTests();");
+      TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
+
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
+        } else {
+          // will stop, so need for v8g->_canceled = true;
+          TRI_ASSERT(!ok);
+        }
+      } else {
+        ok = TRI_ObjectToBoolean(localContext->Global()->Get(
+            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
+      }
+    }
     localContext->Exit();
   }
 
@@ -1488,7 +1488,6 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
     {
-      v8::TryCatch tryCatch;
       v8::Context::Scope contextScope(localContext);
       for (size_t i = 0; i < _scriptFile.size(); ++i) {
         bool r =
@@ -1499,6 +1498,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
         }
       }
 
+      v8::TryCatch tryCatch;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 

@@ -300,9 +300,15 @@
       <%= model.get('desc') %>
     </div>
   <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
-    <div class="corneredBadge <%= model.get('status') %>">
-      <%= model.get('status') %>
-    </div>
+    <% if (!model.get('locked')) { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } else { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('status') %>
+      </div>
+    <% } %>
   <% } %>
   </span>
 </div>
@@ -1754,9 +1760,8 @@ if (list.length > 0) {
 
 <script id="modalCollectionInfo.ejs" type="text/template">
 <%
-    var figuresData = content.getFigures();
-    var revision    = content.getRevision();
-    var index       = content.getIndex();
+    var figuresData = content.figures;
+    var revision    = content.revision;
 %>
 
     <ul id="infoTab" class="nav nav-tabs">
@@ -1804,7 +1809,7 @@ if (list.length > 0) {
             <th class="collectionInfoTh2">ID:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-id" class="modal-text">
-                <%=content.get("id")%>
+                <%=content.model.get("id")%>
               </div>
             <th>
           </tr>
@@ -1821,14 +1826,14 @@ if (list.length > 0) {
           <tr>
             <th class="collectionInfoTh2">Type:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=content.get("type")%></div>
+              <div class="modal-text"><%=content.model.get("type")%></div>
             </th>
           </tr>
 
           <tr>
             <th class="collectionInfoTh2">Status:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=content.get("status")%></div>
+              <div class="modal-text"><%=content.model.get("status")%></div>
             </th>
           </tr>
           
@@ -2404,7 +2409,7 @@ if (list.length > 0) {
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
-    <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
+    <li class="graph-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Services</a>
     </li>
@@ -2520,10 +2525,7 @@ if (list.length > 0) {
 <script id="progressBase.ejs" type="text/template">
   <div class="progress-view">
     <div class="progress-content">
-      <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
-      <div class="pong-loader">
-        Loading…
-      </div>
+      <div class="pong-spinner"><i /></div>
     </div>
     <div class="progress-message">
       <div class="progress-text"></div>
@@ -3000,9 +3002,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1455877794814"></script>
-<script src="libs.js?version=1455877794814"></script>
-<script src="app.js?version=1455877794814"></script>
+<script src="sharedLibs.js?version=1455929599138"></script>
+<script src="libs.js?version=1455929599138"></script>
+<script src="app.js?version=1455929599138"></script>
 
   </body>
 </html>
