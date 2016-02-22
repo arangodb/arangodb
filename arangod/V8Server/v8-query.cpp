@@ -1527,90 +1527,6 @@ static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects the n first documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_FirstQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("FIRST(<count>)");
-  }
-
-  int64_t count = 1;
-  bool returnList = false;
-
-  // if argument is supplied, we'll return a list - otherwise we simply return
-  // the first doc
-  if (args.Length() == 1) {
-    if (!args[0]->IsUndefined()) {
-      count = TRI_ObjectToInt64(args[0]);
-      returnList = true;
-    }
-  }
-
-  if (count < 1) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <count>");
-  }
-
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(),
-                                           TRI_GetVocBaseColType());
-
-  if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  std::vector<TRI_doc_mptr_copy_t> documents;
-  res = trx.readOrdered(trx.trxCollection(), documents, 0, count);
-  trx.finish(res);
-
-  size_t const n = documents.size();
-
-  if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
-
-    for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc =
-          WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
-
-      if (doc.IsEmpty()) {
-        // error
-        TRI_V8_THROW_EXCEPTION_MEMORY();
-      }
-
-      result->Set(static_cast<uint32_t>(i), doc);
-    }
-
-    TRI_V8_RETURN(result);
-  } else {
-    if (n == 0) {
-      TRI_V8_RETURN_NULL();
-    }
-
-    v8::Handle<v8::Value> result =
-        WRAP_SHAPED_JSON(trx, col->_cid, documents[0].getDataPtr());
-
-    if (result.IsEmpty()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    TRI_V8_RETURN(result);
-  }
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
 ///
 /// the caller must ensure all relevant locks are acquired and freed
@@ -1752,91 +1668,6 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // outside a write transaction
   // .............................................................................
 
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects the n last documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_LastQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("LAST(<count>)");
-  }
-
-  int64_t count = 1;
-  bool returnList = false;
-
-  // if argument is supplied, we'll return a list - otherwise we simply return
-  // the last doc
-  if (args.Length() == 1) {
-    if (!args[0]->IsUndefined()) {
-      count = TRI_ObjectToInt64(args[0]);
-      returnList = true;
-    }
-  }
-
-  if (count < 1) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <count>");
-  }
-
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(
-      args.Holder(), TRI_GetVocBaseColType());
-
-  if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  std::vector<TRI_doc_mptr_copy_t> documents;
-  res = trx.readOrdered(trx.trxCollection(), documents, -1, count);
-  trx.finish(res);
-
-  uint64_t const n = static_cast<uint64_t>(documents.size());
-
-  if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
-
-    for (uint64_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc =
-          WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
-
-      if (doc.IsEmpty()) {
-        // error
-        TRI_V8_THROW_EXCEPTION_MEMORY();
-      }
-
-      result->Set(static_cast<uint32_t>(i), doc);
-    }
-
-    TRI_V8_RETURN(result);
-  } else {
-    if (n == 0) {
-      TRI_V8_RETURN_NULL();
-    }
-
-    v8::Handle<v8::Value> result =
-        WRAP_SHAPED_JSON(trx, col->_cid, documents[0].getDataPtr());
-
-    if (result.IsEmpty()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    TRI_V8_RETURN(result);
-  }
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2209,14 +2040,10 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING("checksum"), JS_ChecksumCollection);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("EDGES"),
                        JS_EdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("FIRST"),
-                       JS_FirstQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
                        TRI_V8_ASCII_STRING("FULLTEXT"), JS_FulltextQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("INEDGES"),
                        JS_InEdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("LAST"),
-                       JS_LastQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NEAR"),
                        JS_NearQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
