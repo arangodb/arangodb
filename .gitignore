@@ -18,28 +18,12 @@ js-*.h
 *.patch
 *.lnk
 
-.libev-build-64
-.v8-build-64
 .idea
-.zlib-build-64
-.libev-build-32
-.v8-build-32
-.zlib-build-32
 .setup-mr-directories
 .setup-js-directories
 .file-list-js
 
-3rdParty/libev/ARCH.x64/
-3rdParty/libev/ARCH.ia32/
-3rdParty/zlib-1.2.7/
-3rdParty/libev/.libs/
-3rdParty/libev/config.h
-3rdParty/libev/ev.lo
-3rdParty/libev/event.lo
-3rdParty/libev/libev.la
-3rdParty/libev/libtool
-3rdParty/libev/stamp-h1
-3rdParty/libev/BUILD/
+testresult.json
 
 build/
 Build64/
@@ -50,23 +34,6 @@ Release64/
 Release32/
 WindowsLibraries
 
-Makefile
-Makefile.in
-aclocal.m4
-autom4te.cache
-build.h
-config/*
-config.log
-config.status
-config/compile
-config/config.guess
-config/config.h
-config/config.sub
-config/install-sh
-config/depcomp
-config/missing
-config/stamp-h1
-configure
 core
 TAGS
 
