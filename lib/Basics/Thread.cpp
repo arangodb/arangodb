@@ -182,6 +182,12 @@ void Thread::beginShutdown() {
 void Thread::shutdown(bool waitForStopped) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
+  ThreadState state = _state.load();
+
+  while (state == ThreadState::CREATED) {
+    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+  }
+
   if (_state.load() == ThreadState::STARTED) {
     beginShutdown();
 
