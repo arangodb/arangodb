@@ -49,11 +49,17 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 ## V8 and ICU
 ################################################################################
 
-set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
+set(V8_VERSION
+  "4.3.61"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+  FORCE
+)
+
+set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
 # doesn't work?
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
 #set(V8_TARGET_DIR "out")
-
 
 if ("${HOST_BITS}" STREQUAL "64")
   set(TARGET_ARCH "x64")
