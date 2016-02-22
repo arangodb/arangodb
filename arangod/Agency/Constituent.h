@@ -86,6 +86,11 @@ public:
    */
   void run();
 
+  /**
+   * @brief Who is leading
+   */
+  id_t leaderID () const;
+
 private:
   
   /**

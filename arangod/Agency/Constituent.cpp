@@ -84,6 +84,10 @@ bool Constituent::running () const {
   return _role == CANDIDATE;
 }
 
+id_t Constituent::leaderID ()  const {
+  return _leader_id;
+}
+
 size_t Constituent::notifyAll () {
   // Last process notifies everyone 
   std::string body;
@@ -199,13 +203,12 @@ void Constituent::run() {
   while (true) { 
     if (_role == FOLLOWER || _role == APPRENTICE) { 
       _cast = false;                           // New round set not cast vote
-      std::this_thread::sleep_for(sleepFor());
+      std::this_thread::sleep_for(sleepFor()); // Sleep for random time
       if (!_cast)
-        candidate();
+        candidate();                           // Next round, we are running
     } else {
-      callElection();
+      callElection();                          // Run for office
     }
-    
   }
 };
 

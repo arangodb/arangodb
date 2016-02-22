@@ -25,12 +25,13 @@
 
 using namespace arangodb::velocypack;
 namespace arangodb {
-  namespace consensus {
+namespace consensus {
 
 Agent::Agent () {}
 
 Agent::Agent (config_t const& config) : _config(config) {
   _constituent.configure(this);
+  _log.configure(this);
 }
 
 Agent::~Agent () {}
@@ -52,11 +53,15 @@ Config<double> const& Agent::config () const {
 }
 
 void Agent::print (arangodb::LoggerStream& logger) const {
-  logger << _config;
+  //logger << _config;
 }
 
 void Agent::report(status_t status) {
   _status = status;
+}
+
+id_t Agent::leaderID () const {
+  return _constituent.leaderID();
 }
 
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
@@ -64,12 +69,11 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
   return l;
 }
 
-
 template<> Log::ret_t Agent::log (std::shared_ptr<Builder> const& builder) {
   if (_constituent.leading())
     return _log.log(builder);
   else
-    return redirect;
+    return _constituent.leaderID();
 }
 
-  }}
+}}

@@ -89,6 +89,11 @@ namespace consensus {
      * @brief 
      */
     void report (status_t);
+
+    /**
+     * @brief Leader ID
+     */
+    id_t leaderID () const;
     
   private:
     Constituent _constituent; /**< @brief Leader election delegate */

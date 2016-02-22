@@ -24,7 +24,7 @@
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
-#include "Basics/Logger.h"
+#include <Basics/Logger.h>
 
 #include <chrono>
 #include <string>
@@ -60,13 +60,13 @@ namespace consensus {
     Config () : min_ping(.15), max_ping(.3) {};
     Config (uint32_t i, T min_p, T max_p, std::vector<std::string>& end_p) :
       id(i), min_ping(min_p), max_ping(max_p), end_points(end_p) {}
-    void print (arangodb::LoggerStream& l) const {
+/*    void print (arangodb::LoggerStream& l) const {
       l << "Config: "
         << "min_ping(" << min_ping << ")"
         << "max_ping(" << max_ping << ")"
         << "size(" << end_points.size() << ")"
         << end_points;
-    }
+        }*/
     inline size_t size() const {return end_points.size();}
   };
   
@@ -81,13 +81,12 @@ namespace consensus {
   typedef std::chrono::duration<double> duration_t;  // Duration type
 
   
-}
-  
-  template<typename T> LoggerStream& operator<< (LoggerStream& l,
-        arangodb::consensus::Config<T> const& c) {
-    
-  }
+  }}
 
+arangodb::LoggerStream& operator<< (
+  arangodb::LoggerStream& l, arangodb::consensus::config_t const& c) {
+  
 }
+    
 #endif // __ARANGODB_CONSENSUS_AGENT__
 

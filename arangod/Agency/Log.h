@@ -21,9 +21,20 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-#include <velocypack/vpack.h>
+#ifndef __ARANGODB_CONSENSUS_LOG__
+#define __ARANGODB_CONSENSUS_LOG__
+
+
 #include "AgencyCommon.h"
+#include "State.h"
+
+#include <Basics/Thread.h>
+#include <Cluster/ClusterComm.h>
+#include <velocypack/vpack.h>
+
+#include <cstdint>
+#include <functional>
+
 
 //using namespace arangodb::velocypack;
 
@@ -32,30 +43,50 @@ class Slice {};
 namespace arangodb {
 namespace consensus {
 
+class Agent;
+
 /**
- * @brief Log repilca
+ * @brief Log replica
  */
-class Log {
+  class Log : public arangodb::Thread, public arangodb::ClusterCommCallback,
+              std::enable_shared_from_this<Log> {
   
 public:
   typedef uint64_t index_t;
-  enum ret_t {OK, REDIRECT};
+  typedef int32_t ret_t;
 
   /**
    * @brief Default constructor
    */
-  Log ();
+    Log ();
 
   /**
    * @brief Default Destructor
    */
   virtual ~Log();
 
+  void configure(Agent* agent);
+
   /**
    * @brief Log
    */
   template<typename T> ret_t log (T const&);
-  
+
+  /**
+   * @brief Call back for log results from slaves
+   */
+  virtual bool operator()(ClusterCommResult*);
+    
+  /**
+   * @brief My daily business
+   */
+  void run();
+
+  /**
+   * @brief 
+   */
+  void respHandler (index_t);
+
 private:
 
   /**
@@ -84,9 +115,15 @@ private:
   template<typename T> bool checkTransactionPrecondition (
     T const& state, T const& pre);
   
-  index_t _commit_id;      /**< @brief: index of highest log entry known
-                              to be committed (initialized to 0, increases monotonically) */
-  index_t _last_applied;   /**< @brief: index of highest log entry applied to state machine  */
+  index_t _commit_id;    /**< @brief  index of highest log entry known
+                                      to be committed (initialized to 0, increases monotonically) */
+  index_t _last_applied; /**< @brief  index of highest log entry applied to state machine  */
+  State   _state;        /**< @brief  State machine */
+
+  Agent*  _agent;        /**< @brief  My boss */
+  
 };
   
 }}
+
+#endif

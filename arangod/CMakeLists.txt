@@ -64,6 +64,7 @@ add_executable(
     Agency/ApplicationAgency.cpp
     Agency/Constituent.cpp
     Agency/Log.cpp
+    Agency/State.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/Aggregator.cpp

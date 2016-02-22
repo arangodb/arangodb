@@ -91,10 +91,9 @@ HttpHandler::status_t RestAgencyHandler::execute() {
         }
 
     	} else if (_request->suffix()[0].compare("log") == 0) { // log replication
-    	  _agent->log(_request->toVelocyPack(&opts));
-    	} /*else if (_request->suffix()[0].compare("configure") == 0) { // cluster conf
-    	  _agent->configure(_request->toVelocyPack(&opts));
-    	}  */else {
+    	  if (_agent->log(_request->toVelocyPack(&opts))>0);
+          generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+    	} else {
     	  generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
     	  return status_t(HANDLER_DONE);
     	}
