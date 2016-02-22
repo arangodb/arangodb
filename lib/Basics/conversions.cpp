@@ -162,67 +162,6 @@ uint32_t TRI_UInt32String(char const* str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int64 from string
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_Int64String(char const* str) {
-  int64_t result;
-  char* endptr;
-
-#if defined(TRI_HAVE_STRTOLL_R)
-  struct reent buffer;
-#elif defined(TRI_HAVE__STRTOLL_R)
-  struct reent buffer;
-#endif
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
-#if defined(TRI_HAVE_STRTOLL_R)
-  result = strtoll_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE__STRTOLL_R)
-  result = _strtoll_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOI64)
-  result = _strtoi64(str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOLL)
-  result = strtoll(str, &endptr, 10);
-#else
-#error cannot convert string to int64
-#endif
-
-  while (isspace(*endptr)) {
-    ++endptr;
-  }
-
-  if (*endptr != '\0') {
-    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE && (result == INT64_MIN || result == INT64_MAX)) {
-    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int64 from string with given length
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_Int64String2(char const* str, size_t length) {
-  char tmp[1024];
-
-  if (str[length] != '\0') {
-    if (length >= sizeof(tmp)) {
-      length = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, str, length);
-    tmp[length] = '\0';
-    str = tmp;
-  }
-
-  return TRI_Int64String(str);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to uint64 from string
 ////////////////////////////////////////////////////////////////////////////////
 

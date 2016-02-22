@@ -40,12 +40,7 @@ SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
       _condition(),
       _waiting(0),
       _syncInterval(syncInterval),
-      _logfileCache({0, -1}) {
-}
-
-SynchronizerThread::~SynchronizerThread() {
-  shutdown(true);
-}
+      _logfileCache({0, -1}) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
@@ -101,7 +96,8 @@ void SynchronizerThread::run() {
         }
       } catch (arangodb::basics::Exception const& ex) {
         int res = ex.code();
-        LOG(ERR) << "got unexpected error in synchronizerThread: " << TRI_errno_string(res);
+        LOG(ERR) << "got unexpected error in synchronizerThread: "
+                 << TRI_errno_string(res);
       } catch (...) {
         LOG(ERR) << "got unspecific error in synchronizerThread";
       }
@@ -157,7 +153,9 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
-  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - " << (region.mem + region.size) << ", length: " << region.size << ", wfs: " << (region.waitForSync ? "true" : "false");
+  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - "
+             << (region.mem + region.size) << ", length: " << region.size
+             << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {
     LOG(ERR) << "unable to sync wal logfile region";

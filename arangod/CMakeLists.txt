@@ -61,26 +61,31 @@ if (USE_MAINTAINER_MODE)
   add_custom_command(
     OUTPUT
       ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
       ${FLEX_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.ll
+      Aql/tokens.cpp
+      Aql/tokens.ll
     MAIN_DEPENDENCY
       ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.ll
+    VERBATIM
   )
 
   add_custom_command(
     OUTPUT
       ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/position.h
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
       ${BISON_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.y
+      Aql/grammar.cpp
+      Aql/grammar.y
     MAIN_DEPENDENCY
       ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.y
+    VERBATIM
   )
 endif ()
 

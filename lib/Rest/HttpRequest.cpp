@@ -384,7 +384,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = TRI_Int64String(value);
+    _contentLength = StringUtils::int64(value);
   } else if (keyLength == 6 &&
              memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value);

@@ -452,7 +452,7 @@ int ArangoServer::start() {
 
     if (!_pidFile.empty()) {
       CheckPidFile(_pidFile);
-      WritePidFile(_pidFile, TRI_CurrentProcessId());
+      WritePidFile(_pidFile, Thread::currentProcessId());
     }
 
     int res = startupServer();
@@ -610,7 +610,7 @@ int ArangoServer::startupSupervisor() {
         LOG(DEBUG) << "supervisor mode: within child";
 
         // write the pid file
-        WritePidFile(_pidFile, TRI_CurrentProcessId());
+        WritePidFile(_pidFile, Thread::currentProcessId());
 
 // force child to stop if supervisor dies
 #ifdef TRI_HAVE_PRCTL
