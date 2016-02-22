@@ -137,4 +137,16 @@ typedef struct TRI_document_edge_s {
   TRI_voc_key_t _toKey;
 } TRI_document_edge_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 
+/// if offset is non-zero, then it is an offset into the VelocyPack data in
+/// the data or WAL file. If offset is 0, then data contains the actual data
+/// in place.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_vpack_sub_t {
+  uint32_t offset;
+  uint8_t data[8];
+};
+
 #endif
