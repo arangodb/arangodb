@@ -33,7 +33,7 @@ rm -rf cluster
 mkdir cluster
 cd cluster
 echo Starting agency...
-../build/bin/etcd-arango > /dev/null 2>&1 &
+../build/bin/etcd-arango --data-dir cluster/agency > /dev/null 2>&1 &
 cd ..
 sleep 1
 
