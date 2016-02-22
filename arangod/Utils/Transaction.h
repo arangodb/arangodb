@@ -453,6 +453,14 @@ class Transaction {
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief fetches all documents in a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult all(std::string const& collectionName,
+                      uint64_t skip, uint64_t limit,
+                      OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents in a collection
   //////////////////////////////////////////////////////////////////////////////
 
@@ -464,6 +472,21 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult count(std::string const& collectionName);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for OperationCursor objects
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationCursor indexScan(std::string const& collectionName,
+                            CursorType cursorType,
+                            std::string const& indexId,
+                            std::shared_ptr<std::vector<VPackSlice>> search,
+                            uint64_t skip,
+                            uint64_t limit,
+                            uint64_t batchSize,
+                            bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a single document, using shaped json
@@ -687,19 +710,6 @@ class Transaction {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief factory for OperationCursor objects
-  //////////////////////////////////////////////////////////////////////////////
-
-  OperationCursor indexScan(std::string const& collection,
-                            CursorType cursorType,
-                            std::string const& indexId,
-                            std::shared_ptr<std::vector<VPackSlice>> search,
-                            uint64_t skip,
-                            uint64_t limit,
-                            uint64_t batchSize,
-                            bool reverse);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
@@ -779,6 +789,14 @@ class Transaction {
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const& value,
                               OperationOptions& options);
+  
+  OperationResult allCoordinator(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit,
+                                 OperationOptions& options);
+  
+  OperationResult allLocal(std::string const& collectionName,
+                           uint64_t skip, uint64_t limit,
+                           OperationOptions& options);
   
   OperationResult truncateCoordinator(std::string const& collectionName,
                                       OperationOptions& options);
