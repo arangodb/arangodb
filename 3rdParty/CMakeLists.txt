@@ -77,6 +77,7 @@ endif()
 
 
 list(APPEND V8_GYP_ARGS ${V8_DIR}/build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
+set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
   
 if(WIN32)
@@ -89,6 +90,10 @@ if(WIN32)
 else()
   # -Dwerror='' breaks shit... rather...   -Dwerror= 
   list(APPEND V8_GYP_ARGS -Ibuild/standalone.gypi --depth=. -Dstandalone_static_library=1  -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0-Dv8_no_strict_aliasing=1)
+
+  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
+    list(APPEND V8_COMPILE_ARGS LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
+  endif ()
 endif()
 
 
@@ -111,15 +116,8 @@ set (V8_BIN_DIR ${V8_BIN_DIR} PARENT_SCOPE)
 
 
 include(ExternalProject)
-set (V8_BUILD_COMMAND $(MAKE) -f Makefile-v8 strictaliasing=off
-  snapshot=off werror=no "${V8_TARGET_ARCH}" CC="${CMAKE_C_COMPILER}"
-  CXX="${CMAKE_CXX_COMPILER}"
-  CXXFLAGS=${CMAKE_CXX_FLAGS})
-if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
-endif ()
 
-set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
+
 
 #set(RUN_V8_GYP "PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE};\ ${PYTHON_EXECUTABLE}")
 set(RUN_V8_GYP "${PYTHON_EXECUTABLE}")
@@ -136,7 +134,7 @@ if (NOT USE_PRECOMPILED_V8)
     BUILD_IN_SOURCE TRUE
     SOURCE_DIR "${V8_DIR}"
     CONFIGURE_COMMAND ${RUN_V8_GYP} ${V8_GYP_ARGS} --format make
-    BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++
+    BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS} 
     INSTALL_COMMAND "")
 endif ()
 
