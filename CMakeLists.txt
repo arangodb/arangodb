@@ -633,6 +633,8 @@ include_directories(${LIBEV_INCLUDE_DIR})
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
+set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
+
 ################################################################################
 ## ZLIB
 ################################################################################
@@ -640,6 +642,9 @@ add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 include_directories(${ZLIB_INCLUDE_DIR})
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories(${zlib_BINARY_DIR})
+set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
