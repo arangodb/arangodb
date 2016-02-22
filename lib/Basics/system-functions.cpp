@@ -67,7 +67,7 @@ int gettimeofday(struct timeval* tv, void* tz) {
 /// @brief gets a line
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRI_HAVE_GETLINE
+#if !defined(TRI_HAVE_GETLINE)
 
 static int const line_size = 256;
 

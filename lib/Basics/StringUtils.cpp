@@ -1694,59 +1694,22 @@ bool boolean(std::string const& str) {
 }
 
 int64_t int64(std::string const& str) {
-#ifdef TRI_HAVE_STRTOLL_R
-  struct reent buffer;
-  return strtoll_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOLL_R
-  struct reent buffer;
-  return _strtoll_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE_STRTOLL
-  return strtoll(str.c_str(), 0, 10);
-#else
   try {
-    return stoll(str, 0, 10);
+    return std::stoll(str, 0, 10);
   } catch (...) {
     return 0;
   }
-#endif
-#endif
-#endif
 }
 
-int64_t int64(char const* value, size_t size) {
-  char tmp[22];
+int64_t int64_check(std::string const& str) {
+  size_t n;
+  int64_t value = std::stoll(str, &n, 10);
 
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
+  if (n < str.size()) {
+    throw std::invalid_argument("cannot convert '" + str + "' to int64");
   }
 
-#ifdef TRI_HAVE_STRTOLL_R
-  struct reent buffer;
-  return strtoll_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOLL_R
-  struct reent buffer;
-  return _strtoll_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE_STRTOLL
-  return strtoll(value, 0, 10);
-#else
-  try {
-    return stoll(std::string(value, size), 0, 10);
-  } catch (...) {
-    return 0;
-  }
-#endif
-#endif
-#endif
+  return value;
 }
 
 uint64_t uint64(std::string const& str) {

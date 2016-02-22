@@ -30,7 +30,10 @@
 #include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a double
@@ -515,7 +518,7 @@ static int ParseInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_int64_t* desc = static_cast<po_int64_t*>(value);
-  int64_t tmp = TRI_Int64String(userarg);
+  int64_t tmp = StringUtils::int64(userarg);
 
   int res = TRI_errno();
 

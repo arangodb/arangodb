@@ -47,7 +47,6 @@ class AllocatorThread : public Thread {
 
  public:
   explicit AllocatorThread(LogfileManager*);
-  ~AllocatorThread();
 
  public:
   void beginShutdown() override final;

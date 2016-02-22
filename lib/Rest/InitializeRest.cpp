@@ -43,8 +43,10 @@
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
 #include "Rest/Version.h"
+
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -83,7 +85,7 @@ void setter(CRYPTO_THREADID* id, unsigned long val) {
 #endif
 
 static void arango_threadid_func(CRYPTO_THREADID* id) {
-  auto self = TRI_CurrentThreadId();
+  auto self = Thread::currentThreadId();
 
   setter<decltype(self)>(id, self);
 }

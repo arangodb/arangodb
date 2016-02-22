@@ -17,25 +17,31 @@ if (USE_MAINTAINER_MODE)
   add_custom_command(
     OUTPUT
       ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
       ${FLEX_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
-      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+      lib/JsonParser/json-parser.ll
+      lib/JsonParser/json-parser.cpp
     MAIN_DEPENDENCY
       ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+    VERBATIM
   )
 
   add_custom_command(
     OUTPUT
       ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND
       ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
       ${FLEX_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
-      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.cpp
+      V8/v8-json.ll
+      V8/v8-json.cpp
     MAIN_DEPENDENCY
       ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+    VERBATIM
   )
 endif ()
 

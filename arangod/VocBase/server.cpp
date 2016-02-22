@@ -409,7 +409,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       continue;
     }
 
-    if (! StringUtils::isPrefix(name, "database-")) {
+    if (!(StringUtils::isPrefix(name, "database-") && StringUtils::isSuffix(name, ".tmp"))) {
       continue;
     }
 
@@ -696,7 +696,7 @@ static int GetDatabases(TRI_server_t* server,
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
 
-    if (! StringUtils::isPrefix(name, "database-")) {
+    if (!StringUtils::isPrefix(name, "database-")) {
       // found some other file
       continue;
     }
@@ -729,7 +729,8 @@ static bool HasOldCollections(TRI_server_t* server) {
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
 
-    if (StringUtils::isPrefix(name, "collection-")) {
+    if (StringUtils::isPrefix(name, "collection-") &&
+        !StringUtils::isSuffix(name, ".tmp")) {
       // found "collection-xxxx". we can ignore the rest
       found = true;
       break;

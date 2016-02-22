@@ -27,6 +27,7 @@
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "ProgramOptions/program-options.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb::basics;
 
@@ -173,7 +174,7 @@ static void ExtractVectorInt32(char const* name, TRI_vector_string_t* ptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractInt64(char const* name, char const* ptr, int64_t* value) {
-  *value = TRI_Int64String(ptr);
+  *value = StringUtils::int64(ptr);
 
   // add to global JSON object
   auto json =
@@ -195,7 +196,7 @@ static void ExtractVectorInt64(char const* name, TRI_vector_string_t* ptr,
 
   for (size_t i = 0; i < ptr->_length; ++i) {
     char const* elem = ptr->_buffer[i];
-    int64_t e = TRI_Int64String(elem);
+    int64_t e = StringUtils::int64(elem);
 
     value->emplace_back(e);
     if (json != nullptr) {

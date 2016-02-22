@@ -43,7 +43,7 @@
 #include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
 
 #ifdef _WIN32
@@ -51,6 +51,7 @@
 #endif
 
 using namespace arangodb::basics;
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read buffer size (used for bulk file reading)
@@ -1139,7 +1140,7 @@ int TRI_CreateLockFile(char const* filename) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  TRI_pid_t pid = TRI_CurrentProcessId();
+  TRI_pid_t pid = Thread::currentProcessId();
   char* buf = TRI_StringUInt32(pid);
 
   int rv = TRI_WRITE(fd, buf, (TRI_write_t)strlen(buf));
@@ -2210,7 +2211,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
     char* number;
     char* filename;
 
-    pid = TRI_CurrentProcessId();
+    pid = Thread::currentProcessId();
 
     number = TRI_StringUInt32(TRI_UInt32Random());
     pidString = TRI_StringUInt32(pid);

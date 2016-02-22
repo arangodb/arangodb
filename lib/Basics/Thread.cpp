@@ -48,10 +48,10 @@ using namespace arangodb::basics;
 
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 
-#ifndef TRI_HAVE_GETTID
+#if !defined(ARANGODB_HAVE_GETTID) && !defined(_WIN32)
 
 namespace {
-  std::atomic<uint64_t> NEXT_THREAD_ID(1);
+std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
 
 #endif
@@ -67,8 +67,10 @@ thread_local Thread* Thread::CURRENT_THREAD = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::startThread(void* arg) {
-#ifdef TRI_HAVE_GETTID
-  LOCAL_THREAD_NUMBER = (uint64_t)_gettid();
+#if defined(ARANGODB_HAVE_GETTID)
+  LOCAL_THREAD_NUMBER = (uint64_t)gettid();
+#elif defined(_WIN32)
+  LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
 #else
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
 #endif
@@ -93,7 +95,13 @@ void Thread::startThread(void* arg) {
 /// @brief returns the process id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_pid_t Thread::currentProcessId() { return TRI_CurrentProcessId(); }
+TRI_pid_t Thread::currentProcessId() {
+#ifdef _WIN32
+  return _getpid();
+#else
+  return getpid();
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread process id
@@ -105,7 +113,17 @@ uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
 /// @brief returns the thread id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_tid_t Thread::currentThreadId() { return TRI_CurrentThreadId(); }
+TRI_tid_t Thread::currentThreadId() {
+#ifdef TRI_HAVE_WIN32_THREADS
+  return GetCurrentThreadId();
+#else
+#ifdef TRI_HAVE_POSIX_THREADS
+  return pthread_self();
+#else
+#error "Thread::currentThreadId not implemented"
+#endif
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a thread
@@ -128,14 +146,18 @@ Thread::Thread(std::string const& name)
 ////////////////////////////////////////////////////////////////////////////////
 
 Thread::~Thread() {
-  shutdown(false);
+  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << ")";
+
+  shutdown(true);
 
   if (_state.load() == ThreadState::STOPPED) {
-    int res = TRI_DetachThread(&_thread);
+#ifdef TRI_HAVE_POSIX_THREADS
+    int res = pthread_detach(_thread);
 
     if (res != 0) {
-      LOG(TRACE) << "cannot detach thread";
+      LOG_TOPIC(INFO, Logger::THREADS) << "cannot detach thread";
     }
+#endif
   }
 }
 
@@ -144,6 +166,8 @@ Thread::~Thread() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::beginShutdown() {
+  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ")";
+  
   ThreadState state = _state.load();
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
@@ -156,11 +180,14 @@ void Thread::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::shutdown(bool waitForStopped) {
+  LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
+
   if (_state.load() == ThreadState::STARTED) {
     beginShutdown();
 
     if (!isSilent()) {
-      LOG(WARN) << "forcefully shutting down thread '" << _name.c_str() << "'";
+      LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '"
+                                       << _name << "'";
     }
   }
 
@@ -193,7 +220,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   _finishedCondition = finishedCondition;
 
   if (_state.load() != ThreadState::CREATED) {
-    LOG(FATAL) << "called started on an already started thread";
+    LOG_TOPIC(FATAL, Logger::THREADS)
+        << "called started on an already started thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -201,8 +229,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
-    LOG(ERR) << "could not start thread '" << _name.c_str()
-             << "': " << strerror(errno);
+    LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
+                                    << _name.c_str()
+                                    << "': " << strerror(errno);
   }
 
   if (0 <= _affinity) {
@@ -265,7 +294,7 @@ void Thread::runMe() {
   bool res = _state.compare_exchange_strong(expected, ThreadState::STARTED);
 
   if (!res) {
-    LOG(WARN) << "thread died before it could start";
+    LOG_TOPIC(WARN, Logger::THREADS) << "thread died before it could start";
     return;
   }
 
@@ -273,20 +302,21 @@ void Thread::runMe() {
     run();
     _state.store(ThreadState::STOPPED);
   } catch (Exception const& ex) {
-    LOG(ERR) << "exception caught in thread '" << _name.c_str()
-             << "': " << ex.what();
+    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
+                                    << _name.c_str() << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (std::exception const& ex) {
-    LOG(ERR) << "exception caught in thread '" << _name.c_str()
-             << "': " << ex.what();
+    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
+                                    << _name.c_str() << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (...) {
     if (!isSilent()) {
-      LOG(ERR) << "exception caught in thread '" << _name.c_str() << "'";
+      LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
+                                      << _name.c_str() << "'";
       Logger::flush();
     }
     _state.store(ThreadState::STOPPED);

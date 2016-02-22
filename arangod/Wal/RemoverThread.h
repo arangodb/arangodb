@@ -44,7 +44,6 @@ class RemoverThread : public Thread {
 
  public:
   explicit RemoverThread(LogfileManager*);
-  ~RemoverThread();
 
  public:
   void beginShutdown() override final;

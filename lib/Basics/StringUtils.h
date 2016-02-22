@@ -449,12 +449,19 @@ bool boolean(std::string const& str);
 
 int64_t int64(std::string const& str);
 
+inline int64_t int64(char const* value, size_t size) {
+  return StringUtils::int64(std::string(value, size));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses an integer
+/// @brief parses an integer and check
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t int64(char const* value, size_t size);
+int64_t int64_check(std::string const& str);
 
+inline int64_t int64_check(char const* value, size_t size) {
+  return StringUtils::int64_check(std::string(value, size));
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an unsigned integer
 ////////////////////////////////////////////////////////////////////////////////

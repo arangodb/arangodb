@@ -27,14 +27,14 @@
 #include <iostream>
 #include <iomanip>
 
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
 // we need to define SYSLOG_NAMES for linux to get a list of names
 #define SYSLOG_NAMES
 #define prioritynames TRI_prioritynames
 #define facilitynames TRI_facilitynames
 #include <syslog.h>
 
-#ifdef TRI_ENABLE_SYSLOG_STRINGS
+#ifdef ARANGODB_ENABLE_SYSLOG_STRINGS
 #include "syslog_names.h"
 #endif
 #endif
@@ -347,7 +347,7 @@ void LogAppenderFile::writeLogFile(int fd, char const* buffer, ssize_t len) {
 /// @brief LogAppenderSyslog
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
 
 class LogAppenderSyslog : public LogAppender {
  public:
@@ -460,8 +460,9 @@ static LogAppender* buildAppender(
     std::string const& output, bool fatal2stderr,
     std::string const& contentFilter,
     std::unordered_set<std::string>& existingAppenders) {
+
 // first handle syslog-logging
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
   if (StringUtils::isPrefix(output, "syslog://")) {
     auto s = StringUtils::split(output.substr(9), '/');
 
@@ -663,7 +664,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
   {
     char processPrefix[128];
 
-    TRI_pid_t processId = TRI_CurrentProcessId();
+    TRI_pid_t processId = Thread::currentProcessId();
 
     if (ShowThreadIdentifier.load(std::memory_order_relaxed)) {
       uint64_t threadNumber = Thread::currentThreadNumber();
@@ -786,6 +787,7 @@ LogTopic Logger::PERFORMANCE("performance",
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
+LogTopic Logger::THREADS("threads", LogLevel::WARN);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current log level

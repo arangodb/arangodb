@@ -279,6 +279,7 @@ class Logger {
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
   static LogTopic DATAFILES;
+  static LogTopic THREADS;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

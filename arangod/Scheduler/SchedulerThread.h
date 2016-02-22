@@ -51,7 +51,6 @@ class SchedulerThread : public Thread, private TaskManager {
 
  public:
   SchedulerThread(Scheduler*, EventLoop, bool defaultLoop);
-  ~SchedulerThread();
 
  public:
   void beginShutdown() override final;

@@ -186,7 +186,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   }
 
 // map deprecated option "log.facility" to "log.output"
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
   if (!_logFacility.empty()) {
     outputs.push_back("syslog://" + _logFacility + "/" + _logApplicationName);
   }
@@ -609,7 +609,7 @@ void ApplicationServer::extractPrivileges() {
     int gidNumber = TRI_Int32String(_gid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
-#ifdef TRI_HAVE_GETGRGID
+#ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
@@ -618,7 +618,7 @@ void ApplicationServer::extractPrivileges() {
       }
 #endif
     } else {
-#ifdef TRI_HAVE_GETGRNAM
+#ifdef ARANGODB_HAVE_GETGRNAM
       std::string name = _gid;
       group* g = getgrnam(name.c_str());
 
@@ -649,7 +649,7 @@ void ApplicationServer::extractPrivileges() {
     int uidNumber = TRI_Int32String(_uid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-#ifdef TRI_HAVE_GETPWUID
+#ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
@@ -658,7 +658,7 @@ void ApplicationServer::extractPrivileges() {
       }
 #endif
     } else {
-#ifdef TRI_HAVE_GETPWNAM
+#ifdef ARANGODB_HAVE_GETPWNAM
       std::string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
@@ -749,7 +749,7 @@ void ApplicationServer::setupOptions(
 #if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
 
   options["General Options:help-admin"]
-#ifdef TRI_HAVE_GETPPID
+#ifdef ARANGODB_HAVE_GETPPID
       ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
 #endif
           ("watch-process", &_watchParent,
@@ -820,7 +820,7 @@ void ApplicationServer::setupOptions(
 
 bool ApplicationServer::checkParent() {
 // check our parent, if it died given up
-#ifdef TRI_HAVE_GETPPID
+#ifdef ARANGODB_HAVE_GETPPID
   if (_exitOnParentDeath && getppid() == 1) {
     LOG(INFO) << "parent has died";
     return false;
