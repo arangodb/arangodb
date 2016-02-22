@@ -204,7 +204,6 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 
 #define FATAL_ERROR_EXIT(...)                 \
   do {                                        \
-    std::abort(); \
     std::string bt;                           \
     TRI_GetBacktrace(bt);                     \
     if (!bt.empty()) {                        \
