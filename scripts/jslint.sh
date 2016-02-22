@@ -41,10 +41,20 @@ JAVASCRIPT_JSLINT="\
 FILELIST=""
 
 for file in ${JAVASCRIPT_JSLINT}; do
-    FILELIST="${FILELIST} --jslint ${file}";
+  FILELIST="${FILELIST} --jslint ${file}";
 done
 
-exec ./build/bin/arangosh \
+if [ -z "${ARANGOSH}" ];  then
+  if [ -x build/bin/arangosh ];  then
+    ARANGOSH=build/bin/arangosh
+  elif [ -x bin/arangosh ];  then
+    ARANGOSH=bin/arangosh
+  else
+    echo "$0: cannot locate arangosh"
+  fi
+fi
+
+exec $ARANGOSH \
     -c none \
     --log.level error \
     --server.password "" \

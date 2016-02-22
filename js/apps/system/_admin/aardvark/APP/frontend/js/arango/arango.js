@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global window, $, document, _ */
+/*global window, $, document, arangoHelper, _ */
 
 (function() {
   "use strict";
@@ -443,16 +443,28 @@
       this.arangoDocumentStore = a;
     },
 
-    collectionApiType: function (identifier, refresh) {
+    collectionApiType: function (identifier, refresh, toRun) {
       // set "refresh" to disable caching collection type
       if (refresh || this.CollectionTypes[identifier] === undefined) {
-        this.CollectionTypes[identifier] = this.arangoDocumentStore
-        .getCollectionInfo(identifier).type;
+        var callback = function(error, data, toRun) {
+          if (error) {
+            arangoHelper.arangoError("Error", "Could not detect collection type");
+          }
+          else {
+            this.CollectionTypes[identifier] = data.type;
+            if (this.CollectionTypes[identifier] === 3) {
+              toRun(false, "edge");
+            }
+            else {
+              toRun(false, "document");
+            }
+          }
+        }.bind(this);
+        this.arangoDocumentStore.getCollectionInfo(identifier, callback, toRun);
       }
-      if (this.CollectionTypes[identifier] === 3) {
-        return "edge";
+      else {
+        toRun(false, this.CollectionTypes[identifier]);
       }
-      return "document";
     },
 
     collectionType: function (val) {

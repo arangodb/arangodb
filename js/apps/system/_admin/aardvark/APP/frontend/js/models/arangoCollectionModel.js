@@ -17,59 +17,50 @@
       desc: undefined
     },
 
-    getProperties: function () {
-      var data2;
+    getProperties: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + encodeURIComponent(this.get("id")) + "/properties",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
-    getFigures: function () {
-      var data2;
+    getFigures: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/figures",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
-    getRevision: function () {
-      var data2;
+    getRevision: function (callback, figures) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/revision",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data, figures);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
 
     getIndex: function (callback) {

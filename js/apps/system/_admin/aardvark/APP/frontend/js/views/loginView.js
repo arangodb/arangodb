@@ -41,19 +41,23 @@
         //Heiko: Form-Validator - please fill out all req. fields
         return;
       }
-      username = this.collection.login(username, password);
 
-      if (username) {
-        $(this.el2).show();
-        $(this.el3).show();
-        window.location.reload();
-        $('#currentUser').text(username);
-        this.collection.loadUserSettings();
-      }
-      else {
-        $('#loginForm input').addClass("form-error");
-        $('.wrong-credentials').show();
-      }
+      var callback = function(error, username) {
+        if (error) {
+          $('#loginForm input').addClass("form-error");
+          $('.wrong-credentials').show();
+        }
+        else {
+          $(this.el2).show();
+          $(this.el3).show();
+          window.location.reload();
+          $('#currentUser').text(username);
+          this.collection.loadUserSettings();
+        } 
+      }.bind(this);
+
+      this.collection.login(username, password, callback);
+
     }
 
   });

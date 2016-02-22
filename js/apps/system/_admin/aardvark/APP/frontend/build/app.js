@@ -10349,7 +10349,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 }
 
 /*jshint unused: false */
-/*global window, $, document, _ */
+/*global window, $, document, arangoHelper, _ */
 
 (function() {
   "use strict";
@@ -10793,16 +10793,28 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       this.arangoDocumentStore = a;
     },
 
-    collectionApiType: function (identifier, refresh) {
+    collectionApiType: function (identifier, refresh, toRun) {
       // set "refresh" to disable caching collection type
       if (refresh || this.CollectionTypes[identifier] === undefined) {
-        this.CollectionTypes[identifier] = this.arangoDocumentStore
-        .getCollectionInfo(identifier).type;
+        var callback = function(error, data, toRun) {
+          if (error) {
+            arangoHelper.arangoError("Error", "Could not detect collection type");
+          }
+          else {
+            this.CollectionTypes[identifier] = data.type;
+            if (this.CollectionTypes[identifier] === 3) {
+              toRun(false, "edge");
+            }
+            else {
+              toRun(false, "document");
+            }
+          }
+        }.bind(this);
+        this.arangoDocumentStore.getCollectionInfo(identifier, callback, toRun);
       }
-      if (this.CollectionTypes[identifier] === 3) {
-        return "edge";
+      else {
+        toRun(false, this.CollectionTypes[identifier]);
       }
-      return "document";
     },
 
     collectionType: function (val) {
@@ -16402,8 +16414,6 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
 (function() {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
-    initialize: function () {
-    },
 
     idAttribute: "name",
 
@@ -16419,80 +16429,67 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       desc: undefined
     },
 
-    getProperties: function () {
-      var data2;
+    getProperties: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + encodeURIComponent(this.get("id")) + "/properties",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
-    getFigures: function () {
-      var data2;
+    getFigures: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/figures",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
-    getRevision: function () {
-      var data2;
+    getRevision: function (callback, figures) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/revision",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data, figures);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
 
-    getIndex: function () {
-      var data2;
+    getIndex: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/index/?collection=" + this.get("id"),
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
-
 
     createIndex: function (postParameter, callback) {
 
@@ -16563,15 +16560,14 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
 
     truncateCollection: function () {
       $.ajax({
-        async: false,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/truncate",
         success: function () {
-          arangoHelper.arangoNotification('Collection truncated');
+          arangoHelper.arangoNotification('Collection truncated.');
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          arangoHelper.arangoError('Collection error.');
         }
       });
     },
@@ -16607,36 +16603,27 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       callback();
     },
 
-    renameCollection: function (name) {
-      var self = this,
-        result = false;
+    renameCollection: function (name, callback) {
+      var self = this;
+
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/rename",
         data: JSON.stringify({ name: name }),
         contentType: "application/json",
         processData: false,
         success: function() {
           self.set("name", name);
-          result = true;
+          callback(false);
         },
-        error: function(/*data*/) {
-          try {
-            console.log("error");
-            //var parsed = JSON.parse(data.responseText);
-            //result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+        error: function(data) {
+          callback(true, data);
         }
       });
-      return result;
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets) {
+    changeCollection: function (wfs, journalSize, indexBuckets, callback) {
       var result = false;
       if (wfs === "true") {
         wfs = true;
@@ -16653,22 +16640,15 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/properties",
         data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
         success: function() {
-          result = true;
+          callback(false);
         },
         error: function(data) {
-          try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+          callback(false, data);
         }
       });
       return result;
@@ -16832,29 +16812,27 @@ window.Users = Backbone.Model.extend({
     return "/_api/user";
   },
 
-  checkPassword: function(passwd) {
-    var result = false;
-
+  checkPassword: function(passwd, callback) {
     $.ajax({
       cache: false,
       type: "POST",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data.result;
+        callback(false, data);
+      },
+      error: function(data) {
+        callback(true, data);
       }
     });
-    return result;
   },
 
   setPassword: function(passwd) {
     $.ajax({
       cache: false,
       type: "PATCH",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({ passwd: passwd }),
       contentType: "application/json",
@@ -16862,15 +16840,20 @@ window.Users = Backbone.Model.extend({
     });
   },
 
-  setExtras: function(name, img) {
+  setExtras: function(name, img, callback) {
     $.ajax({
       cache: false,
       type: "PATCH",
-      async: false, // sequential calls!
       url: "/_api/user/" + this.get("user"),
       data: JSON.stringify({"extra": {"name":name, "img":img}}),
       contentType: "application/json",
-      processData: false
+      processData: false,
+      success: function() {
+        callback(false);
+      },
+      error: function() {
+        callback(true);
+      }
     });
   }
 
@@ -17448,21 +17431,20 @@ window.Users = Backbone.Model.extend({
         return result;
       },
 
-      newCollection: function (collName, wfs, isSystem, journalSize, collType, shards, keys) {
-        var returnobj = {};
+      newCollection: function (object, callback) {
         var data = {};
-        data.name = collName;
-        data.waitForSync = wfs;
-        if (journalSize > 0) {
-          data.journalSize = journalSize;
+        data.name = object.collName;
+        data.waitForSync = object.wfs;
+        if (object.journalSize > 0) {
+          data.journalSize = object.journalSize;
         }
-        data.isSystem = isSystem;
-        data.type = parseInt(collType, 10);
-        if (shards) {
-          data.numberOfShards = shards;
-          data.shardKeys = keys;
+        data.isSystem = object.isSystem;
+        data.type = parseInt(object.collType, 10);
+        if (object.shards) {
+          data.numberOfShards = object.shards;
+          data.shardKeys = object.keys;
         }
-        returnobj.status = false;
+
         $.ajax({
           cache: false,
           type: "POST",
@@ -17470,17 +17452,13 @@ window.Users = Backbone.Model.extend({
           data: JSON.stringify(data),
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function(data) {
-            returnobj.status = true;
-            returnobj.data = data;
+            callback(false, data);
           },
           error: function(data) {
-            returnobj.status = false;
-            returnobj.errorMessage = JSON.parse(data.responseText).errorMessage;
+            callback(false, data);
           }
         });
-        return returnobj;
       }
   });
 }());
@@ -17630,56 +17608,40 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},
-  deleteEdge: function (colid, docid) {
-    var returnval = false;
-    try {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        async: false,
-        contentType: "application/json",
-        url: "/_api/edge/" + colid + "/" + docid,
-        success: function () {
-          returnval = true;
-        },
-        error: function () {
-          returnval = false;
-        }
-      });
-    }
-    catch (e) {
-          returnval = false;
-    }
-    return returnval;
+  deleteEdge: function (colid, docid, callback) {
+    $.ajax({
+      cache: false,
+      type: 'DELETE',
+      contentType: "application/json",
+      url: "/_api/edge/" + colid + "/" + docid,
+      success: function () {
+        callback(false);
+      },
+      error: function () {
+        callback(true);
+      }
+    });
   },
-  deleteDocument: function (colid, docid){
-    var returnval = false;
-    try {
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        async: false,
-        contentType: "application/json",
-        url: "/_api/document/" + colid + "/" + docid,
-        success: function () {
-          returnval = true;
-        },
-        error: function () {
-          returnval = false;
-        }
-      });
-    }
-    catch (e) {
-          returnval = false;
-    }
-    return returnval;
+  deleteDocument: function (colid, docid, callback) {
+    $.ajax({
+      cache: false,
+      type: 'DELETE',
+      contentType: "application/json",
+      url: "/_api/document/" + colid + "/" + docid,
+      success: function () {
+        callback(false);
+      },
+      error: function () {
+        callback(true);
+      }
+    });
   },
   addDocument: function (collectionID, key) {
     var self = this;
     self.createTypeDocument(collectionID, key);
   },
-  createTypeEdge: function (collectionID, from, to, key) {
-    var result = false, newEdge;
+  createTypeEdge: function (collectionID, from, to, key, callback) {
+    var newEdge;
 
     if (key) {
       newEdge = JSON.stringify({
@@ -17693,22 +17655,20 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      async: false,
       url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
       data: newEdge,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data._id;
+        callback(false, data);
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  createTypeDocument: function (collectionID, key) {
-    var result = false, newDocument;
+  createTypeDocument: function (collectionID, key, callback) {
+    var newDocument;
 
     if (key) {
       newDocument = JSON.stringify({
@@ -17722,21 +17682,19 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "POST",
-      async: false,
       url: "/_api/document?collection=" + encodeURIComponent(collectionID),
       data: newDocument,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = data._id;
+        callback(false, data._id);
       },
       error: function(data) {
-        result = false;
+        callback(true, data._id);
       }
     });
-    return result;
   },
-  getCollectionInfo: function (identifier) {
+  getCollectionInfo: function (identifier, callback, toRun) {
     var self = this;
 
     $.ajax({
@@ -17745,94 +17703,82 @@ window.arangoDocument = Backbone.Collection.extend({
       url: "/_api/collection/" + identifier + "?" + arangoHelper.getRandomToken(),
       contentType: "application/json",
       processData: false,
-      async: false,
       success: function(data) {
         self.collectionInfo = data;
+        callback(false, data, toRun);
       },
       error: function(data) {
+        callback(true, data, toRun);
       }
     });
-
-    return self.collectionInfo;
   },
-  getEdge: function (colid, docid){
-    var result = false, self = this;
+  getEdge: function (colid, docid, callback){
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/edge/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'edge');
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  getDocument: function (colid, docid) {
-    var result = false, self = this;
+  getDocument: function (colid, docid, callback) {
+    var self = this;
     this.clearDocument();
     $.ajax({
       cache: false,
       type: "GET",
-      async: false,
       url: "/_api/document/" + colid +"/"+ docid,
       contentType: "application/json",
       processData: false,
       success: function(data) {
         self.add(data);
-        result = true;
+        callback(false, data, 'document');
       },
       error: function(data) {
-        result = false;
+        self.add(true, data);
       }
     });
-    return result;
   },
-  saveEdge: function (colid, docid, model) {
-    var result = false;
+  saveEdge: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/edge/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        result = true;
+        callback(false, data);
       },
       error: function(data) {
-        result = false;
+        callback(true, data);
       }
     });
-    return result;
   },
-  saveDocument: function (colid, docid, model) {
-    var result = false;
+  saveDocument: function (colid, docid, model, callback) {
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false,
       url: "/_api/document/" + colid + "/" + docid,
       data: model,
       contentType: "application/json",
       processData: false,
       success: function(data) {
-          result = true;
+        callback(false, data);
       },
       error: function(data) {
-          result = false;
+        callback(true, data);
       }
     });
-    return result;
-
   },
 
   updateLocalDocument: function (data) {
@@ -18326,12 +18272,11 @@ window.arangoDocument = Backbone.Collection.extend({
       return toReturn;
     },
 
-    saveCollectionQueries: function() {
+    saveCollectionQueries: function(callback) {
       if (this.activeUser === 0) {
         return false;
       }
 
-      var returnValue = false;
       var queries = [];
 
       this.each(function(query) {
@@ -18346,7 +18291,6 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: "PATCH",
-        async: false,
         url: "/_api/user/" + encodeURIComponent(this.activeUser),
         data: JSON.stringify({
           extra: {
@@ -18355,15 +18299,13 @@ window.arangoDocument = Backbone.Collection.extend({
         }),
         contentType: "application/json",
         processData: false,
-        success: function() {
-          returnValue = true;
+        success: function(data) {
+          callback(false, data);
         },
         error: function() {
-          returnValue = false;
+          callback(true);
         }
       });
-
-      return returnValue;
     },
 
     saveImportQueries: function(file, callback) {
@@ -18376,7 +18318,6 @@ window.arangoDocument = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: "POST",
-        async: false,
         url: "query/upload/" + encodeURIComponent(this.activeUser),
         data: file,
         contentType: "application/json",
@@ -18496,23 +18437,27 @@ window.ArangoUsers = Backbone.Collection.extend({
     return a > b ? 1 : a < b ? -1 : 0;
   },
 
-  login: function (username, password) {
-    var result = null;
+  login: function (username, password, callback) {
+    var self = this;
+
     $.ajax("login", {
-      async: false,
       method: "POST",
       data: JSON.stringify({
         username: username,
         password: password
       }),
       dataType: "json"
-    }).done(
+    }).success(
       function (data) {
-        result = data.user;
+        self.activeUser = data.user;
+        callback(false, self.activeUser);
+      }
+    ).error(
+      function () {
+        self.activeUser = null;
+        callback(true, null);
       }
     );
-    this.activeUser = result;
-    return this.activeUser;
   },
 
   setSortingDesc: function(yesno) {
@@ -18520,7 +18465,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
-    $.ajax("logout", {async:false,method:"POST"});
+    $.ajax("logout", {method:"POST"});
     this.activeUser = null;
     this.reset();
     window.App.navigate("");
@@ -18573,18 +18518,21 @@ window.ArangoUsers = Backbone.Collection.extend({
     return result;
   },
 
-  whoAmI: function() {
+  whoAmI: function(callback) {
     if (this.activeUser) {
-      return this.activeUser;
+      callback(false, this.activeUser);
+      return;
     }
-    var result;
-    $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+    $.ajax("whoAmI?_=" + Date.now())
+    .success(
       function(data) {
-        result = data.user;
+        callback(false, data.user);
+      }
+    ).error(
+      function(data) {
+        callback(true, null);
       }
     );
-    this.activeUser = result;
-    return this.activeUser;
   }
 
 
@@ -18748,22 +18696,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         url: "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
         contentType: "application/json",
         processData: true,
-        async: false,
         success: function() {
-          arangoHelper.arangoNotification("Graph deleted.");
           callback(true);
-          return true;
         },
-        error: function(data) {
-          try {
-            var errorMsg = JSON.parse(data.responseText).errorMessage;
-            arangoHelper.arangoError("Graph", errorMsg);
-          }
-          catch (e) {
-            arangoHelper.arangoError("Graph", "Could not delete Graph.");
-          }
+        error: function() {
           callback(false);
-          return false;
         }
       });
     },
@@ -19683,7 +19620,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     truncateCollection: function () {
       this.model.truncateCollection();
-      this.render();
       window.modalView.hide();
     },
 
@@ -19734,50 +19670,48 @@ window.ArangoUsers = Backbone.Collection.extend({
           return 0;
         }
 
-        var result;
-        if (this.model.get('name') !== newname) {
-          result = this.model.renameCollection(newname);
-        }
-
-        if (result !== true) {
-          if (result !== undefined) {
-            arangoHelper.arangoError("Collection error: " + result);
-            return 0;
+        var callbackChange = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Collection error: " + error.responseText);
           }
-        }
-
-        var wfs = $('#change-collection-sync').val();
-        var changeResult = this.model.changeCollection(wfs, journalSize, indexBuckets);
-
-        if (changeResult !== true) {
-          arangoHelper.arangoNotification("Collection error", changeResult);
-          return 0;
-        }
-
-        this.collectionsView.render();
-        window.modalView.hide();
-      }
-      else if (status === 'unloaded') {
-        if (this.model.get('name') !== newname) {
-          var result2 = this.model.renameCollection(newname);
-
-          if (result2 === true) {
+          else {
             this.collectionsView.render();
             window.modalView.hide();
           }
-          else {
-            arangoHelper.arangoError("Collection error: " + result2);
+        }.bind(this);
+
+        var callbackRename = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Collection error: " + error.responseText);
           }
+          else {
+            var wfs = $('#change-collection-sync').val();
+            this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+          }
+        }.bind(this);
+
+        this.model.renameCollection(newname, callbackRename);
+      }
+      else if (status === 'unloaded') {
+        if (this.model.get('name') !== newname) {
+
+          var callbackRename2 = function(error, data) {
+            if (error) {
+              arangoHelper.arangoError("Collection error: " + data.responseText);
+            }
+            else {
+              this.collectionsView.render();
+              window.modalView.hide();
+            }
+          }.bind(this);
+          
+          this.model.renameCollection(newname, callbackRename2);
         }
         else {
           window.modalView.hide();
         }
       }
     },
-
-
-
-    //modal dialogs
 
     createEditPropertiesModal: function() {
 
@@ -19818,319 +19752,350 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       if (collectionIsLoaded) {
-        // needs to be refactored. move getProperties into model
-        var journalSize = this.model.getProperties().journalSize;
-        journalSize = journalSize/(1024*1024);
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            "change-collection-size",
-            "Journal size",
-            journalSize,
-            "The maximal size of a journal or datafile (in MB). Must be at least 1.",
-            "",
-            true,
-            [
-              {
-                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                msg: "Must be a number."
-              }
-            ]
-          )
-        );
-        
-        var indexBuckets = this.model.getProperties().indexBuckets;
-        
-        tableContent.push(
-          window.modalView.createTextEntry(
-            "change-index-buckets",
-            "Index buckets",
-            indexBuckets,
-            "The number of index buckets for this collection. Must be at least 1 and a power of 2.",
-            "",
-            true,
-            [
-              {
-                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                msg: "Must be a number greater than 1 and a power of 2."
-              }
-            ]
-          )
-        );
-
-        // prevent "unexpected sync method error"
-        var wfs = this.model.getProperties().waitForSync;
-        tableContent.push(
-          window.modalView.createSelectEntry(
-            "change-collection-sync",
-            "Wait for sync",
-            wfs,
-            "Synchronize to disk before returning from a create or update of a document.",
-            [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
-        );
-      }
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "change-collection-id", "ID", this.model.get('id'), ""
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "change-collection-type", "Type", this.model.get('type'), ""
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "change-collection-status", "Status", this.model.get('status'), ""
-        )
-      );
-      buttons.push(
-        window.modalView.createDeleteButton(
-          "Delete",
-          this.deleteCollection.bind(this)
-        )
-      );
-      buttons.push(
-        window.modalView.createDeleteButton(
-          "Truncate",
-          this.truncateCollection.bind(this)
-        )
-      );
-      if (collectionIsLoaded) {
-        buttons.push(
-          window.modalView.createNotificationButton(
-            "Unload",
-            this.unloadCollection.bind(this)
-          )
-        );
-      } else {
-        buttons.push(
-          window.modalView.createNotificationButton(
-            "Load",
-            this.loadCollection.bind(this)
-          )
-        );
-      }
-
-      buttons.push(
-        window.modalView.createSuccessButton(
-          "Save",
-          this.saveModifiedCollection.bind(this)
-        )
-      );
-
-      var tabBar = ["General", "Indices"],
-      templates =  ["modalTable.ejs", "indicesView.ejs"];
-
-      window.modalView.show(
-        templates,
-        "Modify Collection",
-        buttons,
-        tableContent, null, null,
-        this.events, null,
-        tabBar
-      );
-      if (this.model.get("status") === 'loaded') {
-        this.getIndex();
-      }
-      else {
-        $($('#infoTab').children()[1]).remove();
-      }
-      this.bindIndexEvents();
-    },
-
-    bindIndexEvents: function() {
-      this.unbindIndexEvents();
-      var self = this;
-
-      $('#indexEditView #addIndex').bind('click', function() {
-        self.toggleNewIndexView();
-
-        $('#cancelIndex').unbind('click');
-        $('#cancelIndex').bind('click', function() {
-          self.toggleNewIndexView();
-        });
-
-        $('#createIndex').unbind('click');
-        $('#createIndex').bind('click', function() {
-          self.createIndex();
-        });
-
-      });
-
-      $('#newIndexType').bind('change', function() {
-        self.selectIndexType();
-      });
-
-      $('.deleteIndex').bind('click', function(e) {
-        self.prepDeleteIndex(e);
-      });
-
-      $('#infoTab a').bind('click', function(e) {
-        $('#indexDeleteModal').remove();
-        if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
-
-          $('#newIndexView').hide();
-          $('#indexEditView').show();
-
-          $('#modal-dialog .modal-footer .button-danger').hide();  
-          $('#modal-dialog .modal-footer .button-success').hide();  
-          $('#modal-dialog .modal-footer .button-notification').hide();
-          //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
-        }
-        if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
-          $('#modal-dialog .modal-footer .button-danger').show();  
-          $('#modal-dialog .modal-footer .button-success').show();  
-          $('#modal-dialog .modal-footer .button-notification').show();
-          var elem = $('.index-button-bar')[0]; 
-          var elem2 = $('.index-button-bar2')[0]; 
-          //$('#addIndex').detach().appendTo(elem);
-          if ($('#cancelIndex').is(':visible')) {
-            $('#cancelIndex').detach().appendTo(elem2);
-            $('#createIndex').detach().appendTo(elem2);
-          }
-        }
-      });
-
-    },
-
-    unbindIndexEvents: function() {
-      $('#indexEditView #addIndex').unbind('click');
-      $('#newIndexType').unbind('change');
-      $('#infoTab a').unbind('click');
-      $('.deleteIndex').unbind('click');
-      /*
-      //$('#documentsToolbar ul').unbind('click');
-      this.markFilterToggle();
-      this.changeEditMode(false);
-     0Ads0asd0sd0f0asdf0sa0f
-      "click #documentsToolbar ul"    : "resetIndexForms"
-      */
-    },
-
-    createInfoModal: function() {
-      var buttons = [],
-        tableContent = this.model;
-      window.modalView.show(
-        "modalCollectionInfo.ejs",
-        "Collection: " + this.model.get('name'),
-        buttons,
-        tableContent
-      );
-    },
-    //index functions
-    resetIndexForms: function () {
-      $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
-      this.selectIndexType();
-    },
-
-    createIndex: function () {
-      //e.preventDefault();
-      var self = this;
-      var indexType = $('#newIndexType').val();
-      var result;
-      var postParameter = {};
-      var fields;
-      var unique;
-      var sparse;
-
-      switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-          postParameter = {
-            type: 'cap',
-            size: size,
-            byteSize: byteSize
-          };
-          break;
-        case 'Geo':
-          //HANDLE ARRAY building
-          fields = $('#newGeoFields').val();
-          var geoJson = self.checkboxToValue('#newGeoJson');
-          var constraint = self.checkboxToValue('#newGeoConstraint');
-          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
-          postParameter = {
-            type: 'geo',
-            fields: self.stringToArray(fields),
-            geoJson: geoJson,
-            constraint: constraint,
-            ignoreNull: ignoreNull
-          };
-          break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-        case 'Fulltext':
-          fields = ($('#newFulltextFields').val());
-          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
-          postParameter = {
-            type: 'fulltext',
-            fields: self.stringToArray(fields),
-            minLength: minLength
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-      }
-      var callback = function(error, msg){
-        if (error) {
-          if (msg) {
-            var message = JSON.parse(msg.responseText);
-            arangoHelper.arangoError("Document error", message.errorMessage);
+        var callback = function(error, data) {
+          if (error) {
+            arangoHelper.arangoError("Collection", "Could not fetch properties");
           }
           else {
-            arangoHelper.arangoError("Document error", "Could not create index.");
+            var journalSize = data.journalSize/(1024*1024);
+            var indexBuckets = data.indexBuckets;
+            var wfs = data.waitForSync;
+
+            tableContent.push(
+              window.modalView.createTextEntry(
+                "change-collection-size",
+                "Journal size",
+                journalSize,
+                "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+                "",
+                true,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: "Must be a number."
+                  }
+                ]
+              )
+            );
+
+          tableContent.push(
+            window.modalView.createTextEntry(
+              "change-index-buckets",
+              "Index buckets",
+              indexBuckets,
+              "The number of index buckets for this collection. Must be at least 1 and a power of 2.",
+              "",
+              true,
+              [
+                {
+                  rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                  msg: "Must be a number greater than 1 and a power of 2."
+                }
+              ]
+            )
+          );
+
+          // prevent "unexpected sync method error"
+          tableContent.push(
+            window.modalView.createSelectEntry(
+              "change-collection-sync",
+              "Wait for sync",
+              wfs,
+              "Synchronize to disk before returning from a create or update of a document.",
+              [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
+          );
+
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              "change-collection-id", "ID", this.model.get('id'), ""
+            )
+          );
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              "change-collection-type", "Type", this.model.get('type'), ""
+            )
+          );
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              "change-collection-status", "Status", this.model.get('status'), ""
+            )
+          );
+          buttons.push(
+            window.modalView.createDeleteButton(
+              "Delete",
+              this.deleteCollection.bind(this)
+            )
+          );
+          buttons.push(
+            window.modalView.createDeleteButton(
+              "Truncate",
+              this.truncateCollection.bind(this)
+            )
+          );
+          if (collectionIsLoaded) {
+            buttons.push(
+              window.modalView.createNotificationButton(
+                "Unload",
+                this.unloadCollection.bind(this)
+              )
+            );
+          } else {
+            buttons.push(
+              window.modalView.createNotificationButton(
+                "Load",
+                this.loadCollection.bind(this)
+              )
+            );
+          }
+
+          buttons.push(
+            window.modalView.createSuccessButton(
+              "Save",
+              this.saveModifiedCollection.bind(this)
+            )
+          );
+
+          var tabBar = ["General", "Indices"],
+          templates =  ["modalTable.ejs", "indicesView.ejs"];
+
+          window.modalView.show(
+            templates,
+            "Modify Collection",
+            buttons,
+            tableContent, null, null,
+            this.events, null,
+            tabBar
+          );
+          if (this.model.get("status") === 'loaded') {
+            this.getIndex();
+          }
+          else {
+            $($('#infoTab').children()[1]).remove();
           }
         }
-        self.refreshCollectionsView();
+
+        }.bind(this);
+
+      this.model.getProperties(callback);
+    }
+  },
+
+  bindIndexEvents: function() {
+    this.unbindIndexEvents();
+    var self = this;
+
+    $('#indexEditView #addIndex').bind('click', function() {
+      self.toggleNewIndexView();
+
+      $('#cancelIndex').unbind('click');
+      $('#cancelIndex').bind('click', function() {
+        self.toggleNewIndexView();
+      });
+
+      $('#createIndex').unbind('click');
+      $('#createIndex').bind('click', function() {
+        self.createIndex();
+      });
+
+    });
+
+    $('#newIndexType').bind('change', function() {
+      self.selectIndexType();
+    });
+
+    $('.deleteIndex').bind('click', function(e) {
+      console.log("asdasd");
+      self.prepDeleteIndex(e);
+    });
+
+    $('#infoTab a').bind('click', function(e) {
+      $('#indexDeleteModal').remove();
+      if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
+
+        $('#newIndexView').hide();
+        $('#indexEditView').show();
+
+        $('#modal-dialog .modal-footer .button-danger').hide();  
+        $('#modal-dialog .modal-footer .button-success').hide();  
+        $('#modal-dialog .modal-footer .button-notification').hide();
+        //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+      }
+      if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
+        $('#modal-dialog .modal-footer .button-danger').show();  
+        $('#modal-dialog .modal-footer .button-success').show();  
+        $('#modal-dialog .modal-footer .button-notification').show();
+        var elem = $('.index-button-bar')[0]; 
+        var elem2 = $('.index-button-bar2')[0]; 
+        //$('#addIndex').detach().appendTo(elem);
+        if ($('#cancelIndex').is(':visible')) {
+          $('#cancelIndex').detach().appendTo(elem2);
+          $('#createIndex').detach().appendTo(elem2);
+        }
+      }
+    });
+
+  },
+
+  unbindIndexEvents: function() {
+    $('#indexEditView #addIndex').unbind('click');
+    $('#newIndexType').unbind('change');
+    $('#infoTab a').unbind('click');
+    $('.deleteIndex').unbind('click');
+    /*
+    //$('#documentsToolbar ul').unbind('click');
+    this.markFilterToggle();
+    this.changeEditMode(false);
+    0Ads0asd0sd0f0asdf0sa0f
+    "click #documentsToolbar ul"    : "resetIndexForms"
+    */
+  },
+
+  createInfoModal: function() {
+
+    var callbackRev = function(error, revision, figures) {
+      if (error) {
+        arangoHelper.arangoError("Figures", "Could not get revision.");        
+      }
+      else {
+        var buttons = [];
+        var tableContent = {
+          figures: figures,
+          revision: revision,
+          model: this.model
+        };
+        window.modalView.show(
+          "modalCollectionInfo.ejs",
+          "Collection: " + this.model.get('name'),
+          buttons,
+          tableContent
+        );
+      }
+    }.bind(this);
+
+    var callback = function(error, data) {
+      if (error) {
+        arangoHelper.arangoError("Figures", "Could not get figures.");        
+      }
+      else {
+        var figures = data;
+        this.model.getRevision(callbackRev, figures);
+      }
+    }.bind(this);
+
+    this.model.getFigures(callback);
+  },
+  //index functions
+  resetIndexForms: function () {
+    $('#indexHeader input').val('').prop("checked", false);
+    $('#newIndexType').val('Cap').prop('selected',true);
+    this.selectIndexType();
+  },
+
+  createIndex: function () {
+    //e.preventDefault();
+    var self = this;
+    var indexType = $('#newIndexType').val();
+    var postParameter = {};
+    var fields;
+    var unique;
+    var sparse;
+
+    switch (indexType) {
+      case 'Cap':
+        var size = parseInt($('#newCapSize').val(), 10) || 0;
+      var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+      postParameter = {
+        type: 'cap',
+        size: size,
+        byteSize: byteSize
       };
+      break;
+      case 'Geo':
+        //HANDLE ARRAY building
+        fields = $('#newGeoFields').val();
+      var geoJson = self.checkboxToValue('#newGeoJson');
+      var constraint = self.checkboxToValue('#newGeoConstraint');
+      var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+      postParameter = {
+        type: 'geo',
+        fields: self.stringToArray(fields),
+        geoJson: geoJson,
+        constraint: constraint,
+        ignoreNull: ignoreNull
+      };
+      break;
+      case 'Hash':
+        fields = $('#newHashFields').val();
+      unique = self.checkboxToValue('#newHashUnique');
+      sparse = self.checkboxToValue('#newHashSparse');
+      postParameter = {
+        type: 'hash',
+        fields: self.stringToArray(fields),
+        unique: unique,
+        sparse: sparse
+      };
+      break;
+      case 'Fulltext':
+        fields = ($('#newFulltextFields').val());
+      var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+      postParameter = {
+        type: 'fulltext',
+        fields: self.stringToArray(fields),
+        minLength: minLength
+      };
+      break;
+      case 'Skiplist':
+        fields = $('#newSkiplistFields').val();
+      unique = self.checkboxToValue('#newSkiplistUnique');
+      sparse = self.checkboxToValue('#newSkiplistSparse');
+      postParameter = {
+        type: 'skiplist',
+        fields: self.stringToArray(fields),
+        unique: unique,
+        sparse: sparse
+      };
+      break;
+    }
+    var callback = function(error, msg){
+      if (error) {
+        if (msg) {
+          var message = JSON.parse(msg.responseText);
+          arangoHelper.arangoError("Document error", message.errorMessage);
+        }
+        else {
+          arangoHelper.arangoError("Document error", "Could not create index.");
+        }
+      }
+      self.refreshCollectionsView();
+    };
 
-      window.modalView.hide();
-      //$($('#infoTab').children()[1]).find('a').click();
-      self.model.createIndex(postParameter, callback);
-    },
+    window.modalView.hide();
+    //$($('#infoTab').children()[1]).find('a').click();
+    self.model.createIndex(postParameter, callback);
+  },
 
-    lastTarget: null,
+  lastTarget: null,
 
-    prepDeleteIndex: function (e) {
-      var self = this;
-      this.lastTarget = e;
+  prepDeleteIndex: function (e) {
+    var self = this;
+    this.lastTarget = e;
 
-      this.lastId = $(this.lastTarget.currentTarget).
-                    parent().
-                    parent().
-                    first().
-                    children().
-                    first().
-                    text();
-      //window.modalView.hide();
+    this.lastId = $(this.lastTarget.currentTarget).
+      parent().
+      parent().
+      first().
+      children().
+      first().
+      text();
+    //window.modalView.hide();
 
-      //delete modal
-      $("#modal-dialog .modal-footer").after(
-        '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
-          '<strong>Really delete?</strong>' +
-          '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
-          '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
+    //delete modal
+    $("#modal-dialog .modal-footer").after(
+      '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
+        '<strong>Really delete?</strong>' +
+        '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
+        '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
         '</div>');
       $('#indexConfirmDelete').unbind('click');
       $('#indexConfirmDelete').bind('click', function() {
@@ -20144,82 +20109,98 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
 
-    },
+  },
 
-    refreshCollectionsView: function() {
-      window.App.arangoCollectionsStore.fetch({
-        success: function () {
-          window.App.collectionsView.render();
-        }
-      });
-    },
+  refreshCollectionsView: function() {
+    window.App.arangoCollectionsStore.fetch({
+      success: function () {
+        window.App.collectionsView.render();
+      }
+    });
+  },
 
-    deleteIndex: function () {
-      var callback = function(error) {
-        if (error) {
-          arangoHelper.arangoError("Could not delete index");
-          $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
-            '<span class="deleteIndex icon_arangodb_roundminus"' + 
+  deleteIndex: function () {
+    var callback = function(error) {
+      if (error) {
+        arangoHelper.arangoError("Could not delete index");
+        $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+          '<span class="deleteIndex icon_arangodb_roundminus"' + 
             ' data-original-title="Delete index" title="Delete index"></span>'
-          );
-          this.model.set("locked", false);
-          this.refreshCollectionsView();
-        }
-        else if (!error && error !== undefined) {
-          $("tr th:contains('"+ this.lastId+"')").parent().remove();
-          this.model.set("locked", false);
-          this.refreshCollectionsView();
-        }
+        );
+        this.model.set("locked", false);
         this.refreshCollectionsView();
-      }.bind(this);
+      }
+      else if (!error && error !== undefined) {
+        $("tr th:contains('"+ this.lastId+"')").parent().remove();
+        this.model.set("locked", false);
+        this.refreshCollectionsView();
+      }
+      this.refreshCollectionsView();
+    }.bind(this);
 
-      this.model.set("locked", true);
-      this.model.deleteIndex(this.lastId, callback);
+    this.model.set("locked", true);
+    this.model.deleteIndex(this.lastId, callback);
 
-      $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
-        '<i class="fa fa-circle-o-notch fa-spin"></i>'
-      );
-    },
+    $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+      '<i class="fa fa-circle-o-notch fa-spin"></i>'
+    );
+  },
 
-    selectIndexType: function () {
-      $('.newIndexClass').hide();
-      var type = $('#newIndexType').val();
-      $('#newIndexType'+type).show();
-    },
+  selectIndexType: function () {
+    $('.newIndexClass').hide();
+    var type = $('#newIndexType').val();
+    $('#newIndexType'+type).show();
+  },
 
-    getIndex: function () {
-      this.index = this.model.getIndex();
-      var cssClass = 'collectionInfoTh modal-text';
-      if (this.index) {
-        var fieldString = '';
-        var actionString = '';
+  getIndex: function () {
 
-        _.each(this.index.indexes, function(v) {
-          if (v.type === 'primary' || v.type === 'edge') {
-            actionString = '<span class="icon_arangodb_locked" ' +
-              'data-original-title="No action"></span>';
-          }
-          else {
-            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
-              'data-original-title="Delete index" title="Delete index"></span>';
-          }
+    var callback = function(error, data) {
+      if (error) {
+        window.arangoHelper.arangoError('Index', data.errorMessage);
+      }
+      else {
+        this.renderIndex(data);
+      }
+    }.bind(this);
 
-          if (v.fields !== undefined) {
-            fieldString = v.fields.join(", ");
-          }
+    this.model.getIndex(callback);
+  },
 
-          //cut index id
-          var position = v.id.indexOf('/');
-          var indexId = v.id.substr(position + 1, v.id.length);
-          var selectivity = (
-            v.hasOwnProperty("selectivityEstimate") ? 
+  renderIndex: function(data) {
+
+    this.index = data;
+
+    var cssClass = 'collectionInfoTh modal-text';
+    if (this.index) {
+      var fieldString = '';
+      var actionString = '';
+
+      _.each(this.index.indexes, function(v) {
+        if (v.type === 'primary' || v.type === 'edge') {
+          actionString = '<span class="icon_arangodb_locked" ' +
+            'data-original-title="No action"></span>';
+        }
+        else {
+          actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
+            'data-original-title="Delete index" title="Delete index"></span>';
+        }
+
+        if (v.fields !== undefined) {
+          fieldString = v.fields.join(", ");
+        }
+
+        //cut index id
+        var position = v.id.indexOf('/');
+        var indexId = v.id.substr(position + 1, v.id.length);
+        var selectivity = (
+          v.hasOwnProperty("selectivityEstimate") ? 
             (v.selectivityEstimate * 100).toFixed(2) + "%" : 
             "n/a"
-          );
-          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
+        );
+        var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
 
-          $('#collectionEditIndexTable').append(
-            '<tr>' +
+        $('#collectionEditIndexTable').append(
+          '<tr>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
@@ -20228,48 +20209,49 @@ window.ArangoUsers = Backbone.Collection.extend({
             '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
-          );
-        });
-      }
-    },
-
-    toggleNewIndexView: function () {
-      var elem = $('.index-button-bar2')[0];
-      var elem2 = $('.index-button-bar')[0];
-      if ($('#indexEditView').is(':visible')) {
-        $('#indexEditView').hide();
-        $('#newIndexView').show();
-        //$('#addIndex').detach().appendTo(elem2);
-        $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
-        $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
-
-      }
-      else {
-        $('#indexEditView').show();
-        $('#newIndexView').hide();
-        //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
-        $('#cancelIndex').detach().appendTo(elem);
-        $('#createIndex').detach().appendTo(elem);
-      }
-
-      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
-      this.resetIndexForms();
-    },
-
-    stringToArray: function (fieldString) {
-      var fields = [];
-      fieldString.split(',').forEach(function(field){
-        field = field.replace(/(^\s+|\s+$)/g,'');
-        if (field !== '') {
-          fields.push(field);
-        }
+        );
       });
-      return fields;
-    },
-
-    checkboxToValue: function (id) {
-      return $(id).prop('checked');
     }
+    this.bindIndexEvents();
+  },
+
+  toggleNewIndexView: function () {
+    var elem = $('.index-button-bar2')[0];
+    var elem2 = $('.index-button-bar')[0];
+    if ($('#indexEditView').is(':visible')) {
+      $('#indexEditView').hide();
+      $('#newIndexView').show();
+      //$('#addIndex').detach().appendTo(elem2);
+      $('#cancelIndex').detach().appendTo('#modal-dialog .modal-footer');
+      $('#createIndex').detach().appendTo('#modal-dialog .modal-footer');
+
+    }
+    else {
+      $('#indexEditView').show();
+      $('#newIndexView').hide();
+      //$('#addIndex').detach().appendTo('#modal-dialog .modal-footer');
+      $('#cancelIndex').detach().appendTo(elem);
+      $('#createIndex').detach().appendTo(elem);
+    }
+
+    arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
+    this.resetIndexForms();
+  },
+
+  stringToArray: function (fieldString) {
+    var fields = [];
+    fieldString.split(',').forEach(function(field){
+      field = field.replace(/(^\s+|\s+$)/g,'');
+      if (field !== '') {
+        fields.push(field);
+      }
+    });
+    return fields;
+  },
+
+  checkboxToValue: function (id) {
+    return $(id).prop('checked');
+  }
 
   });
 }());
@@ -20634,14 +20616,27 @@ window.ArangoUsers = Backbone.Collection.extend({
         return 0;
       }
 
-      var returnobj = this.collection.newCollection(
-        collName, wfs, isSystem, collSize, collType, shards, shardBy
-      );
-      if (returnobj.status !== true) {
-        arangoHelper.arangoError("Collection error", returnobj.errorMessage);
-      }
-      this.updateCollectionsView();
-      window.modalView.hide();
+      var callback = function(error, data) {
+
+        if (error) {
+          arangoHelper.arangoError("Collection error", data.errorMessage);
+        }
+        else {
+          this.updateCollectionsView();
+        }
+        window.modalView.hide();
+
+      }.bind(this);
+
+      this.collection.newCollection({
+        collName: collName,
+        wfs: wfs,
+        isSystem: isSystem,
+        collSize: collSize,
+        collType: collType,
+        shards: shards,
+        shardBy: shardBy
+      }, callback);
     },
 
     createNewCollectionModal: function() {
@@ -22129,20 +22124,31 @@ window.ArangoUsers = Backbone.Collection.extend({
     editor: 0,
 
     setType: function (type) {
-      var result, type2;
+      if (type === 2) {
+        type = 'document';
+      }
+      else {
+        type = 'edge';
+      }
+
+      var callback = function(error, data, type) {
+        if (error) {
+          console.log(data);
+          arangoHelper.arangoError("Error", "Could not fetch data.");
+        }
+        else {
+          var type2 = type + ': '; 
+          this.type = type;
+          this.fillInfo(type2);
+          this.fillEditor();
+        }
+      }.bind(this);
+
       if (type === 'edge') {
-        result = this.collection.getEdge(this.colid, this.docid);
-        type2 = "Edge: ";
+        this.collection.getEdge(this.colid, this.docid, callback);
       }
       else if (type === 'document') {
-        result = this.collection.getDocument(this.colid, this.docid);
-        type2 = "Document: ";
-      }
-      if (result === true) {
-        this.type = type;
-        this.fillInfo(type2);
-        this.fillEditor();
-        return true;
+        this.collection.getDocument(this.colid, this.docid, callback);
       }
     },
 
@@ -22167,23 +22173,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     deleteDocument: function() {
 
-      var result;
-
-      if (this.type === 'document') {
-        result = this.collection.deleteDocument(this.colid, this.docid);
-        if (result === false) {
-          arangoHelper.arangoError('Document error:','Could not delete');
-          return;
-        }
-      }
-      else if (this.type === 'edge') {
-        result = this.collection.deleteEdge(this.colid, this.docid);
-        if (result === false) {
-          arangoHelper.arangoError('Edge error:', 'Could not delete');
-          return;
-        }
-      }
-      if (result === true) {
+      var successFunction = function() {
         if (this.customView) {
           this.customDeleteFunction();
         }
@@ -22192,6 +22182,29 @@ window.ArangoUsers = Backbone.Collection.extend({
           window.modalView.hide();
           window.App.navigate(navigateTo, {trigger: true});
         }
+      }.bind(this);
+
+      if (this.type === 'document') {
+        var callbackDoc = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            successFunction();
+          }
+        }.bind(this);
+        this.collection.deleteDocument(this.colid, this.docid, callbackDoc);
+      }
+      else if (this.type === 'edge') {
+        var callbackEdge = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Edge error', 'Could not delete edge');
+          }
+          else {
+            successFunction();
+          }
+        }.bind(this);
+        this.collection.deleteEdge(this.colid, this.docid, callbackEdge);
       }
     },
 
@@ -22294,7 +22307,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       window.modalView.hide();
 
-      var model, result;
+      var model;
 
       try {
         model = this.editor.get();
@@ -22308,23 +22321,30 @@ window.ArangoUsers = Backbone.Collection.extend({
       model = JSON.stringify(model);
 
       if (this.type === 'document') {
-        result = this.collection.saveDocument(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Document error:','Could not save');
-          return;
-        }
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not save document.');
+          }
+          else {
+            this.successConfirmation();
+            this.disableSaveButton();
+          }
+        }.bind(this);
+
+        this.collection.saveDocument(this.colid, this.docid, model, callback);
       }
       else if (this.type === 'edge') {
-        result = this.collection.saveEdge(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Edge error:', 'Could not save');
-          return;
-        }
-      }
+        var callbackE = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not save edge.');
+          }
+          else {
+            this.successConfirmation();
+            this.disableSaveButton();
+          }
+        }.bind(this);
 
-      if (result === true) {
-        this.successConfirmation();
-        this.disableSaveButton();
+        this.collection.saveEdge(this.colid, this.docid, model, callbackE);
       }
     },
 
@@ -22429,12 +22449,20 @@ window.ArangoUsers = Backbone.Collection.extend({
     setCollectionId : function (colid, page) {
       this.collection.setCollection(colid);
       this.collection.setPage(page);
-      var type = arangoHelper.collectionApiType(colid);
       this.page = page;
-      this.type = type;
 
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      this.collectionModel = this.collectionsStore.get(colid);
+      var callback = function(error, type) {
+        if (error) {
+          arangoHelper.arangoError("Error", "Could not get collection properties.");
+        }
+        else {
+          this.type = type;
+          this.collection.getDocuments(this.getDocsCallback.bind(this));
+          this.collectionModel = this.collectionsStore.get(colid);
+        }
+      }.bind(this);
+
+      arangoHelper.collectionApiType(colid, null, callback);
     },
 
     getDocsCallback: function(error) {
@@ -22842,102 +22870,109 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     addDocumentModal: function () {
       var collid  = window.location.hash.split("/")[1],
-      buttons = [], tableContent = [],
+      buttons = [], tableContent = [];
       // second parameter is "true" to disable caching of collection type
-      doctype = arangoHelper.collectionApiType(collid, true);
-      if (doctype === 'edge') {
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-from-attr',
-            '_from',
-            '',
-            "document _id: document handle of the linked vertex (incoming relation)",
-            undefined,
-            false,
-            [
-              {
-                rule: Joi.string().required(),
-                msg: "No _from attribute given."
-              }
-            ]
-          )
-        );
+      var callback = function(error, type) {
+        if (error) {
+          arangoHelper.arangoError("Error", "Could not fetch collection type");
+        }
+        else {
+          if (type === 'edge') {
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-to',
-            '_to',
-            '',
-            "document _id: document handle of the linked vertex (outgoing relation)",
-            undefined,
-            false,
-            [
-              {
-                rule: Joi.string().required(),
-                msg: "No _to attribute given."
-              }
-            ]
-          )
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-from-attr',
+                '_from',
+                '',
+                "document _id: document handle of the linked vertex (incoming relation)",
+                undefined,
+                false,
+                [
+                  {
+                    rule: Joi.string().required(),
+                    msg: "No _from attribute given."
+                  }
+                ]
+              )
+            );
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-key-attr',
-            '_key',
-            undefined,
-            "the edges unique key(optional attribute, leave empty for autogenerated key",
-            'is optional: leave empty for autogenerated key',
-            false,
-            [
-              {
-                rule: Joi.string().allow('').optional(),
-                msg: ""
-              }
-            ]
-          )
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-to',
+                '_to',
+                '',
+                "document _id: document handle of the linked vertex (outgoing relation)",
+                undefined,
+                false,
+                [
+                  {
+                    rule: Joi.string().required(),
+                    msg: "No _to attribute given."
+                  }
+                ]
+              )
+            );
 
-        buttons.push(
-          window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-key-attr',
+                '_key',
+                undefined,
+                "the edges unique key(optional attribute, leave empty for autogenerated key",
+                'is optional: leave empty for autogenerated key',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional(),
+                    msg: ""
+                  }
+                ]
+              )
+            );
+            buttons.push(
+              window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
+            );
 
-        window.modalView.show(
-          'modalTable.ejs',
-          'Create edge',
-          buttons,
-          tableContent
-        );
-      }
-      else {
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-document-key-attr',
-            '_key',
-            undefined,
-            "the documents unique key(optional attribute, leave empty for autogenerated key",
-            'is optional: leave empty for autogenerated key',
-            false,
-            [
-              {
-                rule: Joi.string().allow('').optional(),
-                msg: ""
-              }
-            ]
-          )
-        );
+            window.modalView.show(
+              'modalTable.ejs',
+              'Create edge',
+              buttons,
+              tableContent
+            );
+          }
+          else {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-document-key-attr',
+                '_key',
+                undefined,
+                "the documents unique key(optional attribute, leave empty for autogenerated key",
+                'is optional: leave empty for autogenerated key',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional(),
+                    msg: ""
+                  }
+                ]
+              )
+            );
 
-        buttons.push(
-          window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
-        );
+            buttons.push(
+              window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
+            );
 
-        window.modalView.show(
-          'modalTable.ejs',
-          'Create document',
-          buttons,
-          tableContent
-        );
-      }
+            window.modalView.show(
+              'modalTable.ejs',
+              'Create document',
+              buttons,
+              tableContent
+            );
+          }
+        }
+      }.bind(this);
+      arangoHelper.collectionApiType(collid, true, callback);
     },
 
     addEdge: function () {
@@ -22946,42 +22981,44 @@ window.ArangoUsers = Backbone.Collection.extend({
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var result;
-      if (key !== '' || key !== undefined) {
-        result = this.documentStore.createTypeEdge(collid, from, to, key);
-      }
-      else {
-        result = this.documentStore.createTypeEdge(collid, from, to);
-      }
 
-      if (result !== false) {
-        //$('#edgeCreateModal').modal('hide');
-        window.modalView.hide();
-        window.location.hash = "collection/"+result;
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not create edge');
+        }
+        else {
+          window.modalView.hide();
+          window.location.hash = "collection/" + data;
+        }
+      }.bind(this);
+
+      if (key !== '' || key !== undefined) {
+        this.documentStore.createTypeEdge(collid, from, to, key, callback);
       }
-      //Error
       else {
-        arangoHelper.arangoError('Edge error', 'Creation failed.');
+        this.documentStore.createTypeEdge(collid, from, to, null, callback);
       }
     },
 
     addDocument: function() {
       var collid = window.location.hash.split("/")[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
-      var result;
+
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not create document');
+        }
+        else {
+          window.modalView.hide();
+          window.location.hash = "collection/" + data;
+        }
+      }.bind(this);
+
       if (key !== '' || key !== undefined) {
-        result = this.documentStore.createTypeDocument(collid, key);
+        this.documentStore.createTypeDocument(collid, key, callback);
       }
       else {
-        result = this.documentStore.createTypeDocument(collid);
-      }
-      //Success
-      if (result !== false) {
-        window.modalView.hide();
-        window.location.hash = "collection/" + result;
-      }
-      else {
-        arangoHelper.arangoError('Document error', 'Creation failed.');
+        this.documentStore.createTypeDocument(collid, null, callback);
       }
     },
 
@@ -23083,37 +23120,42 @@ window.ArangoUsers = Backbone.Collection.extend({
       var deleted = [], self = this;
 
       _.each(toDelete, function(key) {
-        var result = false;
         if (self.type === 'document') {
-          result = self.documentStore.deleteDocument(
-            self.collection.collectionID, key
-          );
-          if (result) {
-            //on success
-            deleted.push(true);
-            self.collection.setTotalMinusOne();
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Document error', 'Could not delete document.');
-          }
+          var callback = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Document error', 'Could not delete document.');
+            }
+            else {
+              deleted.push(true);
+              self.collection.setTotalMinusOne();
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+          self.documentStore.deleteDocument(self.collection.collectionID, key, callback);
         }
         else if (self.type === 'edge') {
-          result = self.documentStore.deleteEdge(self.collection.collectionID, key);
-          if (result === true) {
-            //on success
-            self.collection.setTotalMinusOne();
-            deleted.push(true);
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Edge error', 'Could not delete edge');
-          }
+
+          var callback2 = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Edge error', 'Could not delete edge');
+            }
+            else {
+              self.collection.setTotalMinusOne();
+              deleted.push(true);
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+
+          self.documentStore.deleteEdge(self.collection.collectionID, key, callback2);
         }
       });
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      $('#markDocuments').click();
-      window.modalView.hide();
+
     },
 
     getSelectedDocs: function() {
@@ -23143,36 +23185,35 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     reallyDelete: function () {
-      var deleted = false;
-      var result;
       if (this.type === 'document') {
-        result = this.documentStore.deleteDocument(
-          this.collection.collectionID, this.docid
-        );
-        if (result) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Doc error');
-        }
+
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
+
+        this.documentStore.deleteDocument(this.collection.collectionID, this.docid, callback);
       }
       else if (this.type === 'edge') {
-        result = this.documentStore.deleteEdge(this.collection.collectionID, this.docid);
-        if (result === true) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Edge error');
-        }
-      }
 
-      if (deleted === true) {
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        $('#docDeleteModal').modal('hide');
+        var callback2 = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Edge error', "Could not delete edge");
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
+
+        this.documentStore.deleteEdge(this.collection.collectionID, this.docid, callback2);
       }
     },
 
@@ -23650,10 +23691,16 @@ window.ArangoUsers = Backbone.Collection.extend({
   };
 
   var installCallback = function(result) {
+    var self = this;
+
     if (result.error === false) {
-      this.collection.fetch({ async: false });
-      window.modalView.hide();
-      this.reload();
+      this.collection.fetch({
+        success: function() {
+          window.modalView.hide();
+          self.reload();
+        }
+      });
+                           
     } else {
       var res = result;
       if (result.hasOwnProperty("responseJSON")) {
@@ -24127,8 +24174,9 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
           else {
             window.modalView.hide();
+            arangoHelper.arangoError("Graph", "Could not delete Graph.");
           }
-        };
+        }.bind(this);
 
         this.collection.dropAndDeleteGraph(name, callback);
       }
@@ -24209,39 +24257,42 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function() {
+
+      var self = this;
       this.collection.fetch({
-        async: false
-      });
 
-      this.collection.sort();
+        success: function() {
+          self.collection.sort();
 
-      $(this.el).html(this.template.render({
-        graphs: this.collection,
-        searchString : ''
-      }));
+          $(self.el).html(self.template.render({
+            graphs: self.collection,
+            searchString : ''
+          }));
 
-      if (this.dropdownVisible === true) {
-        $('#graphManagementDropdown2').show();
-        $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
-        $('#graphManagementToggle').toggleClass('activated');
-        $('#graphManagementDropdown').show();
-      }
-
-      this.events["click .tableRow"] = this.showHideDefinition.bind(this);
-      this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
-      this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
-      this.events["click #graphTab a"] = this.toggleTab.bind(this);
-      this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
-      this.events["focusout .select2-search-field input"] = function(e){
-        if ($('.select2-drop').is(':visible')) {
-          if (!$('#select2-search-field input').is(':focus')) {
-            window.setTimeout(function() { 
-              $(e.currentTarget).parent().parent().parent().select2('close');
-            }, 80);
+          if (self.dropdownVisible === true) {
+            $('#graphManagementDropdown2').show();
+            $('#graphSortDesc').attr('checked', self.collection.sortOptions.desc);
+            $('#graphManagementToggle').toggleClass('activated');
+            $('#graphManagementDropdown').show();
           }
-        } 
-      }.bind(this);
-      arangoHelper.setCheckboxStatus("#graphManagementDropdown");
+
+          self.events["click .tableRow"] = self.showHideDefinition.bind(self);
+          self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
+          self.events["click .graphViewer-icon-button"] = self.addRemoveDefinition.bind(self);
+          self.events["click #graphTab a"] = self.toggleTab.bind(self);
+          self.events["click .createExampleGraphs"] = self.createExampleGraphs.bind(self);
+          self.events["focusout .select2-search-field input"] = function(e){
+            if ($('.select2-drop').is(':visible')) {
+              if (!$('#select2-search-field input').is(':focus')) {
+                window.setTimeout(function() { 
+                  $(e.currentTarget).parent().parent().parent().select2('close');
+                }, 80);
+              }
+            } 
+          }.bind(self);
+          arangoHelper.setCheckboxStatus("#graphManagementDropdown");
+        }
+      });
 
       return this;
     },
@@ -24880,19 +24931,23 @@ window.ArangoUsers = Backbone.Collection.extend({
         //Heiko: Form-Validator - please fill out all req. fields
         return;
       }
-      username = this.collection.login(username, password);
 
-      if (username) {
-        $(this.el2).show();
-        $(this.el3).show();
-        window.location.reload();
-        $('#currentUser').text(username);
-        this.collection.loadUserSettings();
-      }
-      else {
-        $('#loginForm input').addClass("form-error");
-        $('.wrong-credentials').show();
-      }
+      var callback = function(error, username) {
+        if (error) {
+          $('#loginForm input').addClass("form-error");
+          $('.wrong-credentials').show();
+        }
+        else {
+          $(this.el2).show();
+          $(this.el3).show();
+          window.location.reload();
+          $('#currentUser').text(username);
+          this.collection.loadUserSettings();
+        } 
+      }.bind(this);
+
+      this.collection.login(username, password, callback);
+
     }
 
   });
@@ -25524,11 +25579,16 @@ window.ArangoUsers = Backbone.Collection.extend({
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
+      "click li": "switchTab",
+      "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
+    renderFirst: true,
+
     initialize: function () {
+
       this.userCollection = this.options.userCollection;
       this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
@@ -25554,19 +25614,38 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function () {
+      var self = this;
+
       $(this.el).html(this.template.render({
         currentDB: this.currentDB
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
-      if (this.userCollection.whoAmI()) {
-        this.userBarView.render();
-      }
+
+      var callback = function(error) {
+        if (!error) {
+          this.userBarView.render();
+        }
+      }.bind(this);
+
+      this.userCollection.whoAmI(callback);
       this.statisticBarView.render($("#statisticBar"));
 
       // if demo content not available, do not show demo menu tab
       if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
         $('.demo-menu').css("display","none");
+      }
+      if (this.renderFirst) {
+        this.renderFirst = false;
+          
+        var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
+        if (select.indexOf('/') < -1) {
+          this.selectMenuItem(select);
+        }
+
+        $('.arangodbLogo').on('click', function() {
+          self.selectMenuItem();
+        });
       }
 
       return this;
@@ -25619,10 +25698,20 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
+    switchTab: function(e) {
+      var id = $(e.currentTarget).children().first().attr('id');
+
+      if (id) {
+        this.selectMenuItem(id + '-menu');
+      }
+    },
+
     selectMenuItem: function (menuItem) {
       $('.navlist li').removeClass('active');
-      if (menuItem) {
-        $('.' + menuItem).addClass('active');
+      if (typeof menuItem === 'string') {
+        if (menuItem) {
+          $('.' + menuItem).addClass('active');
+        }
       }
     },
 
@@ -26470,17 +26559,23 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (this.allowUpload === true) {
 
         var callback = function() {
-          this.collection.fetch({async: false});
-          this.updateLocalQueries();
-          this.renderSelectboxes();
-          this.updateTable();
-          self.allowUpload = false;
-          $('#customs-switch').click();
-        };
+          this.collection.fetch({
+            success: function() {
+              self.updateLocalQueries();
+              self.renderSelectboxes();
+              self.updateTable();
+              self.allowUpload = false;
+              $('#customs-switch').click();
+              $('#confirmQueryImport').addClass('disabled');
+              $('#queryImportDialog').modal('hide'); 
+            },
+            error: function(data) {
+              arangoHelper.arangoError("Custom Queries", data.responseText);
+            }
+          });
+        }.bind(this);
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
-        $('#confirmQueryImport').addClass('disabled');
-        $('#queryImportDialog').modal('hide'); 
       }
     },
 
@@ -26506,17 +26601,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       };
 
-      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+      $.ajax("whoAmI?_=" + Date.now()).success(
         function(data) {
           name = data.user;
 
           if (name === null || name === false) {
             name = "root";
           }
-
+          window.open("query/download/" + encodeURIComponent(name));
         });
 
-        window.open("query/download/" + encodeURIComponent(name));
       },
 
       deselect: function (editor) {
@@ -26551,45 +26645,63 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.checkSaveName();
       },
 
-      getAQL: function () {
+      getAQL: function (originCallback) {
         var self = this, result;
 
         this.collection.fetch({
-          async: false
-        });
+          success: function() {
+            //old storage method
+            var item = localStorage.getItem("customQueries");
+            if (item) {
+              var queries = JSON.parse(item);
+              //save queries in user collections extra attribute
+              _.each(queries, function(oldQuery) {
+                self.collection.add({
+                  value: oldQuery.value,
+                  name: oldQuery.name
+                });
+              });
 
-        //old storage method
-        var item = localStorage.getItem("customQueries");
-        if (item) {
-          var queries = JSON.parse(item);
-          //save queries in user collections extra attribute
-          _.each(queries, function(oldQuery) {
-            self.collection.add({
-              value: oldQuery.value,
-              name: oldQuery.name
-            });
-          });
-          result = self.collection.saveCollectionQueries();
+              var callback = function(error, data) {
+                if (error) {
+                  arangoHelper.arangoError(
+                    "Custom Queries",
+                    "Could not import old local storage queries"
+                  );
+                }
+                else {
+                  localStorage.removeItem("customQueries");
+                }
+              }.bind(self);
+              self.collection.saveCollectionQueries(callback);
+            }
+            self.updateLocalQueries();
 
-          if (result === true) {
-            //and delete them from localStorage
-            localStorage.removeItem("customQueries");
+            if (originCallback) {
+              originCallback();
+            }
           }
-        }
-
-        this.updateLocalQueries();
+        });
       },
 
       deleteAQL: function (e) {
+        var callbackSave = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Query", "Could not delete query.");
+          }
+          else {
+            this.updateLocalQueries();
+            this.renderSelectboxes();
+            this.updateTable();
+          }
+        }.bind(this);
+
         var deleteName = $(e.target).parent().parent().parent().children().first().text();
-
         var toDelete = this.collection.findWhere({name: deleteName});
-        this.collection.remove(toDelete);
-        this.collection.saveCollectionQueries();
 
-        this.updateLocalQueries();
-        this.renderSelectboxes();
-        this.updateTable();
+        this.collection.remove(toDelete);
+        this.collection.saveCollectionQueries(callbackSave);
+
       },
 
       updateLocalQueries: function () {
@@ -26661,16 +26773,26 @@ window.ArangoUsers = Backbone.Collection.extend({
           });
         }
 
-        this.collection.saveCollectionQueries();
-
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Query", "Could not save query");
+          }
+          else {
+            var self = this;
+            this.collection.fetch({
+              success: function() {
+                self.updateLocalQueries();
+                self.renderSelectboxes();
+                $('#querySelect').val(saveName);
+              }
+            });
+          }
+        }.bind(this);
+        this.collection.saveCollectionQueries(callback);
         window.modalView.hide();
-
-        this.updateLocalQueries();
-        this.renderSelectboxes();
-        $('#querySelect').val(saveName);
       },
 
-      getSystemQueries: function () {
+      getSystemQueries: function (callback) {
         var self = this;
         $.ajax({
           type: "GET",
@@ -26678,11 +26800,16 @@ window.ArangoUsers = Backbone.Collection.extend({
           url: "js/arango/aqltemplates.json",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
+            if (callback) {
+              callback(false);
+            }
             self.queries = data;
           },
           error: function () {
+            if (callback) {
+              callback(true);
+            }
             arangoHelper.arangoNotification("Query", "Error while loading system templates");
           }
         });
@@ -26697,15 +26824,28 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
 
       refreshAQL: function(select) {
-        this.getAQL();
-        this.getSystemQueries();
-        this.updateLocalQueries();
 
-        if (select) {
-          var previous = $("#querySelect" ).val();
-          this.renderSelectboxes();
-          $("#querySelect" ).val(previous);
-        }
+        var self = this;
+
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Query', 'Could not reload Queries');
+          }
+          else {
+            self.updateLocalQueries();
+            if (select) {
+              var previous = $("#querySelect").val();
+              self.renderSelectboxes();
+              $("#querySelect").val(previous);
+            }
+          }
+        }.bind(self);
+
+        var originCallback = function() {
+          self.getSystemQueries(callback);
+        }.bind(self);
+
+        this.getAQL(originCallback);
       },
 
       importSelected: function (e) {
@@ -28306,7 +28446,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window*/
+/*global arangoHelper, Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
 
@@ -28355,43 +28495,60 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
-      var username = this.userCollection.whoAmI(),
-        img = null,
-        name = null,
-        active = false,
-        currentUser = null;
-      if (username) {
-        currentUser = this.userCollection.findWhere({user: username});
-        currentUser.set({loggedIn : true});
-        name = currentUser.get("extra").name;
-        img = currentUser.get("extra").img;
-        active = currentUser.get("active");
-      }
-      if (! img) {
-        img = "img/default_user.png";
-      } 
-      else {
-        img = "https://s.gravatar.com/avatar/" + img + "?s=24";
-      }
-      if (! name) {
-        name = "";
-      }
 
-      this.$el = $("#userBar");
-      this.$el.html(this.template.render({
-        img : img,
-        name : name,
-        username : username,
-        active : active
-      }));
+      var callback = function(error, username) {
+        if (error) {
+          arangoHelper.arangoErro("User", "Could not fetch user.");
+        }
+        else {
+          var img = null,
+            name = null,
+            active = false,
+            currentUser = null;
+          if (username) {
+            currentUser = this.userCollection.findWhere({user: username});
+            currentUser.set({loggedIn : true});
+            name = currentUser.get("extra").name;
+            img = currentUser.get("extra").img;
+            active = currentUser.get("active");
+          }
+          if (! img) {
+            img = "img/default_user.png";
+          } 
+          else {
+            img = "https://s.gravatar.com/avatar/" + img + "?s=24";
+          }
+          if (! name) {
+            name = "";
+          }
 
-      this.delegateEvents();
-      return this.$el;
+          this.$el = $("#userBar");
+          this.$el.html(this.template.render({
+            img : img,
+            name : name,
+            username : username,
+            active : active
+          }));
+
+          this.delegateEvents();
+          return this.$el;
+        }
+      }.bind(this);
+
+      this.userCollection.whoAmI(callback);
     },
 
     userLogout : function() {
-      this.userCollection.whoAmI();
-      this.userCollection.logout();
+
+      var userCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Logout error");
+        }
+        else {
+          this.userCollection.logout();
+        } 
+      }.bind(this);
+      this.userCollection.whoAmI(userCallback);
     }
   });
 }());
@@ -28737,49 +28894,54 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#newCurrentPassword').closest("th").css("backgroundColor", "white");
       $('#confirmCurrentPassword').closest("th").css("backgroundColor", "white");
 
-
       //check
       var hasError = false;
-      //Check old password
-      if (!this.validateCurrentPassword(oldPasswd)) {
-        $('#oldCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check confirmation
-      if (newPasswd !== confirmPasswd) {
-        $('#confirmCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
-      //check new password
-      if (!this.validatePassword(newPasswd)) {
-        $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
-        hasError = true;
-      }
 
-      if (hasError) {
-        return;
-      }
-      this.currentUser.setPassword(newPasswd);
-      window.modalView.hide();
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not verify old password");
+        }
+        else {
+          if (data) {
+            //check confirmation
+            if (newPasswd !== confirmPasswd) {
+              arangoHelper.arangoError("User", "New passwords do not match");
+              hasError = true;
+            }
+            //check new password
+            /*if (!this.validatePassword(newPasswd)) {
+              $('#newCurrentPassword').closest("th").css("backgroundColor", "red");
+              hasError = true;
+            }*/
+
+            if (!hasError) {
+              this.currentUser.setPassword(newPasswd);
+              arangoHelper.arangoNotification("User", "Password changed");
+              window.modalView.hide();
+            }
+          }
+        }
+      }.bind(this);
+      this.currentUser.checkPassword(oldPasswd, callback);
     },
-
-    validateCurrentPassword : function (pwd) {
-      return this.currentUser.checkPassword(pwd);
-    },
-
 
     submitEditCurrentUserProfile: function() {
       var name    = $('#editCurrentName').val();
       var img     = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
 
-      /*      if (!this.validateName(name)) {
-       $('#editName').closest("th").css("backgroundColor", "red");
-       return;
-       }*/
 
-      this.currentUser.setExtras(name, img);
-      this.updateUserProfile();
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("User", "Could not edit user settings");
+        }
+        else {
+          arangoHelper.arangoNotification("User", "Changes confirmed.");
+          this.updateUserProfile();
+        }
+      }.bind(this);
+
+      this.currentUser.setExtras(name, img, callback);
       window.modalView.hide();
     },
 
@@ -29087,6 +29249,47 @@ window.ArangoUsers = Backbone.Collection.extend({
       "test": "test"
     },
 
+    checkUser: function () {
+      var callback = function(error) {
+        if (error) {
+          this.navigate("login", {trigger: true});
+        }
+        else {
+          this.initOnce();
+        }
+      }.bind(this);
+
+      this.userCollection.whoAmI(callback); 
+    },
+
+    waitForInit: function(origin, param1, param2) {
+      if (!this.initFinished) {
+        setTimeout(function() {
+          if (!param1) {
+            origin(false);
+          }
+          if (param1 && !param2) {
+            origin(param1, false);
+          }
+          if (param1 && param2) {
+            origin(param1, param2, false);
+          }
+        }, 100);
+      } else {
+        if (!param1) {
+          origin(true);
+        }
+        if (param1 && !param2) {
+          origin(param1, true);
+        }
+        if (param1 && param2) {
+          origin(param1, param2, true);
+        }
+      }
+    },
+
+    initFinished: false,
+
     initialize: function () {
       // This should be the only global object
       window.modalView = new window.ModalView();
@@ -29102,31 +29305,34 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.initOnce = function () {
         this.initOnce = function() {};
+        this.initFinished = true;
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
-        this.currentDB.fetch({
-          async: false
-        });
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-        this.arangoCollectionsStore.fetch({async: false});
+        this.arangoCollectionsStore.fetch();
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();
-        this.naviView = new window.NavigationView({
-          database: this.arangoDatabase,
-          currentDB: this.currentDB,
-          notificationCollection: self.notificationList,
-          userCollection: this.userCollection
+
+        this.currentDB.fetch({
+          success: function() {
+            self.naviView = new window.NavigationView({
+              database: self.arangoDatabase,
+              currentDB: self.currentDB,
+              notificationCollection: self.notificationList,
+              userCollection: self.userCollection
+            });
+            self.naviView.render();
+          }
         });
 
         this.queryCollection = new window.ArangoQueries();
 
         this.footerView.render();
-        this.naviView.render();
 
         window.checkVersion();
       }.bind(this);
@@ -29138,17 +29344,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     },
 
-    checkUser: function () {
-      if (this.userCollection.whoAmI() === null) {
-        this.navigate("login", {trigger: true});
-        return false;
-      }
-      this.initOnce();
-      return true;
-    },
-
-    logs: function () {
-      if (!this.checkUser()) {
+    logs: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.logs.bind(this));
         return;
       }
       if (!this.logsView) {
@@ -29176,46 +29375,61 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.logsView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    applicationDetail: function (mount) {
-      if (!this.checkUser()) {
+    applicationDetail: function (mount, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applicationDetail.bind(this), mount);
         return;
       }
-      this.naviView.selectMenuItem('applications-menu');
+      var callback = function() {
+        if (!this.hasOwnProperty('applicationDetailView')) {
+          this.applicationDetailView = new window.ApplicationDetailView({
+            model: this.foxxList.get(decodeURIComponent(mount))
+          });
+        }
+
+        this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
+        this.applicationDetailView.render('swagger');
+      }.bind(this);
 
       if (this.foxxList.length === 0) {
-        this.foxxList.fetch({ async: false });
-      }
-      if (!this.hasOwnProperty('applicationDetailView')) {
-        this.applicationDetailView = new window.ApplicationDetailView({
-          model: this.foxxList.get(decodeURIComponent(mount))
+        this.foxxList.fetch({
+          success: function() {
+            callback();
+          }
         });
       }
-
-      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render('swagger');
+      else {
+        callback();
+      }
     },
 
-    login: function () {
-      if (this.userCollection.whoAmI() !== null) {
-        this.navigate("", {trigger: true});
-        return false;
-      }
-      if (!this.loginView) {
-        this.loginView = new window.loginView({
-          collection: this.userCollection
-        });
-      }
-      this.loginView.render();
+    login: function (initialized) {
+      var callback = function(error) {
+        if (error) {
+          if (!this.loginView) {
+            this.loginView = new window.loginView({
+              collection: this.userCollection
+            });
+          }
+          this.loginView.render();
+        }
+        else {
+          this.navigate("", {trigger: true});
+        }
+      }.bind(this);
+      this.userCollection.whoAmI(callback);
     },
 
-    collections: function () {
-      if (!this.checkUser()) {
+    collections: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.collections.bind(this));
         return;
       }
-      var naviView = this.naviView, self = this;
+      var self = this;
       if (!this.collectionsView) {
         this.collectionsView = new window.CollectionsView({
           collection: this.arangoCollectionsStore
@@ -29224,13 +29438,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.arangoCollectionsStore.fetch({
         success: function () {
           self.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
         }
       });
     },
 
-    documents: function (colid, pageid) {
-      if (!this.checkUser()) {
+    documents: function (colid, pageid, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.documents.bind(this), colid, pageid);
         return;
       }
       if (!this.documentsView) {
@@ -29245,8 +29460,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     },
 
-    document: function (colid, docid) {
-      if (!this.checkUser()) {
+    document: function (colid, docid, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.document.bind(this), colid, docid);
         return;
       }
       if (!this.documentView) {
@@ -29257,23 +29474,35 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.documentView.colid = colid;
       this.documentView.docid = docid;
       this.documentView.render();
-      var type = arangoHelper.collectionApiType(colid);
-      this.documentView.setType(type);
+
+      var callback = function(error, type) {
+        if (!error) {
+          this.documentView.setType(type);
+        }
+        else {
+          console.log("Error", "Could not fetch collection type");
+        }
+      }.bind(this);
+
+      arangoHelper.collectionApiType(colid, null, callback);
     },
 
-    shell: function () {
-      if (!this.checkUser()) {
+    shell: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.shell.bind(this));
         return;
       }
       if (!this.shellView) {
         this.shellView = new window.shellView();
       }
       this.shellView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    query: function () {
-      if (!this.checkUser()) {
+    query: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.query.bind(this));
         return;
       }
       if (!this.queryView) {
@@ -29282,11 +29511,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.queryView.render();
-      this.naviView.selectMenuItem('query-menu');
     },
     
-    test: function () {
-      if (!this.checkUser()) {
+    test: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.test.bind(this));
         return;
       }
       if (!this.testView) {
@@ -29296,8 +29526,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.testView.render();
     },
 
-    workMonitor: function () {
-      if (!this.checkUser()) {
+    workMonitor: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.workMonitor.bind(this));
         return;
       }
       if (!this.workMonitorCollection) {
@@ -29309,11 +29541,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.workMonitorView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    queryManagement: function () {
-      if (!this.checkUser()) {
+    queryManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.queryManagement.bind(this));
         return;
       }
       if (!this.queryManagementView) {
@@ -29322,11 +29555,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.queryManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    databases: function () {
-      if (!this.checkUser()) {
+    databases: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.databases.bind(this));
         return;
       }
       if (arangoHelper.databaseAllowed() === true) {
@@ -29337,20 +29571,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           });
         }
         this.databaseView.render();
-        this.naviView.selectMenuItem('databases-menu');
       } else {
         this.navigate("#", {trigger: true});
-        this.naviView.selectMenuItem('dashboard-menu');
         $('#databaseNavi').css('display', 'none');
         $('#databaseNaviSelect').css('display', 'none');
       }
     },
 
-    dashboard: function () {
-      if (!this.checkUser()) {
+    dashboard: function (initialized) {
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.dashboard.bind(this));
         return;
       }
-      this.naviView.selectMenuItem('dashboard-menu');
+
       if (this.dashboardView === undefined) {
         this.dashboardView = new window.DashboardView({
           dygraphConfig: window.dygraphConfig,
@@ -29360,8 +29595,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.dashboardView.render();
     },
 
-    graphManagement: function () {
-      if (!this.checkUser()) {
+    graphManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.graphManagement.bind(this));
         return;
       }
       if (!this.graphManagementView) {
@@ -29374,11 +29611,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         );
       }
       this.graphManagementView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
-    showGraph: function (name) {
-      if (!this.checkUser()) {
+    showGraph: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.showGraph.bind(this), name);
         return;
       }
       if (!this.graphManagementView) {
@@ -29392,11 +29630,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.graphManagementView.render();
       this.graphManagementView.loadGraphViewer(name);
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
-    applications: function () {
-      if (!this.checkUser()) {
+    applications: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applications.bind(this));
         return;
       }
       if (this.applicationsView === undefined) {
@@ -29405,11 +29644,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
     },
 
-    handleSelectDatabase: function () {
-      if (!this.checkUser()) {
+    handleSelectDatabase: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.handleSelectDatabase.bind(this));
         return;
       }
       this.naviView.handleSelectDatabase();
@@ -29427,8 +29667,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
-    userManagement: function () {
-      if (!this.checkUser()) {
+    userManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.userManagement.bind(this));
         return;
       }
       if (!this.userManagementView) {
@@ -29437,11 +29679,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.userManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    userProfile: function () {
-      if (!this.checkUser()) {
+    userProfile: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.userProfile.bind(this));
         return;
       }
       if (!this.userManagementView) {
@@ -29450,7 +29693,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.userManagementView.render(true);
-      this.naviView.selectMenuItem('tools-menu');
     }
   });
 
