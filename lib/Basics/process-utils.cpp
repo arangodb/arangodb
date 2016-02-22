@@ -55,7 +55,10 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief physical memory
@@ -523,7 +526,7 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv) {
 #ifdef TRI_HAVE_LINUX_PROC
 
 TRI_process_info_t TRI_ProcessInfoSelf() {
-  return TRI_ProcessInfo(TRI_CurrentProcessId());
+  return TRI_ProcessInfo(Thread::currentProcessId());
 }
 
 #elif ARANGODB_HAVE_GETRUSAGE
