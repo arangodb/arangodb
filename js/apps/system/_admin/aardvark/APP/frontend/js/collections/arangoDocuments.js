@@ -18,7 +18,7 @@
     url: '/_api/documents',
     model: window.arangoDocumentModel,
 
-    loadTotal: function() {
+    loadTotal: function(callback) {
       var self = this;
       $.ajax({
         cache: false,
@@ -26,18 +26,26 @@
         url: "/_api/collection/" + this.collectionID + "/count",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
           self.setTotal(data.count);
+          callback(false);
+        },
+        error: function() {
+          callback(true);
         }
       });
     },
 
     setCollection: function(id) {
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Documents","Could not fetch documents count");
+        }
+      }.bind(this);
       this.resetFilter();
       this.collectionID = id;
       this.setPage(1);
-      this.loadTotal();
+      this.loadTotal(callback);
     },
 
     setSort: function(key) {
@@ -139,7 +147,6 @@
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
@@ -148,7 +155,6 @@
           $.ajax({
             cache: false,
             type: 'POST',
-            async: true,
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
@@ -316,7 +322,7 @@
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT) {
+      if (this.getTotal() < this.MAX_SORT && this.getSort().length > 0) {
         query += " SORT x." + this.getSort();
       }
 
@@ -326,6 +332,8 @@
         query: query,
         bindVars: bindVars
       };
+
+      console.log(queryObj);
 
       return queryObj;
     },
