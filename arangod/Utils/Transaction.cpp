@@ -30,6 +30,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1362,6 +1363,10 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1433,8 +1438,63 @@ OperationResult Transaction::truncateCoordinator(std::string const& collectionNa
 
 OperationResult Transaction::truncateLocal(std::string const& collectionName,
                                            OperationOptions& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+ 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  
+  TRI_voc_rid_t actualRevision = 0;
+  TRI_doc_update_policy_t updatePolicy(TRI_DOC_UPDATE_LAST_WRITE, 0, &actualRevision);
+  
+  VPackBuilder keyBuilder;
+  auto primaryIndex = document->primaryIndex();
+
+  std::function<void(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
+    VPackSlice slice(mptr->vpack());
+    VPackSlice keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    keyBuilder.clear();
+    keyBuilder.openObject();
+    keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, keySlice);
+    keyBuilder.close();
+
+    VPackSlice builderSlice = keyBuilder.slice();
+
+    int res = document->remove(this, &builderSlice, &updatePolicy, options, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  };
+
+  try {
+    primaryIndex->invokeOnAllElements(callback);
+  }
+  catch (basics::Exception const& ex) {
+    unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+    return OperationResult(ex.code());
+  }
+  
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1554,6 +1614,7 @@ OperationCursor Transaction::indexScan(
             "Could not find primary index in collection '" + collectionName + "'.");
       }
 
+      LOG(INFO) << "reverse: " << reverse;
       iterator.reset(idx->allIterator(this, reverse));
       break;
     }

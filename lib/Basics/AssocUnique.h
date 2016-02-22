@@ -330,6 +330,10 @@ class AssocUnique {
   }
 
  public:
+  size_t buckets() const {
+    return _buckets.size();
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
   //////////////////////////////////////////////////////////////////////////////
@@ -839,7 +843,8 @@ class AssocUnique {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief a method to iterate over all elements in the hash
+  /// @brief a method to iterate over all elements in the hash. this method
+  /// can be used for deleting elements as well
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(CallbackElementFuncType callback) {
@@ -847,11 +852,16 @@ class AssocUnique {
       if (b._table == nullptr) {
         continue;
       }
-      for (size_t i = 0; i < b._nrAlloc; ++i) {
+      for (size_t i = 0; i < b._nrAlloc; /* no hoisting */) {
         if (b._table[i] == nullptr) {
+          ++i;
           continue;
         }
+        // don't increment i
         callback(b._table[i]);
+        if (b._nrUsed == 0) {
+          break;
+        }
       }
     }
   }
