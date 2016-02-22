@@ -1617,7 +1617,6 @@ int ClusterInfo::ensureIndexCoordinator(
       VPackSlice const indexes = tmp->slice();
 
       if (indexes.isArray()) {
-        bool hasSameIndexType = false;
         VPackSlice const type = slice.get("type");
 
         if (!type.isString()) {
@@ -1631,8 +1630,6 @@ int ClusterInfo::ensureIndexCoordinator(
             continue;
           }
           TRI_ASSERT(other.isObject());
-
-          hasSameIndexType = true;
 
           bool isSame = compare(slice, other);
 
