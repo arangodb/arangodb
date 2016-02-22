@@ -414,9 +414,11 @@
             collectionCollection: this.arangoCollectionsStore
           }
         );
+        this.graphManagementView.render(name, true);
       }
-      this.graphManagementView.render();
-      this.graphManagementView.loadGraphViewer(name);
+      else {
+        this.graphManagementView.loadGraphViewer(name);
+      }
     },
 
     applications: function (initialized) {
