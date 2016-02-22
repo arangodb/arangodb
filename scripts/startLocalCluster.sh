@@ -33,7 +33,7 @@ rm -rf cluster
 mkdir cluster
 cd cluster
 echo Starting agency...
-../bin/etcd-arango > /dev/null 2>&1 &
+../build/bin/etcd-arango > /dev/null 2>&1 &
 cd ..
 sleep 1
 
@@ -47,7 +47,7 @@ start() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    bin/arangod --database.directory cluster/data$PORT \
+    build/bin/arangod --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -58,6 +58,9 @@ start() {
                 --server.disable-statistics true \
                 --server.foxx-queues false \
                 --server.foxx-queues false \
+                --javascript.startup-directory ./js \
+                --server.disable-authentication true \
+                --javascript.app-path ./js/apps \
                 > cluster/$PORT.stdout 2>&1 &
 }
 
@@ -71,7 +74,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    xterm $XTERMOPTIONS -e bin/arangod --database.directory cluster/data$PORT \
+    xterm $XTERMOPTIONS -e build/bin/arangod --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -81,6 +84,9 @@ startTerminal() {
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
+                --javascript.startup-directory ./js \
+                --javascript.app-path ./js/apps \
+                --server.disable-authentication true \
                 --console &
 }
 
@@ -94,7 +100,7 @@ startDebugger() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with debugger
-    bin/arangod --database.directory cluster/data$PORT \
+    build/bin/arangod --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -103,8 +109,11 @@ startDebugger() {
                 --log.file cluster/$PORT.log \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
+                --javascript.startup-directory ./js \
+                --javascript.app-path ./js/apps \
+                --server.disable-authentication true \
                 --server.foxx-queues false &
-    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb bin/arangod -p $! &
+    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb build/bin/arangod -p $! &
 }
 
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
@@ -175,6 +184,6 @@ done
 
 echo Done, your cluster is ready at
 for p in `seq 8530 $PORTTOPCO` ; do
-    echo "   bin/arangosh --server.endpoint tcp://127.0.0.1:$p"
+    echo "   build/bin/arangosh --server.endpoint tcp://127.0.0.1:$p"
 done
 
