@@ -431,7 +431,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
 
     case ValueType::Custom: {
       if (options->customTypeHandler == nullptr) {
-        handleUnsupportedType(slice);
+        throw Exception(Exception::NeedCustomTypeHandler);
       } else {
         options->customTypeHandler->dump(*slice, this, *base);
       }

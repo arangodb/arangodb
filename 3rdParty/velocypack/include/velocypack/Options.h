@@ -31,6 +31,7 @@
 #include <cstdint>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -48,11 +49,13 @@ struct AttributeExcludeHandler {
 struct CustomTypeHandler {
   virtual ~CustomTypeHandler() {}
 
-  virtual void dump(Slice const& value, Dumper* dumper,
-                    Slice const& base) = 0;
+  virtual void dump(Slice const&, Dumper*, Slice const&) {
+    throw Exception(Exception::NotImplemented);
+  }
 
-  virtual std::string toString(Slice const& value, Options const* options,
-                               Slice const& base) = 0;
+  virtual std::string toString(Slice const&, Options const*, Slice const&) {
+    throw Exception(Exception::NotImplemented);
+  }
                     
 };
 
