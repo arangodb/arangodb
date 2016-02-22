@@ -107,6 +107,14 @@ TRI_doc_mptr_t* AllIndexIterator::next() {
 
 void AllIndexIterator::reset() { _position.reset(); }
 
+TRI_doc_mptr_t* AnyIndexIterator::next() {
+  return _index->findRandom(_trx, _initial, _position, _step, _total);
+}
+
+void AnyIndexIterator::reset() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 
 PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
     : Index(0, collection,
@@ -216,6 +224,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(
 ///        a random order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: step === 0 indicates a new start.
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
@@ -231,6 +240,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
 ///        a sequential order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: position === 0 indicates a new start.
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
@@ -249,11 +259,23 @@ IndexIterator* PrimaryIndex::allIterator(arangodb::Transaction* trx,
   return new AllIndexIterator(trx, _primaryIndex, reverse);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief request an iterator over all elements in the index in
+///        a random order. It is guaranteed that each element is found
+///        exactly once unless the collection is modified.
+//////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* PrimaryIndex::anyIterator(arangodb::Transaction* trx) const {
+  return new AnyIndexIterator(trx, _primaryIndex);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
 ///        reversed sequential order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: position === UINT64_MAX indicates a new start.
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(
