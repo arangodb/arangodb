@@ -179,7 +179,7 @@
             callback(false, data);
           },
           error: function(data) {
-            callback(false, data);
+            callback(true, data);
           }
         });
       }

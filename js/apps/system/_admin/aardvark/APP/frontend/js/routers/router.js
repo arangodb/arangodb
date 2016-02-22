@@ -343,19 +343,26 @@
         this.waitForInit(this.databases.bind(this));
         return;
       }
-      if (arangoHelper.databaseAllowed() === true) {
-        if (! this.databaseView) {
-          this.databaseView = new window.databaseView({
-            users: this.userCollection,
-            collection: this.arangoDatabase
-          });
+
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get list of allowed databases");
+          this.navigate("#", {trigger: true});
+          $('#databaseNavi').css('display', 'none');
+          $('#databaseNaviSelect').css('display', 'none');
         }
-        this.databaseView.render();
-      } else {
-        this.navigate("#", {trigger: true});
-        $('#databaseNavi').css('display', 'none');
-        $('#databaseNaviSelect').css('display', 'none');
-      }
+        else {
+          if (! this.databaseView) {
+            this.databaseView = new window.databaseView({
+              users: this.userCollection,
+              collection: this.arangoDatabase
+            });
+          }
+          this.databaseView.render();
+          }
+      }.bind(this);
+
+      arangoHelper.databaseAllowed(callback);
     },
 
     dashboard: function (initialized) {
