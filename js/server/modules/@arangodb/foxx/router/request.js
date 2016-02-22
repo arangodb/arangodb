@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const parseUrl = require('url').parse;
-const formatUrl = require('url').format;
 const typeIs = require('type-is').is;
 const accepts = require('accepts');
 const parseRange = require('range-parser');
@@ -36,12 +35,12 @@ module.exports = class SyntheticRequest {
     this._url = parseUrl(req.url);
     this._raw = req;
     this.context = context;
-    this.path = req.url;
-    this.suffix = req.suffix;
-    this.queryParams = querystring.decode(this._url.query);
+    this.suffix = req.suffix.join('/');
+    this.baseUrl = `/_db/${encodeURIComponent(this._raw.database)}`;
+    this.path = this._url.pathname;
     this.pathParams = {};
+    this.queryParams = querystring.decode(this._url.query);
     this.body = getRawBodyBuffer(req);
-    this.baseUrl = `/_db/${encodeURIComponent(this._raw.database)}${context.mount}`;
 
     const server = extractServer(req, context.trustProxy);
     this.protocol = server.protocol;
@@ -67,7 +66,7 @@ module.exports = class SyntheticRequest {
   // Express compat
 
   get originalUrl() {
-    return `/_db/${encodeURIComponent(this._raw.database)}${this._raw.url}`;
+    return this.baseUrl + this._url.pathname + (this._url.search || '');
   }
 
   get secure() {
@@ -75,10 +74,7 @@ module.exports = class SyntheticRequest {
   }
 
   get url() {
-    return formatUrl({
-      query: querystring.encode(this.queryParams),
-      pathname: this.path
-    });
+    return this.path + (this._url.search || '');
   }
 
   get xhr() {

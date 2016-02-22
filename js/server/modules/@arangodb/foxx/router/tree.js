@@ -266,8 +266,11 @@ function dispatch(route, req, res) {
     let tempReverse = req.reverse;
     let tempResponses = res._responses;
 
-    req.suffix = item.suffix.join('/');
     req.path = '/' + item.path.join('/');
+    req.suffix = item.suffix.join('/');
+    if (req.suffix) {
+      req.path += '/' + req.suffix.join('/');
+    }
     res._responses = item._responses;
     req.reverse = function (routeName, params, suffix) {
       if (typeof params === 'string') {
