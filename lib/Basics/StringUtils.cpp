@@ -1713,59 +1713,22 @@ int64_t int64_check(std::string const& str) {
 }
 
 uint64_t uint64(std::string const& str) {
-#ifdef TRI_HAVE_STRTOULL_R
-  struct reent buffer;
-  return strtoull_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOULL_R
-  struct reent buffer;
-  return _strtoull_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE_STRTOULL
-  return strtoull(str.c_str(), 0, 10);
-#else
   try {
-    return stoull(str, 0, 10);
+    return std::stoull(str, 0, 10);
   } catch (...) {
     return 0;
   }
-#endif
-#endif
-#endif
 }
 
-uint64_t uint64(char const* value, size_t size) {
-  char tmp[22];
+uint64_t uint64_check(std::string const& str) {
+  size_t n;
+  int64_t value = std::stoull(str, &n, 10);
 
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
+  if (n < str.size()) {
+    throw std::invalid_argument("cannot convert '" + str + "' to int64");
   }
 
-#ifdef TRI_HAVE_STRTOULL_R
-  struct reent buffer;
-  return strtoull_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOULL_R
-  struct reent buffer;
-  return _strtoull_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE_STRTOULL
-  return strtoull(value, 0, 10);
-#else
-  try {
-    return stoull(std::string(value, size), 0, 10);
-  } catch (...) {
-    return 0;
-  }
-#endif
-#endif
-#endif
+  return value;
 }
 
 int32_t int32(std::string const& str) {

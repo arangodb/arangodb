@@ -302,7 +302,7 @@ static void ExtractVectorUInt32(char const* name, TRI_vector_string_t* ptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractUInt64(char const* name, char const* ptr, uint64_t* value) {
-  *value = TRI_UInt64String(ptr);
+  *value = StringUtils::uint64(ptr);
 
   // add to global JSON object
   auto json =
@@ -324,7 +324,7 @@ static void ExtractVectorUInt64(char const* name, TRI_vector_string_t* ptr,
 
   for (size_t i = 0; i < ptr->_length; ++i) {
     char const* elem = ptr->_buffer[i];
-    uint64_t e = TRI_UInt64String(elem);
+    uint64_t e = StringUtils::uint64(elem);
 
     value->emplace_back(e);
     if (json != nullptr) {

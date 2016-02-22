@@ -153,7 +153,7 @@ static int ReadServerId(char const* filename) {
       return TRI_ERROR_INTERNAL;
     }
     std::string idString = idSlice.copyString();
-    foundId = TRI_UInt64String(idString.c_str());
+    foundId = StringUtils::uint64(idString);
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
@@ -271,7 +271,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
     return 0;
   }
 
-  return TRI_UInt64String(pos + 1);
+  return StringUtils::uint64(pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,7 +498,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
     }
     std::string idString = idSlice.copyString();
 
-    TRI_voc_tick_t id = (TRI_voc_tick_t)TRI_UInt64String(idString.c_str());
+    TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(idString);
 
     VPackSlice nameSlice = parameters.get("name");
 

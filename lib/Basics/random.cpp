@@ -39,18 +39,12 @@ static bool Initialized = false;
 
 static unsigned long SeedRandom(void) {
   unsigned long seed;
-
-#ifdef TRI_HAVE_GETTIMEOFDAY
   struct timeval tv;
 
   /* ignore result */ gettimeofday(&tv, 0);
 
   seed = static_cast<decltype(seed)>(tv.tv_sec);
   seed ^= static_cast<decltype(seed)>(tv.tv_usec);
-#else
-  seed = static_cast<decltype(seed)>(time(0));
-#endif
-
   seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 8);
   seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 16);
   seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 24);
