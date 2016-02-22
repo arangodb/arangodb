@@ -50,6 +50,8 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#define TRI_DEFAULT_BATCH_SIZE 1000
+
 namespace arangodb {
 
 class Transaction {

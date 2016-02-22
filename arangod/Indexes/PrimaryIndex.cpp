@@ -98,6 +98,16 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
 
 void PrimaryIndexIterator::reset() { _position = 0; }
 
+TRI_doc_mptr_t* AllIndexIterator::next() {
+  if (_reverse) {
+    return _index->findSequentialReverse(_trx, _position);
+  }
+  return _index->findSequential(_trx, _position, _total);
+};
+
+void AllIndexIterator::reset() { _position.reset(); }
+
+
 PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -227,6 +237,16 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
     arangodb::Transaction* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
   return _primaryIndex->findSequential(trx, position, total);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief request an iterator over all elements in the index in
+///        a sequential order.
+//////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* PrimaryIndex::allIterator(arangodb::Transaction* trx,
+                                         bool reverse) const {
+  return new AllIndexIterator(trx, _primaryIndex, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -63,6 +63,30 @@ class PrimaryIndexIterator final : public IndexIterator {
   size_t _position;
 };
 
+class AllIndexIterator final : public IndexIterator {
+ private:
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
+      TRI_PrimaryIndex_t;
+
+ public:
+  AllIndexIterator(arangodb::Transaction* trx, TRI_PrimaryIndex_t const* index,
+                   bool reverse)
+      : _trx(trx), _index(index), _reverse(reverse), _total(0) {}
+
+  ~AllIndexIterator() {}
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  arangodb::Transaction* _trx;
+  TRI_PrimaryIndex_t const* _index;
+  arangodb::basics::BucketPosition _position;
+  bool const _reverse;
+  uint64_t _total;
+};
+
 class PrimaryIndex final : public Index {
  public:
   PrimaryIndex() = delete;
@@ -134,11 +158,19 @@ class PrimaryIndex final : public Index {
   ///        a sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequential(arangodb::Transaction*,
                                    arangodb::basics::BucketPosition& position,
                                    uint64_t& total);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief request an iterator over all elements in the index in
+  ///        a sequential order.
+  //////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* allIterator(arangodb::Transaction*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in

@@ -1426,6 +1426,11 @@ OperationCursor Transaction::indexScan(
     std::string const& indexId, std::shared_ptr<std::vector<VPackSlice>> search,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
 
+  if (limit == 0) {
+    // nothing to do
+    return OperationCursor(TRI_ERROR_NO_ERROR);
+  }
+
   // TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
 
@@ -1448,15 +1453,30 @@ OperationCursor Transaction::indexScan(
 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
+  IndexIterator* iterator = nullptr;
+
   switch (cursorType) {
     case CursorType::ANY:
       // TODO implement
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       break;
-    case CursorType::ALL:
-      // TODO implement
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    case CursorType::ALL: {
+      // We do not need search values
+      TRI_ASSERT(search.empty());
+      // We do not need an index either
+      TRI_ASSERT(indexId.empty());
+
+      arangodb::PrimaryIndex* idx = document->primaryIndex();
+
+      if (idx == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+            "Could not find primary index in collection '" + collection + "'.");
+      }
+
+      iterator = idx->allIterator(this, reverse);
       break;
+    }
     case CursorType::INDEX: {
       if (indexId.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -1480,23 +1500,17 @@ OperationCursor Transaction::indexScan(
       // We have successfully found an index with the requested id.
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      IndexIterator* iterator =
-          idx->iteratorForSlices(this, &ctxt, search, reverse);
+      iterator = idx->iteratorForSlices(this, &ctxt, search, reverse);
 
-      if (iterator == nullptr) {
-        // We could not create an ITERATOR and it did not throw an error itself
-        return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      iterator->skip(skip);
-
-      return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
-                             iterator,
-                             limit,
-                             batchSize);
     }
   }
+  if (iterator == nullptr) {
+    // We could not create an ITERATOR and it did not throw an error itself
+    return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
-  return OperationCursor(TRI_ERROR_NO_ERROR);
+  iterator->skip(skip);
+
+  return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
+                         iterator, limit, batchSize);
 }
-

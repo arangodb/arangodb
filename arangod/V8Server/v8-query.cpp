@@ -871,15 +871,10 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
   // extract skip and limit
   int64_t skip;
   uint64_t limit;
   ExtractSkipAndLimit(args, 0, skip, limit);
-
-  uint64_t total = 0;
-  std::vector<TRI_doc_mptr_copy_t> docs;
 
   TRI_voc_cid_t cid = col->_cid;
 
@@ -891,41 +886,43 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
-  auto ditch = trx.orderDitch(trx.trxCollection());
-  TRI_ASSERT(ditch != nullptr);
 
-  res = trx.readSlice(trx.trxCollection(), docs, skip, limit, total);
+  std::string collectionName(col->_name);
 
-  res = trx.finish(res);
+  // We directly read the entire cursor. so batchsize == limit
+  OperationResult opRes = trx.indexScan(collectionName, AqlTransaction::CursorType::ALL, "", {}, skip, limit, limit, false);
+
+  if (opRes.failed()) {
+    trx.finish(opRes.code);
+    TRI_V8_THROW_EXCEPTION(opRes.code);
+  }
+
+  OperationResult countResult = trx.count(collectionName);
+  res = trx.finish(countResult.code);
+
+  if (countResult.failed()) {
+    TRI_V8_THROW_EXCEPTION(countResult.code);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  uint64_t const n = static_cast<uint64_t>(docs.size());
+  VPackSlice count = countResult.slice();
+  TRI_ASSERT(count.isNumber());
 
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  resultOptions.customTypeHandler = opRes.customTypeHandler;
+
+  VPackSlice docs = opRes.slice();
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  v8::Handle<v8::Array> documents =
-      v8::Array::New(isolate, static_cast<int>(n));
-  // reserve full capacity in one go
+  auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
   result->Set(TRI_V8_ASCII_STRING("documents"), documents);
-
-  for (uint64_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> doc = V8VPackWrapper::wrap(isolate, &trx, cid, ditch, static_cast<TRI_df_marker_t const*>(docs[i].getDataPtr()));
-
-    if (doc.IsEmpty()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    } else {
-      documents->Set(static_cast<uint32_t>(i), doc);
-    }
-  }
-
   result->Set(TRI_V8_ASCII_STRING("total"),
-              v8::Number::New(isolate, static_cast<double>(total)));
+              v8::Number::New(isolate, count.getNumericValue<double>()));
   result->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, static_cast<double>(n)));
+              v8::Number::New(isolate, static_cast<double>(docs.length())));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
