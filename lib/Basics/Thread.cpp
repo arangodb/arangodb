@@ -144,9 +144,9 @@ Thread::Thread(std::string const& name)
 Thread::~Thread() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << ")";
 
-  shutdown(true);
+  bool res = shutdown(true);
 
-  if (_state.load() == ThreadState::STOPPED) {
+  if (res && _state.load() == ThreadState::STOPPED) {
 #ifdef TRI_HAVE_POSIX_THREADS
     int res = pthread_detach(_thread);
 
@@ -175,13 +175,17 @@ void Thread::beginShutdown() {
 /// @brief called from the destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-void Thread::shutdown(bool waitForStopped) {
+bool Thread::shutdown(bool waitForStopped) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   ThreadState state = _state.load();
 
   while (state == ThreadState::CREATED) {
-    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+    bool res = _state.compare_exchange_strong(state, ThreadState::STOPPED);
+
+    if (res) {
+      return false;
+    }
   }
 
   if (_state.load() == ThreadState::STARTED) {
@@ -202,6 +206,8 @@ void Thread::shutdown(bool waitForStopped) {
 
     usleep(100 * 1000);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,17 +233,29 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     FATAL_ERROR_EXIT();
   }
 
+  ThreadState expected = ThreadState::CREATED;
+  bool res = _state.compare_exchange_strong(expected, ThreadState::STARTED);
+
+  if (!res) {
+    LOG_TOPIC(WARN, Logger::THREADS) << "thread died before it could start";
+    return false;
+  }
+
   bool ok =
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
-  if (!ok) {
+  if (ok) {
+    if (0 <= _affinity) {
+      TRI_SetProcessorAffinity(&_thread, (size_t)_affinity);
+    }
+  }
+  else {
+    _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
                                     << _name.c_str()
                                     << "': " << strerror(errno);
-  }
 
-  if (0 <= _affinity) {
-    TRI_SetProcessorAffinity(&_thread, (size_t)_affinity);
+    return false;
   }
 
   return ok;
@@ -292,14 +310,6 @@ void Thread::addStatus(VPackBuilder* b) {
 }
 
 void Thread::runMe() {
-  ThreadState expected = ThreadState::CREATED;
-  bool res = _state.compare_exchange_strong(expected, ThreadState::STARTED);
-
-  if (!res) {
-    LOG_TOPIC(WARN, Logger::THREADS) << "thread died before it could start";
-    return;
-  }
-
   try {
     run();
     _state.store(ThreadState::STOPPED);
