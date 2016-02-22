@@ -1,0 +1,70 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Kaveh Vahedipour
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGOD_AGENCY_STATE_H
+#define ARANGOD_AGENCY_STATE_H 1
+
+#include <cstdint>
+#include <velocypack/vpack.h>
+#include "AgencyCommon.h"
+
+namespace arangodb {
+  namespace consensus {
+    
+  typedef std::shared_ptr<arangodb::velocypack::Builder> store_t;
+  typedef std::pair<size_t, std::string> entry_t;
+  typedef std::map<size_t, std::string> container_t;
+
+class State {
+
+public:
+
+  /**
+   *@ brief Default ctor
+   */ 
+  State();
+
+  /**
+   *@ brief Default dtor
+   */ 
+  ~State();
+
+  /**
+   * @brief Append entry
+   */ 
+  bool write (store_t const&);
+
+  /**
+   * @brief Get entry
+   */ 
+  store_t get (std::string const&) const;
+  
+
+private:
+  container_t _container;
+  
+};
+    
+}}
+
+#endif
