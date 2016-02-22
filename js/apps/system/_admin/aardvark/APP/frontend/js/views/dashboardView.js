@@ -873,23 +873,28 @@
       this.startUpdating();
     }.bind(this);
 
+    var callback2 = function(error, authorized) {
+      if (!error) {
+        if (!authorized) {
+          $('.contentDiv').remove();
+          $('.headerBar').remove();
+          $('.dashboard-headerbar').remove();
+          $('.dashboard-row').remove();
+          $('#content').append(
+            '<div style="color: red">You do not have permission to view this page.</div>'
+          );
+          $('#content').append(
+            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+          );
+        }
+        else {
+          this.getStatistics(callback);
+        }
+      }
+    }.bind(this);
+
     //check if user has _system permission
-    var authorized = this.options.database.hasSystemAccess();
-    if (!authorized) {
-      $('.contentDiv').remove();
-      $('.headerBar').remove();
-      $('.dashboard-headerbar').remove();
-      $('.dashboard-row').remove();
-      $('#content').append(
-        '<div style="color: red">You do not have permission to view this page.</div>'
-      );
-      $('#content').append(
-        '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-      );
-    }
-    else {
-      this.getStatistics(callback);
-    }
+    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());

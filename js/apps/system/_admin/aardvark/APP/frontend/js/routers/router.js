@@ -30,8 +30,8 @@
     },
 
     checkUser: function () {
-      var callback = function(error) {
-        if (error) {
+      var callback = function(error, user) {
+        if (error || user === null) {
           this.navigate("login", {trigger: true});
         }
         else {
@@ -187,8 +187,8 @@
     },
 
     login: function (initialized) {
-      var callback = function(error) {
-        if (error) {
+      var callback = function(error, user) {
+        if (error || user === null) {
           if (!this.loginView) {
             this.loginView = new window.loginView({
               collection: this.userCollection
@@ -343,19 +343,26 @@
         this.waitForInit(this.databases.bind(this));
         return;
       }
-      if (arangoHelper.databaseAllowed() === true) {
-        if (! this.databaseView) {
-          this.databaseView = new window.databaseView({
-            users: this.userCollection,
-            collection: this.arangoDatabase
-          });
+
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get list of allowed databases");
+          this.navigate("#", {trigger: true});
+          $('#databaseNavi').css('display', 'none');
+          $('#databaseNaviSelect').css('display', 'none');
         }
-        this.databaseView.render();
-      } else {
-        this.navigate("#", {trigger: true});
-        $('#databaseNavi').css('display', 'none');
-        $('#databaseNaviSelect').css('display', 'none');
-      }
+        else {
+          if (! this.databaseView) {
+            this.databaseView = new window.databaseView({
+              users: this.userCollection,
+              collection: this.arangoDatabase
+            });
+          }
+          this.databaseView.render();
+          }
+      }.bind(this);
+
+      arangoHelper.databaseAllowed(callback);
     },
 
     dashboard: function (initialized) {
@@ -407,9 +414,11 @@
             collectionCollection: this.arangoCollectionsStore
           }
         );
+        this.graphManagementView.render(name, true);
       }
-      this.graphManagementView.render();
-      this.graphManagementView.loadGraphViewer(name);
+      else {
+        this.graphManagementView.loadGraphViewer(name);
+      }
     },
 
     applications: function (initialized) {

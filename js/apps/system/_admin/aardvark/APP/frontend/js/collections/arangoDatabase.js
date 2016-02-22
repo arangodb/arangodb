@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global window, Backbone, $, window, _*/
+/*global window, arangoHelper, Backbone, $, window, _*/
 
 (function() {
   'use strict';
@@ -51,23 +51,20 @@
       return this.models;
     },
 
-    getDatabasesForUser: function() {
-      var returnVal;
+    getDatabasesForUser: function(callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: this.url + "/user",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          returnVal = data.result;
+          callback(false, (data.result).sort());
         },
         error: function() {
-          returnVal = [];
+          callback(true, []);
         }
       });
-      return returnVal.sort();
     },
 
     createDatabaseURL: function(name, protocol, port) {
@@ -105,32 +102,39 @@
       return url;
     },
 
-    getCurrentDatabase: function() {
-      var returnVal;
+    getCurrentDatabase: function(callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: this.url + "/current",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
           if (data.code === 200) {
-            returnVal = data.result.name;
-            return;
+            callback(false, data.result.name);
           }
-          returnVal = data;
+          else {
+            callback(false, data);
+          }
         },
         error: function(data) {
-          returnVal = data;
+          callback(true, data);
         }
       });
-      return returnVal;
     },
 
-    hasSystemAccess: function() {
-      var list = this.getDatabasesForUser();
-      return _.contains(list, "_system");
+    hasSystemAccess: function(callback) {
+
+      var callback2 = function(error, list) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not fetch databases");
+        }
+        else {
+          callback(false, _.contains(list, "_system"));
+        }
+      }.bind(this);
+
+      this.getDatabasesForUser(callback2);
     }
   });
 }());

@@ -70,7 +70,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     this.activeUserSettings.identifier = content;
   },
 
-  loadUserSettings: function () {
+  loadUserSettings: function (callback) {
     var self = this;
     $.ajax({
       type: "GET",
@@ -78,28 +78,30 @@ window.ArangoUsers = Backbone.Collection.extend({
       url: "/_api/user/" + encodeURIComponent(self.activeUser),
       contentType: "application/json",
       processData: false,
-      async: false,
       success: function(data) {
         self.activeUserSettings = data.extra;
+        callback(false, data);
       },
       error: function(data) {
+        callback(true, data);
       }
     });
   },
 
-  saveUserSettings: function () {
+  saveUserSettings: function (callback) {
     var self = this;
     $.ajax({
       cache: false,
       type: "PUT",
-      async: false, // sequential calls!
       url: "/_api/user/" + encodeURIComponent(self.activeUser),
       data: JSON.stringify({ extra: self.activeUserSettings }),
       contentType: "application/json",
       processData: false,
       success: function(data) {
+        callback(false, data);
       },
       error: function(data) {
+        callback(true, data);
       }
     });
   },
