@@ -48,7 +48,13 @@ endif ()
 ## libev library
 ################################################################################
 
-set(LIBEV_VERSION 4.22)
+set(LIBEV_VERSION
+  "4.22"
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+  FORCE
+)
+
 set(LIBEV_DIR libev-${LIBEV_VERSION})
 
 include_directories(${LIBEV_DIR})
