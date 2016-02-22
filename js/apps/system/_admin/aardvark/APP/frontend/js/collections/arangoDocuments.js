@@ -333,16 +333,12 @@
         bindVars: bindVars
       };
 
-      console.log(queryObj);
-
       return queryObj;
     },
 
-    uploadDocuments : function (file) {
-      var result;
+    uploadDocuments : function (file, callback) {
       $.ajax({
         type: "POST",
-        async: false,
         url:
         '/_api/import?type=auto&collection='+
         encodeURIComponent(this.collectionID)+
@@ -353,23 +349,21 @@
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState === 4 && xhr.status === 201) {
-            result = true;
+            callback(false);
           } else {
-            result = "Upload error";
-          }
-
-          try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.errors > 0) {
-              result = "At least one error occurred during upload";
+            try {
+              var data = JSON.parse(xhr.responseText);
+              if (data.errors > 0) {
+                var result = "At least one error occurred during upload";
+                callback(false, result);
+              }
             }
+            catch (err) {
+              console.log(err);
+            }               
           }
-          catch (err) {
-            console.log(err);
-          }               
         }
       });
-      return result;
     }
   });
 }());
