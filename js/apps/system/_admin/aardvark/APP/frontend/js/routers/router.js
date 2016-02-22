@@ -31,7 +31,7 @@
 
     checkUser: function () {
       var callback = function(error, user) {
-        if (error || user === null) {
+        if (error || user === null) {
           this.navigate("login", {trigger: true});
         }
         else {
@@ -188,7 +188,7 @@
 
     login: function (initialized) {
       var callback = function(error, user) {
-        if (error || user === null) {
+        if (error || user === null) {
           if (!this.loginView) {
             this.loginView = new window.loginView({
               collection: this.userCollection

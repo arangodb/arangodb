@@ -58,27 +58,37 @@
       $('#'+clicked).click();
     },
 
-    render: function(){
-      this.currentDatabase();
+    render: function() {
 
-      //sorting
-      this.collection.sort();
+      var callback = function(error, db) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get current db properties");
+        }
+        else {
+          this.currentDB = db;
+          //sorting
+          this.collection.sort();
 
-      $(this.el).html(this.template.render({
-        collection   : this.collection,
-        searchString : '',
-        currentDB    : this.currentDB
-      }));
-      
-      if (this.dropdownVisible === true) {
-        $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
-        $('#databaseToggle').toggleClass('activated');
-        $('#databaseDropdown2').show();
-      }
-      
-      arangoHelper.setCheckboxStatus("#databaseDropdown");
+          $(this.el).html(this.template.render({
+            collection   : this.collection,
+            searchString : '',
+            currentDB    : this.currentDB
+          }));
+          
+          if (this.dropdownVisible === true) {
+            $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
+            $('#databaseToggle').toggleClass('activated');
+            $('#databaseDropdown2').show();
+          }
+          
+          arangoHelper.setCheckboxStatus("#databaseDropdown");
 
-      this.replaceSVGs();
+          this.replaceSVGs();
+        }
+      }.bind(this);
+
+      this.collection.getCurrentDatabase(callback);
+
       return this;
     },
 
@@ -109,7 +119,7 @@
       }
     },
 
-    validateDatabaseInfo: function (db, user, pw) {
+    validateDatabaseInfo: function (db, user) {
       if (user === "") {
         arangoHelper.arangoError("DB", "You have to define an owner for the new database");
         return false;
@@ -175,7 +185,7 @@
         error: function(data, err) {
           self.handleError(err.status, err.statusText, name);
         },
-        success: function(data) {
+        success: function() {
           self.updateDatabases();
           window.modalView.hide();
           window.App.naviView.dbSelectionView.render($("#dbSelect"));
@@ -189,10 +199,6 @@
       this.updateDatabases();
       window.App.naviView.dbSelectionView.render($("#dbSelect"));
       window.modalView.hide();
-    },
-
-    currentDatabase: function() {
-      this.currentDB = this.collection.getCurrentDatabase();
     },
 
     changeDatabase: function(e) {

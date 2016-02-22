@@ -37,7 +37,7 @@
     initialize: function() {
       var self = this,
       callback = function(error, user) {
-        if (error || user === null) {
+        if (error || user === null) {
           arangoHelper.arangoError("User", "Could not fetch user data");
         }
         else {
