@@ -35,9 +35,22 @@
     dropdownVisible: false,
 
     initialize: function() {
+      var self = this,
+      callback = function(error, user) {
+        if (error || user === null) {
+          arangoHelper.arangoError("User", "Could not fetch user data");
+        }
+        else {
+          this.currentUser = this.collection.findWhere({user: user});
+        }
+      }.bind(this);
+
       //fetch collection defined in router
-      this.collection.fetch({async:false});
-      this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
+      this.collection.fetch({
+        success: function() {
+          self.collection.whoAmI(callback);
+        }
+      });
     },
 
     checkBoxes: function (e) {
@@ -316,10 +329,11 @@
     },
 
     evaluateUserName : function(str, substr) {
-      var index = str.lastIndexOf(substr);
-      return str.substring(0, index);
+      if (str) {
+        var index = str.lastIndexOf(substr);
+        return str.substring(0, index);
+      }
     },
-
 
     editUserPassword : function () {
       window.modalView.hide();
