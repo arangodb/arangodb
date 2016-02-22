@@ -622,25 +622,25 @@ class Slice {
           case 0xf4: 
           case 0xf5: 
           case 0xf6: {
-            return 1 + readInteger<ValueLength>(_start + 1, 1);
+            return 2 + readInteger<ValueLength>(_start + 1, 1);
           }
 
           case 0xf7: 
           case 0xf8: 
           case 0xf9:  {
-            return 1 + readInteger<ValueLength>(_start + 1, 2);
+            return 3 + readInteger<ValueLength>(_start + 1, 2);
           }
           
           case 0xfa: 
           case 0xfb: 
           case 0xfc: {
-            return 1 + readInteger<ValueLength>(_start + 1, 4);
+            return 5 + readInteger<ValueLength>(_start + 1, 4);
           }
           
           case 0xfd: 
           case 0xfe: 
           case 0xff: {
-            return 1 + readInteger<ValueLength>(_start + 1, 8);
+            return 9 + readInteger<ValueLength>(_start + 1, 8);
           }
 
           default: {
