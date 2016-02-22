@@ -43,8 +43,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   }
 
   var graphViewer,
-    width = (optWidth + 20 || container.offsetWidth - 81 + 20),
-    height = optHeight || container.offsetHeight,
+    width = (optWidth + 20 || container.getBoundingClientRect().width - 81 + 20),
+    height = optHeight || container.getBoundingClientRect().height,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
     colourList,
