@@ -36,7 +36,7 @@ module.exports = class SyntheticRequest {
     this._url = parseUrl(req.url);
     this._raw = req;
     this.context = context;
-    this.path = req.path;
+    this.path = req.url;
     this.suffix = req.suffix;
     this.queryParams = querystring.decode(this._url.query);
     this.pathParams = {};
@@ -166,6 +166,7 @@ function extractServer(req, trustProxy) {
     (trustProxy && req.headers['x-forwarded-proto'])
     || req.protocol
   );
+  const secure = protocol === 'https';
   const hostHeader = (
     (trustProxy && req.headers['x-forwarded-host'])
     || req.headers.host
@@ -174,7 +175,7 @@ function extractServer(req, trustProxy) {
     const match = hostHeader.match(/^(.*):(\d+)$/) || [hostHeader, hostHeader];
     if (match) {
       hostname = match[1];
-      port = match[2] ? Number(match[2]) : 80;
+      port = match[2] ? Number(match[2]) : secure ? 443 : 80;
     }
   }
   return {
@@ -188,7 +189,10 @@ function extractServer(req, trustProxy) {
 function extractClient(req, trustProxy) {
   let ip = req.client.address;
   let ips = [ip];
-  let port = req.client.port;
+  const port = Number(
+    (trustProxy && req.headers['x-forwarded-port'])
+    || req.client.port
+  );
   const forwardedFor = req.headers['x-forwarded-for'];
   if (trustProxy && forwardedFor) {
     const tokens = forwardedFor.split(/\s*,\s*/g).filter(Boolean);
@@ -196,11 +200,6 @@ function extractClient(req, trustProxy) {
       ips = tokens;
       ip = tokens[0];
     }
-  }
-  const match = ip.match(/^(.*)(:\d+)?$/);
-  if (match) {
-    ip = match[1];
-    port = match[2] || port;
   }
   return {
     ips: ips,
