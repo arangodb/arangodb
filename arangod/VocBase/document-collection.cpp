@@ -4465,19 +4465,6 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document given by a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DeleteDocumentDocumentCollection(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    TRI_doc_update_policy_t const* policy, TRI_doc_mptr_t* doc) {
-  return TRI_RemoveShapedJsonDocumentCollection(
-      trx, trxCollection, (const TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(doc), 0,
-      nullptr, policy, false,
-      false);  // PROTECTED by trx in trxCollection
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection
 /// use this for testing only
 ////////////////////////////////////////////////////////////////////////////////
