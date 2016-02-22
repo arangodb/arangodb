@@ -439,7 +439,6 @@
       });
 
       $('.deleteIndex').bind('click', function(e) {
-        console.log("asdasd");
         self.prepDeleteIndex(e);
       });
 
@@ -480,7 +479,6 @@
       //$('#documentsToolbar ul').unbind('click');
       this.markFilterToggle();
       this.changeEditMode(false);
-      0Ads0asd0sd0f0asdf0sa0f
       "click #documentsToolbar ul"    : "resetIndexForms"
       */
     },
