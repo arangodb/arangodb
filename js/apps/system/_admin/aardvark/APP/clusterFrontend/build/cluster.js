@@ -3,21 +3,28 @@
 
 (function() {
   "use strict";
-  var isCoordinator;
+  var isCoordinator = null;
 
-  window.isCoordinator = function() {
-    if (isCoordinator === undefined) {
+  window.isCoordinator = function(callback) {
+    if (isCoordinator === null) {
       $.ajax(
         "cluster/amICoordinator",
         {
-          async: false,
+          async: true,
           success: function(d) {
             isCoordinator = d;
+            callback(false, d);
+          },
+          error: function(d) {
+            isCoordinator = d;
+            callback(true, d);
           }
         }
       );
     }
-    return isCoordinator;
+    else {
+      callback(false, isCoordinator);
+    }
   };
 
   window.versionHelper = {
@@ -93,23 +100,20 @@
       });
     },
 
-    currentDatabase: function () {
-      var returnVal = false;
+    currentDatabase: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/database/current",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          returnVal = data.result.name;
+          callback(false, data.result.name);
         },
-        error: function() {
-          returnVal = false;
+        error: function(data) {
+          callback(true, data);
         }
       });
-      return returnVal;
     },
 
     allHotkeys: {
@@ -199,24 +203,30 @@
       }
     },
 
-    databaseAllowed: function () {
-      var currentDB = this.currentDatabase(),
-      returnVal = false;
-      $.ajax({
-        type: "GET",
-        cache: false,
-        url: "/_db/"+ encodeURIComponent(currentDB) + "/_api/database/",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function() {
-          returnVal = true;
-        },
-        error: function() {
-          returnVal = false;
+    databaseAllowed: function (callback) {
+
+      var dbCallback = function(error, db) {
+        if (error) {
+          arangoHelper.arangoError("","");
         }
-      });
-      return returnVal;
+        else {
+          $.ajax({
+            type: "GET",
+            cache: false,
+            url: "/_db/"+ encodeURIComponent(db) + "/_api/database/",
+            contentType: "application/json",
+            processData: false,
+            success: function() {
+              callback(false, true);
+            },
+            error: function() {
+              callback(true, false);
+            }
+          });
+        }
+      }.bind(this);
+
+      this.currentDatabase(dbCallback);
     },
 
     arangoNotification: function (title, content, info) {
@@ -344,20 +354,16 @@
     },
 
     getAardvarkJobs: function (callback) {
-      var result;
-
       $.ajax({
           cache: false,
           type: "GET",
           url: "/_admin/aardvark/job",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
             if (callback) {
               callback(false, data);
             }
-            result = data;
           },
           error: function(data) {
             if (callback) {
@@ -365,11 +371,9 @@
             }
           }
       });
-      return result;
     },
 
-    getPendingJobs: function() {
-      var result; 
+    getPendingJobs: function(callback) {
 
       $.ajax({
           cache: false,
@@ -377,53 +381,67 @@
           url: "/_api/job/pending",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
-            result = data;
+            callback(false, data);
           },
           error: function(data) {
-            console.log("pending jobs error: " + data);
+            callback(true, data);
           }
       });
-      return result;
     },
 
-    syncAndReturnUninishedAardvarkJobs: function(type) {
+    syncAndReturnUninishedAardvarkJobs: function(type, callback) {
 
-      var AaJobs = this.getAardvarkJobs(),
-      pendingJobs = this.getPendingJobs(),
-      array = [];
+      var callbackInner = function(error, AaJobs) {
+        if (error) {
+          callback(true);
+        }
+        else {
 
-      if (pendingJobs.length > 0) {
-        _.each(AaJobs, function(aardvark) {
-          if (aardvark.type === type || aardvark.type === undefined) {
-
-             var found = false; 
-            _.each(pendingJobs, function(pending) {
-              if (aardvark.id === pending) {
-                found = true;
-              } 
-            });
-
-            if (found) {
-              array.push({
-                collection: aardvark.collection,
-                id: aardvark.id,
-                type: aardvark.type,
-                desc: aardvark.desc 
-              });
+          var callbackInner2 = function(error, pendingJobs) {
+            if (error) {
+              arangoHelper.arangoError("", "");
             }
             else {
-              window.arangoHelper.deleteAardvarkJob(aardvark.id);
-            }
-          }
-        });
-      }
-      else {
-        this.deleteAllAardvarkJobs(); 
-      }
+              var array = [];
+              if (pendingJobs.length > 0) {
+                _.each(AaJobs, function(aardvark) {
+                  if (aardvark.type === type || aardvark.type === undefined) {
 
-      return array;
+                     var found = false; 
+                    _.each(pendingJobs, function(pending) {
+                      if (aardvark.id === pending) {
+                        found = true;
+                      } 
+                    });
+
+                    if (found) {
+                      array.push({
+                        collection: aardvark.collection,
+                        id: aardvark.id,
+                        type: aardvark.type,
+                        desc: aardvark.desc 
+                      });
+                    }
+                    else {
+                      window.arangoHelper.deleteAardvarkJob(aardvark.id);
+                    }
+                  }
+                });
+              }
+              else {
+                this.deleteAllAardvarkJobs(); 
+              }
+              callback(false, array);
+            }
+          }.bind(this);
+
+          this.getPendingJobs(callbackInner2);
+
+        }
+      }.bind(this);
+
+      this.getAardvarkJobs(callbackInner);
     }, 
 
     getRandomToken: function () {
@@ -1502,7 +1520,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
     url: '/_api/documents',
     model: window.arangoDocumentModel,
 
-    loadTotal: function() {
+    loadTotal: function(callback) {
       var self = this;
       $.ajax({
         cache: false,
@@ -1510,18 +1528,26 @@ window.StatisticsCollection = Backbone.Collection.extend({
         url: "/_api/collection/" + this.collectionID + "/count",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
           self.setTotal(data.count);
+          callback(false);
+        },
+        error: function() {
+          callback(true);
         }
       });
     },
 
     setCollection: function(id) {
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Documents","Could not fetch documents count");
+        }
+      }.bind(this);
       this.resetFilter();
       this.collectionID = id;
       this.setPage(1);
-      this.loadTotal();
+      this.loadTotal(callback);
     },
 
     setSort: function(key) {
@@ -1623,7 +1649,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
       $.ajax({
         cache: false,
         type: 'POST',
-        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj1),
         contentType: "application/json",
@@ -1632,7 +1657,6 @@ window.StatisticsCollection = Backbone.Collection.extend({
           $.ajax({
             cache: false,
             type: 'POST',
-            async: true,
             url: '/_api/cursor',
             data: JSON.stringify(queryObj2),
             contentType: "application/json",
@@ -1800,7 +1824,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT) {
+      if (this.getTotal() < this.MAX_SORT && this.getSort().length > 0) {
         query += " SORT x." + this.getSort();
       }
 
@@ -1814,11 +1838,9 @@ window.StatisticsCollection = Backbone.Collection.extend({
       return queryObj;
     },
 
-    uploadDocuments : function (file) {
-      var result;
+    uploadDocuments : function (file, callback) {
       $.ajax({
         type: "POST",
-        async: false,
         url:
         '/_api/import?type=auto&collection='+
         encodeURIComponent(this.collectionID)+
@@ -1829,23 +1851,21 @@ window.StatisticsCollection = Backbone.Collection.extend({
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState === 4 && xhr.status === 201) {
-            result = true;
+            callback(false);
           } else {
-            result = "Upload error";
-          }
-
-          try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.errors > 0) {
-              result = "At least one error occurred during upload";
+            try {
+              var data = JSON.parse(xhr.responseText);
+              if (data.errors > 0) {
+                var result = "At least one error occurred during upload";
+                callback(false, result);
+              }
             }
+            catch (err) {
+              console.log(err);
+            }               
           }
-          catch (err) {
-            console.log(err);
-          }               
         }
       });
-      return result;
     }
   });
 }());
@@ -2899,23 +2919,28 @@ window.StatisticsCollection = Backbone.Collection.extend({
       this.startUpdating();
     }.bind(this);
 
+    var callback2 = function(error, authorized) {
+      if (!error) {
+        if (!authorized) {
+          $('.contentDiv').remove();
+          $('.headerBar').remove();
+          $('.dashboard-headerbar').remove();
+          $('.dashboard-row').remove();
+          $('#content').append(
+            '<div style="color: red">You do not have permission to view this page.</div>'
+          );
+          $('#content').append(
+            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+          );
+        }
+        else {
+          this.getStatistics(callback);
+        }
+      }
+    }.bind(this);
+
     //check if user has _system permission
-    var authorized = this.options.database.hasSystemAccess();
-    if (!authorized) {
-      $('.contentDiv').remove();
-      $('.headerBar').remove();
-      $('.dashboard-headerbar').remove();
-      $('.dashboard-row').remove();
-      $('#content').append(
-        '<div style="color: red">You do not have permission to view this page.</div>'
-      );
-      $('#content').append(
-        '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-      );
-    }
-    else {
-      this.getStatistics(callback);
-    }
+    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());
