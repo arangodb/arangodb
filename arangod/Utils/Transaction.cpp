@@ -1456,10 +1456,23 @@ OperationCursor Transaction::indexScan(
   IndexIterator* iterator = nullptr;
 
   switch (cursorType) {
-    case CursorType::ANY:
-      // TODO implement
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    case CursorType::ANY: {
+      // We do not need search values
+      TRI_ASSERT(search.empty());
+      // We do not need an index either
+      TRI_ASSERT(indexId.empty());
+
+      arangodb::PrimaryIndex* idx = document->primaryIndex();
+
+      if (idx == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+            "Could not find primary index in collection '" + collection + "'.");
+      }
+
+      iterator = idx->anyIterator(this);
       break;
+    }
     case CursorType::ALL: {
       // We do not need search values
       TRI_ASSERT(search.empty());

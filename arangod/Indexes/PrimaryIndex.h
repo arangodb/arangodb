@@ -87,6 +87,30 @@ class AllIndexIterator final : public IndexIterator {
   uint64_t _total;
 };
 
+class AnyIndexIterator final : public IndexIterator {
+ private:
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
+      TRI_PrimaryIndex_t;
+
+ public:
+  AnyIndexIterator(arangodb::Transaction* trx, TRI_PrimaryIndex_t const* index)
+      : _trx(trx), _index(index), _step(0), _total(0) {}
+
+  ~AnyIndexIterator() {}
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  arangodb::Transaction* _trx;
+  TRI_PrimaryIndex_t const* _index;
+  arangodb::basics::BucketPosition _initial;
+  arangodb::basics::BucketPosition _position;
+  uint64_t _step;
+  uint64_t _total;
+};
+
 class PrimaryIndex final : public Index {
  public:
   PrimaryIndex() = delete;
@@ -146,6 +170,7 @@ class PrimaryIndex final : public Index {
   ///        a random order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: step === 0 indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupRandom(
@@ -173,10 +198,19 @@ class PrimaryIndex final : public Index {
   IndexIterator* allIterator(arangodb::Transaction*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief request an iterator over all elements in the index in
+  ///        a random order. It is guaranteed that each element is found
+  ///        exactly once unless the collection is modified.
+  //////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* anyIterator(arangodb::Transaction*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequentialReverse(
