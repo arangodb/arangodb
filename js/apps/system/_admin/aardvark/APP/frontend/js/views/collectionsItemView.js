@@ -281,6 +281,78 @@
               )
             );
           }
+
+          var after = function() {
+
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-id", "ID", this.model.get('id'), ""
+              )
+            );
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-type", "Type", this.model.get('type'), ""
+              )
+            );
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-status", "Status", this.model.get('status'), ""
+              )
+            );
+            buttons.push(
+              window.modalView.createDeleteButton(
+                "Delete",
+                this.deleteCollection.bind(this)
+              )
+            );
+            buttons.push(
+              window.modalView.createDeleteButton(
+                "Truncate",
+                this.truncateCollection.bind(this)
+              )
+            );
+            if (collectionIsLoaded) {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  "Unload",
+                  this.unloadCollection.bind(this)
+                )
+              );
+            } else {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  "Load",
+                  this.loadCollection.bind(this)
+                )
+              );
+            }
+
+            buttons.push(
+              window.modalView.createSuccessButton(
+                "Save",
+                this.saveModifiedCollection.bind(this)
+              )
+            );
+
+            var tabBar = ["General", "Indices"],
+              templates =  ["modalTable.ejs", "indicesView.ejs"];
+
+            window.modalView.show(
+              templates,
+              "Modify Collection",
+              buttons,
+              tableContent, null, null,
+              this.events, null,
+              tabBar
+            );
+            if (this.model.get("status") === 'loaded') {
+              this.getIndex();
+            }
+            else {
+              $($('#infoTab').children()[1]).remove();
+            }
+          }.bind(this);
+
           if (collectionIsLoaded) {
 
             var callback2 = function(error, data) {
@@ -335,79 +407,15 @@
                     "Synchronize to disk before returning from a create or update of a document.",
                     [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
                 );
-
-                tableContent.push(
-                  window.modalView.createReadOnlyEntry(
-                    "change-collection-id", "ID", this.model.get('id'), ""
-                  )
-                );
-                tableContent.push(
-                  window.modalView.createReadOnlyEntry(
-                    "change-collection-type", "Type", this.model.get('type'), ""
-                  )
-                );
-                tableContent.push(
-                  window.modalView.createReadOnlyEntry(
-                    "change-collection-status", "Status", this.model.get('status'), ""
-                  )
-                );
-                buttons.push(
-                  window.modalView.createDeleteButton(
-                    "Delete",
-                    this.deleteCollection.bind(this)
-                  )
-                );
-                buttons.push(
-                  window.modalView.createDeleteButton(
-                    "Truncate",
-                    this.truncateCollection.bind(this)
-                  )
-                );
-                if (collectionIsLoaded) {
-                  buttons.push(
-                    window.modalView.createNotificationButton(
-                      "Unload",
-                      this.unloadCollection.bind(this)
-                    )
-                  );
-                } else {
-                  buttons.push(
-                    window.modalView.createNotificationButton(
-                      "Load",
-                      this.loadCollection.bind(this)
-                    )
-                  );
-                }
-
-                buttons.push(
-                  window.modalView.createSuccessButton(
-                    "Save",
-                    this.saveModifiedCollection.bind(this)
-                  )
-                );
-
-                var tabBar = ["General", "Indices"],
-                  templates =  ["modalTable.ejs", "indicesView.ejs"];
-
-                window.modalView.show(
-                  templates,
-                  "Modify Collection",
-                  buttons,
-                  tableContent, null, null,
-                  this.events, null,
-                  tabBar
-                );
-                if (this.model.get("status") === 'loaded') {
-                  this.getIndex();
-                }
-                else {
-                  $($('#infoTab').children()[1]).remove();
-                }
               }
+              after();
 
             }.bind(this);
 
             this.model.getProperties(callback2);
+          }
+          else {
+            after(); 
           }
 
         }
