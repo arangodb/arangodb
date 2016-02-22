@@ -23,10 +23,9 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 const _ = require('lodash');
 const fs = require('fs');
+const dd = require('dedent');
 const arangodb = require('@arangodb');
 const actions = require('@arangodb/actions');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
@@ -52,16 +51,16 @@ function createErrorRoute(service, body, title) {
         callback(req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = 'text/html; charset=utf-8';
-          res.body = `
+          res.body = dd`
             <!doctype html>
             <html>
-            <head>
-            <meta charset="utf-8">
-            <title>${title || 'Service Unavailable'}</title>
-            </head>
-            <body>
-            ${body}
-            </body>
+              <head>
+                <meta charset="utf-8">
+                <title>${title || 'Service Unavailable'}</title>
+              </head>
+              <body>
+                ${body}
+              </body>
             </html>
           `;
         }
@@ -79,11 +78,11 @@ function createErrorRoute(service, body, title) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createServiceNeedsConfigurationRoute(service) {
-  return createErrorRoute(service, `
-    <p>This service is not configured.</p>
-    ${service.isDevelopment && `
-    <h3>Configuration Information</h3>
-    <pre>${escapeHtml(JSON.stringify(service.getConfiguration(), null, 2))}</pre>
+  return createErrorRoute(service, dd`
+      <p>This service is not configured.</p>
+      ${service.isDevelopment && `
+      <h3>Configuration Information</h3>
+      <pre>${escapeHtml(JSON.stringify(service.getConfiguration(), null, 2))}</pre>
     `}
   `);
 }
@@ -94,12 +93,12 @@ function createServiceNeedsConfigurationRoute(service) {
 
 function createBrokenServiceRoute(service, err) {
   if (service.isDevelopment) {
-    return createErrorRoute(service, `
+    return createErrorRoute(service, dd`
       <h3>Stacktrace</h3>
       <pre>${escapeHtml(err.stack)}</pre>
     `, escapeHtml(err));
   }
-  return createErrorRoute(service, `
+  return createErrorRoute(service, dd`
     <p>
       This service is temporarily not available.
       Please check the log file for errors.
@@ -186,5 +185,3 @@ exports.routeApp = function (service, throwOnErrors) {
     docs: service.legacy ? null : service.docs
   };
 };
-
-
