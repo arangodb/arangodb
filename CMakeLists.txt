@@ -625,29 +625,21 @@ add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 
 add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 
-# LibEV ------------------------------------------------------------------------
-set(LIBEV_VERSION "unknown" CACHE string "LIBEV version")
+################################################################################
+## LIBEV
+################################################################################
 
-if (MSVC OR RASPBIAN) 
-  set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
-else ()
-  set(LIBEV_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/libev CACHE path "LIBEV include path")
-  set(LIBEV_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/libev/.libs CACHE path "LIBEV library path")
-  set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
-endif ()
-
-if (LIBEV_INCLUDE)
-  include_directories(${LIBEV_INCLUDE})
-endif ()
-
-if (LIBEV_LIB_PATH)
-  link_directories(${LIBEV_LIB_PATH})
-endif ()
-
-include_directories(${libev_INCLUDE_DIR})
+include_directories(${LIBEV_INCLUDE_DIR})
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
+################################################################################
+## ZLIB
+################################################################################
+
+include_directories(${ZLIB_INCLUDE_DIR})
+
+add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
@@ -677,29 +669,6 @@ if (OPENSSL_VERSION)
     add_definitions(-DOPENSSL_NO_SSL2)
   endif ()				
 endif ()
-
-# zlib -------------------------------------------------------------------------
-set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
-
-if (MSVC OR RASPBIAN)
-  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-else ()
-  set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
-    CACHE path "ZLIB include path")
-  set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
-    CACHE path "ZLIB library path")
-  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-endif ()
-
-if (ZLIB_INCLUDE)
-  include_directories(${ZLIB_INCLUDE})
-endif ()
-
-if (ZLIB_LIB_PATH)
-  link_directories(${ZLIB_LIB_PATH})
-endif ()
-
-add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
