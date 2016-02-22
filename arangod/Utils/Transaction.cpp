@@ -1607,10 +1607,10 @@ OperationCursor Transaction::indexScan(
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collection + "'.");
+            "Could not find primary index in collection '" + collectionName + "'.");
       }
 
-      iterator = idx->anyIterator(this);
+      iterator.reset(idx->anyIterator(this));
       break;
     }
     case CursorType::ALL: {
@@ -1627,7 +1627,6 @@ OperationCursor Transaction::indexScan(
             "Could not find primary index in collection '" + collectionName + "'.");
       }
 
-      LOG(INFO) << "reverse: " << reverse;
       iterator.reset(idx->allIterator(this, reverse));
       break;
     }
