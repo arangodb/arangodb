@@ -234,6 +234,8 @@ endif()
 # Example binaries
 #============================================================================
 
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
+
 add_executable(example test/example.c)
 target_link_libraries(example zlib)
 add_test(example example)
