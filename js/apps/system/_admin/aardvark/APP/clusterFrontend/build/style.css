@@ -2673,7 +2673,7 @@ button {
       background-color: #8aa051; }
   button.gv_dropdown_entry {
     height: 30px;
-    margin: 4px 4px 4px 30px;
+    margin: 4px 4px 4px 12px;
     width: 160px; }
   button.gv_context_button {
     width: 65px; }
@@ -5311,6 +5311,8 @@ div.queryline {
     margin-left: 6px;
     margin-right: 6px;
     position: relative; }
+    div.queryline div.searchByAttribute input {
+      width: 140px; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
