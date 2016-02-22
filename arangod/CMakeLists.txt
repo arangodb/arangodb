@@ -54,12 +54,42 @@ if (MSVC)
     )
 endif ()
 
+# note that we check-in the generated FLEX/BISON files, therefore they are
+# generate inside the source tree
+
+if (USE_MAINTAINER_MODE)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.ll
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.ll
+  )
+
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/position.h
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
+      ${BISON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.y
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/Aql/grammar.y
+  )
+endif ()
+
 add_executable(
     ${BIN_ARANGOD}
     ${ARANGO_MSVC}
     ${ProductVersionFiles}
-    Actions/actions.cpp
     Actions/RestActionHandler.cpp
+    Actions/actions.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/Aggregator.cpp
@@ -74,12 +104,12 @@ add_executable(
     Aql/CalculationBlock.cpp
     Aql/ClusterBlocks.cpp
     Aql/ClusterNodes.cpp
-    Aql/Collection.cpp
-    Aql/Collections.cpp
-    Aql/CollectionScanner.cpp
     Aql/CollectBlock.cpp
     Aql/CollectNode.cpp
     Aql/CollectOptions.cpp
+    Aql/Collection.cpp
+    Aql/CollectionScanner.cpp
+    Aql/Collections.cpp
     Aql/Condition.cpp
     Aql/ConditionFinder.cpp
     Aql/EnumerateCollectionBlock.cpp
@@ -93,13 +123,13 @@ add_executable(
     Aql/Expression.cpp
     Aql/Function.cpp
     Aql/Functions.cpp
-    Aql/grammar.cpp
     Aql/Graphs.cpp
     Aql/Index.cpp
     Aql/IndexBlock.cpp
     Aql/IndexNode.cpp
     Aql/ModificationBlocks.cpp
     Aql/ModificationNodes.cpp
+    Aql/ModificationOptions.cpp
     Aql/NodeFinder.cpp
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp
@@ -117,20 +147,20 @@ add_executable(
     Aql/SortCondition.cpp
     Aql/SortNode.cpp
     Aql/SubqueryBlock.cpp
-    Aql/tokens.cpp
-    Aql/TraversalConditionFinder.cpp
     Aql/TraversalBlock.cpp
+    Aql/TraversalConditionFinder.cpp
     Aql/TraversalNode.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
-    Aql/ModificationOptions.cpp
+    Aql/grammar.cpp
+    Aql/tokens.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
     Cluster/ClusterInfo.cpp
-    Cluster/ClusterTraverser.cpp
     Cluster/ClusterMethods.cpp
+    Cluster/ClusterTraverser.cpp
     Cluster/HeartbeatThread.cpp
     Cluster/RestShardHandler.cpp
     Cluster/ServerJob.cpp
@@ -159,6 +189,7 @@ add_executable(
     HttpServer/HttpsCommTask.cpp
     HttpServer/HttpsServer.cpp
     HttpServer/PathHandler.cpp
+    IndexOperators/index-operator.cpp
     Indexes/CapConstraint.cpp
     Indexes/EdgeIndex.cpp
     Indexes/FulltextIndex.cpp
@@ -170,15 +201,14 @@ add_executable(
     Indexes/PrimaryIndex.cpp
     Indexes/SimpleAttributeEqualityMatcher.cpp
     Indexes/SkiplistIndex.cpp
-    IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
-    RestHandler/RestDebugHandler.cpp
     RestHandler/RestCursorHandler.cpp
+    RestHandler/RestDebugHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
     RestHandler/RestEdgesHandler.cpp
@@ -233,8 +263,8 @@ add_executable(
     V8Server/V8TimerTask.cpp
     V8Server/V8Traverser.cpp
     V8Server/v8-actions.cpp
-    V8Server/v8-collection.cpp
     V8Server/v8-collection-util.cpp
+    V8Server/v8-collection.cpp
     V8Server/v8-dispatcher.cpp
     V8Server/v8-query.cpp
     V8Server/v8-replication.cpp
@@ -246,37 +276,37 @@ add_executable(
     V8Server/v8-voccursor.cpp
     V8Server/v8-vocindex.cpp
     V8Server/v8-wrapshapedjson.cpp
+    VocBase/DatafileStatistics.cpp
+    VocBase/Ditch.cpp
+    VocBase/DocumentAccessor.cpp
+    VocBase/ExampleMatcher.cpp
+    VocBase/Graphs.cpp
+    VocBase/KeyGenerator.cpp
+    VocBase/Legends.cpp
+    VocBase/Shaper.cpp
+    VocBase/Traverser.cpp
+    VocBase/VocShaper.cpp
     VocBase/auth.cpp
     VocBase/cleanup.cpp
     VocBase/collection.cpp
     VocBase/compactor.cpp
     VocBase/datafile.cpp
-    VocBase/DatafileStatistics.cpp
-    VocBase/Ditch.cpp
     VocBase/document-collection.cpp
-    VocBase/DocumentAccessor.cpp
-    VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
-    VocBase/Graphs.cpp
     VocBase/headers.cpp
-    VocBase/KeyGenerator.cpp
-    VocBase/Legends.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp
     VocBase/server.cpp
     VocBase/shape-accessor.cpp
     VocBase/shaped-json.cpp
-    VocBase/Shaper.cpp
     VocBase/transaction.cpp
-    VocBase/Traverser.cpp
-    VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
-    VocBase/VocShaper.cpp
+    VocBase/vocbase.cpp
     Wal/AllocatorThread.cpp
     Wal/CollectorThread.cpp
-    Wal/LogfileManager.cpp
     Wal/Logfile.cpp
+    Wal/LogfileManager.cpp
     Wal/Marker.cpp
     Wal/RecoverState.cpp
     Wal/RemoverThread.cpp
