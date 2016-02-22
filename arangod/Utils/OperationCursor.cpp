@@ -23,6 +23,8 @@
 
 #include "OperationCursor.h"
 
+using namespace arangodb;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next default batchSize many elements.
 ///        Check hasMore()==true before using this
@@ -47,16 +49,16 @@ int OperationCursor::getMore(uint64_t batchSize) {
     return TRI_ERROR_FORBIDDEN;
   }
   // We restart the builder
-  _builder->clear();
+  _builder.clear();
   VPackArrayBuilder guard(&_builder);
-  TRI_doc_mptr_copy_t* mptr = nullptr;
+  TRI_doc_mptr_t* mptr = nullptr;
   // TODO: Improve this for baby awareness
-  while (batchSize > 0 && _limit > 0 && (mptr = _iterator->next()) != nullptr) {
+  while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
     --batchSize;
     --_limit;
-    _builder.add(VPackSlice(mptr.vpack()));
+    _builder.add(VPackSlice(mptr->vpack()));
   }
-  if (batchSize > 0 || _limit = 0) {
+  if (batchSize > 0 || _limit == 0) {
     // Iterator empty, there is no more
     _hasMore = false;
   }
