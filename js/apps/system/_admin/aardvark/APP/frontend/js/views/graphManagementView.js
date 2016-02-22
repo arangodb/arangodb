@@ -83,9 +83,7 @@
         }
       }.bind(this);
 
-      console.log(refetch);
       if (refetch) {
-        console.log("WARUM");
         this.collection.fetch({
           success: function() {
             callback();
