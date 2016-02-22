@@ -217,6 +217,10 @@
 
     editUser : function(e) {
 
+      if ($(e.currentTarget).find('a').attr('id') === 'createUser') {
+        return;
+      }
+
       if ($(e.currentTarget).hasClass('tile')) {
         e.currentTarget = $(e.currentTarget).find('img');
       }
