@@ -7,18 +7,18 @@
   window.ArangoQueries = Backbone.Collection.extend({
 
     initialize: function(models, options) {
-      var result;
-      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+      var self = this;
+
+      $.ajax("whoAmI?_=" + Date.now(), {async: true}).done(
         function(data) {
-          result = data.user;
+          if (this.activeUser === false) {
+            self.activeUser = "root";
+          }
+          else {
+            self.activeUser = data.user;
+          }
         }
       );
-
-      this.activeUser = result;
-
-      if (this.activeUser === false) {
-        this.activeUser = "root";
-      }
     },
 
     url: '/_api/user/',

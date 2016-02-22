@@ -49,7 +49,7 @@
     },
 
     initialize: function() {
-      this.collection.fetch({async:false});
+      this.collection.fetch({async: true});
     },
       
     checkBoxes: function (e) {

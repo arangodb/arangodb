@@ -168,8 +168,8 @@ function GraphViewerWidget(viewerConfig, startNode) {
   *******************************************************************************/
 
   container = document.body;
-  width = container.offsetWidth;
-  height = container.offsetHeight;
+  width = container.getBoundingClientRect().width;
+  height = container.getBoundingClientRect().height;
   adapterConfig = {
     type: "foxx",
     route: "."

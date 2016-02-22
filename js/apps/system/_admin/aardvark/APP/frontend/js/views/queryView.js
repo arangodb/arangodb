@@ -657,7 +657,7 @@
       importSelected: function (e) {
         var inputEditor = ace.edit("aqlEditor"),
         varsEditor = ace.edit("varsEditor");
-        $.each(this.queries, function (k, v) {
+        _.each(this.queries, function (v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
 
@@ -677,12 +677,15 @@
             }
           }
         });
-        $.each(this.customQueries, function (k, v) {
+        _.each(this.customQueries, function (v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
 
             if (v.hasOwnProperty('parameter')) {
-              if (v.parameter === '' || v.parameter === undefined) {
+              if (v.parameter === '' ||
+                  v.parameter === undefined || 
+                  JSON.stringify(v.parameter) === '{}') 
+              {
                 v.parameter = '{}';
               }
               varsEditor.setValue(v.parameter);

@@ -46,34 +46,55 @@
       window.location = window.location + '/' + encodeURIComponent(name);
     },
 
-    loadGraphViewer: function(graphName) {
-      var edgeDefs = this.collection.get(graphName).get("edgeDefinitions");
-      if (!edgeDefs || edgeDefs.length === 0) {
-        // User Info
-        return;
-      }
-      var adapterConfig = {
-        type: "gharial",
-        graphName: graphName,
-        baseUrl: require("internal").arango.databasePrefix("/")
-      };
-      var width = $("#content").width() - 75;
-      $("#content").html("");
+    loadGraphViewer: function(graphName, refetch) {
 
-      var height = arangoHelper.calculateCenterDivHeight();
-
-      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
-        nodeShaper: {
-          label: "_key",
-          color: {
-            type: "attribute",
-            key: "_key"
-          }
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("","");
         }
+        else {
+          var edgeDefs = this.collection.get(graphName).get("edgeDefinitions");
+          if (!edgeDefs || edgeDefs.length === 0) {
+            // User Info
+            return;
+          }
+          var adapterConfig = {
+            type: "gharial",
+            graphName: graphName,
+            baseUrl: require("internal").arango.databasePrefix("/")
+          };
+          var width = $("#content").width() - 75;
+          $("#content").html("");
 
-      }, true);
+          var height = arangoHelper.calculateCenterDivHeight();
 
-      $('.contentDiv').height(height);
+          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
+            nodeShaper: {
+              label: "_key",
+              color: {
+                type: "attribute",
+                key: "_key"
+              }
+            }
+
+          }, true);
+
+          $('.contentDiv').height(height);
+        }
+      }.bind(this);
+
+      console.log(refetch);
+      if (refetch) {
+        console.log("WARUM");
+        this.collection.fetch({
+          success: function() {
+            callback();
+          }
+        });
+      }
+      else {
+        callback();
+      }
 
     },
 
@@ -187,7 +208,7 @@
       });
     },
 
-    render: function() {
+    render: function(name, refetch) {
 
       var self = this;
       this.collection.fetch({
@@ -225,6 +246,9 @@
         }
       });
 
+      if (name) {
+        this.loadGraphViewer(name, refetch);
+      }
       return this;
     },
 
