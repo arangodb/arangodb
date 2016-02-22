@@ -65,7 +65,7 @@ configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h")
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
@@ -317,7 +317,7 @@ endif ()
 # Maintainer mode (Assertions) -------------------------------------------------
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features" OFF)
-if (USE_MAINTAINER_MODE)
+if ()
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif ()
 
@@ -655,6 +655,42 @@ if (OPENSSL_VERSION)
     add_definitions(-DOPENSSL_NO_SSL2)
   endif ()				
 endif ()
+
+# BISON&FLEX -------------------------------------------------------------------
+find_package(BISON)
+
+# FLEX -------------------------------------------------------------------------
+find_package(FLEX)
+
+# Python
+find_package(PythonInterp 2)
+set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+
+# zlib -------------------------------------------------------------------------
+set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
+
+if (MSVC OR RASPBIAN)
+  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+else ()
+  set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
+    CACHE path "ZLIB include path")
+  set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
+    CACHE path "ZLIB library path")
+  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+endif ()
+
+if (ZLIB_INCLUDE)
+  include_directories(${ZLIB_INCLUDE})
+endif ()
+
+if (ZLIB_LIB_PATH)
+  link_directories(${ZLIB_LIB_PATH})
+endif ()
+
+add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+
+# 3rd party libraries
+add_subdirectory(3rdParty)
 
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)

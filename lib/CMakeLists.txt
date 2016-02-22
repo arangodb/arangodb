@@ -9,6 +9,35 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${V8_INCLUDE_DIR})
 
+# note that we check-in the generated FLEX/BISON files, therefore they are
+# generate inside the source tree
+
+if (USE_MAINTAINER_MODE)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+  )
+
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+  )
+endif ()
+
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
