@@ -710,7 +710,7 @@ static int ParseUInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint64_t* desc = static_cast<po_uint64_t*>(value);
-  uint64_t tmp = TRI_UInt64String(userarg);
+  uint64_t tmp = StringUtils::uint64(userarg);
 
   int res = TRI_errno();
 

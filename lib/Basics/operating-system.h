@@ -32,6 +32,14 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+// -----------------------------------------------------------------------------
+// --Section--                                                processor features
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief padding
+////////////////////////////////////////////////////////////////////////////////
+
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
     defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
 #undef TRI_PADDING_32
@@ -45,13 +53,15 @@
 
 #ifdef __sun
 
+#define TRI_PLATFORM "solaris"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief necessary defines and includes
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_PLATFORM "solaris"
-
 #define TRI_UNDEF_ERR 1
+
+#define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
 #define TRI_HAVE_PSTACK 1
 
@@ -70,40 +80,39 @@
 #define TRI_HAVE_FORK 1
 #define TRI_HAVE_GETRLIMIT 1
 #define TRI_HAVE_LIMITS_H 1
+#define TRI_HAVE_POLL_H 1
 #define TRI_HAVE_SCHED_H 1
 #define TRI_HAVE_SIGNAL_H 1
 #define TRI_HAVE_STDBOOL_H 1
-#define TRI_HAVE_TERMIOS_H 1
-#define TRI_HAVE_UNISTD_H 1
-#define TRI_HAVE_POLL_H 1
-
 #define TRI_HAVE_SYS_FILE_H 1
 #define TRI_HAVE_SYS_IOCTL_H 1
 #define TRI_HAVE_SYS_RESOURCE_H 1
 #define TRI_HAVE_SYS_TIME_H 1
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
+#define TRI_HAVE_TERMIOS_H 1
+#define TRI_HAVE_UNISTD_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new ProgramOptions */
+
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
-#undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new ProgramOptions */
 #define ARANGODB_HAVE_GETPPID 1
 #define ARANGODB_HAVE_GETPWNAM 1
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
-#undef ARANGODB_HAVE_GETTID
-#define TRI_GETRUSAGE_MAXRSS_UNIT 1024
-#define TRI_HAVE_GETTIMEOFDAY 1
-#define TRI_HAVE_GMTIME_R 1
-#define TRI_HAVE_LOCALTIME_R 1
-#define TRI_HAVE_SETGID 1
-#define TRI_HAVE_SETUID 1
-#define ARANGODB_HAVE_STRTOLL 1
-#define TRI_HAVE_STRTOULL 1
+#undef  ARANGODB_HAVE_GETTID
+#define ARANGODB_HAVE_GMTIME_R 1
+#undef ARANGODB_HAVE_GMTIME_S
+#undef ARANGODB_HAVE_INITGROUPS
+#define ARANGODB_HAVE_LOCALTIME_R 1
+#undef ARANGODB_HAVE_LOCALTIME_S
+#define ARANGODB_HAVE_SETGID 1
+#define ARANGODB_HAVE_SETUID 1
 
 #define TRI_srandom srand
 #define TRI_random rand
@@ -198,6 +207,8 @@
 
 #include <stdint.h>
 
+#define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enabled features
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,19 +228,16 @@
 #define TRI_HAVE_SIGNAL_H 1
 #define TRI_HAVE_STDBOOL_H 1
 #define TRI_HAVE_SYS_IOCTL_H 1
-#define TRI_HAVE_TERMIOS_H 1
-#define TRI_HAVE_UNISTD_H 1
-
 #define TRI_HAVE_SYS_RESOURCE_H 1
 #define TRI_HAVE_SYS_TIME_H 1
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
+#define TRI_HAVE_TERMIOS_H 1
+#define TRI_HAVE_UNISTD_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_GETRUSAGE_MAXRSS_UNIT 1
 
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
@@ -239,14 +247,13 @@
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
 #undef ARANGODB_HAVE_GETTID
-#define TRI_HAVE_GETTIMEOFDAY 1
-#define TRI_HAVE_GMTIME_R 1
-#define TRI_HAVE_INITGROUPS 1
-#define TRI_HAVE_LOCALTIME_R 1
-#define TRI_HAVE_SETGID 1
-#define TRI_HAVE_SETUID 1
-#define ARANGODB_HAVE_STRTOLL 1
-#define TRI_HAVE_STRTOULL 1
+#define ARANGODB_HAVE_GMTIME_R 1
+#undef ARANGODB_HAVE_GMTIME_S
+#define ARANGODB_HAVE_INITGROUPS 1
+#define ARANGODB_HAVE_LOCALTIME_R 1
+#undef ARANGODB_HAVE_LOCALTIME_S
+#define ARANGODB_HAVE_SETGID 1
+#define ARANGODB_HAVE_SETUID 1
 
 #define TRI_random random
 #define TRI_srandom srandom
@@ -378,6 +385,8 @@
 #define __LONG_LONG_SUPPORTED 1
 #endif
 
+#define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enabled features
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,7 +421,6 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_GETRUSAGE_MAXRSS_UNIT 1024
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
 #define TRI_HAVE_GETLINE 1
@@ -421,13 +429,13 @@
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
 #undef ARANGODB_HAVE_GETTID
-#define TRI_HAVE_GETTIMEOFDAY 1
-#define TRI_HAVE_GMTIME_R 1
-#define TRI_HAVE_LOCALTIME_R 1
-#define TRI_HAVE_SETGID 1
-#define TRI_HAVE_SETUID 1
-#define ARANGODB_HAVE_STRTOLL 1
-#define TRI_HAVE_STRTOULL 1
+#define ARANGODB_HAVE_GMTIME_R 1
+#undef ARANGODB_HAVE_GMTIME_S
+#undef ARANGODB_HAVE_INITGROUPS
+#define ARANGODB_HAVE_LOCALTIME_R 1
+#undef ARANGODB_HAVE_LOCALTIME_S
+#define ARANGODB_HAVE_SETGID 1
+#define ARANGODB_HAVE_SETUID 1
 
 #define TRI_random rand
 #define TRI_srandom srand
@@ -548,6 +556,8 @@
 #define __USE_BSD
 #endif
 
+#define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enabled features
 ////////////////////////////////////////////////////////////////////////////////
@@ -581,8 +591,6 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_GETRUSAGE_MAXRSS_UNIT 1024
-
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
 #define TRI_HAVE_GETLINE 1
@@ -591,15 +599,15 @@
 #define ARANGODB_HAVE_GETPWUID 1
 #define ARANGODB_HAVE_GETRUSAGE 1
 #define ARANGODB_HAVE_GETTID 1
-#define TRI_HAVE_GETTIMEOFDAY 1
-#define TRI_HAVE_GMTIME_R 1
-#define TRI_HAVE_INITGROUPS 1
-#define TRI_HAVE_LOCALTIME_R 1
+#define ARANGODB_HAVE_GMTIME_R 1
+#undef ARANGODB_HAVE_GMTIME_S
+#define ARANGODB_HAVE_INITGROUPS 1
+#define ARANGODB_HAVE_LOCALTIME_R 1
+#undef ARANGODB_HAVE_LOCALTIME_S
+#define ARANGODB_HAVE_SETGID 1
+#define ARANGODB_HAVE_SETUID 1
+
 #define TRI_HAVE_PRCTL 1
-#define TRI_HAVE_SETGID 1
-#define TRI_HAVE_SETUID 1
-#define ARANGODB_HAVE_STRTOLL 1
-#define TRI_HAVE_STRTOULL 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
@@ -757,13 +765,13 @@
 #undef ARANGODB_HAVE_GETPWUID
 #undef ARANGODB_HAVE_GETRUSAGE
 #undef ARANGODB_HAVE_GETTID
-
-#define TRI_HAVE_GMTIME_S 1
-#define TRI_HAVE_LOCALTIME_S 1
-#define TRI_HAVE_STRTOI64 1
-#define TRI_HAVE_STRTOUI64 1
-
-#undef ARANGODB_HAVE_STRTOLL
+#undef ARANGODB_HAVE_GMTIME_R
+#define ARANGODB_HAVE_GMTIME_S 1
+#undef ARANGODB_HAVE_INITGROUPS
+#undef ARANGODB_HAVE_LOCALTIME_R
+#define ARANGODB_HAVE_LOCALTIME_S 1
+#undef ARANGODB_HAVE_SETGID
+#undef ARANGODB_HAVE_SETUID
 
 #define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
@@ -919,24 +927,6 @@ typedef unsigned char bool;
 #define TRI_uid_t void *
 #define TRI_gid_t void *
 
-#endif
-
-// -----------------------------------------------------------------------------
-// --Section--                                                 compiler features
-// -----------------------------------------------------------------------------
-
-#ifdef __GNUC__
-#define TRI_HAVE_GCC_UNUSED 1
-#define TRI_HAVE_GCC_ATTRIBUTE 1
-#define TRI_HAVE_GCC_BUILTIN 1
-#endif
-
-#if defined(TRI_OVERLOAD_FUNCS_SIZE_T)
-#if TRI_SIZEOF_SIZE_T == 8
-#define sizetint_t uint64_t
-#else
-#define sizetint_t uint32_t
-#endif
 #endif
 
 #endif

@@ -1239,7 +1239,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
     return 0;
   }
 
-  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1321,7 +1321,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes(VPackBuilder& builder,
         }
       } else if (id.isString()) {
         std::string data = id.copyString();
-        uint64_t iid = TRI_UInt64String2(data.c_str(), data.length());
+        uint64_t iid = StringUtils::uint64(data);
         if (iid <= static_cast<uint64_t>(maxTick)) {
           builder.add(indexSlice);
         }
@@ -1696,7 +1696,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
   // function
   // this is safe because collection names must not start with a digit
   if (c >= '0' && c <= '9') {
-    return TRI_LookupCollectionByIdVocBase(vocbase, TRI_UInt64String(name));
+    return TRI_LookupCollectionByIdVocBase(vocbase, StringUtils::uint64(name));
   }
 
   // otherwise we'll look up the collection by name

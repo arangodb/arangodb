@@ -65,7 +65,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
     return 0;
   }
 
-  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,8 +1021,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       planId = planIdSlice.getNumericValue<TRI_voc_cid_t>();
     } else if (planIdSlice.isString()) {
       std::string tmp = planIdSlice.copyString();
-      planId = static_cast<TRI_voc_cid_t>(
-          TRI_UInt64String2(tmp.c_str(), tmp.length()));
+      planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
     }
 
     if (planId > 0) {
@@ -1034,8 +1033,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _cid = cidSlice.getNumericValue<TRI_voc_cid_t>();
     } else if (cidSlice.isString()) {
       std::string tmp = cidSlice.copyString();
-      _cid = static_cast<TRI_voc_cid_t>(
-          TRI_UInt64String2(tmp.c_str(), tmp.length()));
+      _cid = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
     }
 
     if (options.hasKey("keyOptions")) {

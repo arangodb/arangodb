@@ -133,7 +133,7 @@ void TRI_localtime(time_t tt, struct tm* tb) {
 
 #else
 
-#ifdef TRI_HAVE_LOCALTIME_S
+#ifdef ARANGODB_HAVE_LOCALTIME_S
 
   localtime_s(tb, &tt);
 

@@ -546,7 +546,7 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
 
     // ru_maxrss is the resident set size in kilobytes. need to multiply with
     // 1024 to get the number of bytes
-    result._residentSize = used.ru_maxrss * TRI_GETRUSAGE_MAXRSS_UNIT;
+    result._residentSize = used.ru_maxrss * ARANGODB_GETRUSAGE_MAXRSS_UNIT;
   }
 
 #ifdef TRI_HAVE_MACH

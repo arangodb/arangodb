@@ -601,8 +601,7 @@ void ApplicationServer::stop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::extractPrivileges() {
-#ifdef TRI_HAVE_SETGID
-
+#ifdef ARANGODB_HAVE_SETGID
   if (_gid.empty()) {
     _numericGid = getgid();
   } else {
@@ -638,11 +637,9 @@ void ApplicationServer::extractPrivileges() {
 
     _numericGid = gidNumber;
   }
-
 #endif
 
-#ifdef TRI_HAVE_SETUID
-
+#ifdef ARANGODB_HAVE_SETUID
   if (_uid.empty()) {
     _numericUid = getuid();
   } else {
@@ -678,7 +675,6 @@ void ApplicationServer::extractPrivileges() {
 
     _numericUid = uidNumber;
   }
-
 #endif
 }
 
@@ -688,8 +684,8 @@ void ApplicationServer::extractPrivileges() {
 
 void ApplicationServer::dropPrivilegesPermanently() {
 // clear all supplementary groups
-#if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && \
-    defined(TRI_HAVE_SETUID)
+#if defined(ARANGODB_HAVE_INITGROUPS) && defined(ARANGODB_HAVE_SETGID) && \
+    defined(ARANGODB_HAVE_SETUID)
 
   if (!_gid.empty() && !_uid.empty()) {
     struct passwd* pwent = getpwuid(_numericUid);
@@ -702,7 +698,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 
 // first GID
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
 
   if (!_gid.empty()) {
     LOG(DEBUG) << "permanently changing the gid to " << _numericGid;
@@ -718,7 +714,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 
 // then UID (because we are dropping)
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
 
   if (!_uid.empty()) {
     LOG(DEBUG) << "permanently changing the uid to " << _numericUid;
@@ -746,7 +742,7 @@ void ApplicationServer::setupOptions(
       "help,h", "produce a usage message and exit")(
       "configuration,c", &_configFile, "read configuration file");
 
-#if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
+#if defined(ARANGODB_HAVE_SETUID) || defined(ARANGODB_HAVE_SETGID)
 
   options["General Options:help-admin"]
 #ifdef ARANGODB_HAVE_GETPPID
@@ -782,10 +778,10 @@ void ApplicationServer::setupOptions(
 
   options["Hidden Options"]
     ("log", &_logLevel, "log level")
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
 #endif
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
     ("gid", &_gid, "switch to group-id after reading config files")
 #endif
   ;
@@ -805,10 +801,10 @@ void ApplicationServer::setupOptions(
   options["Server Options:help-admin"](
       "random.generator", &_randomGenerator,
       "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
       ("server.uid", &_uid, "switch to user-id after reading config files")
 #endif
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
           ("server.gid", &_gid, "switch to group-id after reading config files")
 #endif
               ;
