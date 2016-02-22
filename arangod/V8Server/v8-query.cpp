@@ -24,6 +24,7 @@
 #include "v8-query.h"
 #include "Aql/Query.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/HashIndex.h"
@@ -47,8 +48,49 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run an AQL query and return the result as a V8 array 
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> AqlQuery(v8::Isolate* isolate, TRI_vocbase_col_t const* col, 
+                                      std::string const& aql, VPackSlice const& slice) {
+  TRI_ASSERT(col != nullptr);
+
+  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
+
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    bindVars(it.key().copyString().c_str(), arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, VelocyPackHelper::velocyPackToJson(it.value())));
+    it.next();
+  }
+
+
+  TRI_GET_GLOBALS();
+  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+                             arangodb::aql::PART_MAIN);
+
+  auto queryResult = query.executeV8(
+      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        queryResult.code == TRI_ERROR_QUERY_KILLED) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+
+  return queryResult.result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
@@ -709,32 +751,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
                        v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(
-      args.Holder(), TRI_GetVocBaseColType());
-
-  if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
-  if (col->_type != TRI_COL_TYPE_EDGE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-  }
-
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_document_collection_t* document = trx.documentCollection();
-
-  // first and only argument schould be a list of document idenfifier
+  
+  // first and only argument should be a list of document idenfifier
   if (args.Length() != 1) {
     switch (direction) {
       case TRI_EDGE_IN:
@@ -747,107 +765,68 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       default: { TRI_V8_THROW_EXCEPTION_USAGE("edges(<vertices>)"); }
     }
   }
+    
+  auto buildFilter = [](TRI_edge_direction_e direction, std::string const& op) -> std::string {
+    switch (direction) {
+      case TRI_EDGE_IN:
+        return "FILTER doc._to " + op + " @value";
+      case TRI_EDGE_OUT:
+        return "FILTER doc._from " + op + " @value";
+      case TRI_EDGE_ANY:
+        return "FILTER doc._from " + op + " @value || doc._to " + op + " @value";
+    }
 
-  // setup result
-  v8::Handle<v8::Array> documents;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  };
 
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(
+      args.Holder(), TRI_GetVocBaseColType());
 
-  trx.lockRead();
-
-  bool error = false;
-
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
+  
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("@collection", VPackValue(col->name()));
+  builder.add(VPackValue("value"));
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  builder.close();
+
+  std::string filter;
   // argument is a list of vertices
   if (args[0]->IsArray()) {
-    documents = v8::Array::New(isolate);
-    v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(args[0]);
-    uint32_t count = 0;
-    uint32_t const len = vertices->Length();
-
-    for (uint32_t i = 0; i < len; ++i) {
-      TRI_voc_cid_t cid;
-      std::unique_ptr<char[]> key;
-
-      res = TRI_ParseVertex(args, trx.resolver(), cid, key, vertices->Get(i));
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // error is just ignored
-        continue;
-      }
-
-      std::vector<TRI_doc_mptr_copy_t>&& edges =
-          TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
-                                            key.get());
-
-      for (auto& edge : edges) {
-        v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
-
-        if (doc.IsEmpty()) {
-          // error
-          error = true;
-          break;
-        } else {
-          documents->Set(count, doc);
-          ++count;
-        }
-      }
-
-      if (error) {
-        break;
-      }
-    }
-    trx.finish(res);
+    filter = buildFilter(direction, "IN");
   }
-
-  // argument is a single vertex
   else {
-    std::unique_ptr<char[]> key;
-    TRI_voc_cid_t cid;
-
-    res = TRI_ParseVertex(args, trx.resolver(), cid, key, args[0]);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    std::vector<TRI_doc_mptr_copy_t>&& edges =
-        TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
-                                          key.get());
-
-    trx.finish(res);
-
-    size_t const n = edges.size();
-    documents = v8::Array::New(isolate, static_cast<int>(n));
-
-    for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc =
-          WRAP_SHAPED_JSON(trx, col->_cid, edges[i].getDataPtr());
-
-      if (doc.IsEmpty()) {
-        error = true;
-        break;
-      } else {
-        documents->Set(static_cast<uint32_t>(i), doc);
-      }
-    }
+    filter = buildFilter(direction, "==");
   }
 
-  // .............................................................................
-  // outside a read transaction
-  // .............................................................................
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid);
 
-  if (error) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN(documents);
+  if (!trx.isEdgeCollection(col->name())) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
+
+  trx.lockRead();
+  v8::Handle<v8::Value> result = AqlQuery(isolate, col, "FOR doc IN @@collection " + filter + " RETURN doc", builder.slice());
+  trx.finish(res);
+    
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -893,7 +872,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   OperationCursor opCursor = trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip, limit, limit, false);
 
   if (opCursor.failed()) {
-    trx.finish(opCursor.code);
     TRI_V8_THROW_EXCEPTION(opCursor.code);
   }
 
