@@ -4,13 +4,13 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"642761382"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"645929686"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"checksum"</span> : <span class="hljs-number">328525012</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"643089062"</span>, 
+  <span class="hljs-string">"checksum"</span> : <span class="hljs-number">287386158</span>, 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"646257366"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
