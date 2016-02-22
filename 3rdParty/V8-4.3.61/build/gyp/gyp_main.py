@@ -9,9 +9,9 @@ import os.path
 
 # TODO(mark): sys.path manipulation is some temporary testing stuff.
 try:
-  import gyp
   sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '..'))
   os.environ['PYTHON_EXECUTABLE'] = sys.executable
+  import gyp
 except ImportError, e:
   sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), 'pylib'))
   import gyp
