@@ -37,7 +37,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 
-#include "build.h"
+#include "Basics/build.h"
 
 #ifdef _DEBUG
 #define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "-DEBUG]"
