@@ -1447,6 +1447,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
     }
 
     switch (member->type) {
+      case NODE_TYPE_WITH: {
+        // the using declaration...
+        break;
+      }
+
       case NODE_TYPE_FOR: {
         en = fromNodeFor(en, member);
         break;

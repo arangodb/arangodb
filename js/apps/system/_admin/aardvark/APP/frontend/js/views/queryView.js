@@ -365,17 +365,23 @@
       if (this.allowUpload === true) {
 
         var callback = function() {
-          this.collection.fetch({async: false});
-          this.updateLocalQueries();
-          this.renderSelectboxes();
-          this.updateTable();
-          self.allowUpload = false;
-          $('#customs-switch').click();
-        };
+          this.collection.fetch({
+            success: function() {
+              self.updateLocalQueries();
+              self.renderSelectboxes();
+              self.updateTable();
+              self.allowUpload = false;
+              $('#customs-switch').click();
+              $('#confirmQueryImport').addClass('disabled');
+              $('#queryImportDialog').modal('hide'); 
+            },
+            error: function(data) {
+              arangoHelper.arangoError("Custom Queries", data.responseText);
+            }
+          });
+        }.bind(this);
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
-        $('#confirmQueryImport').addClass('disabled');
-        $('#queryImportDialog').modal('hide'); 
       }
     },
 
@@ -401,17 +407,16 @@
         }
       };
 
-      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+      $.ajax("whoAmI?_=" + Date.now()).success(
         function(data) {
           name = data.user;
 
           if (name === null || name === false) {
             name = "root";
           }
-
+          window.open("query/download/" + encodeURIComponent(name));
         });
 
-        window.open("query/download/" + encodeURIComponent(name));
       },
 
       deselect: function (editor) {
@@ -446,45 +451,63 @@
         this.checkSaveName();
       },
 
-      getAQL: function () {
+      getAQL: function (originCallback) {
         var self = this, result;
 
         this.collection.fetch({
-          async: false
-        });
+          success: function() {
+            //old storage method
+            var item = localStorage.getItem("customQueries");
+            if (item) {
+              var queries = JSON.parse(item);
+              //save queries in user collections extra attribute
+              _.each(queries, function(oldQuery) {
+                self.collection.add({
+                  value: oldQuery.value,
+                  name: oldQuery.name
+                });
+              });
 
-        //old storage method
-        var item = localStorage.getItem("customQueries");
-        if (item) {
-          var queries = JSON.parse(item);
-          //save queries in user collections extra attribute
-          _.each(queries, function(oldQuery) {
-            self.collection.add({
-              value: oldQuery.value,
-              name: oldQuery.name
-            });
-          });
-          result = self.collection.saveCollectionQueries();
+              var callback = function(error, data) {
+                if (error) {
+                  arangoHelper.arangoError(
+                    "Custom Queries",
+                    "Could not import old local storage queries"
+                  );
+                }
+                else {
+                  localStorage.removeItem("customQueries");
+                }
+              }.bind(self);
+              self.collection.saveCollectionQueries(callback);
+            }
+            self.updateLocalQueries();
 
-          if (result === true) {
-            //and delete them from localStorage
-            localStorage.removeItem("customQueries");
+            if (originCallback) {
+              originCallback();
+            }
           }
-        }
-
-        this.updateLocalQueries();
+        });
       },
 
       deleteAQL: function (e) {
+        var callbackSave = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Query", "Could not delete query.");
+          }
+          else {
+            this.updateLocalQueries();
+            this.renderSelectboxes();
+            this.updateTable();
+          }
+        }.bind(this);
+
         var deleteName = $(e.target).parent().parent().parent().children().first().text();
-
         var toDelete = this.collection.findWhere({name: deleteName});
-        this.collection.remove(toDelete);
-        this.collection.saveCollectionQueries();
 
-        this.updateLocalQueries();
-        this.renderSelectboxes();
-        this.updateTable();
+        this.collection.remove(toDelete);
+        this.collection.saveCollectionQueries(callbackSave);
+
       },
 
       updateLocalQueries: function () {
@@ -556,16 +579,26 @@
           });
         }
 
-        this.collection.saveCollectionQueries();
-
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError("Query", "Could not save query");
+          }
+          else {
+            var self = this;
+            this.collection.fetch({
+              success: function() {
+                self.updateLocalQueries();
+                self.renderSelectboxes();
+                $('#querySelect').val(saveName);
+              }
+            });
+          }
+        }.bind(this);
+        this.collection.saveCollectionQueries(callback);
         window.modalView.hide();
-
-        this.updateLocalQueries();
-        this.renderSelectboxes();
-        $('#querySelect').val(saveName);
       },
 
-      getSystemQueries: function () {
+      getSystemQueries: function (callback) {
         var self = this;
         $.ajax({
           type: "GET",
@@ -573,11 +606,16 @@
           url: "js/arango/aqltemplates.json",
           contentType: "application/json",
           processData: false,
-          async: false,
           success: function (data) {
+            if (callback) {
+              callback(false);
+            }
             self.queries = data;
           },
           error: function () {
+            if (callback) {
+              callback(true);
+            }
             arangoHelper.arangoNotification("Query", "Error while loading system templates");
           }
         });
@@ -592,15 +630,28 @@
       },
 
       refreshAQL: function(select) {
-        this.getAQL();
-        this.getSystemQueries();
-        this.updateLocalQueries();
 
-        if (select) {
-          var previous = $("#querySelect" ).val();
-          this.renderSelectboxes();
-          $("#querySelect" ).val(previous);
-        }
+        var self = this;
+
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Query', 'Could not reload Queries');
+          }
+          else {
+            self.updateLocalQueries();
+            if (select) {
+              var previous = $("#querySelect").val();
+              self.renderSelectboxes();
+              $("#querySelect").val(previous);
+            }
+          }
+        }.bind(self);
+
+        var originCallback = function() {
+          self.getSystemQueries(callback);
+        }.bind(self);
+
+        this.getAQL(originCallback);
       },
 
       importSelected: function (e) {

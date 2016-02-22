@@ -16,12 +16,14 @@ export PORT=`expr 1024 + $RANDOM`
 export ETCD_NONO_WAL_SYNC=1
 
 
-if [ -x build/bin/arangosh ];  then
-  ARANGOSH=build/bin/arangosh
-elif [ -x bin/arangosh ];  then
-  ARANGOSH=bin/arangosh
-else
-  echo "$0: cannot locate arangosh"
+if [ -z "${ARANGOSH}" ];  then
+  if [ -x build/bin/arangosh ];  then
+    ARANGOSH=build/bin/arangosh
+  elif [ -x bin/arangosh ];  then
+    ARANGOSH=bin/arangosh
+  else
+    echo "$0: cannot locate arangosh"
+  fi
 fi
 
 exec $ARANGOSH \

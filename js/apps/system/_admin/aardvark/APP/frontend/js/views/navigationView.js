@@ -9,11 +9,16 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
+      "click li": "switchTab",
+      "click .arangodbLogo": "selectMenuItem",
       "mouseenter .dropdown > *": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
+    renderFirst: true,
+
     initialize: function () {
+
       this.userCollection = this.options.userCollection;
       this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
@@ -39,19 +44,38 @@
     template: templateEngine.createTemplate("navigationView.ejs"),
 
     render: function () {
+      var self = this;
+
       $(this.el).html(this.template.render({
         currentDB: this.currentDB
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
-      if (this.userCollection.whoAmI()) {
-        this.userBarView.render();
-      }
+
+      var callback = function(error) {
+        if (!error) {
+          this.userBarView.render();
+        }
+      }.bind(this);
+
+      this.userCollection.whoAmI(callback);
       this.statisticBarView.render($("#statisticBar"));
 
       // if demo content not available, do not show demo menu tab
       if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
         $('.demo-menu').css("display","none");
+      }
+      if (this.renderFirst) {
+        this.renderFirst = false;
+          
+        var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
+        if (select.indexOf('/') < -1) {
+          this.selectMenuItem(select);
+        }
+
+        $('.arangodbLogo').on('click', function() {
+          self.selectMenuItem();
+        });
       }
 
       return this;
@@ -104,10 +128,20 @@
       });
     },
 
+    switchTab: function(e) {
+      var id = $(e.currentTarget).children().first().attr('id');
+
+      if (id) {
+        this.selectMenuItem(id + '-menu');
+      }
+    },
+
     selectMenuItem: function (menuItem) {
       $('.navlist li').removeClass('active');
-      if (menuItem) {
-        $('.' + menuItem).addClass('active');
+      if (typeof menuItem === 'string') {
+        if (menuItem) {
+          $('.' + menuItem).addClass('active');
+        }
       }
     },
 
