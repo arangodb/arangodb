@@ -156,6 +156,13 @@
     },
 
     resetView: function () {
+
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Document", "Could not fetch documents count");
+        }
+      }.bind(this);
+
       //clear all input/select - fields
       $('input').val('');
       $('select').val('==');
@@ -166,7 +173,7 @@
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
-      this.collection.loadTotal();
+      this.collection.loadTotal(callback);
       this.restoredFilters = [];
 
       //for resetting json upload
@@ -191,21 +198,22 @@
     },
 
     startUpload: function () {
-      var result;
-      if (this.allowUpload === true) {
-          this.showSpinner();
-        result = this.collection.uploadDocuments(this.file);
-        if (result !== true) {
+
+      var callback = function(error, msg) {
+        if (error) {
+          arangoHelper.arangoError("Upload", msg);
+          this.hideSpinner();
+        }
+        else {
           this.hideSpinner();
           this.hideImportModal();
           this.resetView();
-          arangoHelper.arangoError(result);
-          return;
         }
-        this.hideSpinner();
-        this.hideImportModal();
-        this.resetView();
-        return;
+      }.bind(this);
+
+      if (this.allowUpload === true) {
+        this.showSpinner();
+        this.collection.uploadDocuments(this.file, callback);
       }
     },
 
