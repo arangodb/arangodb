@@ -115,9 +115,6 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "fulltext") == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::strcmp(type, "cap") == 0) {
-    return TRI_IDX_TYPE_CAP_CONSTRAINT;
-  }
   if (::strcmp(type, "geo1") == 0) {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
@@ -144,14 +141,10 @@ char const* Index::typeName(Index::IndexType type) {
       return "skiplist";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return "cap";
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -282,23 +275,6 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     if (value.isNumber()) {
       if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("minLength"), false) != 0) {
-        return false;
-      }
-    }
-  } else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-    // size, byteSize
-    value = lhs.get("size");
-    if (value.isNumber()) {
-      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("size"),
-                                                      false) != 0) {
-        return false;
-      }
-    }
-
-    value = lhs.get("byteSize");
-    if (value.isNumber()) {
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get("byteSize"), false) != 0) {
         return false;
       }
     }

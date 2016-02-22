@@ -159,7 +159,6 @@ add_executable(
     HttpServer/HttpsCommTask.cpp
     HttpServer/HttpsServer.cpp
     HttpServer/PathHandler.cpp
-    Indexes/CapConstraint.cpp
     Indexes/EdgeIndex.cpp
     Indexes/FulltextIndex.cpp
     Indexes/GeoIndex2.cpp

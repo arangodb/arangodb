@@ -33,7 +33,6 @@
 #include "Basics/ThreadPool.h"
 #include "Cluster/ServerState.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -75,7 +74,6 @@ TRI_document_collection_t::TRI_document_collection_t()
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _useSecondaryIndexes(true),
-      _capConstraint(nullptr),
       _ditches(this),
       _headersPtr(nullptr),
       _keyGenerator(nullptr),
@@ -531,10 +529,7 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
 void TRI_document_collection_t::addIndex(arangodb::Index* idx) {
   _indexes.emplace_back(idx);
 
-  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-    // register cap constraint
-    _capConstraint = static_cast<arangodb::CapConstraint*>(idx);
-  } else if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     ++_cleanupIndexes;
   }
 }
@@ -558,10 +553,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
       // found!
       _indexes.erase(_indexes.begin() + i);
 
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-        // unregister cap constraint
-        _capConstraint = nullptr;
-      } else if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         --_cleanupIndexes;
       }
 
@@ -606,20 +598,6 @@ arangodb::EdgeIndex* TRI_document_collection_t::edgeIndex() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the cap constraint index, if it exists
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::CapConstraint* TRI_document_collection_t::capConstraint() {
-  for (auto const& idx : _indexes) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-      return static_cast<arangodb::CapConstraint*>(idx);
-    }
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get an index by id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -654,11 +632,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t*,
 
 static int FillIndex(arangodb::Transaction*, TRI_document_collection_t*,
                      arangodb::Index*);
-
-static int CapConstraintFromVelocyPack(arangodb::Transaction*,
-                                       TRI_document_collection_t*,
-                                       VPackSlice const&, TRI_idx_iid_t,
-                                       arangodb::Index**);
 
 static int GeoIndexFromVelocyPack(arangodb::Transaction*,
                                   TRI_document_collection_t*, VPackSlice const&,
@@ -2559,13 +2532,6 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   TRI_UpdateTickServer(iid);
 
   // ...........................................................................
-  // CAP CONSTRAINT
-  // ...........................................................................
-  if (typeStr == "cap") {
-    return CapConstraintFromVelocyPack(trx, document, slice, iid, idx);
-  }
-
-  // ...........................................................................
   // GEO INDEX (list or attribute)
   // ...........................................................................
   if (typeStr == "geo1" || typeStr == "geo2") {
@@ -3685,168 +3651,6 @@ static int PidNamesByAttributeNames(
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a cap constraint to a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static arangodb::Index* CreateCapConstraintDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
-    size_t count, int64_t size, TRI_idx_iid_t iid, bool& created) {
-  created = false;
-
-  // check if we already know a cap constraint
-  auto existing = document->capConstraint();
-
-  if (existing != nullptr) {
-    if (static_cast<size_t>(existing->count()) == count &&
-        existing->size() == size) {
-      return static_cast<arangodb::Index*>(existing);
-    }
-
-    TRI_set_errno(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED);
-    return nullptr;
-  }
-
-  if (iid == 0) {
-    iid = arangodb::Index::generateId();
-  }
-
-  // create a new index
-  auto cc = new arangodb::CapConstraint(iid, document, count, size);
-  std::unique_ptr<arangodb::Index> capConstraint(cc);
-
-  cc->initialize(trx);
-  arangodb::Index* idx = static_cast<arangodb::Index*>(capConstraint.get());
-
-  // initializes the index with all existing documents
-  int res = FillIndex(trx, document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-
-    return nullptr;
-  }
-
-  // and store index
-  try {
-    document->addIndex(idx);
-    capConstraint.release();
-  } catch (...) {
-    TRI_set_errno(res);
-
-    return nullptr;
-  }
-
-  created = true;
-
-  return idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores an index
-////////////////////////////////////////////////////////////////////////////////
-
-static int CapConstraintFromVelocyPack(arangodb::Transaction* trx,
-                                       TRI_document_collection_t* document,
-                                       VPackSlice const& definition,
-                                       TRI_idx_iid_t iid,
-                                       arangodb::Index** dst) {
-  if (dst != nullptr) {
-    *dst = nullptr;
-  }
-
-  VPackSlice val1 = definition.get("size");
-  VPackSlice val2 = definition.get("byteSize");
-
-  if (!val1.isNumber() && !val2.isNumber()) {
-    LOG(ERR) << "ignoring cap constraint " << iid << ", 'size' and 'byteSize' missing";
-
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  size_t count = 0;
-  if (val1.isNumber()) {
-    if (val1.isDouble()) {
-      double tmp = val1.getDouble();
-      if (tmp > 0.0) {
-        count = static_cast<size_t>(tmp);
-      }
-    } else {
-      count = val1.getNumericValue<size_t>();
-    }
-  }
-
-  int64_t size = 0;
-  if (val2.isNumber()) {
-    if (val2.isDouble()) {
-      double tmp = val2.getDouble();
-      if (tmp > arangodb::CapConstraint::MinSize) {
-        size = static_cast<int64_t>(tmp);
-      }
-    } else {
-      int64_t tmp = val2.getNumericValue<int64_t>();
-      if (tmp > arangodb::CapConstraint::MinSize) {
-        size = static_cast<int64_t>(tmp);
-      }
-    }
-  }
-
-  if (count == 0 && size == 0) {
-    LOG(ERR) << "ignoring cap constraint " << iid << ", 'size' must be at least 1, or 'byteSize' must be at least " << arangodb::CapConstraint::MinSize;
-
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  bool created;
-  auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size,
-                                                   iid, created);
-
-  if (dst != nullptr) {
-    *dst = idx;
-  }
-
-  return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* TRI_LookupCapConstraintDocumentCollection(
-    TRI_document_collection_t* document) {
-  return static_cast<arangodb::Index*>(document->capConstraint());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a cap constraint exists
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* TRI_EnsureCapConstraintDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
-    TRI_idx_iid_t iid, size_t count, int64_t size, bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
-
-  WRITE_LOCKER(writeLocker, document->_lock);
-
-  auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size,
-                                                   iid, created);
-
-  if (idx != nullptr) {
-    if (created) {
-      arangodb::aql::QueryCache::instance()->invalidate(
-          document->_vocbase, document->_info.namec_str());
-      int res = TRI_SaveIndex(document, idx, true);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        delete idx;
-        idx = nullptr;
-      }
-    }
-  }
-
-  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

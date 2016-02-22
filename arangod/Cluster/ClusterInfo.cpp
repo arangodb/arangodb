@@ -1649,21 +1649,6 @@ int ClusterInfo::ensureIndexCoordinator(
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
           }
         }
-
-        if (type.copyString() == "cap") {
-          // special handling for cap constraints
-          if (hasSameIndexType) {
-            // there can only be one cap constraint
-            return setErrormsg(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,
-                               errorMsg);
-          }
-
-          if (numberOfShards > 1) {
-            // there must be at most one shard if there should be a cap
-            // constraint
-            return setErrormsg(TRI_ERROR_CLUSTER_UNSUPPORTED, errorMsg);
-          }
-        }
       }
 
       // no existing index found.

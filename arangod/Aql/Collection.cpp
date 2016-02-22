@@ -383,11 +383,6 @@ void Collection::fillIndexesLocal() const {
   indexes.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    if (allIndexes[i]->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-      // ignore this type of index
-      continue;
-    }
-
     auto idx = std::make_unique<arangodb::aql::Index>(allIndexes[i]);
     indexes.emplace_back(idx.get());
     idx.release();

@@ -42,7 +42,6 @@ class TRI_headers_t;
 class VocShaper;
 
 namespace arangodb {
-class CapConstraint;
 class EdgeIndex;
 class ExampleMatcher;
 class Index;
@@ -293,9 +292,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
   arangodb::EdgeIndex* edgeIndex();
-  arangodb::CapConstraint* capConstraint();
-
-  arangodb::CapConstraint* _capConstraint;
 
   arangodb::Ditches* ditches() { return &_ditches; }
 
@@ -826,21 +822,6 @@ TRI_IndexesDocumentCollection(TRI_document_collection_t*, bool);
 
 bool TRI_DropIndexDocumentCollection(TRI_document_collection_t*, TRI_idx_iid_t,
                                      bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* TRI_LookupCapConstraintDocumentCollection(
-    TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a cap constraint exists
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* TRI_EnsureCapConstraintDocumentCollection(
-    arangodb::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t, size_t,
-    int64_t, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style

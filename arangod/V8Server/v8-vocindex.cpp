@@ -24,7 +24,6 @@
 #include "v8-vocindex.h"
 #include "Basics/conversions.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -314,46 +313,6 @@ static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexCap(v8::Isolate* isolate,
-                               v8::Handle<v8::Object> const obj,
-                               VPackBuilder& builder) {
-  // handle "size" attribute
-  size_t count = 0;
-  if (obj->Has(TRI_V8_ASCII_STRING("size")) &&
-      obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
-    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
-
-    if (value < 0 || value > INT64_MAX) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    count = (size_t)value;
-  }
-
-  // handle "byteSize" attribute
-  int64_t byteSize = 0;
-  if (obj->Has(TRI_V8_ASCII_STRING("byteSize")) &&
-      obj->Get(TRI_V8_ASCII_STRING("byteSize"))->IsNumber()) {
-    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("byteSize")));
-  }
-
-  if (count == 0 && byteSize <= 0) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  if (byteSize < 0 ||
-      (byteSize > 0 && byteSize < arangodb::CapConstraint::MinSize)) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  builder.add("size", VPackValue(count));
-  builder.add("byteSize", VPackValue(byteSize));
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -425,15 +384,13 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
     builder.add("type", VPackValue(idxType));
 
     switch (type) {
-      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-      case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
         res = TRI_ERROR_BAD_PARAMETER;
         break;
       }
 
       case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
-      case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
         break;
       }
 
@@ -455,10 +412,6 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
-        res = EnhanceJsonIndexCap(isolate, obj, builder);
         break;
     }
   } catch (...) {
@@ -624,9 +577,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
       // these indexes cannot be created directly
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -725,26 +676,6 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
         idx = static_cast<arangodb::FulltextIndex*>(
             TRI_LookupFulltextIndexDocumentCollection(document, attributes[0],
                                                       minWordLength));
-      }
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT: {
-      size_t size = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          slice, "size", 0);
-
-      int64_t byteSize =
-          arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
-              slice, "byteSize", 0);
-      ;
-
-      if (create) {
-        idx = static_cast<arangodb::Index*>(
-            TRI_EnsureCapConstraintDocumentCollection(&trx, document, iid, size,
-                                                      byteSize, created));
-      } else {
-        idx = static_cast<arangodb::Index*>(
-            TRI_LookupCapConstraintDocumentCollection(document));
       }
       break;
     }
