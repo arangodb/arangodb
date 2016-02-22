@@ -24,10 +24,6 @@
 
 #include "Thread.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include <errno.h>
 #include <signal.h>
 
