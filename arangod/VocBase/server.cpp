@@ -409,7 +409,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
       continue;
     }
 
-    if (!(StringUtils::isPrefix(name, "database-") && StringUtils::isSuffix(name, ".tmp"))) {
+    if (!StringUtils::isPrefix(name, "database-") || StringUtils::isSuffix(name, ".tmp")) {
       continue;
     }
 
