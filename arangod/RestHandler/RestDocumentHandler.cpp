@@ -160,7 +160,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_COL_TYPE_DOCUMENT);
+  generateSaved(result, collectionName, trx.getCollectionType(collectionName));
   return true;
 }
 
@@ -626,8 +626,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  // TODO Fix Collection Type!
-  generateSaved(result, collection, TRI_COL_TYPE_DOCUMENT);
+  generateSaved(result, collection, trx.getCollectionType(collection));
 
   return true;
 }
@@ -747,9 +746,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  // TODO Fix Collection Type!
-  generateDeleted(result, collection, TRI_COL_TYPE_DOCUMENT);
-
+  generateDeleted(result, collection, trx.getCollectionType(collectionName));
   return true;
 }
 
