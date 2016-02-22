@@ -69,7 +69,7 @@
         this.renderFirst = false;
           
         var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
-        if (select.indexOf('/') < -1) {
+        if (select.indexOf('/') === -1) {
           this.selectMenuItem(select);
         }
 

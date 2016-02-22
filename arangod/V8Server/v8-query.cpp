@@ -890,7 +890,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string collectionName(col->_name);
 
   // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor = trx.indexScan(collectionName, AqlTransaction::CursorType::ALL, "", {}, skip, limit, limit, false);
+  OperationCursor opCursor = trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip, limit, limit, false);
 
   if (opCursor.failed()) {
     trx.finish(opCursor.code);

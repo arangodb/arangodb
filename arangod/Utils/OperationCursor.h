@@ -81,6 +81,10 @@ struct OperationCursor : public OperationResult {
 
   ~OperationCursor() {
   }
+  
+  IndexIterator* indexIterator() const {
+    return _indexIterator.get();
+  }
 
   bool hasMore() const {
     return _hasMore;

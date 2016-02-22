@@ -30,6 +30,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1322,6 +1323,88 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all documents in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::all(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit,
+                                 OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  
+  OperationOptions optionsCopy = options;
+
+  if (ServerState::instance()->isCoordinator()) {
+    return allCoordinator(collectionName, skip, limit, optionsCopy);
+  }
+
+  return allLocal(collectionName, skip, limit, optionsCopy);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all documents in a collection, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::allCoordinator(std::string const& collectionName,
+                                            uint64_t skip, uint64_t limit, 
+                                            OperationOptions& options) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all documents in a collection, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::allLocal(std::string const& collectionName,
+                                      uint64_t skip, uint64_t limit,
+                                      OperationOptions& options) {
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  
+  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip, limit, 1000, false);
+
+  while (cursor.hasMore()) {
+    int res = cursor.getMore();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+  
+    VPackSlice docs = cursor.slice();
+    VPackArrayIterator it(docs);
+    while (it.valid()) {
+      resultBuilder.add(it.value());
+      it.next();
+    }
+  }
+
+  resultBuilder.close();
+
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all documents in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1355,8 +1438,63 @@ OperationResult Transaction::truncateCoordinator(std::string const& collectionNa
 
 OperationResult Transaction::truncateLocal(std::string const& collectionName,
                                            OperationOptions& options) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+ 
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+  
+  TRI_voc_rid_t actualRevision = 0;
+  TRI_doc_update_policy_t updatePolicy(TRI_DOC_UPDATE_LAST_WRITE, 0, &actualRevision);
+  
+  VPackBuilder keyBuilder;
+  auto primaryIndex = document->primaryIndex();
+
+  std::function<void(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
+    VPackSlice slice(mptr->vpack());
+    VPackSlice keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    keyBuilder.clear();
+    keyBuilder.openObject();
+    keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, keySlice);
+    keyBuilder.close();
+
+    VPackSlice builderSlice = keyBuilder.slice();
+
+    int res = document->remove(this, &builderSlice, &updatePolicy, options, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  };
+
+  try {
+    primaryIndex->invokeOnAllElementsForRemoval(callback);
+  }
+  catch (basics::Exception const& ex) {
+    unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+    return OperationResult(ex.code());
+  }
+  
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1401,7 +1539,7 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-
+  
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1413,21 +1551,29 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(document->size()));
 
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief factory for OperationCursor objects
+/// note: the caller must have read-locked the underlying collection when
+/// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
 OperationCursor Transaction::indexScan(
-    std::string const& collection, CursorType cursorType,
+    std::string const& collectionName, CursorType cursorType,
     std::string const& indexId, std::shared_ptr<std::vector<VPackSlice>> search,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
 
   if (limit == 0) {
-    // nothing to do
+    // nothing to do - TODO: this will swallow potential errors,
+    // e.g. collection does not exist
     return OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
@@ -1439,21 +1585,15 @@ OperationCursor Transaction::indexScan(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collection);
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
     return OperationCursor(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationCursor(res);
-  }
-
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  IndexIterator* iterator = nullptr;
+  std::unique_ptr<IndexIterator> iterator;
 
   switch (cursorType) {
     case CursorType::ANY: {
@@ -1467,10 +1607,10 @@ OperationCursor Transaction::indexScan(
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collection + "'.");
+            "Could not find primary index in collection '" + collectionName + "'.");
       }
 
-      iterator = idx->anyIterator(this);
+      iterator.reset(idx->anyIterator(this));
       break;
     }
     case CursorType::ALL: {
@@ -1484,10 +1624,10 @@ OperationCursor Transaction::indexScan(
       if (idx == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "Could not find primary index in collection '" + collection + "'.");
+            "Could not find primary index in collection '" + collectionName + "'.");
       }
 
-      iterator = idx->allIterator(this, reverse);
+      iterator.reset(idx->allIterator(this, reverse));
       break;
     }
     case CursorType::INDEX: {
@@ -1507,14 +1647,13 @@ OperationCursor Transaction::indexScan(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
                                        "Could not find index '" + indexId +
                                            "' in collection '" +
-                                           collection + "'.");
+                                           collectionName + "'.");
       }
       
       // We have successfully found an index with the requested id.
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      iterator = idx->iteratorForSlices(this, &ctxt, search, reverse);
-
+      iterator.reset(idx->iteratorForSlices(this, &ctxt, search, reverse));
     }
   }
   if (iterator == nullptr) {
@@ -1525,5 +1664,5 @@ OperationCursor Transaction::indexScan(
   iterator->skip(skip);
 
   return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
-                         iterator, limit, batchSize);
+                         iterator.release(), limit, batchSize);
 }

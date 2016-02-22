@@ -354,6 +354,11 @@ void PrimaryIndex::invokeOnAllElements(
   _primaryIndex->invokeOnAllElements(work);
 }
 
+void PrimaryIndex::invokeOnAllElementsForRemoval(
+    std::function<void(TRI_doc_mptr_t*)> work) {
+  _primaryIndex->invokeOnAllElementsForRemoval(work);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the index supports the condition
 ////////////////////////////////////////////////////////////////////////////////

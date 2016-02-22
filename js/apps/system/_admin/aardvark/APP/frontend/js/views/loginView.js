@@ -43,6 +43,12 @@
       }
 
       var callback = function(error, username) {
+        var callback2 = function(error) {
+          if (error) {
+            arangoHelper.arangoError("User", "Could not fetch user settings"); 
+          }
+        };
+
         if (error) {
           $('#loginForm input').addClass("form-error");
           $('.wrong-credentials').show();
@@ -52,7 +58,7 @@
           $(this.el3).show();
           window.location.reload();
           $('#currentUser').text(username);
-          this.collection.loadUserSettings();
+          this.collection.loadUserSettings(callback2);
         } 
       }.bind(this);
 
