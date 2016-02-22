@@ -29,18 +29,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpCommTask.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
+
+#include "ApplicationServer/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpServerJob.h"
+#include "RestServer/ArangoServer.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
+
+extern AnyServer* ArangoInstance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class AsyncChunkedTask
@@ -818,7 +824,8 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
   // disable the following statement to prevent excessive logging of incoming requests
-  LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+  LOG_USAGE("\"http-request-end\",\"%p\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+            (void*)this,
             _connectionInfo.clientAddress.c_str(),
             HttpRequest::translateMethod(_requestType).c_str(),
             HttpRequest::translateVersion(_httpVersion).c_str(),
@@ -952,6 +959,30 @@ void HttpCommTask::processRequest (uint32_t compatibility) {
 
     return;
   }
+
+  if (ArangoInstance->applicationServer()->_logFullRequests) {
+    char const* body = "";
+    size_t bodySize = 0;
+
+    if (_request != nullptr) {
+      bodySize = _request->bodySize();
+
+      if (bodySize != 0) {
+        body = _request->body();
+      }
+    }
+
+    LOG_USAGE("\"http-request-begin\",\"%p\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+              (void*)this,
+              _connectionInfo.clientAddress.c_str(),
+              HttpRequest::translateMethod(_requestType).c_str(),
+              HttpRequest::translateVersion(_httpVersion).c_str(),
+              _fullUrl.c_str(),
+              (bodySize == 0
+               ? ""
+               : (StringUtils::escapeUnicode(std::string(body, bodySize))).c_str()));
+  }
+
 
   bool found;
   std::string const& acceptEncoding = _request->header("accept-encoding", found);

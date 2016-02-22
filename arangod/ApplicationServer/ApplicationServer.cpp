@@ -84,7 +84,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
-  : _options(),
+  : _logFullRequests(false),
+    _options(),
     _description(),
     _descriptionFile(),
     _arguments(),
@@ -798,6 +799,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options["Hidden Options"]
     ("log", &_logLevel, "log level")
+    ("log.full-requests", &_logFullRequests, "log request body as well")
     ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
     ("log.hostname", &DeprecatedParameter, "host name for syslog")
     ("log.severity", &DeprecatedParameter, "log severities")

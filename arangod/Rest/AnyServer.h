@@ -125,6 +125,10 @@ namespace triagens {
           return "service";
         }
 
+        ApplicationServer* applicationServer() const {
+          return _applicationServer;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
