@@ -1458,7 +1458,7 @@ OperationCursor Transaction::indexScan(
   switch (cursorType) {
     case CursorType::ANY: {
       // We do not need search values
-      TRI_ASSERT(search.empty());
+      TRI_ASSERT(search->empty());
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
@@ -1475,7 +1475,7 @@ OperationCursor Transaction::indexScan(
     }
     case CursorType::ALL: {
       // We do not need search values
-      TRI_ASSERT(search.empty());
+      TRI_ASSERT(search->empty());
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
