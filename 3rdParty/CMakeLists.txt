@@ -57,9 +57,7 @@ set(V8_VERSION
 )
 
 set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
-# doesn't work?
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
-#set(V8_TARGET_DIR "out")
 
 if ("${HOST_BITS}" STREQUAL "64")
   set(TARGET_ARCH "x64")
@@ -76,6 +74,10 @@ else()
 endif()
 
 
+set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
+set(ICU_BIN_DIR "${V8_BIN_DIR}")
+
+
 list(APPEND V8_GYP_ARGS ${V8_DIR}/build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
 set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
@@ -88,6 +90,10 @@ if(WIN32)
   # -Dmode=release
   list(APPEND V8_GYP_ARGS -Dcomponent=static_library -Dlibrary=static_library)
 else()
+  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR (CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
+    set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
+    set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
+  endif ()
   # -Dwerror='' breaks shit... rather...   -Dwerror= 
   list(APPEND V8_GYP_ARGS -Ibuild/standalone.gypi --depth=. -Dstandalone_static_library=1  -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0-Dv8_no_strict_aliasing=1)
 
@@ -98,18 +104,6 @@ endif()
 
 
 list(APPEND V8_GYP_ARGS -Dv8_target_arch=${TARGET_ARCH} -S.${V8_TARGET_ARCH})
-
-if (UNIX)
-  #set(V8_PLATFORM "native")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
-  set(ICU_BIN_DIR "${V8_BIN_DIR}")
-  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR (CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
-    set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
-    set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
-  endif ()
-else ()
-  message(ERROR "Not implemented for your OS")
-endif ()
 
 set (ICU_BIN_DIR ${ICU_BIN_DIR} PARENT_SCOPE)
 set (V8_BIN_DIR ${V8_BIN_DIR} PARENT_SCOPE)
