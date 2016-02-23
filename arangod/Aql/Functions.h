@@ -30,8 +30,6 @@
 
 #include <functional>
 
-#define TMPUSEVPACK 1
-
 namespace arangodb {
 namespace aql {
 
