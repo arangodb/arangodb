@@ -419,7 +419,9 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
     return OperationCursor(res);
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return OperationResult(resultBuilder.steal(),
+                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         TRI_ERROR_NO_ERROR, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1486,7 +1488,9 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
     return OperationCursor(res);
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return OperationResult(resultBuilder.steal(),
+                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         TRI_ERROR_NO_ERROR, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1683,7 +1687,7 @@ OperationCursor Transaction::indexScan(
   switch (cursorType) {
     case CursorType::ANY: {
       // We do not need search values
-      TRI_ASSERT(search->empty());
+      TRI_ASSERT(search == nullptr);
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
@@ -1700,7 +1704,7 @@ OperationCursor Transaction::indexScan(
     }
     case CursorType::ALL: {
       // We do not need search values
-      TRI_ASSERT(search->empty());
+      TRI_ASSERT(search == nullptr);
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
