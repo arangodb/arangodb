@@ -499,8 +499,15 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
       --e;
     }
 
-    TRI_voc_rid_t rid = StringUtils::uint64(s, e - s);
-    isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+    TRI_voc_rid_t rid;
+
+    try {
+      rid = StringUtils::uint64_check(s, e - s);
+      isValid = true;
+    }
+    catch (...) {
+      isValid = false;
+    }
 
     return rid;
   }
@@ -509,8 +516,16 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     etag = _request->value(parameter, found);
 
     if (found) {
-      TRI_voc_rid_t rid = StringUtils::uint64(etag);
-      isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+      TRI_voc_rid_t rid;
+
+      try {
+        rid = StringUtils::uint64_check(etag);
+        isValid = true;
+      }
+      catch (...) {
+        isValid = false;
+      }
+
       return rid;
     }
   }
