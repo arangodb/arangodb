@@ -51,6 +51,7 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,6 +411,7 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
     }
 
     if (!StringUtils::isPrefix(name, "database-") || StringUtils::isSuffix(name, ".tmp")) {
+      LOG_TOPIC(TRACE, Logger::DATAFILES) << "ignoring file '" << name << "'";
       continue;
     }
 
