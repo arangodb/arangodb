@@ -867,7 +867,7 @@ if (list.length > 0) {
       </a>
     <li class="enabled">
       <a id="markDocuments" class="headerButton">
-        <span class="icon_arangodb_edit" title="Edit documents"></span>
+        <span title="Edit documents"><i class="fa fa-hand-pointer-o"></i></span>
       </a>
     </li>
     <li class="enabled">
@@ -877,12 +877,12 @@ if (list.length > 0) {
     </li>
     <li class="enabled">
       <a id="exportCollection" class="headerButton">
-        <span title="Download documents as JSON file"><i class="fa fa-download"></i></span>
+        <span title="Download documents as JSON file"><i class="fa fa-download" style="margin-top: 1px;"></i></span>
       </a>
     </li>
     <li class="enabled" style="margin-right: 15px">
       <a id="filterCollection" class="headerButton">
-        <span class="icon_arangodb_filter" title="Filter collection"></span>
+        <span title="Filter collection"><i class="fa fa-filter"></i></span>
       </a>
     </li>
   </ul>
@@ -1497,8 +1497,10 @@ if (list.length > 0) {
           </table>
         </div>
         <div class="index-button-bar index-button-bar2">
-          <button id="createIndex" class="button-success">Save</button>
-          <button id="cancelIndex" class="button-close">Back</button>
+          <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
+          <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
+            <span style="margin-left: 5px;">Back</span>
+          </button>
         </div>
     </div>
   </div>
@@ -2536,10 +2538,10 @@ if (list.length > 0) {
 <script id="progressBase.ejs" type="text/template">
   <div class="progress-view">
     <div class="progress-content">
+      <div class="progress-text"></div>
       <div class="pong-spinner"><i /></div>
     </div>
     <div class="progress-message">
-      <div class="progress-text"></div>
       <div class="progress-action"></div>
     </div>
   </div>
@@ -2582,8 +2584,8 @@ if (list.length > 0) {
     <div class="tab-content" id="tabContentCustoms">
       <div class="tab-pane" id="customs">
         <div id="editorToolbar" class="query-toolbar editor-toolbar">
-          <span class="icon_arangodb" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
-          <span class="icon_arangodb" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
+          <span class="queryTooltips" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
+          <span class="queryTooltips" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
         </div>
         <div id="customsDiv" class="query-div">
         </div>
@@ -2593,11 +2595,11 @@ if (list.length > 0) {
       <div class="tab-pane active" id="query">
         <div id="queryDiv" class="query-div">
           <div id="editorToolbar" class="query-toolbar editor-toolbar">
-            <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
-            <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
-            <span class="queryTooltips tooltip-margin" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
-            <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips tooltip-margin" title="Redo" id="redoText"/>
-            <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips tooltip-margin" title="Undo" id="undoText"/>
+            <span class="queryTooltips" title="Clear" id="clearInput"><i class="fa fa-trash-o"></i></span>
+            <span class="queryTooltips" title="Save current query" id="addAQL"><i class="fa fa-save"></i></span>
+            <span class="queryTooltips" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
+            <span class="queryTooltips" title="Redo" id="redoText"><i class="fa fa-undo fa-flip-horizontal"></i></span>
+            <span class="queryTooltips" title="Undo" id="undoText"><i class="fa fa-undo"></i></span>
           </div>
 
           <div id="aqlEditor" class='aql-editor'></div>
@@ -2650,7 +2652,7 @@ if (list.length > 0) {
       <div class="tab-pane" id="result">
         <div id="outputToolbar" class="query-toolbar output-toolbar">
           <!--
-          <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
+          <span class="icon_arangodb icon_arangodb_trash queryTooltips " title="Clear" id="clearOutput"></span>
           <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
           -->
         </div>
@@ -2753,7 +2755,7 @@ var cutByResolution = function (str) {
     <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
     <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
     <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
-      <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
+      <a id="addDocumentButton" class="pull-right addButton"><span title="Add a document"><i class="fa fa-plus-circle"></i></span></a>
     </th>
   </tr>
 </thead>
