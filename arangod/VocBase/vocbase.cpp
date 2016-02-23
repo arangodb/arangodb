@@ -786,7 +786,8 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
 
-    if (!StringUtils::isPrefix(name, "collection-")) {
+    if (!StringUtils::isPrefix(name, "collection-") ||
+        StringUtils::isSuffix(name, ".tmp")) {
       // no match, ignore this file
       continue;
     }
@@ -896,18 +897,16 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         }
 
       } catch (arangodb::basics::Exception const& e) {
-        char* tmpfile = TRI_Concatenate2File(file.c_str(), ".tmp");
+        std::string tmpfile = FileUtils::buildFilename(file, ".tmp");
 
-        if (TRI_ExistsFile(tmpfile)) {
+        if (TRI_ExistsFile(tmpfile.c_str())) {
           LOG(TRACE) << "ignoring temporary directory '" << tmpfile << "'";
-          TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
           // temp file still exists. this means the collection was not created
           // fully
           // and needs to be ignored
           continue;  // ignore this directory
         }
 
-        TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
         res = e.code();
 
         LOG(ERR) << "cannot read collection info file in directory '"
