@@ -273,7 +273,14 @@
 
     <% if (content.rows.length === 0) { %>
       <tr>
-        <td>No content.</td><td></td><td></td>
+        <% var xcounter = 0; %>
+        <% _.each(content.titles, function(y) {%>
+          <% if (xcounter === 0) { %>
+            <td>No content.</td>
+          <% } else { %>
+            <td></td>
+          <% } %>
+        <% xcounter++; });%>
       </tr>
     <% }; %>
   </tbody>
@@ -299,9 +306,13 @@
     <div class="corneredBadge inProgress">
       <%= model.get('desc') %>
     </div>
-  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded') { %>
-    <% if (!model.get('locked')) { %>
+  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+    <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
       <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+      <div class="corneredBadge inProgress">
         <%= model.get('status') %>
       </div>
     <% } else { %>
@@ -3002,9 +3013,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1456156375323"></script>
-<script src="libs.js?version=1456156375323"></script>
-<script src="app.js?version=1456156375323"></script>
+<script src="sharedLibs.js?version=1456219613661"></script>
+<script src="libs.js?version=1456219613661"></script>
+<script src="app.js?version=1456219613661"></script>
 
   </body>
 </html>
