@@ -969,27 +969,36 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = trx.any(trx.trxCollection(), &document);
-  TRI_ASSERT(document.getDataPtr() == nullptr || trx.hasDitch());
+  std::string collectionName(col->_name);
+  OperationCursor cursor = trx.any(collectionName);
 
-  res = trx.finish(res);
+  res = trx.finish(cursor.code);
+
+  if (cursor.failed()) {
+    TRI_V8_THROW_EXCEPTION(cursor.code);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (document.getDataPtr() == nullptr) {  // PROTECTED by trx here
+  if (!cursor.hasMore()) {
+    // The cursor should always report true on first hasMore if it is found
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  cursor.getMore();
+  VPackSlice doc = cursor.slice();
+  TRI_ASSERT(doc.isArray());
+
+  if (doc.length == 0) {
+    // The collection is empty.
     TRI_V8_RETURN_NULL();
   }
 
-  v8::Handle<v8::Value> doc =
-      WRAP_SHAPED_JSON(trx, col->_cid, document.getDataPtr());
-
-  if (doc.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  TRI_V8_RETURN(doc);
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  resultOptions.customTypeHandler = cursor.customTypeHandler;
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }
 
