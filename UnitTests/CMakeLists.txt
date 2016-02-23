@@ -56,6 +56,7 @@ add_executable(
 add_dependencies(${TEST_BASICS_SUITE} v8_build)
 target_link_libraries(
     ${TEST_BASICS_SUITE}
+    ${SYSTEM_LIBRARIES}
     ${LIB_ARANGO}
     ${ICU_LIBS}
     ${OPENSSL_LIBRARIES}
@@ -82,6 +83,7 @@ add_executable(
 add_dependencies(${TEST_GEO_SUITE} v8_build)
 target_link_libraries(
     ${TEST_GEO_SUITE}
+    ${SYSTEM_LIBRARIES}
     ${LIB_ARANGO}
     ${ICU_LIBS}
     ${OPENSSL_LIBRARIES}

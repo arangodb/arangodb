@@ -73,6 +73,8 @@ else()
   set(V8_TARGET_ARCH "${TARGET_ARCH}.release")
 endif()
 
+set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
+set(ICU_BIN_DIR "${V8_BIN_DIR}")
 
 list(APPEND V8_GYP_ARGS ${V8_DIR}/build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
 set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
@@ -103,7 +105,6 @@ list(APPEND V8_GYP_ARGS -Dv8_target_arch=${TARGET_ARCH} -S.${V8_TARGET_ARCH})
 
 set (ICU_BIN_DIR ${ICU_BIN_DIR} PARENT_SCOPE)
 set (V8_BIN_DIR ${V8_BIN_DIR} PARENT_SCOPE)
-
 
 include(ExternalProject)
 

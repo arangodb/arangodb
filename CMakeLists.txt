@@ -126,10 +126,11 @@ elseif(UNIX AND NOT APPLE)
     set(HOST_BITS 64)
     set(SOLARIS TRUE)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-    set(BUILD_STATIC_EXECUTABLES TRUE)
+    set(ENV{LD_ALTEXEC} /opt/csw/bin/gld)
+    #set(BUILD_STATIC_EXECUTABLES TRUE)
     list(APPEND CMAKE_C_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
     list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64\ -std=gnu++11)
-    #list(APPEND SYSTEM_LIBRARIES nsl socket)
+    list(APPEND SYSTEM_LIBRARIES nsl socket)
    elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
     set(HPUX TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
@@ -557,31 +558,19 @@ if (MSVC_LIB_PATH)
 endif ()
 
 
-#--------------------------------------------------------------------------------
-#get_cmake_property(_variableNames VARIABLES)
-#foreach (_variableName ${_variableNames})
-#    message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach ()
-#--------------------------------------------------------------------------------
-
 # ICU ---------------------------------------------------------------------------
+set(ICU_LIB_PATH ${ICU_BIN_DIR} CACHE path "ICU library path")
 if (MSVC)
   set(ICU_LIBS "icui18n;icuuc" CACHE string "ICU libraries")
   
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 else ()
-  set(ICU_LIB_PATH ${ICU_BIN_DIR} CACHE path "ICU library path")
-  if (LINUX)
-    set(ICU_LIB_PATH "${ICU_LIB_PATH}")
-  endif ()
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE string "ICU libraries")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread CACHE string "ICU libraries")
 endif ()
 
 include_directories(${ICU_INCLUDE_DIR})
 
-if (ICU_LIB_PATH)
-  link_directories(${ICU_LIB_PATH})
-endif ()
+link_directories(${ICU_LIB_PATH})
 
 # V8 ----------------------------------------------------------------------------
 
@@ -591,9 +580,6 @@ set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 lib
 include_directories(${V8_INCLUDE_DIR})
 
 link_directories(${V8_LIB_PATH})
-
-add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
-
 
 add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 
@@ -615,12 +601,12 @@ include_directories(${ZLIB_INCLUDE_DIR})
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
-if (${BUILD_STATIC_EXECUTABLES})
+#if (${BUILD_STATIC_EXECUTABLES})
   set(ZLIB_LIBS ${zlib_BINARY_DIR}/libz.a)
-else ()
-  link_directories(${zlib_BINARY_DIR})
-  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-endif ()
+#else ()
+#  link_directories(${zlib_BINARY_DIR})
+#  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+#endif ()
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
@@ -654,22 +640,30 @@ endif ()
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
 
-if(BUILD_STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS -static)
-  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-  set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
-  set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-  set(CMAKE_SHARED_LIBRARY_C_FLAGS)         # remove -fPIC
-  set(CMAKE_SHARED_LIBRARY_CXX_FLAGS)
-  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # remove -rdynamic
-  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-  # Maybe this works as well, haven't tried yet.
-  # set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
-else(BUILD_STATIC_EXECUTABLES)
-  # Set RPATH to use for installed targets; append linker search path
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LOFAR_LIBDIR}")
-  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-endif(BUILD_STATIC_EXECUTABLES) 
+#if(BUILD_STATIC_EXECUTABLES)
+#  set(CMAKE_EXE_LINKER_FLAGS -static)
+#  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+#  set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
+#  set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
+#  set(CMAKE_SHARED_LIBRARY_C_FLAGS)         # remove -fPIC
+#  set(CMAKE_SHARED_LIBRARY_CXX_FLAGS)
+#  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # remove -rdynamic
+#  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+#  # Maybe this works as well, haven't tried yet.
+#  # set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+#else(BUILD_STATIC_EXECUTABLES)
+#  # Set RPATH to use for installed targets; append linker search path
+#  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LOFAR_LIBDIR}")
+#  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+#endif(BUILD_STATIC_EXECUTABLES) 
+
+
+#--------------------------------------------------------------------------------
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach ()
+#--------------------------------------------------------------------------------
 
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
