@@ -122,7 +122,7 @@ bool RestDocumentHandler::createDocument() {
   */
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
@@ -264,7 +264,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           _vocbase, collection, TRI_TRANSACTION_READ);
 
   // .............................................................................
@@ -376,7 +376,7 @@ bool RestDocumentHandler::readAllDocuments() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           _vocbase, collection, TRI_TRANSACTION_READ);
 
   std::vector<std::string> ids;
@@ -568,7 +568,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
@@ -708,7 +708,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................

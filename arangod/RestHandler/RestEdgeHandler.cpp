@@ -126,7 +126,7 @@ bool RestEdgeHandler::createDocument() {
     VPackSlice body = parsedBody->slice();
 
     // find and load collection given by name or identifier
-    SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                             _vocbase, collection, TRI_TRANSACTION_WRITE);
 
     // .............................................................................

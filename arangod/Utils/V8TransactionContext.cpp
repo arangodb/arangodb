@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TransactionContext.h"
-#include "Storage/Options.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
 #include "V8/v8-globals.h"
@@ -35,12 +33,11 @@ using namespace arangodb;
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TransactionContext::V8TransactionContext(bool embeddable)
-    : TransactionContext(),
+V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase, bool embeddable)
+    : TransactionContext(vocbase),
       _sharedTransactionContext(static_cast<V8TransactionContext*>(
           static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
                                             V8DataSlot))->_transactionContext)),
-      _resolver(nullptr),
       _currentTransaction(nullptr),
       _ownResolver(false),
       _embeddable(embeddable) {
@@ -95,7 +92,7 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int V8TransactionContext::unregisterTransaction() {
+void V8TransactionContext::unregisterTransaction() {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
 
@@ -104,8 +101,6 @@ int V8TransactionContext::unregisterTransaction() {
     delete _sharedTransactionContext->_resolver;
     _sharedTransactionContext->_resolver = nullptr;
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,3 +140,12 @@ bool V8TransactionContext::IsEmbedded() {
   return static_cast<V8TransactionContext*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a context, returned in a shared ptr
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<V8TransactionContext> V8TransactionContext::Create(TRI_vocbase_t* vocbase, bool embeddable) {
+  return std::make_shared<V8TransactionContext>(vocbase, embeddable);
+}
+

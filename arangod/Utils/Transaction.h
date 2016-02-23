@@ -72,7 +72,7 @@ class Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
+  Transaction(std::shared_ptr<TransactionContext> transactionContext, TRI_vocbase_t* vocbase,
               TRI_voc_tid_t externalId)
       : _externalId(externalId),
         _setupState(TRI_ERROR_NO_ERROR),
@@ -116,8 +116,6 @@ class Transaction {
       // free the data associated with the transaction
       freeTransaction();
     }
-
-    delete _transactionContext;
   }
 
  public:
@@ -1187,7 +1185,7 @@ class Transaction {
   /// @brief the transaction context
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionContext* _transactionContext;
+  std::shared_ptr<TransactionContext> _transactionContext;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makeNolockHeaders

@@ -38,7 +38,7 @@ std::string const GRAPHS = "_graphs";
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
 
-  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                           vocbase, GRAPHS, TRI_TRANSACTION_READ);
 
   int res = trx.begin();

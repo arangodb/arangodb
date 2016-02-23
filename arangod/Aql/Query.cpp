@@ -1536,13 +1536,13 @@ void Query::setPlan(ExecutionPlan* plan) {
 /// @brief create a TransactionContext
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::TransactionContext* Query::createTransactionContext() {
+std::shared_ptr<arangodb::TransactionContext> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return new arangodb::V8TransactionContext(true);
+    return arangodb::V8TransactionContext::Create(_vocbase, true);
   }
 
-  return new arangodb::StandaloneTransactionContext();
+  return arangodb::StandaloneTransactionContext::Create(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
