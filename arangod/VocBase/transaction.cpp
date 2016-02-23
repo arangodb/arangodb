@@ -1083,7 +1083,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
 
-  int64_t sizeChanged = 0;
   TRI_document_collection_t* document = operation.document;
 
   if (operation.marker->fid() == 0) {
@@ -1114,9 +1113,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     // adjust the data position in the header
     operation.header->setDataPtr(
         position);  // PROTECTED by ongoing trx from operation
-    if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT && sizeChanged) {
-      document->_headersPtr->adjustTotalSize(0, sizeChanged);
-    }
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
