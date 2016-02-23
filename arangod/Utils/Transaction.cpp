@@ -343,7 +343,7 @@ int Transaction::any(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::any(std::string const& collectionName) {
-  return any(name, 0, 1, 1);
+  return any(collectionName, 0, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -352,16 +352,20 @@ OperationResult Transaction::any(std::string const& collectionName) {
 /// as long as the collection is not modified.
 ////////////////////////////////////////////////////////////////////////////////
 
-OperationResult Transaction::any(std::string const& collectionName uint64_t skip,
-                                 uint64_t limit) {
+OperationResult Transaction::any(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit) {
+  if (ServerState::instance()->isCoordinator()) {
+    return anyCoordinator(collectionName, skip, limit);
+  }
+  return anyLocal(collectionName, skip, limit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches documents in a collection in random order, coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-OperationResult Transaction::anyCoordinator(std::string const& collectionName,
-                                            uint64_t skip, uint64_t limit) {
+OperationResult Transaction::anyCoordinator(std::string const&, uint64_t,
+                                            uint64_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
