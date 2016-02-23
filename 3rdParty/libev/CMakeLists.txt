@@ -50,27 +50,14 @@ endif ()
 
 include(CheckCXXSourceCompiles)
 
-CHECK_INCLUDE_FILE(inttypeas.h HAVE_INTTYPES_H)
-CHECK_INCLUDE_FILE(dlfcn.h HAVE_DLFCN_H)
-CHECK_INCLUDE_FILE(memory.h HAVE_MEMORY_H)
 CHECK_INCLUDE_FILE(poll.h HAVE_POLL_H)
 CHECK_INCLUDE_FILE(port.h HAVE_PORT_H)
-CHECK_INCLUDE_FILE(stdint.h HAVE_STDINT_H)
-CHECK_INCLUDE_FILE(stdlib.h HAVE_STDLIB_H)
-CHECK_INCLUDE_FILE(strings.h HAVE_STRINGS_H)
-CHECK_INCLUDE_FILE(string.h HAVE_STRING_H)
 CHECK_INCLUDE_FILE(sys/epoll.h HAVE_SYS_EPOLL_H)
-CHECK_INCLUDE_FILE(sys/eventfd.h HAVE_SYS_EVENTFD_H)
 CHECK_INCLUDE_FILE(sys/event.h HAVE_SYS_EVENT_H)
 CHECK_INCLUDE_FILE(sys/inotify.h HAVE_SYS_INOTIFY_H)
 CHECK_INCLUDE_FILE(sys/select.h HAVE_SYS_SELECT_H)
 CHECK_INCLUDE_FILE(sys/signalfd.h HAVE_SYS_SIGNALFD_H)
-CHECK_INCLUDE_FILE(sys/stat.h HAVE_SYS_STAT_H)
-CHECK_INCLUDE_FILE(sys/types.h HAVE_SYS_TYPES_H)
-CHECK_INCLUDE_FILE(unistd.h HAVE_UNISTD_H)
-CHECK_INCLUDE_FILE("assert.h;ctype.h;errno.h;float.h;limits.h;locale.h;math.h;setjmp.h;signal.h;stdarg.h;stddef.h;stdio.h;stdlib.h;string.h;time.h;" STDC_HEADERS)
 CHECK_INCLUDE_FILE("winsock.h" HAVE_WINSOCK_H)
-
 
 CHECK_FUNCTION_EXISTS(inotify_init HAVE_INOTIFY_INIT)
 CHECK_FUNCTION_EXISTS(epoll_ctl HAVE_EPOLL_CTL)
@@ -85,9 +72,6 @@ CHECK_FUNCTION_EXISTS(nanosleep HAVE_NANOSLEEP)
 CHECK_FUNCTION_EXISTS(floor HAVE_FLOOR)
 
 # check system library
-check_library_exists(rt pthread_create "" HAVE_LIBRT)
-
-
 if (HAVE_CLOCK_GETTIME)
   check_cxx_source_compiles("
     #include <unistd.h>
@@ -121,13 +105,19 @@ include_directories(${LIBEV_DIR})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
 
-configure_file(${LIBEV_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}/config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}/config.h)
 
-add_library(
-  ev
-  STATIC
+add_library(libev STATIC
   ${LIBEV_DIR}/ev.c
   ${LIBEV_DIR}/event.c
+)
+
+set(LIBEV_LIBS
+  ev
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Libraries"
+  FORCE
 )
 
 set(LIBEV_INCLUDE_DIR
@@ -136,4 +126,3 @@ set(LIBEV_INCLUDE_DIR
   "${PROJECT_NAME}: Include Directories"
   FORCE
 )
-

@@ -1,0 +1,56 @@
+/* Define to 1 if you have the `clock_gettime' function. */
+#cmakedefine01 HAVE_CLOCK_GETTIME
+
+/* Define to 1 to use the syscall interface for clock_gettime */
+#cmakedefine01 HAVE_CLOCK_SYSCALL
+
+/* Define to 1 if you have the `epoll_ctl' function. */
+#cmakedefine01 HAVE_EPOLL_CTL
+
+/* Define to 1 if you have the `eventfd' function. */
+#cmakedefine01 HAVE_EVENTFD
+
+/* Define to 1 if the floor function is available */
+#cmakedefine01 HAVE_FLOOR
+
+/* Define to 1 if you have the `inotify_init' function. */
+#cmakedefine01 HAVE_INOTIFY_INIT
+
+/* Define to 1 if you have the `kqueue' function. */
+#cmakedefine01 HAVE_KQUEUE
+
+/* Define to 1 if you have the `nanosleep' function. */
+#cmakedefine01 HAVE_NANOSLEEP
+
+/* Define to 1 if you have the `poll' function. */
+#cmakedefine01 HAVE_POLL
+
+/* Define to 1 if you have the <poll.h> header file. */
+#cmakedefine01 HAVE_POLL_H
+
+/* Define to 1 if you have the `port_create' function. */
+#cmakedefine01 HAVE_PORT_CREATE
+
+/* Define to 1 if you have the <port.h> header file. */
+#cmakedefine01 HAVE_PORT_H
+
+/* Define to 1 if you have the `select' function. */
+#cmakedefine01 HAVE_SELECT
+
+/* Define to 1 if you have the `signalfd' function. */
+#cmakedefine01 HAVE_SIGNALFD
+
+/* Define to 1 if you have the <sys/epoll.h> header file. */
+#cmakedefine01 HAVE_SYS_EPOLL_H
+
+/* Define to 1 if you have the <sys/event.h> header file. */
+#cmakedefine01 HAVE_SYS_EVENT_H
+
+/* Define to 1 if you have the <sys/inotify.h> header file. */
+#cmakedefine01 HAVE_SYS_INOTIFY_H
+
+/* Define to 1 if you have the <sys/select.h> header file. */
+#cmakedefine01 HAVE_SYS_SELECT_H
+
+/* Define to 1 if you have the <sys/signalfd.h> header file. */
+#cmakedefine01 HAVE_SYS_SIGNALFD_H
