@@ -2964,7 +2964,6 @@ const recoveryTests = [
   "disk-full-logfile",
   "disk-full-logfile-data",
   "disk-full-datafile",
-  "disk-full-datafile",
   "collection-drop-recreate",
   "create-with-temp",
   "create-with-temp-old",
