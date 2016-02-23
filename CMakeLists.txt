@@ -1,8 +1,12 @@
+# -*- mode: CMAKE; -*-
+
 # ------------------------------------------------------------------------------
 # General
 # ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 2.8)
+
+project(ArangoDB)
 
 if (APPLE)
   if (NOT DEFINED CMAKE_C_COMPILER)
@@ -14,16 +18,24 @@ if (APPLE)
   endif ()
 endif ()
 
-project(ArangoDB)
-
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo
+      CACHE string
+      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+      FORCE
+  )
+endif ()
 
-set(ARANGODB_DISPLAY_NAME       "ArangoDB")
-set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
-set(ARANGODB_CONTACT            "hackers@arangodb.org")
+# where to find CMAKE modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+
+################################################################################
+## ARANGODB
+################################################################################
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
@@ -31,6 +43,23 @@ set(ARANGODB_VERSION_REVISION   "0-devel")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+
+# for NSIS
+set(ARANGODB_DISPLAY_NAME       "ArangoDB")
+set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
+set(ARANGODB_CONTACT            "hackers@arangodb.com")
+set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
+
+# MSVC
+set(ARANGOB_FRIENDLY_STRING        "arangob - stress test program")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
+set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
+
+################################################################################
+## VERSION FILES
+################################################################################
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -40,27 +69,17 @@ configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
-set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
-set(ARANGOB_FRIENDLY_STRING     "ArangoBench - stresstester")
-set(ARANGO_DUMP_FRIENDLY_STRING
-  "arangodump - export whole databases from ArangoDB to JSON") 
-set(ARANGO_IMP_FRIENDLY_STRING  "arangoimp - import CSV files into ArangoDB")
-set(ARANGO_RESTORE_HELP_LINK
-  "arangrestore - import dumpfiles created with arangodump into ArangoDB")
-set(ARANGOSH_HELP_LINK          "arangosh - commandline client of ArangoDB")
-
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE string
-    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-    FORCE)
-endif ()
-
-# Where 2 find CMAKE modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+################################################################################
+## COMPILER FEATURES
+################################################################################
 
 # ArangoDB needs c++11
 set(CMAKE_CXX_STANDARD 11)
 include (CheckCXX11Features)
+
+################################################################################
+## COMPILER FEATURES
+################################################################################
 
 # Need threads
 find_package(Threads REQUIRED)
