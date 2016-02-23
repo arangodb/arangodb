@@ -824,7 +824,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
 
-  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), document->_vocbase,
+  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
       document->_info.id(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
               true);  // already locked by guard above

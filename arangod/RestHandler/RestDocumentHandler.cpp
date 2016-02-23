@@ -123,7 +123,7 @@ bool RestDocumentHandler::createDocument() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -265,7 +265,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, collection, TRI_TRANSACTION_READ);
+                                          collection, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -377,7 +377,7 @@ bool RestDocumentHandler::readAllDocuments() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, collection, TRI_TRANSACTION_READ);
+                                          collection, TRI_TRANSACTION_READ);
 
   std::vector<std::string> ids;
 
@@ -569,7 +569,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -709,7 +709,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction

@@ -98,7 +98,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
-                                            _document->_vocbase, _name, TRI_TRANSACTION_READ);
+                                            _name, TRI_TRANSACTION_READ);
 
     trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
                 true);  // already locked by guard above

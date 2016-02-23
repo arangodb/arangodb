@@ -43,9 +43,8 @@ class SingleCollectionTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   SingleCollectionTransaction(std::shared_ptr<TransactionContext> transactionContext,
-                              TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                              TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, vocbase, 0),
+                              TRI_voc_cid_t cid, TRI_transaction_type_e accessType)
+      : Transaction(transactionContext, 0),
         _cid(cid),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
@@ -59,9 +58,8 @@ class SingleCollectionTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   SingleCollectionTransaction(std::shared_ptr<TransactionContext> transactionContext,
-                              TRI_vocbase_t* vocbase, std::string const& name,
-                              TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, vocbase, 0),
+                              std::string const& name, TRI_transaction_type_e accessType)
+      : Transaction(transactionContext, 0),
         _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),

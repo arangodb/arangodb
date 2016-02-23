@@ -340,7 +340,7 @@ int RecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), vocbase, collectionId, TRI_TRANSACTION_WRITE);
+    trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1393,7 +1393,7 @@ int RecoverState::fillIndexes() {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->_vocbase), collection->_vocbase,
+    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->_vocbase),
         document->_info.id(), TRI_TRANSACTION_WRITE);
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);

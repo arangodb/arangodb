@@ -488,7 +488,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+    _trx = new arangodb::AqlTransaction(createTransactionContext(),
                                         _collections.collections(),
                                         _part == PART_MAIN);
 
@@ -973,7 +973,7 @@ QueryResult Query::explain() {
     // << "\n";
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+    _trx = new arangodb::AqlTransaction(createTransactionContext(),
                                         _collections.collections(), true);
 
     // we have an AST

@@ -1498,7 +1498,7 @@ int RestReplicationHandler::processRestoreCollection(
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
+        SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1786,7 +1786,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), _vocbase, document->_info.id(), TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), document->_info.id(), TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -2190,7 +2190,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 int RestReplicationHandler::processRestoreData(
     CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
     bool force, std::string& errorMsg) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), _vocbase, cid, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -3602,7 +3602,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          _vocbase, shard.copyString(), TRI_TRANSACTION_WRITE);
+                                          shard.copyString(), TRI_TRANSACTION_WRITE);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,

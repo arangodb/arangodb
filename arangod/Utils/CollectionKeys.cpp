@@ -108,7 +108,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all datafile markers into the result under the read-lock
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
-                                            _document->_vocbase, _name, TRI_TRANSACTION_READ);
+                                            _name, TRI_TRANSACTION_READ);
 
     int res = trx.begin();
 

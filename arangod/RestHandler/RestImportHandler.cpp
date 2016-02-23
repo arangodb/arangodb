@@ -372,7 +372,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), _vocbase,
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                             collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
@@ -625,7 +625,7 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), _vocbase,
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                             collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................

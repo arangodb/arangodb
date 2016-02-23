@@ -2907,7 +2907,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   document->_keyGenerator = keyGenerator;
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(vocbase), vocbase,
+      arangodb::StandaloneTransactionContext::Create(vocbase),
       document->_info.id(), TRI_TRANSACTION_WRITE);
 
   // build the primary index

@@ -542,7 +542,7 @@ static void ExecuteSkiplistQuery(
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_WRITE);
+                                          col->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -810,7 +810,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -858,7 +858,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_voc_cid_t cid = col->_cid;
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, cid, TRI_TRANSACTION_READ);
+                                          cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -939,7 +939,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_doc_mptr_copy_t document;
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1002,7 +1002,7 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1236,7 +1236,7 @@ static void JS_ByExampleHashIndex(
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1422,7 +1422,7 @@ static void JS_ChecksumCollection(
   }
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1633,7 +1633,7 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1735,7 +1735,7 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1837,7 +1837,7 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
-                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
+                                          col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 

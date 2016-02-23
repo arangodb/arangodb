@@ -67,13 +67,12 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
- public:
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(std::shared_ptr<TransactionContext> transactionContext, TRI_vocbase_t* vocbase,
-              TRI_voc_tid_t externalId)
+  Transaction(std::shared_ptr<TransactionContext> transactionContext, TRI_voc_tid_t externalId)
       : _externalId(externalId),
         _setupState(TRI_ERROR_NO_ERROR),
         _nestingLevel(0),
@@ -84,7 +83,7 @@ class Transaction {
         _allowImplicitCollections(true),
         _isReal(true),
         _trx(nullptr),
-        _vocbase(vocbase),
+        _vocbase(transactionContext->vocbase()),
         _transactionContext(transactionContext) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_transactionContext != nullptr);
@@ -96,6 +95,7 @@ class Transaction {
     this->setupTransaction();
   }
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the transaction
   //////////////////////////////////////////////////////////////////////////////

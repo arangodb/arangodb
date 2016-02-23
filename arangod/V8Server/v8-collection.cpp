@@ -350,7 +350,7 @@ static void ExistsVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_READ);
+                                          collectionName, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -478,7 +478,7 @@ static void ReplaceVocbaseCol(bool useCollection,
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -581,7 +581,7 @@ static void DocumentVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_READ);
+                                          collectionName, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -719,7 +719,7 @@ static void UpdateVocbaseVPack(bool useCollection,
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -841,7 +841,7 @@ static void RemoveVocbaseVPack(
   TRI_ASSERT(toRemove.isObject());
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
 
   res = trx.begin();
 
@@ -984,7 +984,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator(
 static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1643,7 +1643,7 @@ static void JS_ReplaceVocbaseCol(
 static int GetRevision(TRI_vocbase_col_t* collection, TRI_voc_rid_t& rid) {
   TRI_ASSERT(collection != nullptr);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1825,7 +1825,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // load collection
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          vocbase, collectionName, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1935,7 +1935,7 @@ static void JS_InsertVocbaseVPack(
 
   // load collection
   SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true),
-                                          collection->_vocbase, collection->_cid, TRI_TRANSACTION_WRITE);
+                                          collection->_cid, TRI_TRANSACTION_WRITE);
 
   res = trx.begin();
 
@@ -2021,7 +2021,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -2267,7 +2267,7 @@ static void JS_CheckPointersVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -2592,7 +2592,7 @@ static void JS_CountVocbaseCol(
   
   std::string collectionName(col->name());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true), vocbase, collectionName, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true), collectionName, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
