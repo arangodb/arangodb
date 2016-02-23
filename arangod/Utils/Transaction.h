@@ -482,7 +482,7 @@ class Transaction {
   OperationCursor indexScan(std::string const& collectionName,
                             CursorType cursorType,
                             std::string const& indexId,
-                            std::shared_ptr<std::vector<VPackSlice>> search,
+                            VPackSlice const search,
                             uint64_t skip,
                             uint64_t limit,
                             uint64_t batchSize,

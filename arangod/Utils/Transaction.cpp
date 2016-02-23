@@ -1568,7 +1568,7 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
 
 OperationCursor Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    std::string const& indexId, std::shared_ptr<std::vector<VPackSlice>> search,
+    std::string const& indexId, VPackSlice const search,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
 
   if (limit == 0) {
@@ -1598,7 +1598,7 @@ OperationCursor Transaction::indexScan(
   switch (cursorType) {
     case CursorType::ANY: {
       // We do not need search values
-      TRI_ASSERT(search.empty());
+      TRI_ASSERT(search.isNone());
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
@@ -1615,7 +1615,7 @@ OperationCursor Transaction::indexScan(
     }
     case CursorType::ALL: {
       // We do not need search values
-      TRI_ASSERT(search.empty());
+      TRI_ASSERT(search.isNone());
       // We do not need an index either
       TRI_ASSERT(indexId.empty());
 
