@@ -74,10 +74,6 @@ else()
 endif()
 
 
-set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
-set(ICU_BIN_DIR "${V8_BIN_DIR}")
-
-
 list(APPEND V8_GYP_ARGS ${V8_DIR}/build/gyp/gyp_main.py --generator-output=${V8_TARGET_DIR} build/all.gyp)
 set (V8_COMPILE_ARGS -C ${V8_TARGET_DIR} -f Makefile.${V8_TARGET_ARCH} BUILDTYPE=Release builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH} VERBOSE=1 V=1 CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
@@ -171,3 +167,6 @@ import_target(icu_i18n v8_build
   "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
   "${ICU_BIN_DIR}/libicui18n.a"
 )
+
+set(ICU_INCLUDE_DIR ${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/i18n;${V8_DIR}/third_party/icu/source/io CACHE path "ICU include path" PARENT_SCOPE)
+set(V8_INCLUDE_DIR ${V8_DIR}/include CACHE path "V8 include path" PARENT_SCOPE)

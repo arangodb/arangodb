@@ -125,18 +125,11 @@ elseif(UNIX AND NOT APPLE)
     set(MAKE gmake)
     set(HOST_BITS 64)
     set(SOLARIS TRUE)
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+    set(BUILD_STATIC_EXECUTABLES TRUE)
     list(APPEND CMAKE_C_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
-    list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
-    set(THIRDP_BUILDFLAGS --target=x86_64-pc-solaris2.11
-      --host=x86_64-pc-solaris2.11
-      --build=x86_64-pc-solaris2.11
-      # TODO: is this CMAKE_C_COMPILER? CC=/opt/csw/bin/gcc
-      CC=/opt/csw/bin/gcc
-      CXX=/opt/csw/bin/g++
-      CFLAGS=-I\ /opt/csw/include\ -D_REENTRANT\ -m64
-      CXXFLAGS=-I\ /opt/csw/include\ -D_REENTRANT\ -m64
-      LDFLAGS=-L/opt/csw/lib\ -march=x86-64\ -m64
-      )
+    list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64\ -std=gnu++11)
+    #list(APPEND SYSTEM_LIBRARIES nsl socket)
    elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
     set(HPUX TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
@@ -151,8 +144,6 @@ elseif (APPLE)
     set(MACOSX TRUE)
   endif ()
 endif ()
-
-# TODO: Exclude non-supported?
 
 # BISON&FLEX -------------------------------------------------------------------
 find_package (BISON)
@@ -451,6 +442,7 @@ endif ()
 
 # 3rd party libraries
 add_subdirectory(3rdParty)
+# exports: ICU_BIN_DIR, V8_BIN_DIR, ICU_INCLUDE_DIR, V8_INCLUDE_DIR
 
 # Global include directories ---------------------------------------------------
 
@@ -495,12 +487,6 @@ macro (generate_path_config name)
     FileContent "${FileContent}")
   STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
     FileContent "${FileContent}")
-  if ((${name} STREQUAL "arangod") AND RASPBIAN)
-    STRING(REGEX REPLACE "[\r\n]threads =[^\r\n]*" "\nthreads = 1" 
-      FileContent "${FileContent}")
-    STRING(REGEX REPLACE "[\r\n]v8-contexts =[^\r\n]*" "\n8-contexts = 1" 
-      FileContent "${FileContent}")
-  endif ()
   FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")
 endmacro ()
 
@@ -580,23 +566,18 @@ endif ()
 
 # ICU ---------------------------------------------------------------------------
 if (MSVC)
-  set(ICU_LIBS "icui18n;icuuc" CACHE path "ICU libraries")
+  set(ICU_LIBS "icui18n;icuuc" CACHE string "ICU libraries")
   
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-elseif (RASPBIAN)
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
-  set(ICU_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/third_party/icu/source/io CACHE path "ICU include path")
   set(ICU_LIB_PATH ${ICU_BIN_DIR} CACHE path "ICU library path")
   if (LINUX)
     set(ICU_LIB_PATH "${ICU_LIB_PATH}")
   endif ()
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE string "ICU libraries")
 endif ()
 
-if (ICU_INCLUDE_DIR)
-  include_directories(${ICU_INCLUDE_DIR})
-endif ()
+include_directories(${ICU_INCLUDE_DIR})
 
 if (ICU_LIB_PATH)
   link_directories(${ICU_LIB_PATH})
@@ -604,21 +585,12 @@ endif ()
 
 # V8 ----------------------------------------------------------------------------
 
-if (MSVC OR RASPBIAN)
-  set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
-else ()
-  set(V8_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8-${V8_VERSION}/include CACHE path "V8 include path")
-  set(V8_LIB_PATH ${V8_BIN_DIR} CACHE path "V8 library path")
-  set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
-endif ()
+set(V8_LIB_PATH ${V8_BIN_DIR} CACHE path "V8 library path")
+set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 
-if (V8_INCLUDE_DIR)
-  include_directories(${V8_INCLUDE_DIR})
-endif ()
+include_directories(${V8_INCLUDE_DIR})
 
-if (V8_LIB_PATH)
-  link_directories(${V8_LIB_PATH})
-endif ()
+link_directories(${V8_LIB_PATH})
 
 add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 
@@ -642,9 +614,13 @@ set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
 include_directories(${ZLIB_INCLUDE_DIR})
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-link_directories(${zlib_BINARY_DIR})
-set(ZLIB_LIBS z CACHE string "ZLIB libraries")
 
+if (${BUILD_STATIC_EXECUTABLES})
+  set(ZLIB_LIBS ${zlib_BINARY_DIR}/libz.a)
+else ()
+  link_directories(${zlib_BINARY_DIR})
+  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
+endif ()
 
 # Boost ------------------------------------------------------------------------
 find_package(Boost 1.48 COMPONENTS unit_test_framework)
@@ -677,6 +653,24 @@ endif ()
 
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
+
+if(BUILD_STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS -static)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+  set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
+  set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
+  set(CMAKE_SHARED_LIBRARY_C_FLAGS)         # remove -fPIC
+  set(CMAKE_SHARED_LIBRARY_CXX_FLAGS)
+  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # remove -rdynamic
+  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+  # Maybe this works as well, haven't tried yet.
+  # set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+else(BUILD_STATIC_EXECUTABLES)
+  # Set RPATH to use for installed targets; append linker search path
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LOFAR_LIBDIR}")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif(BUILD_STATIC_EXECUTABLES) 
+
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
 add_subdirectory(js)
@@ -711,7 +705,6 @@ add_subdirectory(UnitTests)
 # Posible options are:
 # - dmg-cli: Mac OS X shell client application
 # - debian: debian package
-# - raspbian: raspberry debian package
 set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
 
 # OSX
@@ -738,8 +731,6 @@ set(CPACK_STRIP_FILES "ON")
 
 if (DARWIN)
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-elseif (RASPBIAN)
-  set(CPACK_PACKAGE_NAME "arangodb")
 elseif (BUILD_PACKAGE STREQUAL "debian")
   set(CPACK_PACKAGE_NAME "arangodb")
 elseif (MSVC)
@@ -747,10 +738,7 @@ elseif (MSVC)
 endif ()
 
 # debian
-if ((BUILD_PACKAGE STREQUAL "debian") OR RASPBIAN)
-  if (RASPBIAN)
-    set(CPACK_SYSTEM_NAME "raspbian")
-  endif ()
+if (BUILD_PACKAGE STREQUAL "debian")
 
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
