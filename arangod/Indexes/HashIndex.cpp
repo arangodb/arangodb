@@ -931,7 +931,7 @@ IndexIterator* HashIndex::iteratorForCondition(
 
 IndexIterator* HashIndex::iteratorForSlices(
     arangodb::Transaction* trx, IndexIteratorContext* context,
-    std::shared_ptr<std::vector<VPackSlice>> slides, bool reverse) const {
+    VPackSlice const slides, bool reverse) const {
   return nullptr;
 }
 

@@ -373,7 +373,7 @@ class Index {
 
   virtual IndexIterator* iteratorForSlices(
       arangodb::Transaction*, IndexIteratorContext*,
-      std::shared_ptr<std::vector<arangodb::velocypack::Slice>>, bool) const {
+      arangodb::velocypack::Slice const, bool) const {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 

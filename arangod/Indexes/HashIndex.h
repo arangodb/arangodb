@@ -167,7 +167,7 @@ class HashIndex final : public PathBasedIndex {
 
   IndexIterator* iteratorForSlices(
       arangodb::Transaction*, IndexIteratorContext*,
-      std::shared_ptr<std::vector<arangodb::velocypack::Slice>>,
+      arangodb::velocypack::Slice const,
       bool) const override;
 
   arangodb::aql::AstNode* specializeCondition(
