@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const parseUrl = require('url').parse;
+const formatUrl = require('url').format;
+const joinPath = require('path').posix.join;
 const typeIs = require('type-is').is;
 const accepts = require('accepts');
 const parseRange = require('range-parser');
@@ -36,7 +38,7 @@ module.exports = class SyntheticRequest {
     this._raw = req;
     this.context = context;
     this.suffix = req.suffix.join('/');
-    this.baseUrl = `/_db/${encodeURIComponent(this._raw.database)}`;
+    this.baseUrl = joinPath('/_db', encodeURIComponent(this._raw.database));
     this.path = this._url.pathname;
     this.pathParams = {};
     this.queryParams = querystring.decode(this._url.query);
@@ -66,7 +68,11 @@ module.exports = class SyntheticRequest {
   // Express compat
 
   get originalUrl() {
-    return this.baseUrl + this._url.pathname + (this._url.search || '');
+    return joinPath(
+      '/_db',
+      encodeURIComponent(this._raw.database),
+      this._url.pathname
+    ) + (this._url.search || '');
   }
 
   get secure() {
@@ -82,39 +88,54 @@ module.exports = class SyntheticRequest {
     return Boolean(header && header.toLowerCase() === 'xmlhttprequest');
   }
 
-  accepts(types) {
+  accepts() {
     const accept = accepts(this);
-    return accept.type(types);
+    return accept.types.apply(accept, arguments);
   }
 
   acceptsCharsets() {
     const accept = accepts(this);
-    return accept.charset.apply(accept, arguments);
+    return accept.charsets.apply(accept, arguments);
   }
 
   acceptsEncodings() {
     const accept = accepts(this);
-    return accept.encoding.apply(accept, arguments);
+    return accept.encodings.apply(accept, arguments);
   }
 
   acceptsLanguages() {
     const accept = accepts(this);
-    return accept.language.apply(accept, arguments);
+    return accept.languages.apply(accept, arguments);
+  }
+
+  range(size) {
+    const range = this.headers.range;
+    if (!range) {
+      return undefined;
+    }
+    return parseRange(size, range);
   }
 
   get(name) {
-    name = name.toLowerCase();
-    if (name === 'referer' || name === 'referrer') {
+    const lc = name.toLowerCase();
+    if (lc === 'referer' || lc === 'referrer') {
       return this.headers.referer || this.headers.referrer;
     }
-    return this.headers[name];
+    return this.headers[lc];
+  }
+
+  header(name) {
+    return this.get(name);
   }
 
   is(mediaType) {
     if (!this.headers['content-type']) {
       return false;
     }
-    return Boolean(typeIs(this.headers['content-type'], mediaType));
+    if (!Array.isArray(mediaType)) {
+      mediaType = Array.prototype.slice.call(arguments);
+    }
+    return typeIs(this, mediaType);
   }
 
   // idiosyncratic
@@ -139,18 +160,26 @@ module.exports = class SyntheticRequest {
     return value;
   }
 
-  makeAbsolute(path) {
-    return this.protocol + '://' + this.hostname + (
-      (this.secure ? this.port !== 443 : this.port !== 80)
-      ? ':' + this.port : ''
-    ) + this.baseUrl + path;
-  }
-
-  ranges(size) {
-    if (!this.headers.range) {
-      return [];
+  makeAbsolute(path, query) {
+    const opts = {
+      protocol: this.protocol,
+      hostname: this.hostname,
+      port: (this.secure ? this.port !== 443 : this.port !== 80) && this.port,
+      pathname: joinPath(
+        '/_db',
+        encodeURIComponent(this._raw.database),
+        this.context.mount,
+        path
+      )
+    };
+    if (query) {
+      if (typeof query === 'string') {
+        opts.search = query;
+      } else {
+        opts.query = query;
+      }
     }
-    return parseRange(size, this.headers.range);
+    return formatUrl(opts);
   }
 };
 

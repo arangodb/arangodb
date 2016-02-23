@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const joinPath = require('path').posix.join;
 const querystring = require('querystring');
 const httpError = require('http-errors');
 const union = require('@arangodb/util').union;
@@ -269,7 +270,7 @@ function dispatch(route, req, res) {
     req.path = '/' + item.path.join('/');
     req.suffix = item.suffix.join('/');
     if (req.suffix) {
-      req.path += '/' + req.suffix.join('/');
+      req.path = joinPath(req.path, req.suffix.join('/'));
     }
     res._responses = item._responses;
     req.reverse = function (routeName, params, suffix) {

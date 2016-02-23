@@ -1,26 +1,9 @@
 /*global describe, it */
 'use strict';
 const expect = require('chai').expect;
+const crypto = require('@arangodb/crypto');
 const SyntheticRequest = require('@arangodb/foxx/router/request');
-
-function createNativeRequest(opts) {
-  return {
-    requestType: opts.method || 'get',
-    protocol: opts.protocol || 'http',
-    database: opts.db || '_system',
-    url: `${opts.mount || ''}${opts.path || ''}${opts.query || ''}`,
-    suffix: opts.path ? opts.path.split('/').filter(Boolean) : [],
-    headers: opts.headers || {},
-    server: opts.server || {
-      address: '127.0.0.1',
-      port: opts.port || 8529
-    },
-    client: opts.client || {
-      address: '127.0.0.1',
-      port: 33333
-    }
-  };
-}
+const createNativeRequest = require('@arangodb/foxx/test-utils').createNativeRequest;
 
 describe('SyntheticRequest', function () {
   describe('protocol/secure', function () {
@@ -73,6 +56,7 @@ describe('SyntheticRequest', function () {
       expect(req.secure).to.equal(false);
     });
   });
+
   describe('hostname/port', function () {
     it('defaults to the host header of the native request', function () {
       const rawReq = createNativeRequest({
@@ -143,6 +127,7 @@ describe('SyntheticRequest', function () {
       expect(req.port).to.equal(5678);
     });
   });
+
   describe('remoteAddress(es)', function () {
     it('defaults to the client info of the native request', function () {
       const rawReq = createNativeRequest({
@@ -206,6 +191,7 @@ describe('SyntheticRequest', function () {
       expect(req.remoteAddresses).to.eql(ips);
     });
   });
+
   describe('remotePort', function () {
     it('defaults to the client info of the native request', function () {
       const rawReq = createNativeRequest({
@@ -251,6 +237,7 @@ describe('SyntheticRequest', function () {
       expect(req.remotePort).to.equal(9999);
     });
   });
+
   describe('queryParams', function () {
     it('is correctly derived from the native request when empty', function () {
       const rawReq = createNativeRequest({});
@@ -259,7 +246,7 @@ describe('SyntheticRequest', function () {
     });
     it('is correctly derived from the native request', function () {
       const rawReq = createNativeRequest({
-        query: '?a=1&b=2&c=3'
+        search: '?a=1&b=2&c=3'
       });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.queryParams).to.eql({
@@ -269,6 +256,7 @@ describe('SyntheticRequest', function () {
       });
     });
   });
+
   describe('baseUrl', function () {
     it('is correctly derived from the native request', function () {
       const rawReq = createNativeRequest({
@@ -280,6 +268,7 @@ describe('SyntheticRequest', function () {
       expect(req.baseUrl).to.equal('/_db/bananas');
     });
   });
+
   describe('headers', function () {
     it('exposes the headers of the native request', function () {
       const headers = {};
@@ -290,6 +279,7 @@ describe('SyntheticRequest', function () {
       expect(req.headers).to.equal(headers);
     });
   });
+
   describe('method', function () {
     it('exposes the method of the native request', function () {
       const rawReq = createNativeRequest({
@@ -299,54 +289,59 @@ describe('SyntheticRequest', function () {
       expect(req.method).to.equal('potato');
     });
   });
+
   describe('originalUrl', function () {
     it('exposes the root relative URL of the native request', function () {
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/hi',
         path: '/friend/of/mine',
-        query: '?hello=yes&goodbye=indeed'
+        search: '?hello=yes&goodbye=indeed'
       });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.originalUrl).to.equal('/_db/bananas/hi/friend/of/mine?hello=yes&goodbye=indeed');
     });
   });
+
   describe('url', function () {
     it('exposes the database relative URL of the native request', function () {
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/hi',
         path: '/friend/of/mine',
-        query: '?hello=yes&goodbye=indeed'
+        search: '?hello=yes&goodbye=indeed'
       });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.url).to.equal('/hi/friend/of/mine?hello=yes&goodbye=indeed');
     });
   });
+
   describe('path', function () {
     it('exposes the database relative pathname of the native request', function () {
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/hi',
         path: '/friend/of/mine',
-        query: '?hello=yes&goodbye=indeed'
+        search: '?hello=yes&goodbye=indeed'
       });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.path).to.equal('/hi/friend/of/mine');
     });
   });
+
   describe('suffix', function () {
     it('exposes the linearized suffix of the native request', function () {
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/hi',
         path: '/friend/of/mine',
-        query: '?hello=yes&goodbye=indeed'
+        search: '?hello=yes&goodbye=indeed'
       });
       const req = new SyntheticRequest(rawReq, {});
       expect(req.suffix).to.equal('friend/of/mine');
     });
   });
+
   describe('xhr', function () {
     it('is false if the XHR header was not set', function () {
       const rawReq = createNativeRequest({});
@@ -368,5 +363,434 @@ describe('SyntheticRequest', function () {
       expect(req.xhr).to.equal(false);
     });
   });
-  it('TODO');
+
+  describe('cookie', function () {
+    it('returns nothing if the cookie is not set', function () {
+      const rawReq = createNativeRequest({});
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana')).to.equal(undefined);
+    });
+    it('returns the value of the cookie if it is set', function () {
+      const rawReq = createNativeRequest({
+        cookies: {banana: 'hello'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana')).to.equal('hello');
+    });
+    it('returns nothing if a secret is provided but no signature exists', function () {
+      const rawReq = createNativeRequest({
+        cookies: {banana: 'hello'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', {secret: 'potato'})).to.equal(undefined);
+    });
+    it('returns nothing if a secret is provided but the signature is invalid', function () {
+      const rawReq = createNativeRequest({
+        cookies: {
+          banana: 'hello',
+          'banana.sig': 'invalid'
+        }
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', {secret: 'potato'})).to.equal(undefined);
+    });
+    it('returns the value if a secret is provided and the signature matches', function () {
+      const rawReq = createNativeRequest({
+        cookies: {
+          banana: 'hello',
+          'banana.sig': crypto.hmac('potato', 'hello')
+        }
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', {secret: 'potato'})).to.equal('hello');
+    });
+    it('accepts a secret instead of an options object', function () {
+      const rawReq = createNativeRequest({
+        cookies: {
+          banana: 'hello',
+          'banana.sig': crypto.hmac('potato', 'hello')
+        }
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', 'potato')).to.equal('hello');
+    });
+    it('correctly handles other algorithms', function () {
+      const rawReq = createNativeRequest({
+        cookies: {
+          banana: 'hello',
+          'banana.sig': crypto.hmac('potato', 'hello', 'sha512')
+        }
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', {
+        secret: 'potato',
+        algorithm: 'sha512'
+      })).to.equal('hello');
+    });
+    it('correctly handles algorithm mismatches', function () {
+      const rawReq = createNativeRequest({
+        cookies: {
+          banana: 'hello',
+          'banana.sig': crypto.hmac('potato', 'hello', 'sha256')
+        }
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.cookie('banana', {
+        secret: 'potato',
+        algorithm: 'sha512'
+      })).to.equal(undefined);
+    });
+  });
+
+  describe('makeAbsolute', function () {
+    it('correctly generates absolute URLs', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:9999'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('/another/place', 'x=y&z=w')).to.equal(
+        'https://www.example.com:9999/_db/bananas/foxx/another/place?x=y&z=w'
+      );
+    });
+    it('also accepts a query params object', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:9999'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('/another/place', {x: 'y', z: 'w'})).to.equal(
+        'https://www.example.com:9999/_db/bananas/foxx/another/place?x=y&z=w'
+      );
+    });
+    it('omits the port if port is 80 and protocol is http', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:80'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'http'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('/another/place', 'x=y&z=w')).to.equal(
+        'http://www.example.com/_db/bananas/foxx/another/place?x=y&z=w'
+      );
+    });
+    it('omits the port if port is 443 and protocol is https', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:443'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('/another/place', 'x=y&z=w')).to.equal(
+        'https://www.example.com/_db/bananas/foxx/another/place?x=y&z=w'
+      );
+    });
+    it('works without query params', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:9999'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('/another/place')).to.equal(
+        'https://www.example.com:9999/_db/bananas/foxx/another/place'
+      );
+    });
+    it('correctly handles non-root paths', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:9999'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('another/place')).to.equal(
+        'https://www.example.com:9999/_db/bananas/foxx/another/place'
+      );
+    });
+    it('correctly handles relative paths', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        headers: {host: 'www.example.com:9999'},
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https'
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('../another/place')).to.equal(
+        'https://www.example.com:9999/_db/bananas/another/place'
+      );
+    });
+  });
+
+  describe('accepts', function () {
+    it('returns the acceptable type', function () {
+      const rawReq = createNativeRequest({
+        headers: {accept: 'application/json, text/javascript; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.accepts(['text/javascript'])).to.equal('text/javascript');
+    });
+    it('returns the preferred acceptable type', function () {
+      const rawReq = createNativeRequest({
+        headers: {accept: 'application/json, text/javascript; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.accepts(['text/javascript', 'json'])).to.equal('json');
+    });
+    it('returns false if no type is acceptable', function () {
+      const rawReq = createNativeRequest({
+        headers: {accept: 'application/json, text/javascript; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.accepts(['kitty/soft', 'kitty/warm'])).to.equal(false);
+    });
+    it('accepts multiple arguments instead of an array', function () {
+      const rawReq = createNativeRequest({
+        headers: {accept: 'application/json, text/javascript; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.accepts('potato', 'json')).to.equal('json');
+    });
+  });
+
+  describe('acceptsCharsets', function () {
+    it('returns the acceptable charset', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-charset': 'utf-8, iso-8859-1; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsCharsets(['iso-8859-1'])).to.equal('iso-8859-1');
+    });
+    it('returns the preferred acceptable charset', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-charset': 'utf-8, iso-8859-1; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsCharsets(['iso-8859-1', 'utf-8'])).to.equal('utf-8');
+    });
+    it('returns false if no charset is acceptable', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-charset': 'utf-8, iso-8859-1; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsCharsets(['kitty-soft', 'kitty-warm'])).to.equal(false);
+    });
+    it('accepts multiple arguments instead of an array', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-charset': 'utf-8, iso-8859-1; q=0.01'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsCharsets('potato', 'utf-8')).to.equal('utf-8');
+    });
+  });
+
+  describe('acceptsEncodings', function () {
+    it('returns the acceptable encoding', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-encoding': 'gzip, deflate, sdch'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsEncodings(['deflate'])).to.equal('deflate');
+    });
+    it('returns the preferred acceptable encoding', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-encoding': 'gzip, deflate, sdch'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsEncodings(['deflate', 'gzip'])).to.equal('gzip');
+    });
+    it('returns false if no encoding is acceptable', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-encoding': 'gzip, deflate, sdch'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsEncodings(['softkitty', 'warmkitty'])).to.equal(false);
+    });
+    it('accepts multiple arguments instead of an array', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-encoding': 'gzip, deflate, sdch'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsEncodings('potato', 'gzip')).to.equal('gzip');
+    });
+  });
+
+  describe('acceptsLanguages', function () {
+    it('returns the acceptable language', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-language': 'en-GB,en;q=0.8,en-US;q=0.6,de;q=0.4,de-DE;q=0.2'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsLanguages(['de-DE'])).to.equal('de-DE');
+    });
+    it('returns the preferred acceptable language', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-language': 'en-GB,en;q=0.8,en-US;q=0.6,de;q=0.4,de-DE;q=0.2'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsLanguages(['de-DE', 'en-GB'])).to.equal('en-GB');
+    });
+    it('returns false if no language is acceptable', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-language': 'en-GB,en;q=0.8,en-US;q=0.6,de;q=0.4,de-DE;q=0.2'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsLanguages(['kitty-SOFT', 'kitty-WARM'])).to.equal(false);
+    });
+    it('accepts multiple arguments instead of an array', function () {
+      const rawReq = createNativeRequest({
+        headers: {'accept-language': 'en-GB,en;q=0.8,en-US;q=0.6,de;q=0.4,de-DE;q=0.2'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.acceptsLanguages('potato', 'en-GB')).to.equal('en-GB');
+    });
+  });
+
+  describe('range', function () {
+    it('returns -2 for malformed header', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'banana'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.range(Infinity)).to.equal(-2);
+    });
+    it('returns -1 for invalid header range', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=500-20'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.range(Infinity)).to.equal(-1);
+    });
+    it('parses single ranges', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=0-499'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(Infinity);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 0, end: 499});
+    });
+    it('parses multiple ranges', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=0-499,500-749'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(Infinity);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 2);
+      expect(range[0]).to.eql({start: 0, end: 499});
+      expect(range[1]).to.eql({start: 500, end: 749});
+    });
+    it('caps end at size', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=0-999'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(100);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 0, end: 99});
+    });
+    it('parses "-X"', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=-400'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(1000);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 600, end: 999});
+    });
+    it('parses "X-"', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=400-'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(1000);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 400, end: 999});
+    });
+    it('parses "0-"', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=0-'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(1000);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 0, end: 999});
+    });
+    it('parses "-1"', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=-1'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(1000);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 999, end: 999});
+    });
+    it('parses "0-0"', function () {
+      const rawReq = createNativeRequest({
+        headers: {range: 'bananas=0-0'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      const range = req.range(Infinity);
+      expect(range).to.have.a.property('type', 'bananas');
+      expect(range).to.have.a.property('length', 1);
+      expect(range[0]).to.eql({start: 0, end: 0});
+    });
+  });
+
+  describe('is', function () {
+    it('returns false if no content-type is set', function () {
+      const rawReq = createNativeRequest({});
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.is(['application/xhtml+xml', 'text/html'])).to.equal(false);
+    });
+    it('returns the first matching mime type', function () {
+      const rawReq = createNativeRequest({
+        headers: {'content-type': 'text/html; charset=utf-8'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.is(['application/xhtml+xml', 'text/html'])).to.equal('text/html');
+    });
+    it('returns false if no mime type matches', function () {
+      const rawReq = createNativeRequest({
+        headers: {'content-type': 'text/html; charset=utf-8'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.is(['application/xhtml+xml'])).to.equal(false);
+    });
+    it('accepts multiple arguments instead of an array', function () {
+      const rawReq = createNativeRequest({
+        headers: {'content-type': 'text/html; charset=utf-8'}
+      });
+      const req = new SyntheticRequest(rawReq, {});
+      expect(req.is('application/xhtml+xml', 'text/html')).to.equal('text/html');
+    });
+  });
 });
