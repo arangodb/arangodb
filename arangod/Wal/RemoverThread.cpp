@@ -39,10 +39,6 @@ uint64_t const RemoverThread::Interval = 2000000;
 RemoverThread::RemoverThread(LogfileManager* logfileManager)
     : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
 
-RemoverThread::~RemoverThread() {
-  shutdown(true);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////

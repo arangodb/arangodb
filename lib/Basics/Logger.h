@@ -169,9 +169,11 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LogLevel
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifdef TRI_UNDEF_ERR
 #undef ERR
 #endif
+
 enum class LogLevel {
   DEFAULT = 0,
   FATAL = 1,
@@ -276,6 +278,8 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic DATAFILES;
+  static LogTopic THREADS;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

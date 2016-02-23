@@ -14,12 +14,6 @@ MAJOR_MINOR := $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(VERSION))))
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief source to build before compile
-################################################################################
-
-BUILT_SOURCES = build.h
-
-################################################################################
 ### @brief man pages to install
 ################################################################################
 
@@ -36,30 +30,6 @@ CLEANUP =
 ################################################################################
 
 CLEANUP_3RD =
-
-################################################################################
-### @brief flex files
-################################################################################
-
-FLEX_FILES = 
-
-################################################################################
-### @brief flex++ files
-################################################################################
-
-FLEXXX_FILES = 
-
-################################################################################
-### @brief bison files
-################################################################################
-
-BISON_FILES =
-
-################################################################################
-### @brief bison++ files
-################################################################################
-
-BISONXX_FILES = 
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
@@ -439,30 +409,6 @@ README: README.md
 endif
 endif
 
-################################################################################
-### @brief generate all flex files
-################################################################################
-
-if ENABLE_MAINTAINER_MODE
-include lib/Makefile.flex
-endif
-
-################################################################################
-### @brief generate all bison files
-################################################################################
-
-if ENABLE_MAINTAINER_MODE
-
-BUILT_SOURCES += $(BISON_FILES) $(BISONXX_FILES)
-
-%.cpp: %.y
-	@top_srcdir@/utils/bison-c.sh $(BISON) $@ $<
-
-%.cpp: %.yy
-	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
-
-endif
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
 ## -----------------------------------------------------------------------------
@@ -493,59 +439,3 @@ include 3rdParty/Makefile.zlib
 if ENABLE_ALL_IN_ONE_ETCD
 include 3rdParty/Makefile.etcd
 endif
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       CMAKE SETUP
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief cmake build
-################################################################################
-
-.PHONY: cmake-setup
-
-cmake-setup:
-	test -d Build || mkdir Build
-
-	cd Build && cmake \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
-		\
-		-D ARANGODB_VERSION=${VERSION} \
-		\
-		-D ICU_INCLUDE="${CMAKE_ICU_INCLUDE}" \
-		-D ICU_LIB_PATH="${CMAKE_ICU_LIB_PATH}" \
-		-D ICU_LIBS="${CMAKE_ICU_LIBS}" \
-		-D ICU_VERSION="${CMAKE_ICU_VERSION}" \
-		\
-		-D LIBEV_INCLUDE="${CMAKE_LIBEV_INCLUDE}" \
-		-D LIBEV_LIB_PATH="${CMAKE_LIBEV_LIB_PATH}" \
-		-D LIBEV_LIBS="${CMAKE_LIBEV_LIBS}" \
-		-D LIBEV_VERSION="${CMAKE_LIBEV_VERSION}" \
-		\
-		-D OPENSSL_INCLUDE= \
-		-D OPENSSL_LIB_PATH= \
-		-D OPENSSL_LIBS= \
-		-D OPENSSL_VERSION= \
-		\
-		-D V8_INCLUDE= \
-		-D V8_LIB_PATH= \
-		-D V8_LIBS= \
-		-D V8_VERSION= \
-		\
-		-D ZLIB_INCLUDE= \
-		-D ZLIB_LIB_PATH= \
-		-D ZLIB_LIBS= \
-		-D ZLIB_VERSION= \
-		\
-		..
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:

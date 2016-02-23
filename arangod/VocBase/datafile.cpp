@@ -21,15 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include "datafile.h"
+
+#include "Basics/Logger.h"
+#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/server.h"
@@ -37,6 +35,8 @@
 #include <sstream>
 
 // #define DEBUG_DATAFILE 1
+
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the datafile is a physical file (true) or an
@@ -1029,7 +1029,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
     return 0;
   }
 
-  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

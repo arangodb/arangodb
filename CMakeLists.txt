@@ -32,11 +32,11 @@ set(ARANGODB_VERSION_REVISION   "0-devel")
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h")
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 
@@ -261,7 +261,7 @@ endif ()
 # Maintainer mode (Assertions) -------------------------------------------------
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features" OFF)
-if (USE_MAINTAINER_MODE)
+if ()
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif ()
 
@@ -630,10 +630,10 @@ if (OPENSSL_VERSION)
 endif ()
 
 # BISON&FLEX -------------------------------------------------------------------
-find_package (BISON)
+find_package(BISON)
 
 # FLEX -------------------------------------------------------------------------
-find_package (FLEX)
+find_package(FLEX)
 
 # Python
 find_package(PythonInterp 2)

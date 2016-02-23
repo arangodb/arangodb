@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/JsonHelper.h"
+
 #include "Basics/conversions.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb::basics;
 
@@ -39,14 +41,14 @@ TRI_json_t* JsonHelper::uint64String(TRI_memory_zone_t* zone, uint64_t value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a JSON strong or number into a uint64
+/// @brief convert a JSON string or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t JsonHelper::stringUInt64(TRI_json_t const* json) {
   if (json != nullptr) {
     if (json->_type == TRI_JSON_STRING) {
-      return TRI_UInt64String2(json->_value._string.data,
-                               json->_value._string.length - 1);
+      return StringUtils::uint64(std::string(json->_value._string.data,
+                                             json->_value._string.length - 1));
     } else if (json->_type == TRI_JSON_NUMBER) {
       return (uint64_t)json->_value._number;
     }
@@ -56,7 +58,7 @@ uint64_t JsonHelper::stringUInt64(TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a JSON strong or number into a uint64
+/// @brief convert a JSON string or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t JsonHelper::stringUInt64(TRI_json_t const* json, char const* name) {
