@@ -308,7 +308,7 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
-    LOG(ERR) << "failed to close collection '" << colName.c_str()
+    LOG(ERR) << "failed to close collection '" << colName
              << "': " << TRI_last_error();
 
     collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -360,7 +360,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
-    LOG(ERR) << "someone resurrected the collection '" << name.c_str() << "'";
+    LOG(ERR) << "someone resurrected the collection '" << name << "'";
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     regfree(&re);
@@ -378,7 +378,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
     res = TRI_CloseDocumentCollection(document, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "failed to close collection '" << name.c_str()
+      LOG(ERR) << "failed to close collection '" << name
                << "': " << TRI_last_error();
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -462,24 +462,24 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
                  << collection->pathc_str() << "' to '" << newFilename << "'";
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "cannot rename dropped collection '" << name.c_str()
+        LOG(ERR) << "cannot rename dropped collection '" << name
                  << "' from '" << collection->pathc_str() << "' to '"
                  << newFilename << "': " << TRI_errno_string(res);
       } else {
-        LOG(DEBUG) << "wiping dropped collection '" << name.c_str()
+        LOG(DEBUG) << "wiping dropped collection '" << name
                    << "' from disk";
 
         res = TRI_RemoveDirectory(newFilename);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG(ERR) << "cannot wipe dropped collection '" << name.c_str()
+          LOG(ERR) << "cannot wipe dropped collection '" << name
                    << "' from disk: " << TRI_errno_string(res);
         }
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, newFilename);
     } else {
-      LOG(ERR) << "cannot rename dropped collection '" << name.c_str()
+      LOG(ERR) << "cannot rename dropped collection '" << name
                << "': unknown path '" << collection->pathc_str() << "'";
     }
   }
@@ -801,7 +801,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         // this can cause serious trouble so we will abort the server start if
         // we
         // encounter this situation
-        LOG(ERR) << "database subdirectory '" << file.c_str()
+        LOG(ERR) << "database subdirectory '" << file
                  << "' is not writable for current user";
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -820,7 +820,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           // we found a collection that is marked as deleted.
           // deleted collections should be removed on startup. this is the
           // default
-          LOG(DEBUG) << "collection '" << name.c_str()
+          LOG(DEBUG) << "collection '" << name
                      << "' was deleted, wiping it";
 
           res = TRI_RemoveDirectory(file.c_str());
@@ -874,7 +874,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
 
           if (c == nullptr) {
             LOG(ERR) << "failed to add document collection from '"
-                     << file.c_str() << "'";
+                     << file << "'";
 
             return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
           }
@@ -893,7 +893,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           }
 
           LOG(DEBUG) << "added document collection '" << info.namec_str()
-                     << "' from '" << file.c_str() << "'";
+                     << "' from '" << file << "'";
         }
 
       } catch (arangodb::basics::Exception const& e) {
@@ -910,12 +910,12 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
         res = e.code();
 
         LOG(ERR) << "cannot read collection info file in directory '"
-                 << file.c_str() << "': " << TRI_errno_string(res);
+                 << file << "': " << TRI_errno_string(res);
 
         return TRI_set_errno(res);
       }
     } else {
-      LOG(DEBUG) << "ignoring non-directory '" << file.c_str() << "'";
+      LOG(DEBUG) << "ignoring non-directory '" << file << "'";
     }
   }
 
@@ -1074,7 +1074,7 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
 
   std::string const colName(collection->name());
   LOG(ERR) << "unknown collection status " << collection->_status << " for '"
-           << colName.c_str() << "'";
+           << colName << "'";
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
   return TRI_set_errno(TRI_ERROR_INTERNAL);
