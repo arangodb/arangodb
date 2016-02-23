@@ -710,14 +710,17 @@ static int ParseUInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint64_t* desc = static_cast<po_uint64_t*>(value);
-  uint64_t tmp = StringUtils::uint64(userarg);
 
-  int res = TRI_errno();
-
-  if (res == TRI_ERROR_NO_ERROR) {
+  int res = TRI_ERROR_NO_ERROR;
+  
+  try {
+    uint64_t tmp = StringUtils::uint64_check(userarg);
     *desc->_value = tmp;
   }
-
+  catch (...) {
+    res = TRI_ERROR_ILLEGAL_NUMBER;
+  }
+  
   return res;
 }
 
