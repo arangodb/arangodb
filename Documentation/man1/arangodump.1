@@ -1,10 +1,10 @@
-COMMAND SECTION "DATE" "" "ArangoDB"
+<COMMAND> <SECTION> "<DATE>" "<VERSION>" "ArangoDB"
 NAME
-COMMAND - a tool to create logical dumps of an ArangoDB database
+<COMMAND> - a tool to create logical dumps of an ArangoDB database
 SYNOPSIS
-COMMAND [options] 
+<COMMAND> [options] 
 DESCRIPTION
-The COMMAND binary can be used to create logical dumps of collection
+The <COMMAND> binary can be used to create logical dumps of collection
 meta information and collection data (documents) of an ArangoDB database.
 By default, all non-system collections of the specified ArangoDB database
 will be dumped with structural information and data. 
@@ -13,11 +13,11 @@ For each collection, a file named "<collection>.structure.json" will be
 created with information about the collection. When data is also dumped,
 an additional file "<collection>.data.json" will also be created.
 All dump files will be placed in a directory, which will be created by
-COMMAND when run. If the directory already exists, COMMAND will refuse to
+<COMMAND> when run. If the directory already exists, <COMMAND> will refuse to
 work unless started with the option "--overwrite true".
 
-COMMAND will work on the specified database only. If no database name
-is specified, COMMAND will work on the default database ("_system").
+<COMMAND> will work on the specified database only. If no database name
+is specified, <COMMAND> will work on the default database ("_system").
 
 The dumped files can be re-stored in an ArangoDB database using the
 arangorestore tool.
@@ -39,7 +39,7 @@ OPTION "--include-system-collections <bool>"
 when set to "true" will also dump system collections, otherwise they will be excluded ENDOPTION
 OPTION "--output-directory <string>"
 directory in which all dump files will be created. If the directory already exists,
-COMMAND will refuse to work unless started with option "--overwrite true" ENDOPTION
+<COMMAND> will refuse to work unless started with option "--overwrite true" ENDOPTION
 OPTION "--overwrite <bool>"
 when set to "true", will overwrite any files in an existing output directory ENDOPTION
 OPTION "--progress <bool>"

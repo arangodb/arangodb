@@ -1,8 +1,8 @@
-COMMAND SECTION "DATE" "" "ArangoDB"
+<COMMAND> <SECTION> "<DATE>" "<VERSION>" "ArangoDB"
 NAME
-COMMAND - the ArangoDB benchmark and test tool
+<COMMAND> - the ArangoDB benchmark and test tool
 SYNOPSIS
-COMMAND [options]
+<COMMAND> [options]
 DESCRIPTION
 The arangob binary can be used to issue test requests to the 
 ArangoDB database. It can be used for benchmarks or server function
@@ -40,14 +40,14 @@ password to use when connecting. Don't specify this option to get a password pro
 OPTION "--server.disable-authentication <boolean>"
 disable the password prompt and authentication when connecting to the server ENDOPTION
 EXAMPLES
-EXAMPLE COMMAND 
-starts COMMAND with the default user and server endpoint ENDEXAMPLE
-EXAMPLE COMMAND --test-case version --requests 1000 --concurrency 1
+EXAMPLE <COMMAND> 
+starts <COMMAND> with the default user and server endpoint ENDEXAMPLE
+EXAMPLE <COMMAND> --test-case version --requests 1000 --concurrency 1
 runs the 'version' test case with 1000 requests, without concurrency ENDEXAMPLE
-EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2
+EXAMPLE <COMMAND> --test-case document --requests 1000 --concurrency 2
 runs the 'document' test case with 2000 requests, with concurrency 2 ENDEXAMPLE
-EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2 --async true
+EXAMPLE <COMMAND> --test-case document --requests 1000 --concurrency 2 --async true
 runs the 'document' test case with 2000 requests, with concurrency 2, with async requests ENDEXAMPLE
-EXAMPLE COMMAND --test-case document --requests 1000 --concurrency 2 --batch-size 10
+EXAMPLE <COMMAND> --test-case document --requests 1000 --concurrency 2 --batch-size 10
 runs the 'document' test case with 2000 requests, with concurrency 2, using batch requests ENDEXAMPLE
 AUTHOR

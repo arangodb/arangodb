@@ -875,3 +875,4 @@ add_custom_target (love
 include(CPack)
 
 
+add_subdirectory(Documentation)
