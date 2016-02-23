@@ -553,8 +553,8 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(
+      new V8TransactionContext(true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -1179,8 +1179,8 @@ static void JS_DropIndexVocbaseCol(
     return;
   }
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(
+      new V8TransactionContext(true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -1289,8 +1289,8 @@ static void JS_GetIndexesVocbaseCol(
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(
+      new V8TransactionContext(true), collection->_vocbase, collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 

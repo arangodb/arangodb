@@ -612,8 +612,8 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new StandaloneTransactionContext(), _vocbase, guard.collection()->_cid);
+    SingleCollectionTransaction trx(
+        new StandaloneTransactionContext(), _vocbase, guard.collection()->_cid, TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 

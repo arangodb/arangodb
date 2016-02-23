@@ -27,7 +27,6 @@
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ShapedJsonTransformer.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"

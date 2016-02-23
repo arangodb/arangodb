@@ -757,7 +757,7 @@ int InitialSyncer::handleCollectionDump(
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+      SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
       
       res = trx.begin();
 
@@ -970,7 +970,7 @@ int InitialSyncer::handleCollectionSync(
 
   if (countJson->_value._number <= 0.0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+    SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -1037,7 +1037,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // acquire a replication ditch so no datafiles are thrown away from now on
   // note: the ditch also protects against unloading the collection
   {    
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+    SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_READ);
   
     int res = trx.begin();
   
@@ -1060,7 +1060,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   TRI_DEFER(document->ditches()->freeDitch(ditch));
 
   {
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+    SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_READ);
   
     int res = trx.begin();
   
@@ -1180,7 +1180,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+    SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
   
@@ -1245,7 +1245,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+    SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
   
@@ -1691,7 +1691,7 @@ int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t InitialSyncer::getSize(TRI_vocbase_col_t* col) {
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1785,8 +1785,8 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
           // system collection
           setProgress("truncating " + collectionMsg);
 
-          SingleCollectionWriteTransaction<UINT64_MAX> trx(
-              new StandaloneTransactionContext(), _vocbase, col->_cid);
+          SingleCollectionTransaction trx(
+              new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
 
           int res = trx.begin();
 
@@ -1914,7 +1914,7 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
           setProgress(progress);
 
           try {
-            SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+            SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase, col->_cid, TRI_TRANSACTION_WRITE);
       
             res = trx.begin();
 

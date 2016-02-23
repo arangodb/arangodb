@@ -35,12 +35,6 @@
 #include "Wal/Marker.h"
 #include <functional>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for single-operation write transaction
-////////////////////////////////////////////////////////////////////////////////
-
-#define SingleWriteTransactionType arangodb::SingleCollectionWriteTransaction<1>
-
 namespace arangodb {
 namespace wal {
 
@@ -165,7 +159,7 @@ struct RecoverState {
 
   int executeSingleOperation(
       TRI_voc_tick_t, TRI_voc_cid_t, TRI_df_marker_t const*, TRI_voc_fid_t,
-      std::function<int(SingleWriteTransactionType*, Marker*)>);
+      std::function<int(SingleCollectionTransaction*, Marker*)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback to handle one marker during recovery

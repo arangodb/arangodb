@@ -44,8 +44,6 @@ V8TransactionContext::V8TransactionContext(bool embeddable)
       _currentTransaction(nullptr),
       _ownResolver(false),
       _embeddable(embeddable) {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " CTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,8 +51,6 @@ V8TransactionContext::V8TransactionContext(bool embeddable)
 ////////////////////////////////////////////////////////////////////////////////
 
 V8TransactionContext::~V8TransactionContext() {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " DTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,8 +68,6 @@ CollectionNameResolver const* V8TransactionContext::getResolver() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " GETPARENT: " << _sharedTransactionContext->_currentTransaction << "\r\n";
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
@@ -88,8 +82,6 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
                        nullptr);
   _sharedTransactionContext->_currentTransaction = trx;
 
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " REGISTER: " << trx << "\r\n";
   if (_sharedTransactionContext->_resolver == nullptr) {
     _sharedTransactionContext->_resolver =
         new CollectionNameResolver(trx->_vocbase);
@@ -106,9 +98,6 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
 int V8TransactionContext::unregisterTransaction() {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
-
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " UNREGISTER\r\n";
 
   if (_ownResolver && _sharedTransactionContext->_resolver != nullptr) {
     _ownResolver = false;
