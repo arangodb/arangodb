@@ -3039,20 +3039,28 @@ testFuncs.recovery = function(options) {
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
-    let instanceInfo = {};
 
-    runArangodRecovery(instanceInfo, options, test, true);
+    if (options.test === undefined || options.test === test) {
+      let instanceInfo = {};
 
-    runArangodRecovery(instanceInfo, options, test, false);
+      runArangodRecovery(instanceInfo, options, test, true);
 
-    if (instanceInfo.tmpDataDir) {
-      fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
-    }
+      runArangodRecovery(instanceInfo, options, test, false);
 
-    results[test] = instanceInfo.pid;
+      if (instanceInfo.tmpDataDir) {
+        fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
+      }
 
-    if (!results[test].status) {
-      status = false;
+      results[test] = instanceInfo.pid;
+
+      if (!results[test].status) {
+        status = false;
+      }
+    } else {
+      results[test] = {
+        status: true,
+        skipped: true
+      };
     }
   }
 
