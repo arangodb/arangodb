@@ -91,8 +91,6 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
   _sharedTransactionContext->_currentTransaction = trx;
   _sharedTransactionContext->_mainScope = this;
 
-  TRI_ASSERT(_resolver != nullptr);
-
   return TRI_ERROR_NO_ERROR;
 }
 
