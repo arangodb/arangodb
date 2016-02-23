@@ -10,6 +10,41 @@ include_directories(.)
 ## --SECTION--                                                         LIBRARIES
 ## -----------------------------------------------------------------------------
 
+# note that we check-in the generated FLEX/BISON files, therefore they are
+# generate inside the source tree
+
+if (USE_MAINTAINER_MODE)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      lib/JsonParser/json-parser.ll
+      lib/JsonParser/json-parser.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      V8/v8-json.ll
+      V8/v8-json.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+    VERBATIM
+  )
+endif ()
+
 ################################################################################
 ### @brief LIB_ARANGO
 ################################################################################
@@ -91,30 +126,41 @@ add_library(
     ${LIB_ARANGO_CONSOLE}
     ${LIB_ARANGO_VPACK}
     ${LIB_ASM_SOURCES}
-    Basics/application-exit.cpp
-    Basics/associative.cpp
     Basics/AttributeNameParser.cpp
     Basics/Barrier.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
-    Basics/conversions.cpp
-    Basics/csv.cpp
     Basics/DataProtector.cpp
     Basics/Exceptions.cpp
     Basics/FileUtils.cpp
-    Basics/InitializeBasics.cpp
     Basics/JsonHelper.cpp
     Basics/Logger.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
+    Basics/ProgramOptions.cpp
+    Basics/ProgramOptionsDescription.cpp
+    Basics/RandomGenerator.cpp
+    Basics/ReadWriteLock.cpp
+    Basics/ReadWriteLockCPP11.cpp
+    Basics/StringBuffer.cpp
+    Basics/StringUtils.cpp
+    Basics/Thread.cpp
+    Basics/ThreadPool.cpp
+    Basics/Utf8Helper.cpp
+    Basics/VPackStringBufferAdapter.cpp
+    Basics/VelocyPackHelper.cpp
+    Basics/WorkMonitor.cpp
+    Basics/application-exit.cpp
+    Basics/associative.cpp
+    Basics/conversions.cpp
+    Basics/csv.cpp
     Basics/debugging.cpp
     Basics/error.cpp
     Basics/fasthash.cpp
     Basics/files.cpp
     Basics/fpconv.cpp
     Basics/hashes.cpp
-    Basics/init.cpp
     Basics/json-utilities.cpp
     Basics/json.cpp
     Basics/levenshtein.cpp 
@@ -122,37 +168,24 @@ add_library(
     Basics/mimetypes.cpp
     Basics/prime-numbers.cpp
     Basics/process-utils.cpp
-    Basics/ProgramOptions.cpp
-    Basics/ProgramOptionsDescription.cpp
     Basics/random.cpp
-    Basics/RandomGenerator.cpp
-    Basics/ReadWriteLock.cpp
-    Basics/ReadWriteLockCPP11.cpp
     Basics/socket-utils.cpp
     Basics/ssl-helper.cpp
-    Basics/StringBuffer.cpp
-    Basics/StringUtils.cpp
     Basics/structures.cpp
     Basics/system-functions.cpp
     Basics/terminal-utils.cpp
-    Basics/Thread.cpp
-    Basics/ThreadPool.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
-    Basics/Utf8Helper.cpp
     Basics/vector.cpp
-    Basics/VelocyPackHelper.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
-    Basics/VPackStringBufferAdapter.cpp
-    Basics/WorkMonitor.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
-    Rest/EndpointList.cpp
     Rest/Endpoint.cpp
     Rest/EndpointIp.cpp
     Rest/EndpointIpV4.cpp
     Rest/EndpointIpV6.cpp
+    Rest/EndpointList.cpp
     Rest/HttpRequest.cpp
     Rest/HttpResponse.cpp
     Rest/InitializeRest.cpp
@@ -190,12 +223,12 @@ target_link_libraries(${LIB_ARANGO_CLIENT} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
 add_library(
     ${LIB_ARANGO_V8}
     STATIC
+    V8/v8-json.cpp
     V8/JSLoader.cpp
     V8/V8LineEditor.cpp
     V8/v8-buffer.cpp
     V8/v8-conv.cpp
     V8/v8-globals.cpp
-    V8/v8-json.cpp
     V8/v8-shell.cpp
     V8/v8-utils.cpp
     V8/v8-vpack.cpp

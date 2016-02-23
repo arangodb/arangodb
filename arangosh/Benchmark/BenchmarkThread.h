@@ -44,10 +44,6 @@ namespace arangob {
 
 class BenchmarkThread : public arangodb::Thread {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief construct the benchmark thread
-  //////////////////////////////////////////////////////////////////////////////
-
   BenchmarkThread(BenchmarkOperation* operation,
                   basics::ConditionVariable* condition, void (*callback)(),
                   int threadNumber, const unsigned long batchSize,
@@ -85,11 +81,8 @@ class BenchmarkThread : public arangodb::Thread {
         basics::StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroy the benchmark thread
-  //////////////////////////////////////////////////////////////////////////////
-
   ~BenchmarkThread() {
+    shutdown();
     delete _client;
     delete _connection;
   }

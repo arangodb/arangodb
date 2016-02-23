@@ -25,6 +25,7 @@
 #define LIB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
+
 #include "Zip/zip.h"
 
 #include <sstream>
@@ -372,7 +373,6 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class StringBuffer {
- private:
   StringBuffer() = delete;
   StringBuffer(StringBuffer const&) = delete;
   StringBuffer& operator=(StringBuffer const&) = delete;

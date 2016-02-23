@@ -36,7 +36,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "Basics/init.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
@@ -1178,7 +1177,6 @@ int main(int argc, char* argv[]) {
 
   LocalEntryFunction();
 
-  TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
   Logger::initialize(false);

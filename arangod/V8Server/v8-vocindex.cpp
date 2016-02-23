@@ -22,6 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocindex.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
@@ -31,8 +37,8 @@
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
-#include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "Utils/transactions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -40,10 +46,6 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -92,12 +94,12 @@ static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
   size_t split;
   if (arangodb::Index::validateHandle(*str, &split)) {
     collectionName = std::string(*str, split);
-    iid = TRI_UInt64String2(*str + split + 1, str.length() - split - 1);
+    iid = StringUtils::uint64(*str + split + 1, str.length() - split - 1);
     return true;
   }
 
   if (arangodb::Index::validateId(*str)) {
-    iid = TRI_UInt64String2(*str, str.length());
+    iid = StringUtils::uint64(*str, str.length());
     return true;
   }
 
@@ -505,7 +507,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   value = slice.get("id");
   if (value.isString()) {
     std::string tmp = value.copyString();
-    iid = TRI_UInt64String(tmp.c_str());
+    iid = StringUtils::uint64(tmp);
   }
 
   std::vector<std::string> attributes;

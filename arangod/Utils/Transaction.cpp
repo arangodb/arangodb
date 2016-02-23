@@ -23,6 +23,7 @@
 
 #include "Utils/transactions.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
 #include "VocBase/KeyGenerator.h"
@@ -1729,7 +1730,7 @@ OperationCursor Transaction::indexScan(
       if (!arangodb::Index::validateId(indexId.c_str())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       }
-      TRI_idx_iid_t iid = TRI_UInt64String(indexId.c_str());
+      TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexId.c_str(), indexId.size());
       idx = document->lookupIndex(iid);
 
       if (idx == nullptr) {

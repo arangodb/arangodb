@@ -25,6 +25,7 @@
 #define ARANGOD_WAL_LOGFILE_MANAGER_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "ApplicationServer/ApplicationFeature.h"
@@ -32,8 +33,6 @@
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
-
-#include <regex.h>
 
 struct TRI_server_t;
 
@@ -981,12 +980,6 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   int _writeThrottled;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief regex to match logfiles
-  //////////////////////////////////////////////////////////////////////////////
-
-  regex_t _filenameRegex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not we have been shut down already

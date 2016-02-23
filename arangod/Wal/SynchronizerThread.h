@@ -45,7 +45,7 @@ class SynchronizerThread : public Thread {
 
  public:
   SynchronizerThread(LogfileManager*, uint64_t);
-  ~SynchronizerThread();
+  ~SynchronizerThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;

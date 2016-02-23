@@ -51,6 +51,7 @@ class DispatcherThread : public Thread {
 
  public:
   explicit DispatcherThread(DispatcherQueue*);
+  ~DispatcherThread() {shutdown();}
 
  protected:
   void run();
