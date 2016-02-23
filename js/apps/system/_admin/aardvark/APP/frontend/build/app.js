@@ -6108,28 +6108,28 @@ function PreviewAdapter(nodes, edges, viewer, config) {
   self.requestCentralityChildren = function(nodeId, callback) {};
 
   self.createEdge = function (edgeToAdd, callback) {
-    window.alert("Server-side: createEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "createEdge was triggered.");
   };
 
   self.deleteEdge = function (edgeToRemove, callback) {
-    window.alert("Server-side: deleteEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "deleteEdge was triggered.");
   };
 
   self.patchEdge = function (edgeToPatch, patchData, callback) {
-    window.alert("Server-side: patchEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "patchEdge was triggered.");
   };
 
   self.createNode = function (nodeToAdd, callback) {
-    window.alert("Server-side: createNode was triggered.");
+    arangoHelper.arangoError("Server-side", "createNode was triggered.");
   };
 
   self.deleteNode = function (nodeToRemove, callback) {
-    window.alert("Server-side: deleteNode was triggered.");
-    window.alert("Server-side: onNodeDelete was triggered.");
+    arangoHelper.arangoError("Server-side", "deleteNode was triggered.");
+    arangoHelper.arangoError("Server-side", "onNodeDelete was triggered.");
   };
 
   self.patchNode = function (nodeToPatch, patchData, callback) {
-    window.alert("Server-side: patchNode was triggered.");
+    arangoHelper.arangoError("Server-side", "patchNode was triggered.");
   };
 
   self.setNodeLimit = function (pLimit, callback) {
@@ -8079,7 +8079,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB = function(res) {
@@ -8188,7 +8188,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB2 = function(res) {
@@ -8685,7 +8685,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     var size = $('#graphSize').find(":selected").val();
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       }, size);
   });
@@ -8696,7 +8696,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     } else {
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       });
     }
@@ -17326,7 +17326,7 @@ window.Users = Backbone.Model.extend({
           case 3:
             return 'loaded';
           case 4:
-            return 'in the process of being unloaded';
+            return 'unloading';
           case 5:
             return 'deleted';
           case 6:
@@ -18560,7 +18560,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, alert, $ */
+/*global window, Backbone, $ */
 (function() {
   "use strict";
   window.FoxxCollection = Backbone.Collection.extend({
@@ -19551,7 +19551,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       else {
         $(this.el).removeClass('locked');
       }
-      if (this.model.get("status") === 'loading') {
+      if (this.model.get("status") === 'loading' || this.model.get("status") === 'unloading') {
         $(this.el).addClass('locked');
       }
       $(this.el).html(this.template.render({
@@ -21055,7 +21055,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           $("#" + a).html('<br/><span class="dashboard-figurePer" style="color: '
-            + "#000" +';">' + "data not ready yet" + '</span>');
+            + "#000" +';">' + '<p class="dataNotReadyYet">data not ready yet</p>' + '</span>');
         }
       });
     },
@@ -21452,7 +21452,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       if ($('.dataNotReadyYet').length === 0) {
         $('#dataTransferDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
         $('#totalTimeDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
-        $('.dashboard-bar-chart-title').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('.dashboard-bar-chart-title').append('<p class="dataNotReadyYet"> data not ready yet </p>');
       }
     },
 
@@ -23796,7 +23796,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
-/*global $, Joi, _, alert, templateEngine, window*/
+/*global $, Joi, _, arangoHelper, templateEngine, window*/
 (function() {
   "use strict";
 
@@ -23825,10 +23825,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       } 
       switch(res.errorNum) {
         case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
-          alert("Unable to download application from the given repository.");
+          arangoHelper.arangoError("Services", "Unable to download application from the given repository.");
           break;
         default:
-          alert("Error: " + res.errorNum + ". " + res.errorMessage);
+          arangoHelper.arangoError("Services", res.errorNum + ". " + res.errorMessage);
       }
     }
   };
