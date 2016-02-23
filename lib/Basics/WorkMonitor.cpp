@@ -601,4 +601,7 @@ void arangodb::InitializeWorkMonitor() {
 /// @brief stops the work monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ShutdownWorkMonitor() { WORK_MONITOR.beginShutdown(); }
+void arangodb::ShutdownWorkMonitor() {
+  WORK_MONITOR_STOPPED.store(true);
+  WORK_MONITOR.beginShutdown();
+}

@@ -19,7 +19,14 @@
 
     <% if (content.rows.length === 0) { %>
       <tr>
-        <td>No content.</td><td></td><td></td>
+        <% var xcounter = 0; %>
+        <% _.each(content.titles, function(y) {%>
+          <% if (xcounter === 0) { %>
+            <td>No content.</td>
+          <% } else { %>
+            <td></td>
+          <% } %>
+        <% xcounter++; });%>
       </tr>
     <% }; %>
   </tbody>
