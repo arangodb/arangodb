@@ -24,7 +24,7 @@
 #include "ExampleMatcher.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "Utils/V8ResolverGuard.h"
+#include "Utils/CollectionNameResolver.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-shape-conv.h"
@@ -72,10 +72,13 @@ void ExampleMatcher::fillExampleDefinition(
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
   if (vocbase == nullptr) {
     // This should never be thrown as we are already in a transaction
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+          
+  std::unique_ptr<CollectionNameResolver> resolver;
 
   def._pids.reserve(n);
   def._values.reserve(n);
@@ -100,10 +103,7 @@ void ExampleMatcher::fillExampleDefinition(
             def._internal.insert(
                 std::make_pair(internalAttr::rev, DocumentId(0, keyVal)));
           } else {
-            // We need a Collection Name Resolver here now!
-            V8ResolverGuard resolverGuard(vocbase);
-            CollectionNameResolver const* resolver =
-                resolverGuard.getResolver();
+            // We need a CollectionNameResolver here now!
             std::string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {

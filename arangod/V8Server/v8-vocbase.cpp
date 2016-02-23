@@ -40,7 +40,6 @@
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
-#include "Utils/V8ResolverGuard.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -336,8 +335,10 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
   }
 
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, false);
+
   // start actual transaction
-  ExplicitTransaction trx(vocbase, readCollections, writeCollections,
+  ExplicitTransaction trx(transactionContext, readCollections, writeCollections,
                           lockTimeout, waitForSync, embed,
                           allowImplicitCollections);
 
@@ -1847,7 +1848,8 @@ static void AddDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExplicitTransaction* BeginTransaction(
-    TRI_vocbase_t* vocbase, std::vector<TRI_voc_cid_t> const& readCollections,
+    std::shared_ptr<V8TransactionContext> transactionContext, 
+    std::vector<TRI_voc_cid_t> const& readCollections,
     std::vector<TRI_voc_cid_t> const& writeCollections,
     CollectionNameResolver const* resolver,
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
@@ -1859,7 +1861,7 @@ static ExplicitTransaction* BeginTransaction(
 
   // Start Transaction to collect all parts of the path
   auto trx = std::make_unique<ExplicitTransaction>(
-      vocbase, readCollections, writeCollections, lockTimeout, waitForSync,
+      transactionContext, readCollections, writeCollections, lockTimeout, waitForSync,
       embed);
 
   int res = trx->begin();
@@ -1903,9 +1905,11 @@ static v8::Handle<v8::Value> PathIdsToV8(
     ExtractCidsFromPath(vocbase, p, readCollections);
     std::vector<TRI_voc_cid_t> writeCollections;
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+  
+    auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
     std::unique_ptr<ExplicitTransaction> trx;
-    trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
+    trx.reset(BeginTransaction(transactionContext, readCollections, writeCollections,
                                resolver, ditches));
     for (uint32_t j = 0; j < vn; ++j) {
       vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches,
@@ -1959,8 +1963,10 @@ static v8::Handle<v8::Value> PathIdsToV8(
     std::vector<TRI_voc_cid_t> writeCollections;
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
+    auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
     std::unique_ptr<ExplicitTransaction> trx;
-    trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
+    trx.reset(BeginTransaction(transactionContext, readCollections, writeCollections,
                                resolver, ditches));
     for (uint32_t j = 0; j < vn; ++j) {
       vertices->Set(j, VertexIdToData(isolate, resolver, trx.get(), ditches,
@@ -2188,10 +2194,10 @@ static void JS_QueryShortestPath(
   std::vector<TRI_voc_cid_t> readCollections;
   std::vector<TRI_voc_cid_t> writeCollections;
 
-  V8ResolverGuard resolverGuard(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   int res = TRI_ERROR_NO_ERROR;
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+  CollectionNameResolver const* resolver = transactionContext->getResolver();
 
   for (auto const& it : edgeCollectionNames) {
     readCollections.emplace_back(resolver->getCollectionIdLocal(it));
@@ -2202,11 +2208,10 @@ static void JS_QueryShortestPath(
 
   // Start the transaction and order ditches
   std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
-
   std::unique_ptr<ExplicitTransaction> trx;
 
   try {
-    trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
+    trx.reset(BeginTransaction(transactionContext, readCollections, writeCollections,
                                resolver, ditches));
   } catch (Exception& e) {
     TRI_V8_THROW_EXCEPTION(e.code());
@@ -2513,10 +2518,10 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::vector<TRI_voc_cid_t> readCollections;
   std::vector<TRI_voc_cid_t> writeCollections;
 
-  V8ResolverGuard resolverGuard(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   int res = TRI_ERROR_NO_ERROR;
-  CollectionNameResolver const* resolver = resolverGuard.getResolver();
+  CollectionNameResolver const* resolver = transactionContext->getResolver();
 
   for (auto const& it : edgeCollectionNames) {
     readCollections.emplace_back(resolver->getCollectionIdLocal(it));
@@ -2526,10 +2531,10 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
-  // Start the transaction
   std::unique_ptr<ExplicitTransaction> trx;
+
   try {
-    trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
+    trx.reset(BeginTransaction(transactionContext, readCollections, writeCollections,
                                resolver, ditches));
   } catch (Exception& e) {
     TRI_V8_THROW_EXCEPTION(e.code());

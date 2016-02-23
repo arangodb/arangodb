@@ -805,7 +805,8 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions& options) {
-  
+ 
+ Logger::flush(); 
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {

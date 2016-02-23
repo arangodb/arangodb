@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
+#include "Basics/Logger.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 
@@ -32,7 +33,7 @@ using namespace arangodb;
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
-    : _vocbase(vocbase), _resolver(nullptr) {}
+    : _vocbase(vocbase), _resolver(nullptr), _ownsResolver(false) {}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
@@ -45,8 +46,14 @@ TransactionContext::~TransactionContext() {
     ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
     // If some external entity is still using the ditch, it is kept!
   }
+
+  if (_ownsResolver) {
+  LOG(INFO) << "deleting resolver " << _resolver;
+    delete _resolver;
+    _resolver = nullptr;
+  }
 }
-  
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
 //////////////////////////////////////////////////////////////////////////////
@@ -92,5 +99,16 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
     return nullptr;
   }
   return (*it).second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a resolver
+////////////////////////////////////////////////////////////////////////////////
+    
+void TransactionContext::createResolver() {
+  TRI_ASSERT(_resolver == nullptr);
+  _resolver = new CollectionNameResolver(_vocbase);
+  _ownsResolver = true;
+  LOG(INFO) << "creating resolver " << _resolver;
 }
 
