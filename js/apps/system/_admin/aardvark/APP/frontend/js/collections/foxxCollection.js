@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, Backbone, alert, $ */
+/*global window, Backbone, $ */
 (function() {
   "use strict";
   window.FoxxCollection = Backbone.Collection.extend({
