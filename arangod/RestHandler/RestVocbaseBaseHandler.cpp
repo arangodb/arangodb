@@ -499,7 +499,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
       --e;
     }
 
-    TRI_voc_rid_t rid;
+    TRI_voc_rid_t rid = 0;
 
     try {
       rid = StringUtils::uint64_check(s, e - s);
