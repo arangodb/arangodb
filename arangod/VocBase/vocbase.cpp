@@ -41,6 +41,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
@@ -785,20 +786,12 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
   for (auto const& name : files) {
     TRI_ASSERT(!name.empty());
 
-    if (!StringUtils::isSuffix(name, "collection-")) {
+    if (!StringUtils::isPrefix(name, "collection-")) {
       // no match, ignore this file
       continue;
     }
 
-    char* filePtr = TRI_Concatenate2File(path, name.c_str());
-
-    if (filePtr == nullptr) {
-      LOG(FATAL) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    std::string file = filePtr;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filePtr);
+    std::string file = FileUtils::buildFilename(path, name);
 
     if (TRI_IsDirectory(file.c_str())) {
       if (!TRI_IsWritable(file.c_str())) {
