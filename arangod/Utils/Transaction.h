@@ -222,12 +222,6 @@ class Transaction {
   int nestingLevel() const { return _nestingLevel; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief opens the declared collections of the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int openCollections();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief begin the transaction
   //////////////////////////////////////////////////////////////////////////////
 
@@ -1100,7 +1094,7 @@ class Transaction {
   /// @brief free transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int freeTransaction() {
+  void freeTransaction() {
     TRI_ASSERT(!isEmbeddedTransaction());
 
     if (_trx != nullptr) {
@@ -1109,8 +1103,6 @@ class Transaction {
       TRI_FreeTransaction(_trx);
       _trx = nullptr;
     }
-
-    return TRI_ERROR_NO_ERROR;
   }
 
  private:

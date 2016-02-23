@@ -128,28 +128,6 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the declared collections of the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::openCollections() {
-  if (_trx == nullptr) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
-  }
-
-  if (_setupState != TRI_ERROR_NO_ERROR) {
-    return _setupState;
-  }
-
-  if (!_isReal) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
-
-  return res;
-}
-  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begin the transaction
 ////////////////////////////////////////////////////////////////////////////////
 

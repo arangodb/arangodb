@@ -27,9 +27,6 @@
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
 
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
 struct TRI_transaction_s;
 struct TRI_vocbase_t;
 
