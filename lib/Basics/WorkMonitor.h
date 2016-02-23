@@ -44,6 +44,7 @@ class Builder;
 class WorkMonitor : public Thread {
  public:
   WorkMonitor();
+  ~WorkMonitor() {shutdown();}
 
  public:
   //////////////////////////////////////////////////////////////////////////////

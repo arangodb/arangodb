@@ -175,6 +175,7 @@ class CollectorThread : public Thread {
 
  public:
   CollectorThread(LogfileManager*, TRI_server_t*);
+  ~CollectorThread() { shutdown(); }
 
  public:
   //////////////////////////////////////////////////////////////////////////////

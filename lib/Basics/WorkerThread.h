@@ -38,7 +38,7 @@ class WorkerThread : public Thread {
   WorkerThread(ThreadPool* pool)
       : Thread(pool->name()), _pool(pool), _status(0) {}
 
-  ~WorkerThread() {}
+  ~WorkerThread() {shutdown();}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the worker thread

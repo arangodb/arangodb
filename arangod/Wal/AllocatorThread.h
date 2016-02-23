@@ -37,16 +37,12 @@ namespace wal {
 class LogfileManager;
 
 class AllocatorThread : public Thread {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief AllocatorThread
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
   AllocatorThread(AllocatorThread const&) = delete;
   AllocatorThread& operator=(AllocatorThread const&) = delete;
 
  public:
   explicit AllocatorThread(LogfileManager*);
+  ~AllocatorThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;

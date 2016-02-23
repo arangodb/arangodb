@@ -62,7 +62,7 @@ class Thread {
 #error OS not supported
 #endif
 
-  enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED };
+  enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED, DETACHED };
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -151,7 +151,7 @@ class Thread {
   /// @brief called from the destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  bool shutdown(bool waitForStopped);
+  void shutdown();
 
  public:
   //////////////////////////////////////////////////////////////////////////////

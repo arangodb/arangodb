@@ -714,6 +714,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
 class LogThread : public Thread {
  public:
   explicit LogThread(std::string const& name) : Thread(name) {}
+  ~LogThread() {shutdown();}
 
  public:
   void run();

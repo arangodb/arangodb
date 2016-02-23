@@ -120,6 +120,8 @@ class V8GcThread : public Thread {
         _applicationV8(applicationV8),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
+  ~V8GcThread() { shutdown(); }
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collect garbage in an endless loop (main functon of GC thread)
@@ -457,7 +459,7 @@ void ApplicationV8::exitContext(V8Context* context) {
     TRI_ASSERT(vocbase != nullptr);
     // release last recently used vocbase
     TRI_ReleaseVocBase(vocbase);
-  
+
     // check for cancelation requests
     canceled = v8g->_canceled;
     v8g->_canceled = false;
@@ -489,10 +491,11 @@ void ApplicationV8::exitContext(V8Context* context) {
     }
 
     TRI_GET_GLOBALS();
-    // reset the context data. garbage collection should be able to run without it
-    v8g->_query              = nullptr;
-    v8g->_vocbase            = nullptr;
-    v8g->_allowUseDatabase   = false;
+    // reset the context data. garbage collection should be able to run without
+    // it
+    v8g->_query = nullptr;
+    v8g->_vocbase = nullptr;
+    v8g->_allowUseDatabase = false;
 
     // now really exit
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -730,7 +733,8 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
         for (auto& p : theLists->_databases) {
           TRI_vocbase_t* vocbase = p.second;
 
-          // special check script to be run just once in first thread (not in all)
+          // special check script to be run just once in first thread (not in
+          // all)
           // but for all databases
           v8::HandleScope scope(isolate);
 
@@ -738,7 +742,8 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
           args->Set(TRI_V8_ASCII_STRING("upgrade"),
                     v8::Boolean::New(isolate, perform));
 
-          localContext->Global()->Set(TRI_V8_ASCII_STRING("UPGRADE_ARGS"), args);
+          localContext->Global()->Set(TRI_V8_ASCII_STRING("UPGRADE_ARGS"),
+                                      args);
 
           bool ok = TRI_UpgradeDatabase(vocbase, &_startupLoader, localContext);
 
@@ -748,13 +753,14 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
               localContext->Exit();
               if (perform) {
                 LOG(FATAL) << "Database '" << vocbase->_name
-                          << "' upgrade failed. Please inspect the logs from "
+                           << "' upgrade failed. Please inspect the logs from "
                               "the upgrade procedure";
                 FATAL_ERROR_EXIT();
               } else {
-                LOG(FATAL) << "Database '" << vocbase->_name
-                          << "' needs upgrade. Please start the server with the "
-                              "--upgrade option";
+                LOG(FATAL)
+                    << "Database '" << vocbase->_name
+                    << "' needs upgrade. Please start the server with the "
+                       "--upgrade option";
                 FATAL_ERROR_EXIT();
               }
             } else {
@@ -762,7 +768,8 @@ void ApplicationV8::upgradeDatabase(bool skip, bool perform) {
               FATAL_ERROR_EXIT();
             }
 
-            LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
+            LOG(DEBUG) << "database '" << vocbase->_name
+                       << "' init/upgrade done";
           }
         }
       }
@@ -1235,17 +1242,17 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
         // don't initialize dispatcher if there is no scheduler (server started
         // with --no-server option)
         TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler,
-                            _dispatcher, this);
+                             _dispatcher, this);
       }
 
       if (useActions) {
         TRI_InitV8Actions(isolate, localContext, _vocbase, this);
       }
 
-      std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" +
-                                TRI_DIR_SEPARATOR_STR + "modules;" +
-                                _startupPath + TRI_DIR_SEPARATOR_STR + "common" +
-                                TRI_DIR_SEPARATOR_STR + "modules;" +
+      std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR +
+                                "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                                _startupPath + TRI_DIR_SEPARATOR_STR +
+                                "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
                                 _startupPath + TRI_DIR_SEPARATOR_STR + "node";
 
       TRI_InitV8Buffer(isolate, localContext);
@@ -1258,22 +1265,22 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
         v8::HandleScope scope(isolate);
 
         TRI_AddGlobalVariableVocbase(isolate, localContext,
-                                    TRI_V8_ASCII_STRING("APP_PATH"),
-                                    TRI_V8_STD_STRING(_appPath));
+                                     TRI_V8_ASCII_STRING("APP_PATH"),
+                                     TRI_V8_STD_STRING(_appPath));
         TRI_AddGlobalVariableVocbase(
             isolate, localContext, TRI_V8_ASCII_STRING("FE_VERSION_CHECK"),
             v8::Boolean::New(isolate, _frontendVersionCheck));
 
         for (auto j : _definedBooleans) {
           localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
-                                          v8::Boolean::New(isolate, j.second),
-                                          v8::ReadOnly);
+                                           v8::Boolean::New(isolate, j.second),
+                                           v8::ReadOnly);
         }
 
         for (auto j : _definedDoubles) {
           localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
-                                          v8::Number::New(isolate, j.second),
-                                          v8::ReadOnly);
+                                           v8::Number::New(isolate, j.second),
+                                           v8::ReadOnly);
         }
       }
 
@@ -1284,20 +1291,19 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
             LOG(TRACE) << "loaded JavaScript file '" << file << "'";
             break;
           case JSLoader::eFailLoad:
-            LOG(FATAL) << "cannot load JavaScript file '" << file
-                      << "'";
+            LOG(FATAL) << "cannot load JavaScript file '" << file << "'";
             FATAL_ERROR_EXIT();
             break;
           case JSLoader::eFailExecute:
-            LOG(FATAL) << "error during execution of JavaScript file '"
-                      << file << "'";
+            LOG(FATAL) << "error during execution of JavaScript file '" << file
+                       << "'";
             FATAL_ERROR_EXIT();
             break;
         }
       }
       TRI_GET_GLOBALS();
       hasActiveExternals = v8g->hasActiveExternals();
-    } 
+    }
     // and return from the context
     localContext->Exit();
   }
@@ -1353,11 +1359,12 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
       // load server startup file
       switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
         case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str() << "'";
+          LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str()
+                     << "'";
           break;
         case JSLoader::eFailLoad:
           LOG(FATAL) << "cannot load JavaScript utilities from file '"
-                    << startupFile.c_str() << "'";
+                     << startupFile.c_str() << "'";
           FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
@@ -1407,7 +1414,7 @@ void ApplicationV8::shutdownV8Instance(size_t i) {
         int tries = 0;
 
         while (tries++ < 10 &&
-              TRI_RunGarbageCollectionV8(isolate, availableTime)) {
+               TRI_RunGarbageCollectionV8(isolate, availableTime)) {
           if (tries > 3) {
             LOG(WARN) << "waiting for garbage v8 collection to end";
           }
