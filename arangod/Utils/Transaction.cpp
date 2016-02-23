@@ -342,6 +342,87 @@ int Transaction::any(TRI_transaction_collection_t* trxCollection,
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
 
+OperationResult Transaction::any(std::string const& collectionName) {
+  return any(name, 0, 1, 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit.
+/// The resualt guarantees that all documents are contained exactly once
+/// as long as the collection is not modified.
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::any(std::string const& collectionName uint64_t skip,
+                                 uint64_t limit) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches documents in a collection in random order, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::anyCoordinator(std::string const& collectionName,
+                                            uint64_t skip, uint64_t limit) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches documents in a collection in random order, local
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::anyLocal(std::string const& collectionName,
+                                      uint64_t skip, uint64_t limit) {
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  
+  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip, limit, 1000, false);
+
+  while (cursor.hasMore()) {
+    int res = cursor.getMore();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+  
+    VPackSlice docs = cursor.slice();
+    VPackArrayIterator it(docs);
+    while (it.valid()) {
+      resultBuilder.add(it.value());
+      it.next();
+    }
+  }
+
+  resultBuilder.close();
+
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read any (random) document
+/// DEPRECATED
+////////////////////////////////////////////////////////////////////////////////
+
 int Transaction::any(TRI_transaction_collection_t* trxCollection,
                      TRI_doc_mptr_copy_t* mptr) {
   TRI_ASSERT(mptr != nullptr);
@@ -1351,7 +1432,7 @@ OperationResult Transaction::allCoordinator(std::string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches all documents in a collection, coordinator
+/// @brief fetches all documents in a collection, local
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::allLocal(std::string const& collectionName,

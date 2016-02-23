@@ -324,6 +324,20 @@ class Transaction {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read many documents, using skip and limit in arbitrary order
+  /// The result guarantees that all documents are contained exactly once
+  /// as long as the collection is not modified.
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&, uint64_t, uint64_t);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read any (random) document
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
@@ -797,7 +811,13 @@ class Transaction {
   OperationResult allLocal(std::string const& collectionName,
                            uint64_t skip, uint64_t limit,
                            OperationOptions& options);
-  
+
+  OperationResult anyCoordinator(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit);
+
+  OperationResult anyLocal(std::string const& collectionName, uint64_t skip,
+                           uint64_t limit);
+
   OperationResult truncateCoordinator(std::string const& collectionName,
                                       OperationOptions& options);
   
