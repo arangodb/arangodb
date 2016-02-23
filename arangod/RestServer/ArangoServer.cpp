@@ -826,6 +826,7 @@ void ArangoServer::buildApplicationServer() {
 }
 
 int ArangoServer::startupServer() {
+  InitializeWorkMonitor();
   TRI_InitializeStatistics();
 
   OperationMode::server_operation_mode_e mode =
@@ -1173,12 +1174,6 @@ int ArangoServer::startupServer() {
     TRI_EnableDeadlockDetectionDatabasesServer(_server);
   }
 
-
-  // .............................................................................
-  // start the work monitor
-  // .............................................................................
-
-  InitializeWorkMonitor();
 
   // .............................................................................
   // start the main event loop
