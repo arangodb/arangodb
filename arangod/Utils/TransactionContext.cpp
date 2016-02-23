@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
-#include "Basics/Logger.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 
@@ -48,7 +47,6 @@ TransactionContext::~TransactionContext() {
   }
 
   if (_ownsResolver) {
-  LOG(INFO) << "deleting resolver " << _resolver;
     delete _resolver;
     _resolver = nullptr;
   }
@@ -109,6 +107,5 @@ void TransactionContext::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
-  LOG(INFO) << "creating resolver " << _resolver;
 }
 

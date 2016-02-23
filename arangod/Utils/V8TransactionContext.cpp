@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TransactionContext.h"
-#include "Basics/Logger.h"
 #include "VocBase/transaction.h"
 
 #include "V8/v8-globals.h"
