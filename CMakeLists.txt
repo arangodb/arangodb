@@ -362,14 +362,14 @@ if (USE_RELATIVE)
   # resources
   set(TRI_RESOURCEDIR "resources")
   # bin dir ----------------------------
-  set(TRI_BINDIR_INSTALL "bin")
+  set(ARANGODB_INSTALL_BIN "bin")
   set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   # MS stuff ---------------------------
   if (MSVC)
-    set(TRI_SBINDIR_INSTALL "bin")
+    set(ARANGODB_INSTALL_SBIN "bin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   else ()
-    set(TRI_SBINDIR_INSTALL "sbin")
+    set(ARANGODB_INSTALL_SBIN "sbin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
   add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
@@ -417,18 +417,18 @@ else ()
   set(TRI_RESOURCEDIR "resources")
   # binaries
   if (MSVC)
-    set(TRI_BINDIR_INSTALL "bin")
+    set(ARANGODB_INSTALL_BIN "bin")
     set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   else ()
-    set(TRI_BINDIR_INSTALL "bin")
+    set(ARANGODB_INSTALL_BIN "bin")
     set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   endif ()
   # sbinaries
   if (MSVC)
-    set(TRI_SBINDIR_INSTALL "bin")
+    set(ARANGODB_INSTALL_SBIN "bin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   else ()
-    set(TRI_SBINDIR_INSTALL "sbin")
+    set(ARANGODB_INSTALL_SBIN "sbin")
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
 endif (USE_RELATIVE)
@@ -457,7 +457,7 @@ endif ()
 # etcd -------------------------------------------------------------------------
 if (DARWIN)
   install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango DESTINATION
-    ${TRI_BINDIR_INSTALL}) 
+    ${ARANGODB_INSTALL_BIN}) 
 endif ()
 
 # 3rd party libraries
@@ -628,15 +628,52 @@ add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 #endif ()
 
 # Boost ------------------------------------------------------------------------
-find_package(Boost 1.48 COMPONENTS unit_test_framework)
-if (${Boost_FOUND})
-  include_directories(${Boost_INCLUDE_DIRS})
-  add_definitions(-DBoost_MAJOR_VERSION=${Boost_MAJOR_VERSION})
-  add_definitions(-DBoost_MINOR_VERSION=${Boost_MINOR_VERSION})
-  link_directories (${BOOST_LIBRARYDIR})
+
+set(Boost_USE_MULTITHREADED ON)
+set(BOOST_MINIMUM_VERSION 1.58)
+
+find_package(Boost ${BOOST_MINIMUM_VERSION} COMPONENTS unit_test_framework)
+
+if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
+  option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
 else ()
-  message ("Boost unit test framework not found. Unit tests are disabled.")
+  option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
 endif ()
+
+if (NOT USE_BOOST_UNITTESTS)
+  message ("BOOST unit tests are disabled")
+endif ()
+
+find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIRS})
+link_directories (${BOOST_LIBRARYDIR})
+
+set(BOOST_VERSION
+  "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}"
+  CACHE INTERNAL
+  "Boost: Version"
+  FORCE
+)
+
+add_definitions(-DBOOST_VERSION=\"${BOOST_VERSION}\")
+
+include_directories(.)
+
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+
+include_directories(${ICU_INCLUDE_DIR})
+include_directories(${V8_INCLUDE_DIR})
+
+include_directories(.)
+include_directories(${PROJECT_SOURCE_DIR}/lib)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+
+include_directories(../3rdParty/velocypack/include)
+include_directories(${V8_INCLUDE_DIR})
 
 # Tcmalloc ---------------------------------------------------------------------
 if (USE_TCMALLOC)
@@ -858,14 +895,14 @@ if (MSVC)
   # etcd
   if (CMAKE_CL_64)
     install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
-            DESTINATION ${TRI_SBINDIR_INSTALL})
+            DESTINATION ${ARANGODB_INSTALL_SBIN})
 
     install(FILES WindowsLibraries/64/icudtl.dat
             DESTINATION share/arangodb
             RENAME icudt54l.dat)
   else ()
     install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
-            DESTINATION ${TRI_SBINDIR_INSTALL})
+            DESTINATION ${ARANGODB_INSTALL_SBIN})
 
     install(FILES WindowsLibraries/32/icudtl.dat
             DESTINATION share/arangodb
@@ -897,3 +934,64 @@ add_custom_target (love
 include(CPack)
 
 
+################################################################################
+### @brief install client-side JavaScript files
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
+  DESTINATION share/arangodb/js
+  FILES_MATCHING PATTERN "*.js"
+  REGEX "^.*/common/test-data$" EXCLUDE
+  REGEX "^.*/common/tests$" EXCLUDE
+  REGEX "^.*/client/tests$" EXCLUDE)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:
+
+################################################################################
+### @brief install server-side JavaScript files
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/js
+  DESTINATION share/arangodb)
+
+################################################################################
+### @brief install log directory
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
+  DESTINATION ${VARDIR_INSTALL}/log)
+
+################################################################################
+### @brief install database directory
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
+  DESTINATION ${VARDIR_INSTALL}/lib)
+
+################################################################################
+### @brief install apps directory
+################################################################################
+
+install(
+  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps
+  DESTINATION ${VARDIR_INSTALL}/lib)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*- "
+## End:

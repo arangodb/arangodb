@@ -2,12 +2,9 @@
 
 include_directories(.)
 
-include_directories(${ICU_INCLUDE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(${V8_INCLUDE_DIR})
+################################################################################
+## BISON/FLEX
+################################################################################
 
 # note that we check-in the generated FLEX/BISON files, therefore they are
 # generate inside the source tree
@@ -67,7 +64,7 @@ else ()
   )
 endif ()
 
-set(LIB_ARANGO_CONSOLE
+set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
@@ -97,7 +94,7 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
-  ${LIB_ARANGO_CONSOLE}
+  ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_VPACK}
   Basics/AttributeNameParser.cpp
   Basics/Barrier.cpp
