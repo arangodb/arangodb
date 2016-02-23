@@ -182,6 +182,7 @@ add_executable(
     Rest/AnyServer.cpp
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestAgencyHandler.cpp 
+    RestHandler/RestAgencyPrivHandler.cpp 
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
     RestHandler/RestDebugHandler.cpp

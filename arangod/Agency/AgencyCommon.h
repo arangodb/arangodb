@@ -48,6 +48,8 @@ namespace consensus {
     APPRENTICE = -1, FOLLOWER, CANDIDATE, LEADER
   };
 
+  typedef std::shared_ptr<arango::velocypack::Builder> agency_io_t;
+
   /**
    * @brief Agent configuration
    */
@@ -55,11 +57,13 @@ namespace consensus {
     T min_ping;
     T max_ping;
     T election_timeout;
+    T append_entries_retry_interval;
     id_t id;
     std::vector<std::string> end_points;
     Config () : min_ping(.15), max_ping(.3) {};
-    Config (uint32_t i, T min_p, T max_p, std::vector<std::string>& end_p) :
-      id(i), min_ping(min_p), max_ping(max_p), end_points(end_p) {}
+    Config (uint32_t i, T min_p, T max_p, T appent_i,
+      std::vector<std::string>& end_p) : id(i), min_ping(min_p), max_ping(max_p),
+        append_entries_retry_interval(appent_i), end_points(end_p) {}
 /*    void print (arangodb::LoggerStream& l) const {
       l << "Config: "
         << "min_ping(" << min_ping << ")"
@@ -70,20 +74,28 @@ namespace consensus {
     inline size_t size() const {return end_points.size();}
   };
   
-  using config_t = Config<double>;                   // Configuration type
+  using config_t = Config<double>;                      // Configuration type
   
-  struct  constituent_t {                            // Constituent type
+  struct  constituent_t {                               // Constituent type
     id_t id;
     std::string endpoint;
   };
-  typedef std::vector<constituent_t> constituency_t; // Constituency type
-  typedef uint32_t state_t;                          // State type
-  typedef std::chrono::duration<double> duration_t;  // Duration type
 
+  typedef std::vector<constituent_t>    constituency_t; // Constituency type
+  typedef uint32_t                      state_t;        // State type
+  typedef std::chrono::duration<double> duration_t;     // Duration type
+
+  struct query_ret_t {
+    bool accepted;
+    id_t redirect;
+    agency_io_t result;
+    QueryResult () (bool a, redirect_to id, agency_io_t result) : accepted(a),
+      redirect_to(id), result(res) {}
+  };
   
   }}
 
-arangodb::LoggerStream& operator<< (
+inline arangodb::LoggerStream& operator<< (
   arangodb::LoggerStream& l, arangodb::consensus::config_t const& c) {
   
 }

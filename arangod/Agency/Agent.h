@@ -94,7 +94,17 @@ namespace consensus {
      * @brief Leader ID
      */
     id_t leaderID () const;
-    
+
+    /**
+     * @brief Attempt write
+     */
+    query_ret_t write (agency_io_t) const;
+
+    /**
+     * @brief Read from agency
+     */
+    query_ret_t read (std::shared_ptr<agency_io_t>) const;
+
   private:
     Constituent _constituent; /**< @brief Leader election delegate */
     Log         _log;         /**< @brief Log replica              */

@@ -52,58 +52,63 @@ RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
 
 bool RestAgencyHandler::isDirect() const { return false; }
 
+inline HttpHandler::status_t RestAgencyHandler::reportErrorEmptyRequest ()
+  const {
+  LOG(WARN) << "Empty request to public agency interface.";
+  generateError(HttpResponse::NOT_FOUND,404);
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices () {
+  LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
+  generateError(HttpResponse::NOT_FOUND,404);
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+inline HttpHandler::status_t RestAgencyHandler::unknownMethod () {
+  LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
+  generateError(HttpResponse::NOT_FOUND,404);
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
+  LOG(WARN) << "Redirecting request to " << leader_id;
+  generateError(HttpResponse::NOT_FOUND,404);
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
 HttpHandler::status_t RestAgencyHandler::execute() {
+
   try {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
+    std::shared_ptr<VPackBuilder> result;
+    result->add(VPackValue(VPackValueType::Object));
     arangodb::velocypack::Options opts;
 
     // Empty request
     if (_request->suffix().size() == 0) {
-    	LOG(WARN) << "Empty request to agency. Must ask for vote, log or "
-    			"configure";
-    	generateError(HttpResponse::NOT_FOUND,404);
-    	return status_t(HANDLER_DONE);
+      return reportErrorEmptyRequest();
     } else if (_request->suffix().size() > 1) { // path size >= 2
-    	LOG(WARN) << "Agency handles a single suffix: vote, log or configure";
-    	generateError(HttpResponse::NOT_FOUND,404);
-    	return status_t(HANDLER_DONE);
+      return reportTooManySuffices();
     } else {
-    	if (_request->suffix()[0].compare("vote") == 0) { //vote4me
-    		LOG(WARN) << "Vote request";
-    		bool found;
-    		char const* termStr = _request->value("term", found);
-    		if (!found) {							              // For now: don't like this
-    			LOG(WARN) << "No term specified";     // should be handled by
-    			generateError(HttpResponse::BAD,400); // Agent rather than Rest
-    			return status_t(HANDLER_DONE);        // handler.
-    		}
-    		char const* idStr = _request->value("id", found);
-    		if (!found) {
-    			LOG(WARN) << "No id specified";
-    			generateError(HttpResponse::BAD,400);
-    			return status_t(HANDLER_DONE);
-    		}
-        if (_agent->vote(std::stoul(idStr), std::stoul(termStr))) {
-          result.add("vote", VPackValue("YES"));
-        } else {
-          result.add("vote", VPackValue("NO"));
-        }
-
-    	} else if (_request->suffix()[0].compare("log") == 0) { // log replication
-    	  if (_agent->log(_request->toVelocyPack(&opts))>0);
-          generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+    	if     (_request->suffix()[0] == "write") { // write to state machine
+        write_ret_t w = _agent.write(_request->toVelocyPack());
+        if (!w.accepted)
+          redirect(w.redirect_to);
+    	} else (_request->suffix()[0] ==  "read") { // read from state machine
+        read_ret_t r = _agent.read(_request->toVelocyPack());
+        if (!r.accepted)
+          redirect(r.redirect_to);
+        result = r.result;
     	} else {
-    	  generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
-    	  return status_t(HANDLER_DONE);
+        return reportUnknownMethod();
     	}
     }
 
-    result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    result->close();
+    generateResult(result->slice());
+
   } catch (...) {
     // Ignore this error
   }
-  return status_t(HANDLER_DONE);
+  return HttpHandler::status_t(HANDLER_DONE);
 }

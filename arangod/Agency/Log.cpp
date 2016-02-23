@@ -23,6 +23,9 @@
 
 #include "Log.h"
 
+#include <chrono>
+#include <thread>
+
 namespace arangodb {
 namespace consensus {
 
@@ -38,16 +41,16 @@ void Log::respHandler (index_t idx) {
   
 }
 
-  virtual bool Log::operator()(ClusterCommResult*) {
+bool Log::operator()(ClusterCommResult*) {
   
 };
 
-template<> Log::id_t Log::log (
+template<> id_t Log::log (
   std::shared_ptr<arangodb::velocypack::Builder> const& builder) {
 
   // Write transaction 1ST!
   if (_state.write (builder)) {
-
+/*
     // Tell everyone else
     std::string body = builder.toString();
     arangodb::velocypack::Options opts;
@@ -66,6 +69,7 @@ template<> Log::id_t Log::log (
         _timeout, true);
         LOG(WARN) << _agent->config().end_points[i];
       }
+*/
     }
   
   return 0;
@@ -73,7 +77,9 @@ template<> Log::id_t Log::log (
 
 
 void Log::run() {
-  
+  while (true) {
+    std::this_thread::sleep_for(duration_t(1.0));
+  }
 }
   
 

@@ -38,8 +38,11 @@ class Task;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server with agency
 ////////////////////////////////////////////////////////////////////////////////
+using agent_t = consensus::Agent;
+using config_t = consensus::Config<double>;
 
-    class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
+  
+class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
  private:
   ApplicationAgency(ApplicationAgency const&);
   ApplicationAgency& operator=(ApplicationAgency const&);
@@ -88,34 +91,27 @@ class Task;
   
  public:
 
-  void setupOptions(std::map<std::string, arangodb::basics::ProgramOptionsDescription>&);
-
+  void setupOptions(std::map<std::string,
+         arangodb::basics::ProgramOptionsDescription>&);
 
   bool prepare();
-
-
   bool start();
-
-
   bool open();
-
-
   void close();
-
-
   void stop();
 
-  consensus::Agent* agent() const;
-
+  agent_t* agent() const;
   
  private:
 
   uint64_t _size; /**< @brief: agency size (default: 5)*/
   double   _min_election_timeout; /**< @brief: min election timeout */
   double   _max_election_timeout; /**< @brief: max election timeout */
-      double   _election_call_rate_mul; /**< @brief: */
-  std::vector<std::string> _agency_endpoints;
-  std::unique_ptr<consensus::Agent> _agent;
+  double   _election_call_rate_mul; /**< @brief: */
+  double   _append_entries_retry_interval;
+               /**< @brief interval between retry to slaves*/
+  std::vector<std::string> _agency_endpoints; /**< @brief agency adresses */
+  std::unique_ptr<agent_t> _agent;
   uint32_t _agent_id;
 
 };

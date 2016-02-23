@@ -58,7 +58,7 @@ public:
   /**
    * @brief Default constructor
    */
-    Log ();
+  Log ();
 
   /**
    * @brief Default Destructor
@@ -70,7 +70,7 @@ public:
   /**
    * @brief Log
    */
-  template<typename T> ret_t log (T const&);
+  template<typename T> id_t log (T const&);
 
   /**
    * @brief Call back for log results from slaves

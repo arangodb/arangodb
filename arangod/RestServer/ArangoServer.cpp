@@ -58,6 +58,7 @@
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAgencyHandler.h"
+#include "RestHandler/RestAgencyPrivHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -130,8 +131,13 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 
   // add "/agency" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
-                            RestHandlerCreator<RestAgencyHandler>::createData<
-					          consensus::Agent*>, _applicationAgency->agent());
+      RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
+      _applicationAgency->agent());
+
+  // add "/agency" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
+      RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
+      _applicationAgency->agent());
 
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,

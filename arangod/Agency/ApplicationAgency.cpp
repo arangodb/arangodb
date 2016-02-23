@@ -36,7 +36,8 @@ using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
   : ApplicationFeature("agency"), _size(5), _min_election_timeout(.5),
-	  _max_election_timeout(1.), _election_call_rate_mul(.75) {
+	  _max_election_timeout(1.), _election_call_rate_mul(.75),
+    _append_entries_retry_interval(1.0) {
   
 }
 
@@ -59,7 +60,10 @@ void ApplicationAgency::setupOptions(
 		("agency.endpoint", &_agency_endpoints, "Agency endpoints")
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
-     "to the minumum election timeout");
+     "to the minumum election timeout")
+    ("agency.append_entries_retry_interval [s]", &_append_entries_retry_interval,
+     "Interval at which appendEntries are attempted on unresponsive slaves"
+     "in seconds");
 }
 
 
@@ -85,9 +89,9 @@ bool ApplicationAgency::prepare() {
     LOG(WARN)  << "agency.election-timeout-max should probably be chosen longer!";
   }
     
-  _agent = std::unique_ptr<consensus::Agent>(new consensus::Agent(
-     consensus::Config<double>(_agent_id, _min_election_timeout,
-       _max_election_timeout, _agency_endpoints)));
+  _agent = std::unique_ptr<agent_t>(new agent_t(config_t
+     (_agent_id, _min_election_timeout, _max_election_timeout,
+      _append_entries_retry_interval, _agency_endpoints)));
   
   return true;
   
@@ -119,7 +123,7 @@ void ApplicationAgency::stop() {
   }
 }
 
-arangodb::consensus::Agent* ApplicationAgency::agent () const {
+agent_t* ApplicationAgency::agent () const {
   return _agent.get();
 }
 

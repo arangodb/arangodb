@@ -69,11 +69,17 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
   return l;
 }
 
-template<> Log::ret_t Agent::log (std::shared_ptr<Builder> const& builder) {
-  if (_constituent.leading())
-    return _log.log(builder);
-  else
-    return _constituent.leaderID();
+write_ret_t Agent::write (std::shared_ptr<arangodb::velocypack::Builder> builder) const {
+  if (_constituent.leader()) {     // We are leading
+    return _log.write (builder);
+  } else {                         // We are not
+    return write_ret_t(false,_constituent.leaderID());
+  }
+}
+
+std::shared_ptr<arangodb::velocypack::Builder> builder
+  Agent::read (std::shared_ptr<arangodb::velocypack::Builder> builder) const {
+  return builder;
 }
 
 }}

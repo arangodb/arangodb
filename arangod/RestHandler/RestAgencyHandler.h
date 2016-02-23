@@ -30,7 +30,7 @@
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
+/// @brief REST handler for outside calls to agency (write & read)
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAgencyHandler : public arangodb::RestBaseHandler {
@@ -44,6 +44,10 @@ class RestAgencyHandler : public arangodb::RestBaseHandler {
   status_t execute() override;
 
  private:
+
+  status_t reportErrorEmptyRequest() ;
+  status_t reportTooManySuffices() ;
+  status_t unknownMethod() ; 
 
   consensus::Agent* _agent;
 

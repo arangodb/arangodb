@@ -22,14 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
+#include "Cluster/ClusterComm.h"
 
 using namespace arangodb::consensus;
 
 State::State() {}
 State::~State() {}
 
-void State::write (store_t const&) {
+bool State::write (store_t const&) {
 
+  /*
   std::string body;
   arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -56,12 +58,13 @@ void State::write (store_t const&) {
         _votes[i] = (body->slice().get("vote").isEqualString("TRUE")); // Record vote
       }
     }
-  }
+    }*/
+  return OK;
   
 };
 
 store_t State::get (std::string const&) const {
-
+/*
   std::string body;
   arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -89,6 +92,7 @@ store_t State::get (std::string const&) const {
       }
     }
   }
+*/
 };
 
 
