@@ -250,8 +250,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates document not found error message, no transaction info
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocumentNotFound(std::string const& collectionName,
-                                TRI_voc_key_t key) {
+  void generateDocumentNotFound(std::string const&,
+                                TRI_voc_key_t) {
     generateError(rest::HttpResponse::NOT_FOUND,
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
