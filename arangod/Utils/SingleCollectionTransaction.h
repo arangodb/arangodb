@@ -128,23 +128,18 @@ class SingleCollectionTransaction : public Transaction {
   /// is called in two different ways
   //////////////////////////////////////////////////////////////////////////////
 
-  inline arangodb::DocumentDitch* ditch() {
-    TRI_transaction_collection_t* trxCollection = this->trxCollection();
-    TRI_ASSERT(trxCollection->_ditch != nullptr);
-
-    return trxCollection->_ditch;
+  inline arangodb::DocumentDitch* ditch() const {
+    return this->_transactionContext->ditch(_cid);
   }
 
-  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) { return ditch(); }
+  inline arangodb::DocumentDitch* ditch(TRI_voc_cid_t) const { return ditch(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a ditch is available for a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline bool hasDitch() {
-    TRI_transaction_collection_t* trxCollection = this->trxCollection();
-
-    return (trxCollection->_ditch != nullptr);
+  inline bool hasDitch() const {
+    return (ditch() != nullptr);
   }
 
   //////////////////////////////////////////////////////////////////////////////

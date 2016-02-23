@@ -258,6 +258,7 @@ add_executable(
     Utils/ShapedJsonTransformer.cpp
     Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
+    Utils/TransactionContext.cpp
     Utils/V8TransactionContext.cpp
     Utils/WorkMonitorArangod.cpp
     V8Server/ApplicationV8.cpp

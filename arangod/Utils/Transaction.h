@@ -272,16 +272,7 @@ class Transaction {
         trxCollection->_collection->_collection;
     TRI_ASSERT(document != nullptr);
 
-    if (trxCollection->_ditch == nullptr) {
-      trxCollection->_ditch =
-          document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
-    } else {
-      // tell everyone else this ditch is still in use,
-      // at least until the transaction is over
-      trxCollection->_ditch->setUsedByTransaction();
-    }
-
-    return trxCollection->_ditch;
+    return _transactionContext->orderDitch(document);
   }
   
   //////////////////////////////////////////////////////////////////////////////

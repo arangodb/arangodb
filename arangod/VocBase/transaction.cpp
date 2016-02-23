@@ -301,7 +301,6 @@ static TRI_transaction_collection_t* CreateCollection(
   trxCollection->_accessType = accessType;
   trxCollection->_nestingLevel = nestingLevel;
   trxCollection->_collection = nullptr;
-  trxCollection->_ditch = nullptr;
   trxCollection->_operations = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_lockType = TRI_TRANSACTION_NONE;
@@ -319,22 +318,6 @@ static void FreeCollection(TRI_transaction_collection_t* trxCollection) {
   TRI_ASSERT(trxCollection != nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an unused ditch if it exists
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeDitch(TRI_transaction_collection_t* trxCollection) {
-  auto ditch = trxCollection->_ditch;
-
-  if (ditch != nullptr) {
-    // we're done with this ditch
-    ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
-    // If some external entity is still using the ditch, it is kept!
-
-    trxCollection->_ditch = nullptr;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,7 +790,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
     auto trxCollection = static_cast<TRI_transaction_collection_t*>(
         TRI_AtVectorPointer(&trx->_collections, i));
 
-    FreeDitch(trxCollection);
     FreeCollection(trxCollection);
   }
 

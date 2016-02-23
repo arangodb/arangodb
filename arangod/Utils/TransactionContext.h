@@ -26,11 +26,14 @@
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/voc-types.h"
 
+struct TRI_document_collection_t;
 struct TRI_transaction_s;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class DocumentDitch;
 
 class TransactionContext {
  public:
@@ -42,14 +45,14 @@ class TransactionContext {
   /// @brief create the context
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionContext(TRI_vocbase_t* vocbase) : _vocbase(vocbase), _resolver(nullptr) {}
+  explicit TransactionContext(TRI_vocbase_t* vocbase);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~TransactionContext() = default;
+  virtual ~TransactionContext();
 
  public:
   
@@ -58,6 +61,20 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* vocbase() const { return _vocbase; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief order a document ditch for the collection
+  /// this will create one if none exists
+  //////////////////////////////////////////////////////////////////////////////
+
+  DocumentDitch* orderDitch(TRI_document_collection_t*);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the ditch for a collection
+  /// this will return a nullptr if no ditch exists
+  //////////////////////////////////////////////////////////////////////////////
+  
+  DocumentDitch* ditch(TRI_voc_cid_t) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -93,7 +110,9 @@ class TransactionContext {
   
   TRI_vocbase_t* _vocbase; 
   
-  arangodb::CollectionNameResolver const* _resolver;
+  CollectionNameResolver const* _resolver;
+  
+  std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
 };
 }
 
