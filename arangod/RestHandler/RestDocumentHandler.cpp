@@ -122,8 +122,8 @@ bool RestDocumentHandler::createDocument() {
   */
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -264,8 +264,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -376,8 +376,8 @@ bool RestDocumentHandler::readAllDocuments() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection, TRI_TRANSACTION_READ);
 
   std::vector<std::string> ids;
 
@@ -568,8 +568,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -708,8 +708,8 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          _vocbase, collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction

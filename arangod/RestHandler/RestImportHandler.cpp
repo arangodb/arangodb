@@ -190,7 +190,7 @@ std::string RestImportHandler::buildParseError(size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument(
-    RestImportTransaction& trx, RestImportResult& result, char const* lineStart,
+    SingleCollectionTransaction& trx, RestImportResult& result, char const* lineStart,
     VPackSlice const& slice, std::string const& collectionName,
     bool isEdgeCollection, OperationOptions const& opOptions, size_t i) {
 
@@ -372,8 +372,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase,
-                            collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase,
+                            collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -625,8 +625,8 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase,
-                            collection);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(), _vocbase,
+                            collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction

@@ -247,7 +247,7 @@ class CollectorThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void processCollectionMarker(
-      arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
+      arangodb::SingleCollectionTransaction&,
       TRI_document_collection_t*, CollectorCache*, CollectorOperation const&);
 
   //////////////////////////////////////////////////////////////////////////////

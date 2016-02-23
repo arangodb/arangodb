@@ -741,9 +741,9 @@ static void CompactifyDatafiles(
   size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
 
-  arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
+  arangodb::SingleCollectionTransaction trx(
       new arangodb::StandaloneTransactionContext(), document->_vocbase,
-      document->_info.id());
+      document->_info.id(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);

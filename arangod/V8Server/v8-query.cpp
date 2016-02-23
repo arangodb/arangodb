@@ -97,7 +97,7 @@ static v8::Handle<v8::Value> AqlQuery(v8::Isolate* isolate, TRI_vocbase_col_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 #define WRAP_SHAPED_JSON(...) \
-  TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(isolate, __VA_ARGS__)
+  TRI_WrapShapedJson<SingleCollectionTransaction>(isolate, __VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo coordinate container, also containing the distance
@@ -541,8 +541,8 @@ static void ExecuteSkiplistQuery(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -667,7 +667,7 @@ static void ExecuteSkiplistQuery(
 ////////////////////////////////////////////////////////////////////////////////
 
 static int StoreGeoResult(v8::Isolate* isolate,
-                          SingleCollectionReadOnlyTransaction& trx,
+                          SingleCollectionTransaction& trx,
                           TRI_vocbase_col_t const* collection,
                           GeoCoordinates* cors,
                           v8::Handle<v8::Array>& documents,
@@ -809,8 +809,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     filter = buildFilter(direction, "==");
   }
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -857,8 +857,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_voc_cid_t cid = col->_cid;
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -938,8 +938,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_doc_mptr_copy_t document;
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1001,8 +1001,8 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1111,7 +1111,7 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ByExampleHashIndexQuery(
-    SingleCollectionReadOnlyTransaction& trx,
+    SingleCollectionTransaction& trx,
     TRI_vocbase_col_t const* collection,
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1235,8 +1235,8 @@ static void JS_ByExampleHashIndex(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1421,8 +1421,8 @@ static void JS_ChecksumCollection(
     withData = TRI_ObjectToBoolean(args[1]);
   }
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1519,7 +1519,7 @@ static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
+static void FulltextQuery(SingleCollectionTransaction& trx,
                           TRI_vocbase_col_t const* collection,
                           v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1632,8 +1632,8 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1664,7 +1664,7 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static void NearQuery(SingleCollectionReadOnlyTransaction& trx,
+static void NearQuery(SingleCollectionTransaction& trx,
                       TRI_vocbase_col_t const* collection,
                       v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1734,8 +1734,8 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1766,7 +1766,7 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WithinQuery(SingleCollectionReadOnlyTransaction& trx,
+static void WithinQuery(SingleCollectionTransaction& trx,
                         TRI_vocbase_col_t const* collection,
                         v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1836,8 +1836,8 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
-                                          col->_vocbase, col->_cid);
+  SingleCollectionTransaction trx(new V8TransactionContext(true),
+                                          col->_vocbase, col->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 

@@ -23,9 +23,10 @@
 
 #include "Basics/JsonHelper.h"
 #include "Aql/Graphs.h"
-#include "VocBase/Graphs.h"
-#include "Utils/transactions.h"
 #include "Cluster/ClusterMethods.h"
+#include "Utils/transactions.h"
+#include "VocBase/Graphs.h"
+
 using namespace arangodb::basics;
 
 std::string const GRAPHS = "_graphs";
@@ -37,8 +38,8 @@ std::string const GRAPHS = "_graphs";
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
 
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          vocbase, GRAPHS);
+  SingleCollectionTransaction trx(new StandaloneTransactionContext(),
+                                          vocbase, GRAPHS, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
