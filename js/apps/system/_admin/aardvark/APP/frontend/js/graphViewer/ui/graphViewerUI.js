@@ -88,7 +88,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB = function(res) {
@@ -197,7 +197,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB2 = function(res) {
@@ -694,7 +694,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     var size = $('#graphSize').find(":selected").val();
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       }, size);
   });
@@ -705,7 +705,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     } else {
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       });
     }

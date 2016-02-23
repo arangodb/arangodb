@@ -161,28 +161,28 @@ function PreviewAdapter(nodes, edges, viewer, config) {
   self.requestCentralityChildren = function(nodeId, callback) {};
 
   self.createEdge = function (edgeToAdd, callback) {
-    window.alert("Server-side: createEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "createEdge was triggered.");
   };
 
   self.deleteEdge = function (edgeToRemove, callback) {
-    window.alert("Server-side: deleteEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "deleteEdge was triggered.");
   };
 
   self.patchEdge = function (edgeToPatch, patchData, callback) {
-    window.alert("Server-side: patchEdge was triggered.");
+    arangoHelper.arangoError("Server-side", "patchEdge was triggered.");
   };
 
   self.createNode = function (nodeToAdd, callback) {
-    window.alert("Server-side: createNode was triggered.");
+    arangoHelper.arangoError("Server-side", "createNode was triggered.");
   };
 
   self.deleteNode = function (nodeToRemove, callback) {
-    window.alert("Server-side: deleteNode was triggered.");
-    window.alert("Server-side: onNodeDelete was triggered.");
+    arangoHelper.arangoError("Server-side", "deleteNode was triggered.");
+    arangoHelper.arangoError("Server-side", "onNodeDelete was triggered.");
   };
 
   self.patchNode = function (nodeToPatch, patchData, callback) {
-    window.alert("Server-side: patchNode was triggered.");
+    arangoHelper.arangoError("Server-side", "patchNode was triggered.");
   };
 
   self.setNodeLimit = function (pLimit, callback) {
