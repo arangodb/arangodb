@@ -618,7 +618,7 @@ set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
 
 include_directories(${ZLIB_INCLUDE_DIR})
 
-add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 #if (${BUILD_STATIC_EXECUTABLES})
   set(ZLIB_LIBS ${zlib_BINARY_DIR}/libz.a)
@@ -669,6 +669,8 @@ include_directories(${V8_INCLUDE_DIR})
 
 include_directories(.)
 include_directories(${PROJECT_SOURCE_DIR}/lib)
+include_directories(${PROJECT_SOURCE_DIR}/arangod)
+include_directories(${PROJECT_SOURCE_DIR}/arangosh)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
@@ -703,32 +705,6 @@ find_package(FLEX)
 find_package(PythonInterp 2)
 set(ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
-# zlib -------------------------------------------------------------------------
-set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
-
-if (MSVC OR RASPBIAN)
-  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-else ()
-  set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
-    CACHE path "ZLIB include path")
-  set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7
-    CACHE path "ZLIB library path")
-  set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-endif ()
-
-if (ZLIB_INCLUDE)
-  include_directories(${ZLIB_INCLUDE})
-endif ()
-
-if (ZLIB_LIB_PATH)
-  link_directories(${ZLIB_LIB_PATH})
-endif ()
-
-add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-
-# 3rd party libraries
-add_subdirectory(3rdParty)
-
 # sub directories --------------------------------------------------------------
 add_subdirectory(lib)
 
@@ -759,7 +735,6 @@ add_subdirectory(lib)
 
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
-add_subdirectory(js)
 
 # install ----------------------------------------------------------------------
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
