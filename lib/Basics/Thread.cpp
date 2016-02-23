@@ -144,16 +144,21 @@ Thread::Thread(std::string const& name)
 Thread::~Thread() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << ")";
 
-  bool res = shutdown(true);
-
-  if (res && _state.load() == ThreadState::STOPPED) {
+  if (_state.load() == ThreadState::STOPPED) {
 #ifdef TRI_HAVE_POSIX_THREADS
     int res = pthread_detach(_thread);
 
     if (res != 0) {
       LOG_TOPIC(INFO, Logger::THREADS) << "cannot detach thread";
     }
+
+    _state.store(ThreadState::DETACHED);
 #endif
+  }
+
+  if (_state.load() != ThreadState::DETACHED) {
+    LOG(FATAL) << "thread is not detached, hard shutdown";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -163,7 +168,7 @@ Thread::~Thread() {
 
 void Thread::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ")";
-  
+
   ThreadState state = _state.load();
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
@@ -175,16 +180,16 @@ void Thread::beginShutdown() {
 /// @brief called from the destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Thread::shutdown(bool waitForStopped) {
+void Thread::shutdown() {
   LOG_TOPIC(TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   ThreadState state = _state.load();
 
   while (state == ThreadState::CREATED) {
-    bool res = _state.compare_exchange_strong(state, ThreadState::STOPPED);
+    bool res = _state.compare_exchange_strong(state, ThreadState::DETACHED);
 
     if (res) {
-      return false;
+      return;
     }
   }
 
@@ -197,7 +202,7 @@ bool Thread::shutdown(bool waitForStopped) {
     }
   }
 
-  size_t n = waitForStopped ? (10 * 60 * 20) : 20;
+  size_t n = 10 * 60 * 5; // * 100ms = 1s * 60 * 5
 
   for (size_t i = 0; i < n; ++i) {
     if (_state.load() == ThreadState::STOPPED) {
@@ -207,7 +212,10 @@ bool Thread::shutdown(bool waitForStopped) {
     usleep(100 * 1000);
   }
 
-  return true;
+  if (_state.load() != ThreadState::STOPPED) {
+    LOG(FATAL) << "cannot shutdown threads, giving up";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +225,8 @@ bool Thread::shutdown(bool waitForStopped) {
 bool Thread::isStopping() const {
   auto state = _state.load(std::memory_order_relaxed);
 
-  return state == ThreadState::STOPPING || state == ThreadState::STOPPED;
+  return state == ThreadState::STOPPING || state == ThreadState::STOPPED ||
+         state == ThreadState::DETACHED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +257,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     if (0 <= _affinity) {
       TRI_SetProcessorAffinity(&_thread, (size_t)_affinity);
     }
-  }
-  else {
+  } else {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
                                     << _name.c_str()
@@ -305,6 +313,10 @@ void Thread::addStatus(VPackBuilder* b) {
 
     case ThreadState::STOPPED:
       b->add("started", VPackValue("stopped"));
+      break;
+
+    case ThreadState::DETACHED:
+      b->add("started", VPackValue("detached"));
       break;
   }
 }

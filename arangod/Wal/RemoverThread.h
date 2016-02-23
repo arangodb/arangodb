@@ -34,16 +34,12 @@ namespace wal {
 class LogfileManager;
 
 class RemoverThread : public Thread {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief RemoverThread
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
   RemoverThread(RemoverThread const&) = delete;
   RemoverThread& operator=(RemoverThread const&) = delete;
 
  public:
   explicit RemoverThread(LogfileManager*);
+  ~RemoverThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;
