@@ -288,6 +288,7 @@ add_executable(
 
 target_link_libraries(
     ${BIN_ARANGOD}
+    ${SYSTEM_LIBRARIES}
     ${LIB_ARANGO_FE}
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO}
