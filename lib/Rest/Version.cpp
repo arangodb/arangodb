@@ -173,8 +173,8 @@ std::string Version::getVPackVersion() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getZLibVersion() {
-#ifdef TRI_ZLIB_VERSION
-  return std::string(TRI_ZLIB_VERSION);
+#ifdef ARANGODB_ZLIB_VERSION
+  return std::string(ARANGODB_ZLIB_VERSION);
 #else
   return std::string("");
 #endif
