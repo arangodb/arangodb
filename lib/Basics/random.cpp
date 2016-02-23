@@ -23,7 +23,9 @@
 
 #include "random.h"
 
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief already initialized
@@ -37,27 +39,21 @@ static bool Initialized = false;
 
 static unsigned long SeedRandom(void) {
   unsigned long seed;
-
-#ifdef TRI_HAVE_GETTIMEOFDAY
   struct timeval tv;
 
   /* ignore result */ gettimeofday(&tv, 0);
 
   seed = static_cast<decltype(seed)>(tv.tv_sec);
   seed ^= static_cast<decltype(seed)>(tv.tv_usec);
-#else
-  seed = static_cast<decltype(seed)>(time(0));
-#endif
-
-  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 8);
-  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 16);
-  seed ^= static_cast<decltype(seed)>((uint32_t) TRI_CurrentProcessId() << 24);
+  seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 8);
+  seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 16);
+  seed ^= static_cast<decltype(seed)>((uint32_t) Thread::currentProcessId() << 24);
 
 #ifdef __APPLE__
-  auto tid = reinterpret_cast<uintptr_t>(TRI_CurrentThreadId());
+  auto tid = reinterpret_cast<uintptr_t>(Thread::currentThreadId());
   seed ^= static_cast<decltype(seed)>(tid);
 #else
-  seed ^= static_cast<decltype(seed)>(TRI_CurrentThreadId());
+  seed ^= static_cast<decltype(seed)>(Thread::currentThreadId());
 #endif
 
   return seed;

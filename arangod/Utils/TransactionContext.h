@@ -31,6 +31,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_transaction_s;
+struct TRI_vocbase_t;
 
 namespace arangodb {
 
@@ -44,7 +45,7 @@ class TransactionContext {
   /// @brief create the context
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionContext() = default;
+  TransactionContext(TRI_vocbase_t* vocbase) : _vocbase(vocbase), _resolver(nullptr) {}
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -54,6 +55,13 @@ class TransactionContext {
   virtual ~TransactionContext() = default;
 
  public:
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the vocbase
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -82,8 +90,13 @@ class TransactionContext {
   /// @brief unregister the transaction from the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int unregisterTransaction() = 0;
+  virtual void unregisterTransaction() = 0;
+ 
+ protected:
   
+  TRI_vocbase_t* _vocbase; 
+  
+  arangodb::CollectionNameResolver const* _resolver;
 };
 }
 

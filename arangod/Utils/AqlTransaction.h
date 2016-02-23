@@ -44,10 +44,10 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlTransaction(
-      TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
+      std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, arangodb::aql::Collection*> const* collections,
       bool isMainTransaction)
-      : Transaction(transactionContext, vocbase, 0),
+      : Transaction(transactionContext, 0),
         _collections(*collections) {
     if (!isMainTransaction) {
       this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
@@ -164,7 +164,7 @@ class AqlTransaction : public Transaction {
 
   arangodb::AqlTransaction* clone() const {
     return new arangodb::AqlTransaction(
-        new arangodb::StandaloneTransactionContext(), this->_vocbase,
+        arangodb::StandaloneTransactionContext::Create(this->_vocbase),
         &_collections, false);
   }
 

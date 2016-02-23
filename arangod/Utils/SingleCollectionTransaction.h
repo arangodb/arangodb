@@ -25,13 +25,10 @@
 #define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/voc-errors.h"
-#include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -39,15 +36,15 @@
 namespace arangodb {
 
 class SingleCollectionTransaction : public Transaction {
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection id
   //////////////////////////////////////////////////////////////////////////////
 
-  SingleCollectionTransaction(TransactionContext* transactionContext,
-                              TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                              TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, vocbase, 0),
+  SingleCollectionTransaction(std::shared_ptr<TransactionContext> transactionContext,
+                              TRI_voc_cid_t cid, TRI_transaction_type_e accessType)
+      : Transaction(transactionContext, 0),
         _cid(cid),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
@@ -60,10 +57,9 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief create the transaction, using a collection name
   //////////////////////////////////////////////////////////////////////////////
 
-  SingleCollectionTransaction(TransactionContext* transactionContext,
-                              TRI_vocbase_t* vocbase, std::string const& name,
-                              TRI_transaction_type_e accessType)
-      : Transaction(transactionContext, vocbase, 0),
+  SingleCollectionTransaction(std::shared_ptr<TransactionContext> transactionContext,
+                              std::string const& name, TRI_transaction_type_e accessType)
+      : Transaction(transactionContext, 0),
         _cid(0),
         _trxCollection(nullptr),
         _documentCollection(nullptr),
@@ -179,6 +175,14 @@ class SingleCollectionTransaction : public Transaction {
 
   int lockWrite() {
     return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return whether a write in the transaction was synchronous
+  //////////////////////////////////////////////////////////////////////////////
+
+  inline bool synchronous() const {
+    return TRI_WasSynchronousCollectionTransaction(this->_trx, _cid);
   }
 
  private:

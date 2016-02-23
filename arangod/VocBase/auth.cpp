@@ -353,8 +353,8 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          vocbase, collection->_cid);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
+                                          collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 

@@ -3695,7 +3695,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-  v8g->_transactionContext = new V8TransactionContext(true);
+  v8g->_transactionContext = new V8TransactionContext(vocbase, true);
   static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
 
   // register the query registry

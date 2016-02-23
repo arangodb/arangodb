@@ -347,14 +347,6 @@ CollectorThread::CollectorThread(LogfileManager* logfileManager,
       _collectorResult(TRI_ERROR_NO_ERROR) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the collector thread
-////////////////////////////////////////////////////////////////////////////////
-
-CollectorThread::~CollectorThread() {
-  shutdown(true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -685,7 +677,7 @@ size_t CollectorThread::numQueuedOperations() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectorThread::processCollectionMarker(
-    arangodb::SingleCollectionWriteTransaction<UINT64_MAX>& trx,
+    arangodb::SingleCollectionTransaction& trx,
     TRI_document_collection_t* document, CollectorCache* cache,
     CollectorOperation const& operation) {
   TRI_df_marker_t const* walMarker =
@@ -824,9 +816,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
 
-  arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-      new arangodb::StandaloneTransactionContext(), document->_vocbase,
-      document->_info.id());
+  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
+      document->_info.id(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
               true);  // already locked by guard above
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,

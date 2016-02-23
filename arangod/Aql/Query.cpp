@@ -488,7 +488,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
     _isModificationQuery = parser->isModificationQuery();
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+    _trx = new arangodb::AqlTransaction(createTransactionContext(),
                                         _collections.collections(),
                                         _part == PART_MAIN);
 
@@ -973,7 +973,7 @@ QueryResult Query::explain() {
     // << "\n";
 
     // create the transaction object, but do not start it yet
-    _trx = new arangodb::AqlTransaction(createTransactionContext(), _vocbase,
+    _trx = new arangodb::AqlTransaction(createTransactionContext(),
                                         _collections.collections(), true);
 
     // we have an AST
@@ -1536,13 +1536,13 @@ void Query::setPlan(ExecutionPlan* plan) {
 /// @brief create a TransactionContext
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::TransactionContext* Query::createTransactionContext() {
+std::shared_ptr<arangodb::TransactionContext> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return new arangodb::V8TransactionContext(true);
+    return arangodb::V8TransactionContext::Create(_vocbase, true);
   }
 
-  return new arangodb::StandaloneTransactionContext();
+  return arangodb::StandaloneTransactionContext::Create(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

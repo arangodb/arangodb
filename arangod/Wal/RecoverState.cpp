@@ -27,7 +27,7 @@
 #include "Basics/files.h"
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/VocShaper.h"
@@ -309,7 +309,7 @@ TRI_document_collection_t* RecoverState::getCollection(
 int RecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     TRI_df_marker_t const* marker, TRI_voc_fid_t fid,
-    std::function<int(SingleWriteTransactionType*, Marker*)> func) {
+    std::function<int(SingleCollectionTransaction*, Marker*)> func) {
   // first find the correct database
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -335,13 +335,12 @@ int RecoverState::executeSingleOperation(
     return TRI_ERROR_NO_ERROR;
   }
 
-  SingleWriteTransactionType* trx = nullptr;
+  SingleCollectionTransaction* trx = nullptr;
   EnvelopeMarker* envelope = nullptr;
   res = TRI_ERROR_INTERNAL;
 
   try {
-    trx = new SingleWriteTransactionType(
-        new arangodb::StandaloneTransactionContext(), vocbase, collectionId);
+    trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);
@@ -578,7 +577,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             TRI_document_collection_t* document = trx->documentCollection();
 
             // re-insert the attribute
@@ -608,7 +607,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             TRI_document_collection_t* document = trx->documentCollection();
 
             // re-insert the shape
@@ -654,7 +653,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             if (IsVolatile(trx->trxCollection())) {
               return TRI_ERROR_NO_ERROR;
             }
@@ -712,7 +711,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             if (IsVolatile(trx->trxCollection())) {
               return TRI_ERROR_NO_ERROR;
             }
@@ -763,7 +762,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       char const* key = base + sizeof(remove_marker_t);
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             if (IsVolatile(trx->trxCollection())) {
               return TRI_ERROR_NO_ERROR;
             }
@@ -1394,9 +1393,8 @@ int RecoverState::fillIndexes() {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    arangodb::SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new arangodb::StandaloneTransactionContext(), collection->_vocbase,
-        document->_info.id());
+    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->_vocbase),
+        document->_info.id(), TRI_TRANSACTION_WRITE);
 
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 

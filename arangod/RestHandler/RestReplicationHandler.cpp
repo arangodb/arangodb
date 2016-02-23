@@ -640,9 +640,9 @@ void RestReplicationHandler::handleCommandBarrier() {
     auto v = TRI_LookupObjectJson(input.get(), "tick");
 
     if (TRI_IsStringJson(v)) {
-      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
-    }
-    else if (TRI_IsNumberJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data,
+                                    v->_value._string.length - 1);
+    } else if (TRI_IsNumberJson(v)) {
       minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
     }
 
@@ -652,7 +652,9 @@ void RestReplicationHandler::handleCommandBarrier() {
       return;
     }
 
-    TRI_voc_tick_t id = arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick, ttl);
+    TRI_voc_tick_t id =
+        arangodb::wal::LogfileManager::instance()->addLogfileBarrier(minTick,
+                                                                     ttl);
 
     try {
       VPackBuilder b;
@@ -682,18 +684,19 @@ void RestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl = JsonHelper::getNumericValue<double>(input.get(), "ttl", 0);
-    
+
     TRI_voc_tick_t minTick = 0;
     auto v = TRI_LookupObjectJson(input.get(), "tick");
 
     if (TRI_IsStringJson(v)) {
-      minTick = StringUtils::uint64(v->_value._string.data, v->_value._string.length - 1);
-    }
-    else if (TRI_IsNumberJson(v)) {
+      minTick = StringUtils::uint64(v->_value._string.data,
+                                    v->_value._string.length - 1);
+    } else if (TRI_IsNumberJson(v)) {
       minTick = static_cast<TRI_voc_tick_t>(v->_value._number);
     }
-    
-    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(id, ttl, minTick)) {
+
+    if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+            id, ttl, minTick)) {
       createResponse(HttpResponse::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -714,7 +717,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     }
     return;
   }
-  
+
   if (type == HttpRequest::HTTP_REQUEST_GET) {
     // fetch all barriers
     auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
@@ -843,7 +846,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
-  
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId = 0;
   value = _request->value("barrier", found);
@@ -894,14 +897,13 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
- 
+
   // extract collection
-  TRI_voc_cid_t cid = 0; 
+  TRI_voc_cid_t cid = 0;
   value = _request->value("collection", found);
 
   if (found) {
-    TRI_vocbase_col_t* c =
-        TRI_LookupCollectionByNameVocBase(_vocbase, value);
+    TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, value);
 
     if (c == nullptr) {
       generateError(HttpResponse::NOT_FOUND,
@@ -911,10 +913,11 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
     cid = c->_cid;
   }
-      
+
   if (barrierId > 0) {
     // extend the WAL logfile barrier
-    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(barrierId, 180, tickStart);
+    arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
+        barrierId, 180, tickStart);
   }
 
   int res = TRI_ERROR_NO_ERROR;
@@ -1022,7 +1025,8 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   try {
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false, 0);
+    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false,
+                                0);
 
     // and dump
     res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1275,8 +1279,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
         static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(
-        TRI_UInt64String2(tmp.c_str(), tmp.length()));
+    planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
   }
 
   if (planId > 0) {
@@ -1498,8 +1501,7 @@ int RestReplicationHandler::processRestoreCollection(
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionWriteTransaction<UINT64_MAX> trx(
-            new StandaloneTransactionContext(), _vocbase, col->_cid);
+        SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1787,8 +1789,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(
-        new StandaloneTransactionContext(), _vocbase, document->_info.id());
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), document->_info.id(), TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -1896,8 +1897,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, true,
-                                     arangodb::Index::Compare, tmp,
-                                     errorMsg, 3600.0);
+                                     arangodb::Index::Compare, tmp, errorMsg,
+                                     3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
           "could not create index: " + std::string(TRI_errno_string(res));
@@ -2192,8 +2193,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 int RestReplicationHandler::processRestoreData(
     CollectionNameResolver const& resolver, TRI_voc_cid_t cid, bool useRevision,
     bool force, std::string& errorMsg) {
-  SingleCollectionWriteTransaction<UINT64_MAX> trx(
-      new StandaloneTransactionContext(), _vocbase, cid);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -2499,13 +2499,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
           LOG(ERR) << "Bad answer code from shard: " << result.answer_code;
         }
       } else {
-        LOG(ERR) << "Bad status from DBServer: " << result.status << ", msg: " << result.errorMessage.c_str() << ", shard: " << result.shardID.c_str();
+        LOG(ERR) << "Bad status from DBServer: " << result.status
+                 << ", msg: " << result.errorMessage.c_str()
+                 << ", shard: " << result.shardID.c_str();
         if (result.status >= CL_COMM_SENT) {
           if (result.result.get() == nullptr) {
             LOG(ERR) << "result.result is nullptr";
           } else {
             auto msg = result.result->getResultTypeMessage();
-            LOG(ERR) << "Bad HTTP return code: " << result.result->getHttpReturnCode() << ", msg: " << msg.c_str();
+            LOG(ERR) << "Bad HTTP return code: "
+                     << result.result->getHttpReturnCode()
+                     << ", msg: " << msg.c_str();
             auto body = result.result->getBodyVelocyPack();
             msg = body->toString();
             LOG(ERR) << "Body: " << msg.c_str();
@@ -2954,7 +2958,8 @@ void RestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  LOG(TRACE) << "requested collection dump for collection '" << collection << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
+  LOG(TRACE) << "requested collection dump for collection '" << collection
+             << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -3087,8 +3092,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                                          defaults._autoResync);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
-  config._incremental =
-      VelocyPackHelper::getBooleanValue(body, "incremental", defaults._incremental);
+  config._incremental = VelocyPackHelper::getBooleanValue(
+      body, "incremental", defaults._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -3398,7 +3403,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     config._endpoint = endpoint;
   }
 
-  config._database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  config._database =
+      VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
 
   VPackSlice const username = body.get("username");
   if (username.isString()) {
@@ -3432,8 +3438,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       body, "includeSystem", config._includeSystem);
   config._verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
-  config._incremental =
-      VelocyPackHelper::getBooleanValue(body, "incremental", config._incremental);
+  config._incremental = VelocyPackHelper::getBooleanValue(body, "incremental",
+                                                          config._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", config._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
@@ -3507,10 +3513,11 @@ void RestReplicationHandler::handleCommandApplierStart() {
   value = _request->value("barrierId", found);
   if (found) {
     // query parameter "barrierId" specified
-    barrierId = (TRI_voc_tick_t) StringUtils::uint64(value);
+    barrierId = (TRI_voc_tick_t)StringUtils::uint64(value);
   }
 
-  int res = _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
+  int res =
+      _vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
@@ -3583,15 +3590,16 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 void RestReplicationHandler::handleCommandAddFollower() {
   VPackOptions options;
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody 
-      = parseVelocyPackBody(&options, success);
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&options, success);
   if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(
+        HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "body needs to be an object with attributes 'followerId' and 'shard'");
     return;
   }
@@ -3602,10 +3610,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'followerId' and 'shard' attributes must be strings");
     return;
   }
-  
+
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, shard.copyString());
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          shard.copyString(), TRI_TRANSACTION_WRITE);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -3618,10 +3626,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
   docColl->followers()->add(followerId.copyString());
 
   VPackBuilder b;
-  { VPackObjectBuilder bb(&b);
+  {
+    VPackObjectBuilder bb(&b);
     b.add("error", VPackValue(false));
   }
 
   generateResult(HttpResponse::OK, b.slice());
 }
-

@@ -32,6 +32,8 @@
 
 #include <array>
 
+using namespace arangodb::basics;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup table for key checks
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,7 +403,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
 
 void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
   // check the numeric key part
-  uint64_t value = TRI_UInt64String(key);
+  uint64_t value = StringUtils::uint64(key);
 
   if (value > _lastValue) {
     // and update our last value

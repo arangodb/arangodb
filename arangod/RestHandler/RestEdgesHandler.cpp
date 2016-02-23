@@ -68,7 +68,7 @@ HttpHandler::status_t RestEdgesHandler::execute() {
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
+    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered) {
   arangodb::traverser::VertexId start;
   try {
@@ -191,8 +191,8 @@ bool RestEdgesHandler::readEdges(
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collectionName);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collectionName, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -320,8 +320,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collectionName);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collectionName, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction

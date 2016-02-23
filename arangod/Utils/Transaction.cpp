@@ -23,6 +23,7 @@
 
 #include "Utils/transactions.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
 #include "VocBase/KeyGenerator.h"
@@ -340,6 +341,93 @@ int Transaction::any(TRI_transaction_collection_t* trxCollection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::any(std::string const& collectionName) {
+  return any(collectionName, 0, 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit.
+/// The resualt guarantees that all documents are contained exactly once
+/// as long as the collection is not modified.
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::any(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit) {
+  if (ServerState::instance()->isCoordinator()) {
+    return anyCoordinator(collectionName, skip, limit);
+  }
+  return anyLocal(collectionName, skip, limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches documents in a collection in random order, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::anyCoordinator(std::string const&, uint64_t,
+                                            uint64_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches documents in a collection in random order, local
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::anyLocal(std::string const& collectionName,
+                                      uint64_t skip, uint64_t limit) {
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+  
+  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip, limit, 1000, false);
+
+  while (cursor.hasMore()) {
+    int res = cursor.getMore();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+  
+    VPackSlice docs = cursor.slice();
+    VPackArrayIterator it(docs);
+    while (it.valid()) {
+      resultBuilder.add(it.value());
+      it.next();
+    }
+  }
+
+  resultBuilder.close();
+
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(resultBuilder.steal(),
+                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         TRI_ERROR_NO_ERROR, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read any (random) document
+/// DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::any(TRI_transaction_collection_t* trxCollection,
@@ -1351,7 +1439,7 @@ OperationResult Transaction::allCoordinator(std::string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches all documents in a collection, coordinator
+/// @brief fetches all documents in a collection, local
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::allLocal(std::string const& collectionName,
@@ -1401,7 +1489,9 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
     return OperationCursor(res);
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return OperationResult(resultBuilder.steal(),
+                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         TRI_ERROR_NO_ERROR, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1640,7 +1730,7 @@ OperationCursor Transaction::indexScan(
       if (!arangodb::Index::validateId(indexId.c_str())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       }
-      TRI_idx_iid_t iid = TRI_UInt64String(indexId.c_str());
+      TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexId.c_str(), indexId.size());
       idx = document->lookupIndex(iid);
 
       if (idx == nullptr) {

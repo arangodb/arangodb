@@ -22,15 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
-#include "Basics/Logger.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
@@ -40,6 +41,7 @@
 #include "Wal/Slots.h"
 #include "Wal/SynchronizerThread.h"
 
+using namespace arangodb::basics;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,18 +139,9 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
       _droppedDatabases(),
       _idLock(),
       _writeThrottled(0),
-      _filenameRegex(),
       _shutdown(0) {
   LOG(TRACE) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
-
-  int res =
-      regcomp(&_filenameRegex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
-
-  if (res != 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not compile regex");
-  }
 
   _transactions.reserve(32);
   _failedTransactions.reserve(32);
@@ -163,8 +156,6 @@ LogfileManager::~LogfileManager() {
 
   stop();
 
-  regfree(&_filenameRegex);
-  
   for (auto& it : _barriers) {
     delete it.second;
   }
@@ -204,8 +195,9 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::setupOptions(std::map<
-    std::string, arangodb::basics::ProgramOptionsDescription>& options) {
+void LogfileManager::setupOptions(
+    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
+        options) {
   options["Write-ahead log options:help-wal"](
       "wal.allow-oversize-entries", &_allowOversizeEntries,
       "allow entries that are bigger than --wal.logfile-size")(
@@ -256,9 +248,12 @@ bool LogfileManager::prepare() {
                                               systemErrorStr);
 
       if (res) {
-        LOG(INFO) << "created database directory '" << _directory.c_str() << "'.";
+        LOG(INFO) << "created database directory '" << _directory.c_str()
+                  << "'.";
       } else {
-        LOG(FATAL) << "unable to create database directory: " << systemErrorStr.c_str(); FATAL_ERROR_EXIT();
+        LOG(FATAL) << "unable to create database directory: "
+                   << systemErrorStr.c_str();
+        FATAL_ERROR_EXIT();
       }
     }
 
@@ -271,7 +266,9 @@ bool LogfileManager::prepare() {
   }
 
   if (_directory.empty()) {
-    LOG(FATAL) << "no directory specified for WAL logfiles. Please use the --wal.directory option"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "no directory specified for WAL logfiles. Please use the "
+                  "--wal.directory option";
+    FATAL_ERROR_EXIT();
   }
 
   if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -281,23 +278,34 @@ bool LogfileManager::prepare() {
 
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
-    LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of at least " << MinFileSize(); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of "
+                  "at least "
+               << MinFileSize();
+    FATAL_ERROR_EXIT();
   }
 
   _filesize = (uint32_t)(((_filesize + PageSize - 1) / PageSize) * PageSize);
 
   if (_numberOfSlots < MinSlots() || _numberOfSlots > MaxSlots()) {
     // invalid number of slots
-    LOG(FATAL) << "invalid value for --wal.slots. Please use a value between " << MinSlots() << " and " << MaxSlots(); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --wal.slots. Please use a value between "
+               << MinSlots() << " and " << MaxSlots();
+    FATAL_ERROR_EXIT();
   }
 
   if (_throttleWhenPending > 0 &&
       _throttleWhenPending < MinThrottleWhenPending()) {
-    LOG(FATAL) << "invalid value for --wal.throttle-when-pending. Please use a value of at least " << MinThrottleWhenPending(); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --wal.throttle-when-pending. Please use a "
+                  "value of at least "
+               << MinThrottleWhenPending();
+    FATAL_ERROR_EXIT();
   }
 
   if (_syncInterval < MinSyncInterval()) {
-    LOG(FATAL) << "invalid value for --wal.sync-interval. Please use a value of at least " << MinSyncInterval(); FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --wal.sync-interval. Please use a value "
+                  "of at least "
+               << MinSyncInterval();
+    FATAL_ERROR_EXIT();
   }
 
   // sync interval is specified in milliseconds by the user, but internally
@@ -324,7 +332,8 @@ bool LogfileManager::start() {
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not create WAL logfile inventory: " << TRI_errno_string(res);
+    LOG(ERR) << "could not create WAL logfile inventory: "
+             << TRI_errno_string(res);
     return false;
   }
 
@@ -337,7 +346,8 @@ bool LogfileManager::start() {
     res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "could not open shutdown file '" << shutdownFile.c_str() << "': " << TRI_errno_string(res);
+      LOG(ERR) << "could not open shutdown file '" << shutdownFile.c_str()
+               << "': " << TRI_errno_string(res);
       return false;
     }
   } else {
@@ -353,7 +363,10 @@ bool LogfileManager::start() {
 
   started = true;
 
-  LOG(TRACE) << "WAL logfile manager configuration: historic logfiles: " << _historicLogfiles << ", reserve logfiles: " << _reserveLogfiles << ", filesize: " << _filesize << ", sync interval: " << _syncInterval;
+  LOG(TRACE) << "WAL logfile manager configuration: historic logfiles: "
+             << _historicLogfiles << ", reserve logfiles: " << _reserveLogfiles
+             << ", filesize: " << _filesize
+             << ", sync interval: " << _syncInterval;
 
   return true;
 }
@@ -423,14 +436,16 @@ bool LogfileManager::open() {
   res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL allocator thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL allocator thread: "
+             << TRI_errno_string(res);
     return false;
   }
 
   res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL synchronizer thread: "
+             << TRI_errno_string(res);
     return false;
   }
 
@@ -463,7 +478,8 @@ bool LogfileManager::open() {
   res = startCollectorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not start WAL collector thread: " << TRI_errno_string(res);
+    LOG(ERR) << "could not start WAL collector thread: "
+             << TRI_errno_string(res);
     return false;
   }
 
@@ -898,12 +914,15 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG(TRACE) << "about to flush active WAL logfile. currentLogfileId: " << lastOpenLogfileId << ", waitForSync: " << waitForSync << ", waitForCollector: " << waitForCollector;
+  LOG(TRACE) << "about to flush active WAL logfile. currentLogfileId: "
+             << lastOpenLogfileId << ", waitForSync: " << waitForSync
+             << ", waitForCollector: " << waitForCollector;
 
   int res = _slots->flush(waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-    LOG(ERR) << "unexpected error in WAL flush request: " << TRI_errno_string(res);
+    LOG(ERR) << "unexpected error in WAL flush request: "
+             << TRI_errno_string(res);
     return res;
   }
 
@@ -915,7 +934,8 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << // (unsigned long long) lastOpenLogfileId;
+      // LOG(TRACE) << "entering waitForCollector with lastOpenLogfileId " << //
+      // (unsigned long long) lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
@@ -1126,24 +1146,25 @@ void LogfileManager::collectLogfileBarriers() {
     auto logfileBarrier = (*it).second;
 
     if (logfileBarrier->expires <= now) {
-      LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage-collecting expired WAL logfile barrier " << logfileBarrier->id;
+      LOG_TOPIC(TRACE, Logger::REPLICATION)
+          << "garbage-collecting expired WAL logfile barrier "
+          << logfileBarrier->id;
 
       it = _barriers.erase(it);
       delete logfileBarrier;
-    }
-    else {
+    } else {
       ++it;
     }
   }
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of all logfile barrier ids
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_voc_tick_t> LogfileManager::getLogfileBarriers() {
   std::vector<TRI_voc_tick_t> result;
-  
+
   {
     READ_LOCKER(barrierLock, _barriersLock);
     result.reserve(_barriers.size());
@@ -1170,11 +1191,12 @@ bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   }
 
   auto logfileBarrier = (*it).second;
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing WAL logfile barrier " << logfileBarrier->id;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing WAL logfile barrier "
+                                        << logfileBarrier->id;
 
   _barriers.erase(it);
   delete logfileBarrier;
-  
+
   return true;
 }
 
@@ -1182,12 +1204,15 @@ bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
 /// @brief adds a barrier that prevents removal of logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick, double ttl) {
+TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick,
+                                                 double ttl) {
   TRI_voc_tick_t id = TRI_NewTickServer();
   double expires = TRI_microtime() + ttl;
 
   auto logfileBarrier = std::make_unique<LogfileBarrier>(id, expires, minTick);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "adding WAL logfile barrier " << logfileBarrier->id << ", minTick: " << minTick;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "adding WAL logfile barrier "
+                                        << logfileBarrier->id
+                                        << ", minTick: " << minTick;
 
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
@@ -1203,7 +1228,8 @@ TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick, double 
 /// @brief extend the lifetime of a logfile barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl, TRI_voc_tick_t tick) {
+bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
+                                          TRI_voc_tick_t tick) {
   WRITE_LOCKER(barrierLock, _barriersLock);
 
   auto it = _barriers.find(id);
@@ -1211,7 +1237,7 @@ bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl, TRI_voc
   if (it == _barriers.end()) {
     return false;
   }
-  
+
   auto logfileBarrier = (*it).second;
   logfileBarrier->expires = TRI_microtime() + ttl;
 
@@ -1219,8 +1245,10 @@ bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl, TRI_voc
     // patch tick
     logfileBarrier->minTick = tick;
   }
-  
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "extending WAL logfile barrier " << logfileBarrier->id << ", minTick: " << logfileBarrier->minTick;
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "extending WAL logfile barrier " << logfileBarrier->id
+      << ", minTick: " << logfileBarrier->minTick;
 
   return true;
 }
@@ -1236,7 +1264,9 @@ TRI_voc_tick_t LogfileManager::getMinBarrierTick() {
 
   for (auto const& it : _barriers) {
     auto logfileBarrier = it.second;
-    LOG_TOPIC(TRACE, Logger::REPLICATION) << "server has WAL logfile barrier " << logfileBarrier->id << ", minTick: " << logfileBarrier->minTick;
+    LOG_TOPIC(TRACE, Logger::REPLICATION)
+        << "server has WAL logfile barrier " << logfileBarrier->id
+        << ", minTick: " << logfileBarrier->minTick;
 
     if (value == 0 || value < logfileBarrier->minTick) {
       value = logfileBarrier->minTick;
@@ -1436,7 +1466,8 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   }
 
   TRI_ASSERT(result == nullptr);
-  LOG(WARN) << "unable to acquire writeable WAL logfile after " << (MaxIterations * SleepTime) / 1000 << " ms";
+  LOG(WARN) << "unable to acquire writeable WAL logfile after "
+            << (MaxIterations * SleepTime) / 1000 << " ms";
 
   return TRI_ERROR_LOCK_TIMEOUT;
 }
@@ -1529,10 +1560,11 @@ Logfile* LogfileManager::getRemovableLogfile() {
         continue;
       }
 
-      if (logfile->id() <= minId && 
-          logfile->canBeRemoved() && 
-          (minBarrierTick == 0 || (logfile->df()->_tickMin < minBarrierTick && logfile->df()->_tickMax < minBarrierTick))) {
-        // only check those logfiles that are outside the ranges specified by barriers
+      if (logfile->id() <= minId && logfile->canBeRemoved() &&
+          (minBarrierTick == 0 || (logfile->df()->_tickMin < minBarrierTick &&
+                                   logfile->df()->_tickMax < minBarrierTick))) {
+        // only check those logfiles that are outside the ranges specified by
+        // barriers
 
         if (first == nullptr) {
           // note the oldest of the logfiles (_logfiles is a map, thus sorted)
@@ -1729,7 +1761,8 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   // now physically remove the file
 
   if (!basics::FileUtils::remove(filename, &res)) {
-    LOG(ERR) << "unable to remove logfile '" << filename.c_str() << "': " << TRI_errno_string(res);
+    LOG(ERR) << "unable to remove logfile '" << filename.c_str()
+             << "': " << TRI_errno_string(res);
   }
 }
 
@@ -1746,7 +1779,8 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
     // if specified, wait for a shorter period of time
     maxIterations = static_cast<int64_t>(maxWaitTime * 1000000.0 /
                                          (double)SingleWaitPeriod);
-    LOG(TRACE) << "will wait for max. " << maxWaitTime << " seconds for collector to finish";
+    LOG(TRACE) << "will wait for max. " << maxWaitTime
+               << " seconds for collector to finish";
   }
 
   LOG(TRACE) << "waiting for collector thread to collect logfile " << logfileId;
@@ -1761,7 +1795,8 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
 
     int res = _collectorThread->waitForResult(SingleWaitPeriod);
 
-    // LOG(TRACE) << "still waiting for collector. logfileId: " << logfileId << " lastCollected:
+    // LOG(TRACE) << "still waiting for collector. logfileId: " << logfileId <<
+    // " lastCollected:
     // " << // _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
@@ -1792,9 +1827,12 @@ int LogfileManager::runRecovery() {
   }
 
   if (_ignoreRecoveryErrors) {
-    LOG(INFO) << "running WAL recovery (" << _recoverState->logfilesToProcess.size() << " logfiles), ignoring recovery errors";
+    LOG(INFO) << "running WAL recovery ("
+              << _recoverState->logfilesToProcess.size()
+              << " logfiles), ignoring recovery errors";
   } else {
-    LOG(INFO) << "running WAL recovery (" << _recoverState->logfilesToProcess.size() << " logfiles)";
+    LOG(INFO) << "running WAL recovery ("
+              << _recoverState->logfilesToProcess.size() << " logfiles)";
   }
 
   // now iterate over all logfiles that we found during recovery
@@ -1889,7 +1927,9 @@ int LogfileManager::readShutdownInfo() {
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
 
-    LOG(TRACE) << "initial values for WAL logfile manager: tick: " << lastTick << ", lastCollected: " << _lastCollectedId.load() << ", lastSealed: " << _lastSealedId.load();
+    LOG(TRACE) << "initial values for WAL logfile manager: tick: " << lastTick
+               << ", lastCollected: " << _lastCollectedId.load()
+               << ", lastSealed: " << _lastSealedId.load();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2106,17 +2146,16 @@ int LogfileManager::inventory() {
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
 
   for (auto it = files.begin(); it != files.end(); ++it) {
-    regmatch_t matches[2];
     std::string const file = (*it);
-    char const* s = file.c_str();
 
-    if (regexec(&_filenameRegex, s, sizeof(matches) / sizeof(matches[1]),
-                matches, 0) == 0) {
-      Logfile::IdType const id = basics::StringUtils::uint64(
-          s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    if (StringUtils::isPrefix(file, "logfile-") &&
+        StringUtils::isSuffix(file, ".db")) {
+      Logfile::IdType const id =
+          basics::StringUtils::uint64(file.substr(8, file.size() - 8 - 3));
 
       if (id == 0) {
-        LOG(WARN) << "encountered invalid id for logfile '" << file.c_str() << "'. ids must be > 0";
+        LOG(WARN) << "encountered invalid id for logfile '" << file
+                  << "'. ids must be > 0";
       } else {
         // update global tick
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
@@ -2146,7 +2185,9 @@ int LogfileManager::inspectLogfiles() {
 
     if (logfile != nullptr) {
       std::string const logfileName = logfile->filename();
-      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfileName.c_str() << "', status " << logfile->statusText().c_str();
+      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '"
+                 << logfileName.c_str() << "', status "
+                 << logfile->statusText().c_str();
     }
   }
 #endif
@@ -2191,17 +2232,22 @@ int LogfileManager::inspectLogfiles() {
       _recoverState->logfilesToProcess.push_back(logfile);
     }
 
-    LOG(TRACE) << "inspecting logfile " << logfile->id() << " (" << logfile->statusText().c_str() << ")";
+    LOG(TRACE) << "inspecting logfile " << logfile->id() << " ("
+               << logfile->statusText().c_str() << ")";
 
     // update the tick statistics
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
       std::string const logfileName = logfile->filename();
-      LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
+      LOG(WARN) << "WAL inspection failed when scanning logfile '"
+                << logfileName.c_str() << "'";
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
-    LOG(TRACE) << "inspected logfile " << logfile->id() << " (" << logfile->statusText().c_str() << "), tickMin: " << logfile->df()->_tickMin << ", tickMax: " << logfile->df()->_tickMax;
+    LOG(TRACE) << "inspected logfile " << logfile->id() << " ("
+               << logfile->statusText().c_str()
+               << "), tickMin: " << logfile->df()->_tickMin
+               << ", tickMax: " << logfile->df()->_tickMax;
 
     if (logfile->status() == Logfile::StatusType::SEALED) {
       // If it is sealed, switch to random access:
@@ -2241,7 +2287,8 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG(TRACE) << "creating empty logfile '" << filename.c_str() << "' with size " << size;
+  LOG(TRACE) << "creating empty logfile '" << filename.c_str() << "' with size "
+             << size;
 
   uint32_t realsize;
   if (size > 0 && size > filesize()) {
@@ -2291,11 +2338,13 @@ int LogfileManager::ensureDirectory() {
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG(INFO) << "WAL directory '" << directory.c_str() << "' does not exist. creating it...";
+    LOG(INFO) << "WAL directory '" << directory.c_str()
+              << "' does not exist. creating it...";
 
     int res;
     if (!basics::FileUtils::createDirectory(directory, &res)) {
-      LOG(ERR) << "could not create WAL directory: '" << directory.c_str() << "': " << TRI_last_error();
+      LOG(ERR) << "could not create WAL directory: '" << directory.c_str()
+               << "': " << TRI_last_error();
       return TRI_ERROR_SYS_ERROR;
     }
   }

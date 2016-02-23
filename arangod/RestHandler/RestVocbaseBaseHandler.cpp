@@ -402,7 +402,7 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateDocument(
-    SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t cid,
+    SingleCollectionTransaction& trx, TRI_voc_cid_t cid,
     TRI_doc_mptr_copy_t const& mptr, VocShaper* shaper, bool generateBody) {
   CollectionNameResolver const* resolver = trx.resolver();
 
@@ -755,8 +755,15 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
       --e;
     }
 
-    TRI_voc_rid_t rid = TRI_UInt64String2(s, e - s);
-    isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+    TRI_voc_rid_t rid = 0;
+
+    try {
+      rid = StringUtils::uint64_check(s, e - s);
+      isValid = true;
+    }
+    catch (...) {
+      isValid = false;
+    }
 
     return rid;
   }
@@ -765,8 +772,16 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     etag = _request->value(parameter, found);
 
     if (found) {
-      TRI_voc_rid_t rid = TRI_UInt64String(etag);
-      isValid = (TRI_errno() != TRI_ERROR_ILLEGAL_NUMBER);
+      TRI_voc_rid_t rid = 0;
+
+      try {
+        rid = StringUtils::uint64_check(etag);
+        isValid = true;
+      }
+      catch (...) {
+        isValid = false;
+      }
+
       return rid;
     }
   }
@@ -868,7 +883,7 @@ int RestVocbaseBaseHandler::parseDocumentId(
   char const first = *ptr;
 
   if (first >= '0' && first <= '9') {
-    cid = TRI_UInt64String2(ptr, ptr - pos);
+    cid = StringUtils::uint64(ptr, ptr - pos);
   } else {
     cid = resolver->getCollectionIdCluster(std::string(ptr, pos - ptr));
   }

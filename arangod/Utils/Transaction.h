@@ -67,13 +67,12 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
- public:
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
-              TRI_voc_tid_t externalId)
+  Transaction(std::shared_ptr<TransactionContext> transactionContext, TRI_voc_tid_t externalId)
       : _externalId(externalId),
         _setupState(TRI_ERROR_NO_ERROR),
         _nestingLevel(0),
@@ -84,7 +83,7 @@ class Transaction {
         _allowImplicitCollections(true),
         _isReal(true),
         _trx(nullptr),
-        _vocbase(vocbase),
+        _vocbase(transactionContext->vocbase()),
         _transactionContext(transactionContext) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_transactionContext != nullptr);
@@ -96,6 +95,7 @@ class Transaction {
     this->setupTransaction();
   }
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -116,8 +116,6 @@ class Transaction {
       // free the data associated with the transaction
       freeTransaction();
     }
-
-    delete _transactionContext;
   }
 
  public:
@@ -321,6 +319,20 @@ class Transaction {
                              std::string const& key,
                              TRI_voc_rid_t rid,
                              std::string const& oldRid);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read any (random) document
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read many documents, using skip and limit in arbitrary order
+  /// The result guarantees that all documents are contained exactly once
+  /// as long as the collection is not modified.
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&, uint64_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -797,7 +809,13 @@ class Transaction {
   OperationResult allLocal(std::string const& collectionName,
                            uint64_t skip, uint64_t limit,
                            OperationOptions& options);
-  
+
+  OperationResult anyCoordinator(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit);
+
+  OperationResult anyLocal(std::string const& collectionName, uint64_t skip,
+                           uint64_t limit);
+
   OperationResult truncateCoordinator(std::string const& collectionName,
                                       OperationOptions& options);
   
@@ -1167,7 +1185,7 @@ class Transaction {
   /// @brief the transaction context
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionContext* _transactionContext;
+  std::shared_ptr<TransactionContext> _transactionContext;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makeNolockHeaders

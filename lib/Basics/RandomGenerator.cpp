@@ -67,15 +67,12 @@ class RandomDevice {
   static unsigned long getSeed() {
     unsigned long seed = (unsigned long)time(0);
 
-#ifdef TRI_HAVE_GETTIMEOFDAY
     struct timeval tv;
     int result = gettimeofday(&tv, 0);
 
     seed ^= static_cast<unsigned long>(tv.tv_sec);
     seed ^= static_cast<unsigned long>(tv.tv_usec);
     seed ^= static_cast<unsigned long>(result);
-#endif
-
     seed ^= static_cast<unsigned long>(Thread::currentProcessId());
 
     return seed;

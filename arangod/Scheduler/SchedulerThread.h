@@ -45,13 +45,12 @@ class Scheduler;
 /////////////////////////////////////////////////////////////////////////////
 
 class SchedulerThread : public Thread, private TaskManager {
- private:
-  SchedulerThread(SchedulerThread const&);
-  SchedulerThread& operator=(SchedulerThread const&);
+  SchedulerThread(SchedulerThread const&) = delete;
+  SchedulerThread& operator=(SchedulerThread const&) = delete;
 
  public:
   SchedulerThread(Scheduler*, EventLoop, bool defaultLoop);
-  ~SchedulerThread();
+  ~SchedulerThread() { shutdown(); }
 
  public:
   void beginShutdown() override final;

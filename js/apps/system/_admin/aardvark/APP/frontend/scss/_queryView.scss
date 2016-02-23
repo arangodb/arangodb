@@ -163,9 +163,14 @@ toolbar {
     font-weight: 300;
     height: 30px;
     line-height: 1;
+    outline: none;
     padding: 5px;
     padding-left: 5px !important;
     padding-top: 3px !important;
+
+    &:focus {
+      outline: none;
+    }
   }
 }
 

@@ -28,6 +28,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/transactions.h"
 
 struct TRI_document_collection_t;
@@ -175,7 +176,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateSaved(arangodb::SingleCollectionWriteTransaction<1>& trx,
+  void generateSaved(arangodb::SingleCollectionTransaction& trx,
                      TRI_voc_cid_t cid, TRI_doc_mptr_copy_t const& mptr) {
     TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
@@ -204,7 +205,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDeleted(arangodb::SingleCollectionWriteTransaction<1>& trx,
+  void generateDeleted(arangodb::SingleCollectionTransaction& trx,
                        TRI_voc_cid_t cid, TRI_voc_key_t key,
                        TRI_voc_rid_t rid) {
     rest::HttpResponse::HttpResponseCode statusCode;
@@ -231,17 +232,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocumentNotFound(
-      arangodb::SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t cid,
-      TRI_voc_key_t key) {
-    generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates document not found error message, write transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDocumentNotFound(
-      arangodb::SingleCollectionWriteTransaction<1>& trx, TRI_voc_cid_t cid,
+      arangodb::SingleCollectionTransaction& trx, TRI_voc_cid_t cid,
       TRI_voc_key_t key) {
     generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
   }
@@ -250,8 +241,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates document not found error message, no transaction info
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocumentNotFound(std::string const& collectionName,
-                                TRI_voc_key_t key) {
+  void generateDocumentNotFound(std::string const&,
+                                TRI_voc_key_t) {
     generateError(rest::HttpResponse::NOT_FOUND,
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -272,21 +263,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates precondition failed, for a read-transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  void generatePreconditionFailed(SingleCollectionReadOnlyTransaction& trx,
-                                  TRI_voc_cid_t cid,
-                                  TRI_doc_mptr_copy_t const& mptr,
-                                  TRI_voc_rid_t rid) {
-    return generatePreconditionFailed(
-        trx.resolver()->getCollectionName(cid),
-        (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr),
-        rid);  // PROTECTED by RUNTIME
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates precondition failed, for a write-transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generatePreconditionFailed(SingleCollectionWriteTransaction<1>& trx,
+  void generatePreconditionFailed(SingleCollectionTransaction& trx,
                                   TRI_voc_cid_t cid,
                                   TRI_doc_mptr_copy_t const& mptr,
                                   TRI_voc_rid_t rid) {
@@ -321,7 +298,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocument(SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t,
+  void generateDocument(SingleCollectionTransaction& trx, TRI_voc_cid_t,
                         TRI_doc_mptr_copy_t const&, VocShaper*, bool);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneTransactionContext.h"
-#include "Utils/CollectionNameResolver.h"
+#include "VocBase/transaction.h"
 
 using namespace arangodb;
 
@@ -30,10 +30,8 @@ using namespace arangodb;
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-StandaloneTransactionContext::StandaloneTransactionContext()
-    : TransactionContext(), _resolver(nullptr) {
-  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT
-  // CTOR\r\n";
+StandaloneTransactionContext::StandaloneTransactionContext(TRI_vocbase_t* vocbase)
+    : TransactionContext(vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,8 +39,6 @@ StandaloneTransactionContext::StandaloneTransactionContext()
 ////////////////////////////////////////////////////////////////////////////////
 
 StandaloneTransactionContext::~StandaloneTransactionContext() {
-  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT
-  // DTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,8 +67,6 @@ int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
   if (_resolver == nullptr) {
     _resolver = new CollectionNameResolver(trx->_vocbase);
   }
-  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT
-  // REGISTER: " << trx << "\r\n";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -81,14 +75,9 @@ int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int StandaloneTransactionContext::unregisterTransaction() {
+void StandaloneTransactionContext::unregisterTransaction() {
   delete _resolver;
   _resolver = nullptr;
-
-  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT
-  // UNREGISTER\r\n";
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,3 +85,12 @@ int StandaloneTransactionContext::unregisterTransaction() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool StandaloneTransactionContext::isEmbeddable() const { return false; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a context, returned in a shared ptr
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<StandaloneTransactionContext> StandaloneTransactionContext::Create(TRI_vocbase_t* vocbase) {
+  return std::make_shared<StandaloneTransactionContext>(vocbase);
+}
+

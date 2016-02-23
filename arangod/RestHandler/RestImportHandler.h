@@ -29,9 +29,6 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Utils/transactions.h"
 
-#define RestImportTransaction \
-  arangodb::SingleCollectionWriteTransaction<UINT64_MAX>
-
 namespace arangodb {
 
 struct RestImportResult {
@@ -107,7 +104,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(RestImportTransaction&, RestImportResult&,
+  int handleSingleDocument(SingleCollectionTransaction&, RestImportResult&,
                            char const*, VPackSlice const&, std::string const&,
                            bool, OperationOptions const&, size_t);
 

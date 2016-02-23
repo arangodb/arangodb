@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TransactionContext.h"
-#include "Storage/Options.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
 #include "V8/v8-globals.h"
@@ -35,17 +33,14 @@ using namespace arangodb;
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TransactionContext::V8TransactionContext(bool embeddable)
-    : TransactionContext(),
+V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase, bool embeddable)
+    : TransactionContext(vocbase),
       _sharedTransactionContext(static_cast<V8TransactionContext*>(
           static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
                                             V8DataSlot))->_transactionContext)),
-      _resolver(nullptr),
       _currentTransaction(nullptr),
       _ownResolver(false),
       _embeddable(embeddable) {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " CTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,8 +48,6 @@ V8TransactionContext::V8TransactionContext(bool embeddable)
 ////////////////////////////////////////////////////////////////////////////////
 
 V8TransactionContext::~V8TransactionContext() {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " DTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,8 +65,6 @@ CollectionNameResolver const* V8TransactionContext::getResolver() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " GETPARENT: " << _sharedTransactionContext->_currentTransaction << "\r\n";
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   return _sharedTransactionContext->_currentTransaction;
 }
@@ -88,8 +79,6 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
                        nullptr);
   _sharedTransactionContext->_currentTransaction = trx;
 
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " REGISTER: " << trx << "\r\n";
   if (_sharedTransactionContext->_resolver == nullptr) {
     _sharedTransactionContext->_resolver =
         new CollectionNameResolver(trx->_vocbase);
@@ -103,20 +92,15 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-int V8TransactionContext::unregisterTransaction() {
+void V8TransactionContext::unregisterTransaction() {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
-
-  // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this <<
-  // " UNREGISTER\r\n";
 
   if (_ownResolver && _sharedTransactionContext->_resolver != nullptr) {
     _ownResolver = false;
     delete _sharedTransactionContext->_resolver;
     _sharedTransactionContext->_resolver = nullptr;
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,3 +140,12 @@ bool V8TransactionContext::IsEmbedded() {
   return static_cast<V8TransactionContext*>(v8g->_transactionContext)
              ->_currentTransaction != nullptr;
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a context, returned in a shared ptr
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<V8TransactionContext> V8TransactionContext::Create(TRI_vocbase_t* vocbase, bool embeddable) {
+  return std::make_shared<V8TransactionContext>(vocbase, embeddable);
+}
+

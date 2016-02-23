@@ -30,8 +30,9 @@
 }
 
 .dataNotReadyYet {
+  color: $c-warning;
   font-family: 'Open Sans', sans-serif;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 100;
   text-align: center;
 }

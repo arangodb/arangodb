@@ -122,8 +122,8 @@ bool RestDocumentHandler::createDocument() {
   */
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -160,7 +160,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_COL_TYPE_DOCUMENT);
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
   return true;
 }
 
@@ -264,8 +264,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collection, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -376,8 +376,8 @@ bool RestDocumentHandler::readAllDocuments() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collection, TRI_TRANSACTION_READ);
 
   std::vector<std::string> ids;
 
@@ -568,8 +568,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -626,8 +626,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  // TODO Fix Collection Type!
-  generateSaved(result, collection, TRI_COL_TYPE_DOCUMENT);
+  generateSaved(result, collection, TRI_col_type_e(trx.getCollectionType(collection)));
 
   return true;
 }
@@ -709,8 +708,8 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collection, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -747,9 +746,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  // TODO Fix Collection Type!
-  generateDeleted(result, collection, TRI_COL_TYPE_DOCUMENT);
-
+  generateDeleted(result, collection, TRI_col_type_e(trx.getCollectionType(collection)));
   return true;
 }
 

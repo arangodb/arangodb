@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global $, Joi, _, alert, templateEngine, window*/
+/*global $, Joi, _, arangoHelper, templateEngine, window*/
 (function() {
   "use strict";
 
@@ -28,10 +28,10 @@
       } 
       switch(res.errorNum) {
         case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
-          alert("Unable to download application from the given repository.");
+          arangoHelper.arangoError("Services", "Unable to download application from the given repository.");
           break;
         default:
-          alert("Error: " + res.errorNum + ". " + res.errorMessage);
+          arangoHelper.arangoError("Services", res.errorNum + ". " + res.errorMessage);
       }
     }
   };
