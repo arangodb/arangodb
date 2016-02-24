@@ -68,7 +68,10 @@ HeartbeatThread::HeartbeatThread(
       _numFails(0),
       _numDispatchedJobs(0),
       _lastDispatchedJobResult(false),
-      _versionThatTriggeredLastJob(0) {
+      _versionThatTriggeredLastJob(0), 
+      _ready(false),
+      _stop(0) {
+
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
