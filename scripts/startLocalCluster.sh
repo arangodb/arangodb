@@ -33,7 +33,7 @@ rm -rf cluster
 mkdir cluster
 cd cluster
 echo Starting agency...
-../build/bin/etcd-arango --data-dir cluster/agency > /dev/null 2>&1 &
+../build/bin/etcd-arango --data-dir agency > agency.log 2>&1 &
 cd ..
 sleep 1
 
@@ -156,6 +156,9 @@ testServer() {
     done
 }
 
+for p in `seq 8629 $PORTTOPDB` ; do
+    testServer $p
+done
 for p in `seq 8530 $PORTTOPCO` ; do
     testServer $p
 done

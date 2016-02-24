@@ -1,10 +1,10 @@
-COMMAND SECTION "DATE" "" "ArangoDB"
+<COMMAND> <SECTION> "<DATE>" "<VERSION>" "ArangoDB"
 NAME
-COMMAND - a bulk importer for the ArangoDB database
+<COMMAND> - a bulk importer for the ArangoDB database
 SYNOPSIS
-COMMAND [options] 
+<COMMAND> [options] 
 DESCRIPTION
-The COMMAND binary can be used to bulk import data from a file into the
+The <COMMAND> binary can be used to bulk import data from a file into the
 ArangoDB database. Input data be present in the input file in either CSV
 format with column headlines, or in JSON format. If JSON format is used,
 each line in the input file must contain exactly one JSON document with 
@@ -44,10 +44,10 @@ password to use when connecting. Don't specify this option to get a password pro
 OPTION "--server.disable-authentication <boolean>"
 disable the password prompt and authentication when connecting to the server ENDOPTION
 EXAMPLES
-EXAMPLE COMMAND --file heroes.json --type json --collection superheroes --create-collection true
+EXAMPLE <COMMAND> --file heroes.json --type json --collection superheroes --create-collection true
 imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist ENDEXAMPLE
-EXAMPLE COMMAND --file export.csv --type csv --collection mydata
+EXAMPLE <COMMAND> --file export.csv --type csv --collection mydata
 imports CSV data from export.csv into existing collection mydata ENDEXAMPLE
-EXAMPLE COMMAND --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
+EXAMPLE <COMMAND> --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
 imports JSON data from file values.json into collection mydata, using a different server endpoint and database ENDEXAMPLE
 AUTHOR

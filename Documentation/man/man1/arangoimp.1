@@ -1,4 +1,4 @@
-.TH arangoimp 1 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
+.TH arangoimp 1 "23 Feb 2016" "3.0.0-devel" "ArangoDB"
 .SH NAME
 arangoimp - a bulk importer for the ArangoDB database
 .SH SYNOPSIS
@@ -15,50 +15,40 @@ online manual, available at http://www.arangodb.org/
 
 The most important startup options are:
 
-.IP "--batch-size <uint64>"
-maximum size of data batches that are sent to the server
-.IP "--configuration <string>"
-read configuration from file <string> 
-.IP "--collection <string>"
-name of collection to import into 
-.IP "--create-collection <bool>"
-set to "true" if collection should be created by the import 
-.IP "--file <string>"
-input file with the data to import 
-.IP "--overwrite <bool>"
-set to "true" to remove all data from the collection prior to the import
-.IP "--quote <string>"
-optional quote character to be used 
-.IP "--separator <string>"
-separator character or string to be used. the default value is "," 
-.IP "--type <string>"
-set to "json", "tsv" or "csv", depending on the input file format 
-.IP "--server.endpoint <string>"
-server endpoint to connect to, consisting of protocol, ip address and port 
-.IP "--server.database <string>"
-database name to use when connection (default: "_system") 
-.IP "--server.username <string>"
-username to use when connecting (default "root") 
-.IP "--server.password <string>"
-password to use when connecting. Don't specify this option to get a password prompt 
-.IP "--server.disable-authentication <boolean>"
-disable the password prompt and authentication when connecting to the server 
-.SH EXAMPLES
-.EX
-shell> arangoimp --file heroes.json --type json --collection superheroes --create-collection true
-imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist 
-.EE
-
-.EX
-shell> arangoimp --file export.csv --type csv --collection mydata
-imports CSV data from export.csv into existing collection mydata 
-.EE
-
-.EX
-shell> arangoimp --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
-imports JSON data from file values.json into collection mydata, using a different server endpoint and database 
-.EE
-
-
+OPTION "--batch-size <uint64>"
+maximum size of data batches that are sent to the server ENDOPTION
+OPTION "--configuration <string>"
+read configuration from file <string> ENDOPTION
+OPTION "--collection <string>"
+name of collection to import into ENDOPTION
+OPTION "--create-collection <bool>"
+set to "true" if collection should be created by the import ENDOPTION
+OPTION "--file <string>"
+input file with the data to import ENDOPTION
+OPTION "--overwrite <bool>"
+set to "true" to remove all data from the collection prior to the import ENDOPTION
+OPTION "--quote <string>"
+optional quote character to be used ENDOPTION
+OPTION "--separator <string>"
+separator character or string to be used. the default value is "," ENDOPTION
+OPTION "--type <string>"
+set to "json", "tsv" or "csv", depending on the input file format ENDOPTION
+OPTION "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.database <string>"
+database name to use when connection (default: "_system") ENDOPTION
+OPTION "--server.username <string>"
+username to use when connecting (default "root") ENDOPTION
+OPTION "--server.password <string>"
+password to use when connecting. Don't specify this option to get a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server ENDOPTION
+EXAMPLES
+EXAMPLE arangoimp --file heroes.json --type json --collection superheroes --create-collection true
+imports JSON data from file heroes.json into collection superhoeres. creates the collection if it does not exist ENDEXAMPLE
+EXAMPLE arangoimp --file export.csv --type csv --collection mydata
+imports CSV data from export.csv into existing collection mydata ENDEXAMPLE
+EXAMPLE arangoimp --file values.json --collection mydata --server.endpoint tcp://127.0.0.1:8529 --server.database mydb
+imports JSON data from file values.json into collection mydata, using a different server endpoint and database ENDEXAMPLE
 .SH AUTHOR
-	    Copyright triAGENS GmbH, Cologne, Germany
+Copyright ArangoDB GmbH, Cologne, Germany

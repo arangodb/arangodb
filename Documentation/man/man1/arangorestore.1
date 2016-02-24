@@ -1,4 +1,5 @@
-.TH arangorestore 1 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
+.TH arangorestore 1 "23 Feb 2016" "3.0.0-devel" "ArangoDB"
+arangorestore SECTION "DATE" "" "ArangoDB"
 .SH NAME
 arangorestore - a data restore tool for the ArangoDB database
 .SH SYNOPSIS
@@ -16,36 +17,35 @@ online manual, available at http://www.arangodb.org/
 
 The most important startup options are:
 
-.IP "--configuration <string>"
-read configuration from file <string> 
-.IP "--collection <string>"
+OPTION "--configuration <string>"
+read configuration from file <string> ENDOPTION
+OPTION "--collection <string>"
 name of collection to restore (can be specified multiple times). This can be
 used to restrict the restore operation to certain collections only. If not 
-specified, all collections from the "--input-directory" will be restored 
-.IP "--create-collection <bool>"
-set to "true" if collections should be created 
-.IP "--import-data <bool>"
-when set to "true" will restore the data (documents) of the collection 
-.IP "--include-system-collections <bool>"
+specified, all collections from the "--input-directory" will be restored ENDOPTION
+OPTION "--create-collection <bool>"
+set to "true" if collections should be created ENDOPTION
+OPTION "--import-data <bool>"
+when set to "true" will restore the data (documents) of the collection ENDOPTION
+OPTION "--include-system-collections <bool>"
 when set to "true" will also restore system collections, otherwise they will be 
-excluded 
-.IP "--input-directory <string>"
-input directory in which to look for dump files. 
-.IP "--overwrite <bool>"
-when set to "true", will drop an existing collection before re-creating it 
-.IP "--progress <bool>"
-when set to "true", will display progress information 
-.IP "--server.endpoint <string>"
-server endpoint to connect to, consisting of protocol, ip address and port 
-.IP "--server.database <string>"
-database name to use when connection (default: "_system") 
-.IP "--server.username <string>"
-username to use when connecting (default "root") 
-.IP "--server.password <string>"
-password to use when connecting. Don't specify this option to get a password prompt 
-.IP "--server.disable-authentication <boolean>"
-disable the password prompt and authentication when connecting to the server 
-.SH EXAMPLES
-
+excluded ENDOPTION
+OPTION "--input-directory <string>"
+input directory in which to look for dump files. ENDOPTION
+OPTION "--overwrite <bool>"
+when set to "true", will drop an existing collection before re-creating it ENDOPTION
+OPTION "--progress <bool>"
+when set to "true", will display progress information ENDOPTION
+OPTION "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.database <string>"
+database name to use when connection (default: "_system") ENDOPTION
+OPTION "--server.username <string>"
+username to use when connecting (default "root") ENDOPTION
+OPTION "--server.password <string>"
+password to use when connecting. Don't specify this option to get a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server ENDOPTION
+EXAMPLES
 .SH AUTHOR
-	    Copyright triAGENS GmbH, Cologne, Germany
+Copyright ArangoDB GmbH, Cologne, Germany

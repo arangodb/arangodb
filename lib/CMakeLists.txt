@@ -41,6 +41,41 @@ if (USE_MAINTAINER_MODE)
   )
 endif ()
 
+# note that we check-in the generated FLEX/BISON files, therefore they are
+# generate inside the source tree
+
+if (USE_MAINTAINER_MODE)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      lib/JsonParser/json-parser.ll
+      lib/JsonParser/json-parser.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      V8/v8-json.ll
+      V8/v8-json.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+    VERBATIM
+  )
+endif ()
+
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
