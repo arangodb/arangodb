@@ -156,6 +156,9 @@ testServer() {
     done
 }
 
+for p in `seq 8629 $PORTTOPDB` ; do
+    testServer $p
+done
 for p in `seq 8530 $PORTTOPCO` ; do
     testServer $p
 done
