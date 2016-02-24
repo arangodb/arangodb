@@ -1946,7 +1946,7 @@ array_nextsize (int elem, int cur, int cnt)
   return ncur;
 }
 
-static void * noinline ecb_cold
+static noinline void * ecb_cold
 array_realloc (int elem, void *base, int *cur, int cnt)
 {
   *cur = array_nextsize (elem, *cur, cnt);
