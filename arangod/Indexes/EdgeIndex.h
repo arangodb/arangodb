@@ -33,9 +33,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace aql {
-class SortCondition;
-}
 
 class EdgeIndexIterator final : public IndexIterator {
  public:

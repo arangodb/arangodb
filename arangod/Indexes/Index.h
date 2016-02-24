@@ -36,7 +36,6 @@
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 namespace arangodb {

@@ -33,7 +33,6 @@ namespace arangodb {
 namespace rest {
 class ApplicationScheduler;
 class Dispatcher;
-class Task;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server with dispatcher

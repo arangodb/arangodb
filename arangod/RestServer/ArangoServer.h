@@ -35,7 +35,6 @@
 #include "VocBase/vocbase.h"
 
 struct TRI_server_t;
-struct TRI_vocbase_defaults_t;
 
 namespace arangodb {
 namespace basics {
@@ -49,8 +48,6 @@ class ApplicationScheduler;
 class AsyncJobManager;
 class Dispatcher;
 class HttpHandlerFactory;
-class HttpServer;
-class HttpsServer;
 }
 
 class ApplicationV8;
