@@ -292,7 +292,6 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ################################################################################
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
-message (${CMAKE_BUILD_TYPE_TL})
 
 set(DEBUG FALSE)
 
