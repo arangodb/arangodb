@@ -267,7 +267,7 @@ void HeartbeatThread::runCoordinator() {
 
   setReady();
 
-  while (!_stop) {
+  while (!isStopping()) {
     LOG(TRACE) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
@@ -276,7 +276,7 @@ void HeartbeatThread::runCoordinator() {
     // we don't care if this fails
     sendState();
 
-    if (_stop) {
+    if (isStopping()) {
       break;
     }
 
@@ -290,7 +290,7 @@ void HeartbeatThread::runCoordinator() {
       }
     }
 
-    if (_stop) {
+    if (isStopping()) {
       break;
     }
 
@@ -378,10 +378,6 @@ void HeartbeatThread::runCoordinator() {
       }
     }
   }
-
-  // another thread is waiting for this value to appear in order to shut down
-  // properly
-  _stop = 2;
 
   LOG(TRACE) << "stopped heartbeat thread";
 }
