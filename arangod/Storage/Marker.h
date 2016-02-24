@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
-#include "Storage/Options.h"
 
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>

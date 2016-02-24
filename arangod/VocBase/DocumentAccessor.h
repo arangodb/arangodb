@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
-#include "Storage/Options.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"

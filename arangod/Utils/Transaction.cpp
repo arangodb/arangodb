@@ -399,7 +399,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         transactionContext()->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -715,7 +715,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(VPackSlice(mptr.vpack()));
   }
 
-  return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase), "", TRI_ERROR_NO_ERROR, false); 
+  return OperationResult(resultBuilder.steal(), 
+                         transactionContext()->orderCustomTypeHandler(), "",
+                         TRI_ERROR_NO_ERROR, false); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1468,7 +1470,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         transactionContext()->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -1735,6 +1737,6 @@ OperationCursor Transaction::indexScan(
 
   iterator->skip(skip);
 
-  return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
+  return OperationCursor(transactionContext()->orderCustomTypeHandler(),
                          iterator.release(), limit, batchSize);
 }

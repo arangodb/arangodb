@@ -30,7 +30,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
-#include "Storage/Options.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/transactions.h"
@@ -1891,8 +1890,9 @@ static void JS_InsertVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
-  VPackOptions const* vpackOptions = StorageOptions::getInsertOptions();
-  VPackBuilder builder(vpackOptions);
+  VPackOptions vpackOptions;
+  vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
+  VPackBuilder builder(&vpackOptions);
 
   int res = TRI_V8ToVPack(isolate, builder, args[docIdx]->ToObject(), true);
   
