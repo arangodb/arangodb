@@ -2396,3 +2396,36 @@ TRI_vocbase_t::getReplicationClients() {
   }
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 
+/// if offset is non-zero, then it is an offset into the VelocyPack data in
+/// the data or WAL file. If offset is 0, then data contains the actual data
+/// in place.
+////////////////////////////////////////////////////////////////////////////////
+
+VPackSlice const TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
+  if (offset == 0) {
+    return VPackSlice(data);
+  } else {
+    return VPackSlice(mptr->vpack() + offset);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a TRI_vpack_sub_t structure with a subvalue
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
+                      VPackSlice const base, VPackSlice const value) noexcept {
+  if (value.byteSize() <= sizeof(sub->data)) {
+    sub->offset = 0;
+    memcpy(sub->data, value.start(), value.byteSize());
+  } else {
+    size_t off = value.start() - base.start();
+    TRI_ASSERT(off <= UINT32_MAX);
+    sub->offset = static_cast<uint32_t>(off);
+    memset(sub->data, 0, sizeof(sub->data));
+  }
+}
+

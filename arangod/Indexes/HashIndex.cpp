@@ -55,13 +55,14 @@ static bool IsEqualElementElement(void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKey(void*,
-                        TRI_hash_index_search_value_t const* key) {
+                        VPackSlice const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
-  for (size_t j = 0; j < key->_length; ++j) {
-    // ignore the sid for hashing
-    hash = fasthash64(key->_values[j]._data.data, key->_values[j]._data.length,
-                      hash);
+  if (!key->isArray()) {
+    return hash;
+  }
+  for (size_t j = 0; j < key->length(); ++j) {
+    hash = (*key)[j].hash(hash);
   }
 
   return hash;
@@ -72,29 +73,17 @@ static uint64_t HashKey(void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyElement(void*,
-                              TRI_hash_index_search_value_t const* left,
+                              VPackSlice const* left,
                               TRI_index_element_t const* right) {
   TRI_ASSERT(right->document() != nullptr);
-
-  for (size_t j = 0; j < left->_length; ++j) {
-    TRI_shaped_json_t* leftJson = &left->_values[j];
-    TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
-
-    if (leftJson->_sid != rightSub->_sid) {
-      return false;
-    }
-
-    auto length = leftJson->_data.length;
-
-    char const* rightData;
-    size_t rightLength;
-    TRI_InspectShapedSub(rightSub, right->document(), rightData, rightLength);
-
-    if (length != rightLength) {
-      return false;
-    }
-
-    if (length > 0 && memcmp(leftJson->_data.data, rightData, length) != 0) {
+  if (!left->isArray()) {
+    return false;
+  }
+  for (size_t j = 0; j < left->length(); ++j) {
+    VPackSlice const leftVPack = (*left)[j];
+    TRI_vpack_sub_t* rightSub = right->subObjects() + j;
+    VPackSlice const rightVPack = rightSub->slice(right->document());
+    if (leftVPack != rightVPack) {
       return false;
     }
   }
@@ -103,7 +92,7 @@ static bool IsEqualKeyElement(void*,
 }
 
 static bool IsEqualKeyElementHash(
-    void* userData, TRI_hash_index_search_value_t const* left,
+    void* userData, VPackSlice const* left,
     uint64_t const,  // Has been computed but is not used here
     TRI_index_element_t const* right) {
   return IsEqualKeyElement(userData, left, right);
@@ -122,12 +111,7 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
       _posInBuffer = 0;
 
       int res = TRI_ERROR_NO_ERROR;
-      if (_keys.empty()) {
-        _index->lookup(_trx, _searchKeys.at(_position++), _buffer);
-      } else {
-        // DEPRECATED
-        _index->lookup(_trx, _keys[_position++], _buffer);
-      }
+      _index->lookup(_trx, _searchKeys.at(_position++), _buffer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -418,11 +402,11 @@ int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup(arangodb::Transaction* trx,
-                      TRI_hash_index_search_value_t* searchValue,
+                      VPackSlice searchValue,
                       std::vector<TRI_doc_mptr_t*>& documents) const {
   if (_unique) {
     TRI_index_element_t* found =
-        _uniqueArray->_hashArray->findByKey(trx, searchValue);
+        _uniqueArray->_hashArray->findByKey(trx, &searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -434,7 +418,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
 
   std::vector<TRI_index_element_t*>* results = nullptr;
   try {
-    results = _multiArray->_hashArray->lookupByKey(trx, searchValue);
+    results = _multiArray->_hashArray->lookupByKey(trx, &searchValue);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -452,30 +436,18 @@ int HashIndex::lookup(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given a velocypack slice
-//////////////////////////////////////////////////////////////////////////////
-
-#include <iostream>
-int HashIndex::lookup(arangodb::Transaction*,
-                      VPackSlice searchValue,
-                      std::vector<TRI_doc_mptr_t*>&) const {
-  std::cout << searchValue.toJson() << "\n";
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup(arangodb::Transaction* trx,
-                      TRI_hash_index_search_value_t* searchValue,
+                      arangodb::velocypack::Slice searchValue,
                       std::vector<TRI_doc_mptr_copy_t>& documents,
                       TRI_index_element_t*& next, size_t batchSize) const {
   if (_unique) {
     next = nullptr;
     TRI_index_element_t* found =
-        _uniqueArray->_hashArray->findByKey(trx, searchValue);
+        _uniqueArray->_hashArray->findByKey(trx, &searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -489,7 +461,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
   if (next == nullptr) {
     try {
       results =
-          _multiArray->_hashArray->lookupByKey(trx, searchValue, batchSize);
+          _multiArray->_hashArray->lookupByKey(trx, &searchValue, batchSize);
     } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -782,6 +754,7 @@ IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
     arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
+#if 0
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(fields());
@@ -939,8 +912,11 @@ IndexIterator* HashIndex::iteratorForCondition(
     }
     throw;
   }
+#endif
 
-  return new HashIndexIterator(trx, this, searchValues);
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Null));
+  return new HashIndexIterator(trx, this, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -67,7 +67,7 @@ class SkiplistIterator {
 
  private:
   // Shorthand for the skiplist node
-  typedef arangodb::basics::SkipListNode<TRI_skiplist_index_key_t,
+  typedef arangodb::basics::SkipListNode<VPackSlice,
                                          TRI_index_element_t> Node;
 
   struct SkiplistIteratorInterval {
@@ -163,7 +163,7 @@ class SkiplistIndexIterator final : public IndexIterator {
 
 class SkiplistIndex final : public PathBasedIndex {
   struct KeyElementComparator {
-    int operator()(TRI_skiplist_index_key_t const* leftKey,
+    int operator()(VPackSlice const* leftKey,
                    TRI_index_element_t const* rightElement) const;
 
     explicit KeyElementComparator(SkiplistIndex* idx) { _idx = idx; }
@@ -187,7 +187,7 @@ class SkiplistIndex final : public PathBasedIndex {
   friend struct KeyElementComparator;
   friend struct ElementElementComparator;
 
-  typedef arangodb::basics::SkipList<TRI_skiplist_index_key_t,
+  typedef arangodb::basics::SkipList<VPackSlice,
                                      TRI_index_element_t> TRI_Skiplist;
 
  public:

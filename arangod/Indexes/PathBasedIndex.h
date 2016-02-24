@@ -26,12 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
-
-class VocShaper;
 
 namespace arangodb {
 namespace aql {
@@ -84,9 +81,18 @@ class PathBasedIndex : public Index {
   /// @brief return the attribute paths
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths()
+  std::vector<std::vector<std::string>> const& paths()
       const {
     return _paths;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the attribute paths, a -1 entry means none is expanding,
+  /// otherwise the non-negative number is the index of the expanding one.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<int> const& expanding() const {
+    return _expanding;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -112,41 +118,40 @@ class PathBasedIndex : public Index {
   inline size_t numPaths() const { return _paths.size(); }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief helper function to transform AttributeNames into pid lists
-  /// This will create PIDs for all indexed Attributes
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> fillPidPaths();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief helper function to create a set of index combinations to insert
+  /// @brief helper function to transform AttributeNames into string lists
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildIndexValue(TRI_shaped_json_t const*,
-                       std::vector<TRI_shaped_json_t>&);
+  void fillPaths(std::vector<std::vector<std::string>>& paths,
+                 std::vector<int>& expanding);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to create a set of index combinations to insert
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildIndexValues(TRI_shaped_json_t const*, TRI_shaped_json_t const*,
-                        size_t, size_t,
-                        std::unordered_set<std::vector<TRI_shaped_json_t>>&,
-                        std::vector<TRI_shaped_json_t>&, bool);
+  std::vector<VPackSlice> buildIndexValue(VPackSlice const documentSlice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief helper function to create a set of index combinations to insert
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildIndexValues(VPackSlice const document, size_t level,
+                        std::vector<std::vector<VPackSlice>>& toInsert,
+                        std::vector<VPackSlice>& sliceStack);
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the shaper for the collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  VocShaper* _shaper;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute paths
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const _paths;
+  std::vector<std::vector<std::string>> _paths;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ... and which of them expands
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<int> _expanding;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not at least one attribute is expanded

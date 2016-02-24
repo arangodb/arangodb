@@ -26,6 +26,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
@@ -173,17 +174,15 @@ static void FreeElm(void* e) {
 /// @brief compares a key with an element, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareKeyElement(TRI_shaped_json_t const* left,
+static int CompareKeyElement(VPackSlice const* left,
                              TRI_index_element_t const* right,
-                             size_t rightPosition, VocShaper* shaper) {
+                             size_t rightPosition) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
   auto rightSubobjects = right->subObjects();
-
-  return TRI_CompareShapeTypes(
-      nullptr, nullptr, left, shaper, right->document()->getShapedJsonPtr(),
-      &rightSubobjects[rightPosition], nullptr, shaper);
+  return arangodb::basics::VelocyPackHelper::compare(*left,
+      rightSubobjects[rightPosition].slice(right->document()), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,17 +192,15 @@ static int CompareKeyElement(TRI_shaped_json_t const* left,
 static int CompareElementElement(TRI_index_element_t const* left,
                                  size_t leftPosition,
                                  TRI_index_element_t const* right,
-                                 size_t rightPosition, VocShaper* shaper) {
+                                 size_t rightPosition) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
   auto leftSubobjects = left->subObjects();
   auto rightSubobjects = right->subObjects();
-
-  return TRI_CompareShapeTypes(
-      left->document()->getShapedJsonPtr(), &leftSubobjects[leftPosition],
-      nullptr, shaper, right->document()->getShapedJsonPtr(),
-      &rightSubobjects[rightPosition], nullptr, shaper);
+  return arangodb::basics::VelocyPackHelper::compare(
+      leftSubobjects[leftPosition].slice(left->document()),
+      rightSubobjects[rightPosition].slice(right->document()), true);
 }
 
 static int FillLookupOperator(TRI_index_operator_t* slOperator,
@@ -491,7 +488,8 @@ void SkiplistIterator::findHelper(
     }
 
     case TRI_EQ_INDEX_OPERATOR: {
-      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      temp = nullptr;
       TRI_ASSERT(nullptr != temp);
       interval._leftEndPoint = temp;
 
@@ -502,7 +500,8 @@ void SkiplistIterator::findHelper(
         // At most one hit:
         temp = temp->nextNode();
         if (nullptr != temp) {
-          if (0 == _index->CmpKeyElm(&values, temp->document())) {
+          // HACKI if (0 == _index->CmpKeyElm(&values, temp->document())) {
+          if (true) {
             interval._rightEndPoint = temp->nextNode();
             if (findHelperIntervalValid(interval)) {
               intervals.emplace_back(interval);
@@ -510,7 +509,8 @@ void SkiplistIterator::findHelper(
           }
         }
       } else {
-        temp = _index->_skiplistIndex->rightKeyLookup(&values);
+        // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
+        temp = nullptr;
         interval._rightEndPoint = temp->nextNode();
         if (findHelperIntervalValid(interval)) {
           intervals.emplace_back(interval);
@@ -521,7 +521,8 @@ void SkiplistIterator::findHelper(
 
     case TRI_LE_INDEX_OPERATOR: {
       interval._leftEndPoint = _index->_skiplistIndex->startNode();
-      temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      temp = nullptr;
       interval._rightEndPoint = temp->nextNode();
 
       if (findHelperIntervalValid(interval)) {
@@ -532,7 +533,8 @@ void SkiplistIterator::findHelper(
 
     case TRI_LT_INDEX_OPERATOR: {
       interval._leftEndPoint = _index->_skiplistIndex->startNode();
-      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      temp = nullptr;
       interval._rightEndPoint = temp->nextNode();
 
       if (findHelperIntervalValid(interval)) {
@@ -542,7 +544,8 @@ void SkiplistIterator::findHelper(
     }
 
     case TRI_GE_INDEX_OPERATOR: {
-      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      temp = nullptr;
       interval._leftEndPoint = temp;
       interval._rightEndPoint = _index->_skiplistIndex->endNode();
 
@@ -553,7 +556,8 @@ void SkiplistIterator::findHelper(
     }
 
     case TRI_GT_INDEX_OPERATOR: {
-      temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      temp = nullptr;
       interval._leftEndPoint = temp;
       interval._rightEndPoint = _index->_skiplistIndex->endNode();
 
@@ -913,20 +917,20 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::KeyElementComparator::operator()(
-    TRI_skiplist_index_key_t const* leftKey,
+    VPackSlice const* leftKey,
     TRI_index_element_t const* rightElement) const {
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
 
-  auto shaper =
-      _idx->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to
   // leftKey->_numFields.
-  for (size_t j = 0; j < leftKey->_numFields; j++) {
+  TRI_ASSERT(leftKey->isArray());
+  size_t numFields = leftKey->length();
+  for (size_t j = 0; j < numFields; j++) {
+    VPackSlice field = leftKey[j];
     int compareResult =
-        CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
+        CompareKeyElement(&field, rightElement, j);
     if (compareResult != 0) {
       return compareResult;
     }
@@ -956,11 +960,9 @@ int SkiplistIndex::ElementElementComparator::operator()(
     return 0;
   }
 
-  auto shaper =
-      _idx->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   for (size_t j = 0; j < _idx->numPaths(); j++) {
     int compareResult =
-        CompareElementElement(leftElement, j, rightElement, j, shaper);
+        CompareElementElement(leftElement, j, rightElement, j);
 
     if (compareResult != 0) {
       return compareResult;
@@ -1278,7 +1280,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
     std::unique_ptr<TRI_index_operator_t> unboundOperator(
         TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr,
-                                builder, _shaper, 1));
+                                builder, nullptr /* HACKI */ , 1));
     std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
     unboundOperator.release();
 
@@ -1442,7 +1444,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       // We have a range query based on the first _field
       std::unique_ptr<TRI_index_operator_t> op(
           buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                             includeUpper, emptySlice, _shaper));
+                             includeUpper, emptySlice, nullptr /* HACKI _shaper */));
 
       if (op != nullptr) {
         searchValues.emplace_back(op.get());
@@ -1483,17 +1485,17 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         if (valid) {
           std::unique_ptr<TRI_index_operator_t> tmpOp(
               TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-                                      parameter, _shaper, usedFields));
+                                      parameter, nullptr /* HACKI _shaper */, usedFields));
           // Note we create a new RangeOperator always.
           std::unique_ptr<TRI_index_operator_t> rangeOperator(
               buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                                 includeUpper, parameter->slice(), _shaper));
+                                 includeUpper, parameter->slice(), nullptr /* HACKI _shaper */));
 
           if (rangeOperator != nullptr) {
             std::unique_ptr<TRI_index_operator_t> combinedOp(
                 TRI_CreateIndexOperator(
                     TRI_AND_INDEX_OPERATOR, tmpOp.get(), rangeOperator.get(),
-                    std::make_shared<VPackBuilder>(), _shaper, 2));
+                    std::make_shared<VPackBuilder>(), nullptr /* HACKI _shaper */, 2));
             rangeOperator.release();
             tmpOp.release();
             searchValues.emplace_back(combinedOp.get());

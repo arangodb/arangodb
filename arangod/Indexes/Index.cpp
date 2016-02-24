@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
-#include "VocBase/VocShaper.h"
 
 #include <ostream>
 #include <velocypack/Iterator.h>

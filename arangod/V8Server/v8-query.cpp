@@ -451,6 +451,7 @@ static TRI_index_operator_t* SetupExampleSkiplist(
 /// @brief sets up the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 static int SetupSearchValue(
     std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
     v8::Handle<v8::Object> example, VocShaper* shaper,
@@ -499,6 +500,8 @@ static int SetupSearchValue(
 
   return TRI_ERROR_NO_ERROR;
 }
+// HACKI
+#endif 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a skiplist query (by condition or by example)
@@ -1163,8 +1166,9 @@ static void ByExampleHashIndexQuery(
   auto shaper = document->getShaper();  // PROTECTED by trx from above
   {
     std::string errorMessage;
-    int res = SetupSearchValue(hashIndex->paths(), example, shaper, searchValue,
-                               errorMessage, args);
+    // HACKI int res = SetupSearchValue(hashIndex->paths(), example, shaper, searchValue,
+                               //errorMessage, args);
+    int res = 0;
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -1179,7 +1183,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<arangodb::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
+  // HACKI static_cast<arangodb::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
 
   // convert result
   size_t total = list.size();

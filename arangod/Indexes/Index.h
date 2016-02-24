@@ -27,16 +27,13 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 
@@ -73,7 +70,7 @@ struct TRI_index_element_t {
  private:
   TRI_doc_mptr_t* _document;
 
-  // Do not use new for this struct, use ...
+  // Do not use new for this struct, use allocate!
   TRI_index_element_t() {}
 
   ~TRI_index_element_t() = delete;
@@ -95,8 +92,8 @@ struct TRI_index_element_t {
   /// @brief Get a pointer to sub objects
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_shaped_sub_t* subObjects() const {
-    return reinterpret_cast<TRI_shaped_sub_t*>((char*)&_document +
+  TRI_vpack_sub_t* subObjects() const {
+    return reinterpret_cast<TRI_vpack_sub_t*>((char*)&_document +
                                                sizeof(TRI_doc_mptr_t*));
   }
 
@@ -107,7 +104,8 @@ struct TRI_index_element_t {
   static TRI_index_element_t* allocate(size_t numSubs) {
     void* space = TRI_Allocate(
         TRI_UNKNOWN_MEM_ZONE,
-        sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), false);
+        sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_vpack_sub_t) * numSubs), false);
+    // FIXME: catch nullptr case?
     return new (space) TRI_index_element_t();
   }
 
@@ -116,7 +114,7 @@ struct TRI_index_element_t {
   //////////////////////////////////////////////////////////////////////////////
 
   static inline size_t memoryUsage(size_t numSubs) {
-    return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs);
+    return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_vpack_sub_t) * numSubs);
   }
 
   //////////////////////////////////////////////////////////////////////////////

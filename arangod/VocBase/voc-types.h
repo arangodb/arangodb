@@ -27,6 +27,15 @@
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declarations
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_doc_mptr_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection meta info filename
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +156,35 @@ typedef struct TRI_document_edge_s {
 struct TRI_vpack_sub_t {
   uint32_t offset;
   uint8_t data[8];
+
+  VPackSlice const slice(TRI_doc_mptr_t const* mptr) const;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a TRI_vpack_sub_t structure with a subvalue
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FillVPackSub(TRI_vpack_sub_t* sub, 
+                      VPackSlice const base, VPackSlice const value) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash and Equal comparison for a vector of VPackSlice
+////////////////////////////////////////////////////////////////////////////////
+
+namespace std {
+
+template <>
+struct hash<std::vector<VPackSlice>> {
+  size_t operator()(std::vector<VPackSlice> const& x) const {
+    std::hash<VPackSlice> sliceHash;
+    size_t res = 0xdeadbeef;
+    for (auto& el : x) {
+      res ^= sliceHash(el);
+    }
+    return res;
+  }
+};
+
+}
 
 #endif
