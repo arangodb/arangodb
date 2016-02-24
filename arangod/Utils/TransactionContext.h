@@ -33,6 +33,10 @@ struct TRI_transaction_s;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+struct CustomTypeHandler;
+}
+
 class DocumentDitch;
 
 class TransactionContext {
@@ -65,6 +69,12 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool hasResolver() const { return _resolver != nullptr; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief orders a custom type handler
+  //////////////////////////////////////////////////////////////////////////////
+
+  velocypack::CustomTypeHandler* orderCustomTypeHandler();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a document ditch for the collection
@@ -123,6 +133,8 @@ class TransactionContext {
   TRI_vocbase_t* _vocbase; 
   
   CollectionNameResolver const* _resolver;
+  
+  velocypack::CustomTypeHandler* _customTypeHandler;
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
 

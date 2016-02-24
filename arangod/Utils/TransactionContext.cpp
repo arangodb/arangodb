@@ -22,8 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
+#include "Storage/Options.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
+
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -32,7 +36,10 @@ using namespace arangodb;
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
-    : _vocbase(vocbase), _resolver(nullptr), _ownsResolver(false) {}
+    : _vocbase(vocbase), 
+      _resolver(nullptr), 
+      _customTypeHandler(nullptr), 
+      _ownsResolver(false) {}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
@@ -46,10 +53,25 @@ TransactionContext::~TransactionContext() {
     // If some external entity is still using the ditch, it is kept!
   }
 
+  delete _customTypeHandler;
+
   if (_ownsResolver) {
     delete _resolver;
     _resolver = nullptr;
   }
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief order a document ditch for the collection
+//////////////////////////////////////////////////////////////////////////////
+
+VPackCustomTypeHandler* TransactionContext::orderCustomTypeHandler() {
+  if (_customTypeHandler != nullptr) {
+    _customTypeHandler = StorageOptions::getCustomTypeHandler(_vocbase);
+  }
+
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  return _customTypeHandler;
 }
 
 //////////////////////////////////////////////////////////////////////////////

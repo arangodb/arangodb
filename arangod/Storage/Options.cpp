@@ -23,11 +23,11 @@
 
 #include "Options.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Storage/Marker.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/AttributeTranslator.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
@@ -36,35 +36,7 @@
 
 using namespace arangodb;
   
-static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
-static std::unique_ptr<VPackOptions> defaultOptions;
 static std::unique_ptr<VPackOptions> insertOptions;
-
-// attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
-  bool shouldExclude(VPackSlice const& key, int nesting) override final {
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
-      // keep attribute
-      return true;
-    }
-
-    // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, TRI_VOC_ATTRIBUTE_ID, keyLength) == 0) ||
-        (keyLength == 4 && memcmp(p, TRI_VOC_ATTRIBUTE_REV, keyLength) == 0) ||
-        (keyLength == 3 && memcmp(p, TRI_VOC_ATTRIBUTE_TO, keyLength) == 0) ||
-        (keyLength == 5 && memcmp(p, TRI_VOC_ATTRIBUTE_FROM, keyLength) == 0)) {
-      return true;
-    }
-
-    // keep attribute
-    return false;
-  }
-};
-
 
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler : public VPackCustomTypeHandler {
@@ -153,49 +125,18 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 // initialize global vpack options
 void StorageOptions::initialize() {
-  // initialize translator
-  translator.reset(new VPackAttributeTranslator);
-
-  // these attribute names will be translated into short integer values
-  translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
-  translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
-  translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
-  translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
-  translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
-
-  translator->seal();
-
-  VPackSlice::attributeTranslator = translator.get();
-  
-  // initialize system attribute exclude handler    
-  excludeHandler.reset(new SystemAttributeExcludeHandler);
-
-  // initialize default options
-  defaultOptions.reset(new VPackOptions);
-  defaultOptions->attributeTranslator = nullptr;
-  defaultOptions->customTypeHandler = nullptr;
-  
   // initialize options for inserting documents
   insertOptions.reset(new VPackOptions);
   insertOptions->buildUnindexedArrays = false;
   insertOptions->buildUnindexedObjects = false;
   insertOptions->checkAttributeUniqueness = true;
   insertOptions->sortAttributeNames = true; 
-  insertOptions->attributeTranslator = translator.get();
   insertOptions->customTypeHandler = nullptr;
-  insertOptions->attributeExcludeHandler = excludeHandler.get();
+  insertOptions->attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
 }
 
 VPackCustomTypeHandler* StorageOptions::getCustomTypeHandler(TRI_vocbase_t* vocbase) {
   return new CustomTypeHandler(vocbase);
-}
-
-VPackAttributeTranslator const* StorageOptions::getTranslator() {
-  return translator.get();
-}
-
-VPackOptions const* StorageOptions::getDefaultOptions() {
-  return defaultOptions.get();
 }
 
 VPackOptions const* StorageOptions::getInsertOptions() {

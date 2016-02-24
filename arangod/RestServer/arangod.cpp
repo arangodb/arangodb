@@ -23,9 +23,9 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
-#include "Storage/Options.h"
 
 #include <signal.h>
 
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  arangodb::StorageOptions::initialize();
+  arangodb::basics::VelocyPackHelper::initialize();
 
   if (startAsService) {
     TRI_StartService(argc, argv);

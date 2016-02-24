@@ -37,8 +37,6 @@ namespace arangodb {
 namespace StorageOptions {
   void initialize();
 
-  VPackAttributeTranslator const* getTranslator();
-  VPackOptions const* getDefaultOptions();
   VPackOptions const* getInsertOptions();
 
   VPackCustomTypeHandler* getCustomTypeHandler(TRI_vocbase_t*);
