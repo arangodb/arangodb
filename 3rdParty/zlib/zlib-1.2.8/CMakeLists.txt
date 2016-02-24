@@ -9,8 +9,9 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif ()
 
-project(zlib VERSION 1.2.8 LANGUAGES C)
+project(zlib)
 
+set(zlib_VERSION 1.2.8)
 set(VERSION "1.2.8")
 
 option(ASM686 "Enable building i686 assembly implementation")

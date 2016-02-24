@@ -20,6 +20,8 @@ if (APPLE)
   endif ()
 endif ()
 
+project(ArangoDB)
+
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo
       CACHE string
@@ -27,8 +29,6 @@ if (NOT CMAKE_BUILD_TYPE)
       FORCE
   )
 endif ()
-
-project(ArangoDB)
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
@@ -508,6 +508,16 @@ include(ArangoDBMacros)
 ################################################################################
 ## SUB-PROJECTS
 ################################################################################
+
+list(INSERT SYSTEM_LIBRARIES 0
+  ${BT_LIBS}
+  ${ZLIB_LIBS}
+  ${OPENSSL_LIBRARIES}
+  ${ICU_LIBS}
+  ${V8_LIBS}
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${CMAKE_DL_LIBS}
+)
 
 add_subdirectory(lib)
 add_subdirectory(arangosh)

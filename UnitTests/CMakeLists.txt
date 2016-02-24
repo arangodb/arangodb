@@ -38,12 +38,7 @@ if (USE_BOOST_UNITTESTS)
 
   target_link_libraries(${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${OPENSSL_LIBRARIES}
-    ${ZLIB_LIBS}
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${CMAKE_DL_LIBS}
     ${SYSTEM_LIBRARIES}
   )
 endif ()
@@ -62,13 +57,8 @@ if (USE_BOOST_UNITTESTS)
 
   target_link_libraries(${TEST_GEO_SUITE}
     ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${OPENSSL_LIBRARIES}
-    ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${CMAKE_DL_LIBS}
     ${SYSTEM_LIBRARIES}
   )
 endif ()

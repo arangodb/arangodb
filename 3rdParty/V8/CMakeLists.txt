@@ -17,7 +17,8 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif ()
 
-project(V8 VERSION 4.3.61)
+project(V8)
+set(V8_VERSION 4.3.61)
 
 set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
@@ -118,7 +119,7 @@ set(ICU_INCLUDE_DIR
 )
 
 set(ICU_LIBS
-  "${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a;${ICU_BIN_DIR}/libicui18n.a"
+  "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
   ${libev_BINARY_DIR}/libev.a
   CACHE INTERNAL
   "ICU: Libraries"

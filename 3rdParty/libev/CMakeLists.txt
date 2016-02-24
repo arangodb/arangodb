@@ -17,10 +17,10 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif ()
 
-project(libev VERSION 4.22)
+project(libev)
+set(libev_VERSION 4.22)
 
 if (MSVC)
-
   set (FLAGS "${FLAGS} /FI\"${PROJECT_SOURCE_DIR}/ev_triagens_win32.h\"")
   
   foreach (flag_var

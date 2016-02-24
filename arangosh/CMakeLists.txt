@@ -29,14 +29,8 @@ add_executable(${BIN_ARANGOB}
 
 target_link_libraries(${BIN_ARANGOB}
   ${LIB_ARANGO}
-  ${BT_LIBS}
-  ${ZLIB_LIBS}
   ${LINENOISE_LIBS}
-  ${OPENSSL_LIBRARIES}
   ${MSVC_LIBS}
-  ${ICU_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${CMAKE_DL_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
@@ -71,15 +65,9 @@ add_executable(${BIN_ARANGODUMP}
 
 target_link_libraries(${BIN_ARANGODUMP}
   ${LIB_ARANGO}
-  ${ICU_LIBS}
-  ${BT_LIBS}
-  ${ZLIB_LIBS}
   ${LINENOISE_LIBS}
-  ${OPENSSL_LIBRARIES}
   ${MSVC_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
   ${SYSTEM_LIBRARIES}
-  ${CMAKE_DL_LIBS}
 )
 
 install(
@@ -113,15 +101,8 @@ add_executable(${BIN_ARANGOIMP}
 )
 target_link_libraries(${BIN_ARANGOIMP}
   ${LIB_ARANGO}
-  ${ICU_LIBS}
-  ${V8_LIBS}
-  ${BT_LIBS}
-  ${ZLIB_LIBS}
   ${LINENOISE_LIBS}
-  ${OPENSSL_LIBRARIES}
   ${MSVC_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${CMAKE_DL_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
@@ -156,15 +137,8 @@ add_executable(${BIN_ARANGORESTORE}
 
 target_link_libraries(${BIN_ARANGORESTORE}
   ${LIB_ARANGO}
-  ${ICU_LIBS}
-  ${V8_LIBS}
-  ${BT_LIBS}
-  ${ZLIB_LIBS}
   ${LINENOISE_LIBS}
-  ${OPENSSL_LIBRARIES}
   ${MSVC_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${CMAKE_DL_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
@@ -202,15 +176,8 @@ add_executable(${BIN_ARANGOSH}
 target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
-  ${V8_LIBS}
-  ${ICU_LIBS}
-  ${BT_LIBS}
-  ${ZLIB_LIBS}
   ${LINENOISE_LIBS}
-  ${OPENSSL_LIBRARIES}
   ${MSVC_LIBS}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${CMAKE_DL_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
