@@ -2541,7 +2541,7 @@ AqlValue$ Functions::UnionVPack(arangodb::aql::Query* query,
     }
   } catch (arangodb::basics::Exception const& e) {
     // Rethrow arangodb Errors
-    throw e;
+    throw;
   } catch (std::exception const& e) {
     // All other exceptions are OUT_OF_MEMORY
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -4235,8 +4235,8 @@ AqlValue$ Functions::RemoveValueVPack(
     VPackSlice toRemove = ExtractFunctionParameter(trx, parameters, 1);
     if (n == 3) {
       VPackSlice limitSlice = ExtractFunctionParameter(trx, parameters, 2);
-      bool unused = false;
       if (!limitSlice.isNull()) {
+        bool unused = false;
         limit = static_cast<size_t>(ValueToNumber(limitSlice, unused));
         useLimit = true;
       }
@@ -4356,10 +4356,10 @@ AqlValue$ Functions::RemoveNthVPack(arangodb::aql::Query* query,
     if (p < 0) {
       p += count;
     }
-    size_t cur = 0;
     size_t target = static_cast<size_t>(p);
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     try {
+      size_t cur = 0;
       VPackArrayBuilder guard(b.get());
       for (auto const& it : VPackArrayIterator(list)) {
         if (cur != target) {

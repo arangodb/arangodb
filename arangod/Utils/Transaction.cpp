@@ -128,28 +128,6 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the declared collections of the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::openCollections() {
-  if (_trx == nullptr) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
-  }
-
-  if (_setupState != TRI_ERROR_NO_ERROR) {
-    return _setupState;
-  }
-
-  if (!_isReal) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
-
-  return res;
-}
-  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begin the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -827,7 +805,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const& value,
                                          OperationOptions& options) {
-  
+ 
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
@@ -1721,6 +1699,12 @@ OperationCursor Transaction::indexScan(
       break;
     }
     case CursorType::INDEX: {
+      // TMP HACK
+      arangodb::PrimaryIndex* idx2 = document->primaryIndex();
+      VPackBuilder result;
+      idx2->expandInSearchValues(search, result);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
       if (indexId.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "The index id cannot be empty.");
@@ -1743,7 +1727,7 @@ OperationCursor Transaction::indexScan(
       // We have successfully found an index with the requested id.
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      iterator.reset(idx->iteratorForSlices(this, &ctxt, search, reverse));
+      iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
   if (iterator == nullptr) {

@@ -131,7 +131,6 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
   TRI_vocbase_col_t* _collection;  // vocbase collection pointer
-  arangodb::DocumentDitch* _ditch;
   std::vector<arangodb::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
   TRI_transaction_type_e _lockType;  // collection lock type

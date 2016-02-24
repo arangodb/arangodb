@@ -264,10 +264,6 @@ toolbar {
   padding-right: 5px;
 }
 
-.tooltip-margin {
-  margin-top: 1px;
-}
-
 .query-dropdown-in {
   background-color: $c-white;
   padding: 10px;
@@ -301,6 +297,7 @@ toolbar {
   margin-top: 18px;
 
   .arango-tab {
+    margin-bottom: 5px;
 
     a {
       border-bottom-color: $c-tab-bottom-border;
@@ -395,20 +392,16 @@ toolbar {
 .editor-toolbar {
   border-color: $c-editor-toolbar;
   height: 33px;
-  margin-top: 5px;
+  padding-right: 5px;
 
   span {
     border-radius: 3px;
     float: right;
     height: 18px;
-    margin-left: 3px;
-    padding-bottom: 6px;
-    padding-left: 5px;
-    padding-right: 0;
-    padding-top: 3px;
+    padding: 3px 0 6px 10px;
     position: relative;
     top: 0;
-    width: 25px;
+    width: 22px;
   }
 
   span:hover,
@@ -417,44 +410,29 @@ toolbar {
     color: $c-white;
   }
 
-  i {
-    margin-right: 5px;
-    margin-top: 3px;
+  a:hover,
+  span:hover {
+    cursor: pointer;
 
+    i {color: $c-white;}
+  }
+
+  i {
     &:hover {
+      color: $c-white;
       cursor: pointer;
     }
   }
 
   .fa {
     color: $c-darker-grey;
-    margin-left: 1px;
-    margin-top: 2px;
-
-    &.fa-upload {
-      margin-top: 1px;
-    }
-  }
-
-  .icon_arangodb {
-    color: $c-darker-grey;
-    font-size: 14pt;
-
-    &:first-child {
-      margin-right: 10px;
-    }
+    font-size: 15px;
   }
 
   .fa-comment,
   .fa-comment-o {
-    font-size: 15px;
     position: relative;
-    right: -2px;
-    top: -2px;
-  }
-
-  .arango-icon-disk {
-    margin-top: 1px;
+    top: -1px;
   }
 
 }

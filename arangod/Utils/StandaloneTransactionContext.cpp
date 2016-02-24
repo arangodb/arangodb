@@ -45,8 +45,7 @@ StandaloneTransactionContext::~StandaloneTransactionContext() {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionNameResolver const* StandaloneTransactionContext::getResolver()
-    const {
+CollectionNameResolver const* StandaloneTransactionContext::getResolver() {
   TRI_ASSERT(_resolver != nullptr);
   return _resolver;
 }
@@ -65,8 +64,10 @@ TRI_transaction_t* StandaloneTransactionContext::getParentTransaction() const {
 
 int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
   if (_resolver == nullptr) {
-    _resolver = new CollectionNameResolver(trx->_vocbase);
+    createResolver();
   }
+
+  TRI_ASSERT(_resolver != nullptr);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -76,8 +77,7 @@ int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void StandaloneTransactionContext::unregisterTransaction() {
-  delete _resolver;
-  _resolver = nullptr;
+  // nothing to do. cleanup will be done by the parent's destructor
 }
 
 ////////////////////////////////////////////////////////////////////////////////

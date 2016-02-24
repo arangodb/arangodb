@@ -141,9 +141,7 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::DocumentDitch* ditch(TRI_voc_cid_t cid) {
-    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-    TRI_ASSERT(trxColl != nullptr);
-    return trxColl->_ditch;
+    return this->_transactionContext->ditch(cid);
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -256,8 +256,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
           FileUtils::remove(filename);
 
           LOG_TOPIC(WARN, Logger::DATAFILES)
-              << "removing left-over compaction file '" << filename.c_str()
-              << "'";
+              << "removing left-over compaction file '" << filename << "'";
 
           continue;
         } else {
@@ -271,9 +270,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(ERR, Logger::DATAFILES)
-                << "unable to rename compaction file '" << filename.c_str()
-                << "'";
-
+                << "unable to rename compaction file '" << filename << "'";
             continue;
           }
         }
@@ -285,15 +282,15 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // temporary file, we can delete it!
       else if (filetype == "temp") {
         LOG_TOPIC(WARN, Logger::DATAFILES)
-            << "found temporary file '" << filename.c_str()
+            << "found temporary file '" << filename
             << "', which is probably a left-over. deleting it";
-        TRI_UnlinkFile(filename.c_str());
+        FileUtils::remove(filename);
       }
 
       // ups, what kind of file is that
       else {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile type '"
-                                          << file.c_str() << "'";
+                                          << file << "'";
       }
     }
   }
@@ -365,12 +362,13 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
     // file is dead
     // .............................................................................
 
-    if (!isDead.empty()) {
-      if (isDead == "dead") {
-        if (filetype == "temp") {
-          FileUtils::remove(filename);
-          continue;
-        }
+    if (!isDead.empty() || filetype == "temp") {
+      if (isDead == "dead" || filetype == "temp") {
+        LOG_TOPIC(TRACE, Logger::DATAFILES)
+            << "found temporary file '" << filename
+            << "', which is probably a left-over. deleting it";
+        FileUtils::remove(filename);
+        continue;
       } else {
         LOG_TOPIC(DEBUG, Logger::DATAFILES)
             << "ignoring file '" << file
@@ -746,7 +744,7 @@ TRI_collection_t* TRI_CreateCollection(
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
     LOG(ERR) << "cannot create collection '" << parameters.namec_str()
-             << "' in directory '" << dirname.c_str()
+             << "' in directory '" << dirname
              << "': directory already exists";
 
     return nullptr;
@@ -765,7 +763,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot create collection '" << parameters.namec_str()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage.c_str();
+             << " - " << systemError << " - " << errorMessage;
 
     return nullptr;
   }
@@ -782,7 +780,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot create collection '" << parameters.namec_str()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage.c_str();
+             << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
@@ -795,7 +793,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot create collection '" << parameters.namec_str()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
-             << " - " << systemError << " - " << errorMessage.c_str();
+             << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;

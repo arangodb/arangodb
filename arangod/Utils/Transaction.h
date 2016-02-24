@@ -222,12 +222,6 @@ class Transaction {
   int nestingLevel() const { return _nestingLevel; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief opens the declared collections of the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int openCollections();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief begin the transaction
   //////////////////////////////////////////////////////////////////////////////
 
@@ -278,16 +272,7 @@ class Transaction {
         trxCollection->_collection->_collection;
     TRI_ASSERT(document != nullptr);
 
-    if (trxCollection->_ditch == nullptr) {
-      trxCollection->_ditch =
-          document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
-    } else {
-      // tell everyone else this ditch is still in use,
-      // at least until the transaction is over
-      trxCollection->_ditch->setUsedByTransaction();
-    }
-
-    return trxCollection->_ditch;
+    return _transactionContext->orderDitch(document);
   }
   
   //////////////////////////////////////////////////////////////////////////////
@@ -1100,7 +1085,7 @@ class Transaction {
   /// @brief free transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int freeTransaction() {
+  void freeTransaction() {
     TRI_ASSERT(!isEmbeddedTransaction());
 
     if (_trx != nullptr) {
@@ -1109,8 +1094,6 @@ class Transaction {
       TRI_FreeTransaction(_trx);
       _trx = nullptr;
     }
-
-    return TRI_ERROR_NO_ERROR;
   }
 
  private:

@@ -2265,7 +2265,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }
         else {
           $("#" + a).html('<br/><span class="dashboard-figurePer" style="color: '
-            + "#000" +';">' + "data not ready yet" + '</span>');
+            + "#000" +';">' + '<p class="dataNotReadyYet">data not ready yet</p>' + '</span>');
         }
       });
     },
@@ -2662,7 +2662,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
       if ($('.dataNotReadyYet').length === 0) {
         $('#dataTransferDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
         $('#totalTimeDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
-        $('.dashboard-bar-chart-title').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('.dashboard-bar-chart-title').append('<p class="dataNotReadyYet"> data not ready yet </p>');
       }
     },
 

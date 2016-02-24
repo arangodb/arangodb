@@ -41,12 +41,12 @@ class ExplicitTransaction : public Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ExplicitTransaction(TRI_vocbase_t* vocbase,
+  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       double lockTimeout, bool waitForSync, bool embed,
                       bool allowImplicitCollections)
-      : Transaction(V8TransactionContext::Create(vocbase, embed), 0) {
+      : Transaction(transactionContext, 0) {
     this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {
@@ -72,11 +72,11 @@ class ExplicitTransaction : public Transaction {
   /// @brief create the transaction with cids
   //////////////////////////////////////////////////////////////////////////////
 
-  ExplicitTransaction(TRI_vocbase_t* vocbase,
+  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<TRI_voc_cid_t> const& readCollections,
                       std::vector<TRI_voc_cid_t> const& writeCollections,
                       double lockTimeout, bool waitForSync, bool embed)
-      : Transaction(V8TransactionContext::Create(vocbase, embed), 0) {
+      : Transaction(transactionContext, 0) {
     this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
     if (lockTimeout >= 0.0) {

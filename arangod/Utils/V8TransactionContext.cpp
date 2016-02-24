@@ -38,8 +38,8 @@ V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase, bool embeddab
       _sharedTransactionContext(static_cast<V8TransactionContext*>(
           static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
                                             V8DataSlot))->_transactionContext)),
+      _mainScope(nullptr),
       _currentTransaction(nullptr),
-      _ownResolver(false),
       _embeddable(embeddable) {
 }
 
@@ -54,10 +54,20 @@ V8TransactionContext::~V8TransactionContext() {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionNameResolver const* V8TransactionContext::getResolver() const {
-  TRI_ASSERT(_sharedTransactionContext != nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_resolver != nullptr);
-  return _sharedTransactionContext->_resolver;
+CollectionNameResolver const* V8TransactionContext::getResolver() {
+  if (_resolver == nullptr) {
+    V8TransactionContext* main = _sharedTransactionContext->_mainScope;
+    TRI_ASSERT(main != nullptr);
+
+    if (main->_resolver == nullptr) {
+      main->createResolver();
+    }
+
+    _resolver = main->_resolver;
+  }
+
+  TRI_ASSERT(_resolver != nullptr);
+  return _resolver;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,15 +85,10 @@ TRI_transaction_t* V8TransactionContext::getParentTransaction() const {
 
 int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_currentTransaction ==
-                       nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
+  TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
   _sharedTransactionContext->_currentTransaction = trx;
-
-  if (_sharedTransactionContext->_resolver == nullptr) {
-    _sharedTransactionContext->_resolver =
-        new CollectionNameResolver(trx->_vocbase);
-    _ownResolver = true;
-  }
+  _sharedTransactionContext->_mainScope = this;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -95,12 +100,7 @@ int V8TransactionContext::registerTransaction(TRI_transaction_t* trx) {
 void V8TransactionContext::unregisterTransaction() {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
   _sharedTransactionContext->_currentTransaction = nullptr;
-
-  if (_ownResolver && _sharedTransactionContext->_resolver != nullptr) {
-    _ownResolver = false;
-    delete _sharedTransactionContext->_resolver;
-    _sharedTransactionContext->_resolver = nullptr;
-  }
+  _sharedTransactionContext->_mainScope = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,16 +115,13 @@ bool V8TransactionContext::isEmbeddable() const { return _embeddable; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8TransactionContext::makeGlobal() { _sharedTransactionContext = this; }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the resolver from the context
+/// @brief whether or not the transaction context is a global one
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8TransactionContext::deleteResolver() {
-  TRI_ASSERT(hasResolver());
-  delete _resolver;
-  _resolver = nullptr;
-  _ownResolver = false;
+bool V8TransactionContext::isGlobal() const {
+  return _sharedTransactionContext == this;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

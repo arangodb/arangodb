@@ -34,7 +34,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/transactions.h"
-#include "Utils/V8ResolverGuard.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -72,19 +71,6 @@ struct LocalCollectionGuard {
   }
 
   TRI_vocbase_col_t* _collection;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal struct which is used for reading the different option
-/// parameters for the update and replace functions
-////////////////////////////////////////////////////////////////////////////////
-
-struct UpdateOptions {
-  bool overwrite = false;
-  bool keepNull = true;
-  bool mergeObjects = true;
-  bool waitForSync = false;
-  bool silent = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,13 +313,13 @@ static void ExistsVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  V8ResolverGuard resolver(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
 
   int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, resolver.getResolver(), col, collectionName, builder,
+      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
       true, args[0]);
 
   LocalCollectionGuard g(useCollection ? nullptr
@@ -349,8 +335,7 @@ static void ExistsVocbaseVPack(
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -459,9 +444,10 @@ static void ReplaceVocbaseCol(bool useCollection,
   VPackBuilder builder;
   std::string collectionName;
 
-  V8ResolverGuard resolver(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  
   int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, resolver.getResolver(), col, collectionName, builder,
+      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
       !overwrite, args[0]);
 
   LocalCollectionGuard g(useCollection ? nullptr
@@ -477,8 +463,8 @@ static void ReplaceVocbaseCol(bool useCollection,
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
+
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -556,14 +542,14 @@ static void DocumentVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  V8ResolverGuard resolver(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
 
 
   int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, resolver.getResolver(), col, collectionName, builder,
+      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
       true, args[0]);
 
   LocalCollectionGuard g(useCollection ? nullptr
@@ -580,8 +566,7 @@ static void DocumentVocbaseVPack(
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_READ);
+  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
 
   res = trx.begin();
 
@@ -700,9 +685,10 @@ static void UpdateVocbaseVPack(bool useCollection,
   VPackBuilder builder;
   std::string collectionName;
 
-  V8ResolverGuard resolver(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
   int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, resolver.getResolver(), col, collectionName, builder,
+      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
       !overwrite, args[0]);
 
   LocalCollectionGuard g(useCollection ? nullptr
@@ -718,8 +704,7 @@ static void UpdateVocbaseVPack(bool useCollection,
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -821,7 +806,7 @@ static void RemoveVocbaseVPack(
   }
 
 
-  V8ResolverGuard resolver(vocbase);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
   VPackBuilder builder;
   std::string collectionName;
@@ -830,7 +815,7 @@ static void RemoveVocbaseVPack(
                                        : const_cast<TRI_vocbase_col_t*>(col));
 
   int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, resolver.getResolver(), col, collectionName, builder,
+      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
       !overwrite, args[0]);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -840,8 +825,7 @@ static void RemoveVocbaseVPack(
   VPackSlice toRemove = builder.slice();
   TRI_ASSERT(toRemove.isObject());
 
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
 
   res = trx.begin();
 
@@ -1934,14 +1918,44 @@ static void JS_InsertVocbaseVPack(
   builder.close();
 
   // load collection
-  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true),
-                                          collection->_cid, TRI_TRANSACTION_WRITE);
+  auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
+
+  SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
 
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+
+  // Hack to test the Index Slice Builder
+  VPackBuilder hack;
+  hack.openArray();
+
+  hack.openObject();
+  hack.add("in", VPackValue(VPackValueType::Array));
+  hack.add(VPackValue("a"));
+  hack.add(VPackValue("b"));
+  hack.add(VPackValue("c"));
+  hack.close();
+  hack.close();
+
+  hack.openObject();
+  hack.add("eq", VPackValue(1));
+  hack.close();
+
+  hack.openObject();
+  hack.add("in", VPackValue(VPackValueType::Array));
+  hack.add(VPackValue("z"));
+  hack.add(VPackValue("x"));
+  hack.add(VPackValue("y"));
+  hack.close();
+  hack.close();
+
+  hack.close();
+
+  trx.indexScan(collection->_name, arangodb::Transaction::CursorType::INDEX, "123", hack.slice(), 1, 1, 1, false);
+
 
   OperationResult result = trx.insert(collection->_name, builder.slice(), options);
 

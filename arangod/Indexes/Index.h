@@ -39,6 +39,11 @@ struct TRI_document_collection_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
+
+// Define search slice attribute names
+#define TRI_SLICE_KEY_EQUAL "eq"
+#define TRI_SLICE_KEY_IN "in"
+
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +130,7 @@ struct TRI_index_element_t {
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
   }
+
 };
 
 namespace arangodb {
@@ -371,9 +377,10 @@ class Index {
                                               arangodb::aql::Variable const*,
                                               bool) const;
 
-  virtual IndexIterator* iteratorForSlices(
-      arangodb::Transaction*, IndexIteratorContext*,
-      std::shared_ptr<std::vector<arangodb::velocypack::Slice>>, bool) const {
+  virtual IndexIterator* iteratorForSlice(arangodb::Transaction*,
+                                          IndexIteratorContext*,
+                                          arangodb::velocypack::Slice const,
+                                          bool) const {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -385,6 +392,16 @@ class Index {
                            arangodb::aql::AstNode const* op,
                            arangodb::aql::Variable const* reference,
                            bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Transform the list of search slices to search values.
+  ///        This will multiply all IN entries and simply return all other
+  ///        entries.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void expandInSearchValues(arangodb::velocypack::Slice const,
+                                    arangodb::velocypack::Builder&);
+
 
  protected:
   TRI_idx_iid_t const _iid;
