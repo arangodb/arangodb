@@ -20,6 +20,9 @@ endif ()
 project(libev VERSION 4.22)
 
 if (MSVC)
+
+  set (FLAGS "${FLAGS} /FI\"${PROJECT_SOURCE_DIR}/ev_triagens_win32.h\"")
+  
   foreach (flag_var
 	   CMAKE_C_FLAGS
 	   CMAKE_C_FLAGS_DEBUG
@@ -109,6 +112,8 @@ add_library(ev STATIC
   ${LIBEV_DIR}/ev.c
   ${LIBEV_DIR}/event.c
 )
+
+set_target_properties(ev PROPERTIES COMPILE_FLAGS "${FLAGS}") 
 
 set(LIBEV_VERSION
   ${libev_VERSION}
