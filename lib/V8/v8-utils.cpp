@@ -757,8 +757,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
 
-    LOG(TRACE) << "downloading file. endpoint: " << endpoint.c_str()
-               << ", relative URL: " << url.c_str();
+    LOG(TRACE) << "downloading file. endpoint: " << endpoint
+               << ", relative URL: " << url;
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
@@ -3793,7 +3793,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     if (*sourceline) {
       std::string l = *sourceline;
 
-      LOG(ERR) << "!" << l.c_str();
+      LOG(ERR) << "!" << l;
 
       if (1 < start) {
         l = std::string(start - 1, ' ');
@@ -3803,7 +3803,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       l += std::string((size_t)(end - start + 1), '^');
 
-      LOG(ERR) << "!" << l.c_str();
+      LOG(ERR) << "!" << l;
     }
   }
 }

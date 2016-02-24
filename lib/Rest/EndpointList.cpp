@@ -223,7 +223,7 @@ void EndpointList::dump() const {
   for (auto& it : _endpoints) {
     Endpoint const* ep = it.second.first;
 
-    LOG(INFO) << "using endpoint '" << it.first.c_str() << "' for " << getEncryptionName(ep->getEncryption()).c_str() << " requests";
+    LOG(INFO) << "using endpoint '" << it.first << "' for " << getEncryptionName(ep->getEncryption()) << " requests";
   }
 }
 

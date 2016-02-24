@@ -137,7 +137,7 @@ void DispatcherThread::unblock() { _queue->unblockThread(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::handleJob(Job* job) {
-  LOG(DEBUG) << "starting to run job: " << job->getName().c_str();
+  LOG(DEBUG) << "starting to run job: " << job->getName();
 
   // start all the dirty work
   try {

@@ -324,6 +324,15 @@
   opacity: .4;
 }
 
+.fade {
+  opacity: 0;
+  -moz-transition: opacity .03s linear;
+  -ms-transition: opacity .03s linear;
+  -o-transition: opacity .03s linear;
+  -webkit-transition: opacity .03s linear;
+  transition: opacity .03s linear;
+}
+
 .modal {
   border: 0 !important;
   border-radius: 3px !important;

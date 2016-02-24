@@ -79,21 +79,21 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
   // wait for at most 30 seconds for the directory to be removed
   while (TRI_IsDirectory(result.c_str())) {
     if (iterations == 0) {
-      LOG(TRACE) << "waiting for deletion of database directory '" << result.c_str() << "', called with status code " << statusCode;
+      LOG(TRACE) << "waiting for deletion of database directory '" << result << "', called with status code " << statusCode;
 
       if (statusCode != TRI_ERROR_FORBIDDEN &&
           (statusCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
            statusCode != TRI_ERROR_NO_ERROR)) {
-        LOG(WARN) << "forcefully deleting database directory '" << result.c_str() << "'";
+        LOG(WARN) << "forcefully deleting database directory '" << result << "'";
         TRI_RemoveDirectory(result.c_str());
       }
     } else if (iterations >= 30 * 10) {
-      LOG(WARN) << "unable to remove database directory '" << result.c_str() << "'";
+      LOG(WARN) << "unable to remove database directory '" << result << "'";
       return TRI_ERROR_INTERNAL;
     }
 
     if (iterations == 5 * 10) {
-      LOG(INFO) << "waiting for deletion of database directory '" << result.c_str() << "'";
+      LOG(INFO) << "waiting for deletion of database directory '" << result << "'";
     }
 
     ++iterations;
@@ -1267,7 +1267,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG(INFO) << "replaying WAL logfile '" << logfileName.c_str() << "' (" << number + 1 << " of " << n << ")";
+  LOG(INFO) << "replaying WAL logfile '" << logfileName << "' (" << number + 1 << " of " << n << ")";
 
   // Advise on sequential use:
   TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
@@ -1277,7 +1277,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 
   if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
                            static_cast<void*>(this))) {
-    LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName.c_str() << "'";
+    LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
@@ -1368,7 +1368,7 @@ int RecoverState::removeEmptyLogfiles() {
     auto filename = (*it);
 
     if (basics::FileUtils::remove(filename, 0)) {
-      LOG(TRACE) << "removing empty WAL logfile '" << filename.c_str() << "'";
+      LOG(TRACE) << "removing empty WAL logfile '" << filename << "'";
     }
   }
 

@@ -2500,8 +2500,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
         }
       } else {
         LOG(ERR) << "Bad status from DBServer: " << result.status
-                 << ", msg: " << result.errorMessage.c_str()
-                 << ", shard: " << result.shardID.c_str();
+                 << ", msg: " << result.errorMessage
+                 << ", shard: " << result.shardID;
         if (result.status >= CL_COMM_SENT) {
           if (result.result.get() == nullptr) {
             LOG(ERR) << "result.result is nullptr";
@@ -2509,10 +2509,10 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
             auto msg = result.result->getResultTypeMessage();
             LOG(ERR) << "Bad HTTP return code: "
                      << result.result->getHttpReturnCode()
-                     << ", msg: " << msg.c_str();
+                     << ", msg: " << msg;
             auto body = result.result->getBodyVelocyPack();
             msg = body->toString();
-            LOG(ERR) << "Body: " << msg.c_str();
+            LOG(ERR) << "Body: " << msg;
           }
         }
       }

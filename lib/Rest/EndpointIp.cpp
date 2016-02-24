@@ -234,7 +234,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG(DEBUG) << "connecting to ip endpoint '" << _specification.c_str() << "'";
+  LOG(DEBUG) << "connecting to ip endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
@@ -306,7 +306,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG(DEBUG) << "connecting to ip endpoint '" << _specification.c_str() << "'";
+  LOG(DEBUG) << "connecting to ip endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);

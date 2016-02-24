@@ -126,7 +126,7 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG(WARN) << "no callback function for JavaScript action '" << _url.c_str() << "'";
+        LOG(WARN) << "no callback function for JavaScript action '" << _url << "'";
 
         GlobalV8Dealer->exitContext(context);
 
