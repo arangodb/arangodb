@@ -106,7 +106,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
     return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -138,7 +138,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     return arangodb::velocypack::readUInt64(value.start() + 1);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -177,7 +177,7 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
     return (memcmp(p, key, len) == 0);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -214,7 +214,7 @@ static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
     return (memcmp(p, q, llen) == 0);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif

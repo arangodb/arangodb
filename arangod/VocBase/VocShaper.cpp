@@ -865,7 +865,7 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
       LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
     } else {
       LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
     }
@@ -885,7 +885,7 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
       LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
     } else {
       LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
     }
@@ -1040,14 +1040,14 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   TRI_shape_access_t const* accessor = findAccessor(document->_sid, pid);
 
   if (accessor == nullptr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(TRACE) << "failed to get accessor for sid " << document->_sid << " and path " << pid;
 #endif
     return false;
   }
 
   if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(TRACE) << "expecting any object for path " << pid << ", got nothing";
 #endif
     *shape = nullptr;
@@ -1058,7 +1058,7 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   *shape = lookupShapeId(accessor->_resultSid);
 
   if (*shape == nullptr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(TRACE) << "expecting any object for path " << pid << ", got unknown shape id " << accessor->_resultSid;
 #endif
     *shape = nullptr;
@@ -1067,7 +1067,7 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   }
 
   if (sid != 0 && sid != accessor->_resultSid) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(TRACE) << "expecting sid " << sid << " for path " << pid << ", got sid " << accessor->_resultSid;
 #endif
     return false;
@@ -1076,7 +1076,7 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   bool ok = TRI_ExecuteShapeAccessor(accessor, document, result);
 
   if (!ok) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(TRACE) << "failed to get accessor for sid " << document->_sid << " and path " << pid;
 #endif
     return false;

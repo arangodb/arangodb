@@ -640,7 +640,7 @@ void Condition::normalize(ExecutionPlan* plan) {
 
   optimize(plan);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
     validateAst(_root, 0);
@@ -664,7 +664,7 @@ void Condition::normalize() {
   _root = transformNode(_root);
   _root = fixRoot(_root, 0);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
     validateAst(_root, 0);
@@ -1369,7 +1369,7 @@ void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
 /// @brief validate the condition's AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Condition::validateAst(AstNode const* node, int level) {
   if (level == 0) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);

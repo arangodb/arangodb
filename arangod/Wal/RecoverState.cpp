@@ -556,7 +556,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
                                 TRI_datafile_t* datafile) {
   RecoverState* state = reinterpret_cast<RecoverState*>(data);
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG(TRACE) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
 

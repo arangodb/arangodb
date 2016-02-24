@@ -65,7 +65,7 @@ void Version::initialize() {
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
   Values["maintainer-mode"] = "false";
@@ -238,7 +238,7 @@ std::string Version::getVerboseVersionString() {
 
   version << "ArangoDB " << TRI_VERSION_FULL << " "
           << (sizeof(void*) == 4 ? "32" : "64") << "bit"
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
           << ", using "

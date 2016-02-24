@@ -796,7 +796,7 @@ static void PropertyQueryShapedJson(
 
     if (sid == TRI_SHAPE_ILLEGAL) {
 // invalid shape
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       LOG(WARN) << "invalid shape id '" << sid << "' found for key '" << key.c_str() << "'";
 #endif
       TRI_V8_RETURN(v8::Handle<v8::Integer>());

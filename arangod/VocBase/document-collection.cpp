@@ -637,7 +637,7 @@ arangodb::Index* TRI_document_collection_t::lookupIndex(
 /// @brief return a pointer to the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 VocShaper* TRI_document_collection_t::getShaper() const {
   if (!_ditches.contains(arangodb::Ditch::TRI_DITCH_DOCUMENT)) {
   }
@@ -1355,7 +1355,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
   SetRevision(document, d->_rid, false);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #if 0
   // currently disabled because it is too chatty in trace mode
@@ -1510,7 +1510,7 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
 
   TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG(TRACE) << "deletion: fid " << operation->_fid << ", key " << (char*)key << ", rid " << d->_rid << ", deletion " << marker->_tick;
 #endif
 
@@ -3134,7 +3134,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
   idx->sizeHint(trx, nrUsed);
 
   if (nrUsed > 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     static int const LoopSize = 10000;
     int counter = 0;
     int loops = 0;
@@ -3156,7 +3156,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (++counter == LoopSize) {
         counter = 0;
         ++loops;

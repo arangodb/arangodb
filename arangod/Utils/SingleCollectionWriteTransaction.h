@@ -106,7 +106,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      bool forceSync) {
     TRI_ASSERT(json != nullptr);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -123,7 +123,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   int createDocument(TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
                      bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -142,7 +142,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                  bool forceSync, void const* data) {
     TRI_ASSERT(json != nullptr);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -159,7 +159,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   int createEdge(TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
                  bool forceSync, void const* data) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -176,7 +176,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   int createDocument(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
                      TRI_shaped_json_t const* shaped, bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -195,7 +195,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   int createEdge(TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr,
                  TRI_shaped_json_t const* shaped, bool forceSync,
                  void const* data) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -238,7 +238,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      TRI_voc_rid_t* actualRevision) {
     TRI_ASSERT(json != nullptr);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -260,7 +260,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
                      TRI_doc_update_policy_e policy, bool forceSync,
                      TRI_voc_rid_t expectedRevision,
                      TRI_voc_rid_t* actualRevision) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -279,7 +279,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   int deleteDocument(std::string const& key, TRI_doc_update_policy_e policy,
                      bool forceSync, TRI_voc_rid_t expectedRevision,
                      TRI_voc_rid_t* actualRevision) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }
@@ -294,7 +294,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int truncate(bool forceSync) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (_numWrites++ > N) {
       return TRI_ERROR_TRANSACTION_INTERNAL;
     }

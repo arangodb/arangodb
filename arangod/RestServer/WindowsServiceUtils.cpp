@@ -455,7 +455,7 @@ static void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
 
 #include <DbgHelp.h>
 LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
-#if HAVE_BACKTRACE
+#if ARANGODB_ENABLE_BACKTRACE
 
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
     LOG_FATAL_WINDOWS("Unhandled exception: %d",

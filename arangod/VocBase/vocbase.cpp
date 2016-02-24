@@ -2172,7 +2172,7 @@ void TRI_ReleaseVocBase(TRI_vocbase_t* vocbase) {
 // decrease the reference counter by 2.
 // this is because we use odd values to indicate that the database has been
 // marked as deleted
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto oldValue = vocbase->_refCount.fetch_sub(2, std::memory_order_release);
   TRI_ASSERT(oldValue >= 2);
 #else

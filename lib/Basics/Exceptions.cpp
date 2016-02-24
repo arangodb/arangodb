@@ -109,8 +109,8 @@ void Exception::appendLocation () {
     _errorMessage += std::string(" (location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
   if (WithBackTrace) {
     _errorMessage += std::string("\n\n");
     TRI_GetBacktrace(_errorMessage);
@@ -128,7 +128,7 @@ std::string Exception::FillExceptionString(int code, ...) {
   char const* format = TRI_errno_string(code);
   TRI_ASSERT(format != nullptr);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Obviously the formatstring of the error code has to support parameters.
   TRI_ASSERT(strchr(format, '%') != nullptr);
 #endif
@@ -150,7 +150,7 @@ std::string Exception::FillExceptionString(int code, ...) {
 std::string Exception::FillFormatExceptionString(char const* format, ...) {
   TRI_ASSERT(format != nullptr);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Format #1 should come from the macro...
   TRI_ASSERT(strchr(format, '%') != nullptr);
   // Obviously the user has to give us a format string.

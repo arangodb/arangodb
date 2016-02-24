@@ -285,7 +285,7 @@ class BenchmarkThread : public arangodb::Thread {
       _warningCount++;
       if (_warningCount < MaxWarnings) {
         LOG(WARN) << "batch operation failed with HTTP code " << result->getHttpReturnCode() << " - " << result->getHttpReturnMessage().c_str() << " ";
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
         LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
 #endif
@@ -306,7 +306,7 @@ class BenchmarkThread : public arangodb::Thread {
             LOG(WARN) << "Server side warning count: " << errorCount;
             if (_verbose) {
               LOG(WARN) << "Server reply: " << result->getBody().c_str();
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
               LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
 #endif

@@ -176,7 +176,7 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 /// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
