@@ -15,6 +15,11 @@
     outputTemplate: templateEngine.createTemplate("queryViewOutput.ejs"),
     outputCounter: 0,
 
+    currentQuery: {},
+
+    bindParamRegExp: /@(@?)(\w+(\d*))/g,
+    bindParamTableObj: {},
+
     bindParamTableDesc: {
       id: "arangoBindParamTable",
       titles: ["Key", "Value"],
@@ -158,19 +163,15 @@
     getCachedQueryAfterRender: function() {
       //get cached query if available
       var queryObject = this.getCachedQuery();
+          console.log(queryObject);
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
         this.aqlEditor.setValue(queryObject.query);
-        if (queryObject.parameter === '' || queryObject === undefined) {
+        if (queryObject.parameter !== '' || queryObject !== undefined) {
           //TODO update bind param table
-          //varsEditor.setValue('{}');
-        }
-        else {
-          //TODO update bind param table
-          //varsEditor.setValue(queryObject.parameter);
         }
       }
       var a = this.aqlEditor.getValue();
-      if (a.length === 1) {
+      if (a.length === 1 | a.length === 0) {
         a = "";
       }
       this.setCachedQuery(a);
@@ -181,6 +182,7 @@
         var cache = localStorage.getItem("cachedQuery");
         if (cache !== undefined) {
           var query = JSON.parse(cache);
+          this.currentQuery = query;
           return query;
         }
       }
@@ -192,6 +194,7 @@
           query: query,
           parameter: vars
         };
+        this.currentQuery = myObject;
         localStorage.setItem("cachedQuery", JSON.stringify(myObject));
       }
     },
@@ -244,11 +247,79 @@
        this.$(this.bindParamId).html(this.table.render({content: this.bindParamTableDesc}));
     },
 
+    checkForNewBindParams: function() {
+      var self = this,
+      words = (this.aqlEditor.getValue()).split(" "),
+      words1 = [],
+      pos = 0;
+
+      _.each(words, function(word) {
+        word = word.split("\n");
+        _.each(word, function(x) {
+          words1.push(x);
+        });
+      });
+
+      _.each(words1, function(word) {
+        // remove newlines and whitespaces
+        words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
+        pos++;
+      });
+      words.sort();
+
+      _.each(words1, function(word) {
+        //found a valid bind param expression
+        if (self.bindParamRegExp.test(word)) {
+
+          //if property is not available
+          if (!_.has(self.bindParamTableObj, word)) {
+            self.bindParamTableObj[word] = '';
+          }
+        }
+      });
+
+      var newObject = {};
+      Object.keys(self.bindParamTableObj).forEach(function(key) {
+        _.each(words1, function(word) {
+          if (word === key) {
+            if (self.bindParamTableObj[key] !== '') {
+              newObject[key] = self.bindParamTableObj[key];
+            }
+            else {
+              newObject[key] = '';
+            }
+          }
+        });
+      });
+
+      self.bindParamTableObj = newObject;
+    },
+
+    renderBindParamTable: function() {
+      $('#arangoBindParamTable tbody').html('');
+      _.each(this.bindParamTableObj, function(val, key) {
+        $('#arangoBindParamTable tbody').append(
+          "<tr>" + 
+            "<td>" + key + "</td>" + 
+            "<td><input>" + val + "</input></td>" + 
+          "</tr>"
+        );
+
+      });
+    },
+
     initAce: function() {
+
+      var self = this;
+
       //init aql editor
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
       this.aqlEditor.setFontSize("13px");
+      this.aqlEditor.getSession().on('change', function() {
+        self.checkForNewBindParams();
+        self.renderBindParamTable();
+      });
       this.aqlEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},

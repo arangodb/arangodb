@@ -26,6 +26,9 @@
        border-top: none;
 
        th {
+         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+         height: 17px;
+         padding: 0;
          width: 50%;
        }
      }
@@ -62,7 +65,7 @@
 
 .outputEditorWrapper {
   clear: both;
-  height: 300px;
+  height: 100px;
   padding-top: 20px;
   width: 100%;
 
