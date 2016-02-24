@@ -107,8 +107,8 @@ class Slice {
   // value of the head byte
   inline uint8_t head() const { return *_start; }
 
-  inline uint64_t hash() const {
-    return fasthash64(start(), checkOverflow(byteSize()), 0xdeadbeef);
+  inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
+    return fasthash64(start(), checkOverflow(byteSize()), seed);
   }
 
   // check if slice is of the specified type
