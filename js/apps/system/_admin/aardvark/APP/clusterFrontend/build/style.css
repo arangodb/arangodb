@@ -2583,6 +2583,8 @@ div.footer-right {
   color: #fff;
   margin-left: 10px;
   padding: 5px 16px; }
+  .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus {
+    outline: none; }
 
 .button-header {
   margin-top: 5px; }
@@ -3147,7 +3149,11 @@ div .bigtile {
 
 @media (max-width: 970px) {
   #documentsDiv #totalDocuments {
-    display: none; } }
+    display: none; }
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
@@ -5424,6 +5430,8 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
+  div.headerBar select:focus {
+    outline: none; }
   div.headerBar .infoField {
     background-color: #fff;
     border: 1px solid rgba(140, 138, 137, 0.25);
@@ -5474,7 +5482,7 @@ div.headerBar {
 
 .headerBar a.arangoHeader {
   color: #000;
-  font-size: 13pt;
+  font-size: 11.5pt;
   font-weight: 100;
   left: 0;
   position: relative;
@@ -5492,7 +5500,7 @@ div.headerBar {
   .breadcrumb .disabledBread {
     color: #666;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative; }
@@ -5502,7 +5510,7 @@ div.headerBar {
   .breadcrumb .activeBread {
     color: #8aa051;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100; }
   .breadcrumb #app-development-path {
     background-color: #fff;
@@ -5760,6 +5768,9 @@ div.headerBar {
 .modal-footer {
   border-top: 0 !important;
   padding-right: 17px; }
+  .modal-footer .button-close {
+    margin-left: 20px;
+    margin-right: 10px; }
 
 .modal-header {
   margin-left: 5px;
@@ -6224,8 +6235,9 @@ div .bigtile {
   top: 6px; }
 
 .dataNotReadyYet {
+  color: #faa732;
   font-family: 'Open Sans', sans-serif;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 100;
   text-align: center; }
 
@@ -6459,7 +6471,11 @@ div .bigtile {
 
 @media (max-width: 970px) {
   #documentsDiv #totalDocuments {
-    display: none; } }
+    display: none; }
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {

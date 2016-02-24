@@ -68,6 +68,12 @@ div.headerBar {
   padding-right: 5px;
   position: relative;
 
+  select {
+    &:focus {
+      outline: none;
+    }
+  }
+
   .infoField {
     background-color: $c-white;
     border: 1px solid rgba(140, 138, 137, .25);
@@ -145,7 +151,7 @@ div.headerBar {
 
 .headerBar a.arangoHeader {
   color: $c-black;
-  font-size: 13pt;
+  font-size: 11.5pt;
   font-weight: 100;
   left: 0;
   position: relative;
@@ -171,7 +177,7 @@ div.headerBar {
   .disabledBread {
     color: $c-darker-grey;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative;
@@ -186,7 +192,7 @@ div.headerBar {
   .activeBread {
     color: $c-positive;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100;
   }
 

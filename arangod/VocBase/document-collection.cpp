@@ -63,6 +63,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
@@ -2548,7 +2549,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
     iid = iis.getNumericValue<TRI_idx_iid_t>();
   } else if (iis.isString()) {
     std::string tmp = iis.copyString();
-    iid = static_cast<TRI_idx_iid_t>(TRI_UInt64String(tmp.c_str()));
+    iid = static_cast<TRI_idx_iid_t>(StringUtils::uint64(tmp));
   } else {
     LOG(ERR) << "ignoring index, index identifier could not be located";
 

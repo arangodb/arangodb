@@ -14,19 +14,18 @@
   color: $c-nav-bg;
   height: 188px;
   left: 50%;
-  margin: -100px 0 0 -150px;
+  margin: -150px 0 0 -125px;
   position: absolute;
-  top: 50%;
-  width: 300px;
+  top: 38%;
+  width: 250px;
 
   .progress-content {
-
     border: 5px solid $c-white;
-    
+    border-radius: 3px;
+
     .fa-spinner {
       font-size: 100pt;
     }
-
   }
 
   .progress-message {
@@ -41,10 +40,17 @@
   }
 
   .progress-text {
+    background: $c-white;
     color: $c-black;
     float: left;
+    font-weight: 100;
+    height: 25px;
+    left: -5px;
     margin-left: 5px;
     margin-top: 10px;
+    position: relative;
+    top: -10px;
+    width: 100%;
   }
 
   .progress-action {
@@ -73,7 +79,7 @@
 
   i {
     animation: ball 2s infinite linear;
-    background: $c-white;
+    background: $c-pong-green;
     border-radius: 10px;
     height: 10px;
     position: absolute;
@@ -84,7 +90,7 @@
 .pong-spinner:before,
 .pong-spinner:after {
   animation: left-player 2s infinite linear;
-  background: $c-white;
+  background: $c-pong-green;
   content: '';
   height: 30px;
   position: absolute;

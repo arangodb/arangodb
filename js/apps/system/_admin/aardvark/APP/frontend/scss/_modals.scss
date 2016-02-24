@@ -377,6 +377,11 @@
 .modal-footer {
   border-top: 0 !important;
   padding-right: 17px;
+
+  .button-close {
+    margin-left: 20px;
+    margin-right: 10px;
+  }
 }
 
 .modal-header {

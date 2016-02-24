@@ -64,14 +64,13 @@ ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
       _applicationV8(applicationV8),
       _context(nullptr),
       _vocbase(vocbase),
-      _userAborted(false) {
-}
+      _userAborted(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a console thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ConsoleThread::~ConsoleThread() {}
+ConsoleThread::~ConsoleThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the thread

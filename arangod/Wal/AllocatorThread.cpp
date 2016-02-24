@@ -45,10 +45,6 @@ AllocatorThread::AllocatorThread(LogfileManager* logfileManager)
       _allocatorResultCondition(),
       _allocatorResult(TRI_ERROR_NO_ERROR) {}
 
-AllocatorThread::~AllocatorThread() {
-  shutdown(true);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
 ////////////////////////////////////////////////////////////////////////////////

@@ -31,7 +31,7 @@
       else {
         $(this.el).removeClass('locked');
       }
-      if (this.model.get("status") === 'loading') {
+      if (this.model.get("status") === 'loading' || this.model.get("status") === 'unloading') {
         $(this.el).addClass('locked');
       }
       $(this.el).html(this.template.render({

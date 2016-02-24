@@ -186,7 +186,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   }
 
 // map deprecated option "log.facility" to "log.output"
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
   if (!_logFacility.empty()) {
     outputs.push_back("syslog://" + _logFacility + "/" + _logApplicationName);
   }
@@ -601,15 +601,14 @@ void ApplicationServer::stop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::extractPrivileges() {
-#ifdef TRI_HAVE_SETGID
-
+#ifdef ARANGODB_HAVE_SETGID
   if (_gid.empty()) {
     _numericGid = getgid();
   } else {
     int gidNumber = TRI_Int32String(_gid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
-#ifdef TRI_HAVE_GETGRGID
+#ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
@@ -618,7 +617,7 @@ void ApplicationServer::extractPrivileges() {
       }
 #endif
     } else {
-#ifdef TRI_HAVE_GETGRNAM
+#ifdef ARANGODB_HAVE_GETGRNAM
       std::string name = _gid;
       group* g = getgrnam(name.c_str());
 
@@ -638,18 +637,16 @@ void ApplicationServer::extractPrivileges() {
 
     _numericGid = gidNumber;
   }
-
 #endif
 
-#ifdef TRI_HAVE_SETUID
-
+#ifdef ARANGODB_HAVE_SETUID
   if (_uid.empty()) {
     _numericUid = getuid();
   } else {
     int uidNumber = TRI_Int32String(_uid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-#ifdef TRI_HAVE_GETPWUID
+#ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
@@ -658,7 +655,7 @@ void ApplicationServer::extractPrivileges() {
       }
 #endif
     } else {
-#ifdef TRI_HAVE_GETPWNAM
+#ifdef ARANGODB_HAVE_GETPWNAM
       std::string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
@@ -678,7 +675,6 @@ void ApplicationServer::extractPrivileges() {
 
     _numericUid = uidNumber;
   }
-
 #endif
 }
 
@@ -688,8 +684,8 @@ void ApplicationServer::extractPrivileges() {
 
 void ApplicationServer::dropPrivilegesPermanently() {
 // clear all supplementary groups
-#if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && \
-    defined(TRI_HAVE_SETUID)
+#if defined(ARANGODB_HAVE_INITGROUPS) && defined(ARANGODB_HAVE_SETGID) && \
+    defined(ARANGODB_HAVE_SETUID)
 
   if (!_gid.empty() && !_uid.empty()) {
     struct passwd* pwent = getpwuid(_numericUid);
@@ -702,7 +698,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 
 // first GID
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
 
   if (!_gid.empty()) {
     LOG(DEBUG) << "permanently changing the gid to " << _numericGid;
@@ -718,7 +714,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 
 // then UID (because we are dropping)
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
 
   if (!_uid.empty()) {
     LOG(DEBUG) << "permanently changing the uid to " << _numericUid;
@@ -746,10 +742,10 @@ void ApplicationServer::setupOptions(
       "help,h", "produce a usage message and exit")(
       "configuration,c", &_configFile, "read configuration file");
 
-#if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
+#if defined(ARANGODB_HAVE_SETUID) || defined(ARANGODB_HAVE_SETGID)
 
   options["General Options:help-admin"]
-#ifdef TRI_HAVE_GETPPID
+#ifdef ARANGODB_HAVE_GETPPID
       ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
 #endif
           ("watch-process", &_watchParent,
@@ -782,10 +778,10 @@ void ApplicationServer::setupOptions(
 
   options["Hidden Options"]
     ("log", &_logLevel, "log level")
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
 #endif
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
     ("gid", &_gid, "switch to group-id after reading config files")
 #endif
   ;
@@ -805,10 +801,10 @@ void ApplicationServer::setupOptions(
   options["Server Options:help-admin"](
       "random.generator", &_randomGenerator,
       "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
-#ifdef TRI_HAVE_SETUID
+#ifdef ARANGODB_HAVE_SETUID
       ("server.uid", &_uid, "switch to user-id after reading config files")
 #endif
-#ifdef TRI_HAVE_SETGID
+#ifdef ARANGODB_HAVE_SETGID
           ("server.gid", &_gid, "switch to group-id after reading config files")
 #endif
               ;
@@ -820,7 +816,7 @@ void ApplicationServer::setupOptions(
 
 bool ApplicationServer::checkParent() {
 // check our parent, if it died given up
-#ifdef TRI_HAVE_GETPPID
+#ifdef ARANGODB_HAVE_GETPPID
   if (_exitOnParentDeath && getppid() == 1) {
     LOG(INFO) << "parent has died";
     return false;

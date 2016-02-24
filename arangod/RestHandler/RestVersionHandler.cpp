@@ -23,7 +23,7 @@
 
 #include "RestVersionHandler.h"
 
-#include "Rest/AnyServer.h"
+#include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern AnyServer* ArangoInstance;
+extern ArangoServer* ArangoInstance;
 
 RestVersionHandler::RestVersionHandler(HttpRequest* request)
     : RestBaseHandler(request) {}

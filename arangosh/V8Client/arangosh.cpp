@@ -37,7 +37,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
-#include "Basics/init.h"
 #include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
@@ -2446,7 +2445,6 @@ int main(int argc, char* args[]) {
 #endif
   LocalEntryFunction();
 
-  TRIAGENS_C_INITIALIZE(argc, args);
   TRIAGENS_REST_INITIALIZE(argc, args);
 
   Logger::initialize(false);

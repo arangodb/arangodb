@@ -27,14 +27,14 @@
 #include <iostream>
 #include <iomanip>
 
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
 // we need to define SYSLOG_NAMES for linux to get a list of names
 #define SYSLOG_NAMES
 #define prioritynames TRI_prioritynames
 #define facilitynames TRI_facilitynames
 #include <syslog.h>
 
-#ifdef TRI_ENABLE_SYSLOG_STRINGS
+#ifdef ARANGODB_ENABLE_SYSLOG_STRINGS
 #include "syslog_names.h"
 #endif
 #endif
@@ -218,7 +218,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, bool fatal2stderr,
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
     }
-    
+
     _fd.store(fd);
   }
 }
@@ -232,7 +232,6 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   }
 
   if (level == LogLevel::FATAL && _fatal2stderr) {
-
     // a fatal error. always print this on stderr, too.
     WriteStderr(level, message);
 
@@ -348,7 +347,7 @@ void LogAppenderFile::writeLogFile(int fd, char const* buffer, ssize_t len) {
 /// @brief LogAppenderSyslog
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_SYSLOG
+#ifdef ARANGODB_ENABLE_SYSLOG
 
 class LogAppenderSyslog : public LogAppender {
  public:
@@ -457,11 +456,13 @@ std::string LogAppenderSyslog::details() {
 /// @brief build an appender object
 ////////////////////////////////////////////////////////////////////////////////
 
-static LogAppender* buildAppender(std::string const& output, bool fatal2stderr, 
-                                  std::string const& contentFilter,
-                                  std::unordered_set<std::string>& existingAppenders) {
-  // first handle syslog-logging
-#ifdef TRI_ENABLE_SYSLOG
+static LogAppender* buildAppender(
+    std::string const& output, bool fatal2stderr,
+    std::string const& contentFilter,
+    std::unordered_set<std::string>& existingAppenders) {
+
+// first handle syslog-logging
+#ifdef ARANGODB_ENABLE_SYSLOG
   if (StringUtils::isPrefix(output, "syslog://")) {
     auto s = StringUtils::split(output.substr(9), '/');
 
@@ -477,8 +478,8 @@ static LogAppender* buildAppender(std::string const& output, bool fatal2stderr,
     return new LogAppenderSyslog(s[0], s[1], contentFilter);
   }
 #endif
- 
-  // everything else must be file-based logging 
+
+  // everything else must be file-based logging
   std::string filename;
   if (output == "-" || output == "+") {
     filename = output;
@@ -495,28 +496,28 @@ static LogAppender* buildAppender(std::string const& output, bool fatal2stderr,
       return true;
     }
     // treat stderr and stdout as one output filename
-    if (filename == "-" && 
+    if (filename == "-" &&
         existingAppenders.find("+") != existingAppenders.end()) {
       return true;
     }
-    if (filename == "+" && 
+    if (filename == "+" &&
         existingAppenders.find("-") != existingAppenders.end()) {
       return true;
     }
     return false;
   };
-  
+
   if (hasAppender(filename)) {
     // already have an appender for the same output
     return nullptr;
   }
 
   try {
-    std::unique_ptr<LogAppender> appender(new LogAppenderFile(filename, fatal2stderr, contentFilter));
+    std::unique_ptr<LogAppender> appender(
+        new LogAppenderFile(filename, fatal2stderr, contentFilter));
     existingAppenders.emplace(filename);
     return appender.release();
-  }
-  catch (...) {
+  } catch (...) {
     // cannot open file for logging
     // try falling back to stderr instead
     if (hasAppender("-")) {
@@ -663,7 +664,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
   {
     char processPrefix[128];
 
-    TRI_pid_t processId = TRI_CurrentProcessId();
+    TRI_pid_t processId = Thread::currentProcessId();
 
     if (ShowThreadIdentifier.load(std::memory_order_relaxed)) {
       uint64_t threadNumber = Thread::currentThreadNumber();
@@ -693,8 +694,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
 
   // now either queue or output the message
   if (ThreadedLogging.load(std::memory_order_relaxed)) {
-    auto msg = std::make_unique<LogMessage>(level, topicId,
-                                            out.str(), offset);
+    auto msg = std::make_unique<LogMessage>(level, topicId, out.str(), offset);
 
     try {
       MessageQueue.push(msg.get());
@@ -714,6 +714,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
 class LogThread : public Thread {
  public:
   explicit LogThread(std::string const& name) : Thread(name) {}
+  ~LogThread() {shutdown();}
 
  public:
   void run();
@@ -780,12 +781,14 @@ LoggerStream::~LoggerStream() {
 
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
+LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance",
                              LogLevel::FATAL);  // suppress by default
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
+LogTopic Logger::THREADS("threads", LogLevel::WARN);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current log level
@@ -843,8 +846,9 @@ void Logger::addAppender(std::string const& definition, bool fatal2stderr,
 
     topic = it->second;
   }
- 
-  std::unique_ptr<LogAppender> appender(buildAppender(output, f2s, contentFilter, existingAppenders)); 
+
+  std::unique_ptr<LogAppender> appender(
+      buildAppender(output, f2s, contentFilter, existingAppenders));
 
   if (appender == nullptr) {
     // cannot open appender or already have an appender for the channel

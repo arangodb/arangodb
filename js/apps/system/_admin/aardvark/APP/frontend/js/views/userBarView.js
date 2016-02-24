@@ -59,33 +59,33 @@
             name = null,
             active = false,
             currentUser = null;
-          if (username) {
+          if (username !== false) {
             currentUser = this.userCollection.findWhere({user: username});
             currentUser.set({loggedIn : true});
             name = currentUser.get("extra").name;
             img = currentUser.get("extra").img;
             active = currentUser.get("active");
-          }
-          if (! img) {
-            img = "img/default_user.png";
-          } 
-          else {
-            img = "https://s.gravatar.com/avatar/" + img + "?s=24";
-          }
-          if (! name) {
-            name = "";
-          }
+            if (! img) {
+              img = "img/default_user.png";
+            } 
+            else {
+              img = "https://s.gravatar.com/avatar/" + img + "?s=24";
+            }
+            if (! name) {
+              name = "";
+            }
 
-          this.$el = $("#userBar");
-          this.$el.html(this.template.render({
-            img : img,
-            name : name,
-            username : username,
-            active : active
-          }));
+            this.$el = $("#userBar");
+            this.$el.html(this.template.render({
+              img : img,
+              name : name,
+              username : username,
+              active : active
+            }));
 
-          this.delegateEvents();
-          return this.$el;
+            this.delegateEvents();
+            return this.$el;
+          }
         }
       }.bind(this);
 

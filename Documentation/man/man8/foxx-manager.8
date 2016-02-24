@@ -1,47 +1,34 @@
-.TH foxx-manager 8 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
+.TH COMMAND SECTION "DATE" "" "ArangoDB"
 .SH NAME
-foxx-manager - a Foxx application manager for ArangoDB
+COMMAND - a Foxx application manager for ArangoDB
 .SH SYNOPSIS
-foxx-manager options 
+COMMAND options 
 .SH DESCRIPTION
-The foxx-manager binary can be used to manage Foxx applications in the
+The COMMAND binary can be used to manage Foxx applications in the
 ArangoDB database server. Foxx applications can be installed and
 uninstalled.
 More specific instructions are displayed when the program is invoked.
 .SH OPTIONS
-.IP "--server.database <string>"
-database name to use when connection (default: "_system") 
-.IP "--server.username <string>"
-username to use when connecting (default "root") 
-.IP "--server.password <string>"
-password to use when connecting. Don't specify this option to get a password prompt 
-.IP "--server.disable-authentication <boolean>"
-disable the password prompt and authentication when connecting to the server 
-.SH EXAMPLES
-.EX
-shell> foxx-manager search "foobar"
-searches the central repository for an application "foobar"
-.EE
-
-.EX
-shell> foxx-manager update
+OPTION "--server.database <string>"
+database name to use when connecting (default: "_system") ENDOPTION
+OPTION "--server.username <string>"
+username to use when connecting (default "root") ENDOPTION
+OPTION "--server.password <string>"
+password to use when connecting. Don't specify this option to get a password prompt ENDOPTION
+OPTION "--server.disable-authentication <boolean>"
+disable the password prompt and authentication when connecting to the server ENDOPTION
+EXAMPLES
+EXAMPLE COMMAND search "foobar"
+searches the central repository for an application "foobar"ENDEXAMPLE
+EXAMPLE COMMAND update
 updates the local repository with applications from the central repositoryENDEXAMPLE
-.EX
-shell> foxx-manager list
+EXAMPLE COMMAND list
 list all installed Foxx applicationsENDEXAMPLE
-.EX
-shell> foxx-manager install "hello-foxx" "/hello"
-installs the "hello-foxx" application under the mount point "/hello"
-.EE
-
-.EX
-shell> foxx-manager uninstall "/hello"
-uninstalls the application that is mounted under "/hello"
-.EE
-
-.EX
-shell> foxx-manager help
+EXAMPLE COMMAND install "hello-foxx" "/hello"
+installs the "hello-foxx" application under the mount point "/hello"ENDEXAMPLE
+EXAMPLE COMMAND uninstall "/hello"
+uninstalls the application that is mounted under "/hello"ENDEXAMPLE
+EXAMPLE COMMAND help
 shows the help pageENDEXAMPLE
-
 .SH AUTHOR
-	    Copyright triAGENS GmbH, Cologne, Germany
+Copyright triAGENS GmbH, Cologne, Germany

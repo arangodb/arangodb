@@ -2573,6 +2573,8 @@ div.footer-right {
   color: #fff;
   margin-left: 10px;
   padding: 5px 16px; }
+  .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus, .ajax-file-upload-red:focus, .ajax-file-upload:focus {
+    outline: none; }
 
 .button-header {
   margin-top: 5px; }
@@ -3137,7 +3139,11 @@ div .bigtile {
 
 @media (max-width: 970px) {
   #documentsDiv #totalDocuments {
-    display: none; } }
+    display: none; }
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
@@ -5414,6 +5420,8 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
+  div.headerBar select:focus {
+    outline: none; }
   div.headerBar .infoField {
     background-color: #fff;
     border: 1px solid rgba(140, 138, 137, 0.25);
@@ -5464,7 +5472,7 @@ div.headerBar {
 
 .headerBar a.arangoHeader {
   color: #000;
-  font-size: 13pt;
+  font-size: 11.5pt;
   font-weight: 100;
   left: 0;
   position: relative;
@@ -5482,7 +5490,7 @@ div.headerBar {
   .breadcrumb .disabledBread {
     color: #666;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative; }
@@ -5492,7 +5500,7 @@ div.headerBar {
   .breadcrumb .activeBread {
     color: #8aa051;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100; }
   .breadcrumb #app-development-path {
     background-color: #fff;
@@ -5750,6 +5758,9 @@ div.headerBar {
 .modal-footer {
   border-top: 0 !important;
   padding-right: 17px; }
+  .modal-footer .button-close {
+    margin-left: 20px;
+    margin-right: 10px; }
 
 .modal-header {
   margin-left: 5px;
@@ -6048,8 +6059,9 @@ div.headerBar {
   top: 6px; }
 
 .dataNotReadyYet {
+  color: #faa732;
   font-family: 'Open Sans', sans-serif;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 100;
   text-align: center; }
 
@@ -6508,9 +6520,12 @@ toolbar {
     font-weight: 300;
     height: 30px;
     line-height: 1;
+    outline: none;
     padding: 5px;
     padding-left: 5px !important;
     padding-top: 3px !important; }
+    .styled-select select:focus {
+      outline: none; }
 
 .querySizeDiv {
   height: 30px !important;
@@ -6579,9 +6594,6 @@ toolbar {
   padding-left: 5px;
   padding-right: 5px; }
 
-.tooltip-margin {
-  margin-top: 1px; }
-
 .query-dropdown-in {
   background-color: #fff;
   padding: 10px; }
@@ -6604,11 +6616,13 @@ toolbar {
 
 #queryContent {
   margin-top: 18px; }
-  #queryContent .arango-tab a {
-    border-bottom-color: #ddd;
-    font-weight: 100; }
-  #queryContent .arango-tab .active {
-    border-bottom-color: #fff !important; }
+  #queryContent .arango-tab {
+    margin-bottom: 5px; }
+    #queryContent .arango-tab a {
+      border-bottom-color: #ddd;
+      font-weight: 100; }
+    #queryContent .arango-tab .active {
+      border-bottom-color: #fff !important; }
 
 .query-div {
   display: none;
@@ -6668,47 +6682,35 @@ toolbar {
 .editor-toolbar {
   border-color: #a0a0a0;
   height: 33px;
-  margin-top: 5px; }
+  padding-right: 5px; }
   .editor-toolbar span {
     border-radius: 3px;
     float: right;
     height: 18px;
-    margin-left: 3px;
-    padding-bottom: 6px;
-    padding-left: 5px;
-    padding-right: 0;
-    padding-top: 3px;
+    padding: 3px 0 6px 10px;
     position: relative;
     top: 0;
-    width: 25px; }
+    width: 22px; }
   .editor-toolbar span:hover,
   .editor-toolbar .vars-editor-header i {
     background-color: #8aa051;
     color: #fff; }
-  .editor-toolbar i {
-    margin-right: 5px;
-    margin-top: 3px; }
-    .editor-toolbar i:hover {
-      cursor: pointer; }
+  .editor-toolbar a:hover,
+  .editor-toolbar span:hover {
+    cursor: pointer; }
+    .editor-toolbar a:hover i,
+    .editor-toolbar span:hover i {
+      color: #fff; }
+  .editor-toolbar i:hover {
+    color: #fff;
+    cursor: pointer; }
   .editor-toolbar .fa {
     color: #666;
-    margin-left: 1px;
-    margin-top: 2px; }
-    .editor-toolbar .fa.fa-upload {
-      margin-top: 1px; }
-  .editor-toolbar .icon_arangodb {
-    color: #666;
-    font-size: 14pt; }
-    .editor-toolbar .icon_arangodb:first-child {
-      margin-right: 10px; }
+    font-size: 15px; }
   .editor-toolbar .fa-comment,
   .editor-toolbar .fa-comment-o {
-    font-size: 15px;
     position: relative;
-    right: -2px;
-    top: -2px; }
-  .editor-toolbar .arango-icon-disk {
-    margin-top: 1px; }
+    top: -1px; }
 
 .display-none {
   display: none; }
@@ -7513,12 +7515,13 @@ input.gv-radio-button {
   color: #fff;
   height: 188px;
   left: 50%;
-  margin: -100px 0 0 -150px;
+  margin: -150px 0 0 -125px;
   position: absolute;
-  top: 50%;
-  width: 300px; }
+  top: 38%;
+  width: 250px; }
   .progress-view .progress-content {
-    border: 5px solid #fff; }
+    border: 5px solid #fff;
+    border-radius: 3px; }
     .progress-view .progress-content .fa-spinner {
       font-size: 100pt; }
   .progress-view .progress-message {
@@ -7531,10 +7534,17 @@ input.gv-radio-button {
     padding-top: 3px;
     text-align: center; }
   .progress-view .progress-text {
+    background: #fff;
     color: #000;
     float: left;
+    font-weight: 100;
+    height: 25px;
+    left: -5px;
     margin-left: 5px;
-    margin-top: 10px; }
+    margin-top: 10px;
+    position: relative;
+    top: -10px;
+    width: 100%; }
   .progress-view .progress-action {
     float: right;
     margin-right: 5px;
@@ -7554,7 +7564,7 @@ input.gv-radio-button {
   width: 200px; }
   .pong-spinner i {
     animation: ball 2s infinite linear;
-    background: #fff;
+    background: #8cdb8b;
     border-radius: 10px;
     height: 10px;
     position: absolute;
@@ -7563,7 +7573,7 @@ input.gv-radio-button {
 .pong-spinner:before,
 .pong-spinner:after {
   animation: left-player 2s infinite linear;
-  background: #fff;
+  background: #8cdb8b;
   content: '';
   height: 30px;
   position: absolute;

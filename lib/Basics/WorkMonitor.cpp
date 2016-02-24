@@ -118,7 +118,7 @@ WorkMonitor::WorkMonitor() : Thread("WorkMonitor") {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
-  if (WORK_MONITOR_STOPPED) {
+  if (WORK_MONITOR_STOPPED.load()) {
     deleteWorkDescription(desc, true);
   } else {
     FREEABLE_WORK_DESCRIPTION.push(desc);
@@ -130,6 +130,10 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushThread(Thread* thread) {
+  if (WORK_MONITOR_STOPPED.load()) {
+    return;
+  }
+  
   TRI_ASSERT(thread != nullptr);
   TRI_ASSERT(Thread::CURRENT_THREAD == nullptr);
   Thread::CURRENT_THREAD = thread;
@@ -154,6 +158,10 @@ void WorkMonitor::pushThread(Thread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::popThread(Thread* thread) {
+  if (WORK_MONITOR_STOPPED.load()) {
+    return;
+  }
+  
   TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 
@@ -399,7 +407,7 @@ void WorkMonitor::run() {
 
   // indicate that we stopped the work monitor, freeWorkDescription
   // should directly delete old entries
-  WORK_MONITOR_STOPPED = true;
+  WORK_MONITOR_STOPPED.store(true);
 
   // cleanup old entries
   WorkDescription* desc;
@@ -601,4 +609,7 @@ void arangodb::InitializeWorkMonitor() {
 /// @brief stops the work monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ShutdownWorkMonitor() { WORK_MONITOR.beginShutdown(); }
+void arangodb::ShutdownWorkMonitor() {
+  WORK_MONITOR_STOPPED.store(true);
+  WORK_MONITOR.beginShutdown();
+}

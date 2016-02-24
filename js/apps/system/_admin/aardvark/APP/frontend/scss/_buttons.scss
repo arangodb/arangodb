@@ -13,6 +13,9 @@
   margin-left: 10px;
   padding: 5px 16px;
 
+  &:focus {
+    outline: none;
+  }
 }
 
 .button-neutral {

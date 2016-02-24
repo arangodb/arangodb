@@ -34,10 +34,19 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
+#include "Basics/Logger.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Basics/InitializeBasics.h"
-#include "Basics/threads.h"
+#include "Basics/mimetypes.h"
+#include "Basics/process-utils.h"
+#include "Basics/random.h"
+#include "Basics/Thread.h"
 #include "Rest/Version.h"
+
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -76,7 +85,7 @@ void setter(CRYPTO_THREADID* id, unsigned long val) {
 #endif
 
 static void arango_threadid_func(CRYPTO_THREADID* id) {
-  auto self = TRI_CurrentThreadId();
+  auto self = Thread::currentThreadId();
 
   setter<decltype(self)>(id, self);
 }
@@ -130,6 +139,8 @@ void opensslCleanup() {
 }
 }
 
+using namespace arangodb::basics;
+
 // -----------------------------------------------------------------------------
 // initialization
 // -----------------------------------------------------------------------------
@@ -137,7 +148,28 @@ void opensslCleanup() {
 namespace arangodb {
 namespace rest {
 void InitializeRest(int argc, char* argv[]) {
-  TRIAGENS_BASICS_INITIALIZE(argc, argv);
+  TRI_InitializeMemory();
+  TRI_InitializeDebugging();
+  TRI_InitializeError();
+  TRI_InitializeFiles();
+  TRI_InitializeMimetypes();
+  Logger::initialize(false);
+  TRI_InitializeHashes();
+  TRI_InitializeRandom();
+  TRI_InitializeProcess(argc, argv);
+
+  // use the rng so the linker does not remove it from the executable
+  // we might need it later because .so files might refer to the symbols
+  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
+  Random::UniformInteger random(0, INT32_MAX);
+  random.random();
+  Random::selectVersion(v);
+
+#ifdef TRI_BROKEN_CXA_GUARD
+  pthread_cond_t cond;
+  pthread_cond_init(&cond, 0);
+  pthread_cond_broadcast(&cond);
+#endif
 
   SSL_library_init();
   SSL_load_error_strings();
@@ -156,7 +188,15 @@ void ShutdownRest() {
   EVP_cleanup();
   CRYPTO_cleanup_all_ex_data();
 
-  TRIAGENS_BASICS_SHUTDOWN;
+  TRI_ShutdownProcess();
+  TRI_ShutdownRandom();
+  TRI_ShutdownHashes();
+  Logger::shutdown(true);
+  TRI_ShutdownMimetypes();
+  TRI_ShutdownFiles();
+  TRI_ShutdownError();
+  TRI_ShutdownDebugging();
+  TRI_ShutdownMemory();
 }
 }
 }
