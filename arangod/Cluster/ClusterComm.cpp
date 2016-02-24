@@ -996,9 +996,7 @@ void ClusterComm::cleanupAllQueues() {
 
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm") {}
 
-ClusterCommThread::~ClusterCommThread() {
-  shutdown(true);
-}
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence

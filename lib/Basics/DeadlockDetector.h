@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/threads.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace basics {
@@ -47,7 +47,7 @@ class DeadlockDetector {
   ////////////////////////////////////////////////////////////////////////////////
 
   int detectDeadlock(T const* value, bool isWrite) {
-    auto tid = TRI_CurrentThreadId();
+    auto tid = Thread::currentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
     return detectDeadlock(value, tid, isWrite);
@@ -207,7 +207,7 @@ class DeadlockDetector {
   ////////////////////////////////////////////////////////////////////////////////
 
   int setBlocked(T const* value, bool isWrite) {
-    auto tid = TRI_CurrentThreadId();
+    auto tid = Thread::currentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -257,7 +257,7 @@ class DeadlockDetector {
   ////////////////////////////////////////////////////////////////////////////////
 
   void unsetBlocked(T const* value, bool isWrite) {
-    auto tid = TRI_CurrentThreadId();
+    auto tid = Thread::currentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -279,7 +279,7 @@ class DeadlockDetector {
   ////////////////////////////////////////////////////////////////////////////////
 
   void unsetActive(T const* value, bool isWrite) {
-    auto tid = TRI_CurrentThreadId();
+    auto tid = Thread::currentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -353,7 +353,7 @@ class DeadlockDetector {
   ////////////////////////////////////////////////////////////////////////////////
 
   void addActive(T const* value, bool isWrite, bool wasBlockedBefore) {
-    auto tid = TRI_CurrentThreadId();
+    auto tid = Thread::currentThreadId();
 
     MUTEX_LOCKER(mutexLocker, _lock);
 

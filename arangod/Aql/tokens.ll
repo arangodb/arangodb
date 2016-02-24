@@ -434,17 +434,18 @@ namespace arangodb {
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
 
-  int64_t value = TRI_Int64String2(yytext, yyleng);
-  if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-    node = parser->ast()->createNodeValueInt(value);
-  }
-  else {
-    double value2 = TRI_DoubleString(yytext);
-    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+  try {
+    int64_t value1 = arangodb::basics::StringUtils::int64_check(std::string(yytext, yyleng));
+    node = parser->ast()->createNodeValueInt(value1);
+  } catch (...) {
+    try {
+      double value2 = TRI_DoubleString(yytext);
       node = parser->ast()->createNodeValueDouble(value2);
-    }
-    else {
-      parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
+    } catch (...) {
+      parser->registerWarning(
+        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+        TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
+        yylloc->first_line, yylloc->first_column);
       node = parser->ast()->createNodeValueNull();
     }
   }

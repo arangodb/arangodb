@@ -91,7 +91,6 @@ id_t Constituent::leaderID ()  const {
 size_t Constituent::notifyAll () {
   // Last process notifies everyone 
   std::string body;
-  arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
 	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -110,8 +109,8 @@ size_t Constituent::notifyAll () {
 }
 
 
-bool Constituent::vote(id_t id, term_t term) {
-	if (id == _id) {       // Won't vote for myself should never happen.
+bool Constituent::vote(term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
+ 	if (id == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
 	} else {
 	  if (term > _term) {  // Candidate with higher term: ALWAYS turn follower if not already
@@ -152,24 +151,26 @@ void Constituent::callElection() {
   _term++;            // raise my term
   
   std::string body;
-  arangodb::velocypack::Options opts;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
 	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
-  path << "/_api/agency/vote?id=" << _id << "&term=" << _term;
 
+  path << "/_api/agency/requestVote?term=" << _term << "&candidateId=" << _id
+       << "&lastLogIndex=" << _agent.lastLogIndex() << "&lastLogTerm="
+       << _agent.LastLogTerm();
+    
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id) {
       results[i] = arangodb::ClusterComm::instance()->asyncRequest("1", 1,
         _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
-        .75*_agent->config().min_ping, true);
-      LOG(WARN) << _agent->config().end_points[i];
+        _agent->config().min_ping, true);
+      LOG(INFO) << _agent->config().end_points[i];
     }
 	}
 
-	std::this_thread::sleep_for(duration_t(.85*_agent->config().min_ping)); // Wait timeout
+	std::this_thread::sleep_for(.9*_agent->config().min_ping); // Wait timeout
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id) {
@@ -198,10 +199,9 @@ void Constituent::callElection() {
 }
 
 void Constituent::run() {
-  if (_id == _agent->config().size()-1)
-    notifyAll();
+/*
   while (true) { 
-    if (_role == FOLLOWER || _role == APPRENTICE) { 
+    if (_role == FOLLOWER) { 
       _cast = false;                           // New round set not cast vote
       std::this_thread::sleep_for(sleepFor()); // Sleep for random time
       if (!_cast)
@@ -210,6 +210,7 @@ void Constituent::run() {
       callElection();                          // Run for office
     }
   }
+*/
 };
 
 

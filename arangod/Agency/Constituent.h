@@ -79,7 +79,7 @@ public:
   /**
    * @brief Called by REST handler
    */
-  bool vote(id_t, term_t);
+  bool vote(term_t, id_t, index_t, term_t);
 
   /**
    * @brief My daily business

@@ -51,10 +51,6 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
       _numberTasks(0),
       _taskData(100) {}
 
-SchedulerThread::~SchedulerThread() {
-  shutdown(false);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////

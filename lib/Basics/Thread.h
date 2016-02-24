@@ -58,9 +58,11 @@ class Thread {
   typedef pthread_t thread_t;
 #elif defined(TRI_HAVE_WIN32_THREADS)
   typedef HANDLE thread_t;
+#else
+#error OS not supported
 #endif
 
-  enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED };
+  enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED, DETACHED };
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -149,7 +151,7 @@ class Thread {
   /// @brief called from the destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  void shutdown(bool waitForStopped);
+  void shutdown();
 
  public:
   //////////////////////////////////////////////////////////////////////////////

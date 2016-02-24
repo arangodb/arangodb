@@ -21,50 +21,108 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_STATE_H
-#define ARANGOD_AGENCY_STATE_H 1
+#ifndef __ARANGODB_CONSENSUS_STATE__
+#define __ARANGODB_CONSENSUS_STATE__
+
+
+#include "AgencyCommon.h"
+#include "State.h"
+
+#include <Basics/Thread.h>
+#include <Cluster/ClusterComm.h>
+#include <velocypack/vpack.h>
 
 #include <cstdint>
-#include <velocypack/vpack.h>
-#include "AgencyCommon.h"
+#include <functional>
+
+
+//using namespace arangodb::velocypack;
+
+class Slice {};
 
 namespace arangodb {
-  namespace consensus {
-    
-  typedef std::shared_ptr<arangodb::velocypack::Builder> store_t;
-  typedef std::pair<size_t, std::string> entry_t;
-  typedef std::map<size_t, std::string> container_t;
+namespace consensus {
 
-class State {
+typedef uint64_t index_t;
 
+/**
+ * @brief State entry
+ */
+struct log_t {
+  term_t      term;
+  id_t        leaderId;
+  index_t     index;
+  std::string entry;
+};
+
+class Agent;
+
+/**
+ * @brief State replica
+ */
+class State : public arangodb::Thread, public arangodb::ClusterCommCallback,
+            std::enable_shared_from_this<State> {
+  
 public:
+  
+  /**
+   * @brief Default constructor
+   */
+  State ();
+  
+  /**
+   * @brief Default Destructor
+   */
+  virtual ~State();
+  
+  void configure(Agent* agent);
+  
+  /**
+   * @brief State
+   */
+  template<typename T> id_t log (T const&);
+  
+  /**
+   * @brief Call back for log results from slaves
+   */
+  virtual bool operator()(ClusterCommResult*);
+    
+  /**
+   * @brief My daily business
+   */
+  void run();
 
   /**
-   *@ brief Default ctor
-   */ 
-  State();
+   * @brief 
+   */
+  void respHandler (index_t);
 
   /**
-   *@ brief Default dtor
-   */ 
-  ~State();
+   * @brief Attempt write
+   */
+  query_ret_t write (query_t const&) ;
 
   /**
-   * @brief Append entry
-   */ 
-  bool write (store_t const&);
+   * @brief Read from agency
+   */
+  query_ret_t read (query_t const&) const;
 
   /**
-   * @brief Get entry
-   */ 
-  store_t get (std::string const&) const;
+   * @brief Append entries
+   */
+  bool appendEntries (query_t const&); 
   
 
 private:
-  container_t _container;
+  
+//  State   _spear_head;   /**< @brief  Spear head */
+  Agent* _agent;        /**< @brief  My boss */
+  log_t  _log;          /**< @brief  State entries */
+  term_t _term;
+  
   
 };
-    
+
 }}
 
 #endif

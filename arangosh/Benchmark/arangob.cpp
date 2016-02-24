@@ -32,7 +32,6 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/init.h"
 #include "Basics/random.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
@@ -271,7 +270,6 @@ int main(int argc, char* argv[]) {
 
   arangobEntryFunction();
 
-  TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
 
   Logger::initialize(false);
@@ -292,13 +290,16 @@ int main(int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == nullptr) {
     std::string endpointString = BaseClient.endpointString();
-    LOG(FATAL) << "invalid value for --server.endpoint ('" << endpointString.c_str() << "')"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --server.endpoint ('"
+               << endpointString.c_str() << "')";
+    FATAL_ERROR_EXIT();
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == nullptr) {
-    LOG(FATAL) << "invalid test case name '" << TestCase.c_str() << "'"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid test case name '" << TestCase.c_str() << "'";
+    FATAL_ERROR_EXIT();
     return EXIT_FAILURE;  // will not be reached
   }
 

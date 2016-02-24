@@ -129,7 +129,7 @@ typedef struct TRI_external_status_s {
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_GETRUSAGE
+#ifdef ARANGODB_HAVE_GETRUSAGE
 uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 #endif
 

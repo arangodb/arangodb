@@ -77,36 +77,37 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
+inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
+  query_ret_t ret;
+  if (_request->suffix()[0] == "write") {
+    ret = _agent.write(_request->toVelocyPack());
+  } else {
+    ret = _agent.read(_request->toVelocyPack());
+  }
+  if (ret.accepted) { // We accepted the request
+    ret.result->close();
+    generateResult(ret.result->slice());
+  } else {            // We redirect the request
+    _response->setHeader("Location", _agent.config().endpoints[ret.redirect]);
+    generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+  }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
 HttpHandler::status_t RestAgencyHandler::execute() {
-
   try {
-    std::shared_ptr<VPackBuilder> result;
-    result->add(VPackValue(VPackValueType::Object));
-    arangodb::velocypack::Options opts;
-
-    // Empty request
-    if (_request->suffix().size() == 0) {
+    if (_request->suffix().size() == 0) {         // Empty request
       return reportErrorEmptyRequest();
-    } else if (_request->suffix().size() > 1) { // path size >= 2
+    } else if (_request->suffix().size() > 1) {   // path size >= 2
       return reportTooManySuffices();
     } else {
-    	if     (_request->suffix()[0] == "write") { // write to state machine
-        write_ret_t w = _agent.write(_request->toVelocyPack());
-        if (!w.accepted)
-          redirect(w.redirect_to);
-    	} else (_request->suffix()[0] ==  "read") { // read from state machine
-        read_ret_t r = _agent.read(_request->toVelocyPack());
-        if (!r.accepted)
-          redirect(r.redirect_to);
-        result = r.result;
+    	if     (_request->suffix()[0] == "write" ||
+              _request->suffix()[0] ==  "read") { // write to / read from agency
+        return handleReadWrite();
     	} else {
         return reportUnknownMethod();
     	}
     }
-
-    result->close();
-    generateResult(result->slice());
-
   } catch (...) {
     // Ignore this error
   }

@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_LOG__
-#define __ARANGODB_CONSENSUS_LOG__
+#ifndef __ARANGODB_CONSENSUS_STATE__
+#define __ARANGODB_CONSENSUS_STATE__
 
 
 #include "AgencyCommon.h"
@@ -43,35 +43,45 @@ class Slice {};
 namespace arangodb {
 namespace consensus {
 
+typedef uint64_t index_t;
+
+/**
+ * @brief State entry
+ */
+struct log_t {
+  term_t      term;
+  id_t        leaderId;
+  index_t     index;
+  std::string entry;
+};
+
 class Agent;
 
 /**
- * @brief Log replica
+ * @brief State replica
  */
-  class Log : public arangodb::Thread, public arangodb::ClusterCommCallback,
-              std::enable_shared_from_this<Log> {
+class State : public arangodb::Thread, public arangodb::ClusterCommCallback,
+            std::enable_shared_from_this<State> {
   
 public:
-  typedef uint64_t index_t;
-  typedef int32_t ret_t;
-
+  
   /**
    * @brief Default constructor
    */
-  Log ();
-
+  State ();
+  
   /**
    * @brief Default Destructor
    */
-  virtual ~Log();
-
+  virtual ~State();
+  
   void configure(Agent* agent);
-
+  
   /**
-   * @brief Log
+   * @brief State
    */
   template<typename T> id_t log (T const&);
-
+  
   /**
    * @brief Call back for log results from slaves
    */
@@ -87,43 +97,32 @@ public:
    */
   void respHandler (index_t);
 
-private:
+  /**
+   * @brief Attempt write
+   */
+  query_ret_t write (query_t const&) ;
 
   /**
-   * @brief         Write transaction
-   * @param state   State demanded
-   * @param expiry  Time of expiration
-   * @param update  Update state
+   * @brief Read from agency
    */
-   template<typename T> std::shared_ptr<T> readTransaction (
-     T const& state, T const& update);
-    
+  query_ret_t read (query_t const&) const;
+
   /**
-   * @brief         Write transaction
-   * @param state   State demanded
-   * @param expiry  Time of expiration
-   * @param update  Update state
+   * @brief Append entries
    */
-   template<typename T> std::shared_ptr<T> writeTransaction (
-     T const& state, duration_t expiry, T const& update);
-    
-  /**
-   * @brief         Check transaction condition
-   * @param state   State demanded
-   * @param pre     Prerequisite
-   */
-  template<typename T> bool checkTransactionPrecondition (
-    T const& state, T const& pre);
+  bool appendEntries (query_t const&); 
   
-  index_t _commit_id;    /**< @brief  index of highest log entry known
-                                      to be committed (initialized to 0, increases monotonically) */
-  index_t _last_applied; /**< @brief  index of highest log entry applied to state machine  */
-  State   _state;        /**< @brief  State machine */
 
+private:
+  
+  State   _state;        /**< @brief  State machine */
+  State   _spear_head;   /**< @brief  Spear head */
   Agent*  _agent;        /**< @brief  My boss */
+  log_t   _log;          /**< @brief  State entries */
+  
   
 };
-  
+
 }}
 
 #endif

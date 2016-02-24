@@ -26,7 +26,7 @@
 
 #include "AgencyCommon.h"
 #include "Constituent.h"
-#include "Log.h"
+#include "State.h"
 
 namespace arangodb {
 namespace consensus {
@@ -56,14 +56,14 @@ namespace consensus {
     term_t term() const;
     
     /**
-     * @brief 
+     * @brief Get current term
      */
-    template<typename T> Log::ret_t log (T const&);
-
+    id_t id() const;
+    
     /**
      * @brief Vote request
      */
-    bool vote(id_t, term_t);
+    query_t requestVote(term_t , id_t, index_t, index_t);
 
     /**
      * @brief Provide configuration
@@ -98,16 +98,22 @@ namespace consensus {
     /**
      * @brief Attempt write
      */
-    query_ret_t write (agency_io_t) const;
+    query_ret_t write (query_t const&);
 
     /**
      * @brief Read from agency
      */
-    query_ret_t read (std::shared_ptr<agency_io_t>) const;
+    query_ret_t read (query_t const&) const;
+
+    /**
+     * @brief Invoked by leader to replicate log entries (§5.3);
+     *        also used as heartbeat (§5.2).
+     */
+    query_ret_t appendEntries (term_t, id_t, index_t, term_t, index_t, query_t const&);
 
   private:
     Constituent _constituent; /**< @brief Leader election delegate */
-    Log         _log;         /**< @brief Log replica              */
+    State       _state;         /**< @brief Log replica              */
     config_t    _config;
     status_t    _status;
     
@@ -115,7 +121,7 @@ namespace consensus {
   
 }
 
-  LoggerStream& operator<< (LoggerStream&, arangodb::consensus::Agent const&);
+LoggerStream& operator<< (LoggerStream&, arangodb::consensus::Agent const&);
   
 }
 

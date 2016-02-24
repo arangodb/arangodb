@@ -30,9 +30,12 @@ namespace consensus {
 Agent::Agent () {}
 
 Agent::Agent (config_t const& config) : _config(config) {
+  //readPersistence(); // Read persistence (log )
   _constituent.configure(this);
-  _log.configure(this);
+  _state.configure(this);
 }
+
+id_t Agent::id() const { return _config.id;}
 
 Agent::~Agent () {}
 
@@ -44,8 +47,12 @@ term_t Agent::term () const {
   return _constituent.term();
 }
 
-bool Agent::vote(id_t id, term_t term) {
-	return _constituent.vote(id, term);
+query_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex, index_t lastLogTerm) {
+  Builder builder;
+  builder.add("term", Value(term()));
+  builder.add("voteGranted", Value(_constituent.vote(id, t)));
+  builder.close();
+	return std::make_shared<Builder>(builder);
 }
 
 Config<double> const& Agent::config () const {
@@ -69,17 +76,37 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
   return l;
 }
 
-write_ret_t Agent::write (std::shared_ptr<arangodb::velocypack::Builder> builder) const {
-  if (_constituent.leader()) {     // We are leading
-    return _log.write (builder);
-  } else {                         // We are not
-    return write_ret_t(false,_constituent.leaderID());
+query_ret_t Agent::appendEntries (
+  term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm,
+  index_t leadersLastCommitIndex, query_t const& query) {
+
+  if (query->isEmpty()) {             // heartbeat
+    return query_ret_t(
+      true, id(), _constituent.vote(term, leaderID, prevLogIndex, term_t,
+                             leadersLastCommitIndex);
+  } else if (_constituent.leader()) { // We are leading
+    _constituent.follow();
+    return _state.appendEntries(term, leaderID, prevLogIndex, term_t,
+                             leadersLastCommitIndex);
+  } else {                            // We redirect
+    return query_ret_t(false,_constituent.leaderID());
   }
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> builder
-  Agent::read (std::shared_ptr<arangodb::velocypack::Builder> builder) const {
-  return builder;
+query_ret_t Agent::write (query_t const& query) const {
+  if (_constituent.leader()) {     // We are leading
+    return _state.write (slice);
+  } else {                         // We redirect
+    return query_ret_t(false,_constituent.leaderID());
+  }
+}
+
+query_ret_t Agent::read (Slice const& slice) const {
+  if (_constituent.leader()) {     // We are leading
+    return _state.read (slice);
+  } else {                         // We redirect
+    return query_ret_t(false,_constituent.leaderID());
+  }
 }
 
 }}
