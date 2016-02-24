@@ -1,3 +1,5 @@
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE "link test"
 #include <boost/test/unit_test.hpp>
 
 struct TestSetup {

@@ -387,18 +387,20 @@ endif ()
 
 option(USE_BOOST_SYSTEM_LIBS "use libraries provided by the system" OFF)
 
-set(Boost_USE_MULTITHREADED ON)
 set(BOOST_MINIMUM_VERSION 1.58)
 
+set(Boost_USE_MULTITHREADED ON)
+
 if (USE_BOOST_SYSTEM_LIBS)
-  find(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
+  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
 else ()
   set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_MINIMUM_VERSION}.0 CACHE path "BOOST include path")
   set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
   set(Boost_VERSION ${BOOST_MINIMUM_VERSION})
+  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
 endif ()
 
-find_package(Boost ${Boost_VERSION} EXACT COMPONENTS unit_test_framework)
+find_package(Boost ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION} EXACT COMPONENTS unit_test_framework)
 
 if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
   try_compile(
@@ -424,8 +426,6 @@ endif ()
 if (NOT USE_BOOST_UNITTESTS)
   message("BOOST unit tests are disabled")
 endif ()
-
-find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
 
