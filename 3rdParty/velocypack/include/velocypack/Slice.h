@@ -664,6 +664,7 @@ class Slice {
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const;
   bool operator==(Slice const& other) const { return equals(other); }
+  bool operator!=(Slice const& other) const { return !equals(other); }
 
   static bool equals(uint8_t const* left, uint8_t const* right) {
     return Slice(left).equals(Slice(right));
