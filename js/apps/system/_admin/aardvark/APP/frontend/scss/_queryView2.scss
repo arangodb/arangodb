@@ -1,0 +1,90 @@
+.inputEditorWrapper {
+  border-bottom: 3px solid $c-content-border !important;
+  border-left: 1px solid $c-content-border;
+  border-right: 1px solid $c-content-border;
+  clear: both;
+  height: 300px;
+  min-height: 300px;
+  width: 100%;
+
+  .aqlEditorWrapper {
+    background: #f6f6f6;
+    border: 0 !important;
+    border-right: 3px solid $c-content-border !important;
+    float: left;
+    height: 100% !important;
+    max-width: 85%;
+    min-width: 20%;
+    width: 70%;
+  }
+
+  .bindParamEditorWrapper {
+    background: #eee;
+     overflow: hidden;
+
+     table {
+       border-top: none;
+
+       th {
+         width: 50%;
+       }
+     }
+  }
+
+  .aqlEditorWrapper,
+  .bindParamEditorWrapper {
+    height: 100%;
+
+    div {
+      height: 100%;
+    }
+  }
+
+  .ui-resizable-s {
+    cursor: ns-resize;
+  }
+
+  .ui-resizable-e {
+    cursor: ew-resize;
+  }
+
+}
+
+.queryContent {
+  clear: both;
+  margin-top: 0;
+  width: 100%;
+}
+
+.outputEditors {
+  margin-bottom: 60px;
+}
+
+.outputEditorWrapper {
+  clear: both;
+  height: 300px;
+  padding-top: 20px;
+  width: 100%;
+
+  .switchAce {
+    background-color: rgba(0, 0, 0, .6);
+    border-radius: 3px;
+    color: $c-white;
+    cursor: pointer;
+    position: relative;
+    right: -27px;
+    top: 45px;
+    z-index: 10;
+  }
+
+  .ace_editor {
+    border-left: 1px solid $c-content-border;
+    border-right: 1px solid $c-content-border;
+    height: 280px;
+    width: 100%;
+
+    .ace_active-line {
+      background: $c-white !important;
+    }
+  }
+}
