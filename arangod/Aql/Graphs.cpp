@@ -109,6 +109,7 @@ Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
       TRI_ASSERT(def.isObject());
       std::string eCol = arangodb::basics::VelocyPackHelper::getStringValue(
           def, "collection", "");
+      addEdgeCollection(eCol);
       // TODO what if graph is not in a valid format any more
       VPackSlice tmp = def.get("from");
       insertVertexCollections(tmp);
