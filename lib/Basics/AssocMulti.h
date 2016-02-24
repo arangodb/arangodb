@@ -1081,7 +1081,7 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t size) {
     std::string const cb(_contextCallback());
 
-    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << size;
+    LOG(TRACE) << "resizing index " << cb << ", target size: " << size;
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
         "index-resize " << cb << ", target size: " << size;
@@ -1158,7 +1158,7 @@ class AssocMulti {
 
     delete[] oldTable;
 
-    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
+    LOG(TRACE) << "resizing index " << cb << " done";
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << size;
   }

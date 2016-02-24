@@ -27,8 +27,6 @@
 
 #include "vocbase.h"
 
-#include <regex.h>
-
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/conversions.h"
@@ -332,38 +330,14 @@ static bool UnloadCollectionCallback(TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
-  TRI_vocbase_t* vocbase;
-  regmatch_t matches[4];
-  regex_t re;
-  int res;
-
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
   std::string const name(collection->name());
-
-#ifdef _WIN32
-  // .........................................................................
-  // Just thank your lucky stars that there are only 4 backslashes
-  // .........................................................................
-  res = regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)(-[0-9]+)?$",
-                REG_ICASE | REG_EXTENDED);
-#else
-  res = regcomp(&re, "^(.*)/collection-([0-9][0-9]*)(-[0-9]+)?$",
-                REG_ICASE | REG_EXTENDED);
-#endif
-
-  if (res != 0) {
-    LOG(ERR) << "unable to complile regular expression";
-
-    return false;
-  }
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_DELETED) {
     LOG(ERR) << "someone resurrected the collection '" << name << "'";
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-    regfree(&re);
 
     return false;
   }
@@ -375,15 +349,13 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   if (collection->_collection != nullptr) {
     TRI_document_collection_t* document = collection->_collection;
 
-    res = TRI_CloseDocumentCollection(document, false);
+    int res = TRI_CloseDocumentCollection(document, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "failed to close collection '" << name
                << "': " << TRI_last_error();
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-      regfree(&re);
 
       return true;
     }
@@ -399,7 +371,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   // remove from list of collections
   // .............................................................................
 
-  vocbase = collection->_vocbase;
+  TRI_vocbase_t* vocbase = collection->_vocbase;
 
   {
     WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
@@ -420,43 +392,51 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (!collection->path().empty()) {
-    int regExpResult;
+    std::string const collectionPath = collection->path();
 
-    regExpResult = regexec(&re, collection->pathc_str(),
-                           sizeof(matches) / sizeof(matches[0]), matches, 0);
+#ifdef _WIN32
+    size_t pos = collectionPath.find_last_of('\\');
+#else
+    size_t pos = collectionPath.find_last_of('/');
+#endif
 
-    if (regExpResult == 0) {
-      char const* first = collection->pathc_str() + matches[1].rm_so;
-      size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+    bool invalid = false;
 
-      char const* second = collection->pathc_str() + matches[2].rm_so;
-      size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
+    if (pos == std::string::npos || pos + 1 >= collectionPath.size()) {
+      invalid = true;
+    }
 
-      char* tmp1;
-      char* tmp2;
-      char* tmp3;
+    std::string path;
+    std::string relName;
+    if (!invalid) {
+      // extract path part
+      if (pos > 0) {
+        path = collectionPath.substr(0, pos); 
+      }
 
-      char* newFilename;
+      // extract relative filename
+      relName = collectionPath.substr(pos + 1);
 
-      tmp1 = TRI_DuplicateString(first, firstLen);
-      tmp2 = TRI_DuplicateString(second, secondLen);
-      tmp3 = TRI_Concatenate2String("deleted-", tmp2);
+      if (!StringUtils::isPrefix(relName, "collection-") || 
+          StringUtils::isSuffix(relName, ".tmp")) {
+        invalid = true;
+      }
+    }
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
+    if (!invalid) {
+      // prefix the collection name with "deleted-"
 
-      newFilename = TRI_Concatenate2File(tmp1, tmp3);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp3);
+      std::string const newFilename = 
+        FileUtils::buildFilename(path, "deleted-" + relName.substr(std::string("collection-").size()));
 
       // check if target directory already exists
-      if (TRI_IsDirectory(newFilename)) {
-        // no need to rename
-        TRI_RemoveDirectory(newFilename);
+      if (TRI_IsDirectory(newFilename.c_str())) {
+        // remove existing target directory
+        TRI_RemoveDirectory(newFilename.c_str());
       }
 
       // perform the rename
-      res = TRI_RenameFile(collection->pathc_str(), newFilename);
+      int res = TRI_RenameFile(collection->pathc_str(), newFilename.c_str());
 
       LOG(TRACE) << "renaming collection directory from '"
                  << collection->pathc_str() << "' to '" << newFilename << "'";
@@ -469,22 +449,18 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
         LOG(DEBUG) << "wiping dropped collection '" << name
                    << "' from disk";
 
-        res = TRI_RemoveDirectory(newFilename);
+        res = TRI_RemoveDirectory(newFilename.c_str());
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(ERR) << "cannot wipe dropped collection '" << name
                    << "' from disk: " << TRI_errno_string(res);
         }
       }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, newFilename);
     } else {
       LOG(ERR) << "cannot rename dropped collection '" << name
                << "': unknown path '" << collection->pathc_str() << "'";
     }
   }
-
-  regfree(&re);
 
   return true;
 }
