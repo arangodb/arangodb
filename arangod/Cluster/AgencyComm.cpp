@@ -567,7 +567,7 @@ bool AgencyComm::tryInitializeStructure() {
   VPackSlice trueSlice = trueBuilder.slice();
 
   AgencyCommResult result;
-  result = casValue("Init", trueSlice, false, 10.0, 0.0);
+  result = casValue("Init", trueSlice, false, 120.0, 0.0);
   if (!result.successful()) {
     // mop: we couldn"t aquire a lock. so somebody else is already initializing
     return false;
@@ -685,8 +685,13 @@ bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
     if (!key.empty()) {
       result = createDirectory(key);
       if (!result.successful()) {
-        ret = false;
-        return ret;
+        // mop: forbidden will be thrown if directory already exists
+        // need ability to recover in a case where the agency was half
+        // initialized
+        if (result.httpCode() != arangodb::rest::HttpResponse::FORBIDDEN) {
+          ret = false;
+          return ret;
+        }
       }
     }
 
