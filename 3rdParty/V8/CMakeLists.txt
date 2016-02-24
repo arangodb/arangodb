@@ -88,7 +88,7 @@ else ()
   )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-    list(APPEND V8_COMPILE_ARGS CXXFLAGS=-stdlib=libc++)
+    list(APPEND V8_COMPILE_ARGS CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
   endif ()
 endif()
 
