@@ -468,8 +468,8 @@ bool Index::hasBatchInsert() const { return false; }
 /// @brief default implementation for supportsFilterCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsFilterCondition(arangodb::aql::AstNode const* node,
-                                    arangodb::aql::Variable const* reference,
+bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
+                                    arangodb::aql::Variable const*,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
   // by default, no filter conditions are supported
@@ -612,6 +612,81 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
 
   return true;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the list of search slices to search values.
+///        This will multiply all IN entries and simply return all other
+///        entries.
+//////////////////////////////////////////////////////////////////////////////
+
+void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) {
+  TRI_ASSERT(base.isArray());
+
+  VPackArrayBuilder listGuard(&result); 
+  bool usesIn = false;
+  for (auto const& it : VPackArrayIterator(base)) {
+    if (it.hasKey(TRI_SLICE_KEY_IN)) {
+      usesIn = true;
+      break;
+    }
+  }
+  if (!usesIn) {
+    // Shortcut, no multiply
+    // Just copy over base
+    result.add(base);
+    return;
+  }
+
+  std::unordered_map<size_t, std::vector<VPackSlice>> elements;
+  for (VPackValueLength i = 0; i < base.length(); ++i) {
+    VPackSlice current = base.at(i);
+    if (current.hasKey(TRI_SLICE_KEY_IN)) {
+      std::unordered_set<VPackSlice> tmp;
+      TRI_ASSERT(current.get(TRI_SLICE_KEY_IN).isArray());
+      for (auto const& el : VPackArrayIterator(current.get(TRI_SLICE_KEY_IN))) {
+        tmp.emplace(el);
+      }
+      auto& vector = elements[i];
+      vector.insert(vector.end(), tmp.begin(), tmp.end());
+    }
+  }
+  // If there is an entry in elements for one depth it was an in,
+  // all of them are now unique so we simply have to multiply
+  
+  size_t n = static_cast<size_t>(base.length());
+  size_t level = 0;
+  std::vector<size_t> positions;
+  positions.resize(n);
+  bool done = false;
+  while (!done) {
+    VPackArrayBuilder guard(&result);
+    for (size_t i = 0; i < n; ++i)  {
+      auto list = elements.find(i);
+      if (list == elements.end()) {
+        // Insert
+        result.add(base.at(i));
+      } else {
+        VPackObjectBuilder objGuard(&result);
+        result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
+      }
+    }
+    while (true) {
+      auto list = elements.find(level);
+      if (++positions[level] < elements[level].size()) {
+        level = 0;
+        // abort inner iteration
+        break;
+      }
+      positions[level] = 0;
+      if (++level >= n) {
+        done = true;
+        break;
+      }
+    }
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream

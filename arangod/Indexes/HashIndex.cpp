@@ -44,7 +44,7 @@ static void FreeElement(TRI_index_element_t* element) {
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement(void* userData,
+static bool IsEqualElementElement(void*,
                                   TRI_index_element_t const* left,
                                   TRI_index_element_t const* right) {
   return left->document() == right->document();
@@ -54,7 +54,7 @@ static bool IsEqualElementElement(void* userData,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey(void* userData,
+static uint64_t HashKey(void*,
                         TRI_hash_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
@@ -71,7 +71,7 @@ static uint64_t HashKey(void* userData,
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement(void* userData,
+static bool IsEqualKeyElement(void*,
                               TRI_hash_index_search_value_t const* left,
                               TRI_index_element_t const* right) {
   TRI_ASSERT(right->document() != nullptr);
@@ -104,7 +104,7 @@ static bool IsEqualKeyElement(void* userData,
 
 static bool IsEqualKeyElementHash(
     void* userData, TRI_hash_index_search_value_t const* left,
-    uint64_t const hash,  // Has been computed but is not used here
+    uint64_t const,  // Has been computed but is not used here
     TRI_index_element_t const* right) {
   return IsEqualKeyElement(userData, left, right);
 }
@@ -112,7 +112,7 @@ static bool IsEqualKeyElementHash(
 TRI_doc_mptr_t* HashIndexIterator::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
-      if (_position >= _keys.size()) {
+      if (_position >= _numLookups) {
         // we're at the end of the lookup values
         return nullptr;
       }
@@ -121,7 +121,13 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = _index->lookup(_trx, _keys[_position++], _buffer);
+      int res = TRI_ERROR_NO_ERROR;
+      if (_keys.empty()) {
+        _index->lookup(_trx, _searchKeys.at(_position++), _buffer);
+      } else {
+        // DEPRECATED
+        _index->lookup(_trx, _keys[_position++], _buffer);
+      }
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -446,6 +452,18 @@ int HashIndex::lookup(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given a velocypack slice
+//////////////////////////////////////////////////////////////////////////////
+
+#include <iostream>
+int HashIndex::lookup(arangodb::Transaction*,
+                      VPackSlice searchValue,
+                      std::vector<TRI_doc_mptr_t*>&) const {
+  std::cout << searchValue.toJson() << "\n";
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,7 +538,7 @@ int HashIndex::insertUnique(arangodb::Transaction* trx,
   }
 
   auto work =
-      [this, trx](TRI_index_element_t* element, bool isRollback) -> int {
+      [this, trx](TRI_index_element_t* element, bool) -> int {
         TRI_IF_FAILURE("InsertHashIndex") { return TRI_ERROR_DEBUG; }
         return _uniqueArray->_hashArray->insert(trx, element);
       };
@@ -585,7 +603,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx,
     return res;
   }
 
-  auto work = [this, trx](TRI_index_element_t*& element, bool isRollback) {
+  auto work = [this, trx](TRI_index_element_t*& element, bool) {
     TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -761,9 +779,9 @@ bool HashIndex::supportsFilterCondition(
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* HashIndex::iteratorForCondition(
-    arangodb::Transaction* trx, IndexIteratorContext* context,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) const {
+    arangodb::Transaction* trx, IndexIteratorContext*,
+    arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(fields());
@@ -929,10 +947,15 @@ IndexIterator* HashIndex::iteratorForCondition(
 /// @brief creates an IndexIterator for the given VelocyPackSlices
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* HashIndex::iteratorForSlices(
-    arangodb::Transaction* trx, IndexIteratorContext* context,
-    VPackSlice const slides, bool reverse) const {
-  return nullptr;
+IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
+                                           IndexIteratorContext*,
+                                           VPackSlice const searchValues,
+                                           bool) const {
+  if (!searchValues.isArray()) {
+    // Invalid searchValue
+    return nullptr;
+  }
+  return new HashIndexIterator(trx, this, searchValues);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

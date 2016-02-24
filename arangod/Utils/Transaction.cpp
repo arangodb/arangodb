@@ -1699,6 +1699,12 @@ OperationCursor Transaction::indexScan(
       break;
     }
     case CursorType::INDEX: {
+      // TMP HACK
+      arangodb::PrimaryIndex* idx2 = document->primaryIndex();
+      VPackBuilder result;
+      idx2->expandInSearchValues(search, result);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
       if (indexId.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "The index id cannot be empty.");
@@ -1721,7 +1727,7 @@ OperationCursor Transaction::indexScan(
       // We have successfully found an index with the requested id.
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      iterator.reset(idx->iteratorForSlices(this, &ctxt, search, reverse));
+      iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
   if (iterator == nullptr) {

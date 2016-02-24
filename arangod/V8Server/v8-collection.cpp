@@ -1928,6 +1928,35 @@ static void JS_InsertVocbaseVPack(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  // Hack to test the Index Slice Builder
+  VPackBuilder hack;
+  hack.openArray();
+
+  hack.openObject();
+  hack.add("in", VPackValue(VPackValueType::Array));
+  hack.add(VPackValue("a"));
+  hack.add(VPackValue("b"));
+  hack.add(VPackValue("c"));
+  hack.close();
+  hack.close();
+
+  hack.openObject();
+  hack.add("eq", VPackValue(1));
+  hack.close();
+
+  hack.openObject();
+  hack.add("in", VPackValue(VPackValueType::Array));
+  hack.add(VPackValue("z"));
+  hack.add(VPackValue("x"));
+  hack.add(VPackValue("y"));
+  hack.close();
+  hack.close();
+
+  hack.close();
+
+  trx.indexScan(collection->_name, arangodb::Transaction::CursorType::INDEX, "123", hack.slice(), 1, 1, 1, false);
+
+
   OperationResult result = trx.insert(collection->_name, builder.slice(), options);
 
   res = trx.finish(result.code);
