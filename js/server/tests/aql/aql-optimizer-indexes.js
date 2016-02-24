@@ -1073,6 +1073,91 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testIndexOrMultiplySkiplist : function () {
+      var query = "FOR i IN " + c.name() + " FILTER (i.value > 1 && i.value < 9) && (i.value2 == null || i.value3 == null) RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2, 3, 4, 5, 6, 7, 8 ], results.json.sort(), query);
+      assertTrue(results.stats.scannedIndex > 0);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexSkiplistMultiple : function () {
+      c.truncate();
+      for (var i = 0; i < 10; ++i) {
+        c.insert({ value1: i, value2: i });
+      }
+      c.ensureIndex({ type: "skiplist", fields: [ "value1", "value2" ] });
+
+      var query = "FOR i IN " + c.name() + " FILTER (i.value2 > 1 && i.value2 < 9) && (i.value1 == 3) RETURN i.value1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("FilterNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 3 ], results.json.sort(), query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexSkiplistMultiple2 : function () {
+      c.truncate();
+      for (var i = 0; i < 10; ++i) {
+        c.insert({ value1: i, value2: i });
+      }
+      c.ensureIndex({ type: "skiplist", fields: [ "value1", "value2" ] });
+
+      var query = "FOR i IN " + c.name() + " FILTER (i.value2 > 1 && i.value2 < 9) && (i.value1 == 2 || i.value1 == 3) RETURN i.value1";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2, 3 ], results.json.sort(), query);
+      assertEqual(2, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testIndexOrSkiplist : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
