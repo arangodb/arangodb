@@ -18,83 +18,10 @@ warning:
 	@echo "  cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
 	@echo ""
 
--include Makefile
-
 VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
 VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
-
 VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                   SPECIAL TARGETS
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief setup
-################################################################################
-
-.PHONY: setup
-
-setup:
-	@echo ACLOCAL
-	@aclocal -I m4
-	@echo AUTOMAKE
-	@automake --add-missing --force-missing --copy
-	@echo AUTOCONF
-	@autoconf -I m4
-	@echo auto system configured, proceed with configure
-
-################################################################################
-### @brief add maintainer files
-################################################################################
-
-MAINTAINER = \
-	README \
-	arangod/Aql/tokens.cpp \
-	arangod/Aql/grammar.cpp \
-	arangod/Aql/grammar.h \
-	lib/JsonParser/json-parser.cpp \
-	lib/V8/v8-json.cpp \
-	lib/Basics/voc-errors.h \
-	lib/Basics/voc-errors.cpp \
-	js/common/bootstrap/errors.js
-
-AUTOMAGIC = \
-	Makefile.in \
-	aclocal.m4 \
-	configure \
-	config/compile \
-	config/config.guess \
-	config/config.sub \
-	config/depcomp \
-	config/install-sh \
-	config/missing
-
-.PHONY: add-maintainer add-automagic
-
-add-maintainer:
-	@echo adding generated files to GIT
-	git add -f $(MAINTAINER)
-
-remove-maintainer:
-	@echo removing generated files from GIT
-	git rm -f $(MAINTAINER)
-
-add-automagic:
-	@echo adding automagic files to GIT
-	git add -f $(AUTOMAGIC)
-
-remove-automagic:
-	@echo removing automagic files from GIT
-	git rm -f $(AUTOMAGIC)
-
-################################################################################
-### @brief make love
-################################################################################
-
-love:
-	@echo ArangoDB loves you
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     CMAKE & CPACK
@@ -392,36 +319,3 @@ packXX:
 	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
-
-checkcmake:
-	if test -z "`cmake --help |grep -i visual`"; then \
-		echo "Your cmake is not sufficient; it lacks support for visual studio." ; \
-		exit 1; \
-	fi
-
-
-################################################################################
-### @brief generates a tar archive
-################################################################################
-
-.PHONY: pack-tar pack-tar-config
-
-pack-tar-config:
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var
-
-pack-tar:
-	rm -rf /tmp/pack-arangodb
-	make install-strip DESTDIR=/tmp/pack-arangodb
-	tar -c -v -z -f arangodb-$(VERSION).tar.gz -C /tmp/pack-arangodb .
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*-"
-## End:
