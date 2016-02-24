@@ -147,7 +147,7 @@ find_package(PythonInterp 2)
 find_package(Go 1.2)
 
 if (NOT GO_FOUND)
-  message ("Go version >=1.2 not found. etcd will not be built.")
+  message("Go version >=1.2 not found. etcd will not be built.")
 endif ()
 
 ################################################################################
@@ -385,24 +385,44 @@ endif ()
 ## BOOST
 ################################################################################
 
-option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
+option(USE_BOOST_SYSTEM_LIBS "use libraries provided by the system" OFF)
 
 set(Boost_USE_MULTITHREADED ON)
 set(BOOST_MINIMUM_VERSION 1.58)
 
-set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0 CACHE path "BOOST include path")
+if (USE_BOOST_SYSTEM_LIBS)
+  find(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
+else ()
+  set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_MINIMUM_VERSION}.0 CACHE path "BOOST include path")
+  set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
+  set(Boost_VERSION ${BOOST_MINIMUM_VERSION})
+endif ()
 
-set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
-find_package(Boost COMPONENTS unit_test_framework)
+find_package(Boost ${Boost_VERSION} EXACT COMPONENTS unit_test_framework)
 
 if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
-  option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
+  try_compile(
+    HAVE_USABLE_BOOT_LIBRARIES
+      "${CMAKE_BINARY_DIR}/temp"
+      "${CMAKE_SOURCE_DIR}/cmake/test_boost.cpp"
+    LINK_LIBRARIES
+      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    CMAKE_FLAGS
+      "-DINCLUDE_DIRECTORIES=${Boost_INCLUDE_DIR}"
+  )
+
+  if (HAVE_USABLE_BOOT_LIBRARIES)
+    option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
+  else ()
+    message("cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
+    option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
+  endif ()
 else ()
   option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
 endif ()
 
 if (NOT USE_BOOST_UNITTESTS)
-  message ("BOOST unit tests are disabled")
+  message("BOOST unit tests are disabled")
 endif ()
 
 find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
