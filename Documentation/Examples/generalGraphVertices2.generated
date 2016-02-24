@@ -7,21 +7,21 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_VERTICES("</spa
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Berlin"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1797421161"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1794774859"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">3000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1797617769"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1794971467"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1797814377"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1795168075"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   } 

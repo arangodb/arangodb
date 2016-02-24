@@ -1,26 +1,26 @@
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"Gerhard"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/27097193"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"27097193"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27097193"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/23861067"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23861067"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23861067"</span> 
 }
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"Helmut"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/27359337"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"27359337"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27359337"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/24123211"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24123211"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"24123211"</span> 
 }
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"Angela"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/27555945"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"27555945"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27555945"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/24319819"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24319819"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"24319819"</span> 
 }
 arangosh&gt; <span class="hljs-keyword">var</span> a = db.users.byExample( {<span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> } );
 arangosh&gt; <span class="hljs-keyword">while</span> (a.hasNext()) print(a.next());
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/27555945"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"27555945"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"27555945"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/24319819"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"24319819"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24319819"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }

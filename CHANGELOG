@@ -1,4 +1,4 @@
-v2.7.7 (XXXX-XX-XX)
+v2.7.7 (2016-02-24)
 -------------------
 
 * Foxx Model event listeners defined on the model are now correctly invoked by
