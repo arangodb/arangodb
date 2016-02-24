@@ -291,7 +291,9 @@ void LogAppenderFile::reopenLog() {
 
   int old = std::atomic_exchange(&_fd, fd);
 
-  TRI_CLOSE(old);
+  if (old > STDERR_FILENO) {
+    TRI_CLOSE(old);
+  }
 }
 
 void LogAppenderFile::closeLog() {
