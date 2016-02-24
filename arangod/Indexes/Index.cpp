@@ -671,7 +671,7 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) {
     }
     while (true) {
       auto list = elements.find(level);
-      if (++positions[level] < elements[level].size()) {
+      if (list != elements.end() && ++positions[level] < list->second.size()) {
         level = 0;
         // abort inner iteration
         break;

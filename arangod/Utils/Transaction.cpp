@@ -1639,12 +1639,6 @@ OperationCursor Transaction::indexScan(
     std::string const& indexId, VPackSlice const search,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
 
-  if (limit == 0) {
-    // nothing to do - TODO: this will swallow potential errors,
-    // e.g. collection does not exist
-    return OperationCursor(TRI_ERROR_NO_ERROR);
-  }
-
   // TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
 
@@ -1657,6 +1651,11 @@ OperationCursor Transaction::indexScan(
 
   if (cid == 0) {
     return OperationCursor(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  if (limit == 0) {
+    // nothing to do
+    return OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
@@ -1699,12 +1698,6 @@ OperationCursor Transaction::indexScan(
       break;
     }
     case CursorType::INDEX: {
-      // TMP HACK
-      arangodb::PrimaryIndex* idx2 = document->primaryIndex();
-      VPackBuilder result;
-      idx2->expandInSearchValues(search, result);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-
       if (indexId.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "The index id cannot be empty.");
@@ -1725,9 +1718,14 @@ OperationCursor Transaction::indexScan(
       }
       
       // We have successfully found an index with the requested id.
+      
+      // Normalize the search values
+      VPackBuilder expander;
+      idx->expandInSearchValues(search, expander);
+
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
+      iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
     }
   }
   if (iterator == nullptr) {
