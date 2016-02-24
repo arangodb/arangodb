@@ -65,21 +65,21 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG(DEBUG) << "connecting to unix endpoint '" << _specification.c_str() << "'";
+  LOG(DEBUG) << "connecting to unix endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
-    LOG(WARN) << "socket file '" << _path.c_str() << "' already exists.";
+    LOG(WARN) << "socket file '" << _path << "' already exists.";
 
     int error = 0;
     // delete previously existing socket file
     if (FileUtils::remove(_path, &error)) {
-      LOG(WARN) << "deleted previously existing socket file '" << _path.c_str() << "'";
+      LOG(WARN) << "deleted previously existing socket file '" << _path << "'";
     } else {
-      LOG(ERR) << "unable to delete previously existing socket file '" << _path.c_str() << "'";
+      LOG(ERR) << "unable to delete previously existing socket file '" << _path << "'";
 
       return listenSocket;
     }
@@ -166,7 +166,7 @@ void EndpointUnixDomain::disconnect() {
     if (_type == ENDPOINT_SERVER) {
       int error = 0;
       if (!FileUtils::remove(_path, &error)) {
-        LOG(TRACE) << "unable to remove socket file '" << _path.c_str() << "'";
+        LOG(TRACE) << "unable to remove socket file '" << _path << "'";
       }
     }
   }

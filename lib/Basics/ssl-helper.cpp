@@ -67,12 +67,12 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG(ERR) << "cannot read certificate from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
+    LOG(ERR) << "cannot read certificate from '" << keyfile << "': " << arangodb::basics::lastSSLError();
     return nullptr;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG(ERR) << "cannot read key from '" << keyfile.c_str() << "': " << arangodb::basics::lastSSLError().c_str();
+    LOG(ERR) << "cannot read key from '" << keyfile << "': " << arangodb::basics::lastSSLError();
     return nullptr;
   }
 

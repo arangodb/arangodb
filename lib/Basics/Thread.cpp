@@ -261,7 +261,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   } else {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
-                                    << _name.c_str()
+                                    << _name
                                     << "': " << strerror(errno);
 
     return false;
@@ -328,20 +328,20 @@ void Thread::runMe() {
     _state.store(ThreadState::STOPPED);
   } catch (Exception const& ex) {
     LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name.c_str() << "': " << ex.what();
+                                    << _name << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name.c_str() << "': " << ex.what();
+                                    << _name << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (...) {
     if (!isSilent()) {
       LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                      << _name.c_str() << "'";
+                                      << _name << "'";
       Logger::flush();
     }
     _state.store(ThreadState::STOPPED);
