@@ -6,18 +6,6 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-project(ArangoDB)
-
-if (APPLE)
-  if (NOT DEFINED CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER /usr/bin/clang)
-  endif ()
-  
-  if (NOT DEFINED CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-  endif ()
-endif ()
-
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
@@ -28,6 +16,18 @@ if (NOT CMAKE_BUILD_TYPE)
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE
   )
+endif ()
+
+project(ArangoDB)
+
+if (APPLE)
+  if (NOT DEFINED CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER /usr/bin/clang)
+  endif ()
+  
+  if (NOT DEFINED CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+  endif ()
 endif ()
 
 # where to find CMAKE modules
@@ -43,6 +43,9 @@ set(ARANGODB_VERSION_REVISION   "0-devel")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+add_definitions("-DARANGODB_BUILD_DATE=\"${ARANGODB_BUILD_DATE}\"")
 
 # for NSIS
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
@@ -79,11 +82,13 @@ set(TEST_GEO_SUITE    geo_suite)
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h")
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
+)
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+  "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+)
 
 ################################################################################
 ## OPERATION SYSTEM
@@ -388,6 +393,111 @@ if (USE_FAILURE_TESTS)
 endif ()
 
 ################################################################################
+## BOOST
+################################################################################
+
+option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
+
+set(Boost_USE_MULTITHREADED ON)
+set(BOOST_MINIMUM_VERSION 1.58)
+
+find_package(Boost ${BOOST_MINIMUM_VERSION} COMPONENTS unit_test_framework)
+
+if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
+  option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
+else ()
+  option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
+endif ()
+
+if (NOT USE_BOOST_UNITTESTS)
+  message ("BOOST unit tests are disabled")
+endif ()
+
+find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIRS})
+
+set(BOOST_VERSION
+  "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}"
+  CACHE INTERNAL
+  "Boost: Version"
+  FORCE
+)
+
+add_definitions(-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\")
+
+################################################################################
+## OPENSSL
+################################################################################
+
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
+if (OPENSSL_VERSION)
+  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
+  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
+  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+  if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
+    add_definitions(-DOPENSSL_NO_SSL2)
+  endif ()				
+endif ()
+
+################################################################################
+## 3RD PARTY
+################################################################################
+
+# 3rdParty exports:
+#
+# V8_VERSION
+# V8_LIBS
+# V8_INCLUDE_DIR
+#
+# ICU_VERSION
+# ICU_LIBS
+# ICU_INCLUDE_DIR
+#
+# LIBEV_VERSION
+# LIBEV_LIBS
+# LIBEV_INCLUDE_DIR
+#
+# ZLIB_VERSION
+# ZLIB_LIBS
+# ZLIB_INCLUDE_DIR
+
+add_subdirectory(3rdParty)
+
+################################################################################
+## LIBEV
+################################################################################
+
+include_directories(${LIBEV_INCLUDE_DIR})
+add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
+
+################################################################################
+## ZLIB
+################################################################################
+
+include_directories(${ZLIB_INCLUDE_DIR})
+add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+
+################################################################################
+## V8
+################################################################################
+
+include_directories(${V8_INCLUDE_DIR})
+add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
+
+################################################################################
+## ICU
+################################################################################
+
+include_directories(${ICU_INCLUDE_DIR})
+
+################################################################################
+## 
+################################################################################
+
+################################################################################
 ## PATHS
 ################################################################################
 
@@ -567,58 +677,6 @@ if (NOT WINDOWS)
   )
 endif ()
 
-################################################################################
-## 3RD PARTY
-################################################################################
-
-# 3rdParty exports:
-#
-# V8_VERSION
-# V8_BIN_DIR
-# V8_INCLUDE_DIR
-#
-# ICU_BIN_DIR
-# ICU_INCLUDE_DIR
-#
-# LIBEV_VERSION
-# LIBEV_LIBS
-# LIBEV_INCLUDE_DIR
-#
-# ZLIB_VERSION
-# ZLIB_LIBS
-# ZLIB_INCLUDE_DIR
-
-add_subdirectory(3rdParty)
-
-################################################################################
-## LIBEV
-################################################################################
-
-include_directories(${LIBEV_INCLUDE_DIR})
-add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
-
-################################################################################
-## ZLIB
-################################################################################
-
-include_directories(${ZLIB_INCLUDE_DIR})
-add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-
-################################################################################
-## ICU
-################################################################################
-
-if (MSVC)
-  set(ICU_LIBS "icui18n;icuuc" CACHE string "ICU libraries")
-  
-  add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-else ()
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread CACHE string "ICU libraries")
-endif ()
-
-include_directories(${ICU_INCLUDE_DIR})
-link_directories(${ICU_BIN_DIR})
-
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
@@ -708,71 +766,21 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 add_subdirectory(UnitTests)
 
+get_cmake_property(_variableNames VARIABLES)
+
+
 
 
 
 # ICU ---------------------------------------------------------------------------
 # V8 ----------------------------------------------------------------------------
 
-set(V8_LIB_PATH ${V8_BIN_DIR} CACHE path "V8 library path")
-set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
-
-include_directories(${V8_INCLUDE_DIR})
-
-link_directories(${V8_LIB_PATH})
-
-add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
-
 # Boost ------------------------------------------------------------------------
-
-option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
-
-set(Boost_USE_MULTITHREADED ON)
-set(BOOST_MINIMUM_VERSION 1.58)
-
-find_package(Boost ${BOOST_MINIMUM_VERSION} COMPONENTS unit_test_framework)
-
-if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
-  option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
-else ()
-  option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
-endif ()
-
-if (NOT USE_BOOST_UNITTESTS)
-  message ("BOOST unit tests are disabled")
-endif ()
-
-find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
-
-include_directories(${Boost_INCLUDE_DIRS})
-link_directories (${BOOST_LIBRARYDIR})
-
-set(BOOST_VERSION
-  "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}"
-  CACHE INTERNAL
-  "Boost: Version"
-  FORCE
-)
-
-add_definitions(-DBOOST_VERSION=\"${BOOST_VERSION}\")
 
 # Tcmalloc ---------------------------------------------------------------------
 if (USE_TCMALLOC)
   find_package(tcmalloc)
 endif()
-
-# OpenSSL ----------------------------------------------------------------------
-#set(OPENSSL_USE_STATIC_LIBS "TRUE")
-find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
-if (OPENSSL_VERSION)
-  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
-  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
-  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
-  if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
-    add_definitions(-DOPENSSL_NO_SSL2)
-  endif ()				
-endif ()
 
 # sub directories --------------------------------------------------------------
 

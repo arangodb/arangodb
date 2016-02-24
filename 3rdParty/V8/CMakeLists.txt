@@ -13,23 +13,11 @@ if (NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif ()
 
-project(V8)
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
 
-macro(import_target tname tdep tinclude tpath)
-  add_library(${tname} STATIC IMPORTED GLOBAL)
-  add_dependencies(${tname} ${tdep})
-  set_target_properties(${tname} PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${tinclude}"
-    IMPORTED_LOCATION "${tpath}"
-  )
-endmacro()
-
-set(V8_VERSION
-  "4.3.61"
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Version"
-  FORCE
-)
+project(V8 VERSION 4.3.61)
 
 set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
@@ -83,7 +71,7 @@ if (WIN32)
 else ()
   list(APPEND V8_GYP_ARGS --format make)
 
-  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR (CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
+  if (LINUX OR SOLARIS)
     set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
     set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
   endif ()
@@ -111,10 +99,40 @@ ExternalProject_Add(v8_build
   BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS} 
   INSTALL_COMMAND "")
 
+################################################################################
+## ICU EXPORTS
+################################################################################
+
+set(ICU_VERSION
+  "54.1"
+  CACHE INTERNAL
+  "ICU: Version"
+  FORCE
+)
+
 set(ICU_INCLUDE_DIR
   ${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/i18n;${V8_DIR}/third_party/icu/source/io
   CACHE INTERNAL
   "ICU: include path"
+  FORCE
+)
+
+set(ICU_LIBS
+  "${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a;${ICU_BIN_DIR}/libicui18n.a"
+  ${libev_BINARY_DIR}/libev.a
+  CACHE INTERNAL
+  "ICU: Libraries"
+  FORCE
+)
+
+################################################################################
+## V8 EXPORTS
+################################################################################
+
+set(V8_VERSION
+  ${V8_VERSION}
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
   FORCE
 )
 
@@ -125,45 +143,10 @@ set(V8_INCLUDE_DIR
   FORCE
 )
 
-set(ICU_BIN_DIR ${ICU_BIN_DIR} FORCE)
-set(V8_BIN_DIR ${V8_BIN_DIR} FORCE)
-
-import_target(v8_base v8_build
-  "${V8_INCLUDE_DIR}"
-  "${V8_BIN_DIR}/libv8_base.a"
-)
-
-import_target(v8_libbase v8_build
-  "${V8_INCLUDE_DIR}"
-  "${V8_BIN_DIR}/libv8_libbase.a"
-)
-
-import_target(v8_libplatform v8_build
-  "${V8_INCLUDE_DIR}"
-  "${V8_BIN_DIR}/libv8_libplatform.a"
-)
-
-import_target(v8_nosnapshot v8_build
-  "${V8_INCLUDE_DIR}"
-  "${V8_BIN_DIR}/libv8_nosnapshot.a"
-)
-
-import_target(v8_snapshot v8_build
-  "${V8_INCLUDE_DIR}"
-  "${V8_BIN_DIR}/libv8_snapshot.a"
-)
-
-import_target(icu_uc v8_build
-  "${ICU_INCLUDE_DIR}"
-  "${ICU_BIN_DIR}/libicuuc.a"
-)
-
-import_target(icu_data v8_build
-  "${ICU_INCLUDE_DIR}"
-  "${ICU_BIN_DIR}/libicudata.a"
-)
-
-import_target(icu_i18n v8_build
-  "${ICU_INCLUDE_DIR}"
-  "${ICU_BIN_DIR}/libicui18n.a"
+set(V8_LIBS
+  "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
+  ${libev_BINARY_DIR}/libev.a
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Libraries"
+  FORCE
 )

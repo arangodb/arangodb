@@ -16,11 +16,18 @@ if (GO_FOUND)
   endif ()
 
   ExternalProject_Add(etcd_build
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
-    CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
-    INSTALL_COMMAND "cp" ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
+    SOURCE_DIR
+      ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+    CONFIGURE_COMMAND
+      ""
+    BUILD_IN_SOURCE
+      TRUE
+    BUILD_COMMAND
+      "${ETCD_BUILD_COMMAND}"
+    INSTALL_COMMAND
+      "cp"
+        ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd
+        ${CMAKE_BINARY_DIR}/bin/etcd-arango
   )
 endif ()
 

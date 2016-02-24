@@ -13,7 +13,11 @@ if (NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif ()
 
-project(libev)
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
+
+project(libev VERSION 4.22)
 
 if (MSVC)
   foreach (flag_var
@@ -89,32 +93,32 @@ endif ()
 ## libev library
 ################################################################################
 
+set(LIBEV_DIR libev-${libev_VERSION})
+
+include_directories(${LIBEV_DIR})
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}/config.h
+)
+
+add_library(ev STATIC
+  ${LIBEV_DIR}/ev.c
+  ${LIBEV_DIR}/event.c
+)
+
 set(LIBEV_VERSION
-  "4.22"
+  ${libev_VERSION}
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
 )
 
-set(LIBEV_DIR libev-${LIBEV_VERSION})
-
-include_directories(${LIBEV_DIR})
-
-#list(APPEND CMAKE_C_FLAGS -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}) 
-#list(APPEND CMAKE_CXX_FLAGS -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}) 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}")
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/libev-${LIBEV_VERSION}/config.h)
-
-add_library(libev STATIC
-  ${LIBEV_DIR}/ev.c
-  ${LIBEV_DIR}/event.c
-)
-
 set(LIBEV_LIBS
-  ev
+  ${libev_BINARY_DIR}/libev.a
   CACHE INTERNAL
   "${PROJECT_NAME}: Libraries"
   FORCE
