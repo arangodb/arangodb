@@ -54,10 +54,9 @@ struct PermutationState {
   }
     
   triagens::aql::AstNode const* getValue () const {
-    if (value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_AND || 
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_OR || 
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_AND || 
-        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_OR) { 
+    if (value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_OR || 
+        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_OR) {
+      
       TRI_ASSERT(current < n);
       return value->getMember(current);
     }
@@ -606,15 +605,14 @@ void Condition::normalize (ExecutionPlan* plan) {
     // already normalized
     return;
   }
-
+    
   _root = transformNode(_root);
   _root = fixRoot(_root, 0);
-
+    
   optimize(plan);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
-    // _root->dump(0);
     validateAst(_root, 0);
   }
 #endif
@@ -638,7 +636,6 @@ void Condition::normalize () {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
-    // _root->dump(0);
     validateAst(_root, 0);
   }
 #endif
@@ -1532,7 +1529,7 @@ AstNode* Condition::transformNode (AstNode* node) {
       // process subnodes first
       auto sub = transformNode(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
-
+      
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
           sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
@@ -1542,7 +1539,7 @@ AstNode* Condition::transformNode (AstNode* node) {
         mustCollapse = true;
       }
     }
-    
+      
     if (processChildren) {
       // we found an AND with at least one OR child, e.g.
       //        AND
@@ -1560,7 +1557,7 @@ AstNode* Condition::transformNode (AstNode* node) {
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
-        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) { // || sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) { // || sub->type == NODE_TYPE_OPERATOR_NARY_AND 
           permutationStates.emplace_back(PermutationState(sub, sub->numMembers()));
         }
         else {
@@ -1580,7 +1577,7 @@ AstNode* Condition::transformNode (AstNode* node) {
           andOperator->addMember(state.getValue()->clone(_ast));
         }
 
-        newOperator->addMember(andOperator);
+        newOperator->addMember(collapse(andOperator));
 
         // now permute
         while (true) {
