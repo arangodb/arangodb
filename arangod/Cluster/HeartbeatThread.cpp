@@ -69,9 +69,7 @@ HeartbeatThread::HeartbeatThread(
       _numDispatchedJobs(0),
       _lastDispatchedJobResult(false),
       _versionThatTriggeredLastJob(0), 
-      _ready(false),
-      _stop(0) {
-
+      _ready(false) {
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
@@ -79,7 +77,7 @@ HeartbeatThread::HeartbeatThread(
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::~HeartbeatThread() {shutdown();}
+HeartbeatThread::~HeartbeatThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -124,7 +122,7 @@ void HeartbeatThread::runDBServer() {
 
   uint64_t agencyIndex = 0;
 
-  while (!_stop) {
+  while (!isStopping()) {
     LOG(TRACE) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
@@ -133,7 +131,7 @@ void HeartbeatThread::runDBServer() {
     // we don't care if this fails
     sendState();
 
-    if (_stop) {
+    if (isStopping()) {
       break;
     }
 
@@ -147,7 +145,7 @@ void HeartbeatThread::runDBServer() {
       }
     }
 
-    if (_stop) {
+    if (isStopping()) {
       break;
     }
 
@@ -219,15 +217,11 @@ void HeartbeatThread::runDBServer() {
         handlePlanChangeDBServer(lastPlanVersionNoticed);
       }
 
-      if (_stop) {
+      if (isStopping()) {
         break;
       }
     }
   }
-
-  // another thread is waiting for this value to appear in order to shut down
-  // properly
-  _stop = 2;
 
   // Wait until any pending job is finished
   int count = 0;
@@ -240,6 +234,7 @@ void HeartbeatThread::runDBServer() {
     }
     usleep(1000);
   }
+
   LOG(TRACE) << "stopped heartbeat thread (DBServer version)";
 }
 
@@ -403,25 +398,6 @@ bool HeartbeatThread::init() {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the thread is ready
-////////////////////////////////////////////////////////////////////////////////
-
-bool HeartbeatThread::isReady() {
-  MUTEX_LOCKER(mutexLocker, _statusLock);
-
-  return _ready;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the thread status to ready
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::setReady() {
-  MUTEX_LOCKER(mutexLocker, _statusLock);
-  _ready = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

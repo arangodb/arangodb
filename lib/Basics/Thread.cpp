@@ -171,7 +171,8 @@ void Thread::beginShutdown() {
 
   ThreadState state = _state.load();
 
-  while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
+  while (state != ThreadState::STOPPING && state != ThreadState::STOPPED &&
+         state != ThreadState::DETACHED) {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
 }
@@ -202,7 +203,7 @@ void Thread::shutdown() {
     }
   }
 
-  size_t n = 10 * 60 * 5; // * 100ms = 1s * 60 * 5
+  size_t n = 10 * 60 * 5;  // * 100ms = 1s * 60 * 5
 
   for (size_t i = 0; i < n; ++i) {
     if (_state.load() == ThreadState::STOPPED) {
