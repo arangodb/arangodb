@@ -401,7 +401,10 @@ option(AR_USE_SYSTEM_LIBS "use libraries provided by the system" OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(BOOST_MINIMUM_VERSION 1.58)
 
-find_package(Boost ${BOOST_MINIMUM_VERSION} COMPONENTS unit_test_framework)
+set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0 CACHE path "BOOST include path")
+
+set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
+find_package(Boost COMPONENTS unit_test_framework)
 
 if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
   option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
@@ -415,7 +418,7 @@ endif ()
 
 find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
 
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIR})
 
 set(BOOST_VERSION
   "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}"
