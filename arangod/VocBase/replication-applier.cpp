@@ -1107,13 +1107,13 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
 
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for database '" << _databaseName.c_str()
+        << "started replication applier for database '" << _databaseName
         << "', endpoint '" << _configuration._endpoint << "' from tick "
         << initialTick;
   } else {
     LOG_TOPIC(INFO, Logger::REPLICATION)
         << "re-started replication applier for database '"
-        << _databaseName.c_str() << "', endpoint '" << _configuration._endpoint
+        << _databaseName << "', endpoint '" << _configuration._endpoint
         << "'";
   }
 
@@ -1233,7 +1233,7 @@ int TRI_replication_applier_t::stop(bool resetError) {
   setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "stopped replication applier for database '" << _databaseName.c_str()
+      << "stopped replication applier for database '" << _databaseName
       << "'";
 
   return res;
@@ -1299,7 +1299,7 @@ int TRI_replication_applier_t::shutdown() {
   setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "shut down replication applier for database '" << _databaseName.c_str()
+      << "shut down replication applier for database '" << _databaseName
       << "'";
 
   return res;

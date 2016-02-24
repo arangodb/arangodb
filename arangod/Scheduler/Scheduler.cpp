@@ -179,7 +179,7 @@ bool Scheduler::isShutdownInProgress() { return stopping != 0; }
 void Scheduler::shutdown() {
   for (auto& it : taskRegistered) {
     std::string const name = it.second->name();
-    LOG(DEBUG) << "forcefully removing task '" << name.c_str() << "'";
+    LOG(DEBUG) << "forcefully removing task '" << name << "'";
 
     deleteTask(it.second);
   }
@@ -328,12 +328,12 @@ int Scheduler::unregisterTask(Task* task) {
         task);  // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
-      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
+      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName.c_str() << ")";
+    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName << ")";
 
     thread = (*it).second;
 
@@ -360,12 +360,12 @@ int Scheduler::destroyTask(Task* task) {
     auto it = task2thread.find(task);
 
     if (it == task2thread.end()) {
-      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName.c_str() << ")";
+      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName.c_str() << ")";
+    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName << ")";
 
     thread = (*it).second;
 
@@ -442,7 +442,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
   }
 
   std::string const& name = task->name();
-  LOG(TRACE) << "registerTask for task " << (void*)task << " (" << name.c_str() << ")";
+  LOG(TRACE) << "registerTask for task " << (void*)task << " (" << name << ")";
 
   // determine thread
   SchedulerThread* thread = nullptr;

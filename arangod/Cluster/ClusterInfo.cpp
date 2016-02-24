@@ -520,7 +520,7 @@ void ClusterInfo::loadPlannedDatabases() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -632,7 +632,7 @@ void ClusterInfo::loadCurrentDatabases() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -658,7 +658,7 @@ void ClusterInfo::loadPlannedCollections() {
     if (locker.successful()) {
       result = _agency.getValues(prefixPlannedCollections, true);
     } else {
-      LOG(ERR) << "Error while locking " << prefixPlannedCollections.c_str();
+      LOG(ERR) << "Error while locking " << prefixPlannedCollections;
       return;
     }
   }
@@ -683,7 +683,7 @@ void ClusterInfo::loadPlannedCollections() {
 
       if (parts.size() != 2) {
         // invalid entry
-        LOG(WARN) << "found invalid collection key in agency: '" << key.c_str() << "'";
+        LOG(WARN) << "found invalid collection key in agency: '" << key << "'";
         continue;
       }
 
@@ -744,7 +744,7 @@ void ClusterInfo::loadPlannedCollections() {
     return;
   }
 
-  LOG(ERR) << "Error while loading " << prefixPlannedCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(ERR) << "Error while loading " << prefixPlannedCollections << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,7 +888,7 @@ void ClusterInfo::loadCurrentCollections() {
 
       if (parts.size() != 3) {
         // invalid entry
-        LOG(WARN) << "found invalid collection key in current in agency: '" << key.c_str() << "'";
+        LOG(WARN) << "found invalid collection key in current in agency: '" << key << "'";
         continue;
       }
 
@@ -947,7 +947,7 @@ void ClusterInfo::loadCurrentCollections() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2061,7 +2061,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixServers << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2185,7 +2185,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2238,7 +2238,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers.c_str() << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage().c_str() << " body: " << result.body().c_str();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
