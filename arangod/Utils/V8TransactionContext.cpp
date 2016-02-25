@@ -57,13 +57,17 @@ V8TransactionContext::~V8TransactionContext() {
 CollectionNameResolver const* V8TransactionContext::getResolver() {
   if (_resolver == nullptr) {
     V8TransactionContext* main = _sharedTransactionContext->_mainScope;
-    TRI_ASSERT(main != nullptr);
 
-    if (main->_resolver == nullptr) {
-      main->createResolver();
+    if (main != nullptr) {
+      if (main->_resolver == nullptr) {
+        main->createResolver();
+      }
+
+      _resolver = main->_resolver;
     }
-
-    _resolver = main->_resolver;
+    else {
+      createResolver();
+    }
   }
 
   TRI_ASSERT(_resolver != nullptr);

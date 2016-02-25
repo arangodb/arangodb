@@ -135,7 +135,7 @@ TransactionContext::~TransactionContext() {
 //////////////////////////////////////////////////////////////////////////////
 
 VPackCustomTypeHandler* TransactionContext::orderCustomTypeHandler() {
-  if (_customTypeHandler != nullptr) {
+  if (_customTypeHandler == nullptr) {
     _customTypeHandler = new CustomTypeHandler(_vocbase, getResolver());
   }
 
