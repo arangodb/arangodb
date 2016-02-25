@@ -141,25 +141,37 @@
           contentType: "application/json",
           processData: false,
           success: function (data) {
-            outputEditor.setValue(data.msg);
+            if (data.msg.includes('errorMessage')) {
+              arangoHelper.arangoError("Explain error", data.msg);
+              self.removeOutputEditor(counter);
+            }
+            else {
+              outputEditor.setValue(data.msg);
+              self.deselect(outputEditor);
+              $.noty.clearQueue();
+              $.noty.closeAll();
+            }
             window.progressView.hide();
-            self.deselect(outputEditor);
-            $.noty.clearQueue();
-            $.noty.closeAll();
           },
           error: function (data) {
             window.progressView.hide();
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError("Explain error", temp.errorNum);
+              arangoHelper.arangoError("Explain error", temp.errorMessage);
             }
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
             window.progressView.hide();
+            this.removeOutputEditor(counter);
           }
         });
       }
+    },
+
+    removeOutputEditor: function(counter) {
+      $('#outputEditorWrapper' + counter).hide();
+      $('#outputEditorWrapper' + counter).remove();
     },
 
     getCachedQueryAfterRender: function() {
@@ -646,7 +658,7 @@
               var error = JSON.parse(resp.responseText);
               if (error.errorMessage) {
                 arangoHelper.arangoError("Query", error.errorMessage);
-                $('#outputEditorWrapper' + counter).hide();
+                self.removeOutputEditor(counter);
               }
             }
             catch (e) {
