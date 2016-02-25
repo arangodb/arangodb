@@ -565,3 +565,5 @@ add_subdirectory(Documentation)
 
 add_dependencies(arangod ev zlibstatic v8_build)
 add_dependencies(arangosh zlibstatic v8_build)
+add_dependencies(basics_suite v8_build)
+add_dependencies(geo_suite v8_build)
