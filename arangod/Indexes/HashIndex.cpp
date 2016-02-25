@@ -193,38 +193,6 @@ HashIndex::MultiArray::~MultiArray() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index search value
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_search_value_t::TRI_hash_index_search_value_t()
-    : _length(0), _values(nullptr) {}
-
-TRI_hash_index_search_value_t::~TRI_hash_index_search_value_t() { destroy(); }
-
-void TRI_hash_index_search_value_t::reserve(size_t n) {
-  TRI_ASSERT(_values == nullptr);
-  _values = static_cast<TRI_shaped_json_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
-
-  if (_values == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  _length = n;
-}
-
-void TRI_hash_index_search_value_t::destroy() {
-  if (_values != nullptr) {
-    for (size_t i = 0; i < _length; ++i) {
-      TRI_DestroyShapedJson(TRI_UNKNOWN_MEM_ZONE, &_values[i]);
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _values);
-    _values = nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
 ////////////////////////////////////////////////////////////////////////////////
 
