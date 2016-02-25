@@ -150,7 +150,7 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t*, TRI_voc_tid_t, double,
 /// @brief free a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction(TRI_transaction_t*);
+bool TRI_FreeTransaction(TRI_transaction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the transaction as a string

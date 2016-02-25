@@ -309,7 +309,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   } else {
     // copy default options
     VPackOptions options = VPackOptions::Defaults;
-    options.customTypeHandler = result.customTypeHandler;
+    options.customTypeHandler = result.customTypeHandler.get();
     generateDocument(result.slice(), generateBody, &options);
   }
   return true;

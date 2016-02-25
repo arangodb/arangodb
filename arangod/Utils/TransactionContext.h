@@ -74,7 +74,7 @@ class TransactionContext {
   /// @brief orders a custom type handler
   //////////////////////////////////////////////////////////////////////////////
 
-  velocypack::CustomTypeHandler* orderCustomTypeHandler();
+  std::shared_ptr<velocypack::CustomTypeHandler> orderCustomTypeHandler();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a document ditch for the collection
@@ -89,6 +89,13 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unregister the transaction
+  /// this will save the transaction's id and status locally
+  //////////////////////////////////////////////////////////////////////////////
+
+  void storeTransactionResult(TRI_voc_tid_t, bool);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -113,15 +120,15 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual int registerTransaction(struct TRI_transaction_s*) = 0;
-
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief unregister the transaction from the context
+  /// @brief unregister the transaction
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void unregisterTransaction() = 0;
 
  protected:
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -134,9 +141,14 @@ class TransactionContext {
   
   CollectionNameResolver const* _resolver;
   
-  velocypack::CustomTypeHandler* _customTypeHandler;
+  std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+
+  struct {
+    TRI_voc_tid_t id; 
+    bool hasFailedOperations;
+  } _transaction;
 
   bool _ownsResolver;
 };

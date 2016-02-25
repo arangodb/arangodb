@@ -1097,10 +1097,14 @@ class Transaction {
     TRI_ASSERT(!isEmbeddedTransaction());
 
     if (_trx != nullptr) {
-      this->_transactionContext->unregisterTransaction();
-
-      TRI_FreeTransaction(_trx);
+      auto id = _trx->_id;
+      bool hasFailedOperations = TRI_FreeTransaction(_trx);
       _trx = nullptr;
+      
+      // store result
+      this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
+      
+      this->_transactionContext->unregisterTransaction();
     }
   }
 

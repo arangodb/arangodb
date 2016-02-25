@@ -892,13 +892,14 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice count = countResult.slice();
   TRI_ASSERT(count.isNumber());
 
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opCursor.customTypeHandler;
-
   if (!opCursor.hasMore()) {
     // OUT OF MEMORY. initial hasMore should return true even if index is empty
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  // copy default options
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  resultOptions.customTypeHandler = opCursor.customTypeHandler.get();
 
   opCursor.getMore();
   // We only need this one call, limit == batchsize
@@ -971,8 +972,9 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_NULL();
   }
 
+  // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = cursor.customTypeHandler;
+  resultOptions.customTypeHandler = cursor.customTypeHandler.get();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }

@@ -769,7 +769,7 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t* vocbase,
 /// @brief free a transaction container
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction(TRI_transaction_t* trx) {
+bool TRI_FreeTransaction(TRI_transaction_t* trx) {
   TRI_ASSERT(trx != nullptr);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
@@ -779,8 +779,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
   // release the marker protector
   bool const hasFailedOperations =
       (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
-  arangodb::wal::LogfileManager::instance()->unregisterTransaction(
-      trx->_id, hasFailedOperations);
 
   ReleaseCollections(trx, 0);
 
@@ -795,6 +793,8 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
 
   TRI_DestroyVectorPointer(&trx->_collections);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
+
+  return hasFailedOperations;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

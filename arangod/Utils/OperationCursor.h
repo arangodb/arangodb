@@ -57,7 +57,7 @@ struct OperationCursor : public OperationResult {
   }
 
   OperationCursor(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  VPackCustomTypeHandler* handler,
+                  std::shared_ptr<VPackCustomTypeHandler> handler,
                   std::string const& message,
                   int code,
                   bool wasSynchronous)
@@ -67,7 +67,7 @@ struct OperationCursor : public OperationResult {
         _batchSize(1000) {
   }
 
-  OperationCursor(VPackCustomTypeHandler* handler, IndexIterator* iterator,
+  OperationCursor(std::shared_ptr<VPackCustomTypeHandler> handler, IndexIterator* iterator,
                   uint64_t limit, uint64_t batchSize)
       : OperationResult(std::make_shared<VPackBuffer<uint8_t>>(), handler, "",
                         TRI_ERROR_NO_ERROR, false),

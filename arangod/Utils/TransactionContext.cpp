@@ -25,6 +25,7 @@
 #include "Storage/Marker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
+#include "Wal/LogfileManager.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
@@ -107,7 +108,8 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
     : _vocbase(vocbase), 
       _resolver(nullptr), 
-      _customTypeHandler(nullptr), 
+      _customTypeHandler(),
+      _transaction{ 0, false }, 
       _ownsResolver(false) {}
 
 //////////////////////////////////////////////////////////////////////////////
@@ -115,14 +117,17 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionContext::~TransactionContext() {
+  // unregister the transaction from the logfile manager
+  if (_transaction.id > 0) {
+    arangodb::wal::LogfileManager::instance()->unregisterTransaction(_transaction.id, _transaction.hasFailedOperations);
+  }
+
   for (auto& it : _ditches) {
     // we're done with this ditch
     auto& ditch = it.second;
     ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
     // If some external entity is still using the ditch, it is kept!
   }
-
-  delete _customTypeHandler;
 
   if (_ownsResolver) {
     delete _resolver;
@@ -134,9 +139,9 @@ TransactionContext::~TransactionContext() {
 /// @brief order a document ditch for the collection
 //////////////////////////////////////////////////////////////////////////////
 
-VPackCustomTypeHandler* TransactionContext::orderCustomTypeHandler() {
+std::shared_ptr<VPackCustomTypeHandler> TransactionContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler = new CustomTypeHandler(_vocbase, getResolver());
+    _customTypeHandler.reset(new CustomTypeHandler(_vocbase, getResolver()));
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
@@ -198,5 +203,17 @@ void TransactionContext::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the transaction
+/// this will save the transaction's id and status locally
+//////////////////////////////////////////////////////////////////////////////
+
+void TransactionContext::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) {
+  TRI_ASSERT(_transaction.id == 0);
+
+  _transaction.id = id;
+  _transaction.hasFailedOperations = hasFailedOperations;
 }
 
