@@ -469,6 +469,9 @@
       if (this.queryView) {
         this.queryView.resize();
       }
+      if (this.queryView2) {
+        this.queryView2.resize();
+      }
     },
 
     userManagement: function (initialized) {

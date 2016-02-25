@@ -9,8 +9,9 @@
 
     <div class="arangoToolbar arangoToolbarTop">
       <div class="pull-left">
-        <button class="button-success"><i class="fa fa-star"></i>Queries</button>
-        <button class="button-success"><i class="fa fa-save"></i>Save</button>
+        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
       </div>
 
       <div class="pull-right">
@@ -23,9 +24,16 @@
     <div class="inputEditorWrapper">
       <div class="aqlEditorWrapper" class="arangoEditor">
         <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
       </div>
       <div class="bindParamEditorWrapper" class="arangoEditor">
         <div id="bindParamEditor"></div>
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
+          </div>
+          <div id="queryPreview"></div>
+        </div>
       </div>
     </div>
 
@@ -61,7 +69,7 @@
         <% if (type === 'Query') { %>
           <span class="switchAce" counter="<%=counter%>">Result</span>
         <% } else { %>
-          <span class="SwitchAce" counter="<%=counter%>">AQL</span>
+          <span class="switchAce" counter="<%=counter%>">AQL</span>
         <% } %>
       </div>
     </div>
