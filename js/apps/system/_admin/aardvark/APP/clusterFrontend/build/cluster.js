@@ -147,6 +147,12 @@
           label: "Submit",
           letter: "Ctrl + Return"
         },{
+          label: "Explain Query",
+          letter: "Ctrl + Shift + E"
+        },{
+          label: "Save Query",
+          letter: "Ctrl + Shift + S"
+        },{
           label: "Toggle comments",
           letter: "Ctrl + Shift + C"
         },{
