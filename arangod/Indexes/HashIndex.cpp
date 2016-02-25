@@ -379,7 +379,7 @@ void HashIndex::transformSearchValues(VPackSlice const values,
   if (!values.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup requires an array of values as input.");
   }
-  if (!values.length() == _fields.size()) {
+  if (values.length() != _fields.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup covers too few elements.");
   }
 
