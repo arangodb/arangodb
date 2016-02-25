@@ -326,8 +326,9 @@ endif ()
 
 include(VcMacros)
 
-include(OptimizeForArchitecture)
-OptimizeForArchitecture()
+# we do not want to build specialized packages for one architecture
+# include(OptimizeForArchitecture)
+# OptimizeForArchitecture()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 
@@ -376,22 +377,6 @@ option(USE_FAILURE_TESTS
 
 if (USE_FAILURE_TESTS)
   add_definitions("-DARANGODB_ENABLE_FAILURE_TESTS=1")
-endif ()
-
-################################################################################
-## OPENSSL
-################################################################################
-
-find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
-
-if (OPENSSL_VERSION)
-  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
-  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
-  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
-  if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
-    add_definitions(-DOPENSSL_NO_SSL2)
-  endif ()				
 endif ()
 
 ################################################################################
@@ -455,6 +440,13 @@ include_directories(${ICU_INCLUDE_DIR})
 
 include_directories(${LIBEV_INCLUDE_DIR})
 add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
+
+################################################################################
+## OPENSSL
+################################################################################
+
+include_directories(${OPENSSL_INCLUDE_DIR})
+add_definitions(-DARANGODB_OPENSSL_VERSION=\"${BOOST_VERSION}\")
 
 ################################################################################
 ## V8
