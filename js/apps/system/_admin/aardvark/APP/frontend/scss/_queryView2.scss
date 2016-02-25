@@ -20,18 +20,50 @@
 
   .bindParamEditorWrapper {
     background: #eee;
-     overflow: hidden;
+    overflow: hidden;
 
-     table {
-       border-top: none;
+    table {
+      border-top: 0;
+      font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace;
 
-       th {
-         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-         height: 17px;
-         padding: 0;
-         width: 50%;
-       }
-     }
+      tbody {
+        display: block;
+        overflow-y: auto;
+      }
+
+      tr {
+        &.noBgColor {
+          background-color: rgba(0, 0, 0, 0) !important;
+        }
+      }
+
+      thead {
+        display: block;
+      }
+
+      td {
+        padding: 0 5px;
+        width: 50%;
+
+        input {
+          @extend %inputs;
+          clear: both;
+          float: right;
+          font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace !important;
+          height: 17px;
+          margin-bottom: 3px;
+          margin-top: 3px;
+          width: auto !important;
+        }
+      }
+
+      th {
+        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        height: 17px;
+        padding: 0;
+        width: 50%;
+      }
+    }
   }
 
   .aqlEditorWrapper,

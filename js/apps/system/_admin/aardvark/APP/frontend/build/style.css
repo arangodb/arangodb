@@ -2203,7 +2203,7 @@ div.queryline .fa.fa-search:hover {
 .navbar .arango-collection-select, div.queryline select,
 div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input,
 .modal-body select,
-.modal-body textarea, .login-window .login-input {
+.modal-body textarea, .login-window .login-input, .inputEditorWrapper .bindParamEditorWrapper table td input {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2216,7 +2216,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .navbar .arango-collection-select:focus, div.queryline select:focus,
   div.queryline input:focus, input.search-input:focus, .modal-body input:focus,
   .modal-body select:focus,
-  .modal-body textarea:focus, .login-window .login-input:focus {
+  .modal-body textarea:focus, .login-window .login-input:focus, .inputEditorWrapper .bindParamEditorWrapper table td input:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -6787,8 +6787,30 @@ toolbar {
     background: #eee;
     overflow: hidden; }
     .inputEditorWrapper .bindParamEditorWrapper table {
-      border-top: none; }
+      border-top: 0;
+      font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace; }
+      .inputEditorWrapper .bindParamEditorWrapper table tbody {
+        display: block;
+        overflow-y: auto; }
+      .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor {
+        background-color: transparent !important; }
+      .inputEditorWrapper .bindParamEditorWrapper table thead {
+        display: block; }
+      .inputEditorWrapper .bindParamEditorWrapper table td {
+        padding: 0 5px;
+        width: 50%; }
+        .inputEditorWrapper .bindParamEditorWrapper table td input {
+          clear: both;
+          float: right;
+          font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace !important;
+          height: 17px;
+          margin-bottom: 3px;
+          margin-top: 3px;
+          width: auto !important; }
       .inputEditorWrapper .bindParamEditorWrapper table th {
+        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        height: 17px;
+        padding: 0;
         width: 50%; }
   .inputEditorWrapper .aqlEditorWrapper,
   .inputEditorWrapper .bindParamEditorWrapper {
@@ -6811,7 +6833,7 @@ toolbar {
 
 .outputEditorWrapper {
   clear: both;
-  height: 300px;
+  height: 100px;
   padding-top: 20px;
   width: 100%; }
   .outputEditorWrapper .switchAce {
