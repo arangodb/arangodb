@@ -1157,13 +1157,9 @@ static void ByExampleHashIndexQuery(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  auto hashIndex = static_cast<arangodb::HashIndex*>(idx);
-
   // convert the example (index is locked by lockRead)
   TRI_hash_index_search_value_t searchValue;
 
-  TRI_document_collection_t* document = trx.documentCollection();
-  auto shaper = document->getShaper();  // PROTECTED by trx from above
   {
     std::string errorMessage;
     // HACKI int res = SetupSearchValue(hashIndex->paths(), example, shaper, searchValue,
