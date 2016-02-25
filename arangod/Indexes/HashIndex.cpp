@@ -30,6 +30,9 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,15 +401,43 @@ int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
+/// @brief Transforms search definition [{eq: v1},{eq: v2},...] to
+///        Index key [v1, v2, ...]
+///        Throws if input is invalid or there is an operator other than eq.
+////////////////////////////////////////////////////////////////////////////////
+
+void HashIndex::transformSearchValues(VPackSlice const values,
+                                      VPackBuilder& result) const {
+  if (!values.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup requires an array of values as input.");
+  }
+  if (!values.length() == _fields.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Index lookup covers too few elements.");
+  }
+
+  VPackArrayBuilder guard(&result);
+  for (auto const& v : VPackArrayIterator(values)) {
+    if (!v.isObject() || !v.hasKey(TRI_SLICE_KEY_EQUAL)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Hash index only allows == comparisson.");
+    }
+    result.add(v.get(TRI_SLICE_KEY_EQUAL));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given VelocyPack slices
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup(arangodb::Transaction* trx,
                       VPackSlice searchValue,
                       std::vector<TRI_doc_mptr_t*>& documents) const {
+  VPackBuilder keyBuilder;
+  transformSearchValues(searchValue, keyBuilder);
+  VPackSlice key = keyBuilder.slice();
+
   if (_unique) {
     TRI_index_element_t* found =
-        _uniqueArray->_hashArray->findByKey(trx, &searchValue);
+        _uniqueArray->_hashArray->findByKey(trx, &key);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -418,7 +449,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
 
   std::vector<TRI_index_element_t*>* results = nullptr;
   try {
-    results = _multiArray->_hashArray->lookupByKey(trx, &searchValue);
+    results = _multiArray->_hashArray->lookupByKey(trx, &key);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -444,10 +475,14 @@ int HashIndex::lookup(arangodb::Transaction* trx,
                       arangodb::velocypack::Slice searchValue,
                       std::vector<TRI_doc_mptr_copy_t>& documents,
                       TRI_index_element_t*& next, size_t batchSize) const {
+  VPackBuilder keyBuilder;
+  transformSearchValues(searchValue, keyBuilder);
+  VPackSlice key = keyBuilder.slice();
+
   if (_unique) {
     next = nullptr;
     TRI_index_element_t* found =
-        _uniqueArray->_hashArray->findByKey(trx, &searchValue);
+        _uniqueArray->_hashArray->findByKey(trx, &key);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -461,7 +496,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
   if (next == nullptr) {
     try {
       results =
-          _multiArray->_hashArray->lookupByKey(trx, &searchValue, batchSize);
+          _multiArray->_hashArray->lookupByKey(trx, &key, batchSize);
     } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
