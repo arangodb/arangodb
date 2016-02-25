@@ -320,7 +320,7 @@ bool ApplicationServer::parse(
   bool ok = _options.parse(_description, argc, argv);
 
   if (!ok) {
-    LOG(ERR) << "cannot parse command line: " << _options.lastError().c_str();
+    LOG(ERR) << "cannot parse command line: " << _options.lastError();
     return false;
   }
 
@@ -440,18 +440,18 @@ void ApplicationServer::prepare() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG(DEBUG) << "preparing server feature '" << feature->getName().c_str()
+    LOG(DEBUG) << "preparing server feature '" << feature->getName()
                << "'";
 
     bool ok = feature->prepare();
 
     if (!ok) {
       LOG(FATAL) << "failed to prepare server feature '"
-                 << feature->getName().c_str() << "'";
+                 << feature->getName() << "'";
       FATAL_ERROR_EXIT();
     }
 
-    LOG(TRACE) << "prepared server feature '" << feature->getName().c_str()
+    LOG(TRACE) << "prepared server feature '" << feature->getName()
                << "'";
   }
 }
@@ -467,18 +467,18 @@ void ApplicationServer::prepare2() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG(DEBUG) << "preparing(2) server feature '" << feature->getName().c_str()
+    LOG(DEBUG) << "preparing(2) server feature '" << feature->getName()
                << "'";
 
     bool ok = feature->prepare2();
 
     if (!ok) {
       LOG(FATAL) << "failed to prepare(2) server feature '"
-                 << feature->getName().c_str() << "'";
+                 << feature->getName() << "'";
       FATAL_ERROR_EXIT();
     }
 
-    LOG(TRACE) << "prepared(2) server feature '" << feature->getName().c_str()
+    LOG(TRACE) << "prepared(2) server feature '" << feature->getName()
                << "'";
   }
 }
@@ -503,11 +503,11 @@ void ApplicationServer::start() {
 
     if (!ok) {
       LOG(FATAL) << "failed to start server feature '"
-                 << feature->getName().c_str() << "'";
+                 << feature->getName() << "'";
       FATAL_ERROR_EXIT();
     }
 
-    LOG(DEBUG) << "started server feature '" << feature->getName().c_str()
+    LOG(DEBUG) << "started server feature '" << feature->getName()
                << "'";
   }
 
@@ -517,18 +517,18 @@ void ApplicationServer::start() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG(DEBUG) << "opening server feature '" << feature->getName().c_str()
+    LOG(DEBUG) << "opening server feature '" << feature->getName()
                << "'";
 
     bool ok = feature->open();
 
     if (!ok) {
       LOG(FATAL) << "failed to open server feature '"
-                 << feature->getName().c_str() << "'";
+                 << feature->getName() << "'";
       FATAL_ERROR_EXIT();
     }
 
-    LOG(TRACE) << "opened server feature '" << feature->getName().c_str()
+    LOG(TRACE) << "opened server feature '" << feature->getName()
                << "'";
   }
 }
@@ -578,7 +578,7 @@ void ApplicationServer::stop() {
 
     feature->close();
 
-    LOG(TRACE) << "closed server feature '" << feature->getName().c_str()
+    LOG(TRACE) << "closed server feature '" << feature->getName()
                << "'";
   }
 
@@ -588,10 +588,10 @@ void ApplicationServer::stop() {
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG(DEBUG) << "shutting down server feature '" << feature->getName().c_str()
+    LOG(DEBUG) << "shutting down server feature '" << feature->getName()
                << "'";
     feature->stop();
-    LOG(TRACE) << "shut down server feature '" << feature->getName().c_str()
+    LOG(TRACE) << "shut down server feature '" << feature->getName()
                << "'";
   }
 }
@@ -612,7 +612,7 @@ void ApplicationServer::extractPrivileges() {
       group* g = getgrgid(gidNumber);
 
       if (g == 0) {
-        LOG(FATAL) << "unknown numeric gid '" << _gid.c_str() << "'";
+        LOG(FATAL) << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif
@@ -624,12 +624,12 @@ void ApplicationServer::extractPrivileges() {
       if (g != 0) {
         gidNumber = g->gr_gid;
       } else {
-        LOG(FATAL) << "cannot convert groupname '" << _gid.c_str()
+        LOG(FATAL) << "cannot convert groupname '" << _gid
                    << "' to numeric gid";
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG(FATAL) << "cannot convert groupname '" << _gid.c_str()
+      LOG(FATAL) << "cannot convert groupname '" << _gid
                  << "' to numeric gid";
       FATAL_ERROR_EXIT();
 #endif
@@ -650,7 +650,7 @@ void ApplicationServer::extractPrivileges() {
       passwd* p = getpwuid(uidNumber);
 
       if (p == 0) {
-        LOG(FATAL) << "unknown numeric uid '" << _uid.c_str() << "'";
+        LOG(FATAL) << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif
@@ -662,12 +662,12 @@ void ApplicationServer::extractPrivileges() {
       if (p != 0) {
         uidNumber = p->pw_uid;
       } else {
-        LOG(FATAL) << "cannot convert username '" << _uid.c_str()
+        LOG(FATAL) << "cannot convert username '" << _uid
                    << "' to numeric uid";
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG(FATAL) << "cannot convert username '" << _uid.c_str()
+      LOG(FATAL) << "cannot convert username '" << _uid
                  << "' to numeric uid";
       FATAL_ERROR_EXIT();
 #endif
@@ -722,7 +722,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
     int res = setuid(_numericUid);
 
     if (res != 0) {
-      LOG(FATAL) << "cannot set uid '" << _uid.c_str()
+      LOG(FATAL) << "cannot set uid '" << _uid
                  << "': " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
@@ -857,7 +857,7 @@ bool ApplicationServer::readConfigurationFile() {
       return true;
     }
 
-    LOG(DEBUG) << "using init file '" << _configFile.c_str() << "'";
+    LOG(DEBUG) << "using init file '" << _configFile << "'";
 
     bool ok = _options.parse(_descriptionFile, _configFile);
 
@@ -865,8 +865,8 @@ bool ApplicationServer::readConfigurationFile() {
     // but for some reason can not be parsed. Best to report an error.
 
     if (!ok) {
-      LOG(ERR) << "cannot parse config file '" << _configFile.c_str()
-               << "': " << _options.lastError().c_str();
+      LOG(ERR) << "cannot parse config file '" << _configFile
+               << "': " << _options.lastError();
     }
 
     return ok;
@@ -899,7 +899,7 @@ bool ApplicationServer::readConfigurationFile() {
 
       // check and see if file exists
       if (FileUtils::exists(homeDir)) {
-        LOG(DEBUG) << "using user init file '" << homeDir.c_str() << "'";
+        LOG(DEBUG) << "using user init file '" << homeDir << "'";
 
         bool ok = _options.parse(_descriptionFile, homeDir);
 
@@ -908,13 +908,13 @@ bool ApplicationServer::readConfigurationFile() {
         // but for some reason can not be parsed. Best to report an error.
 
         if (!ok) {
-          LOG(ERR) << "cannot parse config file '" << homeDir.c_str()
-                   << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << homeDir
+                   << "': " << _options.lastError();
         }
 
         return ok;
       } else {
-        LOG(DEBUG) << "no user init file '" << homeDir.c_str() << "' found";
+        LOG(DEBUG) << "no user init file '" << homeDir << "' found";
       }
     } else {
       LOG(DEBUG) << "no home directory found";
@@ -943,7 +943,7 @@ bool ApplicationServer::readConfigurationFile() {
 
       // check and see if a local override file exists
       if (FileUtils::exists(localSysDir)) {
-        LOG(DEBUG) << "using init override file '" << localSysDir.c_str()
+        LOG(DEBUG) << "using init override file '" << localSysDir
                    << "'";
 
         bool ok = _options.parse(_descriptionFile, localSysDir);
@@ -952,18 +952,18 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG(ERR) << "cannot parse config file '" << localSysDir.c_str()
-                   << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << localSysDir
+                   << "': " << _options.lastError();
           return ok;
         }
       } else {
-        LOG(DEBUG) << "no system init override file '" << localSysDir.c_str()
+        LOG(DEBUG) << "no system init override file '" << localSysDir
                    << "' found";
       }
 
       // check and see if file exists
       if (FileUtils::exists(sysDir)) {
-        LOG(DEBUG) << "using init file '" << sysDir.c_str() << "'";
+        LOG(DEBUG) << "using init file '" << sysDir << "'";
 
         bool ok = _options.parse(_descriptionFile, sysDir);
 
@@ -971,13 +971,13 @@ bool ApplicationServer::readConfigurationFile() {
         // exists
         // but for some reason can not be parsed. Best to report an error.
         if (!ok) {
-          LOG(ERR) << "cannot parse config file '" << sysDir.c_str()
-                   << "': " << _options.lastError().c_str();
+          LOG(ERR) << "cannot parse config file '" << sysDir
+                   << "': " << _options.lastError();
         }
 
         return ok;
       } else {
-        LOG(INFO) << "no system init file '" << sysDir.c_str() << "' found";
+        LOG(INFO) << "no system init file '" << sysDir << "' found";
       }
     } else {
       LOG(DEBUG) << "no system init file specified";

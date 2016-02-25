@@ -248,11 +248,11 @@ bool LogfileManager::prepare() {
                                               systemErrorStr);
 
       if (res) {
-        LOG(INFO) << "created database directory '" << _directory.c_str()
+        LOG(INFO) << "created database directory '" << _directory
                   << "'.";
       } else {
         LOG(FATAL) << "unable to create database directory: "
-                   << systemErrorStr.c_str();
+                   << systemErrorStr;
         FATAL_ERROR_EXIT();
       }
     }
@@ -346,7 +346,7 @@ bool LogfileManager::start() {
     res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "could not open shutdown file '" << shutdownFile.c_str()
+      LOG(ERR) << "could not open shutdown file '" << shutdownFile
                << "': " << TRI_errno_string(res);
       return false;
     }
@@ -1752,7 +1752,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
   std::string const filename = logfileName(id);
 
-  LOG(TRACE) << "removing logfile '" << filename.c_str() << "'";
+  LOG(TRACE) << "removing logfile '" << filename << "'";
 
   // now close the logfile
   delete logfile;
@@ -1761,7 +1761,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   // now physically remove the file
 
   if (!basics::FileUtils::remove(filename, &res)) {
-    LOG(ERR) << "unable to remove logfile '" << filename.c_str()
+    LOG(ERR) << "unable to remove logfile '" << filename
              << "': " << TRI_errno_string(res);
   }
 }
@@ -1919,7 +1919,7 @@ int LogfileManager::readShutdownInfo() {
   if (shutdownTime.empty()) {
     LOG(TRACE) << "no previous shutdown time found";
   } else {
-    LOG(TRACE) << "previous shutdown was at '" << shutdownTime.c_str() << "'";
+    LOG(TRACE) << "previous shutdown was at '" << shutdownTime << "'";
   }
 
   {
@@ -1986,11 +1986,11 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     }
 
     if (!ok) {
-      LOG(ERR) << "unable to write WAL state file '" << filename.c_str() << "'";
+      LOG(ERR) << "unable to write WAL state file '" << filename << "'";
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
   } catch (...) {
-    LOG(ERR) << "unable to write WAL state file '" << filename.c_str() << "'";
+    LOG(ERR) << "unable to write WAL state file '" << filename << "'";
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2141,7 +2141,7 @@ int LogfileManager::inventory() {
     return res;
   }
 
-  LOG(TRACE) << "scanning WAL directory: '" << _directory.c_str() << "'";
+  LOG(TRACE) << "scanning WAL directory: '" << _directory << "'";
 
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
 
@@ -2186,8 +2186,8 @@ int LogfileManager::inspectLogfiles() {
     if (logfile != nullptr) {
       std::string const logfileName = logfile->filename();
       LOG(DEBUG) << "logfile " << logfile->id() << ", filename '"
-                 << logfileName.c_str() << "', status "
-                 << logfile->statusText().c_str();
+                 << logfileName << "', status "
+                 << logfile->statusText();
     }
   }
 #endif
@@ -2233,19 +2233,19 @@ int LogfileManager::inspectLogfiles() {
     }
 
     LOG(TRACE) << "inspecting logfile " << logfile->id() << " ("
-               << logfile->statusText().c_str() << ")";
+               << logfile->statusText() << ")";
 
     // update the tick statistics
     if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
       std::string const logfileName = logfile->filename();
       LOG(WARN) << "WAL inspection failed when scanning logfile '"
-                << logfileName.c_str() << "'";
+                << logfileName << "'";
       return TRI_ERROR_ARANGO_RECOVERY;
     }
 
     LOG(TRACE) << "inspected logfile " << logfile->id() << " ("
-               << logfile->statusText().c_str()
+               << logfile->statusText()
                << "), tickMin: " << logfile->df()->_tickMin
                << ", tickMax: " << logfile->df()->_tickMax;
 
@@ -2287,7 +2287,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
 
-  LOG(TRACE) << "creating empty logfile '" << filename.c_str() << "' with size "
+  LOG(TRACE) << "creating empty logfile '" << filename << "' with size "
              << size;
 
   uint32_t realsize;
@@ -2338,19 +2338,19 @@ int LogfileManager::ensureDirectory() {
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG(INFO) << "WAL directory '" << directory.c_str()
+    LOG(INFO) << "WAL directory '" << directory
               << "' does not exist. creating it...";
 
     int res;
     if (!basics::FileUtils::createDirectory(directory, &res)) {
-      LOG(ERR) << "could not create WAL directory: '" << directory.c_str()
+      LOG(ERR) << "could not create WAL directory: '" << directory
                << "': " << TRI_last_error();
       return TRI_ERROR_SYS_ERROR;
     }
   }
 
   if (!basics::FileUtils::isDirectory(directory)) {
-    LOG(ERR) << "WAL directory '" << directory.c_str() << "' does not exist";
+    LOG(ERR) << "WAL directory '" << directory << "' does not exist";
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 

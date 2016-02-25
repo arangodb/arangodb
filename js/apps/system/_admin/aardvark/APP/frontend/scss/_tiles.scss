@@ -143,13 +143,11 @@ $iconsize: 50px;
 
       &.add-Icon {
         @extend %pull-left;
-        font-size: 22px;
+        font-size: 20px;
         margin-left: 22px;
         margin-right: 10px;
-        margin-top: -5px;
         position: relative;
-        right: 4px;
-        top: 2px;
+        top: 0;
       }
 
       &.icon {

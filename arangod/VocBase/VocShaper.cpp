@@ -573,7 +573,8 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG(WARN) << "could not save attribute marker in log: " << TRI_errno_string(res);
+  LOG(WARN) << "could not save attribute marker in log: "
+            << TRI_errno_string(res);
 
   return 0;
 }
@@ -862,9 +863,11 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
     bool const isIdentical = EqualElementShape(nullptr, f, l);
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid
+                 << " in collection '" << name << "' in shape dictionary";
     } else {
-      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid
+               << " in collection '" << name << "' in shape dictionary";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -882,9 +885,11 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid
+                 << " in collection '" << name << "' in shape ids table";
     } else {
-      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid
+               << " in collection '" << name << "' in shape ids table";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -940,9 +945,11 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate attribute name '" << name << "' in collection '" << cname.c_str() << "'";
+      LOG(TRACE) << "found duplicate attribute name '" << name
+                 << "' in collection '" << cname << "'";
     } else {
-      LOG(ERR) << "found heterogenous attribute name '" << name << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute name '" << name
+               << "' in collection '" << cname << "'";
     }
   }
 
@@ -958,9 +965,11 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
+      LOG(TRACE) << "found duplicate attribute id '" << aid
+                 << "' in collection '" << cname << "'";
     } else {
-      LOG(ERR) << "found heterogenous attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute id '" << aid
+               << "' in collection '" << cname << "'";
     }
   }
 
@@ -1041,7 +1050,8 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
 
   if (accessor == nullptr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(TRACE) << "failed to get accessor for sid " << document->_sid << " and path " << pid;
+    LOG(TRACE) << "failed to get accessor for sid " << document->_sid
+               << " and path " << pid;
 #endif
     return false;
   }
@@ -1059,7 +1069,8 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
 
   if (*shape == nullptr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(TRACE) << "expecting any object for path " << pid << ", got unknown shape id " << accessor->_resultSid;
+    LOG(TRACE) << "expecting any object for path " << pid
+               << ", got unknown shape id " << accessor->_resultSid;
 #endif
     *shape = nullptr;
 
@@ -1068,7 +1079,8 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
 
   if (sid != 0 && sid != accessor->_resultSid) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(TRACE) << "expecting sid " << sid << " for path " << pid << ", got sid " << accessor->_resultSid;
+    LOG(TRACE) << "expecting sid " << sid << " for path " << pid << ", got sid "
+               << accessor->_resultSid;
 #endif
     return false;
   }
@@ -1077,7 +1089,8 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
 
   if (!ok) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(TRACE) << "failed to get accessor for sid " << document->_sid << " and path " << pid;
+    LOG(TRACE) << "failed to get accessor for sid " << document->_sid
+               << " and path " << pid;
 #endif
     return false;
   }

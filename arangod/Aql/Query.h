@@ -53,11 +53,9 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Executor;
-class Expression;
 class Parser;
 class Query;
 class QueryRegistry;
-struct Variable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief equery part

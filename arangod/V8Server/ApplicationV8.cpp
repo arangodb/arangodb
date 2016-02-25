@@ -958,7 +958,7 @@ bool ApplicationV8::prepare() {
       paths.push_back(std::string("application '" + _appPath + "'"));
     }
 
-    LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ").c_str();
+    LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ");
   }
 
   // check whether app-path was specified
@@ -972,7 +972,7 @@ bool ApplicationV8::prepare() {
 
   // add v8 options
   if (!_v8Options.empty()) {
-    LOG(INFO) << "using V8 options '" << _v8Options.c_str() << "'";
+    LOG(INFO) << "using V8 options '" << _v8Options << "'";
     v8::V8::SetFlagsFromString(_v8Options.c_str(), (int)_v8Options.size());
   }
 
@@ -1359,18 +1359,18 @@ void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
       // load server startup file
       switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
         case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << startupFile.c_str()
+          LOG(TRACE) << "loaded JavaScript file '" << startupFile
                      << "'";
           break;
         case JSLoader::eFailLoad:
           LOG(FATAL) << "cannot load JavaScript utilities from file '"
-                     << startupFile.c_str() << "'";
+                     << startupFile << "'";
           FATAL_ERROR_EXIT();
           break;
         case JSLoader::eFailExecute:
           LOG(FATAL)
               << "error during execution of JavaScript utilities from file '"
-              << startupFile.c_str() << "'";
+              << startupFile << "'";
           FATAL_ERROR_EXIT();
           break;
       }

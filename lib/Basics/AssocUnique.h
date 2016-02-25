@@ -190,7 +190,7 @@ class AssocUnique {
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG(TRACE) << "resizing index " << cb.c_str() << ", target size: " << targetSize;
+    LOG(TRACE) << "resizing index " << cb << ", target size: " << targetSize;
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
@@ -249,7 +249,7 @@ class AssocUnique {
 
     delete[] oldTable;
 
-    LOG(TRACE) << "resizing index " << cb.c_str() << " done";
+    LOG(TRACE) << "resizing index " << cb << " done";
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
   }

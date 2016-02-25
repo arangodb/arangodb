@@ -131,6 +131,9 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_VPACK}
+  ApplicationFeatures/ApplicationFeature.cpp
+  ApplicationFeatures/ApplicationServer.cpp
+  ApplicationFeatures/LoggerFeature.cpp
   Basics/AttributeNameParser.cpp
   Basics/Barrier.cpp
   Basics/ConditionLocker.cpp
