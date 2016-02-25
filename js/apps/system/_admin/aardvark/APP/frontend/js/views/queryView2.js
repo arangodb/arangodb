@@ -166,12 +166,12 @@
           console.log(queryObject);
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
         this.aqlEditor.setValue(queryObject.query);
-        if (queryObject.parameter !== '' || queryObject !== undefined) {
+        //if (queryObject.parameter !== '' || queryObject !== undefined) {
           //TODO update bind param table
-        }
+        //}
       }
       var a = this.aqlEditor.getValue();
-      if (a.length === 1 | a.length === 0) {
+      if (a.length <= 1) {
         a = "";
       }
       this.setCachedQuery(a);
