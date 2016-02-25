@@ -76,7 +76,7 @@ TRI_document_collection_t::TRI_document_collection_t()
       _lastCompactionStatus(nullptr),
       _useSecondaryIndexes(true),
       _ditches(this),
-      _headersPtr(nullptr),
+      _masterPointers(),
       _keyGenerator(nullptr),
       _uncollectedLogfileEntries(0),
       _cleanupIndexes(0) {
@@ -495,9 +495,7 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   info->_numberIndexes = 0;
   info->_sizeIndexes = 0;
 
-  if (_headersPtr != nullptr) {
-    info->_sizeIndexes += static_cast<int64_t>(_headersPtr->memory());
-  }
+  info->_sizeIndexes += static_cast<int64_t>(_masterPointers.memory());
 
   for (auto& idx : allIndexes()) {
     info->_sizeIndexes += idx->memory();
@@ -817,7 +815,7 @@ static int CreateHeader(TRI_document_collection_t* document,
 
   // get a new header pointer
   TRI_doc_mptr_t* header =
-      document->_headersPtr->request(markerSize);  // ONLY IN OPENITERATOR
+      document->_masterPointers.request(markerSize);  // ONLY IN OPENITERATOR
 
   if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1380,7 +1378,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
       res = primaryIndex->insertKey(trx, header, slot);
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-        document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+        document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
       }
     } else {
       // use regular insert method
@@ -1388,7 +1386,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
-        document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+        document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
       }
     }
 
@@ -1415,8 +1413,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headersPtr->moveBack(newHeader,
-                                    &oldData);  // ONLY IN OPENITERATOR
+    document->_masterPointers.moveBack(newHeader, &oldData);  // ONLY IN OPENITERATOR
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
@@ -1528,7 +1525,7 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
     --document->_numberDocuments;
 
     // free the header
-    document->_headersPtr->release(found, true);  // ONLY IN OPENITERATOR
+    document->_masterPointers.release(found, true);  // ONLY IN OPENITERATOR
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2011,11 +2008,6 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
     delete document->getShaper();          // PROTECTED by trx here
   }
 
-  if (document->_headersPtr != nullptr) {
-    delete document->_headersPtr;
-    document->_headersPtr = nullptr;
-  }
-
   document->ditches()->destroy();
   TRI_DestroyCollection(document);
 }
@@ -2026,9 +2018,6 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
 
 static bool InitDocumentCollection(TRI_document_collection_t* document,
                                    VocShaper* shaper) {
-  // TODO: Here are leaks, in particular with _headersPtr etc., need sane
-  // convention of who frees what when. Do this in the context of the
-  // TRI_document_collection_t cleanup.
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes = false;
@@ -2041,14 +2030,6 @@ static bool InitDocumentCollection(TRI_document_collection_t* document,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyCollection(document);
     TRI_set_errno(res);
-
-    return false;
-  }
-
-  document->_headersPtr = new TRI_headers_t;  // ONLY IN CREATE COLLECTION
-
-  if (document->_headersPtr == nullptr) {  // ONLY IN CREATE COLLECTION
-    DestroyBaseDocumentCollection(document);
 
     return false;
   }
@@ -2218,8 +2199,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   if (false == InitDocumentCollection(document, shaper)) {
     LOG(ERR) << "cannot initialize document collection";
 
-    // TODO: shouldn't we free document->_headersPtr etc.?
-    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
     delete document;
@@ -2233,8 +2212,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   int res = parameters.saveToFile(collection->_directory, doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: shouldn't we free document->_headersPtr etc.?
-    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     LOG(ERR) << "cannot save collection parameters in directory '" << collection->_directory << "': '" << TRI_last_error() << "'";
 
     TRI_CloseCollection(collection);
@@ -4624,7 +4601,7 @@ TRI_ASSERT(false);
 
     operation.indexed();
 
-    document->_headersPtr->unlink(header);  // PROTECTED by trx in trxCollection
+    document->_masterPointers.unlink(header);  // PROTECTED by trx in trxCollection
     document->_numberDocuments--;
 
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }
@@ -4761,7 +4738,7 @@ TRI_ASSERT(false);
     }
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(
+    TRI_doc_mptr_t* header = operation.header = document->_masterPointers.request(
         marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
@@ -4997,7 +4974,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     }
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = _headersPtr->request(
+    TRI_doc_mptr_t* header = operation.header = _masterPointers.request(
         marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
@@ -5246,7 +5223,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
 
     operation.indexed();
 
-    _headersPtr->unlink(header);
+    _masterPointers.unlink(header);
     _numberDocuments--;
 
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }

@@ -708,7 +708,7 @@ void CollectorThread::processCollectionMarker(
       dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     } else {
       // update cap constraint info
-      document->_headersPtr->adjustTotalSize(
+      document->_masterPointers.adjustTotalSize(
           TRI_DF_ALIGN_BLOCK(walMarker->_size),
           TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 
@@ -738,7 +738,7 @@ void CollectorThread::processCollectionMarker(
       dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     } else {
       // update cap constraint info
-      document->_headersPtr->adjustTotalSize(
+      document->_masterPointers.adjustTotalSize(
           TRI_DF_ALIGN_BLOCK(walMarker->_size),
           TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 

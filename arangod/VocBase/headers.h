@@ -25,12 +25,16 @@
 #define ARANGOD_VOC_BASE_HEADERS_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
 
 // turn this on to get some (slow) debugging and asserts for master pointers
 #undef VALIDATE_MASTER_POINTERS
 
+struct TRI_doc_mptr_t;
+
 class TRI_headers_t {
+  TRI_headers_t(TRI_headers_t const&) = delete;
+  TRI_headers_t& operator=(TRI_headers_t const&) = delete;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the headers
@@ -55,7 +59,7 @@ class TRI_headers_t {
   /// @brief returns the memory usage
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t memory() const { return _nrAllocated * sizeof(TRI_doc_mptr_t); }
+  size_t memory() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief move an existing header to the end of the linked list

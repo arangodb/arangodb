@@ -32,12 +32,11 @@
 #include "VocBase/collection.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/headers.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
-
-class TRI_headers_t;
 
 class VocShaper;
 
@@ -297,7 +296,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   mutable arangodb::Ditches _ditches;
 
-  class TRI_headers_t* _headersPtr;
+  TRI_headers_t _masterPointers;
   KeyGenerator* _keyGenerator;
 
   std::vector<arangodb::Index*> _indexes;
