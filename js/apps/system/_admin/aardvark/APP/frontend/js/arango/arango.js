@@ -84,6 +84,20 @@
       });
     },
 
+    parseInput: function(element) {
+      var parsed,
+      string = $(element).val();
+
+      try {
+        parsed = JSON.parse(string);
+      }
+      catch (e) {
+        parsed = string;
+      }
+      
+      return parsed;
+    },
+
     calculateCenterDivHeight: function() {
       var navigation = $('.navbar').height();
       var footer = $('.footer').height();

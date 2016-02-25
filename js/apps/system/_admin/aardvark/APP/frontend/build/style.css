@@ -2203,7 +2203,8 @@ div.queryline .fa.fa-search:hover {
 .navbar .arango-collection-select, div.queryline select,
 div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input,
 .modal-body select,
-.modal-body textarea, .login-window .login-input, .inputEditorWrapper .bindParamEditorWrapper table td input {
+.modal-body textarea, .login-window .login-input, .inputEditorWrapper .bindParamEditorWrapper table td input,
+.inputEditorWrapper .aqlEditorWrapper table td input {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2216,7 +2217,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .navbar .arango-collection-select:focus, div.queryline select:focus,
   div.queryline input:focus, input.search-input:focus, .modal-body input:focus,
   .modal-body select:focus,
-  .modal-body textarea:focus, .login-window .login-input:focus, .inputEditorWrapper .bindParamEditorWrapper table td input:focus {
+  .modal-body textarea:focus, .login-window .login-input:focus, .inputEditorWrapper .bindParamEditorWrapper table td input:focus,
+  .inputEditorWrapper .aqlEditorWrapper table td input:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -6783,23 +6785,56 @@ toolbar {
     max-width: 85%;
     min-width: 20%;
     width: 70%; }
-  .inputEditorWrapper .bindParamEditorWrapper {
+  .inputEditorWrapper #arangoMyQueriesTable tr {
+    cursor: copy; }
+  .inputEditorWrapper .bindParamEditorWrapper,
+  .inputEditorWrapper .aqlEditorWrapper {
     background: #eee;
     overflow: hidden; }
-    .inputEditorWrapper .bindParamEditorWrapper table {
+    .inputEditorWrapper .bindParamEditorWrapper table,
+    .inputEditorWrapper .aqlEditorWrapper table {
       border-top: 0;
       font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace; }
-      .inputEditorWrapper .bindParamEditorWrapper table tbody {
+      .inputEditorWrapper .bindParamEditorWrapper table tbody,
+      .inputEditorWrapper .aqlEditorWrapper table tbody {
         display: block;
         overflow-y: auto; }
-      .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor {
+      .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor,
+      .inputEditorWrapper .aqlEditorWrapper table tr.noBgColor {
         background-color: transparent !important; }
-      .inputEditorWrapper .bindParamEditorWrapper table thead {
+      .inputEditorWrapper .bindParamEditorWrapper table tr.selected,
+      .inputEditorWrapper .aqlEditorWrapper table tr.selected {
+        background-color: #8aa051;
+        color: #fff; }
+        .inputEditorWrapper .bindParamEditorWrapper table tr.selected .spanWrapper,
+        .inputEditorWrapper .aqlEditorWrapper table tr.selected .spanWrapper {
+          background-color: rgba(255, 255, 255, 0.65); }
+        .inputEditorWrapper .bindParamEditorWrapper table tr.selected .fa-copy,
+        .inputEditorWrapper .aqlEditorWrapper table tr.selected .fa-copy {
+          color: #000; }
+      .inputEditorWrapper .bindParamEditorWrapper table thead,
+      .inputEditorWrapper .aqlEditorWrapper table thead {
         display: block; }
-      .inputEditorWrapper .bindParamEditorWrapper table td {
+      .inputEditorWrapper .bindParamEditorWrapper table td,
+      .inputEditorWrapper .aqlEditorWrapper table td {
+        height: 33px;
         padding: 0 5px;
         width: 50%; }
-        .inputEditorWrapper .bindParamEditorWrapper table td input {
+        .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper,
+        .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper {
+          border-radius: 3px;
+          float: right; }
+          .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper .fa,
+          .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper .fa {
+            cursor: pointer;
+            font-size: 18pt;
+            margin-left: 5px;
+            margin-right: 5px; }
+          .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper .fa-play-circle-o,
+          .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper .fa-play-circle-o {
+            color: #8aa051; }
+        .inputEditorWrapper .bindParamEditorWrapper table td input,
+        .inputEditorWrapper .aqlEditorWrapper table td input {
           clear: both;
           float: right;
           font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace !important;
@@ -6807,7 +6842,8 @@ toolbar {
           margin-bottom: 3px;
           margin-top: 3px;
           width: auto !important; }
-      .inputEditorWrapper .bindParamEditorWrapper table th {
+      .inputEditorWrapper .bindParamEditorWrapper table th,
+      .inputEditorWrapper .aqlEditorWrapper table th {
         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
         height: 17px;
         padding: 0;
@@ -6815,8 +6851,23 @@ toolbar {
   .inputEditorWrapper .aqlEditorWrapper,
   .inputEditorWrapper .bindParamEditorWrapper {
     height: 100%; }
-    .inputEditorWrapper .aqlEditorWrapper div,
-    .inputEditorWrapper .bindParamEditorWrapper div {
+    .inputEditorWrapper .aqlEditorWrapper .previewWrapper,
+    .inputEditorWrapper .bindParamEditorWrapper .previewWrapper {
+      background-color: #fff; }
+      .inputEditorWrapper .aqlEditorWrapper .previewWrapper .previewBar,
+      .inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar {
+        background-color: #fff;
+        border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        height: 17px; }
+        .inputEditorWrapper .aqlEditorWrapper .previewWrapper .previewBar span,
+        .inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar span {
+          margin-left: 5px; }
+      .inputEditorWrapper .aqlEditorWrapper .previewWrapper #queryPreview,
+      .inputEditorWrapper .bindParamEditorWrapper .previewWrapper #queryPreview {
+        height: 100%; }
+    .inputEditorWrapper .aqlEditorWrapper > div,
+    .inputEditorWrapper .bindParamEditorWrapper > div {
       height: 100%; }
   .inputEditorWrapper .ui-resizable-s {
     cursor: ns-resize; }
