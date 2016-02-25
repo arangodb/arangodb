@@ -147,8 +147,13 @@ class PrimaryIndex final : public Index {
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
-  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*,
-                            VPackSlice const&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up an element given a request Slice. Key hast to have the format
+  ///        [{eq: _key}]
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
 
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
 

@@ -85,11 +85,7 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
       return nullptr;
     }
 
-    VPackSlice eqMatch = _keys.at(_position++);
-    if (!eqMatch.hasKey(TRI_SLICE_KEY_EQUAL)) {
-      continue;
-    }
-    auto result = _index->lookupKey(_trx, eqMatch.get(TRI_SLICE_KEY_EQUAL));
+    auto result = _index->lookup(_trx, _keys.at(_position++));
 
     if (result != nullptr) {
       // found a result
@@ -193,9 +189,21 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
-                                        VPackSlice const& slice) const {
-  return _primaryIndex->findByKey(trx, slice.begin());
+TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
+                                     VPackSlice const& slice) const {
+  if (!slice.isArray() && slice.length() == 1) {
+    // Invalid lookup
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+  VPackSlice tmp = slice.at(0);
+  if (!tmp.isObject() || !tmp.hasKey(TRI_SLICE_KEY_EQUAL)) {
+    // Invalid lookup
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+  tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+  return _primaryIndex->findByKey(trx, tmp.begin());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

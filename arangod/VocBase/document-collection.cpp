@@ -5313,8 +5313,14 @@ int TRI_document_collection_t::lookupDocument(
   if (!key.isString()) {
     return TRI_ERROR_INTERNAL;
   }
+  VPackBuilder searchValue;
+  searchValue.openArray();
+  searchValue.openObject();
+  searchValue.add(TRI_SLICE_KEY_EQUAL, key);
+  searchValue.close();
+  searchValue.close();
     
-  header = primaryIndex()->lookupKey(trx, key);
+  header = primaryIndex()->lookup(trx, searchValue.slice());
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
