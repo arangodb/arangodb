@@ -112,7 +112,7 @@ add_library(ev STATIC
   ${LIBEV_DIR}/ev.c
 )
 
-set_target_properties(ev PROPERTIES COMPILE_FLAGS "${FLAGS}") 
+set_target_properties(ev PROPERTIES COMPILE_FLAGS "${FLAGS}")
 
 set(LIBEV_VERSION
   ${libev_VERSION}
