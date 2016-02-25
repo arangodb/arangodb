@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
 
-struct TRI_df_marker_s;
-
 namespace arangodb {
 namespace wal {
 

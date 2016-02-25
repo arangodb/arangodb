@@ -38,7 +38,6 @@ namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
 class HttpRequest;
-class HttpServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http handlers
