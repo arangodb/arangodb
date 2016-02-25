@@ -28,3 +28,10 @@ set(OPENSSL_INCLUDE_DIR
   "OpenSSL: Include Directory"
   FORCE
 )
+
+set(OPENSSL_LIBRARIES
+  "${OPENSSL_LIBRARIES}"
+  CACHE INTERNAL
+  "OpenSSL: Libraries Directory"
+  FORCE
+)
