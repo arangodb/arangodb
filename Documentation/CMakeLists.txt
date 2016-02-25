@@ -23,7 +23,8 @@ if (USE_MAINTAINER_MODE)
       OUTPUT
         ${mdst}
       COMMAND
-        ${CMAKE_SOURCE_DIR}/utils/manPages.sh ${msrc} ${mdst} ${ARANGODB_VERSION}
+        ${CMAKE_SOURCE_DIR}/utils/manPages.sh
+          ${msrc} ${mdst} ${ARANGODB_VERSION}
       DEPENDS
         ${msrc}
       WORKING_DIRECTORY
@@ -40,7 +41,8 @@ if (USE_MAINTAINER_MODE)
     OUTPUT
       ${CMAKE_SOURCE_DIR}/README
     COMMAND
-        ${CMAKE_SOURCE_DIR}/utils/generateREADME.sh ${CMAKE_SOURCE_DIR}/README.md ${CMAKE_SOURCE_DIR}/README
+      ${CMAKE_SOURCE_DIR}/utils/generateREADME.sh
+        ${CMAKE_SOURCE_DIR}/README.md ${CMAKE_SOURCE_DIR}/README
     DEPENDS
       ${CMAKE_SOURCE_DIR}/README.md
     WORKING_DIRECTORY
