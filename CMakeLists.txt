@@ -173,12 +173,9 @@ if (SOLARIS)
 
   list(APPEND SYSTEM_LIBRARIES nsl socket)
 
-  # make the SOLARIS ld call the GNU ld
-  set(ENV{LD_ALTEXEC} /opt/csw/bin/gld)
-
   # force 64bit compile
-  list(APPEND CMAKE_C_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64)
-  list(APPEND CMAKE_CXX_FLAGS -I\ /opt/csw/include\ -D_REENTRANT\ -m64\ -std=gnu++11)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I /opt/csw/include -D_REENTRANT -m64")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /opt/csw/include -D_REENTRANT -m64")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
