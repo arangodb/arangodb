@@ -42,21 +42,6 @@
 /// @brief hash index query parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_search_value_t {
-  TRI_hash_index_search_value_t();
-  ~TRI_hash_index_search_value_t();
-
-  TRI_hash_index_search_value_t(TRI_hash_index_search_value_t const&) = delete;
-  TRI_hash_index_search_value_t& operator=(
-      TRI_hash_index_search_value_t const&) = delete;
-
-  void reserve(size_t);
-  void destroy();
-
-  size_t _length;
-  struct TRI_shaped_json_s* _values;
-};
-
 namespace arangodb {
 
 class HashIndex;
@@ -65,24 +50,6 @@ class Transaction;
 class HashIndexIterator final : public IndexIterator {
  public:
   
-#if 0
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Construct an HashIndexIterator based on hash_index_search_value_t
-///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-  HashIndexIterator(arangodb::Transaction* trx, HashIndex const* index,
-                    std::vector<TRI_hash_index_search_value_t*>& keys)
-      : _trx(trx),
-        _index(index),
-        _keys(keys),
-        _position(0),
-        _buffer(),
-        _posInBuffer(0) {
-          _numLookups = keys.size();
-        }
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Construct an HashIndexIterator based on VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
