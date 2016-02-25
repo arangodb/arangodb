@@ -60,6 +60,24 @@ module.exports = class SyntheticResponse {
     this._raw.responseCode = value;
   }
 
+  get body() {
+    return this._raw.body;
+  }
+
+  set body(data) {
+    if (data === null || data === undefined) {
+      delete this._raw.body;
+      return;
+    }
+    if (typeof data === 'string' || data instanceof Buffer) {
+      this._raw.body = data;
+    } else if (typeof data === 'object') {
+      this._raw.body = JSON.stringify(data);
+    } else {
+      this._raw.body = String(data);
+    }
+  }
+
   getHeader(name) {
     name = name.toLowerCase();
     if (name === 'content-type') {
@@ -91,26 +109,27 @@ module.exports = class SyntheticResponse {
   }
 
   write(data) {
-    const bodyIsBuffer = this.body instanceof Buffer;
+    const bodyIsBuffer = this._raw.body instanceof Buffer;
     const dataIsBuffer = data instanceof Buffer;
-    if (!data) {
-      data = '';
-    } else if (!dataIsBuffer) {
+    if (data === null || data === undefined) {
+      return this;
+    }
+    if (!dataIsBuffer) {
       if (typeof data === 'object') {
         data = JSON.stringify(data);
       } else {
         data = String(data);
       }
     }
-    if (!this.body) {
+    if (!this._raw.body) {
       this._raw.body = data;
     } else if (bodyIsBuffer || dataIsBuffer) {
-      this._raw.body = Buffer.concat(
-        bodyIsBuffer ? this.body : new Buffer(this.body),
+      this._raw.body = Buffer.concat([
+        bodyIsBuffer ? this._raw.body : new Buffer(this._raw.body),
         dataIsBuffer ? data : new Buffer(data)
-      );
+      ]);
     } else {
-      this.body += data;
+      this._raw.body += data;
     }
     return this;
   }
