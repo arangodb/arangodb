@@ -41,7 +41,7 @@ void Constituent::configure(Agent* agent) {
 }
 
 Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
-  _gen(std::random_device()()), _role(APPRENTICE), _agent(0) {}
+  _gen(std::random_device()()), _role(FOLLOWER), _agent(0) {}
 
 Constituent::~Constituent() {}
 

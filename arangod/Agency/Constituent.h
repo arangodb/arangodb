@@ -91,13 +91,13 @@ public:
    */
   id_t leaderID () const;
 
-private:
-  
   /**
    * @brief Become follower
    */
   void follow(term_t);
 
+private:
+  
   /**
    * @brief Run for leadership
    */

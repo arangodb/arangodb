@@ -27,9 +27,9 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () {}
+Agent::Agent () : Thread ("Agent"){}
 
-Agent::Agent (config_t const& config) : _config(config) {
+Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
   //readPersistence(); // Read persistence (log )
   _constituent.configure(this);
   _state.configure(this);
@@ -50,7 +50,7 @@ term_t Agent::term () const {
 query_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex, index_t lastLogTerm) {
   Builder builder;
   builder.add("term", Value(term()));
-  builder.add("voteGranted", Value(_constituent.vote(id, t)));
+  builder.add("voteGranted", Value(_constituent.vote(id, t, lastLogIndex, lastLogTerm)));
   builder.close();
 	return std::make_shared<Builder>(builder);
 }
@@ -79,34 +79,53 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
 query_ret_t Agent::appendEntries (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm,
   index_t leadersLastCommitIndex, query_t const& query) {
-
-  if (query->isEmpty()) {             // heartbeat
-    return query_ret_t(
-      true, id(), _constituent.vote(term, leaderID, prevLogIndex, term_t,
-                             leadersLastCommitIndex);
-  } else if (_constituent.leader()) { // We are leading
-    _constituent.follow();
-    return _state.appendEntries(term, leaderID, prevLogIndex, term_t,
-                             leadersLastCommitIndex);
-  } else {                            // We redirect
+  
+  if (query->isEmpty()) {              // heartbeat received
+    Builder builder;
+    builder.add("term", Value(this->term())); // Our own term
+    builder.add("voteFor", Value(             // Our vite
+      _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
+    return query_ret_t(true, id(), std::make_shared<Builder>(builder));
+  } else if (_constituent.leading()) { // We are leading
+    _constituent.follow(term);
+    return _state.log(term, leaderId, prevLogIndex, term, leadersLastCommitIndex);
+  } else {                             // We redirect
     return query_ret_t(false,_constituent.leaderID());
   }
 }
 
-query_ret_t Agent::write (query_t const& query) const {
-  if (_constituent.leader()) {     // We are leading
-    return _state.write (slice);
-  } else {                         // We redirect
+query_ret_t Agent::write (query_t const& query)  {
+  if (_constituent.leading()) {     // We are leading
+    return _state.write (query);
+  } else {                          // We redirect
     return query_ret_t(false,_constituent.leaderID());
   }
 }
 
-query_ret_t Agent::read (Slice const& slice) const {
-  if (_constituent.leader()) {     // We are leading
-    return _state.read (slice);
-  } else {                         // We redirect
+query_ret_t Agent::read (query_t const& query) const {
+  if (_constituent.leading()) {     // We are leading
+    return _state.read (query);
+  } else {                          // We redirect
     return query_ret_t(false,_constituent.leaderID());
   }
 }
+
+void State::run() {
+  /*
+   * - poll through the least of append entries
+   * - if last round of polling took less than poll interval sleep
+   * - else just start from top of list and work the 
+   */
+  while (true) {
+    std::this_thread::sleep_for(duration_t(_poll_interval));
+    for (auto& i : )
+  }  
+}
+
+bool State::operator()(ClusterCommResult* ccr) {
+
+}
+
+
 
 }}

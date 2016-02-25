@@ -100,11 +100,24 @@ struct query_ret_t {
     accepted(a), redirect(id), result(res) {}
 };
 
+typedef uint64_t index_t;
+
+/**
+ * @brief State entry
+ */
+struct log_t {
+  term_t      term;
+  id_t        leaderId;
+  index_t     index;
+  std::string entry;
+};
+
+
 }}
 
 inline arangodb::LoggerStream& operator<< (
   arangodb::LoggerStream& l, arangodb::consensus::config_t const& c) {
-  
+  return l;  
 }
 
 #endif // __ARANGODB_CONSENSUS_AGENT__

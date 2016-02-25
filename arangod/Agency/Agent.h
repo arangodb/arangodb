@@ -27,98 +27,107 @@
 #include "AgencyCommon.h"
 #include "Constituent.h"
 #include "State.h"
+#include "Store.h"
 
 namespace arangodb {
 namespace consensus {
     
-  class Agent {
-    
-  public:
+class Agent : public arangodb::Thread { // We need to asynchroneously append entries
+  
+public:
+  
+  /**
+   * @brief Default ctor
+   */
+  Agent ();
+  
+  /**
+   * @brief Construct with program options
+   */
+  Agent (config_t const&);
 
-    /**
-     * @brief Default ctor
-     */
-    Agent ();
-    
-    /**
-     * @brief Construct with program options
-     */
-    Agent (config_t const&);
+  /**
+   * @brief Clean up
+   */
+  virtual ~Agent();
+  
+  /**
+   * @brief Get current term
+   */
+  term_t term() const;
+  
+  /**
+   * @brief Get current term
+   */
+  id_t id() const;
+  
+  /**
+   * @brief Vote request
+   */
+  query_t requestVote(term_t , id_t, index_t, index_t);
+  
+  /**
+   * @brief Provide configuration
+   */
+  Config<double> const& config () const;
+  
+  /**
+   * @brief Start thread
+   */
+  void start ();
+  
+  /**
+   * @brief Verbose print of myself
+   */ 
+  void print (arangodb::LoggerStream&) const;
+  
+  /**
+   * @brief Are we fit to run?
+   */
+  bool fitness () const;
+  
+  /**
+   * @brief 
+   */
+  void report (status_t);
+  
+  /**
+   * @brief Leader ID
+   */
+  id_t leaderID () const;
 
-    /**
-     * @brief Clean up
-     */
-    virtual ~Agent();
-    
-    /**
-     * @brief Get current term
-     */
-    term_t term() const;
-    
-    /**
-     * @brief Get current term
-     */
-    id_t id() const;
-    
-    /**
-     * @brief Vote request
-     */
-    query_t requestVote(term_t , id_t, index_t, index_t);
+  /**
+   * @brief Attempt write
+   */
+  query_ret_t write (query_t const&);
+  
+  /**
+   * @brief Read from agency
+   */
+  query_ret_t read (query_t const&) const;
+  
+  /**
+   * @brief Invoked by leader to replicate log entries (§5.3);
+   *        also used as heartbeat (§5.2).
+   */
+  bool log (std::string const& tolog);
 
-    /**
-     * @brief Provide configuration
-     */
-    Config<double> const& config () const;
-    
-    /**
-     * @brief Start thread
-     */
-    void start ();
-
-    /**
-     * @brief Verbose print of myself
-     */ 
-    void print (arangodb::LoggerStream&) const;
-
-    /**
-     * @brief Are we fit to run?
-     */
-    bool fitness () const;
-    
-    /**
-     * @brief 
-     */
-    void report (status_t);
-
-    /**
-     * @brief Leader ID
-     */
-    id_t leaderID () const;
-
-    /**
-     * @brief Attempt write
-     */
-    query_ret_t write (query_t const&);
-
-    /**
-     * @brief Read from agency
-     */
-    query_ret_t read (query_t const&) const;
-
-    /**
-     * @brief Invoked by leader to replicate log entries (§5.3);
-     *        also used as heartbeat (§5.2).
-     */
-    query_ret_t appendEntries (term_t, id_t, index_t, term_t, index_t, query_t const&);
+  /**
+   * @brief 1. Deal with appendEntries to slaves. 2. Report success of write processes. 
+   */
+  void run ();
 
   private:
-    Constituent _constituent; /**< @brief Leader election delegate */
-    State       _state;         /**< @brief Log replica              */
-    config_t    _config;
-    status_t    _status;
-    
-  };
+  Constituent _constituent; /**< @brief Leader election delegate */
+  State       _state;       /**< @brief Log replica              */
+  config_t    _config;
+  status_t    _status;
   
+  store<std::string> _spear_head;
+  store<std::string> _read_db;
+  
+};
+
 }
 
 LoggerStream& operator<< (LoggerStream&, arangodb::consensus::Agent const&);

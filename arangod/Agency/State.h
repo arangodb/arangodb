@@ -43,25 +43,13 @@ class Slice {};
 namespace arangodb {
 namespace consensus {
 
-typedef uint64_t index_t;
-
-/**
- * @brief State entry
- */
-struct log_t {
-  term_t      term;
-  id_t        leaderId;
-  index_t     index;
-  std::string entry;
-};
-
 class Agent;
 
 /**
  * @brief State replica
  */
-class State : public arangodb::Thread, public arangodb::ClusterCommCallback,
-            std::enable_shared_from_this<State> {
+class State : public arangodb::ClusterCommCallback, // We need to provide callBack 
+              std::enable_shared_from_this<State> { // For making shared_ptr from this class
   
 public:
   
@@ -75,51 +63,25 @@ public:
    */
   virtual ~State();
   
-  void configure(Agent* agent);
-  
   /**
    * @brief State
    */
-  template<typename T> id_t log (T const&);
+  template<typename T> id_t log (std::string const&);
   
   /**
-   * @brief Call back for log results from slaves
+   * @brief Save currentTerm, votedFor, log entries
    */
-  virtual bool operator()(ClusterCommResult*);
-    
-  /**
-   * @brief My daily business
-   */
-  void run();
+  bool save (std::string const& ep = "tcp://localhost:8529");
 
   /**
-   * @brief 
+   * @brief Load persisted data from above or start with empty log
    */
-  void respHandler (index_t);
-
-  /**
-   * @brief Attempt write
-   */
-  query_ret_t write (query_t const&) ;
-
-  /**
-   * @brief Read from agency
-   */
-  query_ret_t read (query_t const&) const;
-
-  /**
-   * @brief Append entries
-   */
-  bool appendEntries (query_t const&); 
+  bool load (std::string const& ep = "tcp://localhost:8529");
   
 
 private:
   
-//  State   _spear_head;   /**< @brief  Spear head */
-  Agent* _agent;        /**< @brief  My boss */
   log_t  _log;          /**< @brief  State entries */
-  term_t _term;
-  
   
 };
 

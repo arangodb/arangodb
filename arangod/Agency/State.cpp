@@ -28,36 +28,18 @@
 
 using namespace arangodb::consensus;
 
-State::State() : Thread("State") {}
+State::State() {}
 State::~State() {
-
+  save();
 }
 
-void State::configure(Agent* agent) {
-  _agent = agent;
+void State::log (query_t const& query) {
+  log.push_back(query);
 }
 
-void State::respHandler (index_t idx) {
-  // Handle responses
-  
-}
+bool save (std::string const& ep) {};
 
-bool State::operator()(ClusterCommResult* ccr) {
-  
-};
+bool load (std::string const& ep) {};
 
-query_ret_t State::write (Slice const&) {
-  
-};
-
-query_ret_t State::read (Slice const&) const {
-};
-
-void State::run() {
-  while (true) {
-    std::this_thread::sleep_for(duration_t(1.0));
-  }
-}
-  
 
 
