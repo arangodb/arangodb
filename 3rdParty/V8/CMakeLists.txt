@@ -76,8 +76,6 @@ else ()
     set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
   endif ()
 
-  # do not add -Dwerror='', this breaks under gyp
-  
   list(APPEND V8_GYP_ARGS
     -Ibuild/standalone.gypi
     --depth=.
@@ -85,6 +83,7 @@ else ()
     -Dlinux_use_bundled_gold=0
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1
+    -Dwerror=
   )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
