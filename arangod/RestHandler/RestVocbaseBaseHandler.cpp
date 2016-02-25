@@ -185,7 +185,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
     // create-collection is not supported in a cluster
-    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
+    generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED, "");
     return false;
   }
 
@@ -193,7 +193,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
       TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
 
   if (collection == nullptr) {
-    generateTransactionError(name, TRI_errno());
+    generateTransactionError(name, TRI_errno(), "");
     return false;
   }
 
@@ -327,12 +327,11 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
-  std::string rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
+  std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
   _response->setHeader("etag", 4, "\"" + rev + "\"");
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    // _id and _key are safe and do not need to be JSON-encoded
     builder.add("error", VPackValue(true));
     builder.add(
         "code",
@@ -360,7 +359,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
-    std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
+    std::string const& collectionName, std::string const& key, TRI_voc_rid_t rid) {
   std::string rev(StringUtils::itoa(rid));
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
@@ -382,8 +381,6 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
       .appendText(key)
       .appendText("\"}");
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
@@ -545,7 +542,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
-    std::string const& collectionName, int res, TRI_voc_key_t key,
+    std::string const& collectionName, int res, std::string const& key,
     TRI_voc_rid_t rid) {
   switch (res) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
@@ -591,7 +588,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_CONFLICT:
       generatePreconditionFailed(collectionName,
-                                 key ? key : (TRI_voc_key_t) "unknown", rid);
+                                 key.empty() ? "unknown" : key, rid);
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:

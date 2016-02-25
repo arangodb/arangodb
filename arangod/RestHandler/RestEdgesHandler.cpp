@@ -200,7 +200,7 @@ bool RestEdgesHandler::readEdges(
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -223,7 +223,7 @@ bool RestEdgesHandler::readEdges(
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -328,7 +328,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -356,7 +356,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 

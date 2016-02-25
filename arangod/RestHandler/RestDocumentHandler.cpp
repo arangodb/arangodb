@@ -133,7 +133,7 @@ bool RestDocumentHandler::createDocument() {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -157,7 +157,7 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -184,7 +184,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
       resultHeaders, resultBody);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -275,7 +275,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -284,20 +284,20 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   res = trx.finish(result.code);
 
-  if(!result.successful()) {
+  if (!result.successful()) {
     if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-      generateDocumentNotFound(collection, (TRI_voc_key_t)key.c_str());
+      generateDocumentNotFound(collection, key);
       return false;
     } else if (ifRid != 0 && result.code == TRI_ERROR_ARANGO_CONFLICT) {
       generatePreconditionFailed(result.slice());
     } else {
-      generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
+      generateTransactionError(collection, res, key);
     }
     return false;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
+    generateTransactionError(collection, res, key);
     return false;
   }
 
@@ -342,7 +342,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
       resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
+    generateTransactionError(collname, error, "");
     return false;
   }
   // Essentially return the response we got from the DBserver, be it
@@ -390,7 +390,7 @@ bool RestDocumentHandler::readAllDocuments() {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -407,7 +407,7 @@ bool RestDocumentHandler::readAllDocuments() {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -467,7 +467,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(
       dbname, collname, returnType, responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
+    generateTransactionError(collname, error, "");
     return false;
   }
   // Return the response we got:
@@ -522,7 +522,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // split the document reference
-  std::string const& collection = suffix[0];
+  std::string const& collectionName = suffix[0];
   std::string const& key = suffix[1];
 
   bool parseSuccess = true;
@@ -535,8 +535,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   VPackSlice body = parsedBody->slice();
 
   if (!body.isObject()) {
-    generateTransactionError(collection,
-                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    generateTransactionError(collectionName,
+                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "");
     return false;
   }
 
@@ -570,7 +570,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -579,7 +579,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -604,10 +604,10 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       opOptions.mergeObjects = false;
     }
 
-    result = trx.update(collection, search, body, opOptions);
+    result = trx.update(collectionName, search, body, opOptions);
   } else {
     // replacing an existing document
-    result = trx.replace(collection, search, body, opOptions);
+    result = trx.replace(collectionName, search, body, opOptions);
   }
 
   res = trx.finish(result.code);
@@ -622,13 +622,11 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // This should not occur. Updated worked but commit failed
-    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str(), 0);
+    generateTransactionError(collectionName, res, key, 0);
     return false;
   }
 
-  generateSaved(result, collection, TRI_col_type_e(trx.getCollectionType(collection)));
-
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
   return true;
 }
 
@@ -662,7 +660,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
       mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
+    generateTransactionError(collname, error, "");
     return false;
   }
 
@@ -688,7 +686,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   // split the document reference
-  std::string const& collection = suffix[0];
+  std::string const& collectionName = suffix[0];
   std::string const& key = suffix[1];
 
   // extract the revision
@@ -710,15 +708,16 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_WRITE);
+                                          collectionName, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -733,21 +732,21 @@ bool RestDocumentHandler::deleteDocument() {
   }
   VPackSlice search = builder.slice();
 
-  OperationResult result = trx.remove(collection, search, opOptions);
+  OperationResult result = trx.remove(collectionName, search, opOptions);
 
   res = trx.finish(result.code);
 
-  if(!result.successful()) {
+  if (!result.successful()) {
     generateTransactionError(result);
     return false;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, (TRI_voc_key_t)key.c_str());
+    generateTransactionError(collectionName, res, key);
     return false;
   }
 
-  generateDeleted(result, collection, TRI_col_type_e(trx.getCollectionType(collection)));
+  generateDeleted(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
   return true;
 }
 
@@ -771,7 +770,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
       resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
+    generateTransactionError(collname, error, "");
     return false;
   }
   // Essentially return the response we got from the DBserver, be it

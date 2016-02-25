@@ -172,14 +172,6 @@ class SingleCollectionTransaction : public Transaction {
     return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
   }
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return whether a write in the transaction was synchronous
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool synchronous() const {
-    return TRI_WasSynchronousCollectionTransaction(this->_trx, _cid);
-  }
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id

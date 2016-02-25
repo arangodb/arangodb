@@ -114,7 +114,7 @@ bool RestEdgeHandler::createDocument() {
 
     if (!parsedBody->isOpenObject()) {
       generateTransactionError(collection,
-                               TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                               TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "");
       return false;
     }
 
@@ -137,7 +137,7 @@ bool RestEdgeHandler::createDocument() {
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      generateTransactionError(collection, res);
+      generateTransactionError(collection, res, "");
       return false;
     }
 
@@ -181,12 +181,12 @@ bool RestEdgeHandler::createDocument() {
                       wrongPart + " is not a document handle");
       }
       */
-      generateTransactionError(collection, result.code);
+      generateTransactionError(collection, result.code, "");
       return false;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      generateTransactionError(collection, res);
+      generateTransactionError(collection, res, "");
       return false;
     }
 
@@ -228,7 +228,7 @@ bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
                                                 resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname.c_str(), error);
+    generateTransactionError(collname, error, "");
 
     return false;
   }
