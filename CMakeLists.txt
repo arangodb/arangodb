@@ -326,9 +326,8 @@ endif ()
 
 include(VcMacros)
 
-# we do not want to build specialized packages for one architecture
-# include(OptimizeForArchitecture)
-# OptimizeForArchitecture()
+include(OptimizeForArchitecture)
+OptimizeForArchitecture()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 
@@ -563,3 +562,6 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 add_subdirectory(UnitTests)
 add_subdirectory(Documentation)
+
+add_dependencies(arangod ev zlibstatic v8_build)
+add_dependencies(arangosh zlibstatic v8_build)

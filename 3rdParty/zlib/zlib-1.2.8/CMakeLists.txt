@@ -241,11 +241,11 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 
-add_executable(example test/example.c)
+add_executable(example EXCLUDE_FROM_ALL test/example.c)
 target_link_libraries(example zlib)
 add_test(example example)
 
-add_executable(minigzip test/minigzip.c)
+add_executable(minigzip EXCLUDE_FROM_ALL test/minigzip.c)
 target_link_libraries(minigzip zlib)
 
 if(HAVE_OFF64_T)
