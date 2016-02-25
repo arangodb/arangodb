@@ -2238,7 +2238,7 @@ static void JS_VersionVocbaseCol(
 /// @brief checks all data pointers in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static void JS_CheckPointersVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2810,7 +2810,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("checkPointers"),
                        JS_CheckPointersVocbaseCol);
 #endif

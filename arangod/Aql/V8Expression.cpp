@@ -128,7 +128,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // won't modify their arguments is unsafe
     auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
     // a hash function for hashing V8 object contents
     auto hasher =
         [](v8::Isolate* isolate, v8::Handle<v8::Value> const obj) -> uint64_t {
@@ -155,7 +155,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     auto func = v8::Local<v8::Function>::New(isolate, _func);
     result = func->Call(func, 3, args);
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
     // now that the V8 function call is finished, check that our
     // constants actually were not modified
     uint64_t cmpHash = hasher(isolate, constantValues);

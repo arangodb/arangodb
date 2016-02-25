@@ -27,8 +27,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
 #include <sstream>
 #ifdef _WIN32
 #include <DbgHelp.h>
@@ -54,7 +54,7 @@ static char* FailurePoints = nullptr;
 
 arangodb::basics::ReadWriteLock FailurePointsLock;
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
@@ -287,8 +287,8 @@ void TRI_ShutdownDebugging() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GetBacktrace(std::string& btstr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
 #ifdef _WIN32
   void* stack[100];
   unsigned short frames;
@@ -383,8 +383,8 @@ void TRI_GetBacktrace(std::string& btstr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PrintBacktrace() {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
   std::string out;
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());

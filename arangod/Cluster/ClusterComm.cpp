@@ -295,8 +295,8 @@ ClusterCommResult const ClusterComm::asyncRequest(
   }
 
 #ifdef DEBUG_CLUSTER_COMM
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
   std::string bt;
   TRI_GetBacktrace(bt);
   std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
@@ -424,8 +424,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 
     headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
 #ifdef DEBUG_CLUSTER_COMM
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
     std::string bt;
     TRI_GetBacktrace(bt);
     std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'

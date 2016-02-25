@@ -1,6 +1,0 @@
-install:
-	mkdir -p ../ArmLibraries/include
-	mkdir -p ../ArmLibraries/lib
-
-	cp zlib-1.2.7/*.h ../ArmLibraries/include
-	cp zlib-1.2.7/*.a ../ArmLibraries/lib

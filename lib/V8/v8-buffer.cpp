@@ -261,7 +261,7 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     return ContainsNonAsciiSlow(src, len);
   }
 
-  const unsigned bytes_per_word = TRI_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned unaligned = reinterpret_cast<uintptr_t>(src) & align_mask;
 
@@ -276,7 +276,7 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     len -= n;
   }
 
-#if TRI_BITS == 64
+#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = 0x8080808080808080ll;
 #else
@@ -323,7 +323,7 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     return;
   }
 
-  const unsigned bytes_per_word = TRI_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned src_unalign = reinterpret_cast<uintptr_t>(src) & align_mask;
   const unsigned dst_unalign = reinterpret_cast<uintptr_t>(dst) & align_mask;
@@ -341,7 +341,7 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     }
   }
 
-#if TRI_BITS == 64
+#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = ~0x8080808080808080ll;
 #else
@@ -565,7 +565,7 @@ RetainedBufferInfo::RetainedBufferInfo(V8Buffer* buffer) : _buffer(buffer) {}
 
 v8::RetainedObjectInfo* WrapperInfo(uint16_t classId,
                                     v8::Handle<v8::Value> wrapper) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   ISOLATE;
   TRI_ASSERT(classId == TRI_V8_BUFFER_CID);
   TRI_ASSERT(V8Buffer::hasInstance(isolate, wrapper));
@@ -760,7 +760,7 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return true;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_GET_GLOBAL(FastBufferConstructor, v8::Function);
   TRI_ASSERT(!FastBufferConstructor.IsEmpty());
 #endif

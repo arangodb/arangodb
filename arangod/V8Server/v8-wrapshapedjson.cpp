@@ -235,8 +235,9 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped(
 /// @brief weak reference callback for a ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakDocumentDitchCallback(const v8::WeakCallbackData<
-    v8::External, v8::Persistent<v8::External>>& data) {
+static void WeakDocumentDitchCallback(
+    const v8::WeakCallbackData<v8::External, v8::Persistent<v8::External>>&
+        data) {
   auto isolate = data.GetIsolate();
   auto persistent = data.GetParameter();
   auto myDitch = v8::Local<v8::External>::New(isolate, *persistent);
@@ -796,8 +797,9 @@ static void PropertyQueryShapedJson(
 
     if (sid == TRI_SHAPE_ILLEGAL) {
 // invalid shape
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      LOG(WARN) << "invalid shape id '" << sid << "' found for key '" << key << "'";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      LOG(WARN) << "invalid shape id '" << sid << "' found for key '" << key
+                << "'";
 #endif
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }

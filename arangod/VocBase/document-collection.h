@@ -265,7 +265,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::DatafileStatistics _datafileStatistics;
 
 // We do some assertions with barriers and transactions in maintainer mode:
-#ifndef TRI_ENABLE_MAINTAINER_MODE
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   VocShaper* getShaper() const { return _shaper; }
 #else
   VocShaper* getShaper() const;
@@ -519,7 +519,7 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
            ((arangodb::wal::edge_marker_t const*)marker)->_offsetFromKey;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -552,7 +552,7 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
            ((arangodb::wal::edge_marker_t const*)marker)->_offsetToKey;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -583,7 +583,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
     return ((arangodb::wal::edge_marker_t const*)marker)->_fromCid;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -614,7 +614,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
     return ((arangodb::wal::edge_marker_t const*)marker)->_toCid;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -647,7 +647,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     return ((arangodb::wal::document_marker_t const*)marker)->_revisionId;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -681,7 +681,7 @@ static inline char const* TRI_EXTRACT_MARKER_KEY(
            ((arangodb::wal::document_marker_t const*)marker)->_offsetKey;
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif

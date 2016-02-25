@@ -54,7 +54,7 @@ extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
 /// @brief unknown memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_UNKNOWN_MEM_ZONE TRI_UnknownMemZoneZ(__FILE__, __LINE__)
 TRI_memory_zone_t* TRI_UnknownMemZoneZ(char const* file, int line);
 #else
@@ -93,7 +93,7 @@ inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
 /// allocations easier.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_SystemAllocate(a, b) \
   TRI_SystemAllocateZ((a), (b), __FILE__, __LINE__)
 void* TRI_SystemAllocateZ(uint64_t, bool, char const*, int);
@@ -105,7 +105,7 @@ void* TRI_SystemAllocate(uint64_t, bool);
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_Allocate(a, b, c) TRI_AllocateZ((a), (b), (c), __FILE__, __LINE__)
 void* TRI_AllocateZ(TRI_memory_zone_t*, uint64_t, bool, char const*, int);
 #else
@@ -116,7 +116,7 @@ void* TRI_Allocate(TRI_memory_zone_t*, uint64_t, bool);
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_Reallocate(a, b, c) \
   TRI_ReallocateZ((a), (b), (c), __FILE__, __LINE__)
 void* TRI_ReallocateZ(TRI_memory_zone_t*, void*, uint64_t, char const*, int);
@@ -128,7 +128,7 @@ void* TRI_Reallocate(TRI_memory_zone_t*, void*, uint64_t);
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_Free(a, b) TRI_FreeZ((a), (b), __FILE__, __LINE__)
 void TRI_FreeZ(TRI_memory_zone_t*, void*, char const*, int);
 #else
@@ -144,7 +144,7 @@ void TRI_Free(TRI_memory_zone_t*, void*);
 /// pointer if compiled with --enable-maintainer-mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_SystemFree(a) TRI_SystemFreeZ((a), __FILE__, __LINE__)
 void TRI_SystemFreeZ(void*, char const*, int);
 #else
