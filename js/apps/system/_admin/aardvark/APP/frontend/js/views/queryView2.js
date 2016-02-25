@@ -17,7 +17,7 @@
 
     currentQuery: {},
 
-    bindParamRegExp: /@(@?)(\w+(\d*))/g,
+    bindParamRegExp: /@(@?)(\w+(\d*))/,
     bindParamTableObj: {},
 
     bindParamTableDesc: {
@@ -41,7 +41,8 @@
       "click #clearQuery": "clearQuery",
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
       'click .outputEditorWrapper .switchAce': 'switchAce',
-      "click .outputEditorWrapper .fa-close": "closeResult"
+      "click .outputEditorWrapper .fa-close": "closeResult",
+      "change #arangoBindParamTable input": "updateBindParams"
     },
 
     clearQuery: function() {
@@ -107,7 +108,7 @@
         return;
       }
 
-      this.$(this.outputDiv).append(this.outputTemplate.render({
+      this.$(this.outputDiv).prepend(this.outputTemplate.render({
         counter: this.outputCounter,
         type: "Explain"
       }));
@@ -163,7 +164,6 @@
     getCachedQueryAfterRender: function() {
       //get cached query if available
       var queryObject = this.getCachedQuery();
-          console.log(queryObject);
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
         this.aqlEditor.setValue(queryObject.query);
         if (queryObject.parameter !== '' || queryObject !== undefined) {
@@ -226,25 +226,45 @@
     },
 
     makeResizeable: function() {
+
       var self = this;
+
+      var resizeFunction = function() {
+        self.aqlEditor.resize();
+        $('#arangoBindParamTable thead').css('width', $('#bindParamEditor').width());
+        $('#arangoBindParamTable thead th').css('width', $('#bindParamEditor').width() / 2);
+        $('#arangoBindParamTable tr').css('width', $('#bindParamEditor').width());
+        $('#arangoBindParamTable tbody').css('height', $('#aqlEditor').height() - 18);
+        $('#arangoBindParamTable tbody').css('width', $('#bindParamEditor').width());
+        $('#arangoBindParamTable tbody tr').css('width', $('#bindParamEditor').width());
+        $('#arangoBindParamTable tbody td').css('width', $('#bindParamEditor').width() / 2);
+      };
 
       $(".aqlEditorWrapper").resizable({
         resize: function() {
-          self.aqlEditor.resize();
+          resizeFunction();
         },
         handles: "e"
       });
 
       $(".inputEditorWrapper").resizable({
         resize: function() {
-          self.aqlEditor.resize();
+          resizeFunction();
         },
         handles: "s"
       });
+
+      //one manual start
+      resizeFunction();
     },
 
     initBindParamTable: function() {
        this.$(this.bindParamId).html(this.table.render({content: this.bindParamTableDesc}));
+    },
+
+    updateBindParams: function(e) {
+      var id = $(e.currentTarget).attr("name");
+      this.bindParamTableObj[id] = $(e.currentTarget).val();
     },
 
     checkForNewBindParams: function() {
@@ -265,47 +285,55 @@
         words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
         pos++;
       });
-      words.sort();
+      words1.sort();
 
+      var newObject = {};
       _.each(words1, function(word) {
         //found a valid bind param expression
         if (self.bindParamRegExp.test(word)) {
-
           //if property is not available
-          if (!_.has(self.bindParamTableObj, word)) {
-            self.bindParamTableObj[word] = '';
-          }
+          newObject[word] = '';
         }
       });
 
-      var newObject = {};
-      Object.keys(self.bindParamTableObj).forEach(function(key) {
-        _.each(words1, function(word) {
-          if (word === key) {
-            if (self.bindParamTableObj[key] !== '') {
-              newObject[key] = self.bindParamTableObj[key];
-            }
-            else {
-              newObject[key] = '';
-            }
+      Object.keys(newObject).forEach(function(keyNew) {
+        Object.keys(self.bindParamTableObj).forEach(function(keyOld) {
+          if (keyNew === keyOld) {
+            newObject[keyNew] = self.bindParamTableObj[keyOld];
           }
         });
       });
-
       self.bindParamTableObj = newObject;
     },
 
     renderBindParamTable: function() {
+      var self = this;
+
       $('#arangoBindParamTable tbody').html('');
+
+      var counter = 0;
       _.each(this.bindParamTableObj, function(val, key) {
         $('#arangoBindParamTable tbody').append(
           "<tr>" + 
             "<td>" + key + "</td>" + 
-            "<td><input>" + val + "</input></td>" + 
+            '<td><input name=' + key + ' type="text"></input></td>' + 
           "</tr>"
         );
-
+        counter ++;
+        _.each($('#arangoBindParamTable input'), function(element) {
+          if ($(element).attr('name') === key) {
+            $(element).val(val);
+          }
+        });
       });
+      if (counter === 0) {
+        $('#arangoBindParamTable tbody').append(
+          '<tr class="noBgColor">' + 
+            "<td>No bind parameters defined.</td>" + 
+            '<td></td>' + 
+          "</tr>"
+        );
+      }
     },
 
     initAce: function() {
@@ -334,11 +362,11 @@
     },
 
     afterRender: function() {
-      this.makeResizeable();
       this.initAce();
       this.initBindParamTable();
       this.getCachedQueryAfterRender();
       this.fillSelectBoxes();
+      this.makeResizeable();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 3);
@@ -389,7 +417,7 @@
             bindVars = JSON.parse(bindVars);
           }
           catch (err) {
-            console.log("could not parse bind parameter");
+            arangoHelper.arangoError("Query", "Could not parse bind parameter");
           }
         }
         this.collection.add({
