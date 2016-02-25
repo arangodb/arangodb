@@ -16,6 +16,7 @@
     outputCounter: 0,
 
     currentQuery: {},
+    initDone: false,
 
     bindParamRegExp: /@(@?)(\w+(\d*))/,
     bindParamTableObj: {},
@@ -42,7 +43,7 @@
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
       'click .outputEditorWrapper .switchAce': 'switchAce',
       "click .outputEditorWrapper .fa-close": "closeResult",
-      "change #arangoBindParamTable input": "updateBindParams"
+      "keyup #arangoBindParamTable input": "updateBindParams"
     },
 
     clearQuery: function() {
@@ -163,18 +164,19 @@
 
     getCachedQueryAfterRender: function() {
       //get cached query if available
-      var queryObject = this.getCachedQuery();
+      var queryObject = this.getCachedQuery(),
+      self = this;
+
       if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
+        if (queryObject.parameter !== '' || queryObject !== undefined) {
+          try {
+            self.bindParamTableObj = JSON.parse(queryObject.parameter);
+          }
+          catch (ignore) {
+          }
+        }
         this.aqlEditor.setValue(queryObject.query);
-        //if (queryObject.parameter !== '' || queryObject !== undefined) {
-          //TODO update bind param table
-        //}
       }
-      var a = this.aqlEditor.getValue();
-      if (a.length <= 1) {
-        a = "";
-      }
-      this.setCachedQuery(a);
     },
 
     getCachedQuery: function() {
@@ -183,6 +185,11 @@
         if (cache !== undefined) {
           var query = JSON.parse(cache);
           this.currentQuery = query;
+          try {
+            this.bindParamTableObj = JSON.parse(query.parameter);
+          }
+          catch (ignore) {
+          }
           return query;
         }
       }
@@ -223,6 +230,8 @@
       this.$el.html(this.template.render({}));
 
       this.afterRender();
+      this.initDone = true;
+      this.renderBindParamTable(true);
     },
 
     makeResizeable: function() {
@@ -265,6 +274,7 @@
     updateBindParams: function(e) {
       var id = $(e.currentTarget).attr("name");
       this.bindParamTableObj[id] = $(e.currentTarget).val();
+      this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
     },
 
     checkForNewBindParams: function() {
@@ -292,6 +302,7 @@
         //found a valid bind param expression
         if (self.bindParamRegExp.test(word)) {
           //if property is not available
+          word = word.substr(1, word.length);
           newObject[word] = '';
         }
       });
@@ -306,10 +317,12 @@
       self.bindParamTableObj = newObject;
     },
 
-    renderBindParamTable: function() {
-      var self = this;
-
+    renderBindParamTable: function(init) {
       $('#arangoBindParamTable tbody').html('');
+
+      if (init) {
+        this.getCachedQuery();
+      }
 
       var counter = 0;
       _.each(this.bindParamTableObj, function(val, key) {
@@ -347,6 +360,9 @@
       this.aqlEditor.getSession().on('change', function() {
         self.checkForNewBindParams();
         self.renderBindParamTable();
+        if (self.initDone) {
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+        }
       });
       this.aqlEditor.commands.addCommand({
         name: "togglecomment",
@@ -362,6 +378,7 @@
     },
 
     afterRender: function() {
+      //this.getCachedQuery();
       this.initAce();
       this.initBindParamTable();
       this.getCachedQueryAfterRender();
@@ -394,7 +411,7 @@
       var content = this.aqlEditor.getValue(),
       //check for already existing entry
       quit = false;
-      $.each(this.customQueries, function (k, v) {
+      _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
           quit = true;
@@ -482,22 +499,9 @@
         data.batchSize = parseInt(sizeBox.val(), 10);
       }
 
-      //parse vars
-      //var bindVars = varsEditor.getValue();
-      //TODO bind vars table include
-
-      var bindVars = "";
-      if (bindVars.length > 0) {
-        try {
-          var params = JSON.parse(bindVars);
-          if (Object.keys(params).length !== 0) {
-            data.bindVars = params;
-          }
-        }
-        catch (e) {
-          arangoHelper.arangoError("Query error", "Could not parse bind parameters.");
-          return false;
-        }
+      if (Object.keys(this.bindParamTableObj).length > 0) {
+        var params = this.bindParamTableObj;
+        data.bindVars = params;
       }
       return JSON.stringify(data);
     },
@@ -713,7 +717,7 @@
     },
 
     getAQL: function (originCallback) {
-      var self = this, result;
+      var self = this;
 
       this.collection.fetch({
         success: function() {
@@ -729,7 +733,7 @@
               });
             });
 
-            var callback = function(error, data) {
+            var callback = function(error) {
               if (error) {
                 arangoHelper.arangoError(
                   "Custom Queries",
