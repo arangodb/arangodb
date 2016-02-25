@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
-#include "Storage/Options.h"
 
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -336,7 +336,7 @@ class MarkerAccessorDocument : public T {
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
 
-  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getDefaultOptions()); }
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), &VPackOptions::Defaults); }
 
   static uint64_t staticLength() { return 8; }
 };
@@ -416,7 +416,7 @@ class MarkerAccessorStructural : public T {
 
   uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
   
-  VPackSlice slice() const { return VPackSlice(this->vpackValue(), StorageOptions::getDefaultOptions()); }
+  VPackSlice slice() const { return VPackSlice(this->vpackValue(), &VPackOptions::Defaults); }
 
   static uint64_t staticLength() { return 0; }
 };

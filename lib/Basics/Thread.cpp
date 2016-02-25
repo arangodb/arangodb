@@ -171,7 +171,8 @@ void Thread::beginShutdown() {
 
   ThreadState state = _state.load();
 
-  while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
+  while (state != ThreadState::STOPPING && state != ThreadState::STOPPED &&
+         state != ThreadState::DETACHED) {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
 }
@@ -202,7 +203,7 @@ void Thread::shutdown() {
     }
   }
 
-  size_t n = 10 * 60 * 5; // * 100ms = 1s * 60 * 5
+  size_t n = 10 * 60 * 5;  // * 100ms = 1s * 60 * 5
 
   for (size_t i = 0; i < n; ++i) {
     if (_state.load() == ThreadState::STOPPED) {
@@ -260,7 +261,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   } else {
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
-                                    << _name.c_str()
+                                    << _name
                                     << "': " << strerror(errno);
 
     return false;
@@ -327,20 +328,20 @@ void Thread::runMe() {
     _state.store(ThreadState::STOPPED);
   } catch (Exception const& ex) {
     LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name.c_str() << "': " << ex.what();
+                                    << _name << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name.c_str() << "': " << ex.what();
+                                    << _name << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (...) {
     if (!isSilent()) {
       LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                      << _name.c_str() << "'";
+                                      << _name << "'";
       Logger::flush();
     }
     _state.store(ThreadState::STOPPED);

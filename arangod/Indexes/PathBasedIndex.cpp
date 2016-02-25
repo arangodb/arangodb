@@ -331,6 +331,12 @@ void PathBasedIndex::buildIndexValues(
     if (!doneNull) {
       moveOn(current2);
     }
+    // Finally, if, because of sparsity, we have not inserted anything by now,
+    // we need to play the above trick with None because of the above mentioned
+    // reasons:
+    if (seen.empty()) {
+      finishWithNones();
+    }
   }
 }
 

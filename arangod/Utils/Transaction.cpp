@@ -399,7 +399,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         transactionContext()->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -715,7 +715,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     resultBuilder.add(VPackSlice(mptr.vpack()));
   }
 
-  return OperationResult(resultBuilder.steal(), StorageOptions::getCustomTypeHandler(_vocbase), "", TRI_ERROR_NO_ERROR, false); 
+  return OperationResult(resultBuilder.steal(), 
+                         transactionContext()->orderCustomTypeHandler(), "",
+                         TRI_ERROR_NO_ERROR, false); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -818,6 +820,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
    
   // generate a new tick value
   TRI_voc_tick_t const revisionId = TRI_NewTickServer();
+  std::string keyString;
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
@@ -825,12 +828,14 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
   if (key.isNone()) {
     // "_key" attribute not present in object
-    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(document->_keyGenerator->generate(revisionId)));
+    keyString = document->_keyGenerator->generate(revisionId);
+    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString));
   } else if (!key.isString()) {
     // "_key" present but wrong type
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
-    int res = document->_keyGenerator->validate(key.copyString(), false);
+    keyString = key.copyString();
+    int res = document->_keyGenerator->validate(keyString, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // invalid key value
@@ -862,13 +867,15 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     return OperationResult(res);
   }
 
+  if (options.silent) {
+    // no need to construct the result object
+    return OperationResult(TRI_ERROR_NO_ERROR);
+  }
+
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
   
-  VPackSlice vpack(mptr.vpack());
-  std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
-
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, resultKey, mptr._rid, "");
+  buildDocumentIdentity(resultBuilder, cid, keyString, mptr._rid, "");
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -985,7 +992,8 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   }
   
   // read expected revision
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&oldValue);
+  std::string const key(Transaction::extractKey(&oldValue));
+  TRI_voc_rid_t const expectedRevision = Transaction::extractRevisionId(&oldValue);
 
   // generate a new tick value
   TRI_voc_tick_t const revisionId = TRI_NewTickServer();
@@ -999,14 +1007,14 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   VPackObjectIterator it(newValue);
   while (it.valid()) {
     // let all but the system attributes pass
-    std::string key = it.key().copyString();
-    if (key[0] != '_' ||
-        (key != TRI_VOC_ATTRIBUTE_KEY &&
-         key != TRI_VOC_ATTRIBUTE_ID &&
-         key != TRI_VOC_ATTRIBUTE_REV &&
-         key != TRI_VOC_ATTRIBUTE_FROM &&
-         key != TRI_VOC_ATTRIBUTE_TO)) {
-      builder.add(it.key().copyString(), it.value());
+    std::string k = it.key().copyString();
+    if (k[0] != '_' ||
+        (k != TRI_VOC_ATTRIBUTE_KEY &&
+         k != TRI_VOC_ATTRIBUTE_ID &&
+         k != TRI_VOC_ATTRIBUTE_REV &&
+         k != TRI_VOC_ATTRIBUTE_FROM &&
+         k != TRI_VOC_ATTRIBUTE_TO)) {
+      builder.add(k, it.value());
     }
     it.next();
   }
@@ -1035,9 +1043,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   if (res == TRI_ERROR_ARANGO_CONFLICT) {
     // still return 
     VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid,
-                          oldValue.get("_key").copyString(), 
-                          mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,
@@ -1048,14 +1054,12 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
 
-  std::string idString(std::to_string(actualRevision));
-  
-  VPackSlice vpack(mptr.vpack());
-  std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
+  if (options.silent) {
+    return OperationResult(TRI_ERROR_NO_ERROR);
+  }
 
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, resultKey,
-      vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString(), idString);
+  buildDocumentIdentity(resultBuilder, cid, key, std::to_string(revisionId), std::to_string(actualRevision));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -1171,8 +1175,9 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  // read expected revision
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&oldValue);
+  // read key and expected revision
+  std::string const key(Transaction::extractKey(&oldValue));
+  TRI_voc_rid_t const expectedRevision = Transaction::extractRevisionId(&oldValue);
 
   // generate a new tick value
   TRI_voc_tick_t const revisionId = TRI_NewTickServer();
@@ -1186,14 +1191,14 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
   VPackObjectIterator it(newValue);
   while (it.valid()) {
     // let all but the system attributes pass
-    std::string key = it.key().copyString();
-    if (key[0] != '_' ||
-        (key != TRI_VOC_ATTRIBUTE_KEY &&
-         key != TRI_VOC_ATTRIBUTE_ID &&
-         key != TRI_VOC_ATTRIBUTE_REV &&
-         key != TRI_VOC_ATTRIBUTE_FROM &&
-         key != TRI_VOC_ATTRIBUTE_TO)) {
-      builder.add(it.key().copyString(), it.value());
+    std::string k = it.key().copyString();
+    if (k[0] != '_' ||
+        (k != TRI_VOC_ATTRIBUTE_KEY &&
+         k != TRI_VOC_ATTRIBUTE_ID &&
+         k != TRI_VOC_ATTRIBUTE_REV &&
+         k != TRI_VOC_ATTRIBUTE_FROM &&
+         k != TRI_VOC_ATTRIBUTE_TO)) {
+      builder.add(k, it.value());
     }
     it.next();
   }
@@ -1222,9 +1227,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
   if (res == TRI_ERROR_ARANGO_CONFLICT) {
     // still return 
     VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, 
-                          oldValue.get("_key").copyString(), 
-                          mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,
@@ -1235,14 +1238,12 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
 
-  std::string idString(std::to_string(actualRevision));
-  
-  VPackSlice vpack(mptr.vpack());
-  std::string resultKey = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString(); 
+  if (options.silent) {
+    return OperationResult(TRI_ERROR_NO_ERROR);
+  }
 
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, resultKey, 
-      vpack.get(TRI_VOC_ATTRIBUTE_REV).copyString(), idString);
+  buildDocumentIdentity(resultBuilder, cid, key, std::to_string(revisionId), std::to_string(actualRevision));
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -1350,7 +1351,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
  
   std::string key; 
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(&value);
+  TRI_voc_rid_t const expectedRevision = Transaction::extractRevisionId(&value);
 
   VPackBuilder builder;
   builder.openObject();
@@ -1362,8 +1363,10 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
     builder.add(TRI_VOC_ATTRIBUTE_KEY, k);
+    key = k.copyString();
   } else if (value.isString()) {
     builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
+    key = value.copyString();
   }
   
   // add _rev  
@@ -1380,9 +1383,12 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     return OperationResult(res);
   }
 
+  if (options.silent) {
+    return OperationResult(TRI_ERROR_NO_ERROR);
+  }
+
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, key,
-      std::to_string(actualRevision), "");
+  buildDocumentIdentity(resultBuilder, cid, key, std::to_string(actualRevision), "");
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
                          options.waitForSync); 
@@ -1468,7 +1474,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   }
 
   return OperationResult(resultBuilder.steal(),
-                         StorageOptions::getCustomTypeHandler(_vocbase), "",
+                         transactionContext()->orderCustomTypeHandler(), "",
                          TRI_ERROR_NO_ERROR, false);
 }
 
@@ -1735,6 +1741,6 @@ OperationCursor Transaction::indexScan(
 
   iterator->skip(skip);
 
-  return OperationCursor(StorageOptions::getCustomTypeHandler(_vocbase),
+  return OperationCursor(transactionContext()->orderCustomTypeHandler(),
                          iterator.release(), limit, batchSize);
 }

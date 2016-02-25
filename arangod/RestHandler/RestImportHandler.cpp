@@ -217,13 +217,11 @@ int RestImportHandler::handleSingleDocument(
   if (isEdgeCollection) {
     // Validate from and to
     // TODO: Check if this is unified in trx.insert
-    std::string from;
-    std::string to;
 
     try {
-      from = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_FROM);
-      to = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_TO);
     } catch (arangodb::basics::Exception const&) {
       std::string part = VPackDumper::toString(slice);
@@ -258,7 +256,6 @@ int RestImportHandler::handleSingleDocument(
     if (keySlice.isString()) {
       // insert failed. now try an update/replace
 
-      std::string keyString = keySlice.copyString();
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         // update
         opResult = trx.update(collectionName, keySlice, slice, opOptions);

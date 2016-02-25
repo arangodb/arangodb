@@ -30,6 +30,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+namespace velocypack {
+struct AttributeExcludeHandler;
+struct AttributeTranslator;
+}
+
 namespace basics {
 
 class VelocyPackHelper {
@@ -39,6 +44,15 @@ class VelocyPackHelper {
 
  public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static initializer for all VPack values
+////////////////////////////////////////////////////////////////////////////////
+  
+  static void initialize();
+  
+  static arangodb::velocypack::AttributeExcludeHandler* getExcludeHandler();
+  static arangodb::velocypack::AttributeTranslator* getTranslator();
+  
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };

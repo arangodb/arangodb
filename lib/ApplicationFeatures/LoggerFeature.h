@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,31 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_OPTIONS_H
-#define ARANGOD_STORAGE_OPTIONS_H 1
+#ifndef APPLICATION_FEATURES_LOGGER_FEATURE_H
+#define APPLICATION_FEATURES_LOGGER_FEATURE_H 1
 
-#include "Basics/Common.h"
-
-#include <velocypack/AttributeTranslator.h>
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
-struct TRI_vocbase_t;
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+class LoggerFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit LoggerFeature(application_features::ApplicationServer* server);
 
-namespace StorageOptions {
-  void initialize();
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  VPackAttributeTranslator const* getTranslator();
-  VPackOptions const* getDefaultOptions();
-  VPackOptions const* getInsertOptions();
-
-  VPackCustomTypeHandler* getCustomTypeHandler(TRI_vocbase_t*);
-}
+ private:
+  std::vector<std::string> _output;
+  std::string _level;
+  bool _useLocalTime;
+  bool _lineNumber;
+  bool _thread;
+};
 }
 
 #endif

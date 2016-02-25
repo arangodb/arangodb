@@ -46,9 +46,7 @@ struct PermutationState {
       : value(value), current(0), n(n) {}
 
   arangodb::aql::AstNode const* getValue() const {
-    if (value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
-        value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
-        value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND ||
+    if (value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
         value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR) {
       TRI_ASSERT(current < n);
       return value->getMember(current);

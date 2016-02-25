@@ -22,17 +22,93 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
+#include "Storage/Marker.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 
+#include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
+
+// custom type value handler, used for deciphering the _id attribute
+struct CustomTypeHandler : public VPackCustomTypeHandler {
+  CustomTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver const* resolver)
+      : vocbase(vocbase), resolver(resolver) {}
+
+  ~CustomTypeHandler() {} 
+
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
+    if (value.head() != 0xf3) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid custom type");
+    }
+
+    // _id
+    if (!base.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid value type");
+    }
+  
+    uint64_t cid = MarkerHelper::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    char buffer[512];  // This is enough for collection name + _key
+    size_t len = resolver->getCollectionName(&buffer[0], cid);
+    buffer[len] = '/';
+    VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    VPackValueLength keyLength;
+    char const* p = key.getString(keyLength);
+    if (p == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid _key value");
+    }
+    memcpy(&buffer[len + 1], p, keyLength);
+    dumper->appendString(&buffer[0], len + 1 + keyLength);
+  }
+  
+  std::string toString(VPackSlice const& value, VPackOptions const* options,
+                       VPackSlice const& base) override final {
+    if (value.head() != 0xf3) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid custom type");
+    }
+
+    // _id
+    if (!base.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid value type");
+    }
+    
+    uint64_t cid = MarkerHelper::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    std::string result(resolver->getCollectionName(cid));
+    result.push_back('/');
+    VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    VPackValueLength keyLength;
+    char const* p = key.getString(keyLength);
+    if (p == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid _key value");
+    }
+    result.append(p, keyLength);
+    return result;
+  }
+
+  TRI_vocbase_t* vocbase;
+  CollectionNameResolver const* resolver;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create the context
 //////////////////////////////////////////////////////////////////////////////
 
 TransactionContext::TransactionContext(TRI_vocbase_t* vocbase) 
-    : _vocbase(vocbase), _resolver(nullptr), _ownsResolver(false) {}
+    : _vocbase(vocbase), 
+      _resolver(nullptr), 
+      _customTypeHandler(nullptr), 
+      _ownsResolver(false) {}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
@@ -46,10 +122,25 @@ TransactionContext::~TransactionContext() {
     // If some external entity is still using the ditch, it is kept!
   }
 
+  delete _customTypeHandler;
+
   if (_ownsResolver) {
     delete _resolver;
     _resolver = nullptr;
   }
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief order a document ditch for the collection
+//////////////////////////////////////////////////////////////////////////////
+
+VPackCustomTypeHandler* TransactionContext::orderCustomTypeHandler() {
+  if (_customTypeHandler == nullptr) {
+    _customTypeHandler = new CustomTypeHandler(_vocbase, getResolver());
+  }
+
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  return _customTypeHandler;
 }
 
 //////////////////////////////////////////////////////////////////////////////

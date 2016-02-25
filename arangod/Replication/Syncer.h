@@ -45,7 +45,6 @@ class Slice;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-class SimpleHttpResult;
 }
 
 namespace rest {

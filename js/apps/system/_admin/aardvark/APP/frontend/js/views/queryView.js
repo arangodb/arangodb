@@ -800,6 +800,7 @@
             known[dep[j]].children.push(nodeData);
           }
         }
+        console.log(estCost);
         return estCost;
       },
 

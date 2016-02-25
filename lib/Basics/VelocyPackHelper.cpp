@@ -31,11 +31,85 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 
+#include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+static std::unique_ptr<VPackAttributeTranslator> Translator;
+static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
+
+// attribute exclude handler for skipping over system attributes
+struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
+  bool shouldExclude(VPackSlice const& key, int nesting) override final {
+    VPackValueLength keyLength;
+    char const* p = key.getString(keyLength);
+
+    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
+      // keep attribute
+      return true;
+    }
+
+    // exclude these attributes (but not _key!)
+    if ((keyLength == 3 && memcmp(p, "_id", keyLength) == 0) ||
+        (keyLength == 4 && memcmp(p, "_rev", keyLength) == 0) ||
+        (keyLength == 3 && memcmp(p, "_to", keyLength) == 0) ||
+        (keyLength == 5 && memcmp(p, "_from", keyLength) == 0)) {
+      return true;
+    }
+
+    // keep attribute
+    return false;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static initializer for all VPack values
+////////////////////////////////////////////////////////////////////////////////
+  
+void VelocyPackHelper::initialize() {
+  LOG(TRACE) << "initializing vpack";
+
+  // initialize attribute translator
+  Translator.reset(new VPackAttributeTranslator);
+
+  // these attribute names will be translated into short integer values
+  Translator->add("_key", 1);
+  Translator->add("_rev", 2);
+  Translator->add("_id", 3);
+  Translator->add("_from", 4);
+  Translator->add("_to", 5);
+
+  Translator->seal();
+
+  // set the attribute translator in the global options
+  VPackOptions::Defaults.attributeTranslator = Translator.get();
+  VPackSlice::attributeTranslator = Translator.get();
+  
+  // initialize exclude handler for system attributes
+  ExcludeHandler.reset(new SystemAttributeExcludeHandler);
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the (global) attribute exclude handler instance
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
+  return ExcludeHandler.get();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the (global) attribute translator instance
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
+  return Translator.get();
+}
+
 
 bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
                                                    std::string const& r) const {

@@ -8,8 +8,6 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
-struct TRI_transaction_collection_s;
-
 namespace arangodb {
 class Transaction;
 

@@ -221,7 +221,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   // log outside the lock
-  LOG(WARN) << "killing AQL query " << id << " '" << queryString.c_str() << "'";
+  LOG(WARN) << "killing AQL query " << id << " '" << queryString << "'";
 
   return TRI_ERROR_NO_ERROR;
 }

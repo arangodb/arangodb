@@ -197,9 +197,8 @@ void RestExportHandler::createCursor() {
 
   try {
     bool parseSuccess = true;
-    VPackOptions vpoptions;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&vpoptions, parseSuccess);
+        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
     if (!parseSuccess) {
       return;

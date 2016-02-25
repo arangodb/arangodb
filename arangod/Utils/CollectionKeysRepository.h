@@ -29,8 +29,6 @@
 #include "Utils/CollectionKeys.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
 
 class CollectionKeys;

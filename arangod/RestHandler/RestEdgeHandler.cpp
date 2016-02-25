@@ -102,7 +102,8 @@ bool RestEdgeHandler::createDocument() {
 
   try {
     bool parseSuccess = true;
-    VPackOptions options;
+    // copy the default options
+    VPackOptions options = VPackOptions::Defaults;
     options.keepTopLevelOpen = true; // We need to insert _from and _to
     std::shared_ptr<VPackBuilder> parsedBody =
         parseVelocyPackBody(&options, parseSuccess);

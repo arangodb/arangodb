@@ -126,6 +126,9 @@ add_library(
     ${LIB_ARANGO_CONSOLE}
     ${LIB_ARANGO_VPACK}
     ${LIB_ASM_SOURCES}
+    ApplicationFeatures/ApplicationFeature.cpp
+    ApplicationFeatures/ApplicationServer.cpp
+    ApplicationFeatures/LoggerFeature.cpp
     Basics/AttributeNameParser.cpp
     Basics/Barrier.cpp
     Basics/ConditionLocker.cpp

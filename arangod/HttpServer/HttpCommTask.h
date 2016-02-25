@@ -36,11 +36,9 @@
 namespace arangodb {
 namespace rest {
 class HttpCommTask;
-class HttpHandler;
 class HttpRequest;
 class HttpResponse;
 class HttpServer;
-class HttpServerJob;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http communication

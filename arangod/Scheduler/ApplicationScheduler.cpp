@@ -262,7 +262,7 @@ bool CtrlHandler(DWORD eventType) {
   }
 
   if (ccTask->_seen == 0) {
-    LOG(INFO) << "" << shutdownMessage.c_str() << ", beginning shut down sequence";
+    LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
     ccTask->_server->beginShutdown();
     ++ccTask->_seen;
     return true;
@@ -272,7 +272,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG(INFO) << "" << shutdownMessage.c_str() << ", terminating";
+  LOG(INFO) << "" << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }

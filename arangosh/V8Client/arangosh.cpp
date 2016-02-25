@@ -2344,10 +2344,10 @@ static int WarmupEnvironment(v8::Isolate* isolate,
         LOG(TRACE) << "loaded JavaScript file '" << files[i] << "'";
         break;
       case JSLoader::eFailLoad:
-        LOG(FATAL) << "cannot load JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "cannot load JavaScript file '" << files[i] << "'"; FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
-        LOG(FATAL) << "error during execution of JavaScript file '" << files[i].c_str() << "'"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "error during execution of JavaScript file '" << files[i] << "'"; FATAL_ERROR_EXIT();
         break;
     }
   }

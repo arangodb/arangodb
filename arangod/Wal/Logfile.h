@@ -294,7 +294,7 @@ class Logfile {
         break;
     }
 
-    LOG(TRACE) << "changing logfile status from " << statusText(_status).c_str() << " to " << statusText(status).c_str() << " for logfile " << id();
+    LOG(TRACE) << "changing logfile status from " << statusText(_status) << " to " << statusText(status) << " for logfile " << id();
     _status = status;
   }
 

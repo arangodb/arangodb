@@ -261,9 +261,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
   if (!parseSuccess) {
     // A body is required
@@ -387,9 +386,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 bool RestEdgesHandler::readFilteredEdges() {
   std::vector<traverser::TraverserExpression*> expressions;
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     // We continue unfiltered
     // Filter could be done by caller
