@@ -340,11 +340,6 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
     try {
       begin = new TRI_doc_mptr_t[blockSize];
     } catch (std::exception&) {
-      begin = nullptr;
-    }
-
-    // out of memory
-    if (begin == nullptr) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
