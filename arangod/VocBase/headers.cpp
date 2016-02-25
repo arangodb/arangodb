@@ -55,8 +55,6 @@ static inline size_t GetBlockSize(size_t blockNumber) {
 
 TRI_headers_t::TRI_headers_t()
     : _freelist(nullptr),
-      _begin(nullptr),
-      _end(nullptr),
       _nrAllocated(0),
       _nrLinked(0),
       _totalSize(0),
@@ -92,18 +90,11 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
     return;
   }
 
-  validate("before moveback", header, old);
-
   TRI_ASSERT(_nrAllocated > 0);
   TRI_ASSERT(_nrLinked > 0);
   TRI_ASSERT(_totalSize > 0);
 
   // we have at least one element in the list
-  TRI_ASSERT(_begin != nullptr);
-  TRI_ASSERT(_end != nullptr);
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
-
   TRI_ASSERT(old != nullptr);
   TRI_ASSERT(old->getDataPtr() !=
              nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
@@ -118,40 +109,7 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
   // we must adjust the size of the collection
   _totalSize += (TRI_DF_ALIGN_BLOCK(newSize) - TRI_DF_ALIGN_BLOCK(oldSize));
 
-  if (_end == header) {
-    // header is already at the end
-    TRI_ASSERT(header->_next == nullptr);
-    return;
-  }
-
-  TRI_ASSERT(_begin != _end);
-
-  // unlink the element
-  if (header->_prev != nullptr) {
-    header->_prev->_next = header->_next;
-  }
-  if (header->_next != nullptr) {
-    header->_next->_prev = header->_prev;
-  }
-
-  if (_begin == header) {
-    TRI_ASSERT(header->_next != nullptr);
-    _begin = header->_next;
-  }
-
-  header->_prev = _end;
-  header->_next = nullptr;
-  _end = header;
-  header->_prev->_next = header;
-
-  TRI_ASSERT(_begin != nullptr);
-  TRI_ASSERT(_end != nullptr);
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
-
   TRI_ASSERT(_totalSize > 0);
-
-  validate("after moveback", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,57 +117,23 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
-  validate("before unlink", header, nullptr);
-
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(header->getDataPtr() !=
              nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
 
   int64_t size = (int64_t)((TRI_df_marker_t*)header->getDataPtr())
              ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
-
-  // unlink the header
-  if (header->_prev != nullptr) {
-    header->_prev->_next = header->_next;
-  }
-
-  if (header->_next != nullptr) {
-    header->_next->_prev = header->_prev;
-  }
-
-  // adjust begin & end pointers
-  if (_begin == header) {
-    _begin = header->_next;
-  }
-
-  if (_end == header) {
-    _end = header->_prev;
-  }
-
-  TRI_ASSERT(_begin != header);
-  TRI_ASSERT(_end != header);
 
   TRI_ASSERT(_nrLinked > 0);
   _nrLinked--;
   _totalSize -= TRI_DF_ALIGN_BLOCK(size);
 
   if (_nrLinked == 0) {
-    TRI_ASSERT(_begin == nullptr);
-    TRI_ASSERT(_end == nullptr);
     TRI_ASSERT(_totalSize == 0);
   } else {
-    TRI_ASSERT(_begin != nullptr);
-    TRI_ASSERT(_end != nullptr);
     TRI_ASSERT(_totalSize > 0);
   }
-
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
-
-  validate("after unlink", header, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,11 +146,7 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
     return;
   }
 
-  validate("before move", header, old);
-
   TRI_ASSERT(_nrAllocated > 0);
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
   TRI_ASSERT(header->getDataPtr() !=
              nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(((TRI_df_marker_t*)header->getDataPtr())->_size >
@@ -247,47 +167,6 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   // one is used once more. Therefore, the signs in the following statement
   // are actually OK:
   _totalSize -= (TRI_DF_ALIGN_BLOCK(newSize) - TRI_DF_ALIGN_BLOCK(oldSize));
-
-  // first unlink
-  if (header->_prev != nullptr) {
-    header->_prev->_next = header->_next;
-  }
-  if (header->_next != nullptr) {
-    header->_next->_prev = header->_prev;
-  }
-  // adjust begin & end pointers
-  if (_begin == header) {
-    _begin = header->_next;
-  }
-  if (_end == header) {
-    _end = header->_prev;
-  }
-
-  // now header is unlinked
-  
-  header->_prev = old->_prev;
-  header->_next = old->_next;
-
-  if (old->_prev != nullptr) {
-    old->_prev->_next = header;
-  }
-  if (old->_next != nullptr) {
-    old->_next->_prev = header;
-  }
-
-  if (old->_prev == nullptr) {
-    _begin = header;
-  }
-  if (old->_next == nullptr) {
-    _end = header;
-  }
-
-  TRI_ASSERT(_begin != nullptr);
-  TRI_ASSERT(_end != nullptr);
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
-
-  validate("after move", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,8 +179,6 @@ void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
     return;
   }
 
-  validate("before relink", header, old);
-
   TRI_ASSERT(header->getDataPtr() !=
              nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
 
@@ -309,18 +186,10 @@ void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
                      ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
 
-  TRI_ASSERT(_begin != header);
-  TRI_ASSERT(_end != header);
-
   this->move(header, old);
   _nrLinked++;
   _totalSize += TRI_DF_ALIGN_BLOCK(size);
   TRI_ASSERT(_totalSize > 0);
-
-  TRI_ASSERT(header->_prev != header);
-  TRI_ASSERT(header->_next != header);
-
-  validate("after relink", header, old);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,11 +209,6 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
     try {
       begin = new TRI_doc_mptr_t[blockSize];
     } catch (std::exception&) {
-      begin = nullptr;
-    }
-
-    // out of memory
-    if (begin == nullptr) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
@@ -379,31 +243,6 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
       result->getDataPtr());    // ONLY IN HEADERS, PROTECTED by RUNTIME
   result->setDataPtr(nullptr);  // ONLY IN HEADERS
 
-  // put new header at the end of the list
-  if (_begin == nullptr) {
-    // list of headers is empty
-    TRI_ASSERT(_nrLinked == 0);
-    TRI_ASSERT(_totalSize == 0);
-
-    _begin = result;
-    _end = result;
-
-    result->_prev = nullptr;
-    result->_next = nullptr;
-  } else {
-    // list is not empty
-    TRI_ASSERT(_nrLinked > 0);
-    TRI_ASSERT(_totalSize > 0);
-    TRI_ASSERT(_nrAllocated > 0);
-    TRI_ASSERT(_begin != nullptr);
-    TRI_ASSERT(_end != nullptr);
-
-    _end->_next = result;
-    result->_prev = _end;
-    result->_next = nullptr;
-    _end = result;
-  }
-
   _nrAllocated++;
   _nrLinked++;
   _totalSize += (int64_t)TRI_DF_ALIGN_BLOCK(size);
@@ -419,8 +258,6 @@ void TRI_headers_t::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
   if (header == nullptr) {
     return;
   }
-
-  validate("before release", header, nullptr);
 
   if (unlinkHeader) {
     this->unlink(header);
@@ -446,11 +283,7 @@ void TRI_headers_t::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
     _blocks.clear();
 
     _freelist = nullptr;
-    _begin = nullptr;
-    _end = nullptr;
   }
-
-  validate("after release", header, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,40 +297,4 @@ void TRI_headers_t::adjustTotalSize(int64_t oldSize, int64_t newSize) {
 
   _totalSize -= (TRI_DF_ALIGN_BLOCK(oldSize) - TRI_DF_ALIGN_BLOCK(newSize));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validates the linked list
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef VALIDATE_MASTER_POINTERS
-void TRI_headers_t::validate (char const* msg, 
-                              TRI_doc_mptr_t const* header, 
-                              TRI_doc_mptr_t const* old) {
-  LOG(TRACE) << "validating master pointers for " << (void*) this << ", stage: " << msg;
-  LOG(TRACE) << "begin: " << (void*) _begin << ", end: " << (void*) _end << ", nrLinked: " << _nrLinked;
-  
-  if (header != nullptr) {
-    LOG(TRACE) << "header: " << (void*) header << ", rid: " << header->_rid << ", fid: " << header->_fid << ", prev: " << (void*) header->_prev << ", next: " << (void*) header->_next << ", data: " << (void*) header->getDataPtr() << ", key: " << TRI_EXTRACT_MARKER_KEY(header);
-  }
-  if (old != nullptr) {
-    LOG(TRACE) << "old: " << (void*) old << ", rid: " << old->_rid << ", fid: " << old->_fid << ", prev: " << (void*) old->_prev << ", next: " << (void*) old->_next << ", data: " << (void*) old->getDataPtr() << ", key: " << TRI_EXTRACT_MARKER_KEY(old);
-  }
-  
-  auto current = _begin;
-  size_t i = 0;
-  while (current != nullptr) {
-    LOG(TRACE) << "- mptr #" << ++i << ", current: " << (void*) current << ", rid: " << current->_rid << ", fid: " << current->_fid << ", prev: " << (void*) current->_prev << ", next: " << (void*) current->_next << ", data: " << (void*) current->getDataPtr() << ", key: " << TRI_EXTRACT_MARKER_KEY(current);
-    
-    if (current->_next == nullptr) {
-      // last element
-      break;
-    }
-    TRI_ASSERT(current == current->_next->_prev);
-    decltype(current) last = current;
-    current = current->_next;
-    TRI_ASSERT(last == current->_prev);
-  }
-  TRI_ASSERT(current == _end);
-}
-#endif
 

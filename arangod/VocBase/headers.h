@@ -106,22 +106,6 @@ class TRI_headers_t {
   void adjustTotalSize(int64_t, int64_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the element at the head of the list
-  ///
-  /// note: the element returned might be nullptr
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_doc_mptr_t* front() const { return _begin; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the element at the tail of the list
-  ///
-  /// note: the element returned might be nullptr
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_doc_mptr_t* back() const { return _end; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of active headers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -135,21 +119,8 @@ class TRI_headers_t {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief validates the linked list
-  //////////////////////////////////////////////////////////////////////////////
-
-#ifdef VALIDATE_MASTER_POINTERS
-  void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*);
-#else
-  inline void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*) {}
-#endif
-
- private:
   TRI_doc_mptr_t const* _freelist;  // free headers
 
-  TRI_doc_mptr_t* _begin;  // start pointer to list of allocated headers
-  TRI_doc_mptr_t* _end;    // end pointer to list of allocated headers
   size_t _nrAllocated;     // number of allocated headers
   size_t _nrLinked;        // number of linked headers
   int64_t _totalSize;      // total size of markers for linked headers
