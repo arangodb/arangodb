@@ -171,52 +171,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateSaved(arangodb::SingleCollectionTransaction& trx,
-                     TRI_voc_cid_t cid, TRI_doc_mptr_copy_t const& mptr) {
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
-
-    rest::HttpResponse::HttpResponseCode statusCode;
-    if (trx.synchronous()) {
-      statusCode = rest::HttpResponse::CREATED;
-    } else {
-      statusCode = rest::HttpResponse::ACCEPTED;
-    }
-
-    TRI_col_type_e type = trx.documentCollection()->_info.type();
-    generate20x(statusCode, trx.resolver()->getCollectionName(cid),
-                (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid,
-                type);  // PROTECTED by trx here
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates message for a saved document
   //////////////////////////////////////////////////////////////////////////////
 
   void generateSaved(arangodb::OperationResult const& result,
                      std::string const& collectionName, TRI_col_type_e type);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates deleted message
-  ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDeleted(arangodb::SingleCollectionTransaction& trx,
-                       TRI_voc_cid_t cid, TRI_voc_key_t key,
-                       TRI_voc_rid_t rid) {
-    rest::HttpResponse::HttpResponseCode statusCode;
-    if (trx.synchronous()) {
-      statusCode = rest::HttpResponse::OK;
-    } else {
-      statusCode = rest::HttpResponse::ACCEPTED;
-    }
-
-    TRI_col_type_e type = trx.documentCollection()->_info.type();
-    generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid,
-                type);
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
@@ -226,23 +184,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                        std::string const& collectionName, TRI_col_type_e type);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates document not found error message, read transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDocumentNotFound(
-      arangodb::SingleCollectionTransaction& trx, TRI_voc_cid_t cid,
-      TRI_voc_key_t key) {
-    generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocumentNotFound(std::string const&,
-                                TRI_voc_key_t) {
-    generateError(rest::HttpResponse::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  void generateDocumentNotFound(std::string const& /* collection name */,
+                                std::string const& /* document key */) {
+    generateError(rest::HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -258,25 +205,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateForbidden();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates precondition failed, for a read-transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generatePreconditionFailed(SingleCollectionTransaction& trx,
-                                  TRI_voc_cid_t cid,
-                                  TRI_doc_mptr_copy_t const& mptr,
-                                  TRI_voc_rid_t rid) {
-    return generatePreconditionFailed(
-        trx.resolver()->getCollectionName(cid),
-        (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr),
-        rid);  // PROTECTED by RUNTIME
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief generates precondition failed, without transaction info
   ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generatePreconditionFailed(std::string const&, TRI_voc_key_t key,
+  void generatePreconditionFailed(std::string const&, std::string const& key,
                                   TRI_voc_rid_t rid);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -311,7 +244,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateTransactionError(std::string const&, int, TRI_voc_key_t = 0,
+  void generateTransactionError(std::string const&, int, std::string const& key,
                                 TRI_voc_rid_t = 0);
 
   //////////////////////////////////////////////////////////////////////////////

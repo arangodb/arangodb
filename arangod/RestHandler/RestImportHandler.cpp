@@ -379,7 +379,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -518,7 +518,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
   } else {
     // generate result
     generateDocumentsCreated(result);
@@ -632,7 +632,7 @@ bool RestImportHandler::createFromKeyValueList() {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
     return false;
   }
 
@@ -730,7 +730,7 @@ bool RestImportHandler::createFromKeyValueList() {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collection, res, "");
   } else {
     // generate result
     generateDocumentsCreated(result);

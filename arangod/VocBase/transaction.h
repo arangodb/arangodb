@@ -192,13 +192,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction(
 /// @brief return the collection from a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WasSynchronousCollectionTransaction(TRI_transaction_t const*,
-                                             TRI_voc_cid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection from a transaction
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_transaction_collection_t* TRI_GetCollectionTransaction(
     TRI_transaction_t const*, TRI_voc_cid_t, TRI_transaction_type_e);
 

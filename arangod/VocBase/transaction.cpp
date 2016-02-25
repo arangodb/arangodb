@@ -794,7 +794,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
-
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
 }
 
@@ -807,23 +806,9 @@ TRI_transaction_type_e TRI_GetTransactionTypeFromStr(char const* s) {
     return TRI_TRANSACTION_READ;
   } else if (TRI_EqualString(s, "write")) {
     return TRI_TRANSACTION_WRITE;
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid transaction type");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection from a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WasSynchronousCollectionTransaction(TRI_transaction_t const* trx,
-                                             TRI_voc_cid_t cid) {
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING ||
-             trx->_status == TRI_TRANSACTION_ABORTED ||
-             trx->_status == TRI_TRANSACTION_COMMITTED);
-
-  return trx->_waitForSync;
+  } 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid transaction type");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
