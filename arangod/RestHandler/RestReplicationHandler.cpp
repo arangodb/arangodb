@@ -871,7 +871,8 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       firstRegularTick =
           static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
     }
-    VPackOptions options;
+    // copy default options
+    VPackOptions options = VPackOptions::Defaults;
     options.checkAttributeUniqueness = true;
     std::shared_ptr<VPackBuilder> parsedRequest;
     try {
@@ -1308,7 +1309,8 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
 void RestReplicationHandler::handleCommandRestoreCollection() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
-  VPackOptions options;
+  // copy default options
+  VPackOptions options = VPackOptions::Defaults;
   options.checkAttributeUniqueness = true;
 
   try {
@@ -1381,7 +1383,8 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 void RestReplicationHandler::handleCommandRestoreIndexes() {
   std::shared_ptr<VPackBuilder> parsedRequest;
 
-  VPackOptions options;
+  // copy default options
+  VPackOptions options = VPackOptions::Defaults;
   options.checkAttributeUniqueness = true;
 
   try {
@@ -2444,7 +2447,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (result.status == CL_COMM_RECEIVED) {
         if (result.answer_code == arangodb::rest::HttpResponse::OK ||
             result.answer_code == arangodb::rest::HttpResponse::CREATED) {
-          VPackOptions options;
+          // copy default options
+          VPackOptions options = VPackOptions::Defaults;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
@@ -2476,7 +2480,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
           }
         } else if (result.answer_code ==
                    arangodb::rest::HttpResponse::SERVER_ERROR) {
-          VPackOptions options;
+          // copy default options
+          VPackOptions options = VPackOptions::Defaults;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
@@ -2797,9 +2802,8 @@ void RestReplicationHandler::handleCommandFetchKeys() {
         collectionKeys->dumpKeys(json, chunk, chunkSize);
       } else {
         bool success;
-        VPackOptions options;
         std::shared_ptr<VPackBuilder> parsedIds =
-            parseVelocyPackBody(&options, success);
+            parseVelocyPackBody(&VPackOptions::Defaults, success);
         if (!success) {
           collectionKeys->release();
           return;
@@ -3034,9 +3038,8 @@ void RestReplicationHandler::handleCommandDump() {
 
 void RestReplicationHandler::handleCommandMakeSlave() {
   bool success;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, success);
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -3213,9 +3216,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
 void RestReplicationHandler::handleCommandSync() {
   bool success;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, success);
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -3381,9 +3383,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_replication_applier_configuration_t config;
 
   bool success;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, success);
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
 
   if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -3588,10 +3589,9 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandAddFollower() {
-  VPackOptions options;
   bool success = false;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, success);
+      parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;

@@ -72,6 +72,8 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
 ////////////////////////////////////////////////////////////////////////////////
   
 void VelocyPackHelper::initialize() {
+  LOG(TRACE) << "initializing vpack";
+
   // initialize attribute translator
   Translator.reset(new VPackAttributeTranslator);
 
@@ -86,6 +88,7 @@ void VelocyPackHelper::initialize() {
 
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
+  VPackSlice::attributeTranslator = Translator.get();
   
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);

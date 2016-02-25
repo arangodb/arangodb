@@ -56,9 +56,8 @@ HttpHandler::status_t RestSimpleHandler::execute() {
 
   if (type == HttpRequest::HTTP_REQUEST_PUT) {
     bool parsingSuccess = true;
-    VPackOptions options;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&options, parsingSuccess);
+        parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
 
     if (!parsingSuccess) {
       return status_t(HANDLER_DONE);

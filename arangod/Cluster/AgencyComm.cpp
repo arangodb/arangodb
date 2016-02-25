@@ -20,6 +20,7 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Cluster/AgencyComm.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
@@ -654,11 +655,10 @@ bool AgencyComm::tryInitializeStructure() {
   try {
     VPackSlice s = builder.slice();
 
-    VPackOptions dumperOptions;
     // now dump the Slice into an std::string
     std::string buffer;
     VPackStringSink sink(&buffer);
-    VPackDumper::dump(s, &sink, &dumperOptions);
+    VPackDumper::dump(s, &sink);
 
     LOG(DEBUG) << "Initializing agency with " << buffer;
 

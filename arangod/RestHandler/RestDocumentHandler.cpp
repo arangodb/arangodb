@@ -106,7 +106,8 @@ bool RestDocumentHandler::createDocument() {
   std::string collectionName(collection);
 
   bool parseSuccess = true;
-  VPackOptions options;
+  // copy default options
+  VPackOptions options = VPackOptions::Defaults;
   options.checkAttributeUniqueness = true;
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, parseSuccess);
@@ -306,6 +307,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   if (ifNoneRid != 0 && ifNoneRid == rid) {
     generateNotModified(rid);
   } else {
+    // copy default options
     VPackOptions options = VPackOptions::Defaults;
     options.customTypeHandler = result.customTypeHandler;
     generateDocument(result.slice(), generateBody, &options);
@@ -524,9 +526,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   std::string const& key = suffix[1];
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     return false;
   }
