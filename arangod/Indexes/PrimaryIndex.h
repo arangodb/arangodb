@@ -41,8 +41,10 @@ class Transaction;
 class PrimaryIndexIterator final : public IndexIterator {
  public:
   PrimaryIndexIterator(arangodb::Transaction* trx, PrimaryIndex const* index,
-                       std::vector<char const*>& keys)
-      : _trx(trx), _index(index), _keys(std::move(keys)), _position(0) {}
+                       arangodb::velocypack::Slice const keys)
+      : _trx(trx), _index(index), _keys(keys), _position(0) {
+        TRI_ASSERT(_keys.isArray());
+      }
 
   ~PrimaryIndexIterator() {}
 
@@ -53,7 +55,7 @@ class PrimaryIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   PrimaryIndex const* _index;
-  std::vector<char const*> _keys;
+  arangodb::velocypack::Slice const _keys;
   size_t _position;
 };
 
@@ -244,6 +246,10 @@ class PrimaryIndex final : public Index {
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
+
+  IndexIterator* iteratorForSlice(arangodb::Transaction*, IndexIteratorContext*,
+                                  arangodb::velocypack::Slice const,
+                                  bool) const override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

@@ -80,12 +80,16 @@ static bool IsEqualElementElement(void* userData, TRI_doc_mptr_t const* left,
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   while (true) {
-    if (_position >= _keys.size()) {
+    if (_position >= static_cast<size_t>(_keys.length())) {
       // we're at the end of the lookup values
       return nullptr;
     }
 
-    auto result = _index->lookupKey(_trx, _keys[_position++]);
+    VPackSlice eqMatch = _keys.at(_position++);
+    if (!eqMatch.hasKey(TRI_SLICE_KEY_EQUAL)) {
+      continue;
+    }
+    auto result = _index->lookupKey(_trx, eqMatch.get(TRI_SLICE_KEY_EQUAL));
 
     if (result != nullptr) {
       // found a result
@@ -433,6 +437,20 @@ IndexIterator* PrimaryIndex::iteratorForCondition(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given slice
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* PrimaryIndex::iteratorForSlice(
+    arangodb::Transaction* trx, IndexIteratorContext* ctxt,
+    arangodb::velocypack::Slice const searchValues, bool) const {
+  if (!searchValues.isArray()) {
+    // Invalid searchValue
+    return nullptr;
+  }
+  return new PrimaryIndexIterator(trx, this, searchValues);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -458,14 +476,13 @@ IndexIterator* PrimaryIndex::createIterator(
   bool const isId =
       (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
 
+  // TODO Where to store the BUILDER?
+
   // only leave the valid elements in the vector
-  size_t const n = valNodes.size();
-  std::vector<char const*> keys;
-  keys.reserve(n);
+  VPackBuilder keys;
+  keys.openArray();
 
-  for (size_t i = 0; i < n; ++i) {
-    auto valNode = valNodes[i];
-
+  for (auto const& valNode : valNodes) {
     if (!valNode->isStringValue()) {
       continue;
     }
@@ -500,14 +517,20 @@ IndexIterator* PrimaryIndex::createIterator(
       }
 
       // use _key value from _id
-      keys.push_back(key);
+      keys.openObject();
+      keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(key));
+      keys.close();
     } else {
-      keys.emplace_back(valNode->getStringValue());
+      keys.openObject();
+      keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
+      keys.close();
     }
   }
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new PrimaryIndexIterator(trx, this, keys);
+  keys.close();
+  TRI_ASSERT(false); // TODO This has undefined behaviour. We have to put keys somewhere!
+  return new PrimaryIndexIterator(trx, this, keys.slice());
 }
