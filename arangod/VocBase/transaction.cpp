@@ -36,7 +36,7 @@
 #include "Wal/LogfileManager.h"
 #include "Utils/Transaction.h"
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define LOG_TRX(trx, level)  \
   LOG(TRACE) << "trx #" << trx->_id << "." << level << " (" << StatusTransaction(trx->_status) << "): " 
@@ -142,7 +142,7 @@ void ClearQueryCache(TRI_transaction_t* trx) {
 /// @brief return the status of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 static char const* StatusTransaction(const TRI_transaction_status_e status) {
   switch (status) {
     case TRI_TRANSACTION_UNDEFINED:

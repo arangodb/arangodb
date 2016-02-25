@@ -35,7 +35,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
 
@@ -911,7 +911,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const {
 /// @brief dump the node (for debugging purposes)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void AstNode::dump(int level) const {
   for (int i = 0; i < level; ++i) {
     std::cout << "  ";

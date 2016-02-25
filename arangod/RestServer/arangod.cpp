@@ -27,7 +27,7 @@
 #include "RestServer/ArangoServer.h"
 #include <signal.h>
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
 
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
       // caught an error during shutdown
       res = EXIT_FAILURE;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       std::cerr << "Caught an exception during shutdown" << std::endl;
 #endif
     }

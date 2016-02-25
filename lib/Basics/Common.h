@@ -37,7 +37,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 
-#include "build.h"
+#include "Basics/build.h"
 
 #ifdef _DEBUG
 #define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "-DEBUG]"
@@ -176,7 +176,7 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 /// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \

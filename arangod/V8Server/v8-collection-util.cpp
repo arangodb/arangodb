@@ -121,7 +121,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   TRI_ReleaseVocBase(collection->_vocbase);
 
 // find the persistent handle
-#if TRI_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end());
 #endif

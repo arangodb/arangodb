@@ -224,7 +224,7 @@ static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* SafeCopyJson(TRI_json_t const* src) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(src != nullptr);
 #endif
 

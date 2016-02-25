@@ -1,4 +1,4 @@
-.TH arangosh 1 "23 Feb 2016" "3.0.0-devel" "ArangoDB"
+.TH arangosh 1 "3.0.0-devel" "ArangoDB" "ArangoDB"
 .SH NAME
 arangosh - the ArangoDB shell
 .SH SYNOPSIS
@@ -9,71 +9,8 @@ client connection to the ArangoDB database. When the connection
 is established, it can be used to execute actions on the server.
 .SH OPTIONS
 For a complete list of options, please refer to the ArangoDB
-online manual, available at http://www.arangodb.org/
-
-The most important startup options are:
-
-.IP "--audit-log <string>"
-log input and output to audit log file <string>
-
-.IP "--configuration <string>"
-read configuration from file <string>
-
-.IP "--log.level <string>"
-set the log level (possible values: "fatal", "error", "warning", "info", "debug", "trace")
-
-.IP "--server.endpoint <string>"
-server endpoint to connect to, consisting of protocol, ip address and port
-
-.IP "--server.database <string>"
-database name to use when connection (default: "_system")
-
-.IP "--server.username <string>"
-username to use when connecting (default "root")
-
-.IP "--server.password <string>"
-password to use when connecting. Don't specify this option to get a password prompt
-
-.IP "--server.disable-authentication <boolean>"
-disable the password prompt and authentication when connecting to the server
-
-
-.SH EXAMPLES
-.nf
-shell> arangosh 
-.fi
-
-starts arangosh with the default user and server endpoint
-
-
-.nf
-shell> arangosh --server.username fuchsia 
-.fi
-
-starts arangosh with a specific user. Password prompt will follow if --server.disable-authentication is true.
-
-
-.nf
-shell> arangosh --server.username fuchsia --server.password "abcd@34"
-.fi
-
-starts arangosh with a specific user and password given on command line
-
-
-.nf
-shell> arangosh --server.endpoint tcp://192.168.173.13:8529
-.fi
-
-starts arangosh connecting to a specific server
-
-
-.nf
-shell> arangosh --server.endpoint ssl://192.168.173.13:8530
-.fi
-
-starts arangosh connecting to a specific server using an SSL connection
-
-
+online manual, available at https://www.arangodb.com/
 
 .SH AUTHOR
 Copyright ArangoDB GmbH, Cologne, Germany
+

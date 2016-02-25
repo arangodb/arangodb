@@ -67,7 +67,7 @@ static inline uint64_t MinSyncInterval() { return 5; }
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint32_t MinFileSize() {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // this allows testing with smaller logfile-sizes
   return 1 * 1024 * 1024;
 #else
@@ -762,7 +762,7 @@ SlotInfo LogfileManager::allocate(uint32_t size, TRI_voc_cid_t cid,
                                   void*& oldLegend) {
   if (!_allowWrites) {
 // no writes allowed
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
 
@@ -2178,7 +2178,7 @@ int LogfileManager::inspectLogfiles() {
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // print an inventory
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;

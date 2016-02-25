@@ -1,14 +1,45 @@
 # -*- mode: CMAKE; -*-
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                   COMMON INCLUDES
-## -----------------------------------------------------------------------------
-
 include_directories(.)
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                         LIBRARIES
-## -----------------------------------------------------------------------------
+################################################################################
+## BISON/FLEX
+################################################################################
+
+# note that we check-in the generated FLEX/BISON files, therefore they are
+# generate inside the source tree
+
+if (USE_MAINTAINER_MODE)
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      lib/JsonParser/json-parser.ll
+      lib/JsonParser/json-parser.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser/json-parser.ll
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/JsonParser.cpp
+    WORKING_DIRECTORY
+      ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND
+      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
+      ${FLEX_EXECUTABLE}
+      V8/v8-json.ll
+      V8/v8-json.cpp
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/V8/v8-json.ll
+    VERBATIM
+  )
+endif ()
 
 # note that we check-in the generated FLEX/BISON files, therefore they are
 # generate inside the source tree
@@ -46,48 +77,36 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 ################################################################################
-### @brief LIB_ARANGO
+## LIB_ARANGO
 ################################################################################
 
 if (MSVC)
-  SET(LIB_ARANGO_MSVC
-      Basics/locks-win32.cpp
-      Basics/memory-map-win32.cpp
-      Basics/terminal-utils-win32.cpp
-      Basics/threads-win32.cpp
-      Basics/win-utils.cpp
-      Zip/iowin32.cpp
+  set(LIB_ARANGO_MSVC
+    Basics/locks-win32.cpp
+    Basics/memory-map-win32.cpp
+    Basics/terminal-utils-win32.cpp
+    Basics/threads-win32.cpp
+    Basics/win-utils.cpp
+    Zip/iowin32.cpp
   )
 else ()
-  SET(LIB_ARANGO_POSIX
-      Basics/locks-posix.cpp
-      Basics/memory-map-posix.cpp
-      Basics/terminal-utils-posix.cpp
-      Basics/threads-posix.cpp
-      Rest/EndpointUnixDomain.cpp
+  set(LIB_ARANGO_POSIX
+    Basics/locks-posix.cpp
+    Basics/memory-map-posix.cpp
+    Basics/terminal-utils-posix.cpp
+    Basics/threads-posix.cpp
+    Rest/EndpointUnixDomain.cpp
   )
-
 endif ()
 
-# Find includes in corresponding build directories
-# set(CMAKE_INCLUDE_CURRENT_DIR ON) # <- now done via include_directories in main file
-
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(${V8_INCLUDE_DIR})
-include_directories(${ICU_INCLUDE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/boost/1.58.0)
-
-SET(LIB_ARANGO_CONSOLE
+set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
 )
 
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-
-SET(LIB_ARANGO_VPACK
+set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
@@ -106,138 +125,107 @@ SET(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp 
 )
 
-add_library(
-    ${LIB_ARANGO}
-    STATIC
-    ${LIB_ARANGO_APPLE}
-    ${LIB_ARANGO_MSVC}
-    ${LIB_ARANGO_POSIX}
-    ${LIB_ARANGO_CONSOLE}
-    ${LIB_ARANGO_VPACK}
-    ApplicationFeatures/ApplicationFeature.cpp
-    ApplicationFeatures/ApplicationServer.cpp
-    ApplicationFeatures/LoggerFeature.cpp
-    Basics/AttributeNameParser.cpp
-    Basics/Barrier.cpp
-    Basics/ConditionLocker.cpp
-    Basics/ConditionVariable.cpp
-    Basics/DataProtector.cpp
-    Basics/Exceptions.cpp
-    Basics/FileUtils.cpp
-    Basics/JsonHelper.cpp
-    Basics/Logger.cpp
-    Basics/Mutex.cpp
-    Basics/MutexLocker.cpp
-    Basics/Nonce.cpp
-    Basics/ProgramOptions.cpp
-    Basics/ProgramOptionsDescription.cpp
-    Basics/RandomGenerator.cpp
-    Basics/ReadWriteLock.cpp
-    Basics/ReadWriteLockCPP11.cpp
-    Basics/StringBuffer.cpp
-    Basics/StringUtils.cpp
-    Basics/Thread.cpp
-    Basics/ThreadPool.cpp
-    Basics/Utf8Helper.cpp
-    Basics/VPackStringBufferAdapter.cpp
-    Basics/VelocyPackHelper.cpp
-    Basics/WorkMonitor.cpp
-    Basics/application-exit.cpp
-    Basics/associative.cpp
-    Basics/conversions.cpp
-    Basics/csv.cpp
-    Basics/debugging.cpp
-    Basics/error.cpp
-    Basics/fasthash.cpp
-    Basics/files.cpp
-    Basics/fpconv.cpp
-    Basics/hashes.cpp
-    Basics/json-utilities.cpp
-    Basics/json.cpp
-    Basics/levenshtein.cpp 
-    Basics/memory.cpp
-    Basics/mimetypes.cpp
-    Basics/prime-numbers.cpp
-    Basics/process-utils.cpp
-    Basics/random.cpp
-    Basics/socket-utils.cpp
-    Basics/ssl-helper.cpp
-    Basics/structures.cpp
-    Basics/system-functions.cpp
-    Basics/terminal-utils.cpp
-    Basics/tri-strings.cpp
-    Basics/tri-zip.cpp
-    Basics/vector.cpp
-    Basics/voc-errors.cpp
-    Basics/voc-mimetypes.cpp
-    JsonParser/json-parser.cpp
-    ProgramOptions/program-options.cpp
-    Rest/Endpoint.cpp
-    Rest/EndpointIp.cpp
-    Rest/EndpointIpV4.cpp
-    Rest/EndpointIpV6.cpp
-    Rest/EndpointList.cpp
-    Rest/HttpRequest.cpp
-    Rest/HttpResponse.cpp
-    Rest/InitializeRest.cpp
-    Rest/SslInterface.cpp
-    Rest/Version.cpp
-    Utilities/LineEditor.cpp
-    Utilities/ScriptLoader.cpp
-    Utilities/ShellBase.cpp
-    Zip/ioapi.cpp
-    Zip/unzip.cpp
-    Zip/zip.cpp
-)
-target_link_libraries(${LIB_ARANGO} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
-
-
-################################################################################
-### @brief LIB_ARANGO_CLIENT
-################################################################################
-
-add_library(
-    ${LIB_ARANGO_CLIENT}
-    STATIC
-    SimpleHttpClient/GeneralClientConnection.cpp
-    SimpleHttpClient/ClientConnection.cpp
-    SimpleHttpClient/ConnectionManager.cpp
-    SimpleHttpClient/SslClientConnection.cpp
-    SimpleHttpClient/SimpleHttpClient.cpp
-    SimpleHttpClient/SimpleHttpResult.cpp
-)
-target_link_libraries(${LIB_ARANGO_CLIENT} ${AR_V8_LIBS} ${AR_ICU_LIBS} )
-
-################################################################################
-### @brief LIB_ARANGO_V8
-################################################################################
-
-add_library(
-    ${LIB_ARANGO_V8}
-    STATIC
-    V8/v8-json.cpp
-    V8/JSLoader.cpp
-    V8/V8LineEditor.cpp
-    V8/v8-buffer.cpp
-    V8/v8-conv.cpp
-    V8/v8-globals.cpp
-    V8/v8-shell.cpp
-    V8/v8-utils.cpp
-    V8/v8-vpack.cpp
-    V8/v8-environment.cpp
-    SimpleHttpClient/GeneralClientConnection.cpp
-    SimpleHttpClient/ClientConnection.cpp
-    SimpleHttpClient/ConnectionManager.cpp
-    SimpleHttpClient/SslClientConnection.cpp
-    SimpleHttpClient/SimpleHttpClient.cpp
-    SimpleHttpClient/SimpleHttpResult.cpp
+add_library(${LIB_ARANGO} STATIC
+  ${LIB_ARANGO_APPLE}
+  ${LIB_ARANGO_MSVC}
+  ${LIB_ARANGO_POSIX}
+  ${LIB_ARANGO_LINENOISE}
+  ${LIB_ARANGO_VPACK}
+  ApplicationFeatures/ApplicationFeature.cpp
+  ApplicationFeatures/ApplicationServer.cpp
+  ApplicationFeatures/LoggerFeature.cpp
+  Basics/AttributeNameParser.cpp
+  Basics/Barrier.cpp
+  Basics/ConditionLocker.cpp
+  Basics/ConditionVariable.cpp
+  Basics/DataProtector.cpp
+  Basics/Exceptions.cpp
+  Basics/FileUtils.cpp
+  Basics/JsonHelper.cpp
+  Basics/Logger.cpp
+  Basics/Mutex.cpp
+  Basics/MutexLocker.cpp
+  Basics/Nonce.cpp
+  Basics/ProgramOptions.cpp
+  Basics/ProgramOptionsDescription.cpp
+  Basics/RandomGenerator.cpp
+  Basics/ReadWriteLock.cpp
+  Basics/ReadWriteLockCPP11.cpp
+  Basics/StringBuffer.cpp
+  Basics/StringUtils.cpp
+  Basics/Thread.cpp
+  Basics/ThreadPool.cpp
+  Basics/Utf8Helper.cpp
+  Basics/VPackStringBufferAdapter.cpp
+  Basics/VelocyPackHelper.cpp
+  Basics/WorkMonitor.cpp
+  Basics/application-exit.cpp
+  Basics/associative.cpp
+  Basics/conversions.cpp
+  Basics/csv.cpp
+  Basics/debugging.cpp
+  Basics/error.cpp
+  Basics/fasthash.cpp
+  Basics/files.cpp
+  Basics/fpconv.cpp
+  Basics/hashes.cpp
+  Basics/json-utilities.cpp
+  Basics/json.cpp
+  Basics/levenshtein.cpp 
+  Basics/memory.cpp
+  Basics/mimetypes.cpp
+  Basics/prime-numbers.cpp
+  Basics/process-utils.cpp
+  Basics/random.cpp
+  Basics/socket-utils.cpp
+  Basics/ssl-helper.cpp
+  Basics/structures.cpp
+  Basics/system-functions.cpp
+  Basics/terminal-utils.cpp
+  Basics/tri-strings.cpp
+  Basics/tri-zip.cpp
+  Basics/vector.cpp
+  Basics/voc-errors.cpp
+  Basics/voc-mimetypes.cpp
+  JsonParser/json-parser.cpp
+  ProgramOptions/program-options.cpp
+  Rest/Endpoint.cpp
+  Rest/EndpointIp.cpp
+  Rest/EndpointIpV4.cpp
+  Rest/EndpointIpV6.cpp
+  Rest/EndpointList.cpp
+  Rest/HttpRequest.cpp
+  Rest/HttpResponse.cpp
+  Rest/InitializeRest.cpp
+  Rest/SslInterface.cpp
+  Rest/Version.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ScriptLoader.cpp
+  Utilities/ShellBase.cpp
+  Zip/ioapi.cpp
+  Zip/unzip.cpp
+  Zip/zip.cpp
+  SimpleHttpClient/GeneralClientConnection.cpp
+  SimpleHttpClient/ClientConnection.cpp
+  SimpleHttpClient/ConnectionManager.cpp
+  SimpleHttpClient/SslClientConnection.cpp
+  SimpleHttpClient/SimpleHttpClient.cpp
+  SimpleHttpClient/SimpleHttpResult.cpp
 )
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
+################################################################################
+## LIB_ARANGO_V8
+################################################################################
 
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:
+add_library(${LIB_ARANGO_V8} STATIC
+  V8/JSLoader.cpp
+  V8/V8LineEditor.cpp
+  V8/v8-buffer.cpp
+  V8/v8-conv.cpp
+  V8/v8-globals.cpp
+  V8/v8-json.cpp
+  V8/v8-shell.cpp
+  V8/v8-utils.cpp
+  V8/v8-vpack.cpp
+  V8/v8-environment.cpp
+)

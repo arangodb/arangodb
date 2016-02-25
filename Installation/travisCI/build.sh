@@ -31,7 +31,7 @@ echo "$0: compiling ArangoDB"
 echo
 echo "$0: linting ArangoDB JS"
 
-./scripts/jslint.sh
+./utils/jslint.sh
 
 echo
 echo "$0: testing ArangoDB"

@@ -4,15 +4,6 @@
 
 include(ExternalProject)
 
-macro(import_target tname tdep tinclude tpath)
-  add_library(${tname} STATIC IMPORTED GLOBAL)
-  add_dependencies(${tname} ${tdep})
-  set_target_properties(${tname} PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${tinclude}"
-    IMPORTED_LOCATION "${tpath}"
-  )
-endmacro()
-
 ################################################################################
 ## ETCD
 ################################################################################
@@ -25,11 +16,18 @@ if (GO_FOUND)
   endif ()
 
   ExternalProject_Add(etcd_build
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/etcd
-    CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND "${ETCD_BUILD_COMMAND}"
-    INSTALL_COMMAND "cp" ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
+    SOURCE_DIR
+      ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+    CONFIGURE_COMMAND
+      ""
+    BUILD_IN_SOURCE
+      TRUE
+    BUILD_COMMAND
+      "${ETCD_BUILD_COMMAND}"
+    INSTALL_COMMAND
+      "cp"
+        ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd
+        ${CMAKE_BINARY_DIR}/bin/etcd-arango
   )
 endif ()
 
@@ -37,117 +35,73 @@ endif ()
 ## ZLIB
 ################################################################################
 
-if (UNIX)
-  ExternalProject_Add(zlib_build
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib-1.2.7
-    BUILD_IN_SOURCE 1
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib
-    CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib --static
-    INSTALL_COMMAND ""
-    UPDATE_COMMAND ""
-  )  
-endif ()
-
-import_target(zlib zlib_build
-  "${CMAKE_CURRENT_SOURCE_DIR}/libev"
-  "${CMAKE_CURRENT_SOURCE_DIR}/libev/.libs/libev.a"
-)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
 
 ################################################################################
 ## EV
 ################################################################################
 
-if (UNIX)
-  ExternalProject_Add(ev_build
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libev
-    BUILD_IN_SOURCE 1
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libev
-    CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/libev --enable-static --disable-shared
-    INSTALL_COMMAND ""
-    UPDATE_COMMAND ""
-  )  
-endif ()
-
-import_target(ev ev_build
-  "${CMAKE_CURRENT_SOURCE_DIR}/libev"
-  "${CMAKE_CURRENT_SOURCE_DIR}/libev/.libs/libev.a"
-)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 
 ################################################################################
 ## V8 and ICU
 ################################################################################
 
-if (UNIX)
-  set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61")
-  set(V8_PLATFORM "native")
-  set(V8_BIN_DIR "${V8_DIR}/out/${V8_PLATFORM}")
-  set(ICU_BIN_DIR "${V8_BIN_DIR}")
+option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
-  if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
-    set(ICU_BIN_DIR "${ICU_BIN_DIR}/obj.target/third_party/icu")
-  endif ()
-else ()
-  message(ERROR "Not implemented for your OS")
-endif ()
+if (USE_PRECOMPILED_V8)
+  set(V8_DIR ${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61)
 
-set(V8_BUILD_COMMAND $(MAKE) -f Makefile-v8
-  strictaliasing=off snapshot=off werror=no
-  ${V8_PLATFORM}
-  CC=${CMAKE_C_COMPILER}
-  CXX=${CMAKE_CXX_COMPILER}
-  PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
-)
+  set(V8_PROC_ARCH "x64")
+  set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
 
-if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-  set(V8_BUILD_COMMAND ${V8_BUILD_COMMAND} LDFLAGS=-stdlib=libc++ CXXFLAGS=-stdlib=libc++)
-endif ()
+  set(V8_TARGET_DIR "${V8_DIR}/out")
+  set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj.target/tools/gyp")
+  set(ICU_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj.target/third_party/icu")
 
-if (NOT USE_PRECOMPILED_V8)
-  ExternalProject_Add(v8_build
-    SOURCE_DIR "${V8_DIR}"
-    BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND "${V8_BUILD_COMMAND}" 
-    INSTALL_COMMAND ""
+  set(ICU_VERSION
+    "54.1"
+    CACHE INTERNAL
+    "ICU: Version"
+    FORCE
   )
+
+  set(ICU_INCLUDE_DIR
+    ${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/i18n;${V8_DIR}/third_party/icu/source/io
+    CACHE INTERNAL
+    "ICU: include path"
+    FORCE
+  )
+
+  set(ICU_LIBS
+    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
+    ${libev_BINARY_DIR}/libev.a
+    CACHE INTERNAL
+    "ICU: Libraries"
+    FORCE
+  )
+
+  set(V8_VERSION
+    ${V8_VERSION}
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Version"
+    FORCE
+  )
+
+  set(V8_INCLUDE_DIR
+    ${V8_DIR}/include
+    CACHE INTERNAL
+    "${PROJECT_NAME}: include path"
+    FORCE
+  )
+
+  set(V8_LIBS
+    "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
+    ${libev_BINARY_DIR}/libev.a
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+    FORCE
+  )
+else ()
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
 endif ()
-
-import_target(v8_base v8_build
-  "${V8_DIR}/include"
-  "${V8_BIN_DIR}/libv8_base.a"
-)
-
-import_target(v8_libbase v8_build
-  "${V8_DIR}/include"
-  "${V8_BIN_DIR}/libv8_libbase.a"
-)
-
-import_target(v8_libplatform v8_build
-  "${V8_DIR}/include"
-  "${V8_BIN_DIR}/libv8_libplatform.a"
-)
-
-import_target(v8_nosnapshot v8_build
-  "${V8_DIR}/include"
-  "${V8_BIN_DIR}/libv8_nosnapshot.a"
-)
-
-import_target(v8_snapshot v8_build
-  "${V8_DIR}/include"
-  "${V8_BIN_DIR}/libv8_snapshot.a"
-)
-
-import_target(icu_uc v8_build
-  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-  "${ICU_BIN_DIR}/libicuuc.a"
-)
-
-import_target(icu_data v8_build
-  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-  "${ICU_BIN_DIR}/libicudata.a"
-)
-
-import_target(icu_i18n v8_build
-  "${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/io;${V8_DIR}/third_party/icu/source/i18n"
-  "${ICU_BIN_DIR}/libicui18n.a"
-)

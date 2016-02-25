@@ -766,7 +766,7 @@ TRI_vector_string_t TRI_Split2String(char const* source, char const* delim) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 void TRI_FreeStringZ(TRI_memory_zone_t* zone, char* value, char const* file,
                      int line) {

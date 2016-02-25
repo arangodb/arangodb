@@ -50,7 +50,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
 
   if (shape == nullptr) {
     LOG(ERR) << "unknown shape id " << accessor->_sid;
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
     return false;
@@ -70,7 +70,7 @@ static bool BytecodeShapeAccessor(VocShaper* shaper,
 
   if (path == nullptr) {
     LOG(ERR) << "unknown attribute path " << accessor->_pid;
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
     return false;

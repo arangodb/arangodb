@@ -566,7 +566,7 @@ void ExecutionNode::invalidateCost() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Only do every node exactly once
   // note: this check is not required normally because execution
   // plans do not contain cycles

@@ -151,7 +151,7 @@ extern bool IGNORE_DATAFILE_ERRORS;
 /// file sizes in maintainer mode)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define TRI_JOURNAL_MINIMAL_SIZE (16 * 1024)
 
