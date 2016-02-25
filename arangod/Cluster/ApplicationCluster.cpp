@@ -172,7 +172,7 @@ bool ApplicationCluster::prepare() {
         arangodb::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
-      LOG(FATAL) << "invalid endpoint '" << _agencyEndpoints[i].c_str() << "' specified for --cluster.agency-endpoint"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "invalid endpoint '" << _agencyEndpoints[i] << "' specified for --cluster.agency-endpoint"; FATAL_ERROR_EXIT();
     }
 
     AgencyComm::addEndpoint(unified);
@@ -215,7 +215,7 @@ bool ApplicationCluster::prepare() {
   std::string const endpoints = AgencyComm::getEndpointsString();
 
   if (!AgencyComm::initialize()) {
-    LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints.c_str() << ")"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints << ")"; FATAL_ERROR_EXIT();
   }
     
   ServerState::instance()->setLocalInfo(_myLocalInfo);
@@ -238,7 +238,7 @@ bool ApplicationCluster::prepare() {
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
-    LOG(FATAL) << "unable to determine unambiguous role for server '" << _myId.c_str() << "'. No role configured in agency (" << endpoints.c_str() << ")"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "unable to determine unambiguous role for server '" << _myId << "'. No role configured in agency (" << endpoints << ")"; FATAL_ERROR_EXIT();
   }
 
   if (_myId.empty()) {
@@ -282,7 +282,7 @@ bool ApplicationCluster::start() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (_myAddress.empty()) {
-    LOG(FATAL) << "unable to determine internal address for server '" << _myId.c_str() << "'. Please specify --cluster.my-address or configure the address for this server in the agency."; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "unable to determine internal address for server '" << _myId << "'. Please specify --cluster.my-address or configure the address for this server in the agency."; FATAL_ERROR_EXIT();
   }
 
   // now we can validate --cluster.my-address
@@ -290,7 +290,7 @@ bool ApplicationCluster::start() {
       arangodb::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
-    LOG(FATAL) << "invalid endpoint '" << _myAddress.c_str() << "' specified for --cluster.my-address"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid endpoint '" << _myAddress << "' specified for --cluster.my-address"; FATAL_ERROR_EXIT();
   }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
@@ -303,7 +303,7 @@ bool ApplicationCluster::start() {
 
   ServerState::instance()->setInitialized();
 
-  LOG(INFO) << "Cluster feature is turned on. Agency version: " << version.c_str() << ", Agency endpoints: " << endpoints.c_str() << ", server id: '" << _myId.c_str() << "', internal address: " << _myAddress.c_str() << ", role: " << ServerState::roleToString(role).c_str();
+  LOG(INFO) << "Cluster feature is turned on. Agency version: " << version << ", Agency endpoints: " << endpoints << ", server id: '" << _myId << "', internal address: " << _myAddress << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
@@ -339,7 +339,7 @@ bool ApplicationCluster::start() {
     }
 
     if (!_heartbeat->init() || !_heartbeat->start()) {
-      LOG(FATAL) << "heartbeat could not connect to agency endpoints (" << endpoints.c_str() << ")"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "heartbeat could not connect to agency endpoints (" << endpoints << ")"; FATAL_ERROR_EXIT();
     }
 
     while (!_heartbeat->isReady()) {
@@ -380,7 +380,7 @@ bool ApplicationCluster::open() {
 
     if (!result.successful()) {
       locker.unlock();
-      LOG(FATAL) << "unable to register server in agency: http code: " << result.httpCode() << ", body: " << result.body().c_str(); FATAL_ERROR_EXIT();
+      LOG(FATAL) << "unable to register server in agency: http code: " << result.httpCode() << ", body: " << result.body(); FATAL_ERROR_EXIT();
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {

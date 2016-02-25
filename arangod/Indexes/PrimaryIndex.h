@@ -32,12 +32,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace aql {
-class SortCondition;
-}
-namespace basics {
-struct AttributeName;
-}
 
 class Transaction;
 

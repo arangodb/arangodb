@@ -30,8 +30,6 @@
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
 
-struct TRI_document_collection_t;
-class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 class VocShaper;
 

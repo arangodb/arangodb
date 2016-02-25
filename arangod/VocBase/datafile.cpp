@@ -389,7 +389,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
-    LOG(ERR) << "cannot create new datafile '" << filename.c_str() << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot create new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
@@ -405,7 +405,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot seek in new datafile '" << filename.c_str() << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot seek in new datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -421,7 +421,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot create datafile '" << filename.c_str() << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -438,7 +438,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename.c_str());
 
-    LOG(ERR) << "cannot memory map file '" << filename.c_str() << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "cannot memory map file '" << filename << "': " << TRI_GET_ERRORBUF;
 
     return TRI_errno();
   }

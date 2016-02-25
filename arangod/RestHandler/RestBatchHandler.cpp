@@ -62,7 +62,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     return status_t(HttpHandler::HANDLER_FAILED);
   }
 
-  LOG(TRACE) << "boundary of multipart-message is '" << boundary.c_str() << "'";
+  LOG(TRACE) << "boundary of multipart-message is '" << boundary << "'";
 
   size_t errors = 0;
 
@@ -125,7 +125,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength).c_str();
+    LOG(TRACE) << "part header is: " << std::string(headerStart, headerLength);
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -145,7 +145,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength).c_str() << "'";
+      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength) << "'";
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -455,7 +455,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (arangodb::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG(WARN) << "unexpected content-type '" << value.c_str() << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType.c_str() << "'";
+          LOG(WARN) << "unexpected content-type '" << value << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

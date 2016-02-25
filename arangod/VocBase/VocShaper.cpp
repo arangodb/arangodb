@@ -862,9 +862,9 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
     bool const isIdentical = EqualElementShape(nullptr, f, l);
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name << "' in shape dictionary";
     } else {
-      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape dictionary";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name << "' in shape dictionary";
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -882,9 +882,9 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid << " in collection '" << name << "' in shape ids table";
     } else {
-      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name.c_str() << "' in shape ids table";
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid << " in collection '" << name << "' in shape ids table";
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -940,9 +940,9 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate attribute name '" << name << "' in collection '" << cname.c_str() << "'";
+      LOG(TRACE) << "found duplicate attribute name '" << name << "' in collection '" << cname << "'";
     } else {
-      LOG(ERR) << "found heterogenous attribute name '" << name << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute name '" << name << "' in collection '" << cname << "'";
     }
   }
 
@@ -958,9 +958,9 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG(TRACE) << "found duplicate attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
+      LOG(TRACE) << "found duplicate attribute id '" << aid << "' in collection '" << cname << "'";
     } else {
-      LOG(ERR) << "found heterogenous attribute id '" << aid << "' in collection '" << cname.c_str() << "'";
+      LOG(ERR) << "found heterogenous attribute id '" << aid << "' in collection '" << cname << "'";
     }
   }
 

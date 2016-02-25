@@ -75,7 +75,7 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _sinceCompactification(0),
       _originalBodyLength(0),
       _setupDone(false) {
-  LOG(TRACE) << "connection established, client " << TRI_get_fd_or_handle_of_socket(socket) << ", server ip " << _connectionInfo.serverAddress.c_str() << ", server port " << _connectionInfo.serverPort << ", client ip " << _connectionInfo.clientAddress.c_str() << ", client port " << _connectionInfo.clientPort;
+  LOG(TRACE) << "connection established, client " << TRI_get_fd_or_handle_of_socket(socket) << ", server ip " << _connectionInfo.serverAddress << ", server port " << _connectionInfo.serverPort << ", client ip " << _connectionInfo.clientAddress << ", client port " << _connectionInfo.clientPort;
 
   // acquire a statistics entry and set the type to HTTP
   ConnectionStatisticsAgent::acquire();
@@ -190,7 +190,7 @@ bool HttpCommTask::processRead() {
       _readPosition = ptr - _readBuffer->c_str() + 4;
 
       LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": " << std::string(_readBuffer->c_str() + _startPosition,
-                            _readPosition - _startPosition).c_str();
+                            _readPosition - _startPosition);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
@@ -314,7 +314,7 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l).c_str() << "'";
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l) << "'";
 
           // bad request, method not allowed
           HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
@@ -399,7 +399,7 @@ bool HttpCommTask::processRead() {
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
     LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
-                                _bodyLength).c_str();
+                                _bodyLength);
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -762,7 +762,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
       // server. that's a client problem.
       response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
                          allowHeaders);
-      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders.c_str();
+      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders;
     }
 
     // set caching time (hard-coded value)
