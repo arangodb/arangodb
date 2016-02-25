@@ -383,15 +383,21 @@ endif ()
 ## TCMALLOC
 ################################################################################
 
-set(USE_TCMALLOC, TRUE)
-
 if (WINDOWS OR SOLARIS)
-  set(USE_TCMALLOC, FALSE)
+  option(USE_TCMALLOC
+    "use TCMALLOC library"
+    FALSE
+  )
+else ()
+  option(USE_TCMALLOC
+    "use TCMALLOC if the library is available"
+    TRUE
+  )
 endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
-endif()
+endif ()
 
 ################################################################################
 ## 3RD PARTY
