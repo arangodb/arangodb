@@ -699,16 +699,6 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf16 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf16(uint16_t const* left, size_t leftLength,
-                      uint16_t const* right, size_t rightLength) {
-  return Utf8Helper::DefaultUtf8Helper.compareUtf16(left, leftLength, right,
-                                                    rightLength);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -738,17 +728,6 @@ int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
 char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength,
-                                               *dstLength);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Uppercase the characters in a UTF-8 string (implemented in
-/// Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_toupper_utf8(TRI_memory_zone_t* zone, char const* src,
-                       int32_t srcLength, int32_t* dstLength) {
-  return Utf8Helper::DefaultUtf8Helper.toupper(zone, src, srcLength,
                                                *dstLength);
 }
 

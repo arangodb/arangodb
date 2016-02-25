@@ -32,7 +32,6 @@ namespace arangodb {
 namespace rest {
 class ApplicationServer;
 class Scheduler;
-class SignalTask;
 class Task;
 
 ////////////////////////////////////////////////////////////////////////////////

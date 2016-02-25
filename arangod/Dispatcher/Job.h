@@ -32,7 +32,6 @@
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;
-class DispatcherThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for jobs

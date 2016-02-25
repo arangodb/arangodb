@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,45 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_WAL_SYNC_REGION_H
-#define ARANGOD_WAL_SYNC_REGION_H 1
+#ifndef APPLICATION_FEATURES_LOGGER_FEATURE_H
+#define APPLICATION_FEATURES_LOGGER_FEATURE_H 1
 
-#include "Basics/Common.h"
-#include "Wal/Logfile.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace wal {
+class LoggerFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit LoggerFeature(application_features::ApplicationServer* server);
 
-struct SyncRegion {
-  SyncRegion()
-      : logfileId(0),
-        logfile(nullptr),
-        mem(nullptr),
-        size(0),
-        logfileStatus(Logfile::StatusType::UNKNOWN),
-        firstSlotIndex(0),
-        lastSlotIndex(0),
-        waitForSync(false),
-        checkMore(false),
-        canSeal(false) {}
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  ~SyncRegion() {}
-
-  Logfile::IdType logfileId;
-  Logfile* logfile;
-  char* mem;
-  uint32_t size;
-  Logfile::StatusType logfileStatus;
-  size_t firstSlotIndex;
-  size_t lastSlotIndex;
-  bool waitForSync;
-  bool checkMore;
-  bool canSeal;
+ private:
+  std::vector<std::string> _output;
+  std::string _level;
+  bool _useLocalTime;
+  bool _lineNumber;
+  bool _thread;
 };
-}
 }
 
 #endif

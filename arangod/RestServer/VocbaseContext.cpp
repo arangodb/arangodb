@@ -328,7 +328,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
     username = up.substr(0, n);
 
-    LOG(TRACE) << "checking authentication for user '" << username.c_str() << "'";
+    LOG(TRACE) << "checking authentication for user '" << username << "'";
     bool res =
         TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(),
                                         up.substr(n + 1).c_str(), &mustChange);
