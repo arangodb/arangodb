@@ -14,9 +14,13 @@ warning:
 	@echo "  cmake .."
 	@echo "  make"
 	@echo ""
-	@echo "If running on MacOSX, please use OPENSSL from homebrew and"
-	@echo "  cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
+	@echo MacOS users:""
+	@echo "  Please use OPENSSL from homebrew and use"
 	@echo ""
+	@echo "    cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+	@echo ""
+	@echo "  Note that some versions of Apple's clang have severe performance"
+	@echo "  issues. Use GCC5 from homebrew in this case."
 
 VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))

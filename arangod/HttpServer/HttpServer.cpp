@@ -105,14 +105,14 @@ void HttpServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
-    LOG(TRACE) << "trying to bind to endpoint '" << i.first.c_str() << "' for requests";
+    LOG(TRACE) << "trying to bind to endpoint '" << i.first << "' for requests";
 
     bool ok = openEndpoint(i.second);
 
     if (ok) {
-      LOG(DEBUG) << "bound to endpoint '" << i.first.c_str() << "'";
+      LOG(DEBUG) << "bound to endpoint '" << i.first << "'";
     } else {
-      LOG(FATAL) << "failed to bind to endpoint '" << i.first.c_str() << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "failed to bind to endpoint '" << i.first << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
     }
   }
 }

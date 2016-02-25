@@ -2203,7 +2203,7 @@ div.queryline .fa.fa-search:hover {
 .navbar .arango-collection-select, div.queryline select,
 div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input,
 .modal-body select,
-.modal-body textarea, .login-window .login-input {
+.modal-body textarea, .login-window .login-input, .inputEditorWrapper .bindParamEditorWrapper table td input {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2216,7 +2216,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .navbar .arango-collection-select:focus, div.queryline select:focus,
   div.queryline input:focus, input.search-input:focus, .modal-body input:focus,
   .modal-body select:focus,
-  .modal-body textarea:focus, .login-window .login-input:focus {
+  .modal-body textarea:focus, .login-window .login-input:focus, .inputEditorWrapper .bindParamEditorWrapper table td input:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -2575,6 +2575,8 @@ div.footer-right {
   padding: 5px 16px; }
   .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus, .ajax-file-upload-red:focus, .ajax-file-upload:focus {
     outline: none; }
+  .button-neutral i, .button-primary i, .button-notification i, .button-success i, .button-danger i, .button-warning i, .button-inactive i, .button-close i, .ajax-file-upload-red i, .ajax-file-upload i {
+    margin-left: -5px; }
 
 .button-header {
   margin-top: 5px; }
@@ -2964,13 +2966,11 @@ div .tile, div .bigtile {
     div .tile img:hover, div .bigtile img:hover {
       cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-left: 22px;
     margin-right: 10px;
-    margin-top: -5px;
     position: relative;
-    right: 4px;
-    top: 2px; }
+    top: 0; }
   div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
   div .tile a svg.icon, div .bigtile a svg.icon {
@@ -5719,6 +5719,14 @@ div.headerBar {
 .modal-backdrop.fade.in {
   opacity: .4; }
 
+.fade {
+  opacity: 0;
+  -moz-transition: opacity 0.03s linear;
+  -ms-transition: opacity 0.03s linear;
+  -o-transition: opacity 0.03s linear;
+  -webkit-transition: opacity 0.03s linear;
+  transition: opacity 0.03s linear; }
+
 .modal {
   border: 0 !important;
   border-radius: 3px !important;
@@ -6032,6 +6040,52 @@ div.headerBar {
 
 .tooltipInfoTh {
   width: 10%; }
+
+.arangoToolbar span {
+  padding: 1px 4px 3px;
+  position: relative;
+  top: 4px; }
+
+.arangoToolbar {
+  background-color: #fff;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  height: 40px;
+  width: 100%; }
+  .arangoToolbar .pull-right,
+  .arangoToolbar .pull-left {
+    height: 30px;
+    margin-top: 5px; }
+  .arangoToolbar .pull-left button {
+    margin-left: 5px; }
+  .arangoToolbar .pull-right select:first-child,
+  .arangoToolbar .pull-right button:first-child {
+    margin-right: 5px; }
+  .arangoToolbar span {
+    font-weight: 100;
+    margin-left: 10px; }
+  .arangoToolbar i {
+    font-style: normal; }
+    .arangoToolbar i.fa {
+      margin-right: 5px; }
+    .arangoToolbar i.fa-close {
+      color: #666;
+      cursor: pointer; }
+      .arangoToolbar i.fa-close:hover {
+        color: #000; }
+  .arangoToolbar .toolbarType {
+    background: #5bc0de;
+    border-radius: 3px;
+    color: #fff; }
+  .arangoToolbar .styled-select {
+    width: auto; }
+
+.arangoToolbarTop {
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px; }
+
+.arangoToolbarBottom {
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px; }
 
 .dbselection {
   float: left;
@@ -6711,6 +6765,93 @@ toolbar {
   .editor-toolbar .fa-comment-o {
     position: relative;
     top: -1px; }
+
+.inputEditorWrapper {
+  border-bottom: 3px solid rgba(140, 138, 137, 0.25) !important;
+  border-left: 1px solid rgba(140, 138, 137, 0.25);
+  border-right: 1px solid rgba(140, 138, 137, 0.25);
+  clear: both;
+  height: 300px;
+  min-height: 300px;
+  width: 100%; }
+  .inputEditorWrapper .aqlEditorWrapper {
+    background: #f6f6f6;
+    border: 0 !important;
+    border-right: 3px solid rgba(140, 138, 137, 0.25) !important;
+    float: left;
+    height: 100% !important;
+    max-width: 85%;
+    min-width: 20%;
+    width: 70%; }
+  .inputEditorWrapper .bindParamEditorWrapper {
+    background: #eee;
+    overflow: hidden; }
+    .inputEditorWrapper .bindParamEditorWrapper table {
+      border-top: 0;
+      font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace; }
+      .inputEditorWrapper .bindParamEditorWrapper table tbody {
+        display: block;
+        overflow-y: auto; }
+      .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor {
+        background-color: transparent !important; }
+      .inputEditorWrapper .bindParamEditorWrapper table thead {
+        display: block; }
+      .inputEditorWrapper .bindParamEditorWrapper table td {
+        padding: 0 5px;
+        width: 50%; }
+        .inputEditorWrapper .bindParamEditorWrapper table td input {
+          clear: both;
+          float: right;
+          font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace !important;
+          height: 17px;
+          margin-bottom: 3px;
+          margin-top: 3px;
+          width: auto !important; }
+      .inputEditorWrapper .bindParamEditorWrapper table th {
+        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        height: 17px;
+        padding: 0;
+        width: 50%; }
+  .inputEditorWrapper .aqlEditorWrapper,
+  .inputEditorWrapper .bindParamEditorWrapper {
+    height: 100%; }
+    .inputEditorWrapper .aqlEditorWrapper div,
+    .inputEditorWrapper .bindParamEditorWrapper div {
+      height: 100%; }
+  .inputEditorWrapper .ui-resizable-s {
+    cursor: ns-resize; }
+  .inputEditorWrapper .ui-resizable-e {
+    cursor: ew-resize; }
+
+.queryContent {
+  clear: both;
+  margin-top: 0;
+  width: 100%; }
+
+.outputEditors {
+  margin-bottom: 60px; }
+
+.outputEditorWrapper {
+  clear: both;
+  height: 100px;
+  padding-top: 20px;
+  width: 100%; }
+  .outputEditorWrapper .switchAce {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    position: relative;
+    right: -27px;
+    top: 45px;
+    z-index: 10; }
+  .outputEditorWrapper .ace_editor {
+    border-left: 1px solid rgba(140, 138, 137, 0.25);
+    border-right: 1px solid rgba(140, 138, 137, 0.25);
+    height: 280px;
+    width: 100%; }
+    .outputEditorWrapper .ace_editor .ace_active-line {
+      background: #fff !important; }
 
 .display-none {
   display: none; }

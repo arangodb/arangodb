@@ -1,0 +1,79 @@
+<script id="queryView2.ejs" type="text/template">
+
+  <div class="headerBar">
+    <a class="arangoHeader">AQL Editor 2</a>
+  </div>
+
+
+  <div id="queryContent" class="queryContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button class="button-success"><i class="fa fa-star"></i>Queries</button>
+        <button class="button-success"><i class="fa fa-save"></i>Save</button>
+      </div>
+
+      <div class="pull-right">
+        <div class="styled-select">
+          <select id="querySize" class="query-size"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <div id="aqlEditor"></div>
+      </div>
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <div id="bindParamEditor"></div>
+      </div>
+    </div>
+
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-success query-button">Explain</button>
+        <button id="clearQuery" class="button-close query-button">Clear</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="outputEditors" class="outputEditors">
+  </div>
+
+</script>
+
+<script id="queryViewOutput.ejs" type="text/template">
+
+  <div id="outputEditorWrapper<%= counter %>" class="outputEditorWrapper">
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <span class="toolbarType"><%=type%></span>
+        <% if (type === 'Query') { %>
+          <span><i class="fa fa-clock-o"></i><i class="queryExecutionTime2"></i></span>
+        <% } %>
+      </div>
+      <div class="pull-right">
+        <span><i class="fa fa-close" element="outputEditor<%= counter %>"></i></span>
+      </div>
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <span class="switchAce" counter="<%=counter%>">Result</span>
+        <% } else { %>
+          <span class="SwitchAce" counter="<%=counter%>">AQL</span>
+        <% } %>
+      </div>
+    </div>
+    <div id="outputEditor<%= counter %>"></div>
+    <div id="sentQueryEditor<%= counter %>" style="display: none"></div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <button id="downloadQueryResult" counter="<%=counter%>" class="button-success">Download</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+</script>

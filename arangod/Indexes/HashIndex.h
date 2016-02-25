@@ -55,9 +55,6 @@ struct TRI_hash_index_search_value_t {
 };
 
 namespace arangodb {
-namespace aql {
-class SortCondition;
-}
 
 class HashIndex;
 class Transaction;

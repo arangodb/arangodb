@@ -244,7 +244,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
 
     else {
-      LOG(TRACE) << "found prefix match '" << prefix.c_str() << "'";
+      LOG(TRACE) << "found prefix match '" << prefix << "'";
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
@@ -288,7 +288,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     }
   }
 
-  LOG(TRACE) << "found handler for path '" << path.c_str() << "'";
+  LOG(TRACE) << "found handler for path '" << path << "'";
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);

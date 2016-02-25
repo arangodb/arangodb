@@ -523,6 +523,76 @@ include_directories(${ICU_INCLUDE_DIR})
 include(ArangoDBMacros)
 
 ################################################################################
+## ERRORS FILE
+################################################################################
+
+if (USE_MAINTAINER_MODE)
+  set(ERROR_FILES
+    lib/Basics/voc-errors.h
+    lib/Basics/voc-errors.cpp
+    js/common/bootstrap/errors.js
+  )
+
+  set(ERROR_FILES_GEN)
+  set(ERRORS_DAT lib/Basics/errors.dat)
+
+  foreach (m IN LISTS ERROR_FILES)
+    add_custom_command(
+      OUTPUT
+        ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND
+        ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+      DEPENDS
+        ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      WORKING_DIRECTORY
+        ${CMAKE_SOURCE_DIR}
+      COMMENT
+        "Building errors files ${m}"
+      VERBATIM
+    )
+
+    list(APPEND ERROR_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
+  endforeach ()
+
+  add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+endif ()
+
+################################################################################
+## MIMETYPES FILE
+################################################################################
+
+if (USE_MAINTAINER_MODE)
+  set(MIMETYPES_FILES
+    lib/Basics/voc-mimetypes.h
+    lib/Basics/voc-mimetypes.cpp
+    js/common/modules/@arangodb/mimetypes.js
+  )
+
+  set(MIMETYPES_FILES_GEN)
+  set(MIMETYPES_DAT lib/Basics/mimetypes.dat)
+
+  foreach (m IN LISTS MIMETYPES_FILES)
+    add_custom_command(
+      OUTPUT
+        ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND
+        ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+      DEPENDS
+        ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
+      WORKING_DIRECTORY
+        ${CMAKE_SOURCE_DIR}
+      COMMENT
+        "Building mimetypes files ${m}"
+      VERBATIM
+    )
+
+    list(APPEND MIMETYPES_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
+  endforeach ()
+
+  add_custom_target(mimetypes ALL DEPENDS ${MIMETYPES_FILES_GEN})
+endif ()
+
+################################################################################
 ## SUB-PROJECTS
 ################################################################################
 

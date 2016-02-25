@@ -269,15 +269,14 @@ ServerState::RoleEnum ServerState::getRole() {
       LOG(ERR) << "Could not talk to agency!";
       return ROLE_UNDEFINED;
     }
-    std::string jsonst = builder.slice().toJson();
-    LOG(DEBUG) << "Have stored " << jsonst.c_str() << " under Current/NewServers/" << _localInfo.c_str() << " in agency.";
+    LOG(DEBUG) << "Have stored " << builder.slice().toJson() << " under Current/NewServers/" << _localInfo << " in agency.";
   }
 
   // role not yet set
   role = determineRole(info, id);
   std::string roleString = roleToString(role);
 
-  LOG(DEBUG) << "Found my role: " << roleString.c_str();
+  LOG(DEBUG) << "Found my role: " << roleString;
 
   storeRole(role);
 
@@ -590,11 +589,11 @@ void ServerState::setState(StateEnum state) {
   }
 
   if (result) {
-    LOG(INFO) << "changing state of " << ServerState::roleToString(role).c_str() << " server from " << ServerState::stateToString(_state).c_str() << " to " << ServerState::stateToString(state).c_str();
+    LOG(INFO) << "changing state of " << ServerState::roleToString(role) << " server from " << ServerState::stateToString(_state) << " to " << ServerState::stateToString(state);
 
     _state = state;
   } else {
-    LOG(ERR) << "invalid state transition for " << ServerState::roleToString(role).c_str() << " server from " << ServerState::stateToString(_state).c_str() << " to " << ServerState::stateToString(state).c_str();
+    LOG(ERR) << "invalid state transition for " << ServerState::roleToString(role) << " server from " << ServerState::stateToString(_state) << " to " << ServerState::stateToString(state);
   }
 }
 
@@ -773,13 +772,13 @@ bool ServerState::redetermineRole() {
   std::string saveIdOfPrimary = _idOfPrimary;
   RoleEnum role = determineRole(_localInfo, _id);
   std::string roleString = roleToString(role);
-  LOG(INFO) << "Redetermined role from agency: " << roleString.c_str();
+  LOG(INFO) << "Redetermined role from agency: " << roleString;
   if (role == ServerState::ROLE_UNDEFINED) {
     return false;
   }
   RoleEnum oldRole = loadRole();
   if (role != oldRole) {
-    LOG(INFO) << "Changed role to: " << roleString.c_str();
+    LOG(INFO) << "Changed role to: " << roleString;
     storeRole(role);
     return true;
   }
@@ -804,7 +803,7 @@ ServerState::RoleEnum ServerState::determineRole(std::string const& info,
       return ServerState::ROLE_UNDEFINED;
     }
     // When we get here, we have have successfully looked up our id
-    LOG(DEBUG) << "Learned my own Id: " << id.c_str();
+    LOG(DEBUG) << "Learned my own Id: " << id;
     setId(id);
   }
 
@@ -919,7 +918,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   if (!result.successful()) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG(TRACE) << "Could not fetch configuration from agency endpoints (" << endpoints.c_str() << "): got status code " << result._statusCode << ", message: " << result.errorMessage().c_str() << ", key: " << key.c_str();
+    LOG(TRACE) << "Could not fetch configuration from agency endpoints (" << endpoints << "): got status code " << result._statusCode << ", message: " << result.errorMessage() << ", key: " << key;
 
     return ServerState::ROLE_UNDEFINED;
   }
@@ -969,7 +968,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
     if (!result.successful()) {
       std::string const endpoints = AgencyComm::getEndpointsString();
 
-      LOG(DEBUG) << "Could not fetch configuration from agency endpoints (" << endpoints.c_str() << "): got status code " << result._statusCode << ", message: " << result.errorMessage().c_str() << ", key: " << key.c_str();
+      LOG(DEBUG) << "Could not fetch configuration from agency endpoints (" << endpoints << "): got status code " << result._statusCode << ", message: " << result.errorMessage() << ", key: " << key;
     } else {
       result.parse("Target/MapLocalToID/", false);
       std::map<std::string, AgencyCommResultEntry>::const_iterator it =
@@ -1021,7 +1020,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   if (!result.successful()) {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
-    LOG(TRACE) << "Could not fetch configuration from agency endpoints (" << endpoints.c_str() << "): got status code " << result._statusCode << ", message: " << result.errorMessage().c_str() << ", key: " << key.c_str();
+    LOG(TRACE) << "Could not fetch configuration from agency endpoints (" << endpoints << "): got status code " << result._statusCode << ", message: " << result.errorMessage() << ", key: " << key;
 
     return ServerState::ROLE_UNDEFINED;
   }

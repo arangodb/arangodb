@@ -660,8 +660,8 @@ bool HeartbeatThread::sendState() {
     std::string const endpoints = AgencyComm::getEndpointsString();
 
     LOG(WARN) << "heartbeat could not be sent to agency endpoints ("
-              << endpoints.c_str() << "): http code: " << result.httpCode()
-              << ", body: " << result.body().c_str();
+              << endpoints << "): http code: " << result.httpCode()
+              << ", body: " << result.body();
     _numFails = 0;
   }
 

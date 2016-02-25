@@ -2603,7 +2603,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   }
 
   // default:
-  LOG(WARN) << "index type '" << typeStr.c_str() << "' is not supported in this version of ArangoDB and is ignored";
+  LOG(WARN) << "index type '" << typeStr << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3906,7 +3906,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
   }
 
   if (idx != nullptr) {
-    LOG(TRACE) << "geo-index already created for location '" << location.c_str() << "'";
+    LOG(TRACE) << "geo-index already created for location '" << location << "'";
 
     created = false;
 
@@ -3927,7 +3927,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{location, false}}},
         std::vector<TRI_shape_pid_t>{loc}, geoJson));
 
-    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << loc;
+    LOG(TRACE) << "created geo-index for location '" << location << "': " << loc;
   } else if (!longitude.empty() && !latitude.empty()) {
     geoIndex.reset(new arangodb::GeoIndex2(
         iid, document,
@@ -3935,7 +3935,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{latitude, false}}, {{longitude, false}}},
         std::vector<TRI_shape_pid_t>{lat, lon}));
 
-    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << lat << ", " << lon;
+    LOG(TRACE) << "created geo-index for location '" << location << "': " << lat << ", " << lon;
   }
 
   idx = static_cast<arangodb::GeoIndex2*>(geoIndex.get());
@@ -4021,7 +4021,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 1 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 1 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4045,7 +4045,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 2 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 2 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }

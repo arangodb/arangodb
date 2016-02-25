@@ -1,0 +1,74 @@
+%toolbarSpan {
+  padding: 1px 4px 3px;
+  position: relative;
+  top: 4px;
+}
+
+.arangoToolbar {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  height: 40px;
+  width: 100%;
+
+  .pull-right,
+  .pull-left {
+    height: 30px;
+    margin-top: 5px;
+  }
+
+  .pull-left {
+    button {
+      margin-left: 5px;
+    }
+  }
+
+  .pull-right {
+    select:first-child,
+    button:first-child {
+      margin-right: 5px;
+    }
+  }
+
+  span {
+    @extend %toolbarSpan;
+    font-weight: 100;
+    margin-left: 10px;
+  }
+
+  i {
+    font-style: normal;
+
+    &.fa {
+      margin-right: 5px;
+    }
+
+    &.fa-close {
+      color: $c-darker-grey;
+      cursor: pointer;
+
+      &:hover {
+        color: $c-black;
+      }
+    }
+  }
+
+  .toolbarType {
+    background: $c-info-blue;
+    border-radius: 3px;
+    color: $c-white;
+  }
+
+  .styled-select {
+    width: auto;
+  }
+}
+
+.arangoToolbarTop {
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.arangoToolbarBottom {
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+}

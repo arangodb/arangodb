@@ -92,7 +92,7 @@ void RestAqlHandler::createQueryFromJson() {
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to instantiate the query: " << res.details.c_str();
+    LOG(ERR) << "failed to instantiate the query: " << res.details;
 
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                   res.details);
@@ -160,7 +160,7 @@ void RestAqlHandler::parseQuery() {
                          queryString.size(), nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to instantiate the Query: " << res.details.c_str();
+    LOG(ERR) << "failed to instantiate the Query: " << res.details;
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -222,7 +222,7 @@ void RestAqlHandler::explainQuery() {
                          options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to instantiate the Query: " << res.details.c_str();
+    LOG(ERR) << "failed to instantiate the Query: " << res.details;
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -288,7 +288,7 @@ void RestAqlHandler::createQueryFromString() {
                 (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to instantiate the Query: " << res.details.c_str();
+    LOG(ERR) << "failed to instantiate the Query: " << res.details;
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                   res.details);
     delete query;
@@ -508,7 +508,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     }
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG(ERR) << "failed during use of query: " << ex.message().c_str();
+    LOG(ERR) << "failed during use of query: " << ex.message();
     generateError(HttpResponse::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
