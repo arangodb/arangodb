@@ -2,6 +2,11 @@
 'use strict';
 const expect = require('chai').expect;
 const sinon = require('sinon');
+const statuses = require('statuses');
+const path = require('path');
+const fs = require('fs');
+const internal = require('internal');
+const crypto = require('@arangodb/crypto');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 
 describe('SyntheticResponse', function () {
@@ -403,30 +408,284 @@ describe('SyntheticResponse', function () {
     });
   });
   describe('json', function () {
-    it('TODO');
+    [{hello: 'world'}, [1, 2, 3], 'a string', 23, null, false, true, -1].forEach(function (value) {
+      it(`converts ${value} to JSON`, function () {
+        const rawRes = {};
+        const res = new SyntheticResponse(rawRes, {});
+        res.json(value);
+        expect(rawRes.body).to.equal(JSON.stringify(value));
+      });
+    });
+    it('sets the content-type to JSON', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.json({some: 'json'});
+      expect(rawRes.contentType).to.equal('application/json; charset=utf-8');
+    });
+    it('does not override the existing content-type', function () {
+      const rawRes = {contentType: 'application/x-lolcat'};
+      const res = new SyntheticResponse(rawRes, {});
+      res.json({some: 'json'});
+      expect(rawRes.contentType).to.equal('application/x-lolcat');
+    });
   });
   describe('redirect', function () {
-    it('TODO');
+    it('sets the responseCode of the native request', function () {
+      const rawRes = {responseCode: 999};
+      const res = new SyntheticResponse(rawRes, {});
+      res.redirect(303, '/lol/cat');
+      expect(rawRes.responseCode).to.equal(303);
+    });
+    it('sets the location header of the native request', function () {
+      const rawRes = {responseCode: 999};
+      const res = new SyntheticResponse(rawRes, {});
+      res.redirect(303, '/lol/cat');
+      expect(rawRes.headers).to.have.a.property('location', '/lol/cat');
+    });
+    it('defaults to code 302 if no code is provided', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.redirect('/lol/cat');
+      expect(rawRes.responseCode).to.equal(302);
+    });
+    it('sets responseCode to 301 if code is "permanent"', function () {
+      const rawRes = {responseCode: 999};
+      const res = new SyntheticResponse(rawRes, {});
+      res.redirect('permanent', '/lol/cat');
+      expect(rawRes.responseCode).to.equal(301);
+    });
+    it('does not override responseCode if no code is provided', function () {
+      const rawRes = {responseCode: 999};
+      const res = new SyntheticResponse(rawRes, {});
+      res.redirect('/lol/cat');
+      expect(rawRes.responseCode).to.equal(999);
+    });
   });
   describe('sendFile', function () {
-    it('TODO');
+    const filename = fs.normalize(fs.makeAbsolute(path.join(
+      internal.startupPath,
+      'common',
+      'test-data',
+      'foxx',
+      'toomanysecrets.txt'
+    )));
+    const body = fs.readBuffer(filename);
+    const lastModified = new Date(fs.mtime(filename) * 1000).toUTCString();
+    it('sets the native request body to the file contents', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename);
+      expect(rawRes.body).to.eql(body);
+    });
+    it('sets the last-modified header by default', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename);
+      expect(rawRes.headers).to.have.a.property('last-modified', lastModified);
+    });
+    it('does not override existing last-modified header', function () {
+      const rawRes = {headers: {'last-modified': 'not today'}};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename);
+      expect(rawRes.headers).to.have.a.property('last-modified', 'not today');
+    });
+    it('overrides last-modified header if lastModified is true', function () {
+      const rawRes = {headers: {'last-modified': 'not today'}};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename, {lastModified: true});
+      expect(rawRes.headers).to.have.a.property('last-modified', lastModified);
+    });
+    it('does not set the last-modified header if lastModified is false', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename, {lastModified: false});
+      expect(rawRes).not.to.have.a.property('headers');
+    });
+    it('treats options boolean as lastModified', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendFile(filename, false);
+      expect(rawRes).not.to.have.a.property('headers');
+    });
   });
   describe('sendStatus', function () {
-    it('TODO');
+    it('sets the responseCode of the native request', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendStatus(400);
+      expect(rawRes.responseCode).to.equal(400);
+    });
+    it('sets the response body to the matching message', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendStatus(400);
+      expect(rawRes.body).to.equal(statuses[400]);
+    });
+    it('sets the response body to the status code if no message exists', function () {
+      expect(statuses).not.to.have.a.property('999');
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.sendStatus(999);
+      expect(rawRes.body).to.equal('999');
+    });
   });
   describe('set', function () {
-    it('TODO');
+    it('updates the header by name', function () {
+      const rawRes = {headers: {hello: 'world'}};
+      const res = new SyntheticResponse(rawRes, {});
+      res.set('hello', 'pancakes');
+      expect(rawRes.headers.hello).to.equal('pancakes');
+    });
+    it('converts the name to lowercase', function () {
+      const rawRes = {headers: {hello: 'world'}};
+      const res = new SyntheticResponse(rawRes, {});
+      res.set('Hello', 'pancakes');
+      expect(rawRes.headers.hello).to.equal('pancakes');
+    });
+    it('intercepts content-type headers', function () {
+      const rawRes = {contentType: 'application/x-meow'};
+      const res = new SyntheticResponse(rawRes, {});
+      res.set('content-type', 'application/x-woof');
+      expect(rawRes.contentType).to.equal('application/x-woof');
+    });
+    it('intercepts content-type headers in any case', function () {
+      const rawRes = {contentType: 'application/x-meow'};
+      const res = new SyntheticResponse(rawRes, {});
+      res.set('Content-Type', 'application/x-woof');
+      expect(rawRes.contentType).to.equal('application/x-woof');
+    });
+    it('has no effect when called without a name', function () {
+      const rawRes = {headers: {}, contentType: 'application/x-wat'};
+      const res = new SyntheticResponse(rawRes, {});
+      Object.freeze(rawRes.headers);
+      Object.freeze(rawRes);
+      expect(function () {
+        res.set();
+      }).not.to.throw();
+    });
+    it('accepts a headers object', function () {
+      const rawRes = {headers: {a: '1'}};
+      const res = new SyntheticResponse(rawRes, {});
+      res.set({b: '2', c: '3'});
+      expect(rawRes.headers).to.eql({a: '1', b: '2', c: '3'});
+    });
   });
   describe('status', function () {
-    it('TODO');
+    it('allows setting the responseCode of the native response', function () {
+      const rawRes = {responseCode: 999};
+      const res = new SyntheticResponse(rawRes, {});
+      res.status(666);
+      expect(rawRes.responseCode).to.equal(666);
+    });
   });
   describe('vary', function () {
-    it('TODO');
+    it('manipulates the vary header', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.vary('Origin');
+      expect(res.headers).to.have.a.property('vary', 'Origin');
+      res.vary('User-Agent');
+      expect(res.headers).to.have.a.property('vary', 'Origin, User-Agent');
+    });
+    it('ignores duplicates', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.vary('x, y');
+      expect(res.headers).to.have.a.property('vary', 'x, y');
+      res.vary('x, z');
+      expect(res.headers).to.have.a.property('vary', 'x, y, z');
+    });
+    it('understands arrays', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.vary('x');
+      expect(res.headers).to.have.a.property('vary', 'x');
+      res.vary(['y', 'z']);
+      expect(res.headers).to.have.a.property('vary', 'x, y, z');
+    });
+    it('understands wildcards', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.vary('*');
+      expect(res.headers).to.have.a.property('vary', '*');
+      res.vary('User-Agent');
+      expect(res.headers).to.have.a.property('vary', '*');
+    });
   });
   describe('cookie', function () {
-    it('TODO');
-  });
-  describe('send', function () {
-    it('TODO');
+    it('adds a cookie', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana');
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana'}
+      ]);
+    });
+    it('optionally adds a TTL', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', {ttl: 22});
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana', lifeTime: 22}
+      ]);
+    });
+    it('optionally adds some metadata', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', {
+        path: '/path',
+        domain: 'cats.example',
+        secure: true,
+        httpOnly: true
+      });
+      expect(rawRes.cookies).to.eql([
+        {
+          name: 'hello',
+          value: 'banana',
+          path: '/path',
+          domain: 'cats.example',
+          secure: true,
+          httpOnly: true
+        }
+      ]);
+    });
+    it('supports signed cookies when a secret is provided', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', {secret: 'potato'});
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana'},
+        {name: 'hello.sig', value: crypto.hmac('potato', 'banana')}
+      ]);
+    });
+    it('supports signed cookies with different algorithms', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', {
+        secret: 'potato',
+        algorithm: 'sha512'
+      });
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana'},
+        {name: 'hello.sig', value: crypto.hmac('potato', 'banana', 'sha512')}
+      ]);
+    });
+    it('treats options string as a secret', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', 'potato');
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana'},
+        {name: 'hello.sig', value: crypto.hmac('potato', 'banana')}
+      ]);
+    });
+    it('treats options number as a TTL value', function () {
+      const rawRes = {};
+      const res = new SyntheticResponse(rawRes, {});
+      res.cookie('hello', 'banana', 22);
+      expect(rawRes.cookies).to.eql([
+        {name: 'hello', value: 'banana', lifeTime: 22}
+      ]);
+    });
   });
 });

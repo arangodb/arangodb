@@ -29,7 +29,7 @@ const mediaTyper = require('media-typer');
 const mimeTypes = require('mime-types');
 const typeIs = require('type-is');
 const contentDisposition = require('content-disposition');
-const addCookie = require('@arangodb/actions').addCookie;
+const actions = require('@arangodb/actions');
 const crypto = require('@arangodb/crypto');
 
 const MIME_BINARY = 'application/octet-stream';
@@ -174,11 +174,16 @@ module.exports = class SyntheticResponse {
   }
 
   sendFile(filename, opts) {
+    if (typeof opts === 'boolean') {
+      opts = {lastModified: opts};
+    }
     if (!opts) {
       opts = {};
     }
     this._raw.body = fs.readBuffer(filename);
-    if (opts.lastModified !== false && !this.headers['last-modified']) {
+    if (opts.lastModified || (
+      opts.lastModified !== false && !this.headers['last-modified']
+    )) {
       const lastModified = new Date(fs.mtime(filename) * 1000);
       this.headers['last-modified'] = lastModified.toUTCString();
     }
@@ -189,12 +194,9 @@ module.exports = class SyntheticResponse {
   }
 
   sendStatus(status) {
-    const message = (
-      (Number(status) !== 306 && statuses[status])
-      || String(status)
-    );
+    const message = String(statuses[status] || status);
     this.statusCode = status;
-    this.send(message);
+    this.body = message;
     return this;
   }
 
@@ -234,10 +236,11 @@ module.exports = class SyntheticResponse {
       opts = {ttl: opts};
     }
     const ttl = (
-      (typeof opts.ttl === 'number' && opts.ttl !== Infinity && opts.ttl)
-      || undefined
+      (typeof opts.ttl === 'number' && opts.ttl !== Infinity)
+      ? opts.ttl
+      : undefined
     );
-    addCookie(
+    actions.addCookie(
       this._raw,
       name,
       value,
@@ -249,7 +252,7 @@ module.exports = class SyntheticResponse {
     );
     if (opts.secret) {
       const signature = crypto.hmac(opts.secret, value, opts.algorithm);
-      addCookie(
+      actions.addCookie(
         this._raw,
         `${name}.sig`,
         signature,
