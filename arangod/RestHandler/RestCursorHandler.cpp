@@ -361,7 +361,6 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }
-      queryResult.warnings = nullptr;
     }
   } catch (...) {
     return nullptr;
