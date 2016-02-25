@@ -69,7 +69,7 @@ class StandaloneTransactionContext final : public TransactionContext {
   int registerTransaction(struct TRI_transaction_s*) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief unregister the transaction, does nothing
+  /// @brief unregister the transaction
   //////////////////////////////////////////////////////////////////////////////
 
   void unregisterTransaction() override;

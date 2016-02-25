@@ -36,20 +36,20 @@ namespace arangodb {
 struct OperationResult {
 
   explicit OperationResult(int code) 
-      : customTypeHandler(nullptr), code(code), wasSynchronous(false) { 
+      : customTypeHandler(), code(code), wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
   }
 
   OperationResult(int code, std::string const& message) 
-      : customTypeHandler(nullptr), errorMessage(message), code(code),
+      : customTypeHandler(), errorMessage(message), code(code),
         wasSynchronous(false) { 
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  VPackCustomTypeHandler* handler,
+                  std::shared_ptr<VPackCustomTypeHandler> handler,
                   std::string const& message,
                   int code,
                   bool wasSynchronous)
@@ -58,7 +58,6 @@ struct OperationResult {
   }
 
   virtual ~OperationResult() {
-    // TODO: handle destruction of customTypeHandler
   }
 
   bool successful() const {
@@ -75,7 +74,7 @@ struct OperationResult {
   }
 
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  VPackCustomTypeHandler* customTypeHandler;
+  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
   std::string errorMessage;
   int code;
   bool wasSynchronous;

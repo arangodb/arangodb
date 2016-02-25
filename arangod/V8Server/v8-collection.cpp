@@ -588,7 +588,7 @@ static void DocumentVocbaseVPack(
   }
 
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opResult.customTypeHandler;
+  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
 

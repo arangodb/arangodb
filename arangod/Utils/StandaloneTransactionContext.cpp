@@ -77,7 +77,7 @@ int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void StandaloneTransactionContext::unregisterTransaction() {
-  // nothing to do. cleanup will be done by the parent's destructor
+  // nothing special to do. cleanup will be done by the parent's destructor
 }
 
 ////////////////////////////////////////////////////////////////////////////////
