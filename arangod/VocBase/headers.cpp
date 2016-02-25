@@ -76,7 +76,7 @@ TRI_headers_t::~TRI_headers_t() {
 /// @brief returns the memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_headers_t::memory() const {
+uint64_t TRI_headers_t::memory() const {
   return _nrAllocated * sizeof(TRI_doc_mptr_t); 
 }
 
@@ -113,30 +113,6 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks a header from the linked list, without freeing it
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
-  TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-
-  int64_t size = (int64_t)((TRI_df_marker_t*)header->getDataPtr())
-             ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
-  TRI_ASSERT(size > 0);
-
-  TRI_ASSERT(_nrLinked > 0);
-  _nrLinked--;
-  _totalSize -= TRI_DF_ALIGN_BLOCK(size);
-
-  if (_nrLinked == 0) {
-    TRI_ASSERT(_totalSize == 0);
-  } else {
-    TRI_ASSERT(_totalSize > 0);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief moves a header around in the list, using its previous position
 /// (specified in "old"), note that this is only used in revert operations
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,6 +143,30 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   // one is used once more. Therefore, the signs in the following statement
   // are actually OK:
   _totalSize -= (TRI_DF_ALIGN_BLOCK(newSize) - TRI_DF_ALIGN_BLOCK(oldSize));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlinks a header from the linked list, without freeing it
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(header->getDataPtr() !=
+             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+
+  int64_t size = (int64_t)((TRI_df_marker_t*)header->getDataPtr())
+             ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(size > 0);
+
+  TRI_ASSERT(_nrLinked > 0);
+  _nrLinked--;
+  _totalSize -= TRI_DF_ALIGN_BLOCK(size);
+
+  if (_nrLinked == 0) {
+    TRI_ASSERT(_totalSize == 0);
+  } else {
+    TRI_ASSERT(_totalSize > 0);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
