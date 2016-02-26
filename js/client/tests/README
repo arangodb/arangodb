@@ -1,8 +1,11 @@
 Conventions for testing framework:
 ==================================
 
-All files in the directory "shell" and ends with ".js" automatically
+All files in the directory "shell" that end with ".js" automatically
 take part in client shell tests (target "shell_client").
+
+All files in the directory "agency" that end with ".js" automatically
+take part in agency tests (target "agency").
 
 If the filename contains the string "-cluster", then it is only
 executed when testing in cluster mode. If the filename contains the
