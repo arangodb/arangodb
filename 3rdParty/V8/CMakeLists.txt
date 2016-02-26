@@ -4,7 +4,7 @@
 # V8 / ICU
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -22,6 +22,16 @@ set(V8_VERSION 4.3.61)
 
 set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
+file(MAKE_DIRECTORY ${V8_TARGET_DIR})
+
+# Detect endianess, and translate to gyp/v8 proper string.
+include(TestBigEndian)
+TEST_BIG_ENDIAN(IS_BIGENDIAN)
+if (${IS_BIGENDIAN})
+  set(ENDIANESS 'big')
+else()
+  set(ENDIANESS 'little')
+endif()
 
 if ("${BITS}" STREQUAL "64")
   set(V8_PROC_ARCH "x64")
@@ -36,12 +46,11 @@ else ()
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
 endif ()
 
+  
 list(APPEND V8_GYP_ARGS
-  ${V8_DIR}/build/gyp/gyp_main.py
     --generator-output=${V8_TARGET_DIR}
-    build/all.gyp
     -Dv8_target_arch=${V8_PROC_ARCH}
-    -S.${V8_TARGET_ARCH}
+    -Dbyteorder=${ENDIANESS}
 )
 
 if (DEBUG)
@@ -59,17 +68,46 @@ set(V8_COMPILE_ARGS
   CC=${CMAKE_C_COMPILER}
   CXX=${CMAKE_CXX_COMPILER}
   PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
-)
-  
+  )
+
+
 if (WIN32)
-  # TODO: get this from the main configure paramentrisation
+  set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
+  # try to find 2013 in 'Visual Studio 12 2013 Win64'
+  if (${CMAKE_GENERATOR} MATCHES "2013") 
+    list(APPEND V8_GYP_ARGS -G\ msvs_version=2013)
+  endif()
+  if (${CMAKE_GENERATOR} MATCHES "Win64")
+    set(MS_TARGET_PLATFORM x64)
+    list(APPEND V8_GYP_ARGS -Dtarget_arch=x64 -Dhost_arch=x64)
+  else ()
+    set(MS_TARGET_PLATFORM Win32)
+    list(APPEND V8_GYP_ARGS -Dtarget_arch=ia32 -Dhost_arch=ia32)
+  endif()
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+  
+      # TODO: get this from the main configure paramentrisation
   # CMAKE_BUILD_TYPE:STRING=RelWithDebInfo
-  # -G\ msvs_version=2013
-  #  -Dtarget_arch=x64
-  # -Dmode=release
-  list(APPEND V8_GYP_ARGS -Dcomponent=static_library -Dlibrary=static_library)
+  list(APPEND V8_GYP_ARGS
+    -Dcomponent=static_library
+    -Dlibrary=static_library
+    -Dmode=${WIN_GYP_RELEASE_TYPE}
+    #--depth=2
+    #-Dv8_use_external_startup_data=1
+    #-Dicu_gyp_path=../third_party/icu/icu.gyp
+    #-Dv8_optimized_debug=0
+    #-Dos_posix=0
+    #-Dclang=0
+    #-Dwant_separate_host_toolset=0
+    #-Dwant_separate_host_toolset=0
+    )
+  set(MSBUILD TRUE)    
 else ()
+  set(GYP_MAIN ${V8_DIR}/build/gyp/gyp_main.py)
+
+  list(APPEND V8_GYP_ARGS build/all.gyp)
   list(APPEND V8_GYP_ARGS --format make)
+  list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX OR SOLARIS)
     set(V8_BIN_DIR "${V8_BIN_DIR}/obj.target/tools/gyp")
@@ -101,6 +139,34 @@ ExternalProject_Add(v8_build
   BUILD_COMMAND $(MAKE) ${V8_COMPILE_ARGS} 
   INSTALL_COMMAND "")
 
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach ()
+#--------------------------------------------------------------------------------
+MESSAGE(${V8_GYP_ARGS})
+if (MSBUILD)
+  ExternalProject_Add(v8_build
+    BUILD_IN_SOURCE TRUE
+    SOURCE_DIR "${V8_DIR}"
+    CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+    BUILD_COMMAND msbuild ${V8_DIR}/build/all.sln '/t:All' '/p:Configuration=Debug' '/p:Platform=${MS_TARGET_PLATFORM}'
+ #   BUILD_COMMAND msbuild ${V8_DIR}/build/all.sln '/t:v8;v8_libbase;v8_libplatform' '/p:Configuration=Debug' '/p:Platform=${MS_TARGET_PLATFORM}'
+    INSTALL_COMMAND "")
+#  ExternalProject_Add_Step(v8_build icu_build
+#    COMMAND msbuild ${V8_DIR}/third_party/icu/icu.sln /t:icudata;icui18n;icuuc /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+#    DEPENDEES configure
+#    DEPENDERS build)
+
+else()
+  ExternalProject_Add(v8_build
+    BUILD_IN_SOURCE TRUE
+    SOURCE_DIR "${V8_DIR}"
+    CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+    BUILD_COMMAND $(MAKE) ${V8_COMPILE_ARGS}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND "")
+endif()
 ################################################################################
 ## ICU EXPORTS
 ################################################################################
