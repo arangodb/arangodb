@@ -25,7 +25,7 @@ endif ()
 
 find_package(Boost ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION} EXACT COMPONENTS unit_test_framework)
 
-if (${Boost_UNIT_TEST_FRAMEWORK_FOUND} STREQUAL "ON")
+if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
   try_compile(
     HAVE_USABLE_BOOT_LIBRARIES
       "${CMAKE_BINARY_DIR}/temp"
