@@ -39,23 +39,6 @@ using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 
-// uncomment the following to get some debugging information
-#if 0
-#define ENTER_BLOCK \
-  try {             \
-    (void)0;
-#define LEAVE_BLOCK                                                            \
-  }                                                                            \
-  catch (...) {                                                                \
-    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
-              << ":" << __LINE__ << "!\n";                                     \
-    throw;                                                                     \
-  }
-#else
-#define ENTER_BLOCK
-#define LEAVE_BLOCK
-#endif
-
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       _collection(en->collection()),
@@ -135,7 +118,6 @@ void IndexBlock::executeExpressions() {
 }
 
 int IndexBlock::initialize() {
-  ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
   cleanupNonConstExpressions();
@@ -222,7 +204,6 @@ int IndexBlock::initialize() {
   }
 
   return res;
-  LEAVE_BLOCK;
 }
 
 // init the ranges for reading, this should be called once per new incoming
@@ -242,8 +223,6 @@ int IndexBlock::initialize() {
 // _pos to evaluate the variable bounds.
 
 bool IndexBlock::initIndexes() {
-  ENTER_BLOCK
-
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -323,7 +302,6 @@ bool IndexBlock::initIndexes() {
     }
   }
   return true;
-  LEAVE_BLOCK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,7 +348,6 @@ void IndexBlock::startNextIterator() {
 // this is called every time everything in _documents has been passed on
 
 bool IndexBlock::readIndex(size_t atMost) {
-  ENTER_BLOCK;
   // this is called every time we want more in _documents.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -426,11 +403,9 @@ bool IndexBlock::readIndex(size_t atMost) {
   }
   _posInDocs = 0;
   return (!_documents.empty());
-  LEAVE_BLOCK;
 }
 
 int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  ENTER_BLOCK;
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -440,7 +415,6 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posInDocs = 0;
 
   return TRI_ERROR_NO_ERROR;
-  LEAVE_BLOCK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +422,6 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
-  ENTER_BLOCK;
   if (_done) {
     return nullptr;
   }
@@ -548,7 +521,6 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
-  LEAVE_BLOCK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
