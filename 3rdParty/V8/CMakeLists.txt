@@ -51,6 +51,7 @@ list(APPEND V8_GYP_ARGS
     --generator-output=${V8_TARGET_DIR}
     -Dv8_target_arch=${V8_PROC_ARCH}
     -Dbyteorder=${ENDIANESS}
+    -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
 
 if (DEBUG)
@@ -67,7 +68,6 @@ set(V8_COMPILE_ARGS
   builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH}
   CC=${CMAKE_C_COMPILER}
   CXX=${CMAKE_CXX_COMPILER}
-  PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
   )
 
 
@@ -147,25 +147,9 @@ if (MSBUILD)
     WORKING_DIRECTORY ${V8_DIR}/build
     SOURCE_DIR "${V8_DIR}"
     CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
-    BUILD_COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    BUILD_COMMAND 
     INSTALL_COMMAND "")
 
-  # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
-  ExternalProject_Add_Step(v8_build v8_build_v8
-    WORKING_DIRECTORY ${V8_DIR}/build
-    COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES configure
-    DEPENDERS build)
-  ExternalProject_Add_Step(v8_build v8_build_v8_libbase
-    WORKING_DIRECTORY ${V8_DIR}/build
-    COMMAND msbuild all.sln /t:v8_libbase /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES configure
-    DEPENDERS build)
-  ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
-    WORKING_DIRECTORY ${V8_DIR}/build
-    COMMAND msbuild all.sln /t:v8_libplatform /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES configure
-    DEPENDERS build)
 
   # and now ICU...
   ExternalProject_Add_Step(v8_build icu_build_icudata
@@ -186,6 +170,22 @@ if (MSBUILD)
     DEPENDEES configure
     DEPENDERS build)
 
+  # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
+  ExternalProject_Add_Step(v8_build v8_build_v8
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+  ExternalProject_Add_Step(v8_build v8_build_v8_libbase
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8_libbase /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+  ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8_libplatform /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
 
 else()
   ExternalProject_Add(v8_build
