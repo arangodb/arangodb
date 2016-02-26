@@ -396,7 +396,7 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
 
 void EdgeIndex::lookup(arangodb::Transaction* trx,
                        TRI_edge_index_iterator_t const* edgeIndexIterator,
-                       std::vector<TRI_doc_mptr_copy_t>& result,
+                       std::vector<TRI_doc_mptr_t>& result,
                        TRI_doc_mptr_t*& next, size_t batchSize) {
   auto callback =
       [&result](TRI_doc_mptr_t* data) -> void { result.emplace_back(*(data)); };

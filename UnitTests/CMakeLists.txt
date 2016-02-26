@@ -38,7 +38,7 @@ if (USE_BOOST_UNITTESTS)
 
   target_link_libraries(${TEST_BASICS_SUITE}
     ${LIB_ARANGO}
-    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    ${BOOST_LIBS}
     ${SYSTEM_LIBRARIES}
   )
 endif ()
@@ -57,8 +57,7 @@ if (USE_BOOST_UNITTESTS)
 
   target_link_libraries(${TEST_GEO_SUITE}
     ${LIB_ARANGO}
-    ${Boost_LIBRARIES}
-    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    ${BOOST_LIBS}
     ${SYSTEM_LIBRARIES}
   )
 endif ()

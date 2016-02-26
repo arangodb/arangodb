@@ -118,33 +118,33 @@ typedef uint64_t TRI_server_id_t;
 /// @brief enum for write operations
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_voc_document_operation_e : uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_UNKNOWN = 0,
   TRI_VOC_DOCUMENT_OPERATION_INSERT,
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
   TRI_VOC_DOCUMENT_OPERATION_REMOVE
-} TRI_voc_document_operation_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server operation modes
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_operationmode_e {
   TRI_VOCBASE_MODE_NORMAL = 1,     // CRUD is allowed
   TRI_VOCBASE_MODE_NO_CREATE = 2,  // C & U not allowed RD allowed
-} TRI_vocbase_operationmode_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge from and to
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_document_edge_s {
+struct TRI_document_edge_t {
   TRI_voc_cid_t _fromCid;
   TRI_voc_key_t _fromKey;
 
   TRI_voc_cid_t _toCid;
   TRI_voc_key_t _toKey;
-} TRI_document_edge_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 

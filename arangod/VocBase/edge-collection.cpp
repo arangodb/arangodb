@@ -76,7 +76,7 @@ static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
 static bool FindEdges(arangodb::Transaction* trx,
                       TRI_edge_direction_e direction,
                       arangodb::EdgeIndex* edgeIndex,
-                      std::vector<TRI_doc_mptr_copy_t>& result,
+                      std::vector<TRI_doc_mptr_t>& result,
                       VPackSlice const entry, int matchType) {
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
 
@@ -131,7 +131,7 @@ static bool FindEdges(arangodb::Transaction* trx,
 ///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
+std::vector<TRI_doc_mptr_t> TRI_LookupEdgesDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_edge_direction_e direction, TRI_voc_cid_t cid,
     std::string const& key) {
@@ -142,7 +142,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
   b.add(VPackValue(cname + "/" + key)); 
 
   // initialize the result vector
-  std::vector<TRI_doc_mptr_copy_t> result;
+  std::vector<TRI_doc_mptr_t> result;
 
   auto edgeIndex = document->edgeIndex();
 

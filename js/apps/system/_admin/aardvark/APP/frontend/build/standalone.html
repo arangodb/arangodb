@@ -2670,6 +2670,64 @@ if (list.length > 0) {
 
   </div>
 
+
+</script>
+
+<script id="queryView2.ejs" type="text/template">
+
+  <div class="headerBar">
+    <a class="arangoHeader">AQL Editor 2</a>
+  </div>
+
+
+  <div id="queryContent" class="queryContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
+      </div>
+
+      <div class="pull-right">
+        <div class="styled-select">
+          <select id="querySize" class="query-size"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
+        <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
+      </div>
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <div id="bindParamEditor"></div>
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
+          </div>
+          <div id="queryPreview"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-success query-button">Explain</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="outputEditors" class="outputEditors">
+  </div>
+
   <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -2706,61 +2764,6 @@ if (list.length > 0) {
       <button id="closeQueryModal" class="button-close">Cancel</button>
     </div>
 
-  </div>
-
-</script>
-
-<script id="queryView2.ejs" type="text/template">
-
-  <div class="headerBar">
-    <a class="arangoHeader">AQL Editor 2</a>
-  </div>
-
-
-  <div id="queryContent" class="queryContent">
-
-    <div class="arangoToolbar arangoToolbarTop">
-      <div class="pull-left">
-        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
-        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
-        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
-      </div>
-
-      <div class="pull-right">
-        <div class="styled-select">
-          <select id="querySize" class="query-size"/>
-        </div>
-      </div>
-    </div>
-
-    <div class="inputEditorWrapper">
-      <div class="aqlEditorWrapper" class="arangoEditor">
-        <div id="aqlEditor"></div>
-        <div id="queryTable" style="display: none"></div>
-      </div>
-      <div class="bindParamEditorWrapper" class="arangoEditor">
-        <div id="bindParamEditor"></div>
-        <div id="previewWrapper" class="previewWrapper" style="display: none">
-          <div id="previewBar" class="previewBar">
-            <span>Preview</span>
-          </div>
-          <div id="queryPreview"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="arangoToolbar arangoToolbarBottom">
-      <div class="pull-right">
-        <button id="executeQuery" class="button-success query-button">Execute</button>
-        <button id="explainQuery" class="button-success query-button">Explain</button>
-        <button id="clearQuery" class="button-close query-button">Clear</button>
-      </div>
-    </div>
-
-  </div>
-
-  <div id="outputEditors" class="outputEditors">
-  </div>
 
 </script>
 
@@ -2796,6 +2799,7 @@ if (list.length > 0) {
     </div>
   </div>
 
+  </div>
 </script>
 
 <script id="shellView.ejs" type="text/template">

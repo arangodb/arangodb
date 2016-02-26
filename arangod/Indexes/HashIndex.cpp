@@ -441,7 +441,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
 
 int HashIndex::lookup(arangodb::Transaction* trx,
                       arangodb::velocypack::Slice searchValue,
-                      std::vector<TRI_doc_mptr_copy_t>& documents,
+                      std::vector<TRI_doc_mptr_t>& documents,
                       TRI_index_element_t*& next, size_t batchSize) const {
   VPackBuilder keyBuilder;
   transformSearchValues(searchValue, keyBuilder);

@@ -91,11 +91,14 @@ else ()
   endif ()
 endif()
 
+list(APPEND V8_COMPILE_ARGS icui18n icuuc icudata)
+list(APPEND V8_COMPILE_ARGS v8)
+
 ExternalProject_Add(v8_build
   BUILD_IN_SOURCE TRUE
   SOURCE_DIR "${V8_DIR}"
   CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${V8_GYP_ARGS}
-  BUILD_COMMAND ${MAKE} ${V8_COMPILE_ARGS} 
+  BUILD_COMMAND $(MAKE) ${V8_COMPILE_ARGS} 
   INSTALL_COMMAND "")
 
 ################################################################################

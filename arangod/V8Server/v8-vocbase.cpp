@@ -1719,7 +1719,7 @@ static v8::Handle<v8::Value> VertexIdToData(
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
-  TRI_doc_mptr_copy_t document;
+  TRI_doc_mptr_t document;
 
   int res = trx->document(i->second.col, &document, vertexId.key);
 
@@ -2022,7 +2022,7 @@ class HopWeightCalculator {
   /// @brief Callable weight calculator for edge
   //////////////////////////////////////////////////////////////////////////////
 
-  double operator()(TRI_doc_mptr_copy_t& edge) { return 1; }
+  double operator()(TRI_doc_mptr_t& edge) { return 1; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2046,7 +2046,7 @@ class AttributeWeightCalculator {
   /// @brief Callable weight calculator for edge
   //////////////////////////////////////////////////////////////////////////////
 
-  double operator()(TRI_doc_mptr_copy_t const& edge) {
+  double operator()(TRI_doc_mptr_t const& edge) {
     if (_shapePid == 0) {
       return _defaultWeight;
     }

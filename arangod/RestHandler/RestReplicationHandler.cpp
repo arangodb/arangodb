@@ -1941,7 +1941,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     }
 
     try {
-      TRI_doc_mptr_copy_t mptr;
+      TRI_doc_mptr_t mptr;
 
       int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key,
                                                      &mptr, false);

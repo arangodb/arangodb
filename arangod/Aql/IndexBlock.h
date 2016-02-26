@@ -31,7 +31,7 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
 
-struct TRI_doc_mptr_copy_t;
+struct TRI_doc_mptr_t;
 
 namespace arangodb {
 class IndexIterator;
@@ -132,7 +132,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief document buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<TRI_doc_mptr_copy_t> _documents;
+  std::vector<TRI_doc_mptr_t> _documents;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in _allDocs

@@ -717,7 +717,7 @@ static void ReadDocument(arangodb::AqlTransaction* trx,
     }
   }
 
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = trx->document(collection, &mptr, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -735,7 +735,7 @@ static void ReadDocument(arangodb::AqlTransaction* trx,
 
 static void FilterDocuments(arangodb::ExampleMatcher const* matcher,
                             TRI_voc_cid_t cid,
-                            std::vector<TRI_doc_mptr_copy_t>& toFilter) {
+                            std::vector<TRI_doc_mptr_t>& toFilter) {
   if (matcher == nullptr) {
     return;
   }
@@ -784,7 +784,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
   }
 
   char* key = const_cast<char*>(parts[1].c_str());
-  std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
+  std::vector<TRI_doc_mptr_t> edges = TRI_LookupEdgesDocumentCollection(
       trx, collection, direction, startCid, key);
   FilterDocuments(matcher, cid, edges);
   size_t resultCount = edges.size();
@@ -965,7 +965,7 @@ static void VertexIdToVPack(arangodb::AqlTransaction* trx,
     }
   }
 
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = trx->document(collection, &mptr, id.key);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2868,7 +2868,7 @@ AqlValue$ Functions::NeighborsVPack(arangodb::aql::Query* query,
   }
 
   // Function to return constant distance
-  auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
+  auto wc = [](TRI_doc_mptr_t&) -> double { return 1; };
 
   auto eci = std::make_unique<EdgeCollectionInfo>(
       trx, eCid, trx->documentCollection(eCid), wc);
@@ -3332,7 +3332,7 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(identifier, "/");
 
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   if (parts.size() == 1) {
     int res = trx->document(collection, &mptr, parts[0]);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -3386,7 +3386,7 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
     throw;
   }
 
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = trx->document(collection, &mptr, parts[1]);
 
   if (res != TRI_ERROR_NO_ERROR) {

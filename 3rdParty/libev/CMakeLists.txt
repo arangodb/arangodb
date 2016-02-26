@@ -56,6 +56,8 @@ endif ()
 ################################################################################
 
 include(CheckCXXSourceCompiles)
+include(CheckFunctionExists)
+include(CheckIncludeFile)
 
 CHECK_INCLUDE_FILE(poll.h HAVE_POLL_H)
 CHECK_INCLUDE_FILE(port.h HAVE_PORT_H)

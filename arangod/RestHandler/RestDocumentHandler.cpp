@@ -125,10 +125,7 @@ bool RestDocumentHandler::createDocument() {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collection, TRI_TRANSACTION_WRITE);
-
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   int res = trx.begin();
 
@@ -147,10 +144,6 @@ bool RestDocumentHandler::createDocument() {
   // result stays valid!
   res = trx.finish(result.code);
 
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
-  
   if (result.failed()) {
     generateTransactionError(result);
     return false;
@@ -267,6 +260,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collection, TRI_TRANSACTION_READ);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // .............................................................................
   // inside read transaction
@@ -571,6 +565,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // .............................................................................
   // inside write transaction
@@ -709,6 +704,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // .............................................................................
   // inside write transaction

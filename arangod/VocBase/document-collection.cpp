@@ -970,7 +970,7 @@ static int InsertDocument(arangodb::Transaction* trx,
                           TRI_transaction_collection_t* trxCollection,
                           TRI_doc_mptr_t* header,
                           arangodb::wal::DocumentOperation& operation,
-                          TRI_doc_mptr_copy_t* mptr, bool& waitForSync) {
+                          TRI_doc_mptr_t* mptr, bool& waitForSync) {
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(mptr != nullptr);
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -1052,11 +1052,11 @@ static int UpdateDocument(arangodb::Transaction* trx,
                           TRI_transaction_collection_t* trxCollection,
                           TRI_doc_mptr_t* oldHeader,
                           arangodb::wal::DocumentOperation& operation,
-                          TRI_doc_mptr_copy_t* mptr, bool syncRequested) {
+                          TRI_doc_mptr_t* mptr, bool syncRequested) {
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   // save the old data, remember
-  TRI_doc_mptr_copy_t oldData = *oldHeader;
+  TRI_doc_mptr_t oldData = *oldHeader;
 
   // .............................................................................
   // update indexes
@@ -1407,7 +1407,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
   else if (found->_rid < d->_rid ||
            (found->_rid == d->_rid && found->_fid <= operation->_fid)) {
     // save the old data
-    TRI_doc_mptr_copy_t oldData = *found;
+    TRI_doc_mptr_t oldData = *found;
 
     TRI_doc_mptr_t* newHeader = const_cast<TRI_doc_mptr_t*>(found);
 
@@ -2550,53 +2550,6 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   LOG(WARN) << "index type '" << typeStr << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rolls back a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RollbackOperationDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
-    TRI_voc_document_operation_e type, TRI_doc_mptr_t* header,
-    TRI_doc_mptr_copy_t const* oldData) {
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    // ignore any errors we're getting from this
-    DeletePrimaryIndex(trx, document, header, true);
-    DeleteSecondaryIndexes(trx, document, header, true);
-
-    TRI_ASSERT(document->_numberDocuments > 0);
-    document->_numberDocuments--;
-
-    return TRI_ERROR_NO_ERROR;
-  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    // copy the existing header's state
-    TRI_doc_mptr_copy_t copy = *header;
-
-    // remove the current values from the indexes
-    DeleteSecondaryIndexes(trx, document, header, true);
-    // revert to the old state
-    header->copy(*oldData);
-    // re-insert old state
-    int res = InsertSecondaryIndexes(trx, document, header, true);
-    // revert again to the new state, because other parts of the new state
-    // will be reverted at some other place
-    header->copy(copy);
-
-    return res;
-  } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    int res = InsertPrimaryIndex(trx, document, header, true);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = InsertSecondaryIndexes(trx, document, header, true);
-      document->_numberDocuments++;
-    } else {
-      LOG(ERR) << "error rolling back remove operation";
-    }
-    return res;
-  }
-
-  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4425,13 +4378,13 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample(
+std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
     TRI_transaction_collection_t* trxCollection,
     ExampleMatcher const& matcher) {
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   // use filtered to hold copies of the master pointer
-  std::vector<TRI_doc_mptr_copy_t> filtered;
+  std::vector<TRI_doc_mptr_t> filtered;
 
   auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
     if (matcher.matches(0, ptr)) {
@@ -4474,7 +4427,7 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 
 int TRI_ReadShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    const TRI_voc_key_t key, TRI_doc_mptr_copy_t* mptr, bool lock) {
+    const TRI_voc_key_t key, TRI_doc_mptr_t* mptr, bool lock) {
 
 TRI_ASSERT(false);  
   TRI_ASSERT(mptr != nullptr);
@@ -4566,6 +4519,7 @@ TRI_ASSERT(false);
     }
 
     arangodb::CollectionWriteLocker collectionLocker(document, lock);
+
     // if we got here, the marker must not be deleted by the deleter, but will be handed to
     // the document operation, which will take over
     deleter.release();
@@ -4636,7 +4590,7 @@ TRI_ASSERT(false);
 int TRI_InsertShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     const TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
-    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
+    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
     TRI_document_edge_t const* edge, bool lock, bool forceSync,
     bool isRestore) {
 
@@ -4783,7 +4737,7 @@ TRI_ASSERT(false);
 int TRI_UpdateShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
-    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
+    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
   bool const freeMarker = (marker == nullptr);
 
@@ -4890,7 +4844,7 @@ TRI_ASSERT(false);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
-                                    TRI_doc_mptr_copy_t* mptr, bool lock) {
+                                    TRI_doc_mptr_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
@@ -4935,7 +4889,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
-                                      TRI_doc_mptr_copy_t* mptr,
+                                      TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock) {
   TRI_ASSERT(mptr != nullptr);
@@ -4961,7 +4915,11 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -4975,7 +4933,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request(
-        marker->size());  // PROTECTED by trx in trxCollection
+        operation.marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -5017,7 +4975,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
 int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
                                       VPackSlice const* newSlice, 
-                                      TRI_doc_mptr_copy_t* mptr,
+                                      TRI_doc_mptr_t* mptr,
                                       TRI_doc_update_policy_t const* policy,
                                       OperationOptions& options,
                                       bool lock) {
@@ -5059,7 +5017,12 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
     std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
+
     operation.header = oldHeader;
     operation.init();
 
@@ -5091,7 +5054,7 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
 
 int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice,
                                        VPackSlice const* newSlice, 
-                                       TRI_doc_mptr_copy_t* mptr,
+                                       TRI_doc_mptr_t* mptr,
                                        TRI_doc_update_policy_t const* policy,
                                        OperationOptions& options,
                                        bool lock) {
@@ -5133,7 +5096,12 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
     std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
+    
     operation.header = oldHeader;
     operation.init();
 
@@ -5192,7 +5160,11 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
 
     TRI_doc_mptr_t* header;
     res = lookupDocument(trx, slice, policy, header);
@@ -5247,6 +5219,53 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rolls back a document operation
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx, 
+                                                 TRI_voc_document_operation_e type, 
+                                                 TRI_doc_mptr_t* header,
+                                                 TRI_doc_mptr_t const* oldData) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    // ignore any errors we're getting from this
+    deletePrimaryIndex(trx, header);
+    deleteSecondaryIndexes(trx, header, true);
+
+    TRI_ASSERT(_numberDocuments > 0);
+    _numberDocuments--;
+
+    return TRI_ERROR_NO_ERROR;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    // copy the existing header's state
+    TRI_doc_mptr_t copy = *header;
+
+    // remove the current values from the indexes
+    deleteSecondaryIndexes(trx, header, true);
+    // revert to the old state
+    header->copy(*oldData);
+    // re-insert old state
+    int res = insertSecondaryIndexes(trx, header, true);
+    // revert again to the new state, because other parts of the new state
+    // will be reverted at some other place
+    header->copy(copy);
+
+    return res;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    int res = insertPrimaryIndex(trx, header);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = insertSecondaryIndexes(trx, header, true);
+      _numberDocuments++;
+    } else {
+      LOG(ERR) << "error rolling back remove operation";
+    }
+    return res;
+  }
+
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5319,10 +5338,10 @@ int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
                           TRI_voc_rid_t revisionId,
                           TRI_doc_mptr_t* oldHeader,
                           arangodb::wal::DocumentOperation& operation,
-                          TRI_doc_mptr_copy_t* mptr, bool& waitForSync) {
+                          TRI_doc_mptr_t* mptr, bool& waitForSync) {
 
   // save the old data, remember
-  TRI_doc_mptr_copy_t oldData = *oldHeader;
+  TRI_doc_mptr_t oldData = *oldHeader;
 
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
@@ -5382,7 +5401,7 @@ int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
 
 int TRI_document_collection_t::insertDocument(
     arangodb::Transaction* trx, TRI_doc_mptr_t* header,
-    arangodb::wal::DocumentOperation& operation, TRI_doc_mptr_copy_t* mptr,
+    arangodb::wal::DocumentOperation& operation, TRI_doc_mptr_t* mptr,
     bool& waitForSync) {
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(mptr != nullptr);

@@ -6914,7 +6914,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
         if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         edgeCollections = [options.edgeCollectionRestriction];
@@ -7487,7 +7487,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
         if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         edgeCollections = [options.edgeCollectionRestriction];
@@ -7505,7 +7505,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     if (!Array.isArray(options.vertexCollectionRestriction)) {
       if (typeof options.vertexCollectionRestriction === "string") {
         if (!underscore.contains(vertexCollections, options.vertexCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         vertexCollections = [options.vertexCollectionRestriction];

@@ -23,6 +23,7 @@
 
     <div class="inputEditorWrapper">
       <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
         <div id="aqlEditor"></div>
         <div id="queryTable" style="display: none"></div>
       </div>
@@ -39,9 +40,11 @@
 
     <div class="arangoToolbar arangoToolbarBottom">
       <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
         <button id="executeQuery" class="button-success query-button">Execute</button>
         <button id="explainQuery" class="button-success query-button">Explain</button>
-        <button id="clearQuery" class="button-close query-button">Clear</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
       </div>
     </div>
 
@@ -49,6 +52,43 @@
 
   <div id="outputEditors" class="outputEditors">
   </div>
+
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+              <p>JSON documents embedded into a list:</p>
+              <p></p>
+              <p>[{</p>
+              <p style="margin-left: 10px">"name": "Query Name",</p>
+              <p style="margin-left: 10px">"value": "Query Definition",</p>
+              <p style="margin-left: 10px">"parameter": "Query Bind Parameter as Object"</p>
+              <p>}]</p>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>
+    </div>
+
 
 </script>
 
@@ -84,4 +124,5 @@
     </div>
   </div>
 
+  </div>
 </script>

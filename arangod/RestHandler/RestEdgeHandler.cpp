@@ -34,16 +34,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a string if defined, nop otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-#define FREE_STRING(zone, what) \
-  if (what != 0) {              \
-    TRI_Free(zone, what);       \
-    what = 0;                   \
-  }
-
 RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
     : RestDocumentHandler(request) {}
 
@@ -129,10 +119,8 @@ bool RestEdgeHandler::createDocument() {
     // find and load collection given by name or identifier
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                             collection, TRI_TRANSACTION_WRITE);
-
-    // .............................................................................
-    // inside write transaction
-    // .............................................................................
+  
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
     int res = trx.begin();
 
@@ -165,10 +153,6 @@ bool RestEdgeHandler::createDocument() {
     // or abort if an error occured.
     // result stays valid!
     res = trx.finish(result.code);
-
-    // .............................................................................
-    // outside write transaction
-    // .............................................................................
 
     if (result.failed()) {
       // TODO correct errors for _from or _to invalid.

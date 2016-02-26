@@ -26,9 +26,6 @@
 
 #include "Basics/Common.h"
 
-// turn this on to get some (slow) debugging and asserts for master pointers
-#undef VALIDATE_MASTER_POINTERS
-
 struct TRI_doc_mptr_t;
 
 class TRI_headers_t {
@@ -53,13 +50,13 @@ class TRI_headers_t {
   /// @brief returns the number of allocated headers
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t numAllocated() const { return _nrAllocated; }
+  uint64_t numAllocated() const { return _nrAllocated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the memory usage
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t memory() const;
+  uint64_t memory() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief move an existing header to the end of the linked list
@@ -106,12 +103,6 @@ class TRI_headers_t {
   void adjustTotalSize(int64_t, int64_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the number of active headers
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline size_t count() const { return _nrLinked; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the total size of linked headers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -119,23 +110,10 @@ class TRI_headers_t {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief validates the linked list
-  //////////////////////////////////////////////////////////////////////////////
-
-#ifdef VALIDATE_MASTER_POINTERS
-  void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*);
-#else
-  inline void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*) {}
-#endif
-
- private:
   TRI_doc_mptr_t const* _freelist;  // free headers
 
-  TRI_doc_mptr_t* _begin;  // start pointer to list of allocated headers
-  TRI_doc_mptr_t* _end;    // end pointer to list of allocated headers
-  size_t _nrAllocated;     // number of allocated headers
-  size_t _nrLinked;        // number of linked headers
+  uint64_t _nrAllocated;     // number of allocated headers
+  uint64_t _nrLinked;        // number of linked headers
   int64_t _totalSize;      // total size of markers for linked headers
 
   std::vector<TRI_doc_mptr_t const*> _blocks;

@@ -342,10 +342,7 @@ int RecoverState::executeSingleOperation(
   try {
     trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
 
-    if (trx == nullptr) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
+    trx->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
@@ -658,7 +655,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               return TRI_ERROR_NO_ERROR;
             }
 
-            TRI_doc_mptr_copy_t mptr;
+            TRI_doc_mptr_t mptr;
             int res = TRI_InsertShapedJsonDocumentCollection(
                 trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
                 envelope, &mptr, &shaped, nullptr, false, false, true);
@@ -716,7 +713,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               return TRI_ERROR_NO_ERROR;
             }
 
-            TRI_doc_mptr_copy_t mptr;
+            TRI_doc_mptr_t mptr;
             int res = TRI_InsertShapedJsonDocumentCollection(
                 trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
                 envelope, &mptr, &shaped, &edge, false, false, true);

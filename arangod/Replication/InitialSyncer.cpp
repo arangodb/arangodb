@@ -1592,7 +1592,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          TRI_doc_mptr_copy_t result;
+          TRI_doc_mptr_t result;
 
           int res = TRI_ERROR_NO_ERROR;
           auto mptr = idx->lookupKey(&trx, documentKey.c_str());

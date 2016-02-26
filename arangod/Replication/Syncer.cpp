@@ -373,7 +373,7 @@ int Syncer::applyCollectionDumpMarker(
     }
 
     try {
-      TRI_doc_mptr_copy_t mptr;
+      TRI_doc_mptr_t mptr;
 
       bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
       int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key,

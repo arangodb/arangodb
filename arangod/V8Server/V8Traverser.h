@@ -41,9 +41,9 @@ class VocShaper;
 
 struct EdgeInfo {
   TRI_voc_cid_t cid;
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
 
-  EdgeInfo(TRI_voc_cid_t pcid, TRI_doc_mptr_copy_t& pmptr)
+  EdgeInfo(TRI_voc_cid_t pcid, TRI_doc_mptr_t& pmptr)
       : cid(pcid), mptr(pmptr) {}
 
   bool operator==(EdgeInfo const& other) const {
@@ -131,7 +131,7 @@ struct BasicOptions {
                        TRI_transaction_collection_t* col, VocShaper* shaper,
                        TRI_voc_cid_t const& cid, std::string& errorMessage);
 
-  bool matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const;
+  bool matchesEdge(EdgeId& e, TRI_doc_mptr_t* edge) const;
 
   bool matchesVertex(VertexId const& v) const;
 };
@@ -335,7 +335,7 @@ class DepthFirstTraverser : public Traverser {
 /// @brief callback to weight an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef std::function<double(TRI_doc_mptr_copy_t& edge)>
+typedef std::function<double(TRI_doc_mptr_t& edge)>
     WeightCalculatorFunction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,12 +380,12 @@ class EdgeCollectionInfo {
         _edgeCollection(edgeCollection),
         _weighter(weighter) {}
 
-  arangodb::traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+  arangodb::traverser::EdgeId extractEdgeId(TRI_doc_mptr_t& ptr) {
     return arangodb::traverser::EdgeId(_edgeCollectionCid,
                                        TRI_EXTRACT_MARKER_KEY(&ptr));
   }
 
-  std::vector<TRI_doc_mptr_copy_t> getEdges(
+  std::vector<TRI_doc_mptr_t> getEdges(
       TRI_edge_direction_e direction,
       arangodb::traverser::VertexId const& vertexId) const {
     return TRI_LookupEdgesDocumentCollection(_trx, _edgeCollection, direction,
@@ -397,7 +397,7 @@ class EdgeCollectionInfo {
 
   VocShaper* getShaper() { return _edgeCollection->getShaper(); }
 
-  double weightEdge(TRI_doc_mptr_copy_t& ptr) { return _weighter(ptr); }
+  double weightEdge(TRI_doc_mptr_t& ptr) { return _weighter(ptr); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

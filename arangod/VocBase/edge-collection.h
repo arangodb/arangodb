@@ -59,7 +59,7 @@ struct TRI_edge_index_iterator_t {
 ///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
+std::vector<TRI_doc_mptr_t> TRI_LookupEdgesDocumentCollection(
     arangodb::Transaction*, struct TRI_document_collection_t*,
     TRI_edge_direction_e, TRI_voc_cid_t, std::string const&);
 

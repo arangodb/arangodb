@@ -132,7 +132,7 @@ class HashIndex final : public PathBasedIndex {
              std::vector<TRI_doc_mptr_t*>&) const;
 
   int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
-             std::vector<TRI_doc_mptr_copy_t>&,
+             std::vector<TRI_doc_mptr_t>&,
              TRI_index_element_t*& next, size_t batchSize) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,

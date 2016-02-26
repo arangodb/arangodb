@@ -5700,7 +5700,6 @@ div.headerBar {
     .modal-body .tab-content #appstore {
       max-height: 290px; }
   .modal-body .errorMessage {
-    background-color: #fff;
     color: #da4f49;
     font-size: 9pt;
     font-weight: 400;
@@ -6088,6 +6087,10 @@ div.headerBar {
 .arangoToolbarBottom {
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px; }
+  .arangoToolbarBottom #executeQuery {
+    margin-right: 5px; }
+  .arangoToolbarBottom .button-close:last-child {
+    margin-right: 10px; }
 
 .dbselection {
   float: left;
@@ -6791,6 +6794,21 @@ toolbar {
   .inputEditorWrapper .aqlEditorWrapper {
     background: #eee;
     overflow: hidden; }
+    .inputEditorWrapper .bindParamEditorWrapper .stringtype,
+    .inputEditorWrapper .aqlEditorWrapper .stringtype {
+      color: black; }
+    .inputEditorWrapper .bindParamEditorWrapper .objecttype,
+    .inputEditorWrapper .aqlEditorWrapper .objecttype {
+      color: blue; }
+    .inputEditorWrapper .bindParamEditorWrapper .arraytype,
+    .inputEditorWrapper .aqlEditorWrapper .arraytype {
+      color: green; }
+    .inputEditorWrapper .bindParamEditorWrapper .numbertype,
+    .inputEditorWrapper .aqlEditorWrapper .numbertype {
+      color: red; }
+    .inputEditorWrapper .bindParamEditorWrapper .booleantype,
+    .inputEditorWrapper .aqlEditorWrapper .booleantype {
+      color: lightgreen; }
     .inputEditorWrapper .bindParamEditorWrapper table,
     .inputEditorWrapper .aqlEditorWrapper table {
       border-top: 0;
@@ -6810,7 +6828,9 @@ toolbar {
         .inputEditorWrapper .aqlEditorWrapper table tr.selected .spanWrapper {
           background-color: rgba(255, 255, 255, 0.65); }
         .inputEditorWrapper .bindParamEditorWrapper table tr.selected .fa-copy,
-        .inputEditorWrapper .aqlEditorWrapper table tr.selected .fa-copy {
+        .inputEditorWrapper .bindParamEditorWrapper table tr.selected .fa-comments,
+        .inputEditorWrapper .aqlEditorWrapper table tr.selected .fa-copy,
+        .inputEditorWrapper .aqlEditorWrapper table tr.selected .fa-comments {
           color: #000; }
       .inputEditorWrapper .bindParamEditorWrapper table thead,
       .inputEditorWrapper .aqlEditorWrapper table thead {
@@ -6823,13 +6843,20 @@ toolbar {
         .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper,
         .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper {
           border-radius: 3px;
+          cursor: auto;
           float: right; }
+          .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper:hover,
+          .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper:hover {
+            cursor: auto; }
           .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper .fa,
           .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper .fa {
             cursor: pointer;
             font-size: 18pt;
             margin-left: 5px;
             margin-right: 5px; }
+          .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper .fa-minus-circle,
+          .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper .fa-minus-circle {
+            margin-left: 20px; }
           .inputEditorWrapper .bindParamEditorWrapper table td .spanWrapper .fa-play-circle-o,
           .inputEditorWrapper .aqlEditorWrapper table td .spanWrapper .fa-play-circle-o {
             color: #8aa051; }
@@ -6851,6 +6878,30 @@ toolbar {
   .inputEditorWrapper .aqlEditorWrapper,
   .inputEditorWrapper .bindParamEditorWrapper {
     height: 100%; }
+    .inputEditorWrapper .aqlEditorWrapper .selectError,
+    .inputEditorWrapper .bindParamEditorWrapper .selectError {
+      background: #da4f49; }
+    .inputEditorWrapper .aqlEditorWrapper .aceAction,
+    .inputEditorWrapper .bindParamEditorWrapper .aceAction {
+      background-color: rgba(0, 0, 0, 0.6);
+      border-radius: 3px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13pt;
+      opacity: .8;
+      position: absolute;
+      right: 10px;
+      text-align: center;
+      top: 10px;
+      width: 33px;
+      z-index: 10; }
+      .inputEditorWrapper .aqlEditorWrapper .aceAction i,
+      .inputEditorWrapper .bindParamEditorWrapper .aceAction i {
+        margin-bottom: 3px; }
+      .inputEditorWrapper .aqlEditorWrapper .aceAction:hover,
+      .inputEditorWrapper .bindParamEditorWrapper .aceAction:hover {
+        cursor: pointer;
+        opacity: 1; }
     .inputEditorWrapper .aqlEditorWrapper .previewWrapper,
     .inputEditorWrapper .bindParamEditorWrapper .previewWrapper {
       background-color: #fff; }

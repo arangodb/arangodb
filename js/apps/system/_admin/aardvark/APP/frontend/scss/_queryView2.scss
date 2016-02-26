@@ -29,6 +29,26 @@
     background: #eee;
     overflow: hidden;
 
+    .stringtype {
+      color: black;
+    }
+
+    .objecttype {
+      color: blue;
+    }
+
+    .arraytype {
+      color: green;
+    }
+    
+    .numbertype {
+      color: red;
+    }
+
+    .booleantype {
+      color: lightgreen;
+    }
+
     table {
       border-top: 0;
       font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace;
@@ -51,9 +71,11 @@
             background-color: rgba(255, 255, 255, .65);
           }
 
-          .fa-copy {
+          .fa-copy,
+          .fa-comments {
             color: $c-black;
           }
+
         }
       }
 
@@ -68,13 +90,22 @@
 
         .spanWrapper {
           border-radius: 3px;
+          cursor: auto;
           float: right;
+
+          &:hover {
+            cursor: auto;
+          }
 
           .fa {
             cursor: pointer;
             font-size: 18pt;
             margin-left: 5px;
             margin-right: 5px;
+          }
+
+          .fa-minus-circle {
+            margin-left: 20px;
           }
 
           .fa-play-circle-o {
@@ -106,6 +137,34 @@
   .aqlEditorWrapper,
   .bindParamEditorWrapper {
     height: 100%;
+
+    .selectError {
+      background: $c-negative;
+    }
+
+    .aceAction {
+      background-color: rgba(0, 0, 0, .6);
+      border-radius: 3px;
+      color: $c-white;
+      cursor: pointer;
+      font-size: 13pt;
+      opacity: .8;
+      position: absolute;
+      right: 10px;
+      text-align: center;
+      top: 10px;
+      width: 33px;
+      z-index: 10;
+
+      i {
+        margin-bottom: 3px;
+      }
+
+      &:hover {
+        cursor: pointer;
+        opacity: 1;
+      }
+    }
 
     .previewWrapper {
       background-color: $c-white;

@@ -22,6 +22,21 @@ struct DocumentOperation {
     SWAPPED,
     REVERTED
   };
+  
+  DocumentOperation(arangodb::Transaction* trx, std::unique_ptr<Marker>& markerPtr,
+                    TRI_document_collection_t* document,
+                    TRI_voc_document_operation_e type)
+      : trx(trx),
+        marker(markerPtr.get()),
+        document(document),
+        header(nullptr),
+        tick(0),
+        type(type),
+        status(StatusType::CREATED),
+        freeMarker(true) {
+    TRI_ASSERT(marker != nullptr);
+    markerPtr.release(); // we are now responsible for freeing the marker
+  }
 
   DocumentOperation(arangodb::Transaction* trx, Marker* marker, bool freeMarker,
                     TRI_document_collection_t* document,
@@ -46,7 +61,7 @@ struct DocumentOperation {
       revert();
     }
 
-    if (marker != nullptr && freeMarker) {
+    if (freeMarker) {
       delete marker;
     }
   }
@@ -103,8 +118,7 @@ struct DocumentOperation {
     }
 
     if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
-      TRI_RollbackOperationDocumentCollection(trx, document, type, header,
-                                              &oldHeader);
+      document->rollbackOperation(trx, type, header, &oldHeader);
     }
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
@@ -127,7 +141,7 @@ struct DocumentOperation {
   Marker* marker;
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;
-  TRI_doc_mptr_copy_t oldHeader;
+  TRI_doc_mptr_t oldHeader;
   TRI_voc_tick_t tick;
   TRI_voc_document_operation_e type;
   StatusType status;

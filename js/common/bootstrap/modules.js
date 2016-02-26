@@ -63,6 +63,7 @@ delete global.DEFINE_MODULE;
 const LOADING = [];
 
 const GLOBAL_PATHS = [];
+const ROOT_PATH = fs.normalize(fs.makeAbsolute(internal.startupPath));
 global.MODULES_PATH.forEach(function (p) {
   p = fs.normalize(fs.makeAbsolute(p));
   GLOBAL_PATHS.push(p);
@@ -302,6 +303,10 @@ Module._nodeModulePaths = function(from, root) {
   var paths = [];
   var parts = from.split(splitRe);
   var inRoot = root && from.indexOf(root) === 0;
+  if (!inRoot) {
+    root = ROOT_PATH;
+    inRoot = from.indexOf(root) === 0;
+  }
 
   for (var tip = parts.length - 1; tip >= 0; tip--) {
     // don't search in .../node_modules/node_modules

@@ -400,7 +400,7 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 
 void RestVocbaseBaseHandler::generateDocument(
     SingleCollectionTransaction& trx, TRI_voc_cid_t cid,
-    TRI_doc_mptr_copy_t const& mptr, VocShaper* shaper, bool generateBody) {
+    TRI_doc_mptr_t const& mptr, VocShaper* shaper, bool generateBody) {
   CollectionNameResolver const* resolver = trx.resolver();
 
   char const* key =

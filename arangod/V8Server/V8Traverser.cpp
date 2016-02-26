@@ -39,7 +39,7 @@ using namespace arangodb::traverser;
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId ExtractFromId(TRI_doc_mptr_copy_t const& ptr) {
+static VertexId ExtractFromId(TRI_doc_mptr_t const& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&ptr),
                   TRI_EXTRACT_MARKER_FROM_KEY(&ptr));
 };
@@ -49,7 +49,7 @@ static VertexId ExtractFromId(TRI_doc_mptr_copy_t const& ptr) {
 /// to explicitly allow move semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId ExtractToId(TRI_doc_mptr_copy_t const& ptr) {
+static VertexId ExtractToId(TRI_doc_mptr_t const& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
                   TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
@@ -75,7 +75,7 @@ class MultiCollectionEdgeExpander {
   /// @brief function to check if the edge passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
+  std::function<bool(EdgeId&, TRI_doc_mptr_t*)> _isAllowed;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the vertex passes the filter
@@ -87,7 +87,7 @@ class MultiCollectionEdgeExpander {
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
       std::vector<EdgeCollectionInfo*> const& edgeCollections,
-      std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
+      std::function<bool(EdgeId&, TRI_doc_mptr_t*)> isAllowed,
       std::function<bool(VertexId&)> isAllowedVertex)
       : _direction(direction),
         _edgeCollections(edgeCollections),
@@ -241,7 +241,7 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
     return false;
   }
 
-  TRI_doc_mptr_copy_t vertex;
+  TRI_doc_mptr_t vertex;
 
   int res = it->second.trx->document(it->second.col, &vertex, v.key);
 
@@ -315,7 +315,7 @@ void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_t* edge) const {
   if (!useEdgeFilter) {
     // Nothing to do
     return true;
@@ -392,7 +392,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
     backward = TRI_EDGE_ANY;
   }
 
-  auto edgeFilterClosure = [&opts](EdgeId& e, TRI_doc_mptr_copy_t* edge)
+  auto edgeFilterClosure = [&opts](EdgeId& e, TRI_doc_mptr_t* edge)
                                -> bool { return opts.matchesEdge(e, edge); };
 
   auto vertexFilterClosure =
@@ -758,7 +758,7 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
       trx->orderDitch(trxCollection);
     }
   }
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = trx->document(collection, &mptr, v.key);
   ++_readDocuments;
   if (res != TRI_ERROR_NO_ERROR) {
@@ -815,7 +815,7 @@ bool DepthFirstTraverser::vertexMatchesConditions(VPackSlice const& v,
   if (it != _expressions->end()) {
     /* TODO FIXME
     // This has to be replaced by new Transaction API
-    TRI_doc_mptr_copy_t mptr;
+    TRI_doc_mptr_t mptr;
     TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
     for (auto const& exp : it->second) {
@@ -909,7 +909,7 @@ void DepthFirstTraverser::setStartVertex(
 
   if (it != _expressions->end()) {
     if (!it->second.empty()) {
-      TRI_doc_mptr_copy_t mptr;
+      TRI_doc_mptr_t mptr;
       TRI_document_collection_t* docCol = nullptr;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
@@ -1021,7 +1021,7 @@ void DepthFirstTraverser::EdgeGetter::operator()(
     }
     TRI_voc_cid_t cid;
     arangodb::EdgeIndex* edgeIndex = getEdgeIndex(eColName, cid);
-    std::vector<TRI_doc_mptr_copy_t> tmp;
+    std::vector<TRI_doc_mptr_t> tmp;
     if (direction == TRI_EDGE_ANY) {
       TRI_edge_direction_e currentDir = dir ? TRI_EDGE_OUT : TRI_EDGE_IN;
       TRI_edge_index_iterator_t it(currentDir, startVertex);
