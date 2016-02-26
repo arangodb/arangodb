@@ -1305,7 +1305,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
       marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile,
-                                           (open_iterator_state_t*)data);
+                                           static_cast<open_iterator_state_t*>(data));
 
     if (datafile->_dataMin == 0) {
       datafile->_dataMin = tick;
@@ -1316,12 +1316,12 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
     }
   } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile,
-                                           (open_iterator_state_t*)data);
+                                           static_cast<open_iterator_state_t*>(data));
   } else {
     if (marker->_type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
       // collection
-      FindDatafileStats((open_iterator_state_t*)data, datafile->_fid);
+      FindDatafileStats(static_cast<open_iterator_state_t*>(data), datafile->_fid);
     }
 
     LOG(TRACE) << "skipping marker type " << marker->_type;
@@ -4835,7 +4835,7 @@ int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
 
   if (res == TRI_ERROR_NO_ERROR) {
     // write new header into result
-    *mptr = *((TRI_doc_mptr_t*)newHeader);
+    *mptr = *newHeader;
   }
 
   return res;

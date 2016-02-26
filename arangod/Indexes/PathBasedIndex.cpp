@@ -353,14 +353,13 @@ void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
     std::vector<std::string>& interior(paths.back());
     int expands = -1;
     int count = 0;
-    std::vector<std::string> joinedNames;
     for (auto const& att : list) {
-      interior.push_back(att.name);
+      interior.emplace_back(att.name);
       if (att.shouldExpand) {
         expands = count;
       }
       ++count;
     }
-    expanding.push_back(expands);
+    expanding.emplace_back(expands);
   }
 }

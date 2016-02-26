@@ -272,7 +272,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
-    _edgeColls.push_back(it);
+    _edgeColls.emplace_back(it);
     _graphJson.add(arangodb::basics::Json(it));
   }
 }

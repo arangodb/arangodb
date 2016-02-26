@@ -529,28 +529,31 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_configuration_t::
-    TRI_replication_applier_configuration_t() {
-  _requestTimeout = 600.0;
-  _connectTimeout = 10.0;
-  _ignoreErrors = 0;
-  _maxConnectRetries = 100;
-  _chunkSize = 0;
-  _sslProtocol = 0;
-  _autoStart = false;
-  _adaptivePolling = true;
-  _autoResync = false;
-  _includeSystem = true;
-  _requireFromPresent = false;
-  _verbose = false;
-  _incremental = false;
-  _restrictType = "";
-  _restrictCollections.clear();
-  _connectionRetryWaitTime = 15 * 1000 * 1000;
-  _initialSyncMaxWaitTime = 300 * 1000 * 1000;
-  _idleMinWaitTime = 1000 * 1000;
-  _idleMaxWaitTime = 5 * 500 * 1000;
-  _autoResyncRetries = 2;
-}
+    TRI_replication_applier_configuration_t() 
+    : _endpoint(),
+      _database(),
+      _username(),
+      _password(),
+      _requestTimeout(600.0),
+      _connectTimeout(10.0),
+      _ignoreErrors(0),
+      _maxConnectRetries(100),
+      _chunkSize(0),
+      _connectionRetryWaitTime(15 * 1000 * 1000),
+      _idleMinWaitTime(1000 * 1000),
+      _idleMaxWaitTime(5 * 500 * 1000),
+      _initialSyncMaxWaitTime(300 * 1000 * 1000),
+      _autoResyncRetries(2),
+      _sslProtocol(0),
+      _autoStart(false),
+      _adaptivePolling(true),
+      _autoResync(false),
+      _includeSystem(true),
+      _requireFromPresent(false),
+      _incremental(false),
+      _verbose(false),
+      _restrictType(),
+      _restrictCollections() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reset the configuration to defaults
@@ -559,10 +562,6 @@ TRI_replication_applier_configuration_t::
 void TRI_replication_applier_configuration_t::reset() {
   TRI_replication_applier_configuration_t empty;
   update(&empty);
-  _endpoint.clear();
-  _database.clear();
-  _username.clear();
-  _password.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

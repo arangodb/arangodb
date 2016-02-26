@@ -29,6 +29,7 @@
 #include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
@@ -635,7 +636,7 @@ void CollectorThread::processCollectionMarker(
     dfi.numberUncollected--;
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
-    TRI_voc_rid_t revisionId = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
@@ -665,7 +666,7 @@ void CollectorThread::processCollectionMarker(
     dfi.numberDeletions++;
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
-    TRI_voc_rid_t revisionId = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
