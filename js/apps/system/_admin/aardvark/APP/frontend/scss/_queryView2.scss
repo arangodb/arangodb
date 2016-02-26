@@ -18,7 +18,14 @@
     width: 70%;
   }
 
-  .bindParamEditorWrapper {
+  #arangoMyQueriesTable {
+    tr {
+      cursor: copy;
+    }
+  }  
+
+  .bindParamEditorWrapper,
+  .aqlEditorWrapper {
     background: #eee;
     overflow: hidden;
 
@@ -35,6 +42,19 @@
         &.noBgColor {
           background-color: rgba(0, 0, 0, 0) !important;
         }
+
+        &.selected {
+          background-color: $c-positive;
+          color: $c-white;
+
+          .spanWrapper {
+            background-color: rgba(255, 255, 255, .65);
+          }
+
+          .fa-copy {
+            color: $c-black;
+          }
+        }
       }
 
       thead {
@@ -42,8 +62,25 @@
       }
 
       td {
+        height: 33px;
         padding: 0 5px;
         width: 50%;
+
+        .spanWrapper {
+          border-radius: 3px;
+          float: right;
+
+          .fa {
+            cursor: pointer;
+            font-size: 18pt;
+            margin-left: 5px;
+            margin-right: 5px;
+          }
+
+          .fa-play-circle-o {
+            color: $c-positive;
+          }
+        }
 
         input {
           @extend %inputs;
@@ -70,7 +107,26 @@
   .bindParamEditorWrapper {
     height: 100%;
 
-    div {
+    .previewWrapper {
+      background-color: $c-white;
+
+      .previewBar {
+        background-color: $c-white;
+        border-bottom: 1px solid $c-content-border;
+        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        height: 17px;
+
+        span {
+          margin-left: 5px;
+        }
+      }
+
+      #queryPreview {
+        height: 100%;
+      }
+    }
+
+    > div {
       height: 100%;
     }
   }
