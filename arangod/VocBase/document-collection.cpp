@@ -1234,8 +1234,6 @@ struct open_iterator_state_t {
   uint64_t _deletions;
   uint64_t _documents;
   int64_t _initialCount;
-  uint32_t _trxCollections;
-  bool _trxPrepared;
 
   open_iterator_state_t(TRI_document_collection_t* document,
                         TRI_vocbase_t* vocbase)
@@ -1248,9 +1246,7 @@ struct open_iterator_state_t {
         _trx(nullptr),
         _deletions(0),
         _documents(0),
-        _initialCount(-1),
-        _trxCollections(0),
-        _trxPrepared(false) {}
+        _initialCount(-1) {}
 
   ~open_iterator_state_t() {
     for (auto& it : _stats) {
@@ -1569,35 +1565,6 @@ static void OpenIteratorResetOperations(open_iterator_state_t* state) {
   }
 
   state->_tid = 0;
-  state->_trxPrepared = false;
-  state->_trxCollections = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start a transaction when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorStartTransaction(open_iterator_state_t* state,
-                                        TRI_voc_tid_t tid,
-                                        uint32_t numCollections) {
-  state->_tid = tid;
-  state->_trxCollections = numCollections;
-
-  TRI_ASSERT(TRI_LengthVector(&state->_operations) == 0);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare an ongoing transaction when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorPrepareTransaction(open_iterator_state_t* state) {
-  if (state->_tid != 0) {
-    state->_trxPrepared = true;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1611,36 +1578,6 @@ static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorCommitTransaction(open_iterator_state_t* state) {
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (state->_trxCollections <= 1 || state->_trxPrepared) {
-    size_t const n = TRI_LengthVector(&state->_operations);
-
-    for (size_t i = 0; i < n; ++i) {
-      open_iterator_operation_t* operation =
-          static_cast<open_iterator_operation_t*>(
-              TRI_AtVector(&state->_operations, i));
-
-      int r = OpenIteratorApplyOperation(state, operation);
-      if (r != TRI_ERROR_NO_ERROR) {
-        res = r;
-      }
-    }
-  } else if (state->_trxCollections > 1 && !state->_trxPrepared) {
-    OpenIteratorAbortTransaction(state);
-  }
-
-  // clean up
-  OpenIteratorResetOperations(state);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
