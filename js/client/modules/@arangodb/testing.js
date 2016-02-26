@@ -27,6 +27,7 @@
 
 const functionsDocumentation = {
   "all": "run all tests (marked with [x])",
+  "agency": "run agency tests",
   "arangob": "arangob tests",
   "arangosh": "arangosh exit codes tests",
   "authentication": "authentication tests",
@@ -91,6 +92,8 @@ const optionsDocumentation = [
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `clusterNodes`: number of DB-Servers to use',
+  '   - `agency`: if set to true agency tests are done',
+  '   - `agencySize`: number of agents in agency',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -495,6 +498,68 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
   return ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an agency instance is still alive
+////////////////////////////////////////////////////////////////////////////////
+
+function checkInstanceAliveAgency(instanceInfo, options) {
+  if (instanceInfo.hasOwnProperty('exitStatus')) {
+    return false;
+  }
+
+  for (let i = 0; i < options.agencySize; i++) {
+    const res = statusExternal(instanceInfo.pids[i], false);
+    const ret = res.status === "RUNNING";
+
+    if (!ret) {
+      print("ArangoD with PID " + instanceInfo.pids[i].pid + " gone:");
+      print(instanceInfo);
+
+      if (res.hasOwnProperty('signal') &&
+        ((res.signal === 11) ||
+          (res.signal === 6) ||
+          // Windows sometimes has random numbers in signal...
+          (require("internal").platform.substr(0, 3) === 'win')
+        )
+      ) {
+        const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pids[i].pid;
+
+        print("Core dump written; copying arangod to " +
+          instanceInfo.tmpDataDir + " for later analysis.");
+
+        let corePath = (options.coreDirectory === "") ?
+          "core" :
+          options.coreDirectory + "/core*" + instanceInfo.pids[i].pid + "*'";
+
+        res.gdbHint = "Run debugger with 'gdb " +
+          storeArangodPath + " " + corePath;
+
+        if (require("internal").platform.substr(0, 3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          statusExternal(instanceInfo.monitor, true);
+          analyzeCoreDumpWindows(instanceInfo);
+        } else {
+          fs.copyFile("bin/arangod", storeArangodPath);
+          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pids[i].pid);
+        }
+      }
+
+      if (instanceInfo.exitStatus === undefined) {
+        instanceInfo.exitStatus = [];
+      }
+      instanceInfo.exitStatus[i] = res;
+    }
+  }
+
+  if (instanceInfo.exitStatus !== undefined) {
+    print("marking crashy");
+    serverCrashed = true;
+    return false;
+  }
+
+  return true;
+}
+
 function checkRemoteInstance(pid, wait, options) {
   const debug = options.debug || false;
   const p = JSON.stringify(pid);
@@ -556,11 +621,14 @@ function checkInstanceAliveCluster(instanceInfo, options) {
 }
 
 function checkInstanceAlive(instanceInfo, options) {
-  if (options.cluster === false) {
-    return checkInstanceAliveSingleServer(instanceInfo, options);
+  if (options.cluster) {
+    return checkInstanceAliveCluster(instanceInfo, options);
   }
+  if (options.agency) {
+    return checkInstanceAliveAgency(instanceInfo, options);
+  }
+  return checkInstanceAliveSingleServer(instanceInfo, options);
 
-  return checkInstanceAliveCluster(instanceInfo, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -972,7 +1040,12 @@ function executeAndWait(cmd, args) {
 
 function runInArangosh(options, instanceInfo, file, addArgs) {
   let args = makeArgsArangosh(options);
-  args["server.endpoint"] = instanceInfo.endpoint;
+  if (instanceInfo.endpoint !== undefined) {
+    args["server.endpoint"] = instanceInfo.endpoint;
+  }
+  if (instanceInfo.urls !== undefined) {
+    args["flatCommands"] = instanceInfo.urls;
+  }
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
   if (addArgs !== undefined) {
@@ -1139,6 +1212,87 @@ function shutdownInstance(instanceInfo, options) {
     }
 
     killExternal(instanceInfo.dispatcherPid);
+  }
+
+  // agency mode
+  else if (options.agency) {
+    if (instanceInfo.exitStatus === undefined) {
+      instanceInfo.exitStatus = [];
+    }
+    for (let i = 0; i < options.agencySize; i++) {
+      if (instanceInfo.exitStatus[i] === undefined) {
+        download(instanceInfo.urls[i] + "/_admin/shutdown", "",
+          makeAuthorizationHeaders(options));
+
+        print("Waiting for server shut down");
+
+        let count = 0;
+        let bar = "[";
+
+        let timeout = 600;
+
+        if (options.sanitizer) {
+          timeout *= 2;
+        }
+
+        if (instanceInfo.exitStatus === undefined) {
+          instanceInfo.exitStatus = [];
+        }
+        while (true) {
+          instanceInfo.exitStatus[i] = statusExternal(instanceInfo.pids[i], false);
+
+          if (instanceInfo.exitStatus[i].status === "RUNNING") {
+            ++count;
+
+            if (options.valgrind) {
+              wait(1);
+              continue;
+            }
+
+            if (count % 10 === 0) {
+              bar = bar + "#";
+            }
+
+            if (count > 600) {
+              print("forcefully terminating " + yaml.safeDump(instanceInfo.pids[i]) +
+                " after " + timeout + "s grace period; marking crashy.");
+              serverCrashed = true;
+              killExternal(instanceInfo.pids[i]);
+              break;
+            } else {
+              wait(1);
+            }
+          } else if (instanceInfo.exitStatus[i].status !== "TERMINATED") {
+            if (instanceInfo.exitStatus[i].hasOwnProperty('signal')) {
+              print("Server shut down with : " +
+                yaml.safeDump(instanceInfo.exitStatus[i]) +
+                " marking build as crashy.");
+
+              serverCrashed = true;
+              break;
+            }
+            if (require("internal").platform.substr(0, 3) === 'win') {
+              // Windows: wait for procdump to do its job...
+              statusExternal(instanceInfo.monitor, true);
+            }
+          } else {
+            print("Server shutdown: Success.");
+            break; // Success.
+          }
+        }
+
+        if (count > 10) {
+          print("long Server shutdown: " + bar + ']');
+        }
+      } else {
+        print("Server already dead, doing nothing.");
+      }
+
+      if (!options.skipLogAnalysis) {
+        instanceInfo.importantLogLines =
+          readImportantLogLines(instanceInfo.tmpDataDir);
+      }
+    }
   }
 
   // single server
@@ -1397,6 +1551,72 @@ function valgrindArgsSingleServer(options, testname, run) {
   return toArgv(valgrindOpts, true).concat([run]);
 }
 
+function startInstanceAgency(instanceInfo, protocol, options,
+  addArgs, testname, appDir, tmpDataDir) {
+  const N = options.agencySize;
+  const ports = [];
+  for (let i = 0; i < N; i++) {
+    ports.push(findFreePort());
+  }
+  instanceInfo.ports = ports;
+
+  const endpoints = ports.map(function(port) {
+                                return protocol + "://127.0.0.1:" + port;
+                              });
+  instanceInfo.endpoints = endpoints;
+
+  let td = ports.map(function(port) {
+                       return fs.join(tmpDataDir, "data" + port);
+                     });
+  for (let i = 0; i < N; i++) {
+    fs.makeDirectoryRecursive(td[i]);
+  }
+
+  let argss = [];
+  for (let i = 0; i < N; i++) {
+    let args = makeArgsArangod(options, appDir);
+    args["server.endpoint"] = endpoints[i];
+    args["database.directory"] = td[i];
+    args["log.file"] = fs.join(tmpDataDir, "log" + ports[i]);
+    //args["agency.id"] = String(i);
+    //args["agency.size"] = String(N);
+
+    if (protocol === "ssl") {
+      args["server.keyfile"] = fs.join("UnitTests", "server.pem");
+    }
+
+    args = _.extend(args, options.extraArgs);
+
+    if (addArgs !== undefined) {
+      args = _.extend(args, addArgs);
+    }
+    
+    if (i === N-1) {
+      let l = [];
+      for (let j = 0; j < N; j++) {
+        l.push("--agency.endpoint");
+        l.push(endpoints[j]);
+      }
+      //args["flatCommands"] = l;
+    }
+    argss.push(args);
+  }
+
+  instanceInfo.pids = [];
+  for (let i = 0; i < N; i++) {
+    if (options.valgrind) {
+      const valgrindArgs = valgrindArgsSingleServer(options, testname, ARANGOD_BIN);
+      const newargs = valgrindArgs.concat(toArgv(argss[i]));
+
+      instanceInfo.pids[i] = executeExternal(options.valgrind, newargs);
+    } else {
+      instanceInfo.pids[i] = executeExternal(ARANGOD_BIN, toArgv(argss[i]));
+    }
+  }
+
+  return true;
+}
+
 function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   const port = findFreePort();
@@ -1458,6 +1678,12 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
       addArgs, testname, appDir, tmpDataDir);
   }
 
+  // agency testing mode
+  else if (options.agency) {
+    res = startInstanceAgency(instanceInfo, protocol, options,
+      addArgs, testname, appDir, tmpDataDir);
+  }
+
   // single instance mode
   else {
     res = startInstanceSingleServer(instanceInfo, protocol, options,
@@ -1471,8 +1697,15 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   // wait until the server/coordinator is up:
   let count = 0;
 
-  const url = endpointToURL(instanceInfo.endpoint);
-  instanceInfo.url = url;
+  let url;
+  if (instanceInfo.endpoint !== undefined) {
+    url = endpointToURL(instanceInfo.endpoint);
+    instanceInfo.url = url;
+  } else {
+    instanceInfo.urls = instanceInfo.endpoints.map(endpointToURL);
+    url = instanceInfo.urls[0];
+    instanceInfo.url = url;
+  }
 
   while (true) {
     wait(0.5, false);
@@ -1753,6 +1986,14 @@ function findTests() {
     }).map(
     function(x) {
       return fs.join(makePathUnix("js/common/tests/replication"), x);
+    }).sort();
+
+  testsCases.agency = _.filter(fs.list(makePathUnix("js/client/tests/agency")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/client/tests/agency"), x);
     }).sort();
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
@@ -3645,6 +3886,86 @@ testFuncs.stress_locks = function(options) {
 `;
 
   return runStressTest(options, command, "stress_lock");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief agency tests
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.agency = function(options) {
+  findTests();
+
+  options.agency = true;
+  options.cluster = false;
+  if (options.agencySize === undefined) {
+    options.agencySize = 3;
+  }
+
+  let instanceInfo = startInstance("tcp", options, {}, "agency");
+
+  if (instanceInfo === false) {
+    return {
+      shell_client: {
+        status: false,
+        message: "failed to start agency!"
+      }
+    };
+  }
+
+  let results = {};
+  let filtered = {};
+  let continueTesting = true;
+
+  for (let i = 0; i < testsCases.agency.length; i++) {
+    const te = testsCases.agency[i];
+
+    if (filterTestcaseByOptions(te, options, filtered)) {
+      if (!continueTesting) {
+        print("Skipping, " + te + " server is gone.");
+
+        results[te] = {
+          status: false,
+          message: instanceInfo.exitStatus
+        };
+
+        instanceInfo.exitStatus = "server is gone.";
+
+        break;
+      }
+
+      print("\narangosh: Trying", te, "...");
+
+      const reply = runInArangosh(options, instanceInfo, te);
+      results[te] = reply;
+
+      if (reply.status !== true) {
+        options.cleanup = false;
+
+        if (!options.force) {
+          break;
+        }
+      }
+
+      continueTesting = checkInstanceAlive(instanceInfo, options);
+    } else {
+      if (options.extremeVerbosity) {
+        print("Skipped " + te + " because of " + filtered.filter);
+      }
+    }
+  }
+
+  print("Shutting down...");
+  shutdownInstance(instanceInfo, options);
+  print("done.");
+
+  if ((!options.skipLogAnalysis) &&
+    instanceInfo.hasOwnProperty('importantLogLines') &&
+    Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" +
+      yaml.safeDump(instanceInfo.importantLogLines));
+  }
+
+  return results;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
