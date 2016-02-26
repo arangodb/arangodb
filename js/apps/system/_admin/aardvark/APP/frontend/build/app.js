@@ -10607,6 +10607,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
+    hideArangoNotifications: function() {
+      $.noty.clearQueue();
+      $.noty.closeAll();
+    },
+
     openDocEditor: function (id, type, callback) {
       var ids = id.split("/"),
       self = this;
@@ -25884,6 +25889,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.' + menuItem).addClass('active');
         }
       }
+      arangoHelper.hideArangoNotifications();
     },
 
     showDropdown: function (e) {
@@ -27636,7 +27642,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     myQueriesTableDesc: {
       id: "arangoMyQueriesTable",
-      titles: ["Name", "Actions"],
+      titles: ["Name", "Query", "Actions"],
       rows: []
     },
 
@@ -27662,6 +27668,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #exportQuery": "exportCustomQueries",
       "click #importQuery": "openImportDialog",
       "click #removeResults": "removeResults",
+      "click #querySpotlight": "showSpotlight",
       "click #deleteQuery": "selectAndDeleteQueryFromTable",
       "click #explQuery": "selectAndExplainQueryFromTable",
       "keyup #arangoBindParamTable input": "updateBindParams",
@@ -27987,6 +27994,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     removeOutputEditor: function(counter) {
       $('#outputEditorWrapper' + counter).hide();
       $('#outputEditorWrapper' + counter).remove();
+      if ($('.outputEditorWrapper').length === 0) {
+        $('#removeResults').hide(); 
+      }
     },
 
     getCachedQueryAfterRender: function() {
@@ -28072,6 +28082,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
+      this.initSpotlight();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 3);
@@ -28079,6 +28090,45 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.resize();
       }, 10);
       self.deselect(self.aqlEditor);
+    },
+
+    showSpotlight: function() {
+    },
+
+    initSpotlight: function() {
+
+      var collections = [];
+      window.App.arangoCollectionsStore.each(function(collection) {
+        collections.push(collection.get("name"));
+      });
+
+      var substringMatcher = function(strs) {
+        return function findMatches(q, cb) {
+          var matches, substrRegex;
+
+          matches = [];
+
+          substrRegex = new RegExp(q, 'i');
+
+          _.each(strs, function(str) {
+            if (substrRegex.test(str)) {
+              matches.push(str);
+            }
+          });
+
+          cb(matches);
+        };
+      };
+
+      $('#aql-spotlight .typeahead').typeahead({
+        hint: true,
+        highlight: true,
+        minLength: 1
+      },
+      {
+        name: 'collections',
+        source: substringMatcher(collections)
+      });
     },
 
     resize: function() {
@@ -28101,12 +28151,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.queryPreview.resize();
         //fix my queries preview table resizing issues TODO
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
+        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 3);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
+        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable tbody td .truncate').css('width', $('#queryTable').width() / 3);
       }
     },
 
@@ -28314,7 +28365,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.aqlEditor.commands.addCommand({
         name: "explainQuery",
-        bindKey: {win: "Ctrl-Shift-E", mac: "Command-Shift-E", linux: "Ctrl-Shift-E"},
+        bindKey: {win: "Ctrl-Shift-Return", mac: "Command-Shift-Return", linux: "Ctrl-Shift-Return"},
         exec: function() {
           self.explainQuery();
         }
@@ -28330,9 +28381,14 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     updateQueryTable: function () {
+      var self = this;
       this.myQueriesTableDesc.rows = this.customQueries;
 
       _.each(this.myQueriesTableDesc.rows, function(k) {
+        k.secondRow = '<div class="truncate">' +
+          JSON.stringify(self.collection.findWhere({name: k.name}).get('value')) +
+        '</div>';
+
         k.thirdRow = '<span class="spanWrapper">' + 
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
           '<span id="explQuery" title="Explain query"><i class="fa fa-comments"></i></i></span>' +
@@ -28346,7 +28402,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
       // escape all columns but the third (which contains HTML)
-      this.myQueriesTableDesc.unescaped = [ false, true ];
+      this.myQueriesTableDesc.unescaped = [ false, true, true ];
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
@@ -28572,10 +28628,9 @@ window.ArangoUsers = Backbone.Collection.extend({
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+              arangoHelper.arangoError('[' + temp.errorNum + ']', temp.errorMessage);
             }
             catch (e) {
-              outputEditor.setValue('ERROR');
               arangoHelper.arangoError("Query error", "ERROR");
             }
             self.handleResult(counter);
@@ -28700,18 +28755,19 @@ window.ArangoUsers = Backbone.Collection.extend({
                     error.errorMessage.match(/'.*'/g)[0],
                     error.errorMessage.match(/\d+:\d+/g)[0]
                   );
-                  arangoHelper.arangoError("Query", error.errorMessage);
                 }
                 else {
-                  console.log(resp);
+                  self.markPositionError(
+                    error.errorMessage.match(/\(\w+\)/g)[0]
+                  );
                 }
+                arangoHelper.arangoError("Query", error.errorMessage);
                 self.removeOutputEditor(counter);
               }
             }
             catch (e) {
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
-              console.log(e);
             }
 
             window.progressView.hide();
@@ -28722,16 +28778,22 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     markPositionError: function(text, pos) {
-      var row = pos.split(":")[0],
-      line = pos.split(":")[1];
-      text = text.substr(1, text.length - 2);
+      var row;
 
-      this.aqlEditor.find(text);
+      if (pos) {
+        row = pos.split(":")[0];
+        text = text.substr(1, text.length - 2);
+      }
 
+      var found = this.aqlEditor.find(text);
+
+      if (!found && pos) {
+        this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
+        this.aqlEditor.selection.selectLine(); 
+      }
       window.setTimeout(function() {
         $('.ace_start').first().css('background', 'rgba(255, 129, 129, 0.7)');
       }, 100);
-
     },
 
     refreshAQL: function() {
@@ -30662,8 +30724,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query",
-      "query2": "query2",
+      "query": "query2",
+      "query2": "query",
       "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",

@@ -58,6 +58,14 @@
         overflow-y: auto;
       }
 
+      .truncate {
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 30%;
+      }
+
       tr {
         &.noBgColor {
           background-color: rgba(0, 0, 0, 0) !important;

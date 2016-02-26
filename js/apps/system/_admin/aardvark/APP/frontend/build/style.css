@@ -6817,6 +6817,13 @@ toolbar {
       .inputEditorWrapper .aqlEditorWrapper table tbody {
         display: block;
         overflow-y: auto; }
+      .inputEditorWrapper .bindParamEditorWrapper table .truncate,
+      .inputEditorWrapper .aqlEditorWrapper table .truncate {
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 30%; }
       .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor,
       .inputEditorWrapper .aqlEditorWrapper table tr.noBgColor {
         background-color: transparent !important; }

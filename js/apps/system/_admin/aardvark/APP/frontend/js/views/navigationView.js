@@ -143,6 +143,7 @@
           $('.' + menuItem).addClass('active');
         }
       }
+      arangoHelper.hideArangoNotifications();
     },
 
     showDropdown: function (e) {
