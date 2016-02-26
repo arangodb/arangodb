@@ -116,6 +116,7 @@ struct TRI_doc_mptr_t {
   //////////////////////////////////////////////////////////////////////////////
 
   char const* getShapedJsonPtr() const {
+#if 0    
     TRI_df_marker_t const* marker =
         static_cast<TRI_df_marker_t const*>(_dataptr);
 
@@ -134,7 +135,7 @@ struct TRI_doc_mptr_t {
               ->_offsetJson;
       return reinterpret_cast<char const*>(marker) + offset;
     }
-
+#endif
     TRI_ASSERT(false);
 
     return nullptr;
@@ -443,30 +444,12 @@ size_t TRI_DocumentIteratorDocumentCollection(
   a->_lock.unlock()
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the marker is an edge marker
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool TRI_IS_EDGE_MARKER(TRI_df_marker_t const* marker) {
-  return (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-          marker->_type == TRI_WAL_MARKER_EDGE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the master pointer points to an edge marker
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool TRI_IS_EDGE_MARKER(TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker =
-      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-  return TRI_IS_EDGE_MARKER(marker);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the pointer to the _from key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
     TRI_df_marker_t const* marker) {
+#if 0
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((char const*)marker) +
            ((TRI_doc_edge_key_marker_t const*)marker)->_offsetFromKey;
@@ -474,11 +457,9 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
     return ((char const*)marker) +
            ((arangodb::wal::edge_marker_t const*)marker)->_offsetFromKey;
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#endif
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return nullptr;
 }
@@ -500,6 +481,7 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
 
 static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
     TRI_df_marker_t const* marker) {
+#if 0
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((char const*)marker) +
            ((TRI_doc_edge_key_marker_t const*)marker)->_offsetToKey;
@@ -507,11 +489,9 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
     return ((char const*)marker) +
            ((arangodb::wal::edge_marker_t const*)marker)->_offsetToKey;
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#endif
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return nullptr;
 }
@@ -533,16 +513,16 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
 
 static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
     TRI_df_marker_t const* marker) {
+#if 0  
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((TRI_doc_edge_key_marker_t const*)marker)->_fromCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((arangodb::wal::edge_marker_t const*)marker)->_fromCid;
   }
+#endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return 0;
 }
@@ -564,16 +544,16 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
 
 static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
     TRI_df_marker_t const* marker) {
+#if 0  
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((TRI_doc_edge_key_marker_t const*)marker)->_toCid;
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((arangodb::wal::edge_marker_t const*)marker)->_toCid;
   }
+#endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return 0;
 }
@@ -595,6 +575,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     TRI_df_marker_t const* marker) {
+#if 0
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((TRI_doc_document_key_marker_t const*)marker)->_rid;
@@ -602,11 +583,10 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
              marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((arangodb::wal::document_marker_t const*)marker)->_revisionId;
   }
+#endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return 0;
 }
@@ -627,6 +607,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(TRI_doc_mptr_t const* mptr) {
 
 static inline char const* TRI_EXTRACT_MARKER_KEY(
     TRI_df_marker_t const* marker) {
+#if 0
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((char const*)marker) +
@@ -636,11 +617,10 @@ static inline char const* TRI_EXTRACT_MARKER_KEY(
     return ((char const*)marker) +
            ((arangodb::wal::document_marker_t const*)marker)->_offsetKey;
   }
+#endif
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
-#endif
 
   return nullptr;
 }

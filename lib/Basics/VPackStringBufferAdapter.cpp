@@ -30,7 +30,7 @@ void arangodb::basics::VPackStringBufferAdapter::push_back(char c) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
-
+ 
 void arangodb::basics::VPackStringBufferAdapter::append(std::string const& p) {
   int res = TRI_AppendString2StringBuffer(_buffer, p.c_str(), p.size());
   if (res != TRI_ERROR_NO_ERROR) {

@@ -345,6 +345,8 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
         result.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
       }
 
+#if 0
+      // TODO
       if (TRI_IS_EDGE_MARKER(marker)) {
         if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_FROM)) {
           // _from
@@ -364,6 +366,7 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
           result.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(to));
         }
       }
+#endif      
     }
     arangodb::basics::VPackStringBufferAdapter bufferAdapter(
         buffer.stringBuffer());

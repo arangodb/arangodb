@@ -72,10 +72,13 @@ bool DocumentAccessor::hasKey(std::string const& attribute) const {
         return true;
       }
 
+#if 0
+      // TODO
       if (TRI_IS_EDGE_MARKER(_mptr) && (attribute == TRI_VOC_ATTRIBUTE_FROM ||
                                         attribute == TRI_VOC_ATTRIBUTE_TO)) {
         return true;
       }
+#endif
     }
 
     auto shaper = _document->getShaper();
@@ -187,6 +190,8 @@ arangodb::basics::Json DocumentAccessor::toJson() {
          arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
     json(TRI_VOC_ATTRIBUTE_KEY, arangodb::basics::Json(key));
 
+#if 0
+    // TODO
     if (TRI_IS_EDGE_MARKER(_mptr)) {
       // _from
       std::string from(_resolver->getCollectionNameCluster(
@@ -202,6 +207,7 @@ arangodb::basics::Json DocumentAccessor::toJson() {
       to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
       json(TRI_VOC_ATTRIBUTE_TO, arangodb::basics::Json(to));
     }
+#endif    
 
     return json;
   }
@@ -324,6 +330,8 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
       return;
     }
 
+#if 0
+    // TODO
     if (TRI_IS_EDGE_MARKER(_mptr)) {
       if (name[1] == 'f' && nameLength == 5 &&
           memcmp(name, TRI_VOC_ATTRIBUTE_FROM, nameLength) == 0) {
@@ -375,6 +383,7 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
         return;
       }
     }
+#endif    
 
     // fall-through intentional
   }

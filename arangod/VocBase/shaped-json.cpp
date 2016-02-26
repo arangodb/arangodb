@@ -2166,7 +2166,7 @@ bool TRI_StringifyArrayShapedJson(T* shaper, TRI_string_buffer_t* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StringifyAugmentedShapedJson(VocShaper* shaper,
-                                      struct TRI_string_buffer_s* buffer,
+                                      struct TRI_string_buffer_t* buffer,
                                       TRI_shaped_json_t const* shaped,
                                       TRI_json_t const* augment) {
   TRI_shape_t const* shape = shaper->lookupShapeId(shaped->_sid);
@@ -2591,7 +2591,7 @@ void TRI_PrintShapeValues(TRI_shape_value_t* values, size_t n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template bool TRI_StringifyArrayShapedJson<VocShaper>(
-    VocShaper*, struct TRI_string_buffer_s*, TRI_shaped_json_t const*, bool);
+    VocShaper*, struct TRI_string_buffer_t*, TRI_shaped_json_t const*, bool);
 template bool TRI_StringifyArrayShapedJson<arangodb::basics::LegendReader>(
-    arangodb::basics::LegendReader*, struct TRI_string_buffer_s*,
+    arangodb::basics::LegendReader*, struct TRI_string_buffer_t*,
     TRI_shaped_json_t const*, bool);

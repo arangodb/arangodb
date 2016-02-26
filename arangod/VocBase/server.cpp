@@ -921,7 +921,7 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateDatabaseMarker marker(id, slice.toJson());
+    arangodb::wal::CreateDatabaseMarker marker(id, slice);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);

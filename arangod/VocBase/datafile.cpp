@@ -1417,12 +1417,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "deletion (df)";
 
     // wal markers
-    case TRI_WAL_MARKER_DOCUMENT:
-      return "document (wal)";
-    case TRI_WAL_MARKER_EDGE:
-      return "edge (wal)";
-    case TRI_WAL_MARKER_REMOVE:
-      return "deletion (wal)";
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
       return "begin remote transaction (wal)";
     case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:

@@ -29,7 +29,7 @@
 #include "Basics/associative.h"
 #include "Basics/vector.h"
 
-struct TRI_string_buffer_s;
+struct TRI_string_buffer_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json type
@@ -314,13 +314,13 @@ bool TRI_ReplaceObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
 /// @brief stringifies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StringifyJson(struct TRI_string_buffer_s*, TRI_json_t const* object);
+int TRI_StringifyJson(struct TRI_string_buffer_t*, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object skiping the outer braces
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Stringify2Json(struct TRI_string_buffer_s*, TRI_json_t const* object);
+int TRI_Stringify2Json(struct TRI_string_buffer_t*, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object

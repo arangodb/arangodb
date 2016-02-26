@@ -296,24 +296,6 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO,
                             TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                                      to.c_str(), to.size()));
-    } else if (type == TRI_WAL_MARKER_EDGE) {
-      arangodb::wal::edge_marker_t const* marker =
-          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-              df);  // PROTECTED by trx passed from above
-      std::string from(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey)));
-      std::string to(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey)));
-
-      TRI_Insert3ObjectJson(
-          TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM,
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(),
-                                   from.size()));
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO,
-                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                     to.c_str(), to.size()));
     }
 
     json.transfer(doc);

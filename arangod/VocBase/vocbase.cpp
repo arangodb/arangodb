@@ -1776,8 +1776,8 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateCollectionMarker marker(vocbase->_id, cid,
-                                                 slice.toJson());
+    arangodb::wal::CreateCollectionMarker marker(vocbase->_id, cid, slice);
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);

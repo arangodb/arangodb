@@ -353,11 +353,8 @@ void TRI_DestroyCollection(TRI_collection_t*);
 void TRI_FreeCollection(TRI_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief jsonify a parameter info block
+/// @brief convert a parameter info block to velocypack
 ////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_json_t* TRI_CreateJsonCollectionInfo(
-    arangodb::VocbaseCollectionInfo const&);
 
 std::shared_ptr<arangodb::velocypack::Builder>
 TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);

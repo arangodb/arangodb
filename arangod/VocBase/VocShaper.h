@@ -192,6 +192,7 @@ int TRI_CompareShapeTypes(char const* leftDocument,
 
 static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(TRI_shape_sid_t& dst,
                                                        void const* src) {
+#if 0
   auto type = static_cast<TRI_df_marker_t const*>(src)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_DOCUMENT) {
@@ -205,6 +206,8 @@ static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(TRI_shape_sid_t& dst,
   } else {
     dst = 0;
   }
+#endif  
+  dst = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +216,7 @@ static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(TRI_shape_sid_t& dst,
 
 static inline void TRI_EXTRACT_SHAPED_JSON_MARKER(TRI_shaped_json_t& dst,
                                                   void const* src) {
+#if 0  
   auto type = static_cast<TRI_df_marker_t const*>(src)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_DOCUMENT || type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -245,6 +249,11 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER(TRI_shaped_json_t& dst,
     dst._data.length = 0;
     dst._data.data = nullptr;
   }
+#endif
+    
+  dst._sid = 0;
+  dst._data.length = 0;
+  dst._data.data = nullptr;
 }
 
 void TRI_InspectShapedSub(TRI_shaped_sub_t const*, char const*,

@@ -173,25 +173,26 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief asserts
+/// @brief assert
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
   do {                      \
     if (!(expr)) {          \
       TRI_PrintBacktrace(); \
+      TRI_FlushDebugging(); \
       assert(expr);         \
     }                       \
   } while (0)
-#endif
 
 #else
 
-#ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) do { } while (0)
+
 #endif
 
 #endif

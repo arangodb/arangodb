@@ -613,6 +613,8 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
        Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
   json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
 
+#if 0
+  // TODO
   if (TRI_IS_EDGE_MARKER(marker)) {
     std::string from(resolver->getCollectionNameCluster(
         TRI_EXTRACT_MARKER_FROM_CID(marker)));
@@ -626,6 +628,7 @@ static inline Json ExpandShapedJson(VocShaper* shaper,
     to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
     json(TRI_VOC_ATTRIBUTE_TO, Json(to));
   }
+#endif  
 
   return json;
 }
@@ -666,6 +669,8 @@ static inline void ExpandShapedJson(
     b.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
   }
 
+#if 0 
+  // TODO
   if (TRI_IS_EDGE_MARKER(marker)) {
     if (forbidden.count(TRI_VOC_ATTRIBUTE_FROM) == 0) {
       std::string from(resolver->getCollectionNameCluster(
@@ -684,6 +689,7 @@ static inline void ExpandShapedJson(
       b.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(to));
     }
   }
+#endif
   if (!keepTopLevelOpen) {
     b.close();
   }

@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeNameParser.h"
-#include "Exceptions.h"
+#include "Basics/Exceptions.h"
+#include "Basics/Logger.h"
 
 using AttributeName = arangodb::basics::AttributeName;
 

@@ -28,6 +28,7 @@
 #include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
@@ -40,6 +41,10 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -267,8 +272,9 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 
   TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
-  TRI_voc_key_t key;
-  TRI_voc_rid_t rid;
+  char const* key = nullptr;
+  size_t keyLength = 0;
+  TRI_voc_rid_t rid = 0;
   bool haveData = true;
   bool isWal = false;
 
@@ -282,9 +288,10 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     case TRI_DOC_MARKER_KEY_DELETION: {
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey;
-      type = REPLICATION_MARKER_REMOVE;
-      rid = m->_rid;
+      key = ((char*)m) + m->_offsetKey; // TODO vpack
+      keyLength = strlen(key);
+      rid = m->_rid;                    // TODO vpack
+      type = REPLICATION_MARKER_REMOVE; 
       haveData = false;
       break;
     }
@@ -292,9 +299,10 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     case TRI_DOC_MARKER_KEY_DOCUMENT: {
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey;
+      key = ((char*)m) + m->_offsetKey; // TODO vpack
+      keyLength = strlen(key);
+      rid = m->_rid;                    // TODO vpack
       type = REPLICATION_MARKER_DOCUMENT;
-      rid = m->_rid;
       break;
     }
 
@@ -302,38 +310,31 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
       key = ((char*)m) + m->_offsetKey;
-      type = REPLICATION_MARKER_EDGE;
+      keyLength = strlen(key);
       rid = m->_rid;
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
-      TRI_ASSERT(nullptr == document);
-      auto m = static_cast<wal::remove_marker_t const*>(marker);
-      key = ((char*)m) + sizeof(wal::remove_marker_t);
-      type = REPLICATION_MARKER_REMOVE;
-      rid = m->_revisionId;
-      haveData = false;
-      isWal = true;
-      break;
-    }
-
-    case TRI_WAL_MARKER_DOCUMENT: {
-      TRI_ASSERT(nullptr == document);
-      auto m = static_cast<wal::document_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey;
-      type = REPLICATION_MARKER_DOCUMENT;
-      rid = m->_revisionId;
-      isWal = true;
-      break;
-    }
-
-    case TRI_WAL_MARKER_EDGE: {
-      TRI_ASSERT(nullptr == document);
-      auto m = static_cast<wal::edge_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey;
       type = REPLICATION_MARKER_EDGE;
-      rid = m->_revisionId;
+      break;
+    }
+    
+    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::vpack_document_marker_t const*>(marker);
+      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
+      rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+      type = REPLICATION_MARKER_DOCUMENT;
+      isWal = true;
+      break;
+    }
+
+    case TRI_WAL_MARKER_VPACK_REMOVE: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::vpack_remove_marker_t const*>(marker);
+      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+      key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
+      rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+      type = REPLICATION_MARKER_REMOVE;
+      haveData = false;
       isWal = true;
       break;
     }
@@ -352,7 +353,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
   APPEND_UINT64(buffer, (uint64_t)type);
   APPEND_STRING(buffer, ",\"key\":\"");
   // key is user-defined, but does not need escaping
-  APPEND_STRING(buffer, key);
+  TRI_AppendString2StringBuffer(buffer, key, keyLength);
   APPEND_STRING(buffer, "\",\"rev\":\"");
   APPEND_UINT64(buffer, (uint64_t)rid);
 
@@ -362,27 +363,21 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 
     // common document meta-data
     APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
-    APPEND_STRING(buffer, key);
+    TRI_AppendString2StringBuffer(buffer, key, keyLength);
     APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t)rid);
     APPEND_CHAR(buffer, '"');
 
     // Is it an edge marker?
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-        marker->_type == TRI_WAL_MARKER_EDGE) {
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_voc_key_t fromKey;
       TRI_voc_key_t toKey;
       TRI_voc_cid_t fromCid;
       TRI_voc_cid_t toCid;
 
+      // TODO vpack
       if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
         auto e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-        fromKey = ((char*)e) + e->_offsetFromKey;
-        toKey = ((char*)e) + e->_offsetToKey;
-        fromCid = e->_fromCid;
-        toCid = e->_toCid;
-      } else {  // TRI_WAL_MARKER_EDGE
-        auto e = reinterpret_cast<wal::edge_marker_t const*>(marker);
         fromKey = ((char*)e) + e->_offsetFromKey;
         toKey = ((char*)e) + e->_offsetToKey;
         fromCid = e->_fromCid;
@@ -442,112 +437,36 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append the document attributes of a marker
-////////////////////////////////////////////////////////////////////////////////
-
-static int AppendDocument(arangodb::wal::document_marker_t const* marker,
-                          TRI_replication_dump_t* dump) {
-  TRI_shaped_json_t shaped;
-  shaped._sid = marker->_shape;
-  shaped._data.length = marker->_size - marker->_offsetJson;
-  shaped._data.data = (char*)marker + marker->_offsetJson;
-
-  // check if the marker contains a legend
-  char const* legend =
-      reinterpret_cast<char const*>(marker) + marker->_offsetLegend;
-  if (*((uint64_t*)legend) == 0ULL) {
-    // marker has no legend
-
-    // try to open the collection and use the shaper
-    TRI_vocbase_t* vocbase =
-        TRI_UseDatabaseByIdServer(dump->_vocbase->_server, marker->_databaseId);
-
-    if (vocbase == nullptr) {
-      // we'll not return an error in this case but an empty document
-      // this is intentional so the replication can still continue with
-      // documents of collections
-      // that survived
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    TRI_vocbase_col_status_e status;
-    TRI_vocbase_col_t* collection =
-        TRI_UseCollectionByIdVocBase(vocbase, marker->_collectionId, status);
-
-    int res = TRI_ERROR_NO_ERROR;
-
-    if (collection == nullptr) {
-      // we'll not return an error in this case but an empty document
-      // this is intentional so the replication can still continue with
-      // documents of collections
-      // that survived
-      res = TRI_ERROR_NO_ERROR;
-    } else {
-      TRI_document_collection_t* document = collection->_collection;
-
-      if (!TRI_StringifyArrayShapedJson(document->getShaper(), dump->_buffer,
-                                        &shaped, true)) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-      }
-
-      TRI_ReleaseCollectionVocBase(vocbase, collection);
-    }
-
-    TRI_ReleaseDatabaseServer(dump->_vocbase->_server, vocbase);
-
-    return res;
-  } else {
-    // marker has a legend, so use it
-    if (marker->_offsetJson - marker->_offsetLegend == 8) {
-      auto p = reinterpret_cast<int64_t const*>(legend);
-      legend += *p;
-    }
-    arangodb::basics::LegendReader lr(legend);
-    if (!TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify a document marker
 ////////////////////////////////////////////////////////////////////////////////
 
 static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
                                       TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<arangodb::wal::document_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::vpack_document_marker_t const*>(marker);
 
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+  
+  VPackSlice slice(reinterpret_cast<char const*>(VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
   APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetKey);
+  std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+  TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
+  
   APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
-  APPEND_UINT64(dump->_buffer, m->_revisionId);
-  APPEND_STRING(dump->_buffer, "\",\"data\":{");
+  std::string rev(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+  TRI_AppendString2StringBuffer(dump->_buffer, rev.c_str(), rev.size());
+  APPEND_STRING(dump->_buffer, "\",\"data\":");
 
-  // common document meta-data
-  APPEND_STRING(dump->_buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetKey);
-  APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)m->_revisionId);
-  APPEND_STRING(dump->_buffer, "\"");
-
-  res = AppendDocument(m, dump);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  APPEND_STRING(dump->_buffer, "}");
-
+  arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
+  VPackDumper dumper(&adapter); // TODO: need CustomTypeHandler here!
+  dumper.dump(slice);
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -557,7 +476,7 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
                                     TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<arangodb::wal::remove_marker_t const*>(marker);
+  auto m = reinterpret_cast<arangodb::wal::vpack_remove_marker_t const*>(marker);
 
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
@@ -568,10 +487,14 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
   APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
-  APPEND_STRING(dump->_buffer,
-                (char const*)m + sizeof(arangodb::wal::remove_marker_t));
+  
+  VPackSlice slice(reinterpret_cast<char const*>(VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
+  std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+  TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
+
   APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
-  APPEND_UINT64(dump->_buffer, m->_revisionId);
+  std::string rev(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+  TRI_AppendString2StringBuffer(dump->_buffer, rev.c_str(), rev.size());
   APPEND_STRING(dump->_buffer, "\"");
 
   return TRI_ERROR_NO_ERROR;
@@ -909,9 +832,9 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_VPACK_DOCUMENT:
-      return GetDatabaseId<arangodb::wal::document_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::vpack_document_marker_t>(marker);
     case TRI_WAL_MARKER_VPACK_REMOVE:
-      return GetDatabaseId<arangodb::wal::remove_marker_t>(marker);
+      return GetDatabaseId<arangodb::wal::vpack_remove_marker_t>(marker);
     case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
       return GetDatabaseId<arangodb::wal::transaction_begin_marker_t>(marker);
     case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
@@ -955,12 +878,10 @@ static TRI_voc_tick_t GetCollectionId(TRI_df_marker_t const* marker) {
 static TRI_voc_tick_t GetCollectionFromWalMarker(
     TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_WAL_MARKER_DOCUMENT:
-      return GetCollectionId<arangodb::wal::document_marker_t>(marker);
-    case TRI_WAL_MARKER_EDGE:
-      return GetCollectionId<arangodb::wal::edge_marker_t>(marker);
-    case TRI_WAL_MARKER_REMOVE:
-      return GetCollectionId<arangodb::wal::remove_marker_t>(marker);
+    case TRI_WAL_MARKER_VPACK_DOCUMENT:
+      return GetCollectionId<arangodb::wal::vpack_document_marker_t>(marker);
+    case TRI_WAL_MARKER_VPACK_REMOVE:
+      return GetCollectionId<arangodb::wal::vpack_remove_marker_t>(marker);
     case TRI_WAL_MARKER_CREATE_COLLECTION:
       return GetCollectionId<arangodb::wal::collection_create_marker_t>(marker);
     case TRI_WAL_MARKER_DROP_COLLECTION:
@@ -997,9 +918,9 @@ static TRI_voc_tid_t GetTransactionFromWalMarker(
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_VPACK_DOCUMENT:
-      return GetTransactionId<arangodb::wal::document_marker_t>(marker);
+      return GetTransactionId<arangodb::wal::vpack_document_marker_t>(marker);
     case TRI_WAL_MARKER_VPACK_REMOVE:
-      return GetTransactionId<arangodb::wal::remove_marker_t>(marker);
+      return GetTransactionId<arangodb::wal::vpack_remove_marker_t>(marker);
     case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
       return GetTransactionId<arangodb::wal::transaction_begin_marker_t>(
           marker);

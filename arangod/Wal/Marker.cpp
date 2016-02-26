@@ -87,6 +87,16 @@ void Marker::storeSizedString(size_t offset, char const* value, size_t length) {
   // append NUL byte
   p[length] = '\0';
 }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a vpack slice
+////////////////////////////////////////////////////////////////////////////////
+  
+void Marker::storeSlice(size_t offset, arangodb::velocypack::Slice const& slice) {
+  char* p = static_cast<char*>(begin()) + offset;
+
+  memcpy(p, slice.begin(), static_cast<size_t>(slice.byteSize()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a hex representation of a marker part
@@ -154,16 +164,16 @@ MarkerEnvelope::~MarkerEnvelope() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateDatabaseMarker::CreateDatabaseMarker(TRI_voc_tick_t databaseId,
-                                           std::string const& properties)
+                                           VPackSlice const& properties)
     : Marker(TRI_WAL_MARKER_CREATE_DATABASE,
              sizeof(database_create_marker_t) +
-                 alignedSize(properties.size() + 1)) {
+                 alignedSize(properties.byteSize())) {
   database_create_marker_t* m =
       reinterpret_cast<database_create_marker_t*>(begin());
 
   m->_databaseId = databaseId;
 
-  storeSizedString(sizeof(database_create_marker_t), properties);
+  storeSlice(sizeof(database_create_marker_t), properties);
 
 #ifdef DEBUG_WAL
   dump();
@@ -240,17 +250,17 @@ void DropDatabaseMarker::dump() const {
 
 CreateCollectionMarker::CreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t collectionId,
-                                               std::string const& properties)
+                                               VPackSlice const& properties) 
     : Marker(TRI_WAL_MARKER_CREATE_COLLECTION,
              sizeof(collection_create_marker_t) +
-                 alignedSize(properties.size() + 1)) {
+                 alignedSize(properties.byteSize())) {
   collection_create_marker_t* m =
       reinterpret_cast<collection_create_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
-  storeSizedString(sizeof(collection_create_marker_t), properties);
+  storeSlice(sizeof(collection_create_marker_t), properties);
 
 #ifdef DEBUG_WAL
   dump();
@@ -379,17 +389,17 @@ void RenameCollectionMarker::dump() const {
 
 ChangeCollectionMarker::ChangeCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t collectionId,
-                                               std::string const& properties)
+                                               VPackSlice const& properties)
     : Marker(TRI_WAL_MARKER_CHANGE_COLLECTION,
              sizeof(collection_change_marker_t) +
-                 alignedSize(properties.size() + 1)) {
+                 alignedSize(properties.byteSize())) {
   collection_change_marker_t* m =
       reinterpret_cast<collection_change_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
-  storeSizedString(sizeof(collection_change_marker_t), properties);
+  storeSlice(sizeof(collection_change_marker_t), properties);
 
 #ifdef DEBUG_WAL
   dump();
@@ -428,17 +438,17 @@ void ChangeCollectionMarker::dump() const {
 CreateIndexMarker::CreateIndexMarker(TRI_voc_tick_t databaseId,
                                      TRI_voc_cid_t collectionId,
                                      TRI_idx_iid_t indexId,
-                                     std::string const& properties)
+                                     VPackSlice const& properties)
     : Marker(
           TRI_WAL_MARKER_CREATE_INDEX,
-          sizeof(index_create_marker_t) + alignedSize(properties.size() + 1)) {
+          sizeof(index_create_marker_t) + alignedSize(properties.byteSize())) {
   index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_indexId = indexId;
 
-  storeSizedString(sizeof(index_create_marker_t), properties);
+  storeSlice(sizeof(index_create_marker_t), properties);
 
 #ifdef DEBUG_WAL
   dump();
@@ -789,16 +799,16 @@ void AbortRemoteTransactionMarker::dump() const {
 VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tick_t databaseId,
                                          TRI_voc_cid_t collectionId,
                                          TRI_voc_tid_t transactionId,
-                                         VPackSlice const* slice)
+                                         VPackSlice const& slice)
     : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
-             sizeof(vpack_document_marker_t) + VPackSlice(*slice).byteSize()) {
+             sizeof(vpack_document_marker_t) + slice.byteSize()) {
   auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
-  memcpy(vpack(), slice->begin(), slice->byteSize());
+  memcpy(vpack(), slice.begin(), slice.byteSize());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -814,16 +824,16 @@ VPackDocumentMarker::~VPackDocumentMarker() {}
 VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tick_t databaseId,
                                      TRI_voc_cid_t collectionId,
                                      TRI_voc_tid_t transactionId,
-                                     VPackSlice const* slice)
+                                     VPackSlice const& slice)
     : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
-             sizeof(vpack_remove_marker_t) + VPackSlice(*slice).byteSize()) {
+             sizeof(vpack_remove_marker_t) + slice.byteSize()) {
   auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
-  memcpy(vpack(), slice->begin(), slice->byteSize());
+  memcpy(vpack(), slice.begin(), slice.byteSize());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -832,317 +842,3 @@ VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tick_t databaseId,
 
 VPackRemoveMarker::~VPackRemoveMarker() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-DocumentMarker::DocumentMarker(TRI_voc_tick_t databaseId,
-                               TRI_voc_cid_t collectionId,
-                               TRI_voc_rid_t revisionId,
-                               TRI_voc_tid_t transactionId,
-                               std::string const& key, size_t legendSize,
-                               TRI_shaped_json_t const* shapedJson)
-    : Marker(TRI_WAL_MARKER_DOCUMENT,
-             sizeof(document_marker_t) + alignedSize(key.size() + 1) +
-                 legendSize + shapedJson->_data.length) {
-  document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-  m->_revisionId = revisionId;
-  m->_transactionId = transactionId;
-  m->_shape = shapedJson->_sid;
-
-  m->_offsetKey = sizeof(document_marker_t);  // start position of key
-  m->_offsetLegend =
-      static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
-  m->_offsetJson =
-      static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
-
-  storeSizedString(m->_offsetKey, key);
-
-  // store legend
-  {
-    TRI_ASSERT(legendSize >= 8);
-
-    char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8);  // initialize initial bytes of legend with 0s
-  }
-
-  // store shapedJson
-  {
-    char* p = static_cast<char*>(begin()) + m->_offsetJson;
-    memcpy(p, shapedJson->_data.data,
-           static_cast<size_t>(shapedJson->_data.length));
-  }
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-DocumentMarker::~DocumentMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store legend in marker
-////////////////////////////////////////////////////////////////////////////////
-
-void DocumentMarker::storeLegend(arangodb::basics::JsonLegend& legend) {
-  legend.dump((void*)this->legend());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void DocumentMarker::dump() const {
-  document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
-
-  std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", REV: " << m->_revisionId << ", TRX: " << m->_transactionId
-            << ", KEY: " << key() << ", OFFSETKEY: " << m->_offsetKey
-            << ", OFFSETLEGEND: " << m->_offsetLegend
-            << ", OFFSETJSON: " << m->_offsetJson << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
-  std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
-
-  dumpBinary();
-#endif
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone a marker from another marker
-////////////////////////////////////////////////////////////////////////////////
-
-DocumentMarker* DocumentMarker::clone(TRI_df_marker_t const* other,
-                                      TRI_voc_tick_t databaseId,
-                                      TRI_voc_cid_t collectionId,
-                                      TRI_voc_rid_t revisionId,
-                                      TRI_voc_tid_t transactionId,
-                                      size_t legendSize,
-                                      TRI_shaped_json_t const* shapedJson) {
-  char const* base = reinterpret_cast<char const*>(other);
-
-  if (other->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t const* original =
-        reinterpret_cast<TRI_doc_document_key_marker_t const*>(other);
-
-    return new DocumentMarker(
-        databaseId, collectionId, revisionId, transactionId,
-        std::string(base + original->_offsetKey), legendSize, shapedJson);
-  } else {
-    TRI_ASSERT(other->_type == TRI_WAL_MARKER_DOCUMENT);
-
-    document_marker_t const* original =
-        reinterpret_cast<document_marker_t const*>(other);
-
-    TRI_ASSERT(original->_databaseId == databaseId);
-    TRI_ASSERT(original->_collectionId == collectionId);
-
-    return new DocumentMarker(original->_databaseId, original->_collectionId,
-                              revisionId, transactionId,
-                              std::string(base + original->_offsetKey),
-                              legendSize, shapedJson);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-EdgeMarker::EdgeMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                       TRI_voc_rid_t revisionId, TRI_voc_tid_t transactionId,
-                       std::string const& key, TRI_document_edge_t const* edge,
-                       size_t legendSize, TRI_shaped_json_t const* shapedJson)
-    : Marker(TRI_WAL_MARKER_EDGE, sizeof(edge_marker_t) +
-                                      alignedSize(key.size() + 1) +
-                                      alignedSize(strlen(edge->_fromKey) + 1) +
-                                      alignedSize(strlen(edge->_toKey) + 1) +
-                                      legendSize + shapedJson->_data.length) {
-  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
-
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-  m->_revisionId = revisionId;
-  m->_transactionId = transactionId;
-  m->_shape = shapedJson->_sid;
-  m->_offsetKey = sizeof(edge_marker_t);  // start position of key
-  m->_toCid = edge->_toCid;
-  m->_fromCid = edge->_fromCid;
-  m->_offsetToKey =
-      static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
-  m->_offsetFromKey = static_cast<uint16_t>(
-      m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1));
-  m->_offsetLegend = static_cast<uint16_t>(
-      m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1));
-  m->_offsetJson =
-      static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
-
-  // store keys
-  storeSizedString(m->_offsetKey, key.c_str());
-  storeSizedString(m->_offsetFromKey, edge->_fromKey, strlen(edge->_fromKey));
-  storeSizedString(m->_offsetToKey, edge->_toKey, strlen(edge->_toKey));
-
-  // store legend
-  {
-    TRI_ASSERT(legendSize >= 8);
-    char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8);  // initialize initial bytes of legend with 0s
-  }
-
-  // store shapedJson
-  {
-    char* p = static_cast<char*>(begin()) + m->_offsetJson;
-    memcpy(p, shapedJson->_data.data,
-           static_cast<size_t>(shapedJson->_data.length));
-  }
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-EdgeMarker::~EdgeMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store legend in marker
-////////////////////////////////////////////////////////////////////////////////
-
-void EdgeMarker::storeLegend(arangodb::basics::JsonLegend& legend) {
-  legend.dump((void*)this->legend());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void EdgeMarker::dump() const {
-  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
-
-  std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
-            << m->_collectionId << ", REV: " << m->_revisionId
-            << ", TRX: " << m->_transactionId << ", KEY: " << key()
-            << ", FROMCID " << m->_fromCid << ", TOCID " << m->_toCid
-            << ", FROMKEY: " << fromKey() << ", TOKEY: " << toKey()
-            << ", OFFSETKEY: " << m->_offsetKey
-            << ", OFFSETFROM: " << m->_offsetFromKey
-            << ", OFFSETTO: " << m->_offsetToKey
-            << ", OFFSETLEGEND: " << m->_offsetLegend
-            << ", OFFSETJSON: " << m->_offsetJson << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
-  std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
-
-  dumpBinary();
-#endif
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone a marker from another marker
-////////////////////////////////////////////////////////////////////////////////
-
-EdgeMarker* EdgeMarker::clone(TRI_df_marker_t const* other,
-                              TRI_voc_tick_t databaseId,
-                              TRI_voc_cid_t collectionId,
-                              TRI_voc_rid_t revisionId,
-                              TRI_voc_tid_t transactionId, size_t legendSize,
-                              TRI_shaped_json_t const* shapedJson) {
-  char const* base = reinterpret_cast<char const*>(other);
-
-  if (other->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* original =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(other);
-
-    TRI_document_edge_t edge;
-    edge._fromCid = original->_fromCid;
-    edge._toCid = original->_toCid;
-    edge._toKey = (TRI_voc_key_t)base + original->_offsetToKey;
-    edge._fromKey = (TRI_voc_key_t)base + original->_offsetFromKey;
-
-    return new EdgeMarker(databaseId, collectionId, revisionId, transactionId,
-                          std::string(base + original->base._offsetKey), &edge,
-                          legendSize, shapedJson);
-  } else {
-    TRI_ASSERT(other->_type == TRI_WAL_MARKER_EDGE);
-
-    edge_marker_t const* original =
-        reinterpret_cast<edge_marker_t const*>(other);
-
-    TRI_ASSERT(original->_databaseId == databaseId);
-    TRI_ASSERT(original->_collectionId == collectionId);
-
-    TRI_document_edge_t edge;
-    edge._fromCid = original->_fromCid;
-    edge._toCid = original->_toCid;
-    edge._toKey = (TRI_voc_key_t)base + original->_offsetToKey;
-    edge._fromKey = (TRI_voc_key_t)base + original->_offsetFromKey;
-
-    return new EdgeMarker(original->_databaseId, original->_collectionId,
-                          revisionId, transactionId,
-                          std::string(base + original->_offsetKey), &edge,
-                          legendSize, shapedJson);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-RemoveMarker::RemoveMarker(TRI_voc_tick_t databaseId,
-                           TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                           TRI_voc_tid_t transactionId, std::string const& key)
-    : Marker(TRI_WAL_MARKER_REMOVE,
-             sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
-  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-  m->_revisionId = revisionId;
-  m->_transactionId = transactionId;
-
-  storeSizedString(sizeof(remove_marker_t), key);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-RemoveMarker::~RemoveMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void RemoveMarker::dump() const {
-  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
-
-  std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
-            << m->_collectionId << ", REV: " << m->_revisionId
-            << ", TRX: " << m->_transactionId << ", KEY: " << key() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif

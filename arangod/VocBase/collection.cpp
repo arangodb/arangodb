@@ -23,9 +23,6 @@
 
 #include "collection.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
@@ -43,8 +40,29 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief jsonify a parameter info block
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* CreateJsonCollectionInfo(
+    arangodb::VocbaseCollectionInfo const& info) {
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    TRI_CreateVelocyPackCollectionInfo(info, builder);
+    builder.close();
+    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
+        builder.slice());
+  } catch (...) {
+    return nullptr;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -1219,19 +1237,18 @@ void VocbaseCollectionInfo::setDeleted(bool deleted) { _deleted = deleted; }
 void VocbaseCollectionInfo::clearKeyOptions() { _keyOptions.reset(); }
 
 int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
-  char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+  std::string filename = basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
 
-  TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
+  std::unique_ptr<TRI_json_t> json(CreateJsonCollectionInfo(*this));
 
   if (json == nullptr) {
     LOG(ERR) << "cannot save collection properties file '" << filename
              << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
-  bool ok = TRI_SaveJson(filename, json, forceSync);
+  bool ok = TRI_SaveJson(filename.c_str(), json.get(), forceSync);
 
   int res;
   if (!ok) {
@@ -1242,8 +1259,6 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
     res = TRI_ERROR_NO_ERROR;
   }
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
 }
 
@@ -1332,25 +1347,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _isSystem = other.isSystem();
   _isVolatile = other.isVolatile();
   _waitForSync = other.waitForSync();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief jsonify a parameter info block
-////////////////////////////////////////////////////////////////////////////////
-
-// Only temporary
-TRI_json_t* TRI_CreateJsonCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info) {
-  try {
-    VPackBuilder builder;
-    builder.openObject();
-    TRI_CreateVelocyPackCollectionInfo(info, builder);
-    builder.close();
-    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
-        builder.slice());
-  } catch (...) {
-    return nullptr;
-  }
 }
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(

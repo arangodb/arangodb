@@ -500,6 +500,8 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
           goto nextExample;
         }
       }
+#if 0
+      // TODO      
       // Match _to
       it = def._internal.find(internalAttr::to);
       if (it != def._internal.end()) {
@@ -528,6 +530,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
           goto nextExample;
         }
       }
+#endif      
     }
     TRI_shaped_json_t result;
     TRI_shape_t const* shape;

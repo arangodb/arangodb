@@ -25,6 +25,7 @@
 #define LIB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Logger.h"
 
 #include "Zip/zip.h"
 
@@ -34,12 +35,12 @@
 /// @brief string buffer with formatting routines
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_string_buffer_s {
+struct TRI_string_buffer_t {
   TRI_memory_zone_t* _memoryZone;
   char* _buffer;
   char* _current;
   size_t _len;
-} TRI_string_buffer_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new string buffer and initialize it

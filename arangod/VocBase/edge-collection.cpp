@@ -48,19 +48,7 @@ static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
 
       return strcmp(fromKey, toKey) == 0;
     }
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    auto const* edge = reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-        marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (edge->_toCid == edge->_fromCid) {
-      char const* fromKey =
-          reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
-      char const* toKey =
-          reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
-
-      return strcmp(fromKey, toKey) == 0;
-    }
-  }
+  } 
 
   return false;
 }

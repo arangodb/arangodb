@@ -216,41 +216,6 @@ struct vpack_remove_marker_t : TRI_df_marker_t {
   // uint8_t* vpack
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal edge marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct edge_marker_t : document_marker_t {
-  TRI_voc_cid_t _toCid;
-  TRI_voc_cid_t _fromCid;
-
-  uint16_t _offsetToKey;
-  uint16_t _offsetFromKey;
-
-#ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
-#endif
-
-  // char* key
-  // char* toKey
-  // char* fromKey
-  // char* shapedJson
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal remove marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct remove_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-
-  TRI_voc_rid_t _revisionId;  // this is the tick for the deletion
-  TRI_voc_tid_t _transactionId;
-
-  // char* key
-};
-
 class Marker {
  protected:
   Marker& operator=(Marker const&) = delete;
@@ -325,6 +290,7 @@ class Marker {
   void dumpBinary() const;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store a null-terminated string inside the marker
   //////////////////////////////////////////////////////////////////////////////
@@ -336,8 +302,15 @@ class Marker {
   //////////////////////////////////////////////////////////////////////////////
 
   void storeSizedString(size_t, char const*, size_t);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store a vpack slice
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void storeSlice(size_t, arangodb::velocypack::Slice const&);
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to marker data
   //////////////////////////////////////////////////////////////////////////////
@@ -372,7 +345,7 @@ class MarkerEnvelope : public Marker {
 
 class CreateDatabaseMarker : public Marker {
  public:
-  CreateDatabaseMarker(TRI_voc_tick_t, std::string const&);
+  CreateDatabaseMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
 
   ~CreateDatabaseMarker();
 
@@ -396,7 +369,7 @@ class DropDatabaseMarker : public Marker {
 
 class CreateCollectionMarker : public Marker {
  public:
-  CreateCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
+  CreateCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
 
   ~CreateCollectionMarker();
 
@@ -434,7 +407,7 @@ class RenameCollectionMarker : public Marker {
 
 class ChangeCollectionMarker : public Marker {
  public:
-  ChangeCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
+  ChangeCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
 
   ~ChangeCollectionMarker();
 
@@ -449,7 +422,7 @@ class ChangeCollectionMarker : public Marker {
 class CreateIndexMarker : public Marker {
  public:
   CreateIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t,
-                    std::string const&);
+                    arangodb::velocypack::Slice const&);
 
   ~CreateIndexMarker();
 
@@ -534,7 +507,7 @@ class AbortRemoteTransactionMarker : public Marker {
 class VPackDocumentMarker : public Marker {
  public:
   VPackDocumentMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
-                      VPackSlice const*);
+                      arangodb::velocypack::Slice const&);
 
   ~VPackDocumentMarker();
 
@@ -559,7 +532,7 @@ class VPackDocumentMarker : public Marker {
 class VPackRemoveMarker : public Marker {
  public:
   VPackRemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
-                    VPackSlice const*);
+                    arangodb::velocypack::Slice const&);
 
   ~VPackRemoveMarker();
 
@@ -580,159 +553,6 @@ class VPackRemoveMarker : public Marker {
   }
 };
 
-class DocumentMarker : public Marker {
- public:
-  DocumentMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
-                 std::string const&, size_t, TRI_shaped_json_t const*);
-
-  ~DocumentMarker();
-
- public:
-  inline TRI_voc_rid_t revisionId() const {
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return m->_revisionId;
-  }
-
-  inline TRI_voc_tid_t transactionId() const {
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return m->_transactionId;
-  }
-
-  inline char* key() const {
-    // pointer to key
-    return begin() + sizeof(document_marker_t);
-  }
-
-  inline char const* legend() const {
-    // pointer to legend
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return begin() + m->_offsetLegend;
-  }
-
-  inline size_t legendLength() const {
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
-  }
-
-  inline char const* json() const {
-    // pointer to json
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return begin() + m->_offsetJson;
-  }
-
-  inline size_t jsonLength() const {
-    document_marker_t const* m =
-        reinterpret_cast<document_marker_t const*>(begin());
-    return static_cast<size_t>(size() - m->_offsetJson);
-  }
-
-  void storeLegend(arangodb::basics::JsonLegend&);
-
-  void dump() const;
-
-  static DocumentMarker* clone(TRI_df_marker_t const*, TRI_voc_tick_t,
-                               TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
-                               size_t, TRI_shaped_json_t const*);
-};
-
-class EdgeMarker : public Marker {
- public:
-  EdgeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
-             std::string const&, TRI_document_edge_t const*, size_t,
-             TRI_shaped_json_t const*);
-
-  ~EdgeMarker();
-
-  inline TRI_voc_rid_t revisionId() const {
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return m->_revisionId;
-  }
-
-  inline TRI_voc_rid_t transactionId() const {
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return m->_transactionId;
-  }
-
-  inline char const* key() const {
-    // pointer to key
-    return begin() + sizeof(edge_marker_t);
-  }
-
-  inline char const* fromKey() const {
-    // pointer to _from key
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return begin() + m->_offsetFromKey;
-  }
-
-  inline char const* toKey() const {
-    // pointer to _to key
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return begin() + m->_offsetToKey;
-  }
-
-  inline char const* legend() const {
-    // pointer to legend
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return begin() + m->_offsetLegend;
-  }
-
-  inline size_t legendLength() const {
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
-  }
-
-  inline char const* json() const {
-    // pointer to json
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return begin() + m->_offsetJson;
-  }
-
-  inline size_t jsonLength() const {
-    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-    return static_cast<size_t>(size() - m->_offsetJson);
-  }
-
-  void storeLegend(arangodb::basics::JsonLegend&);
-
-  void dump() const;
-
-  static EdgeMarker* clone(TRI_df_marker_t const*, TRI_voc_tick_t,
-                           TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t, size_t,
-                           TRI_shaped_json_t const*);
-};
-
-class RemoveMarker : public Marker {
- public:
-  RemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
-               std::string const&);
-
-  ~RemoveMarker();
-
- public:
-  inline char const* key() const {
-    // pointer to key
-    return begin() + sizeof(remove_marker_t);
-  }
-
-  inline TRI_voc_tid_t transactionId() const {
-    remove_marker_t const* m =
-        reinterpret_cast<remove_marker_t const*>(begin());
-    return m->_transactionId;
-  }
-
-  inline TRI_voc_rid_t revisionId() const {
-    remove_marker_t const* m =
-        reinterpret_cast<remove_marker_t const*>(begin());
-    return m->_revisionId;
-  }
-
-  void dump() const;
-};
 }
 }
 

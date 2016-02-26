@@ -712,44 +712,6 @@ static int InsertPrimaryIndex(arangodb::Transaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new entry in the secondary indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertSecondaryIndexes(arangodb::Transaction* trx,
-                                  TRI_document_collection_t* document,
-                                  TRI_doc_mptr_t const* header,
-                                  bool isRollback) {
-  TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
-
-  if (!document->useSecondaryIndexes()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  int result = TRI_ERROR_NO_ERROR;
-
-  auto const& indexes = document->allIndexes();
-  size_t const n = indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    int res = idx->insert(trx, header, isRollback);
-
-    // in case of no-memory, return immediately
-    if (res == TRI_ERROR_OUT_OF_MEMORY) {
-      return res;
-    } else if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          result == TRI_ERROR_NO_ERROR) {
-        // "prefer" unique constraint violated
-        result = res;
-      }
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an entry from the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -768,38 +730,6 @@ static int DeletePrimaryIndex(arangodb::Transaction* trx,
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an entry from the secondary indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int DeleteSecondaryIndexes(arangodb::Transaction* trx,
-                                  TRI_document_collection_t* document,
-                                  TRI_doc_mptr_t const* header,
-                                  bool isRollback) {
-  if (!document->useSecondaryIndexes()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  TRI_IF_FAILURE("DeleteSecondaryIndexes") { return TRI_ERROR_DEBUG; }
-
-  int result = TRI_ERROR_NO_ERROR;
-
-  auto const& indexes = document->allIndexes();
-  size_t const n = indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    int res = idx->remove(trx, header, isRollback);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // an error occurred
-      result = res;
-    }
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,30 +856,6 @@ static int CleanupIndexes(TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief post-insert operation
-////////////////////////////////////////////////////////////////////////////////
-
-static int PostInsertIndexes(arangodb::Transaction* trx,
-                             TRI_transaction_collection_t* trxCollection,
-                             TRI_doc_mptr_t* header) {
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  if (!document->useSecondaryIndexes()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  auto const& indexes = document->allIndexes();
-  size_t const n = indexes.size();
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    idx->postInsert(trx, trxCollection, header);
-  }
-
-  // post-insert will never return an error
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new revision id if not yet set
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -960,256 +866,6 @@ static inline TRI_voc_rid_t GetRevisionId(TRI_voc_rid_t previous) {
 
   // generate new revision id
   return static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a document
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertDocument(arangodb::Transaction* trx,
-                          TRI_transaction_collection_t* trxCollection,
-                          TRI_doc_mptr_t* header,
-                          arangodb::wal::DocumentOperation& operation,
-                          TRI_doc_mptr_t* mptr, bool& waitForSync) {
-  TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(mptr != nullptr);
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
-  // .............................................................................
-  // insert into indexes
-  // .............................................................................
-
-  // insert into primary index first
-  int res = InsertPrimaryIndex(trx, document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // insert has failed
-    return res;
-  }
-
-  // insert into secondary indexes
-  res = InsertSecondaryIndexes(trx, document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    DeleteSecondaryIndexes(trx, document, header, true);
-    DeletePrimaryIndex(trx, document, header, true);
-    return res;
-  }
-
-  document->_numberDocuments++;
-
-  operation.indexed();
-
-  TRI_IF_FAILURE("InsertDocumentNoOperation") { return TRI_ERROR_DEBUG; }
-
-  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation,
-                                    waitForSync);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  *mptr = *header;
-
-  res = PostInsertIndexes(trx, trxCollection, header);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document by key
-/// the caller must make sure the read lock on the collection is held
-////////////////////////////////////////////////////////////////////////////////
-
-static int LookupDocument(arangodb::Transaction* trx,
-                          TRI_document_collection_t* document,
-                          TRI_voc_key_t key,
-                          TRI_doc_update_policy_t const* policy,
-                          TRI_doc_mptr_t*& header) {
-  auto primaryIndex = document->primaryIndex();
-  header = primaryIndex->lookupKey(trx, key);
-
-  if (header == nullptr) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  if (policy != nullptr) {
-    return policy->check(header->_rid);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates an existing document
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateDocument(arangodb::Transaction* trx,
-                          TRI_transaction_collection_t* trxCollection,
-                          TRI_doc_mptr_t* oldHeader,
-                          arangodb::wal::DocumentOperation& operation,
-                          TRI_doc_mptr_t* mptr, bool syncRequested) {
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
-  // save the old data, remember
-  TRI_doc_mptr_t oldData = *oldHeader;
-
-  // .............................................................................
-  // update indexes
-  // .............................................................................
-
-  // remove old document from secondary indexes
-  // (it will stay in the primary index as the key won't change)
-
-  int res = DeleteSecondaryIndexes(trx, document, oldHeader, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // re-enter the document in case of failure, ignore errors during rollback
-    InsertSecondaryIndexes(trx, document, oldHeader, true);
-
-    return res;
-  }
-
-  // .............................................................................
-  // update header
-  // .............................................................................
-
-  TRI_doc_mptr_t* newHeader = oldHeader;
-
-  // update the header. this will modify oldHeader, too !!!
-  // newHeader->_rid = operation.rid; // TODO
-  newHeader->setDataPtr(
-      operation.marker->mem());  // PROTECTED by trx in trxCollection
-
-  // insert new document into secondary indexes
-  res = InsertSecondaryIndexes(trx, document, newHeader, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // rollback
-    DeleteSecondaryIndexes(trx, document, newHeader, true);
-
-    // copy back old header data
-    oldHeader->copy(oldData);
-
-    InsertSecondaryIndexes(trx, document, oldHeader, true);
-
-    return res;
-  }
-
-  operation.indexed();
-
-  TRI_IF_FAILURE("UpdateDocumentNoOperation") { return TRI_ERROR_DEBUG; }
-
-  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation,
-                                    syncRequested);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    // write new header into result
-    *mptr = *((TRI_doc_mptr_t*)newHeader);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document or edge marker, without using a legend
-////////////////////////////////////////////////////////////////////////////////
-
-static int CreateMarkerNoLegend(arangodb::wal::Marker*& marker,
-                                TRI_document_collection_t* document,
-                                TRI_voc_rid_t rid,
-                                TRI_transaction_collection_t* trxCollection,
-                                std::string const& keyString,
-                                TRI_shaped_json_t const* shaped,
-                                TRI_document_edge_t const* edge) {
-  TRI_ASSERT(marker == nullptr);
-
-  TRI_IF_FAILURE("InsertDocumentNoLegend") {
-    // test what happens when no legend can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
-    // test what happens if no legend can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoMarker") {
-    // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
-    // test what happens if no marker can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (edge == nullptr) {
-    // document
-    marker = new arangodb::wal::DocumentMarker(
-        document->_vocbase->_id, document->_info.id(), rid,
-        TRI_MarkerIdTransaction(trxCollection->_transaction), keyString, 8,
-        shaped);
-  } else {
-    // edge
-    marker = new arangodb::wal::EdgeMarker(
-        document->_vocbase->_id, document->_info.id(), rid,
-        TRI_MarkerIdTransaction(trxCollection->_transaction), keyString, edge,
-        8, shaped);
-  }
-
-  TRI_ASSERT(marker != nullptr);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone a document or edge marker, without using a legend
-////////////////////////////////////////////////////////////////////////////////
-
-static int CloneMarkerNoLegend(arangodb::wal::Marker*& marker,
-                               TRI_df_marker_t const* original,
-                               TRI_document_collection_t* document,
-                               TRI_voc_rid_t rid,
-                               TRI_transaction_collection_t* trxCollection,
-                               TRI_shaped_json_t const* shaped) {
-  TRI_ASSERT(marker == nullptr);
-
-  TRI_IF_FAILURE("UpdateDocumentNoLegend") {
-    // test what happens when no legend can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
-    // test what happens when no legend can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
-      original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    marker = arangodb::wal::DocumentMarker::clone(
-        original, document->_vocbase->_id, document->_info.id(), rid,
-        TRI_MarkerIdTransaction(trxCollection->_transaction), 8, shaped);
-
-    return TRI_ERROR_NO_ERROR;
-  } else if (original->_type == TRI_WAL_MARKER_EDGE ||
-             original->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    marker = arangodb::wal::EdgeMarker::clone(
-        original, document->_vocbase->_id, document->_info.id(), rid,
-        TRI_MarkerIdTransaction(trxCollection->_transaction), 8, shaped);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // invalid marker type
-  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3136,7 +2792,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
 
   try {
     arangodb::wal::CreateIndexMarker marker(vocbase->_id, document->_info.id(),
-                                            idx->id(), idxSlice.toJson());
+                                            idx->id(), idxSlice);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -4179,7 +3835,8 @@ int TRI_ReadShapedJsonDocumentCollection(
     arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
     const TRI_voc_key_t key, TRI_doc_mptr_t* mptr, bool lock) {
 
-TRI_ASSERT(false);  
+TRI_ASSERT(false); 
+#if 0 
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
@@ -4212,6 +3869,8 @@ TRI_ASSERT(false);
   TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
+#endif
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4223,7 +3882,8 @@ int TRI_RemoveShapedJsonDocumentCollection(
     TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
 
-TRI_ASSERT(false);  
+TRI_ASSERT(false); 
+#if 0 
   bool const freeMarker = (marker == nullptr);
   rid = GetRevisionId(rid);
 
@@ -4330,6 +3990,8 @@ TRI_ASSERT(false);
   }
 
   return res;
+#endif
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4345,6 +4007,7 @@ int TRI_InsertShapedJsonDocumentCollection(
     bool isRestore) {
 
 TRI_ASSERT(false);
+#if 0
   bool const freeMarker = (marker == nullptr);
 
   TRI_ASSERT(mptr != nullptr);
@@ -4476,8 +4139,9 @@ TRI_ASSERT(false);
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
-
   return res;
+#endif
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4489,9 +4153,10 @@ int TRI_UpdateShapedJsonDocumentCollection(
     TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
     TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
     TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
-  bool const freeMarker = (marker == nullptr);
 
 TRI_ASSERT(false);  
+#if 0
+  bool const freeMarker = (marker == nullptr);
 
   rid = GetRevisionId(rid);
 
@@ -4587,6 +4252,8 @@ TRI_ASSERT(false);
   }
 
   return res;
+#endif
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5055,7 +4722,7 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
     Transaction* trx, VPackSlice const* slice) {
   auto marker = new arangodb::wal::VPackDocumentMarker(
-      _vocbase->_id, _info.id(), trx->getInternals()->_id, slice);
+      _vocbase->_id, _info.id(), trx->getInternals()->_id, *slice);
   return marker;
 }
 
@@ -5071,7 +4738,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
     Transaction* trx, VPackSlice const* slice) {
   auto marker = new arangodb::wal::VPackRemoveMarker(
-      _vocbase->_id, _info.id(), trx->getInternals()->_id, slice);
+      _vocbase->_id, _info.id(), trx->getInternals()->_id, *slice);
   return marker;
 }
 

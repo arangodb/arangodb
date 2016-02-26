@@ -53,6 +53,8 @@ Json TRI_ExpandShapedJson(VocShaper* shaper,
        Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
   json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
 
+#if 0
+  // TODO
   if (TRI_IS_EDGE_MARKER(marker)) {
     // _from
     std::string from(resolver->getCollectionNameCluster(
@@ -69,6 +71,7 @@ Json TRI_ExpandShapedJson(VocShaper* shaper,
     to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
     json(TRI_VOC_ATTRIBUTE_TO, Json(to));
   }
+#endif
 
   return json;
 }

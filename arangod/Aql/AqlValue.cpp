@@ -991,6 +991,8 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
            Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
       json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
 
+#if 0 
+      // TODO
       if (TRI_IS_EDGE_MARKER(_marker)) {
         // _from
         std::string from(trx->resolver()->getCollectionNameCluster(
@@ -1006,6 +1008,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
         to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
+#endif      
 
       return TRI_FastHashJson(json.json());
     }
@@ -1124,6 +1127,8 @@ Json AqlValue::extractObjectMember(
           buffer.appendInteger(rid);
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
         }
+#if 0 
+        // TODO       
         if (name[1] == 'f' && strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0 &&
             (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
              _marker->_type == TRI_WAL_MARKER_EDGE)) {
@@ -1144,6 +1149,7 @@ Json AqlValue::extractObjectMember(
           buffer.appendText(TRI_EXTRACT_MARKER_TO_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
         }
+#endif
       }
 
       auto shaper = document->getShaper();

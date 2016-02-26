@@ -119,30 +119,6 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesJs(
     TRI_GET_GLOBAL_STRING(_ToKey);
     result->ForceSet(_ToKey,
                      TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
-  } else if (type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* m =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
-
-    // _from
-    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
-    keyLength = strlen(base + m->_offsetFromKey);
-    buffer[len] = '/';
-    memcpy(buffer + len + 1, base + m->_offsetFromKey, keyLength);
-    TRI_GET_GLOBAL_STRING(_FromKey);
-    result->ForceSet(_FromKey,
-                     TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
-
-    // _to
-    if (m->_fromCid != m->_toCid) {
-      // only lookup collection name if we haven't done it yet
-      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
-    }
-    keyLength = strlen(base + m->_offsetToKey);
-    buffer[len] = '/';
-    memcpy(buffer + len + 1, base + m->_offsetToKey, keyLength);
-    TRI_GET_GLOBAL_STRING(_ToKey);
-    result->ForceSet(_ToKey,
-                     TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
   }
 
   return scope.Escape<v8::Object>(result);
@@ -181,30 +157,6 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped(
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* m =
         reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-
-    // _from
-    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
-    keyLength = strlen(base + m->_offsetFromKey);
-    buffer[len] = '/';
-    memcpy(buffer + len + 1, base + m->_offsetFromKey, keyLength);
-    TRI_GET_GLOBAL_STRING(_FromKey);
-    result->ForceSet(_FromKey,
-                     TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
-
-    // _to
-    if (m->_fromCid != m->_toCid) {
-      // only lookup collection name if we haven't done it yet
-      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
-    }
-    keyLength = strlen(base + m->_offsetToKey);
-    buffer[len] = '/';
-    memcpy(buffer + len + 1, base + m->_offsetToKey, keyLength);
-    TRI_GET_GLOBAL_STRING(_ToKey);
-    result->ForceSet(_ToKey,
-                     TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
-  } else if (type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* m =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
 
     // _from
     len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
@@ -408,8 +360,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
 
   TRI_df_marker_type_t type =
       static_cast<TRI_df_marker_t const*>(marker)->_type;
-  bool const isEdge =
-      (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
+  bool const isEdge = (type == TRI_DOC_MARKER_KEY_EDGE);
 
   v8::Handle<v8::Array> result =
       v8::Array::New(isolate, (int)n + 3 + (isEdge ? 2 : 0));

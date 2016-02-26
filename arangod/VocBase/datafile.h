@@ -135,11 +135,6 @@ typedef enum {
   TRI_DOC_MARKER_KEY_EDGE = 3008,      // new marker with key values
   TRI_DOC_MARKER_KEY_DELETION = 3009,  // new marker with key values
 
-  TRI_WAL_MARKER_ATTRIBUTE = 4000,
-  TRI_WAL_MARKER_SHAPE = 4001,
-  TRI_WAL_MARKER_DOCUMENT = 4010,
-  TRI_WAL_MARKER_EDGE = 4011,
-  TRI_WAL_MARKER_REMOVE = 4012,
   TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION = 4023,
   TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION = 4024,
   TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION = 4025,
@@ -588,9 +583,7 @@ void TRI_FreeDatafile(TRI_datafile_t*);
 static inline bool TRI_IsWalDataMarkerDatafile(void const* marker) {
   TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(marker);
 
-  return (m->_type == TRI_WAL_MARKER_DOCUMENT ||
-          m->_type == TRI_WAL_MARKER_EDGE ||
-          m->_type == TRI_WAL_MARKER_VPACK_DOCUMENT);
+  return (m->_type == TRI_WAL_MARKER_VPACK_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

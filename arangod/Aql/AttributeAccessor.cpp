@@ -210,8 +210,8 @@ AqlValue AttributeAccessor::extractId(
 
 AqlValue AttributeAccessor::extractFrom(AqlValue const& src,
                                         arangodb::AqlTransaction* trx) {
-  if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
-      src._marker->_type != TRI_WAL_MARKER_EDGE) {
+  // TODO vpack
+  if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE) {
     return AqlValue(new Json(Json::Null));
   }
 
@@ -238,8 +238,8 @@ AqlValue AttributeAccessor::extractFrom(AqlValue const& src,
 
 AqlValue AttributeAccessor::extractTo(AqlValue const& src,
                                       arangodb::AqlTransaction* trx) {
-  if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
-      src._marker->_type != TRI_WAL_MARKER_EDGE) {
+  // TODO vpack
+  if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE) {
     return AqlValue(new Json(Json::Null));
   }
 

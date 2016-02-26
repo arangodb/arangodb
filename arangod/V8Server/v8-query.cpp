@@ -1319,16 +1319,16 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
+  // TODO vpack
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_WAL_MARKER_DOCUMENT) {
+      marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     localCrc = TRI_Crc32HashString(
         TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
     // TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
-  } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-             marker->_type == TRI_WAL_MARKER_EDGE) {
+  } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
     localCrc = TRI_Crc32HashString(
         TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
@@ -1340,18 +1340,6 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* e =
           reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-      std::string const extra =
-          helper->_resolver->getCollectionNameCluster(e->_toCid) +
-          TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          std::string(((char*)marker) + e->_offsetToKey) +
-          helper->_resolver->getCollectionNameCluster(e->_fromCid) +
-          TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          std::string(((char*)marker) + e->_offsetFromKey);
-
-      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
-    } else {
-      arangodb::wal::edge_marker_t const* e =
-          reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
       std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +

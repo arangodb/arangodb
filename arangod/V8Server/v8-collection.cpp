@@ -1435,7 +1435,7 @@ static void JS_PropertiesVocbaseCol(
         if (tmp == 0 || tmp > 1024) {
           ReleaseCollection(collection);
           TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "indexBucket must be a two-power between 1 and 1024");
+              "indexBuckets must be a two-power between 1 and 1024");
         }
 
       }  // Leave the scope and free the JOURNAL lock
@@ -1449,19 +1449,17 @@ static void JS_PropertiesVocbaseCol(
         TRI_V8_THROW_EXCEPTION(res);
       }
 
-      TRI_json_t* json = TRI_CreateJsonCollectionInfo(base->_info);
-
-      if (json == nullptr) {
-        ReleaseCollection(collection);
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-
-      // now log the property changes
-      res = TRI_ERROR_NO_ERROR;
-
       try {
+        VPackBuilder infoBuilder;
+        infoBuilder.openObject();
+        TRI_CreateVelocyPackCollectionInfo(base->_info, infoBuilder);
+        infoBuilder.close();
+
+        // now log the property changes
+        res = TRI_ERROR_NO_ERROR;
+
         arangodb::wal::ChangeCollectionMarker marker(
-            base->_vocbase->_id, base->_info.id(), JsonHelper::toString(json));
+            base->_vocbase->_id, base->_info.id(), infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);
@@ -1479,8 +1477,6 @@ static void JS_PropertiesVocbaseCol(
         // TODO: what to do here
         LOG(WARN) << "could not save collection change marker in log: " << TRI_errno_string(res);
       }
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }
 

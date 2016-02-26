@@ -219,6 +219,16 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
+                                        VPackSlice const& key) const {
+  TRI_ASSERT(key.isString());
+  return _primaryIndex->findByKey(trx, key.begin());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
 /// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////

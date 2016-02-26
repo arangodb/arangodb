@@ -497,8 +497,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_VPACK_DOCUMENT: {
       // re-insert the document/edge into the collection
-      document_marker_t const* m =
-          reinterpret_cast<document_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 
@@ -553,8 +552,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_VPACK_REMOVE: {
       // re-apply the remove operation
-      remove_marker_t const* m =
-          reinterpret_cast<remove_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 
@@ -604,8 +602,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     // -----------------------------------------------------------------------------
 
     case TRI_WAL_MARKER_RENAME_COLLECTION: {
-      collection_rename_marker_t const* m =
-          reinterpret_cast<collection_rename_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<collection_rename_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 
@@ -659,8 +656,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_CHANGE_COLLECTION: {
-      collection_change_marker_t const* m =
-          reinterpret_cast<collection_change_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<collection_change_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 
@@ -715,8 +711,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     // -----------------------------------------------------------------------------
 
     case TRI_WAL_MARKER_CREATE_INDEX: {
-      index_create_marker_t const* m =
-          reinterpret_cast<index_create_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<index_create_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
       TRI_idx_iid_t indexId = m->_indexId;
@@ -786,8 +781,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_CREATE_COLLECTION: {
-      collection_create_marker_t const* m =
-          reinterpret_cast<collection_create_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 
@@ -899,8 +893,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_CREATE_DATABASE: {
-      database_create_marker_t const* m =
-          reinterpret_cast<database_create_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<database_create_marker_t const*>(marker);
       TRI_voc_tick_t databaseId = m->_databaseId;
 
       // remove the drop marker
@@ -979,8 +972,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     // -----------------------------------------------------------------------------
 
     case TRI_WAL_MARKER_DROP_INDEX: {
-      index_drop_marker_t const* m =
-          reinterpret_cast<index_drop_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<index_drop_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
       TRI_idx_iid_t indexId = m->_indexId;
@@ -1024,8 +1016,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
-      collection_drop_marker_t const* m =
-          reinterpret_cast<collection_drop_marker_t const*>(marker);
+      auto const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
 

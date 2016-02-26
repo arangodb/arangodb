@@ -163,7 +163,7 @@ class Slice;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_memory_zone_s;
-struct TRI_string_buffer_s;
+struct TRI_string_buffer_t;
 class VocShaper;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,14 +916,14 @@ std::shared_ptr<arangodb::velocypack::Builder> TRI_VelocyPackShapedJson(
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-bool TRI_StringifyArrayShapedJson(T*, struct TRI_string_buffer_s*,
+bool TRI_StringifyArrayShapedJson(T*, struct TRI_string_buffer_t*,
                                   TRI_shaped_json_t const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringifyAugmentedShapedJson(VocShaper*, struct TRI_string_buffer_s*,
+bool TRI_StringifyAugmentedShapedJson(VocShaper*, struct TRI_string_buffer_t*,
                                       TRI_shaped_json_t const*,
                                       TRI_json_t const*);
 

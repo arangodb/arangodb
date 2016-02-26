@@ -149,13 +149,15 @@ class PrimaryIndex final : public Index {
 
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief looks up an element given a request Slice. Key hast to have the format
+  /// @brief looks up an element given a request Slice. Key has to have the format
   ///        [{eq: _key}]
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
 
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
+  
+  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up an element given a key

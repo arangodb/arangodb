@@ -92,9 +92,9 @@ static char* MakeValue(char const* value) {
 void TRI_SegfaultDebugging(char const* message) {
   LOG(WARN) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
-  Logger::shutdown(true);
+  TRI_FlushDebugging();
 
-// and now crash
+  // and now crash
 #ifndef __APPLE__
   // on MacOS, the following statement makes the server hang but not crash
   *((char*)-1) = '!';
@@ -396,3 +396,13 @@ void TRI_PrintBacktrace() {
 #endif
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the logger and shuts it down
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FlushDebugging() {
+  Logger::flush();
+  Logger::shutdown(true);
+}
+

@@ -129,9 +129,9 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   TRI_ASSERT(marker != nullptr);
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_DOCUMENT: {
-      document_marker_t const* m =
-          reinterpret_cast<document_marker_t const*>(marker);
+    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+      auto const* m =
+          reinterpret_cast<vpack_document_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
 
@@ -148,14 +148,15 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
-      state->documentOperations[collectionId][std::string(key)] = marker;
+      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
 
-    case TRI_WAL_MARKER_EDGE: {
-      edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
+    case TRI_WAL_MARKER_VPACK_REMOVE: {
+      auto const* m =
+          reinterpret_cast<vpack_remove_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
 
@@ -172,34 +173,8 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
-      state->documentOperations[collectionId][std::string(key)] = marker;
-      state->operationsCount[collectionId]++;
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
-      remove_marker_t const* m =
-          reinterpret_cast<remove_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tid_t transactionId = m->_transactionId;
-
-      state->collections[collectionId] = m->_databaseId;
-
-      if (state->failedTransactions.find(transactionId) !=
-          state->failedTransactions.end()) {
-        // transaction had failed
-        state->operationsCount[collectionId]++;
-        break;
-      }
-
-      if (ShouldIgnoreCollection(state, collectionId)) {
-        break;
-      }
-
-      char const* key =
-          reinterpret_cast<char const*>(m) + sizeof(remove_marker_t);
-      state->documentOperations[collectionId][std::string(key)] = marker;
+      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
@@ -655,24 +630,23 @@ void CollectorThread::processCollectionMarker(
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(marker != nullptr);
 
-  if (walMarker->_type == TRI_WAL_MARKER_DOCUMENT) {
+  if (walMarker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
 
-    wal::document_marker_t const* m =
-        reinterpret_cast<wal::document_marker_t const*>(walMarker);
-    char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    TRI_voc_rid_t revisionId = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
 
-    auto found = document->primaryIndex()->lookupKey(&trx, key);
+    auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
-    if (found == nullptr || found->_rid != m->_revisionId ||
+    if (found == nullptr || found->_rid != revisionId ||
         found->getDataPtr() != walMarker) {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
       dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     } else {
-      // update cap constraint info
+      // update size info
       document->_masterPointers.adjustTotalSize(
           TRI_DF_ALIGN_BLOCK(walMarker->_size),
           TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
@@ -685,49 +659,17 @@ void CollectorThread::processCollectionMarker(
       dfi.numberAlive++;
       dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     }
-  } else if (walMarker->_type == TRI_WAL_MARKER_EDGE) {
-    auto& dfi = createDfi(cache, fid);
-    dfi.numberUncollected--;
-
-    wal::edge_marker_t const* m =
-        reinterpret_cast<wal::edge_marker_t const*>(walMarker);
-    char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
-
-    auto found = document->primaryIndex()->lookupKey(&trx, key);
-
-    if (found == nullptr || found->_rid != m->_revisionId ||
-        found->getDataPtr() != walMarker) {
-      // somebody inserted a new revision of the document or the revision
-      // was already moved by the compactor
-      dfi.numberDead++;
-      dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-    } else {
-      // update cap constraint info
-      document->_masterPointers.adjustTotalSize(
-          TRI_DF_ALIGN_BLOCK(walMarker->_size),
-          TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
-
-      // we can safely update the master pointer's dataptr value
-      found->setDataPtr(
-          static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
-      found->_fid = fid;
-
-      dfi.numberAlive++;
-      dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-    }
-  } else if (walMarker->_type == TRI_WAL_MARKER_REMOVE) {
+  } else if (walMarker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
     dfi.numberDeletions++;
 
-    wal::remove_marker_t const* m =
-        reinterpret_cast<wal::remove_marker_t const*>(walMarker);
-    char const* key =
-        reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+    TRI_voc_rid_t revisionId = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
 
-    auto found = document->primaryIndex()->lookupKey(&trx, key);
+    auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
-    if (found != nullptr && found->_rid > m->_revisionId) {
+    if (found != nullptr && found->_rid > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
       dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
@@ -1049,138 +991,23 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
       }
     }
 
-    char const* base = reinterpret_cast<char const*>(source);
+    if (source->_type == TRI_WAL_MARKER_VPACK_DOCUMENT ||
+        source->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
+      char const* base = reinterpret_cast<char const*>(source);
+      char* dst = nextFreeMarkerPosition(document, source->_tick,
+                                          TRI_DOC_MARKER_KEY_DOCUMENT,
+                                          source->_size, cache);
 
-    switch (source->_type) {
-      case TRI_WAL_MARKER_DOCUMENT: {
-        document_marker_t const* orig =
-            reinterpret_cast<document_marker_t const*>(source);
-        char const* shape = base + orig->_offsetJson;
-        ptrdiff_t shapeLength = source->_size - (shape - base);
-
-        char const* key = base + orig->_offsetKey;
-        size_t n = strlen(key) + 1;  // add NULL byte
-        TRI_voc_size_t const totalSize =
-            static_cast<TRI_voc_size_t>(sizeof(TRI_doc_document_key_marker_t) +
-                                        TRI_DF_ALIGN_BLOCK(n) + shapeLength);
-
-        char* dst = nextFreeMarkerPosition(document, source->_tick,
-                                           TRI_DOC_MARKER_KEY_DOCUMENT,
-                                           totalSize, cache);
-
-        if (dst == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi.numberUncollected++;
-
-        TRI_doc_document_key_marker_t* m =
-            reinterpret_cast<TRI_doc_document_key_marker_t*>(dst);
-        m->_rid = orig->_revisionId;
-        m->_tid = 0;  // convert into standalone transaction
-        m->_shape = orig->_shape;
-        m->_offsetKey = sizeof(TRI_doc_document_key_marker_t);
-        m->_offsetJson =
-            static_cast<uint16_t>(m->_offsetKey + TRI_DF_ALIGN_BLOCK(n));
-
-        // copy key into marker
-        memcpy(dst + m->_offsetKey, key, n);
-
-        // copy shape into marker
-        memcpy(dst + m->_offsetJson, shape, shapeLength);
-
-        finishMarker(base, dst, document, source->_tick, cache);
-        break;
+      if (dst == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      case TRI_WAL_MARKER_EDGE: {
-        edge_marker_t const* orig =
-            reinterpret_cast<edge_marker_t const*>(source);
-        char const* shape = base + orig->_offsetJson;
-        ptrdiff_t shapeLength = source->_size - (shape - base);
+      auto& dfi = getDfi(cache, cache->lastFid);
+      dfi.numberUncollected++;
 
-        char const* key = base + orig->_offsetKey;
-        size_t n = strlen(key) + 1;  // add NULL byte
-        char const* toKey = base + orig->_offsetToKey;
-        size_t to = strlen(toKey) + 1;  // add NULL byte
-        char const* fromKey = base + orig->_offsetFromKey;
-        size_t from = strlen(fromKey) + 1;  // add NULL byte
-        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(
-            sizeof(TRI_doc_edge_key_marker_t) + TRI_DF_ALIGN_BLOCK(n) +
-            TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from) + shapeLength);
+      memcpy(dst, source, source->_size);
 
-        char* dst = nextFreeMarkerPosition(
-            document, source->_tick, TRI_DOC_MARKER_KEY_EDGE, totalSize, cache);
-
-        if (dst == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi.numberUncollected++;
-
-        size_t offsetKey = sizeof(TRI_doc_edge_key_marker_t);
-        TRI_doc_edge_key_marker_t* m =
-            reinterpret_cast<TRI_doc_edge_key_marker_t*>(dst);
-        m->base._rid = orig->_revisionId;
-        m->base._tid = 0;  // convert into standalone transaction
-        m->base._shape = orig->_shape;
-        m->base._offsetKey = static_cast<uint16_t>(offsetKey);
-        m->base._offsetJson = static_cast<uint16_t>(
-            offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to) +
-            TRI_DF_ALIGN_BLOCK(from));
-        m->_toCid = orig->_toCid;
-        m->_fromCid = orig->_fromCid;
-        m->_offsetToKey =
-            static_cast<uint16_t>(offsetKey + TRI_DF_ALIGN_BLOCK(n));
-        m->_offsetFromKey = static_cast<uint16_t>(
-            offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to));
-
-        // copy key into marker
-        memcpy(dst + offsetKey, key, n);
-        memcpy(dst + m->_offsetToKey, toKey, to);
-        memcpy(dst + m->_offsetFromKey, fromKey, from);
-
-        // copy shape into marker
-        memcpy(dst + m->base._offsetJson, shape, shapeLength);
-
-        finishMarker(base, dst, document, source->_tick, cache);
-        break;
-      }
-
-      case TRI_WAL_MARKER_REMOVE: {
-        remove_marker_t const* orig =
-            reinterpret_cast<remove_marker_t const*>(source);
-
-        char const* key = base + sizeof(remove_marker_t);
-        size_t n = strlen(key) + 1;  // add NULL byte
-        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(
-            sizeof(TRI_doc_deletion_key_marker_t) + n);
-
-        char* dst = nextFreeMarkerPosition(document, source->_tick,
-                                           TRI_DOC_MARKER_KEY_DELETION,
-                                           totalSize, cache);
-
-        if (dst == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi.numberUncollected++;
-
-        TRI_doc_deletion_key_marker_t* m =
-            reinterpret_cast<TRI_doc_deletion_key_marker_t*>(dst);
-        m->_rid = orig->_revisionId;
-        m->_tid = 0;  // convert into standalone transaction
-        m->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
-
-        // copy key into marker
-        memcpy(dst + m->_offsetKey, key, n);
-
-        finishMarker(base, dst, document, source->_tick, cache);
-        break;
-      }
+      finishMarker(base, dst, document, source->_tick, cache);
     }
   }
 
@@ -1471,14 +1298,6 @@ void CollectorThread::finishMarker(char const* walPosition,
                                    TRI_voc_tick_t tick, CollectorCache* cache) {
   TRI_df_marker_t* marker =
       reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
-
-  // re-use the original WAL marker's tick
-  marker->_tick = tick;
-
-  // calculate the CRC
-  TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, const_cast<char*>(datafilePosition), marker->_size);
-  marker->_crc = TRI_FinalCrc32(crc);
 
   TRI_datafile_t* datafile = cache->lastDatafile;
   TRI_ASSERT(datafile != nullptr);
