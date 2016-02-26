@@ -34,7 +34,7 @@ State::~State() {
 }
 
 void State::log (query_t const& query) {
-  log.push_back(query);
+  _log.push_back(query);
 }
 
 bool save (std::string const& ep) {};

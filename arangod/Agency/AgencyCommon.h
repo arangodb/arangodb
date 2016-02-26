@@ -102,14 +102,29 @@ struct query_ret_t {
 
 typedef uint64_t index_t;
 
+using namespace std::chrono;
 /**
  * @brief State entry
  */
 struct log_t {
-  term_t      term;
+  term_t      term; 
   id_t        leaderId;
   index_t     index;
   std::string entry;
+  std::vector<bool> ack;
+  milliseconds timestamp;
+  log_t (term_t t, id_t lid, index_t idx, std::string const& e,
+         std::vector<id_t> const& r) :
+    term(t), leaderId(lid), index(idx) entry(e), results(r), timestamp (
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch()) {}
+};
+  
+
+enum AGENCY_EXCEPTION {
+  QUERY_NOT_APPLICABLE;
+}
+   
+  
 };
 
 

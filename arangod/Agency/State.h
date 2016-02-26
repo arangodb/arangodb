@@ -49,6 +49,7 @@ class Agent;
  * @brief State replica
  */
 class State : public arangodb::ClusterCommCallback, // We need to provide callBack 
+xb
               std::enable_shared_from_this<State> { // For making shared_ptr from this class
   
 public:
@@ -64,9 +65,13 @@ public:
   virtual ~State();
   
   /**
-   * @brief State
+   * @brief Append log entry
    */
-  template<typename T> id_t log (std::string const&);
+  void append (query_t const& query);
+
+  /**
+   * @brief Update log entry
+   */
   
   /**
    * @brief Save currentTerm, votedFor, log entries
@@ -81,7 +86,7 @@ public:
 
 private:
   
-  log_t  _log;          /**< @brief  State entries */
+  std::vector<log_t> _log;          /**< @brief  State entries */
   
 };
 

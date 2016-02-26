@@ -110,7 +110,7 @@ public:
    * @brief Invoked by leader to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  bool log (std::string const& tolog);
+  query_ret_t appendEntries (term_t, id_t, index_t, term_t, index_t, query_t const&);
 
   /**
    * @brief 1. Deal with appendEntries to slaves. 2. Report success of write processes. 
@@ -125,6 +125,8 @@ public:
   
   store<std::string> _spear_head;
   store<std::string> _read_db;
+
+  arangodb::basics::ConditionVariable cv;
   
 };
 

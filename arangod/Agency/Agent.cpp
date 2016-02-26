@@ -23,6 +23,8 @@
 
 #include "Agent.h"
 
+#include <chrono>
+
 using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
@@ -84,7 +86,7 @@ query_ret_t Agent::appendEntries (
     Builder builder;
     builder.add("term", Value(this->term())); // Our own term
     builder.add("voteFor", Value(             // Our vite
-      _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
+                  _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
     return query_ret_t(true, id(), std::make_shared<Builder>(builder));
   } else if (_constituent.leading()) { // We are leading
     _constituent.follow(term);
@@ -94,9 +96,16 @@ query_ret_t Agent::appendEntries (
   }
 }
 
-query_ret_t Agent::write (query_t const& query)  {
-  if (_constituent.leading()) {     // We are leading
-    return _state.write (query);
+//query_ret_t
+bool Agent::write (query_t const& query)  {
+  if (_constituent.leading()) {           // We are leading
+    if (_spear_head.apply(query)) {       // We could apply to spear head? 
+      std::vector<index_t> indices =      //    otherwise through
+        _state.log (term(), id(), query); // Append to my own log
+      remotelyAppendEntries (indicies);   // Schedule appendEntries RPCs.
+    } else {
+      throw QUERY_NOT_APPLICABLE;
+    }
   } else {                          // We redirect
     return query_ret_t(false,_constituent.leaderID());
   }
@@ -111,15 +120,26 @@ query_ret_t Agent::read (query_t const& query) const {
 }
 
 void State::run() {
-  /*
-   * - poll through the least of append entries
-   * - if last round of polling took less than poll interval sleep
-   * - else just start from top of list and work the 
-   */
+
   while (true) {
-    std::this_thread::sleep_for(duration_t(_poll_interval));
-    for (auto& i : )
-  }  
+
+    auto dur = std::chrono::system_clock::now();
+  
+    std::vector<std::vector<index_t>> work(_setup.size());
+
+    for (auto& i : State.log())  // Collect all unacknowledged
+      for (size_t j = 0; j < _setup.size(); ++j) 
+        if (!i.ack[j])                 
+          work[j].push_back(i.index);
+
+    for (size_t j = 0; j < _setup.size(); ++j)  // (re-)attempt RPCs
+      appendEntriesRPC (work[j]);
+
+    if (dur = std::chrono::system_clock::now() - dur < _poll_interval) // We were too fast?
+      std::this_thread::sleep_for (_poll_interval - dur);
+    
+  }
+
 }
 
 bool State::operator()(ClusterCommResult* ccr) {
