@@ -176,7 +176,8 @@ struct ShortestPathOptions : BasicOptions {
 class SingleServerTraversalPath : public TraversalPath {
  public:
   explicit SingleServerTraversalPath(
-      arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
+      arangodb::basics::EnumeratedPath<EdgeInfo,
+                                       arangodb::velocypack::Slice> const& path)
       : _path(path) {}
 
   ~SingleServerTraversalPath() {}
@@ -197,9 +198,9 @@ class SingleServerTraversalPath : public TraversalPath {
 
   arangodb::basics::Json* vertexToJson(Transaction* trx,
                                        CollectionNameResolver* resolver,
-                                       VertexId const& v);
+                                       arangodb::velocypack::Slice const& v);
 
-  arangodb::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
+  arangodb::basics::EnumeratedPath<EdgeInfo, arangodb::velocypack::Slice> _path;
 };
 
 class DepthFirstTraverser : public Traverser {
@@ -220,7 +221,7 @@ class DepthFirstTraverser : public Traverser {
     /// @brief Function to fill the list of edges properly.
     //////////////////////////////////////////////////////////////////////////////
 
-    void operator()(VertexId const&, std::vector<EdgeInfo>&,
+    void operator()(arangodb::velocypack::Slice const&, std::vector<EdgeInfo>&,
                     TRI_doc_mptr_t*&, size_t&, bool&);
 
    private:
@@ -270,7 +271,8 @@ class DepthFirstTraverser : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<arangodb::basics::PathEnumerator<
-      EdgeInfo, VertexId, TRI_doc_mptr_t>> _enumerator;
+      EdgeInfo, arangodb::velocypack::Slice, TRI_doc_mptr_t>>
+      _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge
@@ -282,8 +284,8 @@ class DepthFirstTraverser : public Traverser {
   /// @brief internal function to extract vertex information
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(EdgeInfo const&, VertexId const&, size_t, VertexId&)>
-      _getVertex;
+  std::function<bool(EdgeInfo const&, arangodb::velocypack::Slice const&,
+                     size_t, arangodb::velocypack::Slice&)> _getVertex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a vector containing all required edge collection structures
@@ -313,7 +315,7 @@ class DepthFirstTraverser : public Traverser {
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
 
-  void setStartVertex(VertexId const& v) override;
+  void setStartVertex(arangodb::velocypack::Slice const& v) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next possible path in the graph.
@@ -324,7 +326,7 @@ class DepthFirstTraverser : public Traverser {
  private:
   bool edgeMatchesConditions(TRI_doc_mptr_t&, size_t&, size_t);
 
-  bool vertexMatchesConditions(VertexId const&, size_t);
+  bool vertexMatchesConditions(arangodb::velocypack::Slice const&, size_t);
 };
 }
 }

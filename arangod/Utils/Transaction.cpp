@@ -740,6 +740,38 @@ OperationResult Transaction::insert(std::string const& collectionName,
     // multi-document variant is not yet implemented
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  
+  // Validate Edges
+  if (isEdgeCollection(collectionName)) {
+    // Check _from
+    size_t split;
+    VPackSlice from = value.get(TRI_VOC_ATTRIBUTE_FROM);
+    if (!from.isString()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    std::string docId = from.copyString();
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    std::string cName = docId.substr(0, split);
+    if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    // Check _to
+    VPackSlice to = value.get(TRI_VOC_ATTRIBUTE_TO);
+    if (!to.isString()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    docId = to.copyString();
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    cName = docId.substr(0, split);
+    if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
 
   OperationOptions optionsCopy = options;
 

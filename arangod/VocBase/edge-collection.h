@@ -40,60 +40,27 @@ typedef enum {
 } TRI_edge_direction_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index entry for edges
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_edge_header_t {
-  TRI_edge_header_t(TRI_voc_cid_t cid, TRI_voc_key_t key)
-      : _cid(cid), _key(key) {}
-
-  TRI_voc_cid_t _cid;  // from or to, depending on the direction
-  TRI_voc_key_t _key;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edge index iterator
+///        NOTE: Make sure the input Slice stays valid as long as this iterator
+///              is in use.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_edge_index_iterator_t {
-  TRI_edge_index_iterator_t(TRI_edge_direction_e direction, TRI_voc_cid_t cid,
-                            TRI_voc_key_t key)
-      : _direction(direction), _edge(cid, nullptr) {
-    TRI_ASSERT(key != nullptr);
-
-    _edge._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key);
-
-    if (_edge._key == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-  }
-
-  TRI_edge_index_iterator_t(TRI_edge_direction_e direction, TRI_voc_cid_t cid,
-                            char const* key)
-      : _direction(direction), _edge({cid, nullptr}) {
-    TRI_ASSERT(key != nullptr);
-    _edge._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key);
-    if (_edge._key == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-  }
-
-  ~TRI_edge_index_iterator_t() {
-    if (_edge._key != nullptr) {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _edge._key);
-    }
-  }
+  TRI_edge_index_iterator_t(TRI_edge_direction_e direction,
+                            arangodb::velocypack::Slice const& edge)
+      : _direction(direction), _edge(edge) {}
 
   TRI_edge_direction_e const _direction;
-  TRI_edge_header_t _edge;
+  arangodb::velocypack::Slice const _edge;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_t> TRI_LookupEdgesDocumentCollection(
     arangodb::Transaction*, struct TRI_document_collection_t*,
-    TRI_edge_direction_e, TRI_voc_cid_t, TRI_voc_key_t const);
+    TRI_edge_direction_e, TRI_voc_cid_t, std::string const&);
 
 #endif

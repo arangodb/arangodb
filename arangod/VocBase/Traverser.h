@@ -236,7 +236,7 @@ class Traverser {
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void setStartVertex(VertexId const& v) = 0;
+  virtual void setStartVertex(arangodb::velocypack::Slice const& v) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Skip amount many paths of the graph.
