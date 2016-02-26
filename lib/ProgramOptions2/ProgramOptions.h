@@ -87,7 +87,8 @@ class ProgramOptions {
         _terminalWidth(terminalWidth),
         _similarity(similarity),
         _processingResult(),
-        _sealed(false) {
+        _sealed(false),
+        _overrideOptions(false) {
     // find progname wildcard in string
     size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
@@ -105,8 +106,18 @@ class ProgramOptions {
   ProcessingResult& processingResult() { return _processingResult; }
 
   // seal the options
-  // tryin to add an option or a section after sealing will throw an error
+  // trying to add an option or a section after sealing will throw an error
   void seal() { _sealed = true; }
+
+  // allow or disallow overriding already set options
+  void allowOverride(bool value) {
+    checkIfSealed();
+    _overrideOptions = value;
+  }
+  
+  bool allowOverride() const {
+    return _overrideOptions;
+  }
 
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
@@ -260,6 +271,11 @@ class ProgramOptions {
 
   // sets a value for an option
   bool setValue(std::string const& name, std::string const& value) {
+    if (!_overrideOptions && _processingResult.touched(name)) {
+      // option already set. don't override it
+      return true;
+    } 
+
     auto parts = Option::splitName(name);
     auto it = _sections.find(parts.first);
 
@@ -463,6 +479,8 @@ class ProgramOptions {
   ProcessingResult _processingResult;
   // whether or not the program options setup is still mutable
   bool _sealed;
+  // allow or disallow overriding already set options
+  bool _overrideOptions;
 };
 }
 }
