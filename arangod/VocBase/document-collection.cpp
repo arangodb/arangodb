@@ -4519,6 +4519,7 @@ TRI_ASSERT(false);
     }
 
     arangodb::CollectionWriteLocker collectionLocker(document, lock);
+
     // if we got here, the marker must not be deleted by the deleter, but will be handed to
     // the document operation, which will take over
     deleter.release();
@@ -4914,7 +4915,11 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -4928,7 +4933,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request(
-        marker->size());  // PROTECTED by trx in trxCollection
+        operation.marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -5012,7 +5017,12 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
     std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
+
     operation.header = oldHeader;
     operation.init();
 
@@ -5086,7 +5096,12 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
     std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
+    
     operation.header = oldHeader;
     operation.init();
 
@@ -5145,7 +5160,11 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
+    // DocumentOperation has taken over the ownership for the marker
+    TRI_ASSERT(operation.marker != nullptr);
+    TRI_ASSERT(marker == nullptr);
 
     TRI_doc_mptr_t* header;
     res = lookupDocument(trx, slice, policy, header);

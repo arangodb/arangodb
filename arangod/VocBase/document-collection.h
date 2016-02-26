@@ -707,16 +707,6 @@ int TRI_FromVelocyPackIndexDocumentCollection(
     arangodb::velocypack::Slice const&, arangodb::Index**);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rolls back a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RollbackOperationDocumentCollection(arangodb::Transaction*,
-                                            TRI_document_collection_t*,
-                                            TRI_voc_document_operation_e,
-                                            TRI_doc_mptr_t*,
-                                            TRI_doc_mptr_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
