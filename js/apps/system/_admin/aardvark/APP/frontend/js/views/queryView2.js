@@ -687,7 +687,13 @@
         this.getCachedQuery();
       }
 
-      var counter = 0;
+      var counter = 0, self = this;
+
+      var test = Object.keys(this.bindParamTableObj).sort(function(a,b) {
+        return self.bindParamTableObj[a] - self.bindParamTableObj[b];
+      });
+      console.log(test);
+
       _.each(this.bindParamTableObj, function(val, key) {
         $('#arangoBindParamTable tbody').append(
           "<tr>" + 
@@ -969,7 +975,9 @@
           keys.push(key);
         }
       });
-      arangoHelper.arangoError("Bind Parameter", JSON.stringify(keys) + " not defined.");
+      if (keys.length > 0) {
+        arangoHelper.arangoError("Bind Parameter", JSON.stringify(keys) + " not defined.");
+      }
 
       return quit;
     },

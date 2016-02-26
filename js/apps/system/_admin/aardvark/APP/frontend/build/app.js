@@ -27631,7 +27631,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     currentQuery: {},
     initDone: false,
 
-    bindParamRegExp: /@(@?)(\w+(\d*))/,
+    bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
 
     bindParamTableDesc: {
@@ -27683,6 +27683,14 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     clearQuery: function() {
       this.aqlEditor.setValue('');
+    },
+
+    openExportDialog: function() {
+      $('#queryImportDialog').modal('show'); 
+    },
+
+    closeExportDialo: function() {
+      $('#queryImportDialog').modal('hide'); 
     },
 
     initQueryImport: function () {
@@ -27768,7 +27776,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       var divs = [
-        "aqlEditor", "queryTable", "previewWrapper",
+        "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
         "saveCurrentQuery", "querySize", "executeQuery", 
         "explainQuery", "clearQuery", "importQuery", "exportQuery"
@@ -27794,7 +27802,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         name = $(e.currentTarget).children().first().text();
       }
       else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().text();
+        name = $(e.currentTarget).parent().parent().prev().prev().text();
       }
       return name;
     },
@@ -27921,8 +27929,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     explainQuery: function() {
-      if (this.aqlEditor.getValue().length === 0) {
-        arangoHelper.arangoError("Query", "Your query is empty");
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
@@ -27966,6 +27974,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
+              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -27976,7 +27985,6 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
           },
           error: function (data) {
-            window.progressView.hide();
             try {
               var temp = JSON.parse(data.responseText);
               arangoHelper.arangoError("Explain error", temp.errorMessage);
@@ -27984,6 +27992,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
+            window.progressView.hide();
             self.handleResult(counter);
             this.removeOutputEditor(counter);
           }
@@ -28082,7 +28091,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      this.initSpotlight();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 3);
@@ -28093,10 +28101,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     showSpotlight: function() {
-    },
-
-    initSpotlight: function() {
-
       var collections = [];
       window.App.arangoCollectionsStore.each(function(collection) {
         collections.push(collection.get("name"));
@@ -28129,6 +28133,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         name: 'collections',
         source: substringMatcher(collections)
       });
+    },
+
+    initSpotlight: function() {
+
     },
 
     resize: function() {
@@ -28244,6 +28252,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       });
 
+      _.each(words, function(word) {
+        word = word.split(",");
+        _.each(word, function(x) {
+          words1.push(x);
+        });
+      });
+
       _.each(words1, function(word) {
         // remove newlines and whitespaces
         words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
@@ -28254,9 +28269,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       var newObject = {};
       _.each(words1, function(word) {
         //found a valid bind param expression
-        if (self.bindParamRegExp.test(word)) {
+        var match = word.match(self.bindParamRegExp);
+        if (match) {
           //if property is not available
-          word = word.substr(1, word.length);
+          word = match[1];
           newObject[word] = '';
         }
       });
@@ -28278,7 +28294,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.getCachedQuery();
       }
 
-      var counter = 0;
+      var counter = 0, self = this;
+
+      var test = Object.keys(this.bindParamTableObj).sort(function(a,b) {
+        return self.bindParamTableObj[a] - self.bindParamTableObj[b];
+      });
+      console.log(test);
+
       _.each(this.bindParamTableObj, function(val, key) {
         $('#arangoBindParamTable tbody').append(
           "<tr>" + 
@@ -28545,9 +28567,31 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.modalView.hide();
     },
 
-    executeQuery: function () {
+    verifyQueryAndParams: function() {
+      var quit = false;
+
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError("Query", "Your query is empty");
+        quit = true;
+      }
+
+      var keys = [];
+      _.each(this.bindParamTableObj, function(val, key) {
+        if (val === '') {
+          quit = true;
+          keys.push(key);
+        }
+      });
+      if (keys.length > 0) {
+        arangoHelper.arangoError("Bind Parameter", JSON.stringify(keys) + " not defined.");
+      }
+
+      return quit;
+    },
+
+    executeQuery: function () {
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
