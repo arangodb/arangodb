@@ -1738,7 +1738,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
           ],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)>',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
             'CORE',
@@ -1757,7 +1757,7 @@
         {
           'action_name': 'js2c_experimental',
           'inputs': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)>',
             '../../tools/js2c.py',
             '<@(experimental_library_files)',
           ],
@@ -1765,7 +1765,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc',
           ],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)>',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc',
             'EXPERIMENTAL',
