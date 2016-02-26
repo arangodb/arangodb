@@ -626,20 +626,6 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
           reinterpret_cast<char const*>(marker) +
           reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
       entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
-    } else if (marker->_type == TRI_DF_MARKER_SHAPE) {
-      char* p = ((char*)marker) + sizeof(TRI_df_shape_marker_t);
-      TRI_shape_t* l = (TRI_shape_t*)p;
-      std::string tmp("shape #");
-      tmp.append(std::to_string(l->_sid));
-      entry._key =
-          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
-    } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-      TRI_shape_aid_t aid =
-          reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
-      std::string tmp("attribute #");
-      tmp.append(std::to_string(aid));
-      entry._key =
-          TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     }
 
     TRI_PushBackVector(&scan._entries, &entry);
@@ -1429,36 +1415,14 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "edge (df)";
     case TRI_DOC_MARKER_KEY_DELETION:
       return "deletion (df)";
-    case TRI_DOC_MARKER_BEGIN_TRANSACTION:
-      return "begin transaction (df)";
-    case TRI_DOC_MARKER_COMMIT_TRANSACTION:
-      return "commit transaction (df)";
-    case TRI_DOC_MARKER_ABORT_TRANSACTION:
-      return "abort transaction (df)";
-    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
-      return "prepare transaction (df)";
-    case TRI_DF_MARKER_ATTRIBUTE:
-      return "attribute (df)";
-    case TRI_DF_MARKER_SHAPE:
-      return "shape (df)";
 
     // wal markers
-    case TRI_WAL_MARKER_ATTRIBUTE:
-      return "attribute (wal)";
-    case TRI_WAL_MARKER_SHAPE:
-      return "shape (wal)";
     case TRI_WAL_MARKER_DOCUMENT:
       return "document (wal)";
     case TRI_WAL_MARKER_EDGE:
       return "edge (wal)";
     case TRI_WAL_MARKER_REMOVE:
       return "deletion (wal)";
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
-      return "begin transaction (wal)";
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
-      return "commit transaction (wal)";
-    case TRI_WAL_MARKER_ABORT_TRANSACTION:
-      return "abort transaction (wal)";
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
       return "begin remote transaction (wal)";
     case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
@@ -1486,6 +1450,28 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "document (vpack)";
     case TRI_WAL_MARKER_VPACK_REMOVE:
       return "remove (vpack)";
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
+      return "create collection (vpack)";
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
+      return "drop collection (vpack)";
+    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
+      return "rename collection (vpack)";
+    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
+      return "change collection (vpack)";
+    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
+      return "create index (vpack)";
+    case TRI_WAL_MARKER_VPACK_DROP_INDEX:
+      return "drop index (vpack)";
+    case TRI_WAL_MARKER_VPACK_CREATE_DATABASE:
+      return "create database (vpack)";
+    case TRI_WAL_MARKER_VPACK_DROP_DATABASE:
+      return "drop database (vpack)";
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
+      return "begin transaction (vpack)";
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
+      return "commit transaction (vpack)";
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION:
+      return "abort transaction (vpack)";
 
     default:
       return "unused/unknown";
@@ -1690,15 +1676,12 @@ void TRI_UpdateTicksDatafile(TRI_datafile_t* datafile,
       datafile->_tickMax = tick;
     }
 
-    if (type != TRI_DF_MARKER_ATTRIBUTE && type != TRI_DF_MARKER_SHAPE &&
-        type != TRI_WAL_MARKER_ATTRIBUTE && type != TRI_WAL_MARKER_SHAPE) {
-      if (datafile->_dataMin == 0) {
-        datafile->_dataMin = tick;
-      }
+    if (datafile->_dataMin == 0) {
+      datafile->_dataMin = tick;
+    }
 
-      if (datafile->_dataMax < tick) {
-        datafile->_dataMax = tick;
-      }
+    if (datafile->_dataMax < tick) {
+      datafile->_dataMax = tick;
     }
   }
 }

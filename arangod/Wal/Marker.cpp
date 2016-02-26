@@ -139,7 +139,7 @@ void Marker::dumpBinary() const {
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EnvelopeMarker::EnvelopeMarker(TRI_df_marker_t const* existing,
+MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
                                TRI_voc_fid_t fid)
     : Marker(existing, fid) {}
 
@@ -147,114 +147,7 @@ EnvelopeMarker::EnvelopeMarker(TRI_df_marker_t const* existing,
 /// @brief destroy marker
 ////////////////////////////////////////////////////////////////////////////////
 
-EnvelopeMarker::~EnvelopeMarker() {}
-
-// --SECTION--                                                   AttributeMarker
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-AttributeMarker::AttributeMarker(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId,
-                                 TRI_shape_aid_t attributeId,
-                                 std::string const& attributeName)
-    : Marker(
-          TRI_WAL_MARKER_ATTRIBUTE,
-          sizeof(attribute_marker_t) + alignedSize(attributeName.size() + 1)) {
-  attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
-
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-  m->_attributeId = attributeId;
-
-  storeSizedString(sizeof(attribute_marker_t), attributeName);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-AttributeMarker::~AttributeMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief change the type
-////////////////////////////////////////////////////////////////////////////////
-
-void AttributeMarker::setType(TRI_df_marker_type_t type) {
-  TRI_df_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
-
-  m->_type = type;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void AttributeMarker::dump() const {
-  attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
-
-  std::cout << "WAL ATTRIBUTE MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId
-            << ", ATTRIBUTE ID: " << m->_attributeId
-            << ", ATTRIBUTE: " << attributeName() << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-ShapeMarker::ShapeMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                         TRI_shape_t const* shape)
-    : Marker(TRI_WAL_MARKER_SHAPE,
-             sizeof(shape_marker_t) + static_cast<size_t>(shape->_size)) {
-  shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
-
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-
-  memcpy(this->shape(), shape, static_cast<size_t>(shape->_size));
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-ShapeMarker::~ShapeMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void ShapeMarker::dump() const {
-  shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
-
-  std::cout << "WAL SHAPE MARKER FOR DB " << m->_databaseId << ", COLLECTION "
-            << m->_collectionId << ", SHAPE ID: " << shapeId()
-            << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
+MarkerEnvelope::~MarkerEnvelope() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -625,7 +518,7 @@ void DropIndexMarker::dump() const {
 
 BeginTransactionMarker::BeginTransactionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_tid_t transactionId)
-    : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION,
+    : Marker(TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION,
              sizeof(transaction_begin_marker_t)) {
   transaction_begin_marker_t* m =
       reinterpret_cast<transaction_begin_marker_t*>(begin());
@@ -669,7 +562,7 @@ void BeginTransactionMarker::dump() const {
 
 CommitTransactionMarker::CommitTransactionMarker(TRI_voc_tick_t databaseId,
                                                  TRI_voc_tid_t transactionId)
-    : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION,
+    : Marker(TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION,
              sizeof(transaction_commit_marker_t)) {
   transaction_commit_marker_t* m =
       reinterpret_cast<transaction_commit_marker_t*>(begin());
@@ -713,7 +606,7 @@ void CommitTransactionMarker::dump() const {
 
 AbortTransactionMarker::AbortTransactionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_tid_t transactionId)
-    : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION,
+    : Marker(TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION,
              sizeof(transaction_abort_marker_t)) {
   transaction_abort_marker_t* m =
       reinterpret_cast<transaction_abort_marker_t*>(begin());

@@ -126,55 +126,45 @@ typedef enum {
 
   TRI_DF_MARKER_HEADER = 1000,
   TRI_DF_MARKER_FOOTER = 1001,
-  TRI_DF_MARKER_ATTRIBUTE = 1003,
-  TRI_DF_MARKER_SHAPE = 1004,
 
   TRI_DF_MARKER_BLANK = 1100,
 
   TRI_COL_MARKER_HEADER = 2000,
-  /*
-    TRI_DOC_MARKER_HEADER                    = 3000, // deprecated. do not use
-    TRI_DOC_MARKER_DOCUMENT                  = 3001, // deprecated. do not use
-    TRI_DOC_MARKER_DELETION                  = 3002, // deprecated. do not use
-    TRI_DOC_MARKER_EDGE                      = 3006, // deprecated. do not use
-  */
+  
   TRI_DOC_MARKER_KEY_DOCUMENT = 3007,  // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE = 3008,      // new marker with key values
   TRI_DOC_MARKER_KEY_DELETION = 3009,  // new marker with key values
-
-  TRI_DOC_MARKER_BEGIN_TRANSACTION =
-      3100,  // not created anymore in ArangoDB 2.2
-  TRI_DOC_MARKER_COMMIT_TRANSACTION =
-      3101,  // not created anymore in ArangoDB 2.2
-  TRI_DOC_MARKER_ABORT_TRANSACTION =
-      3102,  // not created anymore in ArangoDB 2.2
-  TRI_DOC_MARKER_PREPARE_TRANSACTION =
-      3103,  // not created anymore in ArangoDB 2.2
 
   TRI_WAL_MARKER_ATTRIBUTE = 4000,
   TRI_WAL_MARKER_SHAPE = 4001,
   TRI_WAL_MARKER_DOCUMENT = 4010,
   TRI_WAL_MARKER_EDGE = 4011,
   TRI_WAL_MARKER_REMOVE = 4012,
-  TRI_WAL_MARKER_BEGIN_TRANSACTION = 4020,
-  TRI_WAL_MARKER_COMMIT_TRANSACTION = 4021,
-  TRI_WAL_MARKER_ABORT_TRANSACTION = 4022,
   TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION = 4023,
   TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION = 4024,
   TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION = 4025,
-
   TRI_WAL_MARKER_CREATE_COLLECTION = 4030,
   TRI_WAL_MARKER_DROP_COLLECTION = 4031,
   TRI_WAL_MARKER_RENAME_COLLECTION = 4032,
   TRI_WAL_MARKER_CHANGE_COLLECTION = 4033,
   TRI_WAL_MARKER_CREATE_INDEX = 4035,
   TRI_WAL_MARKER_DROP_INDEX = 4036,
-
   TRI_WAL_MARKER_CREATE_DATABASE = 4040,
   TRI_WAL_MARKER_DROP_DATABASE = 4041,
 
   TRI_WAL_MARKER_VPACK_DOCUMENT = 5000,
   TRI_WAL_MARKER_VPACK_REMOVE = 5001,
+  TRI_WAL_MARKER_VPACK_CREATE_COLLECTION = 5010,
+  TRI_WAL_MARKER_VPACK_DROP_COLLECTION = 5011,
+  TRI_WAL_MARKER_VPACK_RENAME_COLLECTION = 5012,
+  TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION = 5013,
+  TRI_WAL_MARKER_VPACK_CREATE_INDEX = 5020,
+  TRI_WAL_MARKER_VPACK_DROP_INDEX = 5021,
+  TRI_WAL_MARKER_VPACK_CREATE_DATABASE = 5030,
+  TRI_WAL_MARKER_VPACK_DROP_DATABASE = 5031,
+  TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION = 5040,
+  TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION = 5041,
+  TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION = 5042,
 
   TRI_MARKER_MAX  // again, this is not a real
                   // marker, but we use it for
@@ -622,6 +612,21 @@ void TRI_InitMarkerDatafile(char*, TRI_df_marker_type_e, TRI_voc_size_t);
 #define TRI_DF_ALIGN_BLOCK(a)                                      \
   ((((a) + TRI_DF_BLOCK_ALIGNMENT - 1) / TRI_DF_BLOCK_ALIGNMENT) * \
    TRI_DF_BLOCK_ALIGNMENT)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific offset to the vpack payload
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t VPackOffset(TRI_df_marker_type_t type) {
+  auto t = static_cast<TRI_df_marker_type_e>(type);
+
+  if (t == TRI_WAL_MARKER_VPACK_DOCUMENT ||
+      t == TRI_WAL_MARKER_VPACK_REMOVE) {
+    return sizeof(TRI_df_marker_t) + 24;
+  }
+  TRI_ASSERT(false);
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a marker is valid

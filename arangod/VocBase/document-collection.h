@@ -107,12 +107,7 @@ struct TRI_doc_mptr_t {
     TRI_df_marker_t const* marker =
         static_cast<TRI_df_marker_t const*>(_dataptr);
 
-    if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-      return reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24; // TODO: FIX hard-coded value
-    }
-
-    TRI_ASSERT(false);
-    return 0;
+    return reinterpret_cast<uint8_t const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -261,8 +256,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   KeyGenerator* _keyGenerator;
 
   std::vector<arangodb::Index*> _indexes;
-
-  std::set<TRI_voc_tid_t>* _failedTransactions;
 
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;

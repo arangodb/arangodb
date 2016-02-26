@@ -138,35 +138,6 @@ BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof attribute_marker_t
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_wal_attribute_marker) {
-  size_t s = sizeof(arangodb::wal::attribute_marker_t);
-
-  BOOST_CHECK_EQUAL(24 + 24, (int) s); // base + own size
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
-
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::attribute_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::attribute_marker_t::_collectionId));
-  BOOST_CHECK_EQUAL(40, (int) offsetOf(&arangodb::wal::attribute_marker_t::_attributeId));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof shape_marker_t
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_wal_shape_marker) {
-  size_t s = sizeof(arangodb::wal::shape_marker_t);
-
-  BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
-
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&arangodb::wal::shape_marker_t::_databaseId));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&arangodb::wal::shape_marker_t::_collectionId));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof database_create_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 

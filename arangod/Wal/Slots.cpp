@@ -491,9 +491,7 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
       TRI_df_marker_t const* m =
           static_cast<TRI_df_marker_t const*>(slot->mem());
       if (m->_type != TRI_DF_MARKER_HEADER &&
-          m->_type != TRI_DF_MARKER_FOOTER &&
-          m->_type != TRI_WAL_MARKER_ATTRIBUTE &&
-          m->_type != TRI_WAL_MARKER_SHAPE) {
+          m->_type != TRI_DF_MARKER_FOOTER) {
         _lastCommittedDataTick = tick;
       }
 

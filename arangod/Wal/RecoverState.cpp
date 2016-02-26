@@ -352,7 +352,7 @@ int RecoverState::executeSingleOperation(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto envelope = std::make_unique<EnvelopeMarker>(marker, fid);
+    auto envelope = std::make_unique<MarkerEnvelope>(marker, fid);
 
     // execute the operation
     res = func(&trx, envelope.get());
@@ -391,11 +391,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
   }
 
   switch (marker->_type) {
-    // -----------------------------------------------------------------------------
-    // transactions
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION: {
       transaction_begin_marker_t const* m =
           reinterpret_cast<transaction_begin_marker_t const*>(marker);
       // insert this transaction into the list of failed transactions
@@ -408,7 +404,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION: {
       transaction_commit_marker_t const* m =
           reinterpret_cast<transaction_commit_marker_t const*>(marker);
       // remove this transaction from the list of failed transactions
@@ -416,7 +412,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_ABORT_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
       // insert this transaction into the list of failed transactions
       transaction_abort_marker_t const* m =
           reinterpret_cast<transaction_abort_marker_t const*>(marker);
@@ -468,42 +464,6 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
                                         std::make_pair(m->_databaseId, true));
       break;
     }
-    /*
-        //
-       -----------------------------------------------------------------------------
-        // create markers
-        //
-       -----------------------------------------------------------------------------
-
-        case TRI_WAL_MARKER_CREATE_COLLECTION: {
-          collection_create_marker_t const* m =
-       reinterpret_cast<collection_create_marker_t const*>(marker);
-          // undo a potential drop marker discovered before for the same
-       collection
-          state->droppedCollections.erase(m->_collectionId);
-          break;
-        }
-
-        case TRI_WAL_MARKER_CREATE_DATABASE: {
-          database_create_marker_t const* m =
-       reinterpret_cast<database_create_marker_t const*>(marker);
-          // undo a potential drop marker discovered before for the same
-       database
-          state->droppedDatabases.erase(m->_databaseId);
-          break;
-        }
-
-        case TRI_WAL_MARKER_CREATE_INDEX: {
-          // ignored
-          break;
-        }
-
-        //
-       -----------------------------------------------------------------------------
-        // drop markers
-        //
-       -----------------------------------------------------------------------------
-    */
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m =
@@ -512,22 +472,6 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       state->droppedIds.insert(m->_collectionId);
       break;
     }
-
-      /*
-          case TRI_WAL_MARKER_DROP_DATABASE: {
-            database_drop_marker_t const* m =
-         reinterpret_cast<database_drop_marker_t const*>(marker);
-            // note that the database was dropped and doesn't need to be
-         recovered
-            state->droppedDatabases.insert(m->_databaseId);
-            break;
-          }
-
-          case TRI_WAL_MARKER_DROP_INDEX: {
-            // ignored
-            break;
-          }
-         */
   }
 
   return true;
@@ -548,76 +492,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
   switch (marker->_type) {
     // -----------------------------------------------------------------------------
-    // attributes and shapes
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_ATTRIBUTE: {
-      // re-insert the attribute into the shaper
-      attribute_marker_t const* m =
-          reinterpret_cast<attribute_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      int res = state->executeSingleOperation(
-          databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-            TRI_document_collection_t* document = trx->documentCollection();
-
-            // re-insert the attribute
-            int res = document->getShaper()->insertAttribute(marker, false);
-            return res;
-          });
-
-      if (res != TRI_ERROR_NO_ERROR &&
-          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARN) << "could not apply attribute marker: " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    case TRI_WAL_MARKER_SHAPE: {
-      // re-insert the shape into the shaper
-      shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      int res = state->executeSingleOperation(
-          databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-            TRI_document_collection_t* document = trx->documentCollection();
-
-            // re-insert the shape
-            int res = document->getShaper()->insertShape(marker, false);
-            return res;
-          });
-
-      if (res != TRI_ERROR_NO_ERROR &&
-          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARN) << "could not apply shape marker: " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    // -----------------------------------------------------------------------------
     // crud operations
     // -----------------------------------------------------------------------------
 
-    case TRI_WAL_MARKER_DOCUMENT: {
-      // re-insert the document into the collection
+    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+      // re-insert the document/edge into the collection
       document_marker_t const* m =
           reinterpret_cast<document_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
@@ -633,11 +512,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         return true;
       }
 
-      char const* base = reinterpret_cast<char const*>(m);
-      char const* key = base + m->_offsetKey;
-      TRI_shaped_json_t shaped;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
           [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
@@ -645,16 +519,23 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               return TRI_ERROR_NO_ERROR;
             }
 
-            TRI_doc_mptr_t mptr;
-            int res = TRI_InsertShapedJsonDocumentCollection(
-                trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
-                envelope, &mptr, &shaped, nullptr, false, false, true);
+            TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
+
+            std::string const collectionName = trx->documentCollection()->_info.name();
+            uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
+
+            OperationOptions options;
+            options.silent = true;
+            options.recoveryMarker = envelope;
+
+            // try an insert first
+            OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);
+            int res = opRes.code;
 
             if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-              state->policy.setExpectedRevision(m->_revisionId);
-              res = TRI_UpdateShapedJsonDocumentCollection(
-                  trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
-                  envelope, &mptr, &shaped, &state->policy, false, false);
+              // document/edge already exists, now make it an update
+              opRes = trx->update(collectionName, VPackSlice(ptr), VPackSlice(ptr), options);
+              res = opRes.code;
             }
 
             return res;
@@ -670,66 +551,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_EDGE: {
-      // re-insert the edge into the collection
-      edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      TRI_voc_tick_t transactionId = m->_transactionId;
-      if (state->ignoreTransaction(transactionId)) {
-        return true;
-      }
-
-      char const* base = reinterpret_cast<char const*>(m);
-      char const* key = base + m->_offsetKey;
-      TRI_document_edge_t edge;
-      edge._fromCid = m->_fromCid;
-      edge._toCid = m->_toCid;
-      edge._fromKey = const_cast<char*>(base) + m->_offsetFromKey;
-      edge._toKey = const_cast<char*>(base) + m->_offsetToKey;
-
-      TRI_shaped_json_t shaped;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-
-      int res = state->executeSingleOperation(
-          databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-            if (IsVolatile(trx->trxCollection())) {
-              return TRI_ERROR_NO_ERROR;
-            }
-
-            TRI_doc_mptr_t mptr;
-            int res = TRI_InsertShapedJsonDocumentCollection(
-                trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
-                envelope, &mptr, &shaped, &edge, false, false, true);
-
-            if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-              state->policy.setExpectedRevision(m->_revisionId);
-              res = TRI_UpdateShapedJsonDocumentCollection(
-                  trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
-                  envelope, &mptr, &shaped, &state->policy, false, false);
-            }
-
-            return res;
-          });
-
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
-          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARN) << "unable to insert edge in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
+    case TRI_WAL_MARKER_VPACK_REMOVE: {
       // re-apply the remove operation
       remove_marker_t const* m =
           reinterpret_cast<remove_marker_t const*>(marker);
@@ -745,22 +567,26 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         return true;
       }
 
-      char const* base = reinterpret_cast<char const*>(m);
-      char const* key = base + sizeof(remove_marker_t);
       int res = state->executeSingleOperation(
           databaseId, collectionId, marker, datafile->_fid,
           [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
             if (IsVolatile(trx->trxCollection())) {
               return TRI_ERROR_NO_ERROR;
             }
+            
+            TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
-            // remove the document and ignore any potential errors
-            state->policy.setExpectedRevision(m->_revisionId);
-            TRI_RemoveShapedJsonDocumentCollection(
-                trx, trx->trxCollection(), (TRI_voc_key_t)key, m->_revisionId,
-                envelope, &state->policy, false, false);
+            std::string const collectionName = trx->documentCollection()->_info.name();
+            uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
 
-            return TRI_ERROR_NO_ERROR;
+            OperationOptions options;
+            options.silent = true;
+            options.recoveryMarker = envelope;
+
+            OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
+            int res = opRes.code;
+
+            return res;
           });
 
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
@@ -1098,6 +924,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         ++state->errorCount;
         return state->canContinue();
       }
+
       VPackSlice const slice = parsedProperties->slice();
 
       if (!slice.isObject()) {

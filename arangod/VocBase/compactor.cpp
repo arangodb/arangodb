@@ -491,48 +491,6 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     }
   }
 
-  // shapes
-  else if (marker->_type == TRI_DF_MARKER_SHAPE) {
-    // write to compactor files
-    res = CopyMarker(document, context->_compactor, marker, &result);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // TODO: dont fail but recover from this state
-      LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write shape marker to compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
-    }
-
-    res = document->getShaper()->moveMarker(
-        result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot re-locate shape marker"; FATAL_ERROR_EXIT();
-    }
-
-    context->_dfi.numberShapes++;
-    context->_dfi.sizeShapes += AlignedSize(marker);
-  }
-
-  // attributes
-  else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-    // write to compactor files
-    res = CopyMarker(document, context->_compactor, marker, &result);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // TODO: dont fail but recover from this state
-      LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write attribute marker to compactor file: " << TRI_last_error(); FATAL_ERROR_EXIT();
-    }
-
-    res = document->getShaper()->moveMarker(
-        result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot re-locate attribute marker"; FATAL_ERROR_EXIT();
-    }
-
-    context->_dfi.numberAttributes++;
-    context->_dfi.sizeAttributes += AlignedSize(marker);
-  }
-
   return true;
 }
 
@@ -644,24 +602,6 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION &&
            context->_keepDeletions) {
     context->_targetSize += AlignedSize(marker);
-  }
-
-  // shapes, attributes
-  else if (marker->_type == TRI_DF_MARKER_SHAPE ||
-           marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-    context->_targetSize += AlignedSize(marker);
-  }
-
-  // transaction markers
-  else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION ||
-           marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
-           marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
-           marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    if (document->_failedTransactions != nullptr) {
-      // these markers only need to be copied if there are "old" failed
-      // transactions
-      context->_targetSize += AlignedSize(marker);
-    }
   }
 
   return true;

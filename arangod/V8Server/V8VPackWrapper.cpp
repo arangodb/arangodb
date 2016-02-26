@@ -63,7 +63,7 @@ static int const SLOT_DITCH = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline VPackSlice VPackFromMarker(TRI_df_marker_t const* marker) {
-  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + sizeof(TRI_df_marker_t) + 24; // TODO: remove hard-coded value
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
   return VPackSlice(ptr);
 }
 

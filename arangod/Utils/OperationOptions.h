@@ -27,10 +27,17 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+namespace wal {
+class Marker;
+}
 
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
-  OperationOptions() : waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
+  OperationOptions() 
+      : recoveryMarker(nullptr), waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
+
+  // original marker, set by the recovery procedure only!
+  arangodb::wal::Marker* recoveryMarker;
 
   // wait until the operation has been synced
   bool waitForSync;

@@ -552,59 +552,6 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an edge marker
-////////////////////////////////////////////////////////////////////////////////
-
-static int StringifyWalMarkerEdge(TRI_replication_dump_t* dump,
-                                  TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<arangodb::wal::edge_marker_t const*>(marker);
-
-  int res = AppendContext(dump, m->_databaseId, m->_collectionId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  APPEND_STRING(dump->_buffer, "\"tid\":\"");
-  APPEND_UINT64(dump->_buffer, m->_transactionId);
-  APPEND_STRING(dump->_buffer, "\",\"key\":\"");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetKey);
-  APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
-  APPEND_UINT64(dump->_buffer, m->_revisionId);
-  APPEND_STRING(dump->_buffer, "\",\"data\":{");
-
-  // common document meta-data
-  APPEND_STRING(dump->_buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetKey);
-  APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)m->_revisionId);
-
-  // from
-  APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)m->_fromCid);
-  APPEND_STRING(dump->_buffer, "\\/");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetFromKey);
-
-  // to
-  APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)m->_toCid);
-  APPEND_STRING(dump->_buffer, "\\/");
-  APPEND_STRING(dump->_buffer, (char const*)m + m->_offsetToKey);
-  APPEND_STRING(dump->_buffer, "\"");
-
-  res = AppendDocument(
-      reinterpret_cast<arangodb::wal::document_marker_t const*>(m), dump);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  APPEND_STRING(dump->_buffer, "}");
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify a remove marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -809,18 +756,17 @@ static int StringifyWalMarkerDropIndex(TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
-  return (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-          marker->_type == TRI_WAL_MARKER_EDGE ||
-          marker->_type == TRI_WAL_MARKER_REMOVE ||
-          marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_CREATE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_DROP_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_RENAME_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_CHANGE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_CREATE_INDEX ||
-          marker->_type == TRI_WAL_MARKER_DROP_INDEX);
+  return (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT ||
+          marker->_type == TRI_WAL_MARKER_VPACK_REMOVE ||
+          marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_CREATE_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_DROP_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_RENAME_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_CREATE_INDEX ||
+          marker->_type == TRI_WAL_MARKER_VPACK_DROP_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -828,9 +774,9 @@ static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
-  return (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION);
+  return (marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -840,29 +786,27 @@ static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
 static TRI_replication_operation_e TranslateType(
     TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_WAL_MARKER_DOCUMENT:
+    case TRI_WAL_MARKER_VPACK_DOCUMENT:
       return REPLICATION_MARKER_DOCUMENT;
-    case TRI_WAL_MARKER_EDGE:
-      return REPLICATION_MARKER_EDGE;
-    case TRI_WAL_MARKER_REMOVE:
+    case TRI_WAL_MARKER_VPACK_REMOVE:
       return REPLICATION_MARKER_REMOVE;
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
       return REPLICATION_TRANSACTION_START;
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
       return REPLICATION_TRANSACTION_COMMIT;
-    case TRI_WAL_MARKER_ABORT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION:
       return REPLICATION_TRANSACTION_ABORT;
-    case TRI_WAL_MARKER_CREATE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
       return REPLICATION_COLLECTION_CREATE;
-    case TRI_WAL_MARKER_DROP_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
       return REPLICATION_COLLECTION_DROP;
-    case TRI_WAL_MARKER_RENAME_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
       return REPLICATION_COLLECTION_RENAME;
-    case TRI_WAL_MARKER_CHANGE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
       return REPLICATION_COLLECTION_CHANGE;
-    case TRI_WAL_MARKER_CREATE_INDEX:
+    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
       return REPLICATION_INDEX_CREATE;
-    case TRI_WAL_MARKER_DROP_INDEX:
+    case TRI_WAL_MARKER_VPACK_DROP_INDEX:
       return REPLICATION_INDEX_DROP;
 
     default:
@@ -887,63 +831,56 @@ static int StringifyWalMarker(TRI_replication_dump_t* dump,
   int res = TRI_ERROR_INTERNAL;
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_DOCUMENT: {
+    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
       res = StringifyWalMarkerDocument(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_EDGE: {
-      res = StringifyWalMarkerEdge(dump, marker);
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
+    case TRI_WAL_MARKER_VPACK_REMOVE: {
       res = StringifyWalMarkerRemove(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
-    case TRI_WAL_MARKER_ABORT_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
       res = StringifyWalMarkerTransaction(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_CREATE_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION: {
       res = StringifyWalMarkerCreateCollection(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_DROP_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: {
       res = StringifyWalMarkerDropCollection(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_RENAME_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION: {
       res = StringifyWalMarkerRenameCollection(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_CHANGE_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION: {
       res = StringifyWalMarkerChangeCollection(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_CREATE_INDEX: {
+    case TRI_WAL_MARKER_VPACK_CREATE_INDEX: {
       res = StringifyWalMarkerCreateIndex(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_DROP_INDEX: {
+    case TRI_WAL_MARKER_VPACK_DROP_INDEX: {
       res = StringifyWalMarkerDropIndex(dump, marker);
       break;
     }
 
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
     case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_ATTRIBUTE:
-    case TRI_WAL_MARKER_SHAPE: {
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
       TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;
     }
@@ -971,37 +908,31 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE:
-      return GetDatabaseId<arangodb::wal::attribute_marker_t>(marker);
-    case TRI_WAL_MARKER_SHAPE:
-      return GetDatabaseId<arangodb::wal::shape_marker_t>(marker);
-    case TRI_WAL_MARKER_DOCUMENT:
+    case TRI_WAL_MARKER_VPACK_DOCUMENT:
       return GetDatabaseId<arangodb::wal::document_marker_t>(marker);
-    case TRI_WAL_MARKER_EDGE:
-      return GetDatabaseId<arangodb::wal::edge_marker_t>(marker);
-    case TRI_WAL_MARKER_REMOVE:
+    case TRI_WAL_MARKER_VPACK_REMOVE:
       return GetDatabaseId<arangodb::wal::remove_marker_t>(marker);
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
       return GetDatabaseId<arangodb::wal::transaction_begin_marker_t>(marker);
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
       return GetDatabaseId<arangodb::wal::transaction_commit_marker_t>(marker);
-    case TRI_WAL_MARKER_ABORT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION:
       return GetDatabaseId<arangodb::wal::transaction_abort_marker_t>(marker);
-    case TRI_WAL_MARKER_CREATE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
       return GetDatabaseId<arangodb::wal::collection_create_marker_t>(marker);
-    case TRI_WAL_MARKER_DROP_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
       return GetDatabaseId<arangodb::wal::collection_drop_marker_t>(marker);
-    case TRI_WAL_MARKER_RENAME_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
       return GetDatabaseId<arangodb::wal::collection_rename_marker_t>(marker);
-    case TRI_WAL_MARKER_CHANGE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
       return GetDatabaseId<arangodb::wal::collection_change_marker_t>(marker);
-    case TRI_WAL_MARKER_CREATE_INDEX:
+    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
       return GetDatabaseId<arangodb::wal::index_create_marker_t>(marker);
-    case TRI_WAL_MARKER_DROP_INDEX:
+    case TRI_WAL_MARKER_VPACK_DROP_INDEX:
       return GetDatabaseId<arangodb::wal::index_drop_marker_t>(marker);
-    case TRI_WAL_MARKER_CREATE_DATABASE:
+    case TRI_WAL_MARKER_VPACK_CREATE_DATABASE:
       return GetDatabaseId<arangodb::wal::database_create_marker_t>(marker);
-    case TRI_WAL_MARKER_DROP_DATABASE:
+    case TRI_WAL_MARKER_VPACK_DROP_DATABASE:
       return GetDatabaseId<arangodb::wal::database_drop_marker_t>(marker);
     default: { return 0; }
   }
@@ -1024,10 +955,6 @@ static TRI_voc_tick_t GetCollectionId(TRI_df_marker_t const* marker) {
 static TRI_voc_tick_t GetCollectionFromWalMarker(
     TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE:
-      return GetCollectionId<arangodb::wal::attribute_marker_t>(marker);
-    case TRI_WAL_MARKER_SHAPE:
-      return GetCollectionId<arangodb::wal::shape_marker_t>(marker);
     case TRI_WAL_MARKER_DOCUMENT:
       return GetCollectionId<arangodb::wal::document_marker_t>(marker);
     case TRI_WAL_MARKER_EDGE:
@@ -1069,19 +996,17 @@ static TRI_voc_tid_t GetTransactionFromWalMarker(
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_DOCUMENT:
+    case TRI_WAL_MARKER_VPACK_DOCUMENT:
       return GetTransactionId<arangodb::wal::document_marker_t>(marker);
-    case TRI_WAL_MARKER_EDGE:
-      return GetTransactionId<arangodb::wal::edge_marker_t>(marker);
-    case TRI_WAL_MARKER_REMOVE:
+    case TRI_WAL_MARKER_VPACK_REMOVE:
       return GetTransactionId<arangodb::wal::remove_marker_t>(marker);
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
       return GetTransactionId<arangodb::wal::transaction_begin_marker_t>(
           marker);
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
       return GetTransactionId<arangodb::wal::transaction_commit_marker_t>(
           marker);
-    case TRI_WAL_MARKER_ABORT_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION:
       return GetTransactionId<arangodb::wal::transaction_abort_marker_t>(
           marker);
     default: { return 0; }
@@ -1182,11 +1107,9 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
-  TRI_voc_tid_t lastTid = 0;
   int res = TRI_ERROR_NO_ERROR;
   bool hasMore = true;
   bool bufferFull = false;
-  bool ignoreMarkers = false;
 
   size_t const n = datafiles.size();
 
@@ -1216,7 +1139,6 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     while (ptr < end) {
       TRI_df_marker_t* marker = (TRI_df_marker_t*)ptr;
       TRI_voc_tick_t foundTick;
-      TRI_voc_tid_t tid;
 
       if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
         // end of datafile
@@ -1225,9 +1147,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
 
-      if (marker->_type == TRI_DF_MARKER_ATTRIBUTE ||
-          marker->_type == TRI_DF_MARKER_SHAPE ||
-          marker->_type == TRI_DF_MARKER_BLANK) {
+      if (marker->_type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
         // but we also cannot stop iteration if we find one of these
         continue;
@@ -1266,32 +1186,6 @@ static int DumpCollection(TRI_replication_dump_t* dump,
       lastFoundTick = foundTick;
 
       // handle aborted/unfinished transactions
-
-      if (document->_failedTransactions == nullptr) {
-        // there are no failed transactions
-        ignoreMarkers = false;
-      } else {
-        // get transaction id of marker
-        if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-          tid = ((TRI_doc_deletion_key_marker_t const*)marker)->_tid;
-        } else {
-          tid = ((TRI_doc_document_key_marker_t const*)marker)->_tid;
-        }
-
-        // check if marker is from an aborted transaction
-        if (tid > 0) {
-          if (tid != lastTid) {
-            ignoreMarkers = (document->_failedTransactions->find(tid) !=
-                             document->_failedTransactions->end());
-          }
-
-          lastTid = tid;
-        }
-
-        if (ignoreMarkers) {
-          continue;
-        }
-      }
 
       res =
           StringifyMarkerDump(dump, document, marker, withTicks,
@@ -1591,17 +1485,17 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
         // LOG(INFO) << "found transaction marker";
 
-        if (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION) {
+        if (marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_begin_marker_t const*>(marker);
           transactions.emplace(m->_transactionId, foundTick);
           // LOG(INFO) << "found begin: " << m->_transactionId;
-        } else if (marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION) {
+        } else if (marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_commit_marker_t const*>(marker);
           transactions.erase(m->_transactionId);
           // LOG(INFO) << "found commit: " << m->_transactionId;
-        } else if (marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION) {
+        } else if (marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION) {
           auto m = reinterpret_cast<
               arangodb::wal::transaction_abort_marker_t const*>(marker);
           transactions.erase(m->_transactionId);

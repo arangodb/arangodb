@@ -129,41 +129,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   TRI_ASSERT(marker != nullptr);
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE: {
-      attribute_marker_t const* m =
-          reinterpret_cast<attribute_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      state->collections[collectionId] = databaseId;
-
-      if (ShouldIgnoreCollection(state, collectionId)) {
-        break;
-      }
-
-      // fill list of structural operations
-      state->structuralOperations[collectionId].push_back(marker);
-      // state->operationsCount[collectionId]++; // do not count this operation
-      break;
-    }
-
-    case TRI_WAL_MARKER_SHAPE: {
-      shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      state->collections[collectionId] = databaseId;
-
-      if (ShouldIgnoreCollection(state, collectionId)) {
-        break;
-      }
-
-      // fill list of structural operations
-      state->structuralOperations[collectionId].push_back(marker);
-      // state->operationsCount[collectionId]++; // do not count this operation
-      break;
-    }
-
     case TRI_WAL_MARKER_DOCUMENT: {
       document_marker_t const* m =
           reinterpret_cast<document_marker_t const*>(marker);
@@ -239,12 +204,12 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION: {
       break;
     }
 
-    case TRI_WAL_MARKER_ABORT_TRANSACTION: {
+    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
       transaction_abort_marker_t const* m =
           reinterpret_cast<transaction_abort_marker_t const*>(marker);
       // note which abort markers we found
@@ -767,26 +732,6 @@ void CollectorThread::processCollectionMarker(
       dfi.numberDead++;
       dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
     }
-  } else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
-    // move the pointer to the attribute from WAL to the datafile
-    document->getShaper()->moveMarker(
-        const_cast<TRI_df_marker_t*>(marker),
-        (void*)walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION
-                            // LOCK and fake trx here
-    auto& dfi = createDfi(cache, fid);
-    dfi.numberUncollected--;
-    dfi.numberAttributes++;
-    dfi.sizeAttributes += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
-  } else if (walMarker->_type == TRI_WAL_MARKER_SHAPE) {
-    // move the pointer to the shape from WAL to the datafile
-    document->getShaper()->moveMarker(
-        const_cast<TRI_df_marker_t*>(marker),
-        (void*)walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION
-                            // LOCK and fake trx here
-    auto& dfi = createDfi(cache, fid);
-    dfi.numberUncollected--;
-    dfi.numberShapes++;
-    dfi.sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
   }
 }
 
@@ -1107,58 +1052,6 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
     char const* base = reinterpret_cast<char const*>(source);
 
     switch (source->_type) {
-      case TRI_WAL_MARKER_ATTRIBUTE: {
-        char const* name = base + sizeof(attribute_marker_t);
-        size_t n = strlen(name) + 1;  // add NULL byte
-        TRI_voc_size_t const totalSize =
-            static_cast<TRI_voc_size_t>(sizeof(TRI_df_attribute_marker_t) + n);
-
-        char* dst = nextFreeMarkerPosition(
-            document, source->_tick, TRI_DF_MARKER_ATTRIBUTE, totalSize, cache);
-
-        if (dst == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi.numberUncollected++;
-
-        // set attribute id
-        TRI_df_attribute_marker_t* m =
-            reinterpret_cast<TRI_df_attribute_marker_t*>(dst);
-        m->_aid =
-            reinterpret_cast<attribute_marker_t const*>(source)->_attributeId;
-
-        // copy attribute name into marker
-        memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
-
-        finishMarker(base, dst, document, source->_tick, cache);
-        break;
-      }
-
-      case TRI_WAL_MARKER_SHAPE: {
-        char const* shape = base + sizeof(shape_marker_t);
-        ptrdiff_t shapeLength = source->_size - (shape - base);
-        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(
-            sizeof(TRI_df_shape_marker_t) + shapeLength);
-
-        char* dst = nextFreeMarkerPosition(
-            document, source->_tick, TRI_DF_MARKER_SHAPE, totalSize, cache);
-
-        if (dst == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        auto& dfi = getDfi(cache, cache->lastFid);
-        dfi.numberUncollected++;
-
-        // copy shape into marker
-        memcpy(dst + sizeof(TRI_df_shape_marker_t), shape, shapeLength);
-
-        finishMarker(base, dst, document, source->_tick, cache);
-        break;
-      }
-
       case TRI_WAL_MARKER_DOCUMENT: {
         document_marker_t const* orig =
             reinterpret_cast<document_marker_t const*>(source);

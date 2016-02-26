@@ -40,28 +40,6 @@ namespace wal {
 static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wal attribute marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct attribute_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-
-  TRI_shape_aid_t _attributeId;
-  // char* name
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal shape marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct shape_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  // char* shape
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wal create database marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -385,45 +363,11 @@ class Marker {
   TRI_voc_fid_t _fid;
 };
 
-class EnvelopeMarker : public Marker {
+class MarkerEnvelope : public Marker {
  public:
-  EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
+  MarkerEnvelope(TRI_df_marker_t const*, TRI_voc_fid_t);
 
-  ~EnvelopeMarker();
-};
-
-class AttributeMarker : public Marker {
- public:
-  AttributeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_shape_aid_t,
-                  std::string const&);
-
-  ~AttributeMarker();
-
- public:
-  inline char* attributeName() const {
-    // pointer to attribute name
-    return begin() + sizeof(attribute_marker_t);
-  }
-
-  void setType(TRI_df_marker_type_t);
-
-  void dump() const;
-};
-
-class ShapeMarker : public Marker {
- public:
-  ShapeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_shape_t const*);
-
-  ~ShapeMarker();
-
- public:
-  inline char* shape() const { return begin() + sizeof(shape_marker_t); }
-
-  inline TRI_shape_sid_t shapeId() const {
-    return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
-  }
-
-  void dump() const;
+  ~MarkerEnvelope();
 };
 
 class CreateDatabaseMarker : public Marker {

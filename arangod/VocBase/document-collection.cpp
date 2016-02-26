@@ -1290,23 +1290,6 @@ static DatafileStatisticsContainer* FindDatafileStats(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mark a transaction as failed during opening of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorNoteFailedTransaction(
-    open_iterator_state_t const* state) {
-  TRI_ASSERT(state->_tid > 0);
-
-  if (state->_document->_failedTransactions == nullptr) {
-    state->_document->_failedTransactions = new std::set<TRI_voc_tid_t>;
-  }
-
-  state->_document->_failedTransactions->insert(state->_tid);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply an insert/update operation when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1623,8 +1606,6 @@ static int OpenIteratorPrepareTransaction(open_iterator_state_t* state) {
 
 static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
   if (state->_tid != 0) {
-    OpenIteratorNoteFailedTransaction(state);
-
     LOG(INFO) << "rolling back uncommitted transaction " << state->_tid;
     OpenIteratorResetOperations(state);
   }
@@ -1717,148 +1698,6 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process a shape marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleShapeMarker(TRI_df_marker_t const* marker,
-                                         TRI_datafile_t* datafile,
-                                         open_iterator_state_t* state) {
-  TRI_document_collection_t* document = state->_document;
-
-  int res = document->getShaper()->insertShape(
-      marker, true);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (state->_fid != datafile->_fid) {
-      state->_fid = datafile->_fid;
-      state->_dfi = FindDatafileStats(state, state->_fid);
-    }
-
-    state->_dfi->numberShapes++;
-    state->_dfi->sizeShapes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process an attribute marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleAttributeMarker(TRI_df_marker_t const* marker,
-                                             TRI_datafile_t* datafile,
-                                             open_iterator_state_t* state) {
-  TRI_document_collection_t* document = state->_document;
-
-  int res = document->getShaper()->insertAttribute(
-      marker, true);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (state->_fid != datafile->_fid) {
-      state->_fid = datafile->_fid;
-      state->_dfi = FindDatafileStats(state, state->_fid);
-    }
-
-    state->_dfi->numberAttributes++;
-    state->_dfi->sizeAttributes += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a "begin transaction" marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleBeginMarker(TRI_df_marker_t const* marker,
-                                         TRI_datafile_t* datafile,
-                                         open_iterator_state_t* state) {
-  TRI_doc_begin_transaction_marker_t const* m =
-      (TRI_doc_begin_transaction_marker_t const*)marker;
-
-  if (m->_tid != state->_tid && state->_tid != 0) {
-    // some incomplete transaction was going on before us...
-    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
-
-    OpenIteratorAbortTransaction(state);
-  }
-
-  OpenIteratorStartTransaction(state, m->_tid, (uint32_t)m->_numCollections);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a "commit transaction" marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleCommitMarker(TRI_df_marker_t const* marker,
-                                          TRI_datafile_t* datafile,
-                                          open_iterator_state_t* state) {
-  TRI_doc_commit_transaction_marker_t const* m =
-      (TRI_doc_commit_transaction_marker_t const*)marker;
-
-  if (m->_tid != state->_tid) {
-    // we found a commit marker, but we did not find any begin marker
-    // beforehand. strange
-    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
-
-    OpenIteratorAbortTransaction(state);
-  } else {
-    OpenIteratorCommitTransaction(state);
-  }
-
-  // reset transaction id
-  state->_tid = 0;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a "prepare transaction" marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandlePrepareMarker(TRI_df_marker_t const* marker,
-                                           TRI_datafile_t* datafile,
-                                           open_iterator_state_t* state) {
-  TRI_doc_prepare_transaction_marker_t const* m =
-      (TRI_doc_prepare_transaction_marker_t const*)marker;
-
-  if (m->_tid != state->_tid) {
-    // we found a commit marker, but we did not find any begin marker
-    // beforehand. strange
-    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
-
-    OpenIteratorAbortTransaction(state);
-  } else {
-    OpenIteratorPrepareTransaction(state);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process an "abort transaction" marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleAbortMarker(TRI_df_marker_t const* marker,
-                                         TRI_datafile_t* datafile,
-                                         open_iterator_state_t* state) {
-  TRI_doc_abort_transaction_marker_t const* m =
-      (TRI_doc_abort_transaction_marker_t const*)marker;
-
-  if (m->_tid != state->_tid) {
-    // we found an abort marker, but we did not find any begin marker
-    // beforehand. strange
-    LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << m->_tid << ", expected tid: " << state->_tid;
-  }
-
-  OpenIteratorAbortTransaction(state);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1885,24 +1724,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile,
                                            (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DF_MARKER_SHAPE) {
-    res = OpenIteratorHandleShapeMarker(marker, datafile,
-                                        (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-    res = OpenIteratorHandleAttributeMarker(marker, datafile,
-                                            (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DOC_MARKER_BEGIN_TRANSACTION) {
-    res = OpenIteratorHandleBeginMarker(marker, datafile,
-                                        (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION) {
-    res = OpenIteratorHandleCommitMarker(marker, datafile,
-                                         (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    res = OpenIteratorHandlePrepareMarker(marker, datafile,
-                                          (open_iterator_state_t*)data);
-  } else if (marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION) {
-    res = OpenIteratorHandleAbortMarker(marker, datafile,
-                                        (open_iterator_state_t*)data);
   } else {
     if (marker->_type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
@@ -2021,7 +1842,6 @@ static bool InitDocumentCollection(TRI_document_collection_t* document,
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes = false;
-  document->_failedTransactions = nullptr;
 
   document->_uncollectedLogfileEntries.store(0);
 
@@ -2243,10 +2063,6 @@ void TRI_DestroyDocumentCollection(TRI_document_collection_t* document) {
   // free memory allocated for indexes
   for (auto& idx : document->allIndexes()) {
     delete idx;
-  }
-
-  if (document->_failedTransactions != nullptr) {
-    delete document->_failedTransactions;
   }
 
   DestroyBaseDocumentCollection(document);
@@ -2854,9 +2670,6 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     if (res != TRI_ERROR_NO_ERROR) {
-      if (document->_failedTransactions != nullptr) {
-        delete document->_failedTransactions;
-      }
       TRI_CloseCollection(collection);
       TRI_FreeCollection(collection);
 
@@ -4900,8 +4713,10 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
   TRI_voc_rid_t revisionId = Transaction::extractRevisionId(slice);
   
-  std::unique_ptr<arangodb::wal::Marker> marker(
-      createVPackInsertMarker(trx, slice));
+  std::unique_ptr<arangodb::wal::Marker> marker;
+  if (options.recoveryMarker == nullptr) {
+    marker.reset(createVPackInsertMarker(trx, slice));
+  }
 
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -4914,8 +4729,13 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
+    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
+    bool const freeMarker = (options.recoveryMarker == nullptr);
+
     arangodb::wal::DocumentOperation operation(
-        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+
+    marker.release();
 
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
@@ -5014,10 +4834,18 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
     VPackBuilder builder = mergeObjects(trx, false, VPackSlice(oldHeader->vpack()), *newSlice, options.mergeObjects, !options.keepNull);
  
     // create marker
-    std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
+    std::unique_ptr<arangodb::wal::Marker> marker;
+    if (options.recoveryMarker == nullptr) {
+      marker.reset(createVPackInsertMarker(trx, builder.slice()));
+    }
+    
+    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
+    bool const freeMarker = (options.recoveryMarker == nullptr);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+
+    marker.release();
 
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
@@ -5093,10 +4921,18 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
     VPackBuilder builder = mergeObjects(trx, true, VPackSlice(oldHeader->vpack()), *newSlice, false, true);
  
     // create marker
-    std::unique_ptr<arangodb::wal::Marker> marker(createVPackInsertMarker(trx, builder.slice()));
+    std::unique_ptr<arangodb::wal::Marker> marker;
+    if (options.recoveryMarker == nullptr) {
+      marker.reset(createVPackInsertMarker(trx, builder.slice()));
+    }
+    
+    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
+    bool const freeMarker = (options.recoveryMarker == nullptr);
 
     arangodb::wal::DocumentOperation operation(
-        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+    
+    marker.release();
     
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
@@ -5146,8 +4982,10 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
-  std::unique_ptr<arangodb::wal::Marker> marker(
-      createVPackRemoveMarker(trx, slice));
+  std::unique_ptr<arangodb::wal::Marker> marker;
+  if (options.recoveryMarker == nullptr) {
+    marker.reset(createVPackRemoveMarker(trx, slice));
+  }
 
   int res;
   TRI_voc_tick_t markerTick = 0;
@@ -5159,8 +4997,13 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
 
     arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
+    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
+    bool const freeMarker = (options.recoveryMarker == nullptr);
+
     arangodb::wal::DocumentOperation operation(
-        trx, marker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+
+    marker.release();
     
     // DocumentOperation has taken over the ownership for the marker
     TRI_ASSERT(operation.marker != nullptr);
