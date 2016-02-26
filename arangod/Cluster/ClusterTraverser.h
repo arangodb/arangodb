@@ -49,15 +49,9 @@ class ClusterTraverser : public Traverser {
         _resolver(resolver) {}
 
   ~ClusterTraverser() {
-    for (auto& it : _vertices) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
-    }
-    for (auto& it : _edges) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
-    }
   }
 
-  void setStartVertex(VertexId const& v) override;
+  void setStartVertex(arangodb::velocypack::Slice const&) override;
 
   TraversalPath* next() override;
 
@@ -66,7 +60,7 @@ class ClusterTraverser : public Traverser {
   arangodb::basics::Json* vertexToJson(std::string const&) const;
 
  private:
-  bool vertexMatchesCondition(TRI_json_t*,
+  bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
   class VertexGetter {
@@ -74,8 +68,8 @@ class ClusterTraverser : public Traverser {
     explicit VertexGetter(ClusterTraverser* traverser)
         : _traverser(traverser) {}
 
-    bool operator()(std::string const&, std::string const&, size_t,
-                    std::string&);
+    bool operator()(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&, size_t,
+                    arangodb::velocypack::Slice&);
 
    private:
     ClusterTraverser* _traverser;
@@ -86,7 +80,8 @@ class ClusterTraverser : public Traverser {
     explicit EdgeGetter(ClusterTraverser* traverser)
         : _traverser(traverser), _continueConst(1) {}
 
-    void operator()(std::string const&, std::vector<std::string>&, size_t*&,
+    void operator()(arangodb::velocypack::Slice const&,
+                    std::vector<arangodb::velocypack::Slice>&, size_t*&,
                     size_t&, bool&);
 
    private:
@@ -95,11 +90,11 @@ class ClusterTraverser : public Traverser {
     size_t _continueConst;
   };
 
-  std::unordered_map<std::string, TRI_json_t*> _edges;
+  std::unordered_map<arangodb::velocypack::Slice, arangodb::velocypack::Slice> _edges;
 
-  std::unordered_map<std::string, TRI_json_t*> _vertices;
+  std::unordered_map<arangodb::velocypack::Slice, arangodb::velocypack::Slice> _vertices;
 
-  std::stack<std::stack<std::string>> _iteratorCache;
+  std::stack<std::stack<arangodb::velocypack::Slice>> _iteratorCache;
 
   std::vector<std::string> _edgeCols;
 
@@ -115,7 +110,7 @@ class ClusterTraverser : public Traverser {
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
+  std::unique_ptr<arangodb::basics::PathEnumerator<arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                                                    size_t>> _enumerator;
 };
 
@@ -123,7 +118,7 @@ class ClusterTraversalPath : public TraversalPath {
  public:
   ClusterTraversalPath(
       ClusterTraverser const* traverser,
-      const arangodb::basics::EnumeratedPath<std::string, std::string>& path)
+      const arangodb::basics::EnumeratedPath<arangodb::velocypack::Slice, arangodb::velocypack::Slice>& path)
       : _path(path), _traverser(traverser) {}
 
   arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*);
@@ -134,7 +129,7 @@ class ClusterTraversalPath : public TraversalPath {
                                            CollectionNameResolver*);
 
  private:
-  arangodb::basics::EnumeratedPath<std::string, std::string> _path;
+  arangodb::basics::EnumeratedPath<arangodb::velocypack::Slice, arangodb::velocypack::Slice> _path;
 
   ClusterTraverser const* _traverser;
 };

@@ -732,7 +732,10 @@ Json* SingleServerTraversalPath::edgeToJson(Transaction* trx,
 
 Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
                                               CollectionNameResolver* resolver,
-                                              VertexId const& v) {
+                                              VPackSlice const& v) {
+  return nullptr;
+  // TODO FIXME
+  /* This has to be replaced by new Transaction API
   auto collection = trx->trxCollection(v.cid);
   if (collection == nullptr) {
     int res = TRI_AddCollectionTransaction(trx->getInternals(), v.cid,
@@ -767,6 +770,7 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
   return new Json(
       TRI_ExpandShapedJson(collection->_collection->_collection->getShaper(),
                            resolver, v.cid, &mptr));
+  */
 }
 
 DepthFirstTraverser::DepthFirstTraverser(
@@ -802,13 +806,15 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
   return true;
 }
 
-bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
+bool DepthFirstTraverser::vertexMatchesConditions(VPackSlice const& v,
                                                   size_t depth) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(depth);
 
   if (it != _expressions->end()) {
+    /* TODO FIXME
+    // This has to be replaced by new Transaction API
     TRI_doc_mptr_copy_t mptr;
     TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
@@ -870,13 +876,17 @@ bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
         }
       }
     }
+    */
   }
   return true;
 }
 
 void DepthFirstTraverser::_defInternalFunctions() {
-  _getVertex = [](EdgeInfo const& edge, VertexId const& vertex, size_t depth,
-                  VertexId& result) -> bool {
+  _getVertex = [](EdgeInfo const& edge, VPackSlice const& vertex, size_t depth,
+                  VPackSlice& result) -> bool {
+    return false;
+    // TODO FIX THIS
+    /* Do we still use mptr here or do we switch to VPack?
     auto mptr = edge.mptr;
     if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
         TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
@@ -887,11 +897,12 @@ void DepthFirstTraverser::_defInternalFunctions() {
                         TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
     }
     return true;
+    */
   };
 }
 
 void DepthFirstTraverser::setStartVertex(
-    arangodb::traverser::VertexId const& v) {
+    VPackSlice const& v) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(0);
@@ -907,6 +918,7 @@ void DepthFirstTraverser::setStartVertex(
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
+            /* TODO Add Collection to Transaction!
             auto collection = _trx->trxCollection(v.cid);
             if (collection == nullptr) {
               int res = TRI_AddCollectionTransaction(
@@ -936,6 +948,8 @@ void DepthFirstTraverser::setStartVertex(
               return;
             }
             docCol = collection->_collection->_collection;
+            */
+            return;
           }
           TRI_ASSERT(docCol != nullptr);
           if (!exp->matchesCheck(mptr, docCol, _resolver)) {
@@ -947,7 +961,7 @@ void DepthFirstTraverser::setStartVertex(
       }
     }
   }
-  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_t>(
+  _enumerator.reset(new PathEnumerator<EdgeInfo, VPackSlice, TRI_doc_mptr_t>(
       _edgeGetter, _getVertex, v));
   _done = false;
 }
@@ -959,7 +973,7 @@ TraversalPath* DepthFirstTraverser::next() {
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const EnumeratedPath<EdgeInfo, VertexId>& path = _enumerator->next();
+  const EnumeratedPath<EdgeInfo, VPackSlice>& path = _enumerator->next();
   size_t countEdges = path.edges.size();
   if (countEdges == 0) {
     _done = true;
@@ -994,10 +1008,10 @@ EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
   return it->second.second;
 }
 
-void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
-                                                 std::vector<EdgeInfo>& edges,
-                                                 TRI_doc_mptr_t*& last,
-                                                 size_t& eColIdx, bool& dir) {
+void DepthFirstTraverser::EdgeGetter::operator()(
+    arangodb::velocypack::Slice const& startVertex,
+    std::vector<EdgeInfo>& edges, TRI_doc_mptr_t*& last, size_t& eColIdx,
+    bool& dir) {
   std::string eColName;
   TRI_edge_direction_e direction;
   while (true) {
@@ -1010,8 +1024,7 @@ void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
     std::vector<TRI_doc_mptr_copy_t> tmp;
     if (direction == TRI_EDGE_ANY) {
       TRI_edge_direction_e currentDir = dir ? TRI_EDGE_OUT : TRI_EDGE_IN;
-      TRI_edge_index_iterator_t it(currentDir, startVertex.cid,
-                                   startVertex.key);
+      TRI_edge_index_iterator_t it(currentDir, startVertex);
       edgeIndex->lookup(_trx, &it, tmp, last, 1);
       if (last == nullptr) {
         // Could not find next edge.
@@ -1024,8 +1037,7 @@ void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
       }
     }
     else {
-      TRI_edge_index_iterator_t it(direction, startVertex.cid,
-                                   startVertex.key);
+      TRI_edge_index_iterator_t it(direction, startVertex);
       edgeIndex->lookup(_trx, &it, tmp, last, 1);
       if (last == nullptr) {
         // Could not find next edge.
@@ -1045,7 +1057,7 @@ void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
       continue;
     }
     EdgeInfo e(cid, tmp.back());
-    VertexId other;
+    VPackSlice other;
     // This always returns true and third parameter is ignored
     _traverser->_getVertex(e, startVertex, 0, other);
     if (!_traverser->vertexMatchesConditions(other, edges.size() + 1)) {

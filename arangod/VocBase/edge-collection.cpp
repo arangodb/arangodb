@@ -25,6 +25,7 @@
 #include "edge-collection.h"
 #include "Basics/Logger.h"
 #include "Indexes/EdgeIndex.h"
+#include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,13 +77,13 @@ static bool FindEdges(arangodb::Transaction* trx,
                       TRI_edge_direction_e direction,
                       arangodb::EdgeIndex* edgeIndex,
                       std::vector<TRI_doc_mptr_copy_t>& result,
-                      TRI_edge_header_t const* entry, int matchType) {
+                      VPackSlice const entry, int matchType) {
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
 
   if (direction == TRI_EDGE_OUT) {
-    found.reset(edgeIndex->from()->lookupByKey(trx, entry));
+    found.reset(edgeIndex->from()->lookupByKey(trx, &entry));
   } else if (direction == TRI_EDGE_IN) {
-    found.reset(edgeIndex->to()->lookupByKey(trx, entry));
+    found.reset(edgeIndex->to()->lookupByKey(trx, &entry));
   } else {
     TRI_ASSERT(false);  // TRI_EDGE_ANY not supported here
   }
@@ -127,14 +128,18 @@ static bool FindEdges(arangodb::Transaction* trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
+///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_edge_direction_e direction, TRI_voc_cid_t cid,
-    TRI_voc_key_t const key) {
-  // search criteria
-  TRI_edge_header_t entry(cid, key);
+    std::string const& key) {
+
+  auto resolver = trx->resolver();
+  std::string cname = resolver->getCollectionName(cid);
+  VPackBuilder b;
+  b.add(VPackValue(cname + "/" + key)); 
 
   // initialize the result vector
   std::vector<TRI_doc_mptr_copy_t> result;
@@ -148,15 +153,15 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
 
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
-    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, b.slice(), 1);
   } else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
-    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, b.slice(), 1);
   } else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
-    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, b.slice(), 1);
     // add all non-reflexive edges with a matching OUT vertex
-    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, &entry, 3);
+    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, b.slice(), 3);
   }
 
   return result;

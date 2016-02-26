@@ -36,8 +36,9 @@ namespace arangodb {
 
 class EdgeIndexIterator final : public IndexIterator {
  public:
-  typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
-                                       uint32_t, true> TRI_EdgeIndexHash_t;
+  typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
+                                       TRI_doc_mptr_t, uint32_t,
+                                       true> TRI_EdgeIndexHash_t;
 
   TRI_doc_mptr_t* next() override;
 
@@ -45,10 +46,11 @@ class EdgeIndexIterator final : public IndexIterator {
 
   EdgeIndexIterator(arangodb::Transaction* trx,
                     TRI_EdgeIndexHash_t const* index,
-                    std::vector<TRI_edge_header_t>& searchValues)
+                    arangodb::velocypack::Builder const& searchValues)
       : _trx(trx),
         _index(index),
-        _keys(std::move(searchValues)),
+        _searchValues(searchValues),
+        _keys(searchValues.slice()),
         _position(0),
         _last(nullptr),
         _buffer(nullptr),
@@ -64,7 +66,8 @@ class EdgeIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
-  std::vector<TRI_edge_header_t> _keys;
+  arangodb::velocypack::Builder const _searchValues;
+  arangodb::velocypack::Slice const _keys;
   size_t _position;
   TRI_doc_mptr_t* _last;
   std::vector<TRI_doc_mptr_t*>* _buffer;
@@ -87,7 +90,7 @@ class EdgeIndex final : public Index {
   /// @brief typedef for hash tables
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
+  typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
  public:

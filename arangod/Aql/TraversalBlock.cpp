@@ -329,15 +329,14 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                              "Only id strings or objects with "
                                              "_id are allowed");
       } else {
-        auto v(arangodb::traverser::VertexId(
-            _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
-            _vertexId.c_str() + pos + 1));
-
-        _traverser->setStartVertex(v);
+        _vertexBuilder.clear();
+        _vertexBuilder.add(VPackValue(_vertexId));
+        _traverser->setStartVertex(_vertexBuilder.slice());
       }
     }
   } else {
     auto in = items->getValueReference(_pos, _reg);
+    /* TODO Deprecated uses shapes, should use slices instead
     if (in.isShaped()) {
       auto col = items->getDocumentCollection(_reg);
       VertexId v(col->_info.id(), TRI_EXTRACT_MARKER_KEY(in.getMarker()));
@@ -355,10 +354,12 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
         }
       }
     } else if (in.isString()) {
+    */
+    if (in.isString()) {
       _vertexId = in.toString();
-      VertexId v =
-          arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
-      _traverser->setStartVertex(v);
+      _vertexBuilder.clear();
+      _vertexBuilder.add(VPackValue(_vertexId));
+      _traverser->setStartVertex(_vertexBuilder.slice());
     } else {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
                                            "Invalid input for traversal: Only "

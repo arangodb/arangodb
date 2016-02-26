@@ -39,143 +39,90 @@ using namespace arangodb;
 /// @brief hashes an edge key
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementKey(void* userData, TRI_edge_header_t const* data) {
-  TRI_ASSERT(data != nullptr);
-
-  TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
-  char const* key = h->_key;
-
-  uint64_t hash = h->_cid;
-  hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
-
-  return fasthash64(&hash, sizeof(hash), 0x56781234);
+static uint64_t HashElementKey(void*, VPackSlice const* key) {
+  // TODO: Can we unify all HashElementKey functions for VPack?
+  TRI_ASSERT(key != nullptr);
+  uint64_t hash = 0x87654321;
+  if (!key->isString()) {
+    // Illegal Edge entry, key has to be string.
+    TRI_ASSERT(false);
+    return hash;
+  }
+  return key->hash(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
+static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
                                     bool byKey) {
-  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(mptr != nullptr);
 
-  uint64_t hash;
+  uint64_t hash = 0x87654321;
 
   if (!byKey) {
-    hash = (uint64_t)data;
+    hash = (uint64_t)mptr;
+    hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
-    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-        mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge =
-          reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-              marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-      char const* key = (char const*)edge + edge->_offsetFromKey;
-
-      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
-
-      hash = edge->_fromCid;
-      hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
-    } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      arangodb::wal::edge_marker_t const* edge =
-          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-              marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-      char const* key = (char const*)edge + edge->_offsetFromKey;
-
-      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
-
-      hash = edge->_fromCid;
-      hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
+    // Is identical to HashElementKey
+    VPackSlice tmp(mptr->vpack());
+    TRI_ASSERT(tmp.isObject());
+    if (tmp.hasKey(TRI_VOC_ATTRIBUTE_FROM)) {
+      tmp = tmp.get(TRI_VOC_ATTRIBUTE_FROM);
+      TRI_ASSERT(tmp.isString());
+      hash = tmp.hash(hash);
+    } else {
+      LOG(DEBUG) << "Trying to compute _from hash on object that does not have _from";
     }
   }
-
-  return fasthash64(&hash, sizeof(hash), 0x56781234);
+  return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
+static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
                                   bool byKey) {
-  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(mptr != nullptr);
 
-  uint64_t hash;
+  uint64_t hash = 0x87654321;
 
   if (!byKey) {
-    hash = (uint64_t)data;
+    hash = (uint64_t)mptr;
+    hash = fasthash64(&hash, sizeof(hash), 0x56781234);
   } else {
-    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-        mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge =
-          reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-              marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-      char const* key = (char const*)edge + edge->_offsetToKey;
-
-      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
-
-      hash = edge->_toCid;
-      hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
-    } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      arangodb::wal::edge_marker_t const* edge =
-          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-              marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-      char const* key = (char const*)edge + edge->_offsetToKey;
-
-      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
-
-      hash = edge->_toCid;
-      hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
+    // Is identical to HashElementKey
+    VPackSlice tmp(mptr->vpack());
+    TRI_ASSERT(tmp.isObject());
+    if (tmp.hasKey(TRI_VOC_ATTRIBUTE_TO)) {
+      tmp = tmp.get(TRI_VOC_ATTRIBUTE_TO);
+      TRI_ASSERT(tmp.isString());
+      hash = tmp.hash(hash);
+    } else {
+      LOG(DEBUG) << "Trying to compute _to hash on object that does not have _to";
     }
   }
-
-  return fasthash64(&hash, sizeof(hash), 0x56781234);
+  return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if key and element match (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
+static bool IsEqualKeyEdgeFrom(void*, VPackSlice const* left,
                                TRI_doc_mptr_t const* right) {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
-  TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
-  char const* lKey = l->_key;
-
-  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-      rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
-
-    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
-    // RKEY: " << rKey;
-    return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
-
-    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
-    // RKEY: " << rKey;
-
-    return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
+  VPackSlice tmp(right->vpack());
+  if (tmp.hasKey(TRI_VOC_ATTRIBUTE_FROM)) {
+    tmp.get(TRI_VOC_ATTRIBUTE_FROM);
+    return *left == tmp;
   }
-
   return false;
 }
 
@@ -183,42 +130,18 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
 /// @brief checks if key and element match (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
+static bool IsEqualKeyEdgeTo(void*, VPackSlice const* left,
                              TRI_doc_mptr_t const* right) {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
-  TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
-  char const* lKey = l->_key;
-
-  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-      rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
-
-    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
-    // RKEY: " << rKey;
-
-    return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
-
-    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
-    // RKEY: " << rKey;
-
-    return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
+  VPackSlice tmp(right->vpack());
+  if (tmp.hasKey(TRI_VOC_ATTRIBUTE_TO)) {
+    tmp.get(TRI_VOC_ATTRIBUTE_TO);
+    return *left == tmp;
   }
-
   return false;
 }
 
@@ -226,7 +149,7 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
 /// @brief checks for elements are equal (_from and _to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdge(void* userData, TRI_doc_mptr_t const* left,
+static bool IsEqualElementEdge(void*, TRI_doc_mptr_t const* left,
                                TRI_doc_mptr_t const* right) {
   return left == right;
 }
@@ -235,133 +158,61 @@ static bool IsEqualElementEdge(void* userData, TRI_doc_mptr_t const* left,
 /// @brief checks for elements are equal (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeFromByKey(void* userData,
+static bool IsEqualElementEdgeFromByKey(void*,
                                         TRI_doc_mptr_t const* left,
                                         TRI_doc_mptr_t const* right) {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  char const* lKey = nullptr;
-  char const* rKey = nullptr;
-  TRI_voc_cid_t lCid = 0;
-  TRI_voc_cid_t rCid = 0;
-  TRI_df_marker_t const* marker;
-
-  // left element
-  TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(
-      lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* lEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    lKey = (char const*)lEdge + lEdge->_offsetFromKey;
-    lCid = lEdge->_fromCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* lEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    lKey = (char const*)lEdge + lEdge->_offsetFromKey;
-    lCid = lEdge->_fromCid;
-  }
-
-  // right element
-  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(
-      rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    rKey = (char const*)rEdge + rEdge->_offsetFromKey;
-    rCid = rEdge->_fromCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    rKey = (char const*)rEdge + rEdge->_offsetFromKey;
-    rCid = rEdge->_fromCid;
-  }
-
-  if (lKey == nullptr || rKey == nullptr) {
+  VPackSlice lSlice(left->vpack());
+  if (!lSlice.isObject() || !lSlice.hasKey(TRI_VOC_ATTRIBUTE_FROM)) {
+    // Impossible situation
+    TRI_ASSERT(false);
     return false;
   }
+  lSlice = lSlice.get(TRI_VOC_ATTRIBUTE_FROM);
 
-  // LOG(TRACE) << "ISEQUALELEMENT FROM: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
-  // " << // rCid << ", RKEY: " << rKey;
-
-  return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
+  VPackSlice rSlice(right->vpack());
+  if (!rSlice.isObject() || !rSlice.hasKey(TRI_VOC_ATTRIBUTE_FROM)) {
+    // Impossible situation
+    TRI_ASSERT(false);
+    return false;
+  }
+  rSlice = rSlice.get(TRI_VOC_ATTRIBUTE_FROM);
+  return lSlice == rSlice;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for elements are equal (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeToByKey(void* userData,
+static bool IsEqualElementEdgeToByKey(void*,
                                       TRI_doc_mptr_t const* left,
                                       TRI_doc_mptr_t const* right) {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  char const* lKey = nullptr;
-  char const* rKey = nullptr;
-  TRI_voc_cid_t lCid = 0;
-  TRI_voc_cid_t rCid = 0;
-  TRI_df_marker_t const* marker;
-
-  // left element
-  TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(
-      lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* lEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    lKey = (char const*)lEdge + lEdge->_offsetToKey;
-    lCid = lEdge->_toCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* lEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    lKey = (char const*)lEdge + lEdge->_offsetToKey;
-    lCid = lEdge->_toCid;
-  }
-
-  // right element
-  TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(
-      rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge =
-        reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    rKey = (char const*)rEdge + rEdge->_offsetToKey;
-    rCid = rEdge->_toCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    arangodb::wal::edge_marker_t const* rEdge =
-        reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-            marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-    rKey = (char const*)rEdge + rEdge->_offsetToKey;
-    rCid = rEdge->_toCid;
-  }
-
-  if (lKey == nullptr || rKey == nullptr) {
+  VPackSlice lSlice(left->vpack());
+  if (!lSlice.isObject() || !lSlice.hasKey(TRI_VOC_ATTRIBUTE_TO)) {
+    // Impossible situation
+    TRI_ASSERT(false);
     return false;
   }
+  lSlice = lSlice.get(TRI_VOC_ATTRIBUTE_TO);
 
-  // LOG(TRACE) << "ISEQUALELEMENT TO: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
-  // " << // rCid << ", RKEY: " << rKey;
-
-  return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
+  VPackSlice rSlice(right->vpack());
+  if (!rSlice.isObject() || !rSlice.hasKey(TRI_VOC_ATTRIBUTE_TO)) {
+    // Impossible situation
+    TRI_ASSERT(false);
+    return false;
+  }
+  rSlice = rSlice.get(TRI_VOC_ATTRIBUTE_TO);
+  return lSlice == rSlice;
 }
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
   while (true) {
-    if (_position >= _keys.size()) {
+    if (_position >= static_cast<size_t>(_keys.length())) {
       // we're at the end of the lookup values
       return nullptr;
     }
@@ -371,7 +222,10 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       TRI_ASSERT(_position == 0);
       _posInBuffer = 0;
       _last = nullptr;
-      _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
+
+      VPackSlice tmp = _keys.at(_position++);
+      // TODO check if we have to decompose { eq: value } here!
+      _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
       // fallthrough intentional
     } else if (_posInBuffer >= _buffer->size()) {
       // We have to refill the buffer
@@ -382,7 +236,9 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       if (_last != nullptr) {
         _buffer = _index->lookupByKeyContinue(_trx, _last, _batchSize);
       } else {
-        _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
+        VPackSlice tmp = _keys.at(_position);
+        // TODO check if we have to decompose { eq: value } here!
+        _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
       }
     }
 
@@ -547,12 +403,11 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
 
   std::vector<TRI_doc_mptr_t*>* found = nullptr;
   if (next == nullptr) {
+    VPackSlice edge = edgeIndexIterator->_edge;
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found =
-          _edgesFrom->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
+      found = _edgesFrom->lookupByKey(trx, &edge, batchSize);
     } else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found =
-          _edgesTo->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
+      found = _edgesTo->lookupByKey(trx, &edge, batchSize);
     } else {
       TRI_ASSERT(false);
     }
@@ -706,13 +561,10 @@ IndexIterator* EdgeIndex::createIterator(
     arangodb::aql::AstNode const* attrNode,
     std::vector<arangodb::aql::AstNode const*> const& valNodes) const {
   // only leave the valid elements in the vector
-  size_t const n = valNodes.size();
-  std::vector<TRI_edge_header_t> keys;
-  keys.reserve(n);
+  VPackBuilder keys;
+  keys.openArray();
 
-  for (size_t i = 0; i < n; ++i) {
-    auto valNode = valNodes[i];
-
+  for (auto const& valNode : valNodes) {
     if (!valNode->isStringValue()) {
       continue;
     }
@@ -720,18 +572,9 @@ IndexIterator* EdgeIndex::createIterator(
       continue;
     }
 
-    TRI_voc_cid_t cid;
-    char const* key;
-    int res = context->resolveId(valNode->getStringValue(), cid, key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      continue;
-    }
-
-    TRI_ASSERT(key != nullptr);
-    TRI_ASSERT(cid != 0);
-
-    keys.emplace_back(TRI_edge_header_t(cid, const_cast<char*>(key)));
+    keys.openObject();
+    keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
+    keys.close();
     TRI_IF_FAILURE("EdgeIndex::collectKeys") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -740,6 +583,7 @@ IndexIterator* EdgeIndex::createIterator(
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  keys.close();
 
   // _from or _to?
   bool const isFrom =
