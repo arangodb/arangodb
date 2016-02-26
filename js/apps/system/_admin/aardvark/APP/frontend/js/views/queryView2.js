@@ -322,8 +322,8 @@
     },
 
     explainQuery: function() {
-      if (this.aqlEditor.getValue().length === 0) {
-        arangoHelper.arangoError("Query", "Your query is empty");
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
@@ -954,9 +954,29 @@
       window.modalView.hide();
     },
 
-    executeQuery: function () {
+    verifyQueryAndParams: function() {
+      var quit = false;
+
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError("Query", "Your query is empty");
+        quit = true;
+      }
+
+      var keys = [];
+      _.each(this.bindParamTableObj, function(val, key) {
+        if (val === '') {
+          quit = true;
+          keys.push(key);
+        }
+      });
+      arangoHelper.arangoError("Bind Parameter", JSON.stringify(keys) + " not defined.");
+
+      return quit;
+    },
+
+    executeQuery: function () {
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
