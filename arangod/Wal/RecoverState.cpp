@@ -335,48 +335,38 @@ int RecoverState::executeSingleOperation(
     return TRI_ERROR_NO_ERROR;
   }
 
-  SingleCollectionTransaction* trx = nullptr;
-  EnvelopeMarker* envelope = nullptr;
   res = TRI_ERROR_INTERNAL;
 
   try {
-    trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
 
-    trx->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
-    trx->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+    trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
+    trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
+    trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
+    trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
 
-    res = trx->begin();
+    res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    envelope = new EnvelopeMarker(marker, fid);
+    auto envelope = std::make_unique<EnvelopeMarker>(marker, fid);
 
     // execute the operation
-    res = func(trx, envelope);
+    res = func(&trx, envelope.get());
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     // commit the operation
-    res = trx->commit();
+    res = trx.commit();
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-  }
-
-  if (envelope != nullptr) {
-    delete envelope;
-  }
-
-  if (trx != nullptr) {
-    delete trx;
   }
 
   return res;
