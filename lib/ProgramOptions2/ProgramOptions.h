@@ -87,7 +87,8 @@ class ProgramOptions {
         _terminalWidth(terminalWidth),
         _similarity(similarity),
         _processingResult(),
-        _sealed(false) {
+        _sealed(false),
+        _overrideOptions(false) {
     // find progname wildcard in string
     size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
@@ -109,9 +110,13 @@ class ProgramOptions {
   void seal() { _sealed = true; }
 
   // allow or disallow overriding already set options
-  bool allowOverride(bool value) {
+  void allowOverride(bool value) {
     checkIfSealed();
     _overrideOptions = value;
+  }
+  
+  bool allowOverride() const {
+    return _overrideOptions;
   }
 
   // set context for error reporting
