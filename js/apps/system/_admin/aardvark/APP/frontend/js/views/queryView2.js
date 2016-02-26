@@ -24,7 +24,7 @@
     currentQuery: {},
     initDone: false,
 
-    bindParamRegExp: /@(@?)(\w+(\d*))/,
+    bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
 
     bindParamTableDesc: {
@@ -76,6 +76,14 @@
 
     clearQuery: function() {
       this.aqlEditor.setValue('');
+    },
+
+    openExportDialog: function() {
+      $('#queryImportDialog').modal('show'); 
+    },
+
+    closeExportDialo: function() {
+      $('#queryImportDialog').modal('hide'); 
     },
 
     initQueryImport: function () {
@@ -161,7 +169,7 @@
       }
 
       var divs = [
-        "aqlEditor", "queryTable", "previewWrapper",
+        "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
         "saveCurrentQuery", "querySize", "executeQuery", 
         "explainQuery", "clearQuery", "importQuery", "exportQuery"
@@ -187,7 +195,7 @@
         name = $(e.currentTarget).children().first().text();
       }
       else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().text();
+        name = $(e.currentTarget).parent().parent().prev().prev().text();
       }
       return name;
     },
@@ -359,6 +367,7 @@
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
+              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -369,7 +378,6 @@
             }
           },
           error: function (data) {
-            window.progressView.hide();
             try {
               var temp = JSON.parse(data.responseText);
               arangoHelper.arangoError("Explain error", temp.errorMessage);
@@ -377,6 +385,7 @@
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
+            window.progressView.hide();
             self.handleResult(counter);
             this.removeOutputEditor(counter);
           }
@@ -475,7 +484,6 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
-      this.initSpotlight();
 
       //set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 3);
@@ -486,10 +494,6 @@
     },
 
     showSpotlight: function() {
-    },
-
-    initSpotlight: function() {
-
       var collections = [];
       window.App.arangoCollectionsStore.each(function(collection) {
         collections.push(collection.get("name"));
@@ -522,6 +526,10 @@
         name: 'collections',
         source: substringMatcher(collections)
       });
+    },
+
+    initSpotlight: function() {
+
     },
 
     resize: function() {
@@ -637,6 +645,13 @@
         });
       });
 
+      _.each(words, function(word) {
+        word = word.split(",");
+        _.each(word, function(x) {
+          words1.push(x);
+        });
+      });
+
       _.each(words1, function(word) {
         // remove newlines and whitespaces
         words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
@@ -647,9 +662,10 @@
       var newObject = {};
       _.each(words1, function(word) {
         //found a valid bind param expression
-        if (self.bindParamRegExp.test(word)) {
+        var match = word.match(self.bindParamRegExp);
+        if (match) {
           //if property is not available
-          word = word.substr(1, word.length);
+          word = match[1];
           newObject[word] = '';
         }
       });
