@@ -154,6 +154,8 @@ std::string Version::getV8Version() {
 std::string Version::getOpenSSLVersion() {
 #ifdef OPENSSL_VERSION_TEXT
   return std::string(OPENSSL_VERSION_TEXT);
+#elif defined(ARANGODB_OPENSSL_VERSION)
+  return std::string(ARANGODB_OPENSSL_VERSION);
 #else
   return std::string("");
 #endif

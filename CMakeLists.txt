@@ -399,97 +399,34 @@ if (USE_FAILURE_TESTS)
 endif ()
 
 ################################################################################
-## BOOST
-################################################################################
-
-option(USE_BOOST_SYSTEM_LIBS "use libraries provided by the system" OFF)
-
-set(BOOST_MINIMUM_VERSION 1.58)
-
-set(Boost_USE_MULTITHREADED ON)
-
-if (USE_BOOST_SYSTEM_LIBS)
-  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
-else ()
-  set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_MINIMUM_VERSION}.0 CACHE path "BOOST include path")
-  set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
-  set(Boost_VERSION ${BOOST_MINIMUM_VERSION})
-  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
-endif ()
-
-find_package(Boost ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION} EXACT COMPONENTS unit_test_framework)
-
-if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
-  try_compile(
-    HAVE_USABLE_BOOT_LIBRARIES
-      "${CMAKE_BINARY_DIR}/temp"
-      "${CMAKE_SOURCE_DIR}/cmake/test_boost.cpp"
-    LINK_LIBRARIES
-      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-    CMAKE_FLAGS
-      "-DINCLUDE_DIRECTORIES=${Boost_INCLUDE_DIR}"
-  )
-
-  if (HAVE_USABLE_BOOT_LIBRARIES)
-    option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
-  else ()
-    message("cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
-    option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
-  endif ()
-else ()
-  option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
-endif ()
-
-if (NOT USE_BOOST_UNITTESTS)
-  message("BOOST unit tests are disabled")
-endif ()
-
-include_directories(${Boost_INCLUDE_DIR})
-
-set(BOOST_VERSION
-  "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}"
-  CACHE INTERNAL
-  "Boost: Version"
-  FORCE
-)
-
-add_definitions(-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\")
-
-################################################################################
-## OPENSSL
-################################################################################
-
-find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
-
-if (OPENSSL_VERSION)
-  string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
-  list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
-  list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
-  if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
-    add_definitions(-DOPENSSL_NO_SSL2)
-  endif ()				
-endif ()
-
-################################################################################
 ## TCMALLOC
 ################################################################################
 
-set(USE_TCMALLOC, TRUE)
-
 if (WINDOWS OR SOLARIS)
-  set(USE_TCMALLOC, FALSE)
+  option(USE_TCMALLOC
+    "use TCMALLOC library"
+    FALSE
+  )
+else ()
+  option(USE_TCMALLOC
+    "use TCMALLOC if the library is available"
+    TRUE
+  )
 endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
-endif()
+endif ()
 
 ################################################################################
 ## 3RD PARTY
 ################################################################################
 
 # 3rdParty exports:
+#
+# BOOST_VERSION
+# BOOST_INCLUDE_DIR
+# USE_BOOST_UNITTESTS
 #
 # V8_VERSION
 # V8_LIBS
@@ -510,6 +447,19 @@ endif()
 add_subdirectory(3rdParty)
 
 ################################################################################
+## BOOST
+################################################################################
+
+include_directories(${BOOST_INCLUDE_DIR})
+add_definitions(-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\")
+
+################################################################################
+## ICU
+################################################################################
+
+include_directories(${ICU_INCLUDE_DIR})
+
+################################################################################
 ## LIBEV
 ################################################################################
 
@@ -517,11 +467,11 @@ include_directories(${LIBEV_INCLUDE_DIR})
 add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
 ################################################################################
-## ZLIB
+## OPENSSL
 ################################################################################
 
-include_directories(${ZLIB_INCLUDE_DIR})
-add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+include_directories(${OPENSSL_INCLUDE_DIR})
+add_definitions(-DARANGODB_OPENSSL_VERSION=\"${BOOST_VERSION}\")
 
 ################################################################################
 ## V8
@@ -531,10 +481,11 @@ include_directories(${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 ################################################################################
-## ICU
+## ZLIB
 ################################################################################
 
-include_directories(${ICU_INCLUDE_DIR})
+include_directories(${ZLIB_INCLUDE_DIR})
+add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 ################################################################################
 ## PATHS
@@ -631,3 +582,15 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 add_subdirectory(UnitTests)
 add_subdirectory(Documentation)
+
+add_dependencies(arangob zlibstatic v8_build)
+add_dependencies(arangod ev zlibstatic v8_build)
+add_dependencies(arangodump zlibstatic v8_build)
+add_dependencies(arangoimp zlibstatic v8_build)
+add_dependencies(arangorestore zlibstatic v8_build)
+add_dependencies(arangosh zlibstatic v8_build)
+
+if (USE_BOOST_UNITTESTS)
+  add_dependencies(basics_suite v8_build)
+  add_dependencies(geo_suite v8_build)
+endif ()

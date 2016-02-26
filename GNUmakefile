@@ -4,7 +4,7 @@
 ## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
-.PHONY: warning
+.PHONY: warning help
 
 warning:
 	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
@@ -14,13 +14,59 @@ warning:
 	@echo "  cmake .."
 	@echo "  make"
 	@echo ""
-	@echo MacOS users:""
+	@echo "MacOS users:"
 	@echo "  Please use OPENSSL from homebrew and use"
 	@echo ""
 	@echo "    cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 	@echo ""
 	@echo "  Note that some versions of Apple's clang have severe performance"
 	@echo "  issues. Use GCC5 from homebrew in this case."
+	@echo ""
+	@echo "Use 'make help' to see more options."
+
+help:
+	@echo "The most common -D<options> are"
+	@echo ""
+	@echo "  -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-5"
+	@echo "    sets the C++ compiler"
+	@echo "  -DCMAKE_C_COMPILER=/usr/local/bin/gcc-5"
+	@echo "    sets the C compiler"
+	@echo ""
+	@echo "ArangoDB supports:"
+	@echo ""
+	@echo "  -DUSE_BACKTRACE=off"
+	@echo "    if ON, enables backtraces in fatal errors"
+	@echo "  -DUSE_FAILURE_TESTS=off"
+	@echo "    if ON, add failure functions for testing"
+	@echo "  -DUSE_MAINTAINER_MODE=off"
+	@echo "    if ON, enable maintainer features"
+	@echo ""
+	@echo "BOOST supports:"
+	@echo ""
+	@echo "  -DUSE_BOOST_SYSTEM_LIBS=off"
+	@echo "    if ON, use the operating system Boost installation"
+	@echo "  -DUSE_BOOST_UNITTESTS=on"
+	@echo "    if ON, use Boost unittest framework if this available"
+	@echo ""
+	@echo "OPENSSL supports:"
+	@echo "  -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+	@echo "    sets the location of the openssl includes and libraries"
+	@echo ""
+	@echo "BOOST supports:"
+	@echo ""
+	@echo "  -DUSE_TCMALLOC=on"
+	@echo "    if ON, link against TCMALLOC"
+	@echo ""
+	@echo "V8 supports:"
+	@echo "  -DUSE_PRECOMPILED_V8=off"
+	@echo "    if ON, use precompiled V8 libraries"
+	@echo ""
+	@echo "ZLIB supports:"
+	@echo "  -DASM686=on"
+	@echo "    if ON, enables building i686 assembly implementation"
+	@echo "  -DAMD64=on"
+	@echo "    if ON, enables building amd64 assembly implementation"
+
 
 VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
