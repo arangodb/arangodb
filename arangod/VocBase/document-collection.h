@@ -62,8 +62,6 @@ struct TRI_doc_mptr_t {
   TRI_voc_rid_t _rid;     // this is the revision identifier
   TRI_voc_fid_t _fid;     // this is the datafile identifier
   uint64_t _hash;         // the pre-calculated hash value of the key
-  TRI_doc_mptr_t* _prev;  // previous master pointer
-  TRI_doc_mptr_t* _next;  // next master pointer
  protected:
   void const*
       _dataptr;  // this is the pointer to the beginning of the raw marker
@@ -73,8 +71,6 @@ struct TRI_doc_mptr_t {
       : _rid(0),
         _fid(0),
         _hash(0),
-        _prev(nullptr),
-        _next(nullptr),
         _dataptr(nullptr) {}
 
   // do NOT add virtual methods
@@ -85,8 +81,6 @@ struct TRI_doc_mptr_t {
     _fid = 0;
     setDataPtr(nullptr);
     _hash = 0;
-    _prev = nullptr;
-    _next = nullptr;
   }
 
   void copy(TRI_doc_mptr_t const& that) {
@@ -95,8 +89,6 @@ struct TRI_doc_mptr_t {
     _fid = that._fid;
     _dataptr = that._dataptr;
     _hash = that._hash;
-    _prev = that._prev;
-    _next = that._next;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -123,7 +115,6 @@ struct TRI_doc_mptr_t {
     TRI_ASSERT(false);
     return 0;
   }
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the beginning of the shaped json stored in the
@@ -346,6 +337,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
              TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
+
+  int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
+                        TRI_doc_mptr_t*, TRI_doc_mptr_copy_t const*);
 
  private:
   arangodb::wal::Marker* createVPackInsertMarker(

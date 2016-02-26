@@ -187,8 +187,6 @@ void ModificationBlock::constructMptr(TRI_doc_mptr_copy_t* dst,
   dst->_rid = TRI_EXTRACT_MARKER_RID(marker);
   dst->_fid = 0;
   dst->_hash = 0;
-  dst->_prev = nullptr;
-  dst->_next = nullptr;
   dst->setDataPtr(marker);
 }
 

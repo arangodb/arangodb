@@ -103,8 +103,7 @@ struct DocumentOperation {
     }
 
     if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
-      TRI_RollbackOperationDocumentCollection(trx, document, type, header,
-                                              &oldHeader);
+      document->rollbackOperation(trx, type, header, &oldHeader);
     }
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {

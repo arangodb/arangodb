@@ -2553,53 +2553,6 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rolls back a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RollbackOperationDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document,
-    TRI_voc_document_operation_e type, TRI_doc_mptr_t* header,
-    TRI_doc_mptr_copy_t const* oldData) {
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    // ignore any errors we're getting from this
-    DeletePrimaryIndex(trx, document, header, true);
-    DeleteSecondaryIndexes(trx, document, header, true);
-
-    TRI_ASSERT(document->_numberDocuments > 0);
-    document->_numberDocuments--;
-
-    return TRI_ERROR_NO_ERROR;
-  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    // copy the existing header's state
-    TRI_doc_mptr_copy_t copy = *header;
-
-    // remove the current values from the indexes
-    DeleteSecondaryIndexes(trx, document, header, true);
-    // revert to the old state
-    header->copy(*oldData);
-    // re-insert old state
-    int res = InsertSecondaryIndexes(trx, document, header, true);
-    // revert again to the new state, because other parts of the new state
-    // will be reverted at some other place
-    header->copy(copy);
-
-    return res;
-  } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    int res = InsertPrimaryIndex(trx, document, header, true);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = InsertSecondaryIndexes(trx, document, header, true);
-      document->_numberDocuments++;
-    } else {
-      LOG(ERR) << "error rolling back remove operation";
-    }
-    return res;
-  }
-
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing datafile
 /// Note that the caller must hold a lock protecting the _datafiles and
 /// _journals entry.
@@ -5247,6 +5200,53 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rolls back a document operation
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx, 
+                                                 TRI_voc_document_operation_e type, 
+                                                 TRI_doc_mptr_t* header,
+                                                 TRI_doc_mptr_copy_t const* oldData) {
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    // ignore any errors we're getting from this
+    deletePrimaryIndex(trx, header);
+    deleteSecondaryIndexes(trx, header, true);
+
+    TRI_ASSERT(_numberDocuments > 0);
+    _numberDocuments--;
+
+    return TRI_ERROR_NO_ERROR;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    // copy the existing header's state
+    TRI_doc_mptr_copy_t copy = *header;
+
+    // remove the current values from the indexes
+    deleteSecondaryIndexes(trx, header, true);
+    // revert to the old state
+    header->copy(*oldData);
+    // re-insert old state
+    int res = insertSecondaryIndexes(trx, header, true);
+    // revert again to the new state, because other parts of the new state
+    // will be reverted at some other place
+    header->copy(copy);
+
+    return res;
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    int res = insertPrimaryIndex(trx, header);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = insertSecondaryIndexes(trx, header, true);
+      _numberDocuments++;
+    } else {
+      LOG(ERR) << "error rolling back remove operation";
+    }
+    return res;
+  }
+
+  return TRI_ERROR_INTERNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
