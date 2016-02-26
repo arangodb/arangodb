@@ -42,7 +42,6 @@ if (MSVC)
 
     message(STATUS "${flag_var}=${${flag_var}}")
   endforeach ()
-endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                         LIBRARIES
@@ -55,18 +54,11 @@ endif ()
 add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
 
 add_library(
-    ${LIB_GETOPT}
-    STATIC
-    mygetopt.c
-)
+  ${LIB_GETOPT}
+  STATIC
+  mygetopt.c
+  )
 
-include_directories(${LIB_GETOPT})
+include_directories(${PROJECT_SOURCE_DIR})
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:
+endif ()
