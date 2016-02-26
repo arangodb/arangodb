@@ -438,6 +438,7 @@ void SkiplistIterator::findHelper(
     TRI_index_operator_t const* indexOperator,
     std::vector<SkiplistIteratorInterval>& intervals) {
   TRI_skiplist_index_key_t values;
+  values._numFields = 0; // initialize to pacify compiler
   std::vector<SkiplistIteratorInterval> leftResult;
   std::vector<SkiplistIteratorInterval> rightResult;
   SkiplistIteratorInterval interval;
