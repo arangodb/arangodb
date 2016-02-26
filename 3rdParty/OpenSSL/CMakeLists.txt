@@ -11,7 +11,15 @@ if (OPENSSL_VERSION)
   list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
   list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
   if (${OPENSSL_VERSION_MAJOR} GREATER 0 AND ${OPENSSL_VERSION_MINOR} GREATER 0)
-    add_definitions(-DOPENSSL_NO_SSL2)
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      ON
+    )
+  else ()
+    option(USE_OPENSSL_NO_SSL2
+      "do not use OPENSSL_NO_SSL2"
+      OFF
+    )
   endif ()
 endif ()
 

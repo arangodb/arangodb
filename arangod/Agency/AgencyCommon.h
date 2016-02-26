@@ -28,6 +28,7 @@
 #include <Basics/VelocyPackHelper.h>
 
 #include <chrono>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -92,15 +93,24 @@ struct vote_ret_t {
   vote_ret_t (query_t res) : result(res) {}
 };
 
-struct query_ret_t {
-  bool accepted;
-  id_t redirect;
-  query_t result;
-  query_ret_t (bool a, id_t id, query_t res = nullptr) :
+struct read_ret_t {
+  bool accepted;  // Query processed
+  id_t redirect;  // Otherwise redirect to
+  query_t result; // Result
+  read_ret_t (bool a, id_t id, query_t res = nullptr) :
     accepted(a), redirect(id), result(res) {}
 };
 
 typedef uint64_t index_t;
+
+typedef std::initializer_list<index_t> index_list_t;
+struct write_ret_t {
+  bool accepted;  // Query processed
+  id_t redirect;  // Otherwise redirect to
+  std::vector<index_t> lindices; // Indices of log entries (if any) to wait for
+  write_ret_t (bool a, id_t id, index_list_t const& idx = index_list_t()) :
+    accepted(a), redirect(id), lindices(idx) {}
+};
 
 using namespace std::chrono;
 /**
@@ -114,19 +124,21 @@ struct log_t {
   std::vector<bool> ack;
   milliseconds timestamp;
   log_t (term_t t, id_t lid, index_t idx, std::string const& e,
-         std::vector<id_t> const& r) :
-    term(t), leaderId(lid), index(idx) entry(e), results(r), timestamp (
-      duration_cast<milliseconds>(system_clock::now().time_since_epoch()) {}
+         std::vector<bool> const& r) :
+    term(t), leaderId(lid), index(idx), entry(e), ack(r), timestamp (
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
 };
   
 
 enum AGENCY_EXCEPTION {
-  QUERY_NOT_APPLICABLE;
-}
-   
-  
+  QUERY_NOT_APPLICABLE
 };
 
+struct append_entries_t {
+  term_t term;
+  bool success;
+  append_entries_t (term_t t, bool s) : term(t), success(s) {}
+};
 
 }}
 

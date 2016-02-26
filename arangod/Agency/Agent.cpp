@@ -29,7 +29,7 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () : Thread ("Agent"){}
+Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
   //readPersistence(); // Read persistence (log )
@@ -49,10 +49,12 @@ term_t Agent::term () const {
   return _constituent.term();
 }
 
-query_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex, index_t lastLogTerm) {
+query_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
+                           index_t lastLogTerm) {
   Builder builder;
   builder.add("term", Value(term()));
-  builder.add("voteGranted", Value(_constituent.vote(id, t, lastLogIndex, lastLogTerm)));
+  builder.add("voteGranted", Value(
+                _constituent.vote(id, t, lastLogIndex, lastLogTerm)));
   builder.close();
 	return std::make_shared<Builder>(builder);
 }
@@ -78,31 +80,58 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
   return l;
 }
 
-query_ret_t Agent::appendEntries (
+
+bool waitFor(std::vector<index_t>& unconfirmed) {
+  while (true) {
+    CONDITION_LOCKER(guard, _cv);
+    // Shutting down
+    if (_stopping) {      
+      return false;
+    }
+    // Remove any unconfirmed which is confirmed
+    for (size_t i = 0; i < unconfirmed.size(); ++i) { 
+      if (auto found = find (_unconfirmed.begin(), _unconfirmed.end(),
+                             unconfirmed[i])) {
+        unconfirmed.erase(found);
+      }
+    }
+    // none left? 
+    if (unconfirmed.size() ==0) {
+      return true;        
+    }
+  }
+  // We should never get here
+  TRI_ASSERT(false);
+}
+
+append_entries_t Agent::appendEntries (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm,
   index_t leadersLastCommitIndex, query_t const& query) {
+  if (term < this->term()) // Reply false if term < currentTerm (§5.1)
+    return append_entries_t(false,this->term());
   
+  /*
   if (query->isEmpty()) {              // heartbeat received
     Builder builder;
     builder.add("term", Value(this->term())); // Our own term
     builder.add("voteFor", Value(             // Our vite
-                  _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
+      _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
     return query_ret_t(true, id(), std::make_shared<Builder>(builder));
   } else if (_constituent.leading()) { // We are leading
     _constituent.follow(term);
     return _state.log(term, leaderId, prevLogIndex, term, leadersLastCommitIndex);
   } else {                             // We redirect
     return query_ret_t(false,_constituent.leaderID());
-  }
+    }*/
 }
 
 //query_ret_t
-bool Agent::write (query_t const& query)  {
-  if (_constituent.leading()) {           // We are leading
-    if (_spear_head.apply(query)) {       // We could apply to spear head? 
-      std::vector<index_t> indices =      //    otherwise through
-        _state.log (term(), id(), query); // Append to my own log
-      remotelyAppendEntries (indicies);   // Schedule appendEntries RPCs.
+write_ret_t Agent::write (query_t const& query)  {
+  if (_constituent.leading()) {             // We are leading
+    if (_spear_head.apply(query)) {         // We could apply to spear head? 
+      std::vector<index_t> indices =        //    otherwise through
+        _read_db.log (term(), id(), query); // Append to my own log
+      remotelyAppendEntries (indicies);     // Schedule appendEntries RPCs.
     } else {
       throw QUERY_NOT_APPLICABLE;
     }
@@ -111,35 +140,30 @@ bool Agent::write (query_t const& query)  {
   }
 }
 
-query_ret_t Agent::read (query_t const& query) const {
+read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
     return _state.read (query);
   } else {                          // We redirect
-    return query_ret_t(false,_constituent.leaderID());
+    return read_ret_t(false,_constituent.leaderID());
   }
 }
 
 void State::run() {
-
-  while (true) {
-
+  while (!_stopping) {
     auto dur = std::chrono::system_clock::now();
-  
-    std::vector<std::vector<index_t>> work(_setup.size());
-
-    for (auto& i : State.log())  // Collect all unacknowledged
+    std::vector<std::vector<index_t>> work(_config.size());
+    // Collect all unacknowledged
+    for (auto& i : State.log())  
       for (size_t j = 0; j < _setup.size(); ++j) 
         if (!i.ack[j])                 
           work[j].push_back(i.index);
-
-    for (size_t j = 0; j < _setup.size(); ++j)  // (re-)attempt RPCs
+    // (re-)attempt RPCs
+    for (size_t j = 0; j < _setup.size(); ++j)  
       appendEntriesRPC (work[j]);
-
-    if (dur = std::chrono::system_clock::now() - dur < _poll_interval) // We were too fast?
+    // We were too fast?
+    if (dur = std::chrono::system_clock::now() - dur < _poll_interval) 
       std::this_thread::sleep_for (_poll_interval - dur);
-    
   }
-
 }
 
 bool State::operator()(ClusterCommResult* ccr) {

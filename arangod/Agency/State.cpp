@@ -34,6 +34,7 @@ State::~State() {
 }
 
 void State::log (query_t const& query) {
+  MUTEX_LOCKER(mutexLocker, _logLock); 
   _log.push_back(query);
 }
 

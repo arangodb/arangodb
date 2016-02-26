@@ -49,7 +49,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
 ## OPENSSL
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/openssl)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
 
 ################################################################################
 ## V8 and ICU

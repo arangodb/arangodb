@@ -48,9 +48,7 @@ class Agent;
 /**
  * @brief State replica
  */
-class State : public arangodb::ClusterCommCallback, // We need to provide callBack 
-xb
-              std::enable_shared_from_this<State> { // For making shared_ptr from this class
+class State {
   
 public:
   
@@ -86,6 +84,7 @@ public:
 
 private:
   
+  arangodb::Mutex _logLock;          /**< @brief Mutex for modifying _log */
   std::vector<log_t> _log;          /**< @brief  State entries */
   
 };

@@ -78,9 +78,11 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 }
 
 inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
-  query_ret_t ret;
+  
   if (_request->suffix()[0] == "write") {
-    ret = _agent.write(_request->toVelocyPack());
+    write_ret_t ret = _agent.write(_request->toVelocyPack());
+    _agent.waitFor (ret);
+    
   } else {
     ret = _agent.read(_request->toVelocyPack());
   }
@@ -101,8 +103,8 @@ HttpHandler::status_t RestAgencyHandler::execute() {
     } else if (_request->suffix().size() > 1) {   // path size >= 2
       return reportTooManySuffices();
     } else {
-    	if     (_request->suffix()[0] == "write" ||
-              _request->suffix()[0] ==  "read") { // write to / read from agency
+    	if (_request->suffix()[0] == "write" ||
+          _request->suffix()[0] ==  "read") { // write to / read from agency
         return handleReadWrite();
     	} else {
         return reportUnknownMethod();

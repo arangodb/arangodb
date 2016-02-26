@@ -99,12 +99,12 @@ public:
   /**
    * @brief Attempt write
    */
-  query_ret_t write (query_t const&);
+  write_ret_t write (query_t const&);
   
   /**
    * @brief Read from agency
    */
-  query_ret_t read (query_t const&) const;
+  read_ret_t read (query_t const&) const;
   
   /**
    * @brief Invoked by leader to replicate log entries (§5.3);
@@ -117,17 +117,24 @@ public:
    */
   void run ();
 
+
+  bool waitFor (std::vector<index_t> entries);
+
   private:
   Constituent _constituent; /**< @brief Leader election delegate */
   State       _state;       /**< @brief Log replica              */
   config_t    _config;
   status_t    _status;
+
+  arangodb::Mutex _uncommitedLock;
   
   store<std::string> _spear_head;
   store<std::string> _read_db;
 
-  arangodb::basics::ConditionVariable cv;
-  
+  arangodb::basics::ConditionVariable _cv;
+
+  std::atomic<bool> _stopping;
+
 };
 
 }
