@@ -25,6 +25,12 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <numeric>
+#include <type_traits>
+
 namespace arangodb {
 namespace options {
 
@@ -33,7 +39,7 @@ template <typename T>
 typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoll(value));
-  if (v < std::numeric_limits<T>::min() || v > std::numeric_limits<T>::max()) {
+  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -44,7 +50,7 @@ template <typename T>
 typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoull(value));
-  if (v < std::numeric_limits<T>::min() || v > std::numeric_limits<T>::max()) {
+  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -54,6 +60,20 @@ typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
 template <>
 double toNumber<double>(std::string const& value) {
   return std::stod(value);
+}
+
+// convert a string into another type, specialized version for numbers
+template <typename T>
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(
+    std::string const& value) {
+  return toNumber<T>(value);
+}
+
+// convert a string into another type, specialized version for string -> string
+template <typename T>
+typename std::enable_if<std::is_same<T, std::string>::value, T>::type fromString(
+    std::string const& value) {
+  return value;
 }
 
 // stringify a value, base version for any type
@@ -90,6 +110,8 @@ struct Parameter {
     }
     return "";
   }
+  
+  virtual void toVPack(VPackBuilder&) const = 0;
 };
 
 // specialized type for boolean values
@@ -119,6 +141,10 @@ struct BooleanParameter : public Parameter {
     return "";
   }
 
+  void toVPack(VPackBuilder& builder) const override {
+    builder.add(VPackValue(*ptr));
+  }
+
   ValueType* ptr;
   bool required;
 };
@@ -136,8 +162,8 @@ struct NumericParameter : public Parameter {
   std::string set(std::string const& value) override {
     try {
       ValueType v = toNumber<ValueType>(value);
-      if (v >= std::numeric_limits<T>::min() &&
-          v <= std::numeric_limits<T>::max()) {
+      if (v >= (std::numeric_limits<T>::min)() &&
+          v <= (std::numeric_limits<T>::max)()) {
         *ptr = v;
         return "";
       }
@@ -145,6 +171,10 @@ struct NumericParameter : public Parameter {
       return "invalid numeric value";
     }
     return "number out of range";
+  }
+
+  void toVPack(VPackBuilder& builder) const override {
+    builder.add(VPackValue(*ptr));
   }
 
   ValueType* ptr;
@@ -206,28 +236,28 @@ struct UInt64Parameter : public NumericParameter<uint64_t> {
 
 template <typename T>
 struct BoundedParameter : public T {
-  BoundedParameter(typename T::ValueType* ptr, typename T::ValueType min,
-                   typename T::ValueType max)
-      : T(ptr), min(min), max(max) {}
+  BoundedParameter(typename T::ValueType* ptr, typename T::ValueType minValue,
+                   typename T::ValueType maxValue)
+      : T(ptr), minValue(minValue), maxValue(maxValue) {}
 
   std::string set(std::string const& value) override {
     try {
       typename T::ValueType v = toNumber<typename T::ValueType>(value);
-      if (v >= std::numeric_limits<typename T::ValueType>::min() &&
-          v <= std::numeric_limits<typename T::ValueType>::max() && v >= min &&
-          v <= max) {
+      if (v >= (std::numeric_limits<typename T::ValueType>::min)() &&
+          v <= (std::numeric_limits<typename T::ValueType>::max)() && v >= minValue &&
+          v <= maxValue) {
         *this->ptr = v;
         return "";
       }
     } catch (...) {
       return "invalid numeric value";
     }
-    return "number out of allowed range (" + std::to_string(min) + " - " +
-           std::to_string(max) + ")";
+    return "number out of allowed range (" + std::to_string(minValue) + " - " +
+           std::to_string(maxValue) + ")";
   }
 
-  typename T::ValueType min;
-  typename T::ValueType max;
+  typename T::ValueType minValue;
+  typename T::ValueType maxValue;
 };
 
 // concrete double number value type
@@ -253,7 +283,31 @@ struct StringParameter : public Parameter {
     return "";
   }
 
+  void toVPack(VPackBuilder& builder) const override {
+    builder.add(VPackValue(*ptr));
+  }
+
   ValueType* ptr;
+};
+
+// specialized type for discrete values (defined in the unordered_set)
+// this templated type needs a concrete value type
+template <typename T>
+struct DiscreteValuesParameter : public T {
+  DiscreteValuesParameter(typename T::ValueType* ptr, 
+                   std::unordered_set<typename T::ValueType> const& allowed)
+      : T(ptr), allowed(allowed) {}
+
+  std::string set(std::string const& value) override {
+    auto it = allowed.find(fromString<typename T::ValueType>(value));
+
+    if (it == allowed.end()) {
+      return "invalid value " + value;
+    }
+    return "";
+  }
+
+  std::unordered_set<typename T::ValueType> allowed;
 };
 
 // specialized type for vectors of values
@@ -290,6 +344,13 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
+  void toVPack(VPackBuilder& builder) const override {
+    builder.openArray();
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      builder.add(VPackValue(ptr->at(i)));
+    }
+  }
+
   std::vector<typename T::ValueType>* ptr;
 };
 
@@ -299,6 +360,9 @@ struct ObsoleteParameter : public Parameter {
   std::string name() const override { return "obsolete"; }
   std::string valueString() const override { return "-"; }
   std::string set(std::string const&) override { return ""; }
+  void toVPack(VPackBuilder& builder) const override {
+    builder.add(VPackValue(VPackValueType::Null));
+  }
 };
 }
 }
