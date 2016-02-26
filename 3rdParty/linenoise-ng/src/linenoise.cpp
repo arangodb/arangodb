@@ -144,6 +144,8 @@ static ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& 
     if (dstCount < dstSize) {
       *targetStart = 0;
     }
+  } else {
+    dstCount = 0;
   }
 
   return res;

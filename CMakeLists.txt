@@ -453,6 +453,10 @@ add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${BOOST_VERSION}\")
 
+if (USE_OPENSSL_NO_SSL2)
+  add_definitions(-DOPENSSL_NO_SSL2)
+endif ()
+
 ################################################################################
 ## V8
 ################################################################################
@@ -569,5 +573,8 @@ add_dependencies(arangodump zlibstatic v8_build)
 add_dependencies(arangoimp zlibstatic v8_build)
 add_dependencies(arangorestore zlibstatic v8_build)
 add_dependencies(arangosh zlibstatic v8_build)
-add_dependencies(basics_suite v8_build)
-add_dependencies(geo_suite v8_build)
+
+if (USE_BOOST_UNITTESTS)
+  add_dependencies(basics_suite v8_build)
+  add_dependencies(geo_suite v8_build)
+endif ()
