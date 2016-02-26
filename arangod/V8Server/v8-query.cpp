@@ -940,7 +940,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_doc_mptr_copy_t document;
+  TRI_doc_mptr_t document;
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
                                           col->_cid, TRI_TRANSACTION_READ);
@@ -1055,7 +1055,7 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // inside a read transaction
   // ...........................................................................
 
-  std::vector<TRI_doc_mptr_copy_t> filtered;
+  std::vector<TRI_doc_mptr_t> filtered;
 
   trx.lockRead();
 

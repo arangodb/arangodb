@@ -211,7 +211,7 @@ int RestImportHandler::handleSingleDocument(
   }
 
   // document ok, now import it
-  TRI_doc_mptr_copy_t document;
+  TRI_doc_mptr_t document;
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {

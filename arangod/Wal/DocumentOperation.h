@@ -126,7 +126,7 @@ struct DocumentOperation {
   Marker* marker;
   TRI_document_collection_t* document;
   TRI_doc_mptr_t* header;
-  TRI_doc_mptr_copy_t oldHeader;
+  TRI_doc_mptr_t oldHeader;
   TRI_voc_tick_t tick;
   TRI_voc_document_operation_e type;
   StatusType status;

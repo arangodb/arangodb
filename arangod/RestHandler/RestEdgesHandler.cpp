@@ -80,7 +80,7 @@ bool RestEdgesHandler::getEdgesForVertex(
   TRI_document_collection_t* docCol =
       trx.trxCollection()->_collection->_collection;
 
-  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
+  std::vector<TRI_doc_mptr_t>&& edges = TRI_LookupEdgesDocumentCollection(
       &trx, docCol, direction, start.cid, const_cast<char*>(start.key));
 
   // generate result

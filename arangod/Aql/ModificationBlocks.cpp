@@ -182,7 +182,7 @@ int ModificationBlock::extractKey(AqlValue const& value,
 /// @brief constructs a master pointer from the marker passed
 ////////////////////////////////////////////////////////////////////////////////
 
-void ModificationBlock::constructMptr(TRI_doc_mptr_copy_t* dst,
+void ModificationBlock::constructMptr(TRI_doc_mptr_t* dst,
                                       TRI_df_marker_t const* marker) const {
   dst->_rid = TRI_EXTRACT_MARKER_RID(marker);
   dst->_fid = 0;
@@ -269,7 +269,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  TRI_doc_mptr_copy_t nptr;
+  TRI_doc_mptr_t nptr;
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
@@ -384,7 +384,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
-  TRI_doc_mptr_copy_t nptr;
+  TRI_doc_mptr_t nptr;
   bool const isEdgeCollection = _collection->isEdgeCollection();
   bool const producesOutput = (ep->_outVariableNew != nullptr);
 
@@ -454,7 +454,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        TRI_doc_mptr_copy_t mptr;
+        TRI_doc_mptr_t mptr;
         auto json = a.toJson(_trx, document, false);
 
         if (isEdgeCollection) {
@@ -516,7 +516,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   bool const producesOutput =
       (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
 
-  TRI_doc_mptr_copy_t nptr;
+  TRI_doc_mptr_t nptr;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
 
@@ -580,11 +580,11 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        TRI_doc_mptr_copy_t mptr;
+        TRI_doc_mptr_t mptr;
         auto json = a.toJson(_trx, document, true);
 
         // read old document
-        TRI_doc_mptr_copy_t oldDocument;
+        TRI_doc_mptr_t oldDocument;
         if (!hasKeyVariable && a.isShaped()) {
           // "old" is already ShapedJson. no need to fetch the old document
           // first
@@ -716,7 +716,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   std::string from;
   std::string to;
 
-  TRI_doc_mptr_copy_t nptr;
+  TRI_doc_mptr_t nptr;
   std::string errorMessage;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -775,7 +775,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             }
 
             if (errorCode == TRI_ERROR_NO_ERROR && updateJson.isObject()) {
-              TRI_doc_mptr_copy_t mptr;
+              TRI_doc_mptr_t mptr;
 
               // use default value
               errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -880,7 +880,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               if (_isDBServer && isShardKeyError(insertJson.json())) {
                 errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
               } else {
-                TRI_doc_mptr_copy_t mptr;
+                TRI_doc_mptr_t mptr;
 
                 if (isEdgeCollection) {
                   // edge
@@ -947,7 +947,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0;  // default initialization
 
-  TRI_doc_mptr_copy_t nptr;
+  TRI_doc_mptr_t nptr;
 
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
@@ -1022,7 +1022,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        TRI_doc_mptr_copy_t mptr;
+        TRI_doc_mptr_t mptr;
         auto const json = a.toJson(_trx, document, true);
 
         if (_isDBServer) {

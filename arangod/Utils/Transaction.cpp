@@ -221,7 +221,7 @@ int Transaction::finish(int errorNum) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
-                                 std::vector<TRI_doc_mptr_copy_t>& docs,
+                                 std::vector<TRI_doc_mptr_t>& docs,
                                  arangodb::basics::BucketPosition& internalSkip,
                                  uint64_t batchSize, uint64_t& skip,
                                  uint64_t limit, uint64_t& total) {
@@ -283,7 +283,7 @@ int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::any(TRI_transaction_collection_t* trxCollection,
-                     std::vector<TRI_doc_mptr_copy_t>& docs,
+                     std::vector<TRI_doc_mptr_t>& docs,
                      arangodb::basics::BucketPosition& initialPosition,
                      arangodb::basics::BucketPosition& position,
                      uint64_t batchSize, uint64_t& step,
@@ -409,7 +409,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::any(TRI_transaction_collection_t* trxCollection,
-                     TRI_doc_mptr_copy_t* mptr) {
+                     TRI_doc_mptr_t* mptr) {
   TRI_ASSERT(mptr != nullptr);
   TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -487,7 +487,7 @@ int Transaction::all(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
-                           std::vector<TRI_doc_mptr_copy_t>& docs, int64_t skip,
+                           std::vector<TRI_doc_mptr_t>& docs, int64_t skip,
                            uint64_t limit, uint64_t& total) {
   TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -692,7 +692,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
  
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -860,7 +860,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   int res = document->insert(this, &insertSlice, &mptr, options, !isLocked(document, TRI_TRANSACTION_WRITE));
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1028,7 +1028,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   TRI_voc_rid_t actualRevision = 0;
   TRI_doc_update_policy_t policy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
 
@@ -1212,7 +1212,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  TRI_doc_mptr_copy_t mptr;
+  TRI_doc_mptr_t mptr;
   TRI_voc_rid_t actualRevision = 0;
   TRI_doc_update_policy_t policy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
 

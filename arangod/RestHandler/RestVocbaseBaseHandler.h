@@ -230,7 +230,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDocument(SingleCollectionTransaction& trx, TRI_voc_cid_t,
-                        TRI_doc_mptr_copy_t const&, VocShaper*, bool);
+                        TRI_doc_mptr_t const&, VocShaper*, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates first entry from a result set

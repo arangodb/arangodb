@@ -332,7 +332,7 @@ class Transaction {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  int any(TRI_transaction_collection_t*, TRI_doc_mptr_copy_t*);
+  int any(TRI_transaction_collection_t*, TRI_doc_mptr_t*);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit and an internal
@@ -342,7 +342,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int any(TRI_transaction_collection_t*,
-          std::vector<TRI_doc_mptr_copy_t>&,
+          std::vector<TRI_doc_mptr_t>&,
           arangodb::basics::BucketPosition&,
           arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
           uint64_t&);
@@ -360,7 +360,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int readSlice(TRI_transaction_collection_t*,
-                std::vector<TRI_doc_mptr_copy_t>&, int64_t, uint64_t,
+                std::vector<TRI_doc_mptr_t>&, int64_t, uint64_t,
                 uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -371,7 +371,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int readIncremental(TRI_transaction_collection_t*,
-                      std::vector<TRI_doc_mptr_copy_t>&,
+                      std::vector<TRI_doc_mptr_t>&,
                       arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
                       uint64_t, uint64_t&);
   
@@ -381,7 +381,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int document(TRI_transaction_collection_t* trxCollection,
-               TRI_doc_mptr_copy_t* mptr, std::string const& key) {
+               TRI_doc_mptr_t* mptr, std::string const& key) {
     TRI_ASSERT(mptr != nullptr);
 
     if (orderDitch(trxCollection) == nullptr) {
@@ -500,7 +500,7 @@ class Transaction {
 
   inline int insert(TRI_transaction_collection_t* trxCollection,
                     const TRI_voc_key_t key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
+                    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
                     void const* data, bool forceSync) {
     bool lock = !isLocked(trxCollection, TRI_TRANSACTION_WRITE);
 
@@ -522,7 +522,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int insert(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
+             TRI_doc_mptr_t* mptr, TRI_json_t const* json,
              void const* data, bool forceSync) {
     TRI_ASSERT(json != nullptr);
 
@@ -554,7 +554,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int insert(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
+             TRI_doc_mptr_t* mptr, VPackSlice const& slice,
              void const* data, bool forceSync) {
     std::unique_ptr<TRI_json_t> json(
         arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
@@ -573,7 +573,7 @@ class Transaction {
 
   inline int update(TRI_transaction_collection_t* const trxCollection,
                     std::string const& key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t* const shaped,
+                    TRI_doc_mptr_t* mptr, TRI_shaped_json_t* const shaped,
                     TRI_doc_update_policy_e policy,
                     TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision, bool forceSync) {
@@ -603,7 +603,7 @@ class Transaction {
 
   int update(TRI_transaction_collection_t* trxCollection,
              std::string const& key, TRI_voc_rid_t rid,
-             TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
+             TRI_doc_mptr_t* mptr, TRI_json_t const* json,
              TRI_doc_update_policy_e policy, TRI_voc_rid_t expectedRevision,
              TRI_voc_rid_t* actualRevision, bool forceSync) {
     auto shaper = this->shaper(trxCollection);
@@ -632,7 +632,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int update(TRI_transaction_collection_t* trxCollection, 
-             std::string const& key, TRI_voc_rid_t rid, TRI_doc_mptr_copy_t* mptr,
+             std::string const& key, TRI_voc_rid_t rid, TRI_doc_mptr_t* mptr,
              VPackSlice const& slice, TRI_doc_update_policy_e policy,
              TRI_voc_rid_t expectedRevision,
              TRI_voc_rid_t* actualRevision, bool forceSync) {

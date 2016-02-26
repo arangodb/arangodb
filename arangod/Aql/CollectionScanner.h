@@ -38,7 +38,7 @@ struct CollectionScanner {
 
   virtual ~CollectionScanner();
 
-  virtual int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
+  virtual int scan(std::vector<TRI_doc_mptr_t>&, size_t) = 0;
 
   virtual void reset() = 0;
 
@@ -61,7 +61,7 @@ struct RandomCollectionScanner final : public CollectionScanner {
   RandomCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
-  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
+  int scan(std::vector<TRI_doc_mptr_t>&, size_t) override;
 
   void reset() override;
 
@@ -75,7 +75,7 @@ struct LinearCollectionScanner final : public CollectionScanner {
   LinearCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
-  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
+  int scan(std::vector<TRI_doc_mptr_t>&, size_t) override;
 
   void reset() override;
 

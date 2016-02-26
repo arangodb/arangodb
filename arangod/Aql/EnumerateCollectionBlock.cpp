@@ -111,7 +111,7 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::vector<TRI_doc_mptr_copy_t> newDocs;
+  std::vector<TRI_doc_mptr_t> newDocs;
   newDocs.reserve(hint);
 
   int res = _scanner->scan(newDocs, hint);
