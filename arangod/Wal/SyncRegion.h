@@ -29,7 +29,6 @@
 
 namespace arangodb {
 namespace wal {
-class Slots;
 
 struct SyncRegion {
   SyncRegion()

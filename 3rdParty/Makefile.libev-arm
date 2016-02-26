@@ -1,6 +1,0 @@
-install:
-	mkdir -p ../ArmLibraries/include
-	mkdir -p ../ArmLibraries/lib
-
-	cp libev/ev.h ../ArmLibraries/include
-	cp libev/BUILD/.libs/libev.a ../ArmLibraries/lib

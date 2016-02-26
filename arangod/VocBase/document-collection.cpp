@@ -637,7 +637,7 @@ arangodb::Index* TRI_document_collection_t::lookupIndex(
 /// @brief return a pointer to the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 VocShaper* TRI_document_collection_t::getShaper() const {
   if (!_ditches.contains(arangodb::Ditch::TRI_DITCH_DOCUMENT)) {
   }
@@ -1355,7 +1355,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
   SetRevision(document, d->_rid, false);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #if 0
   // currently disabled because it is too chatty in trace mode
@@ -1510,7 +1510,7 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
 
   TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG(TRACE) << "deletion: fid " << operation->_fid << ", key " << (char*)key << ", rid " << d->_rid << ", deletion " << marker->_tick;
 #endif
 
@@ -2603,7 +2603,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   }
 
   // default:
-  LOG(WARN) << "index type '" << typeStr.c_str() << "' is not supported in this version of ArangoDB and is ignored";
+  LOG(WARN) << "index type '" << typeStr << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3134,7 +3134,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
   idx->sizeHint(trx, nrUsed);
 
   if (nrUsed > 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     static int const LoopSize = 10000;
     int counter = 0;
     int loops = 0;
@@ -3156,7 +3156,7 @@ static int FillIndexSequential(arangodb::Transaction* trx,
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (++counter == LoopSize) {
         counter = 0;
         ++loops;
@@ -3906,7 +3906,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
   }
 
   if (idx != nullptr) {
-    LOG(TRACE) << "geo-index already created for location '" << location.c_str() << "'";
+    LOG(TRACE) << "geo-index already created for location '" << location << "'";
 
     created = false;
 
@@ -3927,7 +3927,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{location, false}}},
         std::vector<TRI_shape_pid_t>{loc}, geoJson));
 
-    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << loc;
+    LOG(TRACE) << "created geo-index for location '" << location << "': " << loc;
   } else if (!longitude.empty() && !latitude.empty()) {
     geoIndex.reset(new arangodb::GeoIndex2(
         iid, document,
@@ -3935,7 +3935,7 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
             {{latitude, false}}, {{longitude, false}}},
         std::vector<TRI_shape_pid_t>{lat, lon}));
 
-    LOG(TRACE) << "created geo-index for location '" << location.c_str() << "': " << lat << ", " << lon;
+    LOG(TRACE) << "created geo-index for location '" << location << "': " << lat << ", " << lon;
   }
 
   idx = static_cast<arangodb::GeoIndex2*>(geoIndex.get());
@@ -4021,7 +4021,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 1 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 1 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -4045,7 +4045,7 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr.c_str() << "-index " << iid << ", 'fields' must be a list with 2 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 2 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }

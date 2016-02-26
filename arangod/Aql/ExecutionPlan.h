@@ -182,7 +182,7 @@ class ExecutionPlan {
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void show();
 #endif
 

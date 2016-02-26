@@ -29,6 +29,9 @@
 
     parse: function(response) {
       var self = this, toReturn;
+      if (this.activeUser === false) {
+        this.activeUser = "root";
+      }
 
       _.each(response.result, function(val) {
         if (val.user === self.activeUser) {
@@ -47,6 +50,9 @@
     saveCollectionQueries: function(callback) {
       if (this.activeUser === 0) {
         return false;
+      }
+      if (this.activeUser === false) {
+        this.activeUser = "root";
       }
 
       var queries = [];

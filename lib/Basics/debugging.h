@@ -37,7 +37,7 @@
 /// triggered can be defined at runtime using TRI_AddFailurePointDebugging().
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 #define TRI_IF_FAILURE(what) if (TRI_ShouldFailDebugging(what))
 
@@ -51,7 +51,7 @@
 /// @brief cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_SegfaultDebugging(char const*);
 #else
 static inline void TRI_SegfaultDebugging(char const* unused) { (void)unused; }
@@ -61,7 +61,7 @@ static inline void TRI_SegfaultDebugging(char const* unused) { (void)unused; }
 /// @brief check whether we should fail at a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 bool TRI_ShouldFailDebugging(char const*);
 #else
 static inline bool TRI_ShouldFailDebugging(char const* unused) {
@@ -74,7 +74,7 @@ static inline bool TRI_ShouldFailDebugging(char const* unused) {
 /// @brief add a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_AddFailurePointDebugging(char const*);
 #else
 static inline void TRI_AddFailurePointDebugging(char const* unused) {
@@ -86,7 +86,7 @@ static inline void TRI_AddFailurePointDebugging(char const* unused) {
 /// @brief remove a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_RemoveFailurePointDebugging(char const*);
 #else
 static inline void TRI_RemoveFailurePointDebugging(char const* unused) {
@@ -98,7 +98,7 @@ static inline void TRI_RemoveFailurePointDebugging(char const* unused) {
 /// @brief clear all failure points
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_ClearFailurePointsDebugging(void);
 #else
 static inline void TRI_ClearFailurePointsDebugging(void) {}
@@ -109,7 +109,7 @@ static inline void TRI_ClearFailurePointsDebugging(void) {}
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool TRI_CanUseFailurePointsDebugging(void) {
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   return true;
 #else
   return false;

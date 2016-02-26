@@ -1919,7 +1919,7 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include <iostream>
 

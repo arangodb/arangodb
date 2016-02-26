@@ -126,7 +126,7 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG(WARN) << "no callback function for JavaScript action '" << _url.c_str() << "'";
+        LOG(WARN) << "no callback function for JavaScript action '" << _url << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -1268,7 +1268,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 /// Below Debugging Functions. Only compiled in maintainer mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
@@ -1317,7 +1317,7 @@ static bool clusterSendToAllServers(
 /// intentionally cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1346,7 +1346,7 @@ static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Set a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1389,7 +1389,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Remove a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugRemoveFailAt(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1444,7 +1444,7 @@ static void JS_DebugClearFailAt(
   }
 
 // if failure testing is not enabled, this is a no-op
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_ClearFailurePointsDebugging();
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1476,7 +1476,7 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
                                JS_DebugSegfault);

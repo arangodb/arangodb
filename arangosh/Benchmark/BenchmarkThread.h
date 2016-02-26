@@ -97,14 +97,16 @@ class BenchmarkThread : public arangodb::Thread {
         _endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
 
     if (_connection == nullptr) {
-      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "out of memory";
+      FATAL_ERROR_EXIT();
     }
 
     _client =
         new httpclient::SimpleHttpClient(_connection, _requestTimeout, true);
 
     if (_client == nullptr) {
-      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "out of memory";
+      FATAL_ERROR_EXIT();
     }
 
     _client->setLocationRewriter(this, &rewriteLocation);
@@ -122,7 +124,8 @@ class BenchmarkThread : public arangodb::Thread {
         delete result;
       }
 
-      LOG(FATAL) << "could not connect to server"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "could not connect to server";
+      FATAL_ERROR_EXIT();
     }
 
     delete result;
@@ -130,7 +133,8 @@ class BenchmarkThread : public arangodb::Thread {
     // if we're the first thread, set up the test
     if (_threadNumber == 0) {
       if (!_operation->setUp(_client)) {
-        LOG(FATAL) << "could not set up the test"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "could not set up the test";
+        FATAL_ERROR_EXIT();
       }
     }
 
@@ -159,13 +163,19 @@ class BenchmarkThread : public arangodb::Thread {
         try {
           executeBatchRequest(numOps);
         } catch (arangodb::basics::Exception const& ex) {
-          LOG(FATAL) << "Caught exception during test execution: " << ex.code() << " " << ex.what(); FATAL_ERROR_EXIT();
+          LOG(FATAL) << "Caught exception during test execution: " << ex.code()
+                     << " " << ex.what();
+          FATAL_ERROR_EXIT();
         } catch (std::bad_alloc const&) {
-          LOG(FATAL) << "Caught OOM exception during test execution!"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "Caught OOM exception during test execution!";
+          FATAL_ERROR_EXIT();
         } catch (std::exception const& ex) {
-          LOG(FATAL) << "Caught STD exception during test execution: " << ex.what(); FATAL_ERROR_EXIT();
+          LOG(FATAL) << "Caught STD exception during test execution: "
+                     << ex.what();
+          FATAL_ERROR_EXIT();
         } catch (...) {
-          LOG(FATAL) << "Caught unknown exception during test execution!"; FATAL_ERROR_EXIT();
+          LOG(FATAL) << "Caught unknown exception during test execution!";
+          FATAL_ERROR_EXIT();
         }
       }
       _operationsCounter->done(_batchSize > 0 ? _batchSize : 1);
@@ -205,7 +215,10 @@ class BenchmarkThread : public arangodb::Thread {
     basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
     int ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
-      LOG(FATAL) << "Failed to reserve " << numOperations * 1024 << " bytes for " << numOperations << " batch operations: " << ret; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "Failed to reserve " << numOperations * 1024
+                 << " bytes for " << numOperations
+                 << " batch operations: " << ret;
+      FATAL_ERROR_EXIT();
     }
     for (unsigned long i = 0; i < numOperations; ++i) {
       // append boundary
@@ -284,10 +297,12 @@ class BenchmarkThread : public arangodb::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARN) << "batch operation failed with HTTP code " << result->getHttpReturnCode() << " - " << result->getHttpReturnMessage().c_str() << " ";
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-        LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
-        LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
+        LOG(WARN) << "batch operation failed with HTTP code "
+                  << result->getHttpReturnCode() << " - "
+                  << result->getHttpReturnMessage() << " ";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        LOG(WARN) << "We tried to send this:\n "
+                  << std::string(batchPayload.c_str(), batchPayload.length());
 #endif
       } else if (_warningCount == MaxWarnings) {
         LOG(WARN) << "...more warnings...";
@@ -306,9 +321,10 @@ class BenchmarkThread : public arangodb::Thread {
             LOG(WARN) << "Server side warning count: " << errorCount;
             if (_verbose) {
               LOG(WARN) << "Server reply: " << result->getBody().c_str();
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-              LOG(WARN) << "We tried to send this size:\n " << batchPayload.length();
-              LOG(WARN) << "We tried to send this:\n " << batchPayload.c_str();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              LOG(WARN) << "We tried to send this:\n "
+                        << std::string(batchPayload.c_str(),
+                                       batchPayload.length());
 #endif
             }
           }
@@ -364,7 +380,8 @@ class BenchmarkThread : public arangodb::Thread {
 
       _warningCount++;
       if (_warningCount < MaxWarnings) {
-        LOG(WARN) << "request for URL '" << url.c_str() << "' failed with HTTP code " << result->getHttpReturnCode();
+        LOG(WARN) << "request for URL '" << url << "' failed with HTTP code "
+                  << result->getHttpReturnCode();
       } else if (_warningCount == MaxWarnings) {
         LOG(WARN) << "...more warnings...";
       }

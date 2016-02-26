@@ -1,71 +1,22 @@
-.TH arangod 8 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
+.TH arangod 8 "3.0.0-devel" "ArangoDB" "ArangoDB"
 .SH NAME
 arangod - the ArangoDB database server
 .SH SYNOPSIS
 arangod [options] database-directory
 .SH DESCRIPTION
 The arangod binary can be used to start the ArangoDB database
-server. By default, the server will run in a mode that allows
-clients to connect to it via the network. The server also has
-an emergency console mode that can be used for any sort of
-maintenance operations. In the emergency console mode, the 
-server does not allow any clients to connect.
-The server can be stopped gracefully at any time by pressing 
-CTRL-C or by sending the SIGINT signal to the process.
+server. By default, the server will run in a mode that allows clients
+to connect to it via the network. The server also has an emergency
+console mode that can be used for any sort of maintenance
+operations. In the emergency console mode, the server does not allow
+any clients to connect.  The server can be stopped gracefully at any
+time by pressing CTRL-C or by sending the SIGINT signal to the
+process.
 .SH OPTIONS
-The arangod binary has many options that can be used to control
-its behavior. 
-For a complete list of options, please refer to the ArangoDB
-online manual, available at http://www.arangodb.org/
-
-The most important startup options are:
-
-.IP "--configuration <string>"
-read configuration from file <string> 
-.IP "--console"
-do not start as server, start an emergency console instead 
-.IP "--log.file <string>"
-log to file <string> 
-.IP "--log.level <string>"
-set the log level (possible values: "fatal", "error", "warning", "info", "debug", "trace") 
-.IP "--server.endpoint <string>"
-listen endpoint for client requests, consisting of protocol, ip address and port 
-.IP "--server.disable-authentication <boolean>"
-disable authentication for all clients 
-.IP "--database.directory <string>"
-path to the database directory 
-.SH EXAMPLES
-.EX
-shell> arangod /data/arangodb
-starts the server with database directory /data/arangodb 
-.EE
-
-.EX
-shell> arangod --database.directory /data/arangodb
-same, but uses --database.directory option instead  
-.EE
-
-.EX
-shell> arangod --log.level debug /data/arangodb
-starts server with log level "debug" 
-.EE
-
-.EX
-shell> arangod --server.endpoint tcp://127.0.0.1:8529 /data/arangodb
-starts server listening on port 8529 of IP 127.0.0.1 
-.EE
-
-.EX
-shell> arangod --server.endpoint tcp://192.168.173.13:8529 
-               --server.endpoint ssl://192.168.173.13:8530 /data/arangodb
-starts server with two endpoints: port 8529 for unencrypted requests and 8530 for ssl-encrypted requests 
-.EE
-
-.EX
-shell> arangod --console /data/arangodb
-starts the emergency console 
-.EE
-
+The arangod binary has many options that can be used to control its
+behavior.  For a complete list of options, please refer to the
+ArangoDB online manual, available at https://www.arangodb.com/
 
 .SH AUTHOR
-	    Copyright triAGENS GmbH, Cologne, Germany
+Copyright ArangoDB GmbH, Cologne, Germany
+

@@ -51,20 +51,18 @@ class store_node_ {
 
 template<class T>
 store_node_<T>::store_node_()
-	: parent(0), first_child(0), last_child(0), prev_sibling(0), next_sibling(0)
-	{
+	: parent(0), first_child(0), last_child(0), prev_sibling(0), next_sibling(0) {
 	}
 
 template<class T>
 store_node_<T>::store_node_(const T& val)
-	: parent(0), first_child(0), last_child(0), prev_sibling(0), next_sibling(0), data(val)
-	{
-	}
+	: parent(0), first_child(0), last_child(0), prev_sibling(0), next_sibling(0),
+    data(val) {	}
 
 /**
  * @brief Store
  */
-template <class T, class store_node_allocator = std::allocator<store_node_<T> > >
+template <class T, class allocator = std::allocator<store_node_<T>>>
 class store {
 	protected:
 		typedef store_node_<T> store_node;
@@ -81,11 +79,11 @@ class store {
 		store();                                         // empty constructor
 		store(const T&);                                 // constructor setting given element as head
 		store(const iterator_base&);
-		store(const store<T, store_node_allocator>&);      // copy constructor
-		store(store<T, store_node_allocator>&&);           // move constructor
+		store(const store<T, allocator>&);      // copy constructor
+		store(store<T, allocator>&&);           // move constructor
 		~store();
-		store<T,store_node_allocator>& operator=(const store<T, store_node_allocator>&);   // copy assignment
-		store<T,store_node_allocator>& operator=(store<T, store_node_allocator>&&);        // move assignment
+		store<T,allocator>& operator=(const store<T, allocator>&);   // copy assignment
+		store<T,allocator>& operator=(store<T, allocator>&&);        // move assignment
 
 		class iterator_base {
 			public:
@@ -344,17 +342,17 @@ class store {
 		
 		class iterator_base_less {
 			public:
-				bool operator()(const typename store<T, store_node_allocator>::iterator_base& one,
-									 const typename store<T, store_node_allocator>::iterator_base& two) const
+				bool operator()(const typename store<T, allocator>::iterator_base& one,
+									 const typename store<T, allocator>::iterator_base& two) const
 					{
 					return one.node < two.node;
 					}
 		};
 		store_node *head, *feet; 
 	private:
-		store_node_allocator alloc_;
+		allocator alloc_;
 		void head_initialise_();
-		void copy_(const store<T, store_node_allocator>& other);
+		void copy_(const store<T, allocator>& other);
 
 		template<class StrictWeakOrdering>
 		class compare_nodes {
@@ -371,22 +369,19 @@ class store {
 };
 
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::store() 
-	{
+template <class T, class allocator>
+store<T, allocator>::store()  {
 	head_initialise_();
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::store(const T& x) 
-	{
+template <class T, class allocator>
+store<T, allocator>::store(const T& x)  {
 	head_initialise_();
 	set_head(x);
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::store(store<T, store_node_allocator>&& x) 
-	{
+template <class T, class allocator>
+store<T, allocator>::store(store<T, allocator>&& x)  {
 	head_initialise_();
 	head->next_sibling=x.head->next_sibling;
 	feet->prev_sibling=x.head->prev_sibling;
@@ -396,17 +391,15 @@ store<T, store_node_allocator>::store(store<T, store_node_allocator>&& x)
 	x.feet->prev_sibling=x.head;
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::store(const iterator_base& other)
-	{
+template <class T, class allocator>
+store<T, allocator>::store(const iterator_base& other) {
 	head_initialise_();
 	set_head((*other));
 	replace(begin(), other);
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::~store()
-	{
+template <class T, class allocator>
+store<T, allocator>::~store() {
 	clear();
 	alloc_.destroy(head);
 	alloc_.destroy(feet);
@@ -414,8 +407,8 @@ store<T, store_node_allocator>::~store()
 	alloc_.deallocate(feet,1);
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::head_initialise_() 
+template <class T, class allocator>
+void store<T, allocator>::head_initialise_() 
    { 
    head = alloc_.allocate(1,0); 
 	feet = alloc_.allocate(1,0);
@@ -435,17 +428,15 @@ void store<T, store_node_allocator>::head_initialise_()
 	feet->next_sibling=0;
    }
 
-template <class T, class store_node_allocator>
-store<T,store_node_allocator>& store<T, store_node_allocator>::operator=(const store<T, store_node_allocator>& other)
-	{
+template <class T, class allocator>
+store<T,allocator>& store<T, allocator>::operator=(const store<T, allocator>& other) {
 	if(this != &other)
 		copy_(other);
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-store<T,store_node_allocator>& store<T, store_node_allocator>::operator=(store<T, store_node_allocator>&& x)
-	{
+template <class T, class allocator>
+store<T,allocator>& store<T, allocator>::operator=(store<T, allocator>&& x) {
 	if(this != &x) {
 		head->next_sibling=x.head->next_sibling;
 		feet->prev_sibling=x.head->prev_sibling;
@@ -457,16 +448,14 @@ store<T,store_node_allocator>& store<T, store_node_allocator>::operator=(store<T
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::store(const store<T, store_node_allocator>& other)
-	{
+template <class T, class allocator>
+store<T, allocator>::store(const store<T, allocator>& other) {
 	head_initialise_();
 	copy_(other);
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::copy_(const store<T, store_node_allocator>& other) 
-	{
+template <class T, class allocator>
+void store<T, allocator>::copy_(const store<T, allocator>& other)  {
 	clear();
 	pre_order_iterator it=other.begin(), to=begin();
 	while(it!=other.end()) {
@@ -485,17 +474,15 @@ void store<T, store_node_allocator>::copy_(const store<T, store_node_allocator>&
 		}
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::clear()
-	{
+template <class T, class allocator>
+void store<T, allocator>::clear() {
 	if(head)
 		while(head->next_sibling!=feet)
 			erase(pre_order_iterator(head->next_sibling));
 	}
 
-template<class T, class store_node_allocator> 
-void store<T, store_node_allocator>::erase_children(const iterator_base& it)
-	{
+template<class T, class allocator> 
+void store<T, allocator>::erase_children(const iterator_base& it) {
 	if(it.node==0) return;
 
 	store_node *cur=it.node->first_child;
@@ -512,10 +499,9 @@ void store<T, store_node_allocator>::erase_children(const iterator_base& it)
 	it.node->last_child=0;
 	}
 
-template<class T, class store_node_allocator> 
+template<class T, class allocator> 
 template<class iter>
-iter store<T, store_node_allocator>::erase(iter it)
-	{
+iter store<T, allocator>::erase(iter it) {
 	store_node *cur=it.node;
 	assert(cur!=head);
 	iter ret=it;
@@ -540,33 +526,28 @@ iter store<T, store_node_allocator>::erase(iter it)
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator store<T, store_node_allocator>::begin() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator store<T, allocator>::begin() const {
 	return pre_order_iterator(head->next_sibling);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator store<T, store_node_allocator>::end() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator store<T, allocator>::end() const {
 	return pre_order_iterator(feet);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::breadth_first_queued_iterator store<T, store_node_allocator>::begin_breadth_first() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::breadth_first_queued_iterator store<T, allocator>::begin_breadth_first() const {
 	return breadth_first_queued_iterator(head->next_sibling);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::breadth_first_queued_iterator store<T, store_node_allocator>::end_breadth_first() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::breadth_first_queued_iterator store<T, allocator>::end_breadth_first() const {
 	return breadth_first_queued_iterator();
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator store<T, store_node_allocator>::begin_post() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator store<T, allocator>::begin_post() const {
 	store_node *tmp=head->next_sibling;
 	if(tmp!=feet) {
 		while(tmp->first_child)
@@ -575,16 +556,14 @@ typename store<T, store_node_allocator>::post_order_iterator store<T, store_node
 	return post_order_iterator(tmp);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator store<T, store_node_allocator>::end_post() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator store<T, allocator>::end_post() const {
 	return post_order_iterator(feet);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_node_allocator>::begin_fixed(const iterator_base& pos, unsigned int dp) const
-	{
-	typename store<T, store_node_allocator>::fixed_depth_iterator ret;
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator store<T, allocator>::begin_fixed(const iterator_base& pos, unsigned int dp) const {
+	typename store<T, allocator>::fixed_depth_iterator ret;
 	ret.top_node=pos.node;
 
 	store_node *tmp=pos.node;
@@ -612,9 +591,8 @@ typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_nod
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_node_allocator>::end_fixed(const iterator_base& pos, unsigned int dp) const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator store<T, allocator>::end_fixed(const iterator_base& pos, unsigned int dp) const {
 	assert(1==0); 
 	store_node *tmp=pos.node;
 	unsigned int curdepth=1;
@@ -630,9 +608,8 @@ typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_nod
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::begin(const iterator_base& pos) const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::begin(const iterator_base& pos) const {
 	assert(pos.node!=0);
 	if(pos.node->first_child==0) {
 		return end(pos);
@@ -640,16 +617,15 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 	return pos.node->first_child;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::end(const iterator_base& pos) const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::end(const iterator_base& pos) const {
 	sibling_iterator ret(0);
 	ret.parent_=pos.node;
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::begin_leaf() const
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::begin_leaf() const
    {
    store_node *tmp=head->next_sibling;
    if(tmp!=feet) {
@@ -659,14 +635,14 @@ typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_alloc
    return leaf_iterator(tmp);
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::end_leaf() const
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::end_leaf() const
    {
    return leaf_iterator(feet);
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::begin_leaf(const iterator_base& top) const
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::begin_leaf(const iterator_base& top) const
    {
 	store_node *tmp=top.node;
 	while(tmp->first_child)
@@ -674,56 +650,52 @@ typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_alloc
    return leaf_iterator(tmp, top.node);
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::end_leaf(const iterator_base& top) const
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::end_leaf(const iterator_base& top) const
    {
    return leaf_iterator(top.node, top.node);
    }
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::parent(iter position) 
-	{
+iter store<T, allocator>::parent(iter position)  {
 	assert(position.node!=0);
 	return iter(position.node->parent);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::previous_sibling(iter position) 
-	{
+iter store<T, allocator>::previous_sibling(iter position)  {
 	assert(position.node!=0);
 	iter ret(position);
 	ret.node=position.node->prev_sibling;
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::next_sibling(iter position) 
-	{
+iter store<T, allocator>::next_sibling(iter position)  {
 	assert(position.node!=0);
 	iter ret(position);
 	ret.node=position.node->next_sibling;
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::next_at_same_depth(iter position) const
-	{
+iter store<T, allocator>::next_at_same_depth(iter position) const {
 	// We make use of a temporary fixed_depth iterator to implement this.
 
-	typename store<T, store_node_allocator>::fixed_depth_iterator tmp(position.node);
+	typename store<T, allocator>::fixed_depth_iterator tmp(position.node);
 
 	++tmp;
 	return iter(tmp);
 
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::append_child(iter position)
+iter store<T, allocator>::append_child(iter position)
  	{
 	assert(position.node!=head);
 	assert(position.node!=feet);
@@ -747,9 +719,9 @@ iter store<T, store_node_allocator>::append_child(iter position)
 	return tmp;
  	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::prepend_child(iter position)
+iter store<T, allocator>::prepend_child(iter position)
  	{
 	assert(position.node!=head);
 	assert(position.node!=feet);
@@ -773,10 +745,9 @@ iter store<T, store_node_allocator>::prepend_child(iter position)
 	return tmp;
  	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::append_child(iter position, const T& x)
-	{
+iter store<T, allocator>::append_child(iter position, const T& x) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -799,10 +770,9 @@ iter store<T, store_node_allocator>::append_child(iter position, const T& x)
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::prepend_child(iter position, const T& x)
-	{
+iter store<T, allocator>::prepend_child(iter position, const T& x) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -825,10 +795,9 @@ iter store<T, store_node_allocator>::prepend_child(iter position, const T& x)
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::append_child(iter position, iter other)
-	{
+iter store<T, allocator>::append_child(iter position, iter other) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -837,10 +806,9 @@ iter store<T, store_node_allocator>::append_child(iter position, iter other)
 	return replace(aargh, other);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::prepend_child(iter position, iter other)
-	{
+iter store<T, allocator>::prepend_child(iter position, iter other) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -849,10 +817,9 @@ iter store<T, store_node_allocator>::prepend_child(iter position, iter other)
 	return replace(aargh, other);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::append_children(iter position, sibling_iterator from, sibling_iterator to)
-	{
+iter store<T, allocator>::append_children(iter position, sibling_iterator from, sibling_iterator to) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -866,10 +833,9 @@ iter store<T, store_node_allocator>::append_children(iter position, sibling_iter
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::prepend_children(iter position, sibling_iterator from, sibling_iterator to)
-	{
+iter store<T, allocator>::prepend_children(iter position, sibling_iterator from, sibling_iterator to) {
 	assert(position.node!=head);
 	assert(position.node!=feet);
 	assert(position.node);
@@ -883,17 +849,15 @@ iter store<T, store_node_allocator>::prepend_children(iter position, sibling_ite
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator store<T, store_node_allocator>::set_head(const T& x)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator store<T, allocator>::set_head(const T& x) {
 	assert(head->next_sibling==feet);
 	return insert(iterator(feet), x);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::insert(iter position, const T& x)
-	{
+iter store<T, allocator>::insert(iter position, const T& x) {
 	if(position.node==0) {
 		position.node=feet;
 		                   
@@ -918,9 +882,8 @@ iter store<T, store_node_allocator>::insert(iter position, const T& x)
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::insert(sibling_iterator position, const T& x)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::insert(sibling_iterator position, const T& x) {
 	store_node* tmp = alloc_.allocate(1,0);
 	alloc_.construct(tmp, x);
 
@@ -948,10 +911,9 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::insert_after(iter position, const T& x)
-	{
+iter store<T, allocator>::insert_after(iter position, const T& x) {
 	store_node* tmp = alloc_.allocate(1,0);
 	alloc_.construct(tmp, x);
 	tmp->first_child=0;
@@ -972,35 +934,31 @@ iter store<T, store_node_allocator>::insert_after(iter position, const T& x)
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::insert_substore(iter position, const iterator_base& substore)
-	{
+iter store<T, allocator>::insert_substore(iter position, const iterator_base& substore) {
 	iter it=insert(position, value_type());
 	return replace(it, substore);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::insert_substore_after(iter position, const iterator_base& substore)
-	{
+iter store<T, allocator>::insert_substore_after(iter position, const iterator_base& substore) {
 	iter it=insert_after(position, value_type());
 	return replace(it, substore);
 	}
 
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::replace(iter position, const T& x)
-	{
+iter store<T, allocator>::replace(iter position, const T& x) {
 	position.node->data=x;
 	return position;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class iter>
-iter store<T, store_node_allocator>::replace(iter position, const iterator_base& from)
-	{
+iter store<T, allocator>::replace(iter position, const iterator_base& from) {
 	assert(position.node!=head);
 	store_node *current_from=from.node;
 	store_node *start_from=from.node;
@@ -1057,13 +1015,12 @@ iter store<T, store_node_allocator>::replace(iter position, const iterator_base&
 	return current_to;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::replace(
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::replace(
 	sibling_iterator orig_begin, 
 	sibling_iterator orig_end, 
 	sibling_iterator new_begin, 
-	sibling_iterator new_end)
-	{
+	sibling_iterator new_end) {
 	store_node *orig_first=orig_begin.node;
 	store_node *new_first=new_begin.node;
 	store_node *orig_last=orig_first;
@@ -1100,10 +1057,9 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::flatten(iter position)
-	{
+iter store<T, allocator>::flatten(iter position) {
 	if(position.node->first_child==0)
 		return position;
 
@@ -1128,10 +1084,9 @@ iter store<T, store_node_allocator>::flatten(iter position)
 	}
 
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-iter store<T, store_node_allocator>::reparent(iter position, sibling_iterator begin, sibling_iterator end)
-	{
+iter store<T, allocator>::reparent(iter position, sibling_iterator begin, sibling_iterator end) {
 	store_node *first=begin.node;
 	store_node *last=first;
 
@@ -1175,16 +1130,14 @@ iter store<T, store_node_allocator>::reparent(iter position, sibling_iterator be
 	return first;
 	}
 
-template <class T, class store_node_allocator>
-template <typename iter> iter store<T, store_node_allocator>::reparent(iter position, iter from)
-	{
+template <class T, class allocator>
+template <typename iter> iter store<T, allocator>::reparent(iter position, iter from) {
 	if(from.node->first_child==0) return position;
 	return reparent(position, from.node->first_child, end(from));
 	}
 
-template <class T, class store_node_allocator>
-template <typename iter> iter store<T, store_node_allocator>::wrap(iter position, const T& x)
-	{
+template <class T, class allocator>
+template <typename iter> iter store<T, allocator>::wrap(iter position, const T& x) {
 	assert(position.node!=0);
 	sibling_iterator fr=position, to=position;
 	++to;
@@ -1193,8 +1146,8 @@ template <typename iter> iter store<T, store_node_allocator>::wrap(iter position
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-template <typename iter> iter store<T, store_node_allocator>::move_after(iter target, iter source)
+template <class T, class allocator>
+template <typename iter> iter store<T, allocator>::move_after(iter target, iter source)
    {
    store_node *dst=target.node;
    store_node *src=source.node;
@@ -1220,8 +1173,8 @@ template <typename iter> iter store<T, store_node_allocator>::move_after(iter ta
    return src;
    }
 
-template <class T, class store_node_allocator>
-template <typename iter> iter store<T, store_node_allocator>::move_before(iter target, iter source)
+template <class T, class allocator>
+template <typename iter> iter store<T, allocator>::move_before(iter target, iter source)
    {
    store_node *dst=target.node;
    store_node *src=source.node;
@@ -1247,10 +1200,9 @@ template <typename iter> iter store<T, store_node_allocator>::move_before(iter t
    return src;
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::move_before(sibling_iterator target, 
-																													  sibling_iterator source)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::move_before(sibling_iterator target, 
+																													  sibling_iterator source) {
 	store_node *dst=target.node;
 	store_node *src=source.node;
 	store_node *dst_prev_sibling;
@@ -1282,9 +1234,8 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 	return src;
 	}
 
-template <class T, class store_node_allocator>
-template <typename iter> iter store<T, store_node_allocator>::move_ontop(iter target, iter source)
-	{
+template <class T, class allocator>
+template <typename iter> iter store<T, allocator>::move_ontop(iter target, iter source) {
 	store_node *dst=target.node;
 	store_node *src=source.node;
 	assert(dst);
@@ -1314,9 +1265,8 @@ template <typename iter> iter store<T, store_node_allocator>::move_ontop(iter ta
 	}
 
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator> store<T, store_node_allocator>::move_out(iterator source)
-	{
+template <class T, class allocator>
+store<T, allocator> store<T, allocator>::move_out(iterator source) {
 	store ret;
 
 	ret.head->next_sibling = source.node;
@@ -1335,9 +1285,8 @@ store<T, store_node_allocator> store<T, store_node_allocator>::move_out(iterator
 	return ret; 
 	}
 
-template <class T, class store_node_allocator>
-template<typename iter> iter store<T, store_node_allocator>::move_in(iter loc, store& other)
-	{
+template <class T, class allocator>
+template<typename iter> iter store<T, allocator>::move_in(iter loc, store& other) {
 	if(other.head->next_sibling==other.feet) return loc; 
 
 	store_node *other_first_head = other.head->next_sibling;
@@ -1366,9 +1315,8 @@ template<typename iter> iter store<T, store_node_allocator>::move_in(iter loc, s
 	return other_first_head;
 	}
 
-template <class T, class store_node_allocator>
-template<typename iter> iter store<T, store_node_allocator>::move_in_as_nth_child(iter loc, size_t n, store& other)
-	{
+template <class T, class allocator>
+template<typename iter> iter store<T, allocator>::move_in_as_nth_child(iter loc, size_t n, store& other) {
 	if(other.head->next_sibling==other.feet) return loc; // other store is empty
 
 	store_node *other_first_head = other.head->next_sibling;
@@ -1429,11 +1377,10 @@ template<typename iter> iter store<T, store_node_allocator>::move_in_as_nth_chil
 	}
 
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::merge(sibling_iterator to1,   sibling_iterator to2,
+template <class T, class allocator>
+void store<T, allocator>::merge(sibling_iterator to1,   sibling_iterator to2,
 														sibling_iterator from1, sibling_iterator from2,
-														bool duplicate_leaves)
-	{
+														bool duplicate_leaves) {
 	sibling_iterator fnd;
 	while(from1!=from2) {
 		if((fnd=std::find(to1, to2, (*from1))) != to2) { // element found
@@ -1453,18 +1400,16 @@ void store<T, store_node_allocator>::merge(sibling_iterator to1,   sibling_itera
 	}
 
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::sort(sibling_iterator from, sibling_iterator to, bool deep)
-	{
+template <class T, class allocator>
+void store<T, allocator>::sort(sibling_iterator from, sibling_iterator to, bool deep) {
 	std::less<T> comp;
 	sort(from, to, comp, deep);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <class StrictWeakOrdering>
-void store<T, store_node_allocator>::sort(sibling_iterator from, sibling_iterator to, 
-													 StrictWeakOrdering comp, bool deep)
-	{
+void store<T, allocator>::sort(sibling_iterator from, sibling_iterator to, 
+													 StrictWeakOrdering comp, bool deep) {
 	if(from==to) return;
 
 	std::multiset<store_node *, compare_nodes<StrictWeakOrdering> > nodes(comp);
@@ -1516,26 +1461,23 @@ void store<T, store_node_allocator>::sort(sibling_iterator from, sibling_iterato
 		}
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-bool store<T, store_node_allocator>::equal(const iter& one_, const iter& two, const iter& three_) const
-	{
+bool store<T, allocator>::equal(const iter& one_, const iter& two, const iter& three_) const {
 	std::equal_to<T> comp;
 	return equal(one_, two, three_, comp);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter>
-bool store<T, store_node_allocator>::equal_substore(const iter& one_, const iter& two_) const
-	{
+bool store<T, allocator>::equal_substore(const iter& one_, const iter& two_) const {
 	std::equal_to<T> comp;
 	return equal_substore(one_, two_, comp);
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter, class BinaryPredicate>
-bool store<T, store_node_allocator>::equal(const iter& one_, const iter& two, const iter& three_, BinaryPredicate fun) const
-	{
+bool store<T, allocator>::equal(const iter& one_, const iter& two, const iter& three_, BinaryPredicate fun) const {
 	pre_order_iterator one(one_), three(three_);
 
 	while(one!=two && is_valid(three)) {
@@ -1549,10 +1491,9 @@ bool store<T, store_node_allocator>::equal(const iter& one_, const iter& two, co
 	return true;
 	}
 
-template <class T, class store_node_allocator>
+template <class T, class allocator>
 template <typename iter, class BinaryPredicate>
-bool store<T, store_node_allocator>::equal_substore(const iter& one_, const iter& two_, BinaryPredicate fun) const
-	{
+bool store<T, allocator>::equal_substore(const iter& one_, const iter& two_, BinaryPredicate fun) const {
 	pre_order_iterator one(one_), two(two_);
 
 	if(!fun(*one,*two)) return false;
@@ -1560,9 +1501,8 @@ bool store<T, store_node_allocator>::equal_substore(const iter& one_, const iter
 	return equal(begin(one),end(one),begin(two),fun);
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator> store<T, store_node_allocator>::substore(sibling_iterator from, sibling_iterator to) const
-	{
+template <class T, class allocator>
+store<T, allocator> store<T, allocator>::substore(sibling_iterator from, sibling_iterator to) const {
 	assert(from!=to);
 
 	store tmp;
@@ -1571,18 +1511,16 @@ store<T, store_node_allocator> store<T, store_node_allocator>::substore(sibling_
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::substore(store& tmp, sibling_iterator from, sibling_iterator to) const
-	{
+template <class T, class allocator>
+void store<T, allocator>::substore(store& tmp, sibling_iterator from, sibling_iterator to) const {
 	assert(from!=to); // if from==to, the range is empty, hence no store to return.
 
 	tmp.set_head(value_type());
 	tmp.replace(tmp.begin(), tmp.end(), from, to);
 	}
 
-template <class T, class store_node_allocator>
-size_t store<T, store_node_allocator>::size() const
-	{
+template <class T, class allocator>
+size_t store<T, allocator>::size() const {
 	size_t i=0;
 	pre_order_iterator it=begin(), eit=end();
 	while(it!=eit) {
@@ -1592,9 +1530,8 @@ size_t store<T, store_node_allocator>::size() const
 	return i;
 	}
 
-template <class T, class store_node_allocator>
-size_t store<T, store_node_allocator>::size(const iterator_base& top) const
-	{
+template <class T, class allocator>
+size_t store<T, allocator>::size(const iterator_base& top) const {
 	size_t i=0;
 	pre_order_iterator it=top, eit=top;
 	eit.skip_children();
@@ -1606,16 +1543,14 @@ size_t store<T, store_node_allocator>::size(const iterator_base& top) const
 	return i;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::empty() const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::empty() const {
 	pre_order_iterator it=begin(), eit=end();
 	return (it==eit);
 	}
 
-template <class T, class store_node_allocator>
-int store<T, store_node_allocator>::depth(const iterator_base& it) 
-	{
+template <class T, class allocator>
+int store<T, allocator>::depth(const iterator_base& it)  {
 	store_node* pos=it.node;
 	assert(pos!=0);
 	int ret=0;
@@ -1626,9 +1561,8 @@ int store<T, store_node_allocator>::depth(const iterator_base& it)
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-int store<T, store_node_allocator>::depth(const iterator_base& it, const iterator_base& root) 
-	{
+template <class T, class allocator>
+int store<T, allocator>::depth(const iterator_base& it, const iterator_base& root)  {
 	store_node* pos=it.node;
 	assert(pos!=0);
 	int ret=0;
@@ -1639,9 +1573,8 @@ int store<T, store_node_allocator>::depth(const iterator_base& it, const iterato
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-int store<T, store_node_allocator>::max_depth() const
-	{
+template <class T, class allocator>
+int store<T, allocator>::max_depth() const {
 	int maxd=-1;
 	for(store_node *it = head->next_sibling; it!=feet; it=it->next_sibling)
 		maxd=std::max(maxd, max_depth(it));
@@ -1650,9 +1583,8 @@ int store<T, store_node_allocator>::max_depth() const
 	}
 
 
-template <class T, class store_node_allocator>
-int store<T, store_node_allocator>::max_depth(const iterator_base& pos) const
-	{
+template <class T, class allocator>
+int store<T, allocator>::max_depth(const iterator_base& pos) const {
 	store_node *tmp=pos.node;
 
 	if(tmp==0 || tmp==head || tmp==feet) return -1;
@@ -1678,9 +1610,8 @@ int store<T, store_node_allocator>::max_depth(const iterator_base& pos) const
 		} 
 	}
 
-template <class T, class store_node_allocator>
-unsigned int store<T, store_node_allocator>::number_of_children(const iterator_base& it) 
-	{
+template <class T, class allocator>
+unsigned int store<T, allocator>::number_of_children(const iterator_base& it)  {
 	store_node *pos=it.node->first_child;
 	if(pos==0) return 0;
 	
@@ -1694,9 +1625,8 @@ unsigned int store<T, store_node_allocator>::number_of_children(const iterator_b
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-unsigned int store<T, store_node_allocator>::number_of_siblings(const iterator_base& it) const
-	{
+template <class T, class allocator>
+unsigned int store<T, allocator>::number_of_siblings(const iterator_base& it) const {
 	store_node *pos=it.node;
 	unsigned int ret=0;
 	// count forward
@@ -1718,9 +1648,8 @@ unsigned int store<T, store_node_allocator>::number_of_siblings(const iterator_b
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::swap(sibling_iterator it)
-	{
+template <class T, class allocator>
+void store<T, allocator>::swap(sibling_iterator it) {
 	store_node *nxt=it.node->next_sibling;
 	if(nxt) {
 		if(it.node->prev_sibling)
@@ -1739,9 +1668,8 @@ void store<T, store_node_allocator>::swap(sibling_iterator it)
 		}
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::swap(iterator one, iterator two)
-	{
+template <class T, class allocator>
+void store<T, allocator>::swap(iterator one, iterator two) {
 	// if one and two are adjacent siblings, use the sibling swap
 	if(one.node->next_sibling==two.node) swap(one);
 	else if(two.node->next_sibling==one.node) swap(two);
@@ -1773,10 +1701,9 @@ void store<T, store_node_allocator>::swap(iterator one, iterator two)
 	}
 
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::is_in_substore(const iterator_base& it, const iterator_base& begin, 
-																 const iterator_base& end) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::is_in_substore(const iterator_base& it, const iterator_base& begin, 
+																 const iterator_base& end) const {
 	// FIXME: this should be optimised.
 	pre_order_iterator tmp=begin;
 	while(tmp!=end) {
@@ -1786,17 +1713,15 @@ bool store<T, store_node_allocator>::is_in_substore(const iterator_base& it, con
 	return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::is_valid(const iterator_base& it) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::is_valid(const iterator_base& it) const {
 	if(it.node==0 || it.node==feet || it.node==head) return false;
 	else return true;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::iterator store<T, store_node_allocator>::lowest_common_ancestor(
-	const iterator_base& one, const iterator_base& two) const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::iterator store<T, allocator>::lowest_common_ancestor(
+	const iterator_base& one, const iterator_base& two) const {
 	std::set<iterator, iterator_base_less> parents;
 
 	// Walk up from 'one' storing all parents.
@@ -1816,9 +1741,8 @@ typename store<T, store_node_allocator>::iterator store<T, store_node_allocator>
 	return walk;
 	}
 
-template <class T, class store_node_allocator>
-unsigned int store<T, store_node_allocator>::index(sibling_iterator it) const
-	{
+template <class T, class allocator>
+unsigned int store<T, allocator>::index(sibling_iterator it) const {
 	unsigned int ind=0;
 	if(it.node->parent==0) {
 		while(it.node->prev_sibling!=head) {
@@ -1835,8 +1759,8 @@ unsigned int store<T, store_node_allocator>::index(sibling_iterator it) const
 	return ind;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::sibling(const iterator_base& it, unsigned int num)
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::sibling(const iterator_base& it, unsigned int num)
    {
    store_node *tmp;
    if(it.node->parent==0) {
@@ -1857,9 +1781,8 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
    return tmp;
    }
  
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::debug_verify_consistency() const
-	{
+template <class T, class allocator>
+void store<T, allocator>::debug_verify_consistency() const {
 	iterator it=begin();
 	while(it!=end()) {
 		if(it.node->parent!=0) {
@@ -1876,9 +1799,8 @@ void store<T, store_node_allocator>::debug_verify_consistency() const
 		}
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::child(const iterator_base& it, unsigned int num) 
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::child(const iterator_base& it, unsigned int num)  {
 	store_node *tmp=it.node->first_child;
 	while(num--) {
 		assert(tmp!=0);
@@ -1892,89 +1814,78 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 
 // Iterator base
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::iterator_base::iterator_base()
-	: node(0), skip_current_children_(false)
-	{
+template <class T, class allocator>
+store<T, allocator>::iterator_base::iterator_base()
+	: node(0), skip_current_children_(false) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::iterator_base::iterator_base(store_node *tn)
-	: node(tn), skip_current_children_(false)
-	{
+template <class T, class allocator>
+store<T, allocator>::iterator_base::iterator_base(store_node *tn)
+	: node(tn), skip_current_children_(false) {
 	}
 
-template <class T, class store_node_allocator>
-T& store<T, store_node_allocator>::iterator_base::operator*() const
-	{
+template <class T, class allocator>
+T& store<T, allocator>::iterator_base::operator*() const {
 	return node->data;
 	}
 
-template <class T, class store_node_allocator>
-T* store<T, store_node_allocator>::iterator_base::operator->() const
-	{
+template <class T, class allocator>
+T* store<T, allocator>::iterator_base::operator->() const {
 	return &(node->data);
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::post_order_iterator::operator!=(const post_order_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::post_order_iterator::operator!=(const post_order_iterator& other) const {
 	if(other.node!=this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::post_order_iterator::operator==(const post_order_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::post_order_iterator::operator==(const post_order_iterator& other) const {
 	if(other.node==this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::pre_order_iterator::operator!=(const pre_order_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::pre_order_iterator::operator!=(const pre_order_iterator& other) const {
 	if(other.node!=this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::pre_order_iterator::operator==(const pre_order_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::pre_order_iterator::operator==(const pre_order_iterator& other) const {
 	if(other.node==this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::sibling_iterator::operator!=(const sibling_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::sibling_iterator::operator!=(const sibling_iterator& other) const {
 	if(other.node!=this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::sibling_iterator::operator==(const sibling_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::sibling_iterator::operator==(const sibling_iterator& other) const {
 	if(other.node==this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::leaf_iterator::operator!=(const leaf_iterator& other) const
+template <class T, class allocator>
+bool store<T, allocator>::leaf_iterator::operator!=(const leaf_iterator& other) const
    {
    if(other.node!=this->node) return true;
    else return false;
    }
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::leaf_iterator::operator==(const leaf_iterator& other) const
+template <class T, class allocator>
+bool store<T, allocator>::leaf_iterator::operator==(const leaf_iterator& other) const
    {
    if(other.node==this->node && other.top_node==this->top_node) return true;
    else return false;
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::iterator_base::begin() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::iterator_base::begin() const {
 	if(node->first_child==0) 
 		return end();
 
@@ -1983,29 +1894,26 @@ typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_al
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::iterator_base::end() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::iterator_base::end() const {
 	sibling_iterator ret(0);
 	ret.parent_=node;
 	return ret;
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::iterator_base::skip_children()
-	{
+template <class T, class allocator>
+void store<T, allocator>::iterator_base::skip_children() {
 	skip_current_children_=true;
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::iterator_base::skip_children(bool skip)
+template <class T, class allocator>
+void store<T, allocator>::iterator_base::skip_children(bool skip)
    {
    skip_current_children_=skip;
    }
 
-template <class T, class store_node_allocator>
-unsigned int store<T, store_node_allocator>::iterator_base::number_of_children() const
-	{
+template <class T, class allocator>
+unsigned int store<T, allocator>::iterator_base::number_of_children() const {
 	store_node *pos=node->first_child;
 	if(pos==0) return 0;
 	
@@ -2021,28 +1929,24 @@ unsigned int store<T, store_node_allocator>::iterator_base::number_of_children()
 
 // Pre-order iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::pre_order_iterator::pre_order_iterator() 
-	: iterator_base(0)
-	{
+template <class T, class allocator>
+store<T, allocator>::pre_order_iterator::pre_order_iterator() 
+	: iterator_base(0) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::pre_order_iterator::pre_order_iterator(store_node *tn)
-	: iterator_base(tn)
-	{
+template <class T, class allocator>
+store<T, allocator>::pre_order_iterator::pre_order_iterator(store_node *tn)
+	: iterator_base(tn) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::pre_order_iterator::pre_order_iterator(const iterator_base &other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::pre_order_iterator::pre_order_iterator(const iterator_base &other)
+	: iterator_base(other.node) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::pre_order_iterator::pre_order_iterator(const sibling_iterator& other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::pre_order_iterator::pre_order_iterator(const sibling_iterator& other)
+	: iterator_base(other.node) {
 	if(this->node==0) {
 		if(other.range_last()!=0)
 			this->node=other.range_last();
@@ -2053,9 +1957,8 @@ store<T, store_node_allocator>::pre_order_iterator::pre_order_iterator(const sib
 		}
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node_allocator>::pre_order_iterator::operator++()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator& store<T, allocator>::pre_order_iterator::operator++() {
 	assert(this->node!=0);
 	if(!this->skip_current_children_ && this->node->first_child != 0) {
 		this->node=this->node->first_child;
@@ -2072,9 +1975,8 @@ typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node_allocator>::pre_order_iterator::operator--()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator& store<T, allocator>::pre_order_iterator::operator--() {
 	assert(this->node!=0);
 	if(this->node->prev_sibling) {
 		this->node=this->node->prev_sibling;
@@ -2089,33 +1991,31 @@ typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node
 	return *this;
 }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator store<T, store_node_allocator>::pre_order_iterator::operator++(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator store<T, allocator>::pre_order_iterator::operator++(int) {
 	pre_order_iterator copy = *this;
 	++(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node_allocator>::pre_order_iterator::next_skip_children() 
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator& store<T, allocator>::pre_order_iterator::next_skip_children() 
    {
 	(*this).skip_children();
 	(*this)++;
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator store<T, store_node_allocator>::pre_order_iterator::operator--(int)
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator store<T, allocator>::pre_order_iterator::operator--(int)
 {
   pre_order_iterator copy = *this;
   --(*this);
   return copy;
 }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node_allocator>::pre_order_iterator::operator+=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator& store<T, allocator>::pre_order_iterator::operator+=(unsigned int num) {
 	while(num>0) {
 		++(*this);
 		--num;
@@ -2123,9 +2023,8 @@ typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node_allocator>::pre_order_iterator::operator-=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::pre_order_iterator& store<T, allocator>::pre_order_iterator::operator-=(unsigned int num) {
 	while(num>0) {
 		--(*this);
 		--num;
@@ -2137,28 +2036,24 @@ typename store<T, store_node_allocator>::pre_order_iterator& store<T, store_node
 
 // Post-order iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::post_order_iterator::post_order_iterator() 
-	: iterator_base(0)
-	{
+template <class T, class allocator>
+store<T, allocator>::post_order_iterator::post_order_iterator() 
+	: iterator_base(0) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::post_order_iterator::post_order_iterator(store_node *tn)
-	: iterator_base(tn)
-	{
+template <class T, class allocator>
+store<T, allocator>::post_order_iterator::post_order_iterator(store_node *tn)
+	: iterator_base(tn) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::post_order_iterator::post_order_iterator(const iterator_base &other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::post_order_iterator::post_order_iterator(const iterator_base &other)
+	: iterator_base(other.node) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::post_order_iterator::post_order_iterator(const sibling_iterator& other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::post_order_iterator::post_order_iterator(const sibling_iterator& other)
+	: iterator_base(other.node) {
 	if(this->node==0) {
 		if(other.range_last()!=0)
 			this->node=other.range_last();
@@ -2169,9 +2064,8 @@ store<T, store_node_allocator>::post_order_iterator::post_order_iterator(const s
 		}
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator& store<T, store_node_allocator>::post_order_iterator::operator++()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator& store<T, allocator>::post_order_iterator::operator++() {
 	assert(this->node!=0);
 	if(this->node->next_sibling==0) {
 		this->node=this->node->parent;
@@ -2190,9 +2084,8 @@ typename store<T, store_node_allocator>::post_order_iterator& store<T, store_nod
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator& store<T, store_node_allocator>::post_order_iterator::operator--()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator& store<T, allocator>::post_order_iterator::operator--() {
 	assert(this->node!=0);
 	if(this->skip_current_children_ || this->node->last_child==0) {
 		this->skip_current_children_=false;
@@ -2206,26 +2099,23 @@ typename store<T, store_node_allocator>::post_order_iterator& store<T, store_nod
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator store<T, store_node_allocator>::post_order_iterator::operator++(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator store<T, allocator>::post_order_iterator::operator++(int) {
 	post_order_iterator copy = *this;
 	++(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator store<T, store_node_allocator>::post_order_iterator::operator--(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator store<T, allocator>::post_order_iterator::operator--(int) {
 	post_order_iterator copy = *this;
 	--(*this);
 	return copy;
 	}
 
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator& store<T, store_node_allocator>::post_order_iterator::operator+=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator& store<T, allocator>::post_order_iterator::operator+=(unsigned int num) {
 	while(num>0) {
 		++(*this);
 		--num;
@@ -2233,9 +2123,8 @@ typename store<T, store_node_allocator>::post_order_iterator& store<T, store_nod
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::post_order_iterator& store<T, store_node_allocator>::post_order_iterator::operator-=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::post_order_iterator& store<T, allocator>::post_order_iterator::operator-=(unsigned int num) {
 	while(num>0) {
 		--(*this);
 		--num;
@@ -2243,9 +2132,8 @@ typename store<T, store_node_allocator>::post_order_iterator& store<T, store_nod
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::post_order_iterator::descend_all()
-	{
+template <class T, class allocator>
+void store<T, allocator>::post_order_iterator::descend_all() {
 	assert(this->node!=0);
 	while(this->node->first_child)
 		this->node=this->node->first_child;
@@ -2254,43 +2142,37 @@ void store<T, store_node_allocator>::post_order_iterator::descend_all()
 
 // Breadth-first iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator()
-	: iterator_base()
-	{
+template <class T, class allocator>
+store<T, allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator()
+	: iterator_base() {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator(store_node *tn)
-	: iterator_base(tn)
-	{
+template <class T, class allocator>
+store<T, allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator(store_node *tn)
+	: iterator_base(tn) {
 	traversal_queue.push(tn);
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator(const iterator_base& other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::breadth_first_queued_iterator::breadth_first_queued_iterator(const iterator_base& other)
+	: iterator_base(other.node) {
 	traversal_queue.push(other.node);
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::breadth_first_queued_iterator::operator!=(const breadth_first_queued_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::breadth_first_queued_iterator::operator!=(const breadth_first_queued_iterator& other) const {
 	if(other.node!=this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::breadth_first_queued_iterator::operator==(const breadth_first_queued_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::breadth_first_queued_iterator::operator==(const breadth_first_queued_iterator& other) const {
 	if(other.node==this->node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::breadth_first_queued_iterator& store<T, store_node_allocator>::breadth_first_queued_iterator::operator++()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::breadth_first_queued_iterator& store<T, allocator>::breadth_first_queued_iterator::operator++() {
 	assert(this->node!=0);
 
 	// Add child nodes and pop current node
@@ -2307,17 +2189,15 @@ typename store<T, store_node_allocator>::breadth_first_queued_iterator& store<T,
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::breadth_first_queued_iterator store<T, store_node_allocator>::breadth_first_queued_iterator::operator++(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::breadth_first_queued_iterator store<T, allocator>::breadth_first_queued_iterator::operator++(int) {
 	breadth_first_queued_iterator copy = *this;
 	++(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::breadth_first_queued_iterator& store<T, store_node_allocator>::breadth_first_queued_iterator::operator+=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::breadth_first_queued_iterator& store<T, allocator>::breadth_first_queued_iterator::operator+=(unsigned int num) {
 	while(num>0) {
 		++(*this);
 		--num;
@@ -2329,53 +2209,45 @@ typename store<T, store_node_allocator>::breadth_first_queued_iterator& store<T,
 
 // Fixed depth iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::fixed_depth_iterator::fixed_depth_iterator()
-	: iterator_base()
-	{
+template <class T, class allocator>
+store<T, allocator>::fixed_depth_iterator::fixed_depth_iterator()
+	: iterator_base() {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::fixed_depth_iterator::fixed_depth_iterator(store_node *tn)
-	: iterator_base(tn), top_node(0)
-	{
+template <class T, class allocator>
+store<T, allocator>::fixed_depth_iterator::fixed_depth_iterator(store_node *tn)
+	: iterator_base(tn), top_node(0) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::fixed_depth_iterator::fixed_depth_iterator(const iterator_base& other)
-	: iterator_base(other.node), top_node(0)
-	{
+template <class T, class allocator>
+store<T, allocator>::fixed_depth_iterator::fixed_depth_iterator(const iterator_base& other)
+	: iterator_base(other.node), top_node(0) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::fixed_depth_iterator::fixed_depth_iterator(const sibling_iterator& other)
-	: iterator_base(other.node), top_node(0)
-	{
+template <class T, class allocator>
+store<T, allocator>::fixed_depth_iterator::fixed_depth_iterator(const sibling_iterator& other)
+	: iterator_base(other.node), top_node(0) {
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::fixed_depth_iterator::fixed_depth_iterator(const fixed_depth_iterator& other)
-	: iterator_base(other.node), top_node(other.top_node)
-	{
+template <class T, class allocator>
+store<T, allocator>::fixed_depth_iterator::fixed_depth_iterator(const fixed_depth_iterator& other)
+	: iterator_base(other.node), top_node(other.top_node) {
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::fixed_depth_iterator::operator==(const fixed_depth_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::fixed_depth_iterator::operator==(const fixed_depth_iterator& other) const {
 	if(other.node==this->node && other.top_node==top_node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-bool store<T, store_node_allocator>::fixed_depth_iterator::operator!=(const fixed_depth_iterator& other) const
-	{
+template <class T, class allocator>
+bool store<T, allocator>::fixed_depth_iterator::operator!=(const fixed_depth_iterator& other) const {
 	if(other.node!=this->node || other.top_node!=top_node) return true;
 	else return false;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_node_allocator>::fixed_depth_iterator::operator++()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator& store<T, allocator>::fixed_depth_iterator::operator++() {
 	assert(this->node!=0);
 
 	if(this->node->next_sibling) {
@@ -2413,9 +2285,8 @@ typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_no
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_node_allocator>::fixed_depth_iterator::operator--()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator& store<T, allocator>::fixed_depth_iterator::operator--() {
 	assert(this->node!=0);
 
 	if(this->node->prev_sibling) {
@@ -2453,25 +2324,23 @@ typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_no
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_node_allocator>::fixed_depth_iterator::operator++(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator store<T, allocator>::fixed_depth_iterator::operator++(int) {
 	fixed_depth_iterator copy = *this;
 	++(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator store<T, store_node_allocator>::fixed_depth_iterator::operator--(int)
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator store<T, allocator>::fixed_depth_iterator::operator--(int)
    {
 	fixed_depth_iterator copy = *this;
 	--(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_node_allocator>::fixed_depth_iterator::operator-=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator& store<T, allocator>::fixed_depth_iterator::operator-=(unsigned int num) {
 	while(num>0) {
 		--(*this);
 		--(num);
@@ -2479,9 +2348,8 @@ typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_no
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_node_allocator>::fixed_depth_iterator::operator+=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::fixed_depth_iterator& store<T, allocator>::fixed_depth_iterator::operator+=(unsigned int num) {
 	while(num>0) {
 		++(*this);
 		--(num);
@@ -2492,53 +2360,46 @@ typename store<T, store_node_allocator>::fixed_depth_iterator& store<T, store_no
 
 // Sibling iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::sibling_iterator::sibling_iterator() 
-	: iterator_base()
-	{
+template <class T, class allocator>
+store<T, allocator>::sibling_iterator::sibling_iterator() 
+	: iterator_base() {
 	set_parent_();
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::sibling_iterator::sibling_iterator(store_node *tn)
-	: iterator_base(tn)
-	{
+template <class T, class allocator>
+store<T, allocator>::sibling_iterator::sibling_iterator(store_node *tn)
+	: iterator_base(tn) {
 	set_parent_();
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::sibling_iterator::sibling_iterator(const iterator_base& other)
-	: iterator_base(other.node)
-	{
+template <class T, class allocator>
+store<T, allocator>::sibling_iterator::sibling_iterator(const iterator_base& other)
+	: iterator_base(other.node) {
 	set_parent_();
 	}
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::sibling_iterator::sibling_iterator(const sibling_iterator& other)
-	: iterator_base(other), parent_(other.parent_)
-	{
+template <class T, class allocator>
+store<T, allocator>::sibling_iterator::sibling_iterator(const sibling_iterator& other)
+	: iterator_base(other), parent_(other.parent_) {
 	}
 
-template <class T, class store_node_allocator>
-void store<T, store_node_allocator>::sibling_iterator::set_parent_()
-	{
+template <class T, class allocator>
+void store<T, allocator>::sibling_iterator::set_parent_() {
 	parent_=0;
 	if(this->node==0) return;
 	if(this->node->parent!=0)
 		parent_=this->node->parent;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_allocator>::sibling_iterator::operator++()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator& store<T, allocator>::sibling_iterator::operator++() {
 	if(this->node)
 		this->node=this->node->next_sibling;
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_allocator>::sibling_iterator::operator--()
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator& store<T, allocator>::sibling_iterator::operator--() {
 	if(this->node) this->node=this->node->prev_sibling;
 	else {
 		assert(parent_);
@@ -2547,25 +2408,22 @@ typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_a
 	return *this;
 }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::sibling_iterator::operator++(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::sibling_iterator::operator++(int) {
 	sibling_iterator copy = *this;
 	++(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator store<T, store_node_allocator>::sibling_iterator::operator--(int)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator store<T, allocator>::sibling_iterator::operator--(int) {
 	sibling_iterator copy = *this;
 	--(*this);
 	return copy;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_allocator>::sibling_iterator::operator+=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator& store<T, allocator>::sibling_iterator::operator+=(unsigned int num) {
 	while(num>0) {
 		++(*this);
 		--num;
@@ -2573,9 +2431,8 @@ typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_a
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_allocator>::sibling_iterator::operator-=(unsigned int num)
-	{
+template <class T, class allocator>
+typename store<T, allocator>::sibling_iterator& store<T, allocator>::sibling_iterator::operator-=(unsigned int num) {
 	while(num>0) {
 		--(*this);
 		--num;
@@ -2583,41 +2440,39 @@ typename store<T, store_node_allocator>::sibling_iterator& store<T, store_node_a
 	return (*this);
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::store_node *store<T, store_node_allocator>::sibling_iterator::range_first() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::store_node *store<T, allocator>::sibling_iterator::range_first() const {
 	store_node *tmp=parent_->first_child;
 	return tmp;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::store_node *store<T, store_node_allocator>::sibling_iterator::range_last() const
-	{
+template <class T, class allocator>
+typename store<T, allocator>::store_node *store<T, allocator>::sibling_iterator::range_last() const {
 	return parent_->last_child;
 	}
 
 // Leaf iterator
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::leaf_iterator::leaf_iterator() 
+template <class T, class allocator>
+store<T, allocator>::leaf_iterator::leaf_iterator() 
    : iterator_base(0), top_node(0)
    {
    }
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::leaf_iterator::leaf_iterator(store_node *tn, store_node *top)
+template <class T, class allocator>
+store<T, allocator>::leaf_iterator::leaf_iterator(store_node *tn, store_node *top)
    : iterator_base(tn), top_node(top)
    {
    }
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::leaf_iterator::leaf_iterator(const iterator_base &other)
+template <class T, class allocator>
+store<T, allocator>::leaf_iterator::leaf_iterator(const iterator_base &other)
    : iterator_base(other.node), top_node(0)
    {
    }
 
-template <class T, class store_node_allocator>
-store<T, store_node_allocator>::leaf_iterator::leaf_iterator(const sibling_iterator& other)
+template <class T, class allocator>
+store<T, allocator>::leaf_iterator::leaf_iterator(const sibling_iterator& other)
    : iterator_base(other.node), top_node(0)
    {
    if(this->node==0) {
@@ -2629,8 +2484,8 @@ store<T, store_node_allocator>::leaf_iterator::leaf_iterator(const sibling_itera
       }
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allocator>::leaf_iterator::operator++()
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator& store<T, allocator>::leaf_iterator::operator++()
    {
 	assert(this->node!=0);
 	if(this->node->first_child!=0) { // current node is no longer leaf (children got added)
@@ -2650,8 +2505,8 @@ typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allo
 	return *this;
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allocator>::leaf_iterator::operator--()
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator& store<T, allocator>::leaf_iterator::operator--()
    {
 	assert(this->node!=0);
 	while (this->node->prev_sibling==0) {
@@ -2665,16 +2520,16 @@ typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allo
 	return *this;
 	}
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::leaf_iterator::operator++(int)
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::leaf_iterator::operator++(int)
    {
    leaf_iterator copy = *this;
    ++(*this);
    return copy;
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_allocator>::leaf_iterator::operator--(int)
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator store<T, allocator>::leaf_iterator::operator--(int)
    {
    leaf_iterator copy = *this;
    --(*this);
@@ -2682,8 +2537,8 @@ typename store<T, store_node_allocator>::leaf_iterator store<T, store_node_alloc
    }
 
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allocator>::leaf_iterator::operator+=(unsigned int num)
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator& store<T, allocator>::leaf_iterator::operator+=(unsigned int num)
    {
    while(num>0) {
       ++(*this);
@@ -2692,8 +2547,8 @@ typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allo
    return (*this);
    }
 
-template <class T, class store_node_allocator>
-typename store<T, store_node_allocator>::leaf_iterator& store<T, store_node_allocator>::leaf_iterator::operator-=(unsigned int num)
+template <class T, class allocator>
+typename store<T, allocator>::leaf_iterator& store<T, allocator>::leaf_iterator::operator-=(unsigned int num)
    {
    while(num>0) {
       --(*this);

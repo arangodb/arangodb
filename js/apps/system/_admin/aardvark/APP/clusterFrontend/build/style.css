@@ -2585,6 +2585,8 @@ div.footer-right {
   padding: 5px 16px; }
   .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus {
     outline: none; }
+  .button-neutral i, .button-primary i, .button-notification i, .button-success i, .button-danger i, .button-warning i, .button-inactive i, .button-close i {
+    margin-left: -5px; }
 
 .button-header {
   margin-top: 5px; }
@@ -2974,13 +2976,11 @@ div .tile, div .bigtile {
     div .tile img:hover, div .bigtile img:hover {
       cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-left: 22px;
     margin-right: 10px;
-    margin-top: -5px;
     position: relative;
-    right: 4px;
-    top: 2px; }
+    top: 0; }
   div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
   div .tile a svg.icon, div .bigtile a svg.icon {
@@ -5708,7 +5708,6 @@ div.headerBar {
     .modal-body .tab-content #appstore {
       max-height: 290px; }
   .modal-body .errorMessage {
-    background-color: #fff;
     color: #da4f49;
     font-size: 9pt;
     font-weight: 400;
@@ -5728,6 +5727,14 @@ div.headerBar {
 .modal-backdrop,
 .modal-backdrop.fade.in {
   opacity: .4; }
+
+.fade {
+  opacity: 0;
+  -moz-transition: opacity 0.03s linear;
+  -ms-transition: opacity 0.03s linear;
+  -o-transition: opacity 0.03s linear;
+  -webkit-transition: opacity 0.03s linear;
+  transition: opacity 0.03s linear; }
 
 .modal {
   border: 0 !important;
@@ -6063,13 +6070,11 @@ div .tile, div .bigtile {
     div .tile img:hover, div .bigtile img:hover {
       cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-left: 22px;
     margin-right: 10px;
-    margin-top: -5px;
     position: relative;
-    right: 4px;
-    top: 2px; }
+    top: 0; }
   div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
   div .tile a svg.icon, div .bigtile a svg.icon {

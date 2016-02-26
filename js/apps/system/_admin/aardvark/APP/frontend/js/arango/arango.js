@@ -84,6 +84,20 @@
       });
     },
 
+    parseInput: function(element) {
+      var parsed,
+      string = $(element).val();
+
+      try {
+        parsed = JSON.parse(string);
+      }
+      catch (e) {
+        parsed = string;
+      }
+      
+      return parsed;
+    },
+
     calculateCenterDivHeight: function() {
       var navigation = $('.navbar').height();
       var footer = $('.footer').height();
@@ -132,6 +146,12 @@
         content: [{
           label: "Submit",
           letter: "Ctrl + Return"
+        },{
+          label: "Explain Query",
+          letter: "Ctrl + Shift + E"
+        },{
+          label: "Save Query",
+          letter: "Ctrl + Shift + S"
         },{
           label: "Toggle comments",
           letter: "Ctrl + Shift + C"

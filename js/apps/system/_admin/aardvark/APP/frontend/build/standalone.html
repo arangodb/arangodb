@@ -234,7 +234,8 @@
     <div id="installedList" class="tileList">
       <div class="tile">
         <div class="fullBorderBox">
-          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+          <a href="#" id="addApp" class="add"><span class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+</span> Add Service</a>
         </div>
       </div>
     </div>
@@ -443,7 +444,8 @@
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
           <div class="fullBorderBox">
-            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+</span> Add Collection</a>
           </div>
         </div>
       </div>
@@ -718,7 +720,7 @@
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createDatabase" class="add">
-            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newDatabase" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add Database
           </a>
         </div>
@@ -1221,7 +1223,7 @@ if (list.length > 0) {
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createGraph" class="add">
-            <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newGraph" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add Graph
           </a>
         </div>
@@ -2668,6 +2670,64 @@ if (list.length > 0) {
 
   </div>
 
+
+</script>
+
+<script id="queryView2.ejs" type="text/template">
+
+  <div class="headerBar">
+    <a class="arangoHeader">AQL Editor 2</a>
+  </div>
+
+
+  <div id="queryContent" class="queryContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
+      </div>
+
+      <div class="pull-right">
+        <div class="styled-select">
+          <select id="querySize" class="query-size"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
+        <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
+      </div>
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <div id="bindParamEditor"></div>
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
+          </div>
+          <div id="queryPreview"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-success query-button">Explain</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="outputEditors" class="outputEditors">
+  </div>
+
   <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -2704,8 +2764,42 @@ if (list.length > 0) {
       <button id="closeQueryModal" class="button-close">Cancel</button>
     </div>
 
+
+</script>
+
+<script id="queryViewOutput.ejs" type="text/template">
+
+  <div id="outputEditorWrapper<%= counter %>" class="outputEditorWrapper">
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <span class="toolbarType"><%=type%></span>
+        <% if (type === 'Query') { %>
+          <span><i class="fa fa-clock-o"></i><i class="queryExecutionTime2"></i></span>
+        <% } %>
+      </div>
+      <div class="pull-right">
+        <span><i class="fa fa-close" element="outputEditor<%= counter %>"></i></span>
+      </div>
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <span class="switchAce" counter="<%=counter%>">Result</span>
+        <% } else { %>
+          <span class="switchAce" counter="<%=counter%>">AQL</span>
+        <% } %>
+      </div>
+    </div>
+    <div id="outputEditor<%= counter %>"></div>
+    <div id="sentQueryEditor<%= counter %>" style="display: none"></div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <button id="downloadQueryResult" counter="<%=counter%>" class="button-success">Download</button>
+        <% } %>
+      </div>
+    </div>
   </div>
 
+  </div>
 </script>
 
 <script id="shellView.ejs" type="text/template">
@@ -2895,7 +2989,7 @@ var cutByResolution = function (str) {
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createUser" class="add">
-            <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newUser" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add User
           </a>
         </div>
@@ -3015,9 +3109,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1456219613661"></script>
-<script src="libs.js?version=1456219613661"></script>
-<script src="app.js?version=1456219613661"></script>
+<script src="sharedLibs.js?version=1456340072524"></script>
+<script src="libs.js?version=1456340072524"></script>
+<script src="app.js?version=1456340072524"></script>
 
   </body>
 </html>

@@ -174,7 +174,7 @@ again:
       LOG(ERR) << "rw-lock deadlock detected";
     }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -194,7 +194,7 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not read-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -245,7 +245,7 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
     if (rc == EDEADLK) {
       LOG(ERR) << "rw-lock deadlock detected";
     }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not write-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -265,7 +265,7 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not write-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -305,7 +305,7 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not signal the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -323,7 +323,7 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not broadcast the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -341,7 +341,7 @@ void TRI_WaitCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -379,7 +379,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
       return false;
     }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -397,7 +397,7 @@ void TRI_LockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not lock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
@@ -413,7 +413,7 @@ void TRI_UnlockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG(ERR) << "could not unlock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif

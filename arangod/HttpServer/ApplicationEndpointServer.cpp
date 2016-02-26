@@ -224,7 +224,7 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
                                 _reuseAddress);
 
     if (!ok) {
-      LOG(FATAL) << "invalid endpoint '" << (*i).c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "invalid endpoint '" << (*i) << "'"; FATAL_ERROR_EXIT();
     }
   }
 
@@ -264,7 +264,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
     return false;
   }
 
-  LOG(TRACE) << "loading endpoint list from file '" << filename.c_str() << "'";
+  LOG(TRACE) << "loading endpoint list from file '" << filename << "'";
 
   std::shared_ptr<VPackBuilder> builder;
   try {
@@ -276,7 +276,7 @@ bool ApplicationEndpointServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
-    LOG(WARN) << "error loading ENDPOINTS file '" << filename.c_str() << "'";
+    LOG(WARN) << "error loading ENDPOINTS file '" << filename << "'";
     return false;
   }
 
@@ -395,10 +395,10 @@ bool ApplicationEndpointServer::createSslContext() {
     return false;
   }
 
-  LOG(DEBUG) << "using SSL protocol version '" << protocolName((protocol_e)_sslProtocol).c_str() << "'";
+  LOG(DEBUG) << "using SSL protocol version '" << protocolName((protocol_e)_sslProtocol) << "'";
 
   if (!FileUtils::exists(_httpsKeyfile)) {
-    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile.c_str() << "'"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile << "'"; FATAL_ERROR_EXIT();
   }
 
   // create context
@@ -424,10 +424,10 @@ bool ApplicationEndpointServer::createSslContext() {
 
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG(ERR) << "SSL error: " << lastSSLError();
+      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList << "'"; FATAL_ERROR_EXIT();
     } else {
-      LOG(INFO) << "using SSL cipher-list '" << _sslCipherList.c_str() << "'";
+      LOG(INFO) << "using SSL cipher-list '" << _sslCipherList << "'";
     }
   }
 
@@ -440,19 +440,19 @@ bool ApplicationEndpointServer::createSslContext() {
       _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-    LOG(FATAL) << "cannot set SSL session id context '" << _rctx.c_str() << "'"; FATAL_ERROR_EXIT();
+    LOG(ERR) << "SSL error: " << lastSSLError();
+    LOG(FATAL) << "cannot set SSL session id context '" << _rctx << "'"; FATAL_ERROR_EXIT();
   }
 
   // check CA
   if (!_cafile.empty()) {
-    LOG(TRACE) << "trying to load CA certificates from '" << _cafile.c_str() << "'";
+    LOG(TRACE) << "trying to load CA certificates from '" << _cafile << "'";
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG(ERR) << "SSL error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG(ERR) << "SSL error: " << lastSSLError();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -460,8 +460,8 @@ bool ApplicationEndpointServer::createSslContext() {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG(ERR) << "ssl error: " << lastSSLError().c_str();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile.c_str() << "'"; FATAL_ERROR_EXIT();
+      LOG(ERR) << "ssl error: " << lastSSLError();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
     }
 
     if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
@@ -479,7 +479,7 @@ bool ApplicationEndpointServer::createSslContext() {
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOG(TRACE) << "name: " << std::string(r, len).c_str();
+          LOG(TRACE) << "name: " << std::string(r, len);
         }
       }
     }

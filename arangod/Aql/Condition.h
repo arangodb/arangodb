@@ -333,7 +333,7 @@ class Condition {
 /// @brief validate the condition's AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void validateAst(AstNode const*, int);
 #endif
 

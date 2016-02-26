@@ -291,14 +291,14 @@ int main(int argc, char* argv[]) {
   if (BaseClient.endpointServer() == nullptr) {
     std::string endpointString = BaseClient.endpointString();
     LOG(FATAL) << "invalid value for --server.endpoint ('"
-               << endpointString.c_str() << "')";
+               << endpointString << "')";
     FATAL_ERROR_EXIT();
   }
 
   BenchmarkOperation* testCase = GetTestCase(TestCase);
 
   if (testCase == nullptr) {
-    LOG(FATAL) << "invalid test case name '" << TestCase.c_str() << "'";
+    LOG(FATAL) << "invalid test case name '" << TestCase << "'";
     FATAL_ERROR_EXIT();
     return EXIT_FAILURE;  // will not be reached
   }

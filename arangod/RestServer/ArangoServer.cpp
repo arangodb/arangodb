@@ -121,7 +121,7 @@ static void WritePidFile(std::string const& pidFile, int pid) {
   std::ofstream out(pidFile.c_str(), std::ios::trunc);
 
   if (!out) {
-    LOG(FATAL) << "cannot write pid-file '" << pidFile.c_str() << "'";
+    LOG(FATAL) << "cannot write pid-file '" << pidFile << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -136,10 +136,10 @@ static void CheckPidFile(std::string const& pidFile) {
   // check if the pid-file exists
   if (!pidFile.empty()) {
     if (FileUtils::isDirectory(pidFile)) {
-      LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' is a directory";
+      LOG(FATAL) << "pid-file '" << pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOG(INFO) << "pid-file '" << pidFile.c_str()
+      LOG(INFO) << "pid-file '" << pidFile
                 << "' already exists, verifying pid";
 
       std::ifstream f(pidFile.c_str());
@@ -151,7 +151,7 @@ static void CheckPidFile(std::string const& pidFile) {
         f >> oldPid;
 
         if (oldPid == 0) {
-          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' is unreadable";
+          LOG(FATAL) << "pid-file '" << pidFile << "' is unreadable";
           FATAL_ERROR_EXIT();
         }
 
@@ -164,30 +164,30 @@ static void CheckPidFile(std::string const& pidFile) {
 #endif
 
         if (r == 0) {
-          LOG(FATAL) << "pid-file '" << pidFile.c_str()
+          LOG(FATAL) << "pid-file '" << pidFile
                      << "' exists and process with pid " << oldPid
                      << " is still running";
           FATAL_ERROR_EXIT();
         } else if (errno == EPERM) {
-          LOG(FATAL) << "pid-file '" << pidFile.c_str()
+          LOG(FATAL) << "pid-file '" << pidFile
                      << "' exists and process with pid " << oldPid
                      << " is still running";
           FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
-          LOG(ERR) << "pid-file '" << pidFile.c_str()
+          LOG(ERR) << "pid-file '" << pidFile
                    << " exists, but no process with pid " << oldPid
                    << " exists";
 
           if (!FileUtils::remove(pidFile)) {
-            LOG(FATAL) << "pid-file '" << pidFile.c_str()
+            LOG(FATAL) << "pid-file '" << pidFile
                        << "' exists, no process with pid " << oldPid
                        << " exists, but pid-file cannot be removed";
             FATAL_ERROR_EXIT();
           }
 
-          LOG(INFO) << "removed stale pid-file '" << pidFile.c_str() << "'";
+          LOG(INFO) << "removed stale pid-file '" << pidFile << "'";
         } else {
-          LOG(FATAL) << "pid-file '" << pidFile.c_str() << "' exists and kill "
+          LOG(FATAL) << "pid-file '" << pidFile << "' exists and kill "
                      << oldPid << " failed";
           FATAL_ERROR_EXIT();
         }
@@ -195,13 +195,13 @@ static void CheckPidFile(std::string const& pidFile) {
 
       // failed to open file
       else {
-        LOG(FATAL) << "pid-file '" << pidFile.c_str()
+        LOG(FATAL) << "pid-file '" << pidFile
                    << "' exists, but cannot be opened";
         FATAL_ERROR_EXIT();
       }
     }
 
-    LOG(DEBUG) << "using pid-file '" << pidFile.c_str() << "'";
+    LOG(DEBUG) << "using pid-file '" << pidFile << "'";
   }
 }
 
@@ -254,11 +254,11 @@ static int ForkProcess(std::string const& workingDirectory,
   if (!workingDirectory.empty()) {
     if (!FileUtils::changeDirectory(workingDirectory)) {
       LOG(FATAL) << "cannot change into working directory '"
-                 << workingDirectory.c_str() << "'";
+                 << workingDirectory << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "changed working directory for child process to '"
-                << workingDirectory.c_str() << "'";
+                << workingDirectory << "'";
     }
   }
 
@@ -465,7 +465,7 @@ int ArangoServer::start() {
 
     if (!_pidFile.empty()) {
       if (!FileUtils::remove(_pidFile)) {
-        LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
+        LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
       }
     }
 
@@ -603,7 +603,7 @@ int ArangoServer::startupSupervisor() {
         // remove pid file
         if (horrible) {
           if (!FileUtils::remove(_pidFile)) {
-            LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
+            LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
           }
 
           result = EXIT_FAILURE;
@@ -628,7 +628,7 @@ int ArangoServer::startupSupervisor() {
 
         // remove pid file
         if (!FileUtils::remove(_pidFile)) {
-          LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
+          LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
         }
 
         // and stop
@@ -674,7 +674,7 @@ int ArangoServer::startupDaemon() {
 
     // remove pid file
     if (!FileUtils::remove(_pidFile)) {
-      LOG(DEBUG) << "cannot remove pid file '" << _pidFile.c_str() << "'";
+      LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
     }
   }
 
@@ -844,7 +844,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<WorkMonitorHandler>::createNoData, nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   factory->addPrefixHandler("/_admin/debug",
                             RestHandlerCreator<RestDebugHandler>::createNoData,
                             nullptr);
@@ -1324,9 +1324,9 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   // dump version details
-  LOG(INFO) << "" << rest::Version::getVerboseVersionString().c_str();
+  LOG(INFO) << "" << rest::Version::getVerboseVersionString();
 
-  LOG(INFO) << "using default language '" << languageName.c_str() << "'";
+  LOG(INFO) << "using default language '" << languageName << "'";
 
   // if we got here, then we are in server mode
 
@@ -1368,7 +1368,7 @@ void ArangoServer::buildApplicationServer() {
       _pidFile = std::string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
-      LOG(DEBUG) << "using absolute pid file '" << _pidFile.c_str() << "'";
+      LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
     } else {
       LOG(FATAL) << "cannot determine current directory";
       FATAL_ERROR_EXIT();
@@ -1697,10 +1697,10 @@ int ArangoServer::startupServer() {
       }
 
       if (0 < ns) {
-        LOG(INFO) << "scheduler cores: " << ToString(ps).c_str();
+        LOG(INFO) << "scheduler cores: " << ToString(ps);
       }
       if (0 < nd) {
-        LOG(INFO) << "dispatcher cores: " << ToString(pd).c_str();
+        LOG(INFO) << "dispatcher cores: " << ToString(pd);
       }
     } else {
       LOG(INFO) << "the server has " << n << " (hyper) cores";
@@ -1834,9 +1834,9 @@ void ArangoServer::runStartupChecks() {
         if ((alignment & 2) == 0) {
           LOG(FATAL)
               << "possibly incompatible CPU alignment settings found in '"
-              << filename.c_str() << "'. this may cause arangod to abort with "
+              << filename << "'. this may cause arangod to abort with "
                                      "SIGBUS. please set the value in '"
-              << filename.c_str() << "' to 2";
+              << filename << "' to 2";
           FATAL_ERROR_EXIT();
         }
 
@@ -1847,16 +1847,16 @@ void ArangoServer::runStartupChecks() {
       // ignore that we cannot detect the alignment
       LOG(TRACE)
           << "unable to detect CPU alignment settings. could not process file '"
-          << filename.c_str() << "'";
+          << filename << "'";
     }
 
     if (!alignmentDetected) {
       LOG(WARN)
           << "unable to detect CPU alignment settings. could not process file '"
-          << filename.c_str()
+          << filename
           << "'. this may cause arangod to abort with SIGBUS. it may be "
              "necessary to set the value in '"
-          << filename.c_str() << "' to 2";
+          << filename << "' to 2";
     }
   }
 #endif
@@ -2021,7 +2021,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
 
         if (!r) {
-          LOG(FATAL) << "cannot load script '" << _scriptFile[i].c_str()
+          LOG(FATAL) << "cannot load script '" << _scriptFile[i]
                      << "', giving up";
           FATAL_ERROR_EXIT();
         }

@@ -50,23 +50,22 @@ void Version::initialize() {
     return;
   }
 
-  Values["architecture"] =
-      (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-  Values["server-version"] = getServerVersion();
-  Values["icu-version"] = getICUVersion();
-  Values["openssl-version"] = getOpenSSLVersion();
-  Values["v8-version"] = getV8Version();
-  Values["libev-version"] = getLibevVersion();
-  Values["vpack-version"] = getVPackVersion();
-  Values["zlib-version"] = getZLibVersion();
-  Values["configure"] = getConfigure();
-  Values["env"] = getConfigureEnvironment();
+  Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+  Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
+  Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
+  Values["icu-version"] = getICUVersion();
+  Values["libev-version"] = getLibevVersion();
+  Values["openssl-version"] = getOpenSSLVersion();
   Values["repository-version"] = getRepositoryVersion();
+  Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
-  Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+  Values["v8-version"] = getV8Version();
+  Values["vpack-version"] = getVPackVersion();
+  Values["zlib-version"] = getZLibVersion();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
   Values["maintainer-mode"] = "false";
@@ -125,12 +124,24 @@ int32_t Version::getNumericServerVersion() {
 std::string Version::getServerVersion() { return std::string(TRI_VERSION); }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get BOOST version
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getBoostVersion() {
+#ifdef ARANGODB_BOOST_VERSION
+  return std::string(ARANGODB_BOOST_VERSION);
+#else
+  return std::string("");
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get V8 version
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getV8Version() {
-#ifdef TRI_V8_VERSION
-  return std::string(TRI_V8_VERSION);
+#ifdef ARANGODB_V8_VERSION
+  return std::string(ARANGODB_V8_VERSION);
 #else
   return std::string("");
 #endif
@@ -143,6 +154,8 @@ std::string Version::getV8Version() {
 std::string Version::getOpenSSLVersion() {
 #ifdef OPENSSL_VERSION_TEXT
   return std::string(OPENSSL_VERSION_TEXT);
+#elif ARANGODB_OPENSSL_VERSION
+  return std::string(ARANGODB_OPENSSL_VERSION);
 #else
   return std::string("");
 #endif
@@ -153,8 +166,8 @@ std::string Version::getOpenSSLVersion() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getLibevVersion() {
-#ifdef TRI_LIBEV_VERSION
-  return std::string(TRI_LIBEV_VERSION);
+#ifdef ARANGODB_LIBEV_VERSION
+  return std::string(ARANGODB_LIBEV_VERSION);
 #else
   return std::string("");
 #endif
@@ -173,8 +186,8 @@ std::string Version::getVPackVersion() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getZLibVersion() {
-#ifdef TRI_ZLIB_VERSION
-  return std::string(TRI_ZLIB_VERSION);
+#ifdef ARANGODB_ZLIB_VERSION
+  return std::string(ARANGODB_ZLIB_VERSION);
 #else
   return std::string("");
 #endif
@@ -191,34 +204,6 @@ std::string Version::getICUVersion() {
   u_versionToString(icuVersion, icuVersionString);
 
   return icuVersionString;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get configure
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Version::getConfigure() {
-  std::string configure("");
-
-#ifdef TRI_CONFIGURE_COMMAND
-#ifdef TRI_CONFIGURE_OPTIONS
-  configure.append(TRI_CONFIGURE_COMMAND).append(TRI_CONFIGURE_OPTIONS);
-#endif
-#endif
-  return configure;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get configure environment
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Version::getConfigureEnvironment() {
-  std::string env("");
-
-#ifdef TRI_CONFIGURE_FLAGS
-  env.append(TRI_CONFIGURE_FLAGS);
-#endif
-  return env;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,8 +224,8 @@ std::string Version::getRepositoryVersion() {
 
 std::string Version::getBuildDate() {
 // the OpenSuSE build system does not like it, if __DATE__ is used
-#ifdef TRI_BUILD_DATE
-  return std::string(TRI_BUILD_DATE).append(" ").append(__TIME__);
+#ifdef ARANGODB_BUILD_DATE
+  return std::string(ARANGODB_BUILD_DATE);
 #else
   return std::string(__DATE__).append(" ").append(__TIME__);
 #endif
@@ -255,7 +240,7 @@ std::string Version::getVerboseVersionString() {
 
   version << "ArangoDB " << TRI_VERSION_FULL << " "
           << (sizeof(void*) == 4 ? "32" : "64") << "bit"
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
           << ", using "

@@ -54,7 +54,7 @@ class WalkerWorker {
                              T*   // sub
                              ) {}
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
   bool done(T* en) {
     // make sure a node is only processed once
@@ -81,7 +81,7 @@ class WalkerWorker {
 #endif
 
  private:
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::unordered_set<T*> _done;
 #endif
 };
