@@ -791,7 +791,7 @@ class AssocMulti {
 
   std::vector<Element*>* lookupByKey(UserData* userData, Key const* key,
                                      size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     // compute the hash
     uint64_t hashByKey = _hashKey(userData, key);
@@ -835,7 +835,7 @@ class AssocMulti {
   std::vector<Element*>* lookupWithElementByKey(UserData* userData,
                                                 Element const* element,
                                                 size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     // compute the hash
     uint64_t hashByKey = _hashElement(userData, element, true);
@@ -879,7 +879,7 @@ class AssocMulti {
 
   std::vector<Element*>* lookupWithElementByKeyContinue(
       UserData* userData, Element const* element, size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     uint64_t hashByKey = _hashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
