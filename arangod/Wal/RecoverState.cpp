@@ -342,10 +342,7 @@ int RecoverState::executeSingleOperation(
   try {
     trx = new SingleCollectionTransaction(arangodb::StandaloneTransactionContext::Create(vocbase), collectionId, TRI_TRANSACTION_WRITE);
 
-    if (trx == nullptr) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
+    trx->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
     trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);

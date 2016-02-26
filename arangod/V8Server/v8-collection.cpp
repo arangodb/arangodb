@@ -335,6 +335,7 @@ static void ExistsVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -343,7 +344,7 @@ static void ExistsVocbaseVPack(
   }
 
   OperationOptions options;
-  options.silent = true; // We do not care for the result anyways
+  options.silent = true; // We do not care for the result anyway
   OperationResult opResult = trx.document(collectionName, search, options);
 
   res = trx.finish(opResult.code);
@@ -463,6 +464,7 @@ static void ReplaceVocbaseCol(bool useCollection,
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -566,6 +568,7 @@ static void DocumentVocbaseVPack(
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -704,6 +707,8 @@ static void UpdateVocbaseVPack(bool useCollection,
   TRI_ASSERT(search.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -825,6 +830,7 @@ static void RemoveVocbaseVPack(
   TRI_ASSERT(toRemove.isObject());
 
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
 
@@ -1809,6 +1815,8 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // load collection
   SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
                                           collectionName, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+
   res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
