@@ -46,11 +46,11 @@ class EdgeIndexIterator final : public IndexIterator {
 
   EdgeIndexIterator(arangodb::Transaction* trx,
                     TRI_EdgeIndexHash_t const* index,
-                    arangodb::velocypack::Builder const& searchValues)
+                    arangodb::velocypack::Builder&& searchValues)
       : _trx(trx),
         _index(index),
         _searchValues(searchValues),
-        _keys(searchValues.slice()),
+        _keys(_searchValues.slice()),
         _position(0),
         _last(nullptr),
         _buffer(nullptr),
