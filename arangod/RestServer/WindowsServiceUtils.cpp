@@ -267,7 +267,7 @@ static void StartArangoService(bool WaitForRunning) {
 
   if (!StartService(arangoService, 0, nullptr)) {
     TRI_SYSTEM_ERROR();
-    std::cout << "StartService failed " << windowsErrorBuf << std::endl;
+    std::cerr << "StartService failed " << windowsErrorBuf << std::endl;
     CloseServiceHandle(arangoService);
     CloseServiceHandle(schSCManager);
     exit(EXIT_FAILURE);
@@ -466,7 +466,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  std::cout << bt << std::endl;
+  std::cerr << bt << std::endl;
   LOG_FATAL_WINDOWS(bt.c_str());
 
   HANDLE hFile =
