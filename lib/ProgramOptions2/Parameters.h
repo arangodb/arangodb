@@ -24,6 +24,8 @@
 #define ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H 1
 
 #include "Basics/Common.h"
+#include <limits>
+
 
 namespace arangodb {
 namespace options {
@@ -33,7 +35,7 @@ template <typename T>
 typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoll(value));
-  if (v < std::numeric_limits<T>::min() || v > std::numeric_limits<T>::max()) {
+  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -44,7 +46,7 @@ template <typename T>
 typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoull(value));
-  if (v < std::numeric_limits<T>::min() || v > std::numeric_limits<T>::max()) {
+  if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v);
@@ -136,8 +138,8 @@ struct NumericParameter : public Parameter {
   std::string set(std::string const& value) override {
     try {
       ValueType v = toNumber<ValueType>(value);
-      if (v >= std::numeric_limits<T>::min() &&
-          v <= std::numeric_limits<T>::max()) {
+      if (v >= (std::numeric_limits<T>::min)() &&
+          v <= (std::numeric_limits<T>::max)()) {
         *ptr = v;
         return "";
       }
@@ -208,14 +210,14 @@ template <typename T>
 struct BoundedParameter : public T {
   BoundedParameter(typename T::ValueType* ptr, typename T::ValueType min,
                    typename T::ValueType max)
-      : T(ptr), min(min), max(max) {}
+      : T(ptr), minimum(min), maximum(max) {}
 
   std::string set(std::string const& value) override {
     try {
       typename T::ValueType v = toNumber<typename T::ValueType>(value);
-      if (v >= std::numeric_limits<typename T::ValueType>::min() &&
-          v <= std::numeric_limits<typename T::ValueType>::max() && v >= min &&
-          v <= max) {
+      if (v >= (std::numeric_limits<typename T::ValueType>::min)() &&
+          v <= (std::numeric_limits<typename T::ValueType>::max)() && v >= minimum &&
+          v <= maximum) {
         *this->ptr = v;
         return "";
       }
@@ -226,8 +228,8 @@ struct BoundedParameter : public T {
            std::to_string(max) + ")";
   }
 
-  typename T::ValueType min;
-  typename T::ValueType max;
+  typename T::ValueType minimum;
+  typename T::ValueType maximum;
 };
 
 // concrete double number value type
