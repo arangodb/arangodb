@@ -1983,8 +1983,13 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   if (res == TRI_ERROR_NO_ERROR && writeMarker) {
     // now log the operation
     try {
+      VPackBuilder builder;
+      builder.openObject();
+      builder.add("name", VPackValue(newName));
+      builder.close();
+
       arangodb::wal::RenameCollectionMarker marker(
-          vocbase->_id, collection->_cid, std::string(newName));
+          vocbase->_id, collection->_cid, builder.slice());
       arangodb::wal::SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);

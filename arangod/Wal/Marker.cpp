@@ -24,9 +24,6 @@
 #include "Marker.h"
 #include "VocBase/document-collection.h"
 
-#undef DEBUG_WAL
-#undef DEBUG_WAL_DETAIL
-
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,27 +65,6 @@ Marker::~Marker() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief store a null-terminated string inside the marker
-////////////////////////////////////////////////////////////////////////////////
-
-void Marker::storeSizedString(size_t offset, std::string const& value) {
-  return storeSizedString(offset, value.c_str(), value.size());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store a null-terminated string inside the marker
-////////////////////////////////////////////////////////////////////////////////
-
-void Marker::storeSizedString(size_t offset, char const* value, size_t length) {
-  char* p = static_cast<char*>(begin()) + offset;
-
-  // store actual key
-  memcpy(p, value, length);
-  // append NUL byte
-  p[length] = '\0';
-}
-  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief store a vpack slice
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -102,48 +78,28 @@ void Marker::storeSlice(size_t offset, arangodb::velocypack::Slice const& slice)
 /// @brief return a hex representation of a marker part
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef DEBUG_WAL
 std::string Marker::hexifyPart(char const* offset, size_t length) const {
-  size_t destLength;
-  char* s = TRI_EncodeHexString(offset, length, &destLength);
-
-  if (s != nullptr) {
-    std::string result(s);
-    TRI_Free(TRI_CORE_MEM_ZONE, s);
-    return result;
-  }
-
-  return "ERROR";
+  return arangodb::basics::StringUtils::escapeHex(std::string(offset, length), ' ');
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a printable string representation of a marker part
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef DEBUG_WAL
 std::string Marker::stringifyPart(char const* offset, size_t length) const {
-  char* s = TRI_PrintableString(offset, length);
-
-  if (s != nullptr) {
-    std::string result(s);
-    TRI_Free(TRI_CORE_MEM_ZONE, s);
-    return result;
-  }
-
-  return "ERROR";
+  return arangodb::basics::StringUtils::escapeC(std::string(offset, length));
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print the marker in binary form
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef DEBUG_WAL
-void Marker::dumpBinary() const {
-  std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n\n";
+std::string Marker::stringify() const {
+  auto const* m = reinterpret_cast<TRI_df_marker_t const*>(begin());
+  return std::string("[") + std::string(TRI_NameMarkerDatafile(m)) + 
+         ", size " + std::to_string(size()) + 
+         ", data " + stringifyPart(begin(), size()) + "]";
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -174,10 +130,6 @@ CreateDatabaseMarker::CreateDatabaseMarker(TRI_voc_tick_t databaseId,
   m->_databaseId = databaseId;
 
   storeSlice(sizeof(database_create_marker_t), properties);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,24 +137,6 @@ CreateDatabaseMarker::CreateDatabaseMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateDatabaseMarker::~CreateDatabaseMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void CreateDatabaseMarker::dump() const {
-  database_create_marker_t* m =
-      reinterpret_cast<database_create_marker_t*>(begin());
-
-  std::cout << "WAL CREATE DATABASE MARKER FOR DB " << m->_databaseId
-            << ", PROPERTIES " << properties() << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -214,10 +148,6 @@ DropDatabaseMarker::DropDatabaseMarker(TRI_voc_tick_t databaseId)
       reinterpret_cast<database_drop_marker_t*>(begin());
 
   m->_databaseId = databaseId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,24 +155,6 @@ DropDatabaseMarker::DropDatabaseMarker(TRI_voc_tick_t databaseId)
 ////////////////////////////////////////////////////////////////////////////////
 
 DropDatabaseMarker::~DropDatabaseMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void DropDatabaseMarker::dump() const {
-  database_drop_marker_t* m =
-      reinterpret_cast<database_drop_marker_t*>(begin());
-
-  std::cout << "WAL DROP DATABASE MARKER FOR DB " << m->_databaseId
-            << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -261,10 +173,6 @@ CreateCollectionMarker::CreateCollectionMarker(TRI_voc_tick_t databaseId,
   m->_collectionId = collectionId;
 
   storeSlice(sizeof(collection_create_marker_t), properties);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,25 +180,6 @@ CreateCollectionMarker::CreateCollectionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateCollectionMarker::~CreateCollectionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void CreateCollectionMarker::dump() const {
-  collection_create_marker_t* m =
-      reinterpret_cast<collection_create_marker_t*>(begin());
-
-  std::cout << "WAL CREATE COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", PROPERTIES "
-            << properties() << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -304,10 +193,6 @@ DropCollectionMarker::DropCollectionMarker(TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,45 +202,22 @@ DropCollectionMarker::DropCollectionMarker(TRI_voc_tick_t databaseId,
 DropCollectionMarker::~DropCollectionMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void DropCollectionMarker::dump() const {
-  collection_drop_marker_t* m =
-      reinterpret_cast<collection_drop_marker_t*>(begin());
-
-  std::cout << "WAL DROP COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 RenameCollectionMarker::RenameCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t collectionId,
-                                               std::string const& name)
+                                               VPackSlice const& properties)
     : Marker(
           TRI_WAL_MARKER_RENAME_COLLECTION,
-          sizeof(collection_rename_marker_t) + alignedSize(name.size() + 1)) {
+          sizeof(collection_rename_marker_t) + alignedSize(properties.byteSize())) {
   collection_rename_marker_t* m =
       reinterpret_cast<collection_rename_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
 
-  storeSizedString(sizeof(collection_rename_marker_t), name);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
+  storeSlice(sizeof(collection_rename_marker_t), properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,25 +225,6 @@ RenameCollectionMarker::RenameCollectionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 RenameCollectionMarker::~RenameCollectionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void RenameCollectionMarker::dump() const {
-  collection_rename_marker_t* m =
-      reinterpret_cast<collection_rename_marker_t*>(begin());
-
-  std::cout << "WAL RENAME COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", NAME " << name()
-            << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -400,10 +243,6 @@ ChangeCollectionMarker::ChangeCollectionMarker(TRI_voc_tick_t databaseId,
   m->_collectionId = collectionId;
 
   storeSlice(sizeof(collection_change_marker_t), properties);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,25 +250,6 @@ ChangeCollectionMarker::ChangeCollectionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 ChangeCollectionMarker::~ChangeCollectionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void ChangeCollectionMarker::dump() const {
-  collection_change_marker_t* m =
-      reinterpret_cast<collection_change_marker_t*>(begin());
-
-  std::cout << "WAL CHANGE COLLECTION MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", PROPERTIES "
-            << properties() << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -449,10 +269,6 @@ CreateIndexMarker::CreateIndexMarker(TRI_voc_tick_t databaseId,
   m->_indexId = indexId;
 
   storeSlice(sizeof(index_create_marker_t), properties);
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,24 +276,6 @@ CreateIndexMarker::CreateIndexMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateIndexMarker::~CreateIndexMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void CreateIndexMarker::dump() const {
-  index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
-
-  std::cout << "WAL CREATE INDEX MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", INDEX " << m->_indexId
-            << ", PROPERTIES " << properties() << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -492,10 +290,6 @@ DropIndexMarker::DropIndexMarker(TRI_voc_tick_t databaseId,
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_indexId = indexId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,24 +297,6 @@ DropIndexMarker::DropIndexMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 DropIndexMarker::~DropIndexMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void DropIndexMarker::dump() const {
-  index_drop_marker_t* m = reinterpret_cast<index_drop_marker_t*>(begin());
-
-  std::cout << "WAL DROP INDEX MARKER FOR DB " << m->_databaseId
-            << ", COLLECTION " << m->_collectionId << ", INDEX " << m->_indexId
-            << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -535,10 +311,6 @@ BeginTransactionMarker::BeginTransactionMarker(TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,25 +318,6 @@ BeginTransactionMarker::BeginTransactionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 BeginTransactionMarker::~BeginTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void BeginTransactionMarker::dump() const {
-  transaction_begin_marker_t* m =
-      reinterpret_cast<transaction_begin_marker_t*>(begin());
-
-  std::cout << "WAL TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -579,10 +332,6 @@ CommitTransactionMarker::CommitTransactionMarker(TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -590,25 +339,6 @@ CommitTransactionMarker::CommitTransactionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CommitTransactionMarker::~CommitTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void CommitTransactionMarker::dump() const {
-  transaction_commit_marker_t* m =
-      reinterpret_cast<transaction_commit_marker_t*>(begin());
-
-  std::cout << "WAL TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -623,10 +353,6 @@ AbortTransactionMarker::AbortTransactionMarker(TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -634,25 +360,6 @@ AbortTransactionMarker::AbortTransactionMarker(TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 AbortTransactionMarker::~AbortTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void AbortTransactionMarker::dump() const {
-  transaction_abort_marker_t* m =
-      reinterpret_cast<transaction_abort_marker_t*>(begin());
-
-  std::cout << "WAL TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", SIZE: " << size()
-            << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -669,10 +376,6 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
   m->_externalId = externalId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -680,25 +383,6 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 BeginRemoteTransactionMarker::~BeginRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void BeginRemoteTransactionMarker::dump() const {
-  transaction_remote_begin_marker_t* m =
-      reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
-
-  std::cout << "WAL REMOTE TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
-            << m->_externalId << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -715,10 +399,6 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
   m->_externalId = externalId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,25 +406,6 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 CommitRemoteTransactionMarker::~CommitRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void CommitRemoteTransactionMarker::dump() const {
-  transaction_remote_commit_marker_t* m =
-      reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
-
-  std::cout << "WAL REMOTE_TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
-            << m->_externalId << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -761,10 +422,6 @@ AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
   m->_externalId = externalId;
-
-#ifdef DEBUG_WAL
-  dump();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -772,25 +429,6 @@ AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef DEBUG_WAL
-void AbortRemoteTransactionMarker::dump() const {
-  transaction_remote_abort_marker_t* m =
-      reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
-
-  std::cout << "WAL REMOTE TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
-            << ", TRANSACTION " << m->_transactionId << ", EXTERNAL ID "
-            << m->_externalId << ", SIZE: " << size() << "\n";
-
-#ifdef DEBUG_WAL_DETAIL
-  dumpBinary();
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker

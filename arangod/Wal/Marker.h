@@ -272,6 +272,14 @@ class Marker {
   inline uint32_t size() const { return _size; }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a printable representation of the marker
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string stringify() const;
+
+ protected:
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return a hex representation of a marker part
   //////////////////////////////////////////////////////////////////////////////
 
@@ -283,26 +291,6 @@ class Marker {
 
   std::string stringifyPart(char const*, size_t) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief print the marker in binary form
-  //////////////////////////////////////////////////////////////////////////////
-
-  void dumpBinary() const;
-
- protected:
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief store a null-terminated string inside the marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  void storeSizedString(size_t, std::string const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief store a null-terminated string inside the marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  void storeSizedString(size_t, char const*, size_t);
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store a vpack slice
   //////////////////////////////////////////////////////////////////////////////
@@ -353,8 +341,6 @@ class CreateDatabaseMarker : public Marker {
   inline char* properties() const {
     return begin() + sizeof(database_create_marker_t);
   }
-
-  void dump() const;
 };
 
 class DropDatabaseMarker : public Marker {
@@ -362,9 +348,6 @@ class DropDatabaseMarker : public Marker {
   explicit DropDatabaseMarker(TRI_voc_tick_t);
 
   ~DropDatabaseMarker();
-
- public:
-  void dump() const;
 };
 
 class CreateCollectionMarker : public Marker {
@@ -377,8 +360,6 @@ class CreateCollectionMarker : public Marker {
   inline char* properties() const {
     return begin() + sizeof(collection_create_marker_t);
   }
-
-  void dump() const;
 };
 
 class DropCollectionMarker : public Marker {
@@ -386,14 +367,11 @@ class DropCollectionMarker : public Marker {
   DropCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t);
 
   ~DropCollectionMarker();
-
- public:
-  void dump() const;
 };
 
 class RenameCollectionMarker : public Marker {
  public:
-  RenameCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
+  RenameCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
 
   ~RenameCollectionMarker();
 
@@ -401,8 +379,6 @@ class RenameCollectionMarker : public Marker {
   inline char* name() const {
     return begin() + sizeof(collection_rename_marker_t);
   }
-
-  void dump() const;
 };
 
 class ChangeCollectionMarker : public Marker {
@@ -415,8 +391,6 @@ class ChangeCollectionMarker : public Marker {
   inline char* properties() const {
     return begin() + sizeof(collection_change_marker_t);
   }
-
-  void dump() const;
 };
 
 class CreateIndexMarker : public Marker {
@@ -430,8 +404,6 @@ class CreateIndexMarker : public Marker {
   inline char* properties() const {
     return begin() + sizeof(index_create_marker_t);
   }
-
-  void dump() const;
 };
 
 class DropIndexMarker : public Marker {
@@ -439,9 +411,6 @@ class DropIndexMarker : public Marker {
   DropIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
 
   ~DropIndexMarker();
-
- public:
-  void dump() const;
 };
 
 class BeginTransactionMarker : public Marker {
@@ -449,9 +418,6 @@ class BeginTransactionMarker : public Marker {
   BeginTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
   ~BeginTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class CommitTransactionMarker : public Marker {
@@ -459,9 +425,6 @@ class CommitTransactionMarker : public Marker {
   CommitTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
   ~CommitTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class AbortTransactionMarker : public Marker {
@@ -469,9 +432,6 @@ class AbortTransactionMarker : public Marker {
   AbortTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
   ~AbortTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class BeginRemoteTransactionMarker : public Marker {
@@ -479,9 +439,6 @@ class BeginRemoteTransactionMarker : public Marker {
   BeginRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
   ~BeginRemoteTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class CommitRemoteTransactionMarker : public Marker {
@@ -489,9 +446,6 @@ class CommitRemoteTransactionMarker : public Marker {
   CommitRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
   ~CommitRemoteTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class AbortRemoteTransactionMarker : public Marker {
@@ -499,9 +453,6 @@ class AbortRemoteTransactionMarker : public Marker {
   AbortRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
   ~AbortRemoteTransactionMarker();
-
- public:
-  void dump() const;
 };
 
 class VPackDocumentMarker : public Marker {
