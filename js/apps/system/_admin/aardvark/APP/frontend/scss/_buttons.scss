@@ -79,7 +79,7 @@ button.disabled,
 .addButton {
   @extend %clickable;
   @extend %icon-positive;
-  font-size: 18pt;
+  font-size: 16pt;
   margin-right: 7px;
   margin-top: 2px;
   position: relative;
@@ -87,10 +87,10 @@ button.disabled,
 
 .deleteButton {
 
-  span {
+  i {
     @extend %clickable;
     @extend %icon-negative;
-    font-size: 18pt;
+    font-size: 16pt;
     padding-right: 3px;
     position: relative;
     top: 3px;
