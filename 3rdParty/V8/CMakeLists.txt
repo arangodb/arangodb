@@ -132,13 +132,6 @@ endif()
 list(APPEND V8_COMPILE_ARGS icui18n icuuc icudata)
 list(APPEND V8_COMPILE_ARGS v8)
 
-ExternalProject_Add(v8_build
-  BUILD_IN_SOURCE TRUE
-  SOURCE_DIR "${V8_DIR}"
-  CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${V8_GYP_ARGS}
-  BUILD_COMMAND $(MAKE) ${V8_COMPILE_ARGS} 
-  INSTALL_COMMAND "")
-
 get_cmake_property(_variableNames VARIABLES)
 foreach (_variableName ${_variableNames})
     message(STATUS "${_variableName}=${${_variableName}}")
@@ -146,17 +139,53 @@ endforeach ()
 #--------------------------------------------------------------------------------
 MESSAGE(${V8_GYP_ARGS})
 if (MSBUILD)
+  set(V8_TARGETS "v8\;v8_libbase\;v8_libplatform")
+  set(ICU_TARGETS "icudata\;icui18n\;icuuc")
+  message("TARGETS: ${V8_TARGETS}")
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE TRUE
+    WORKING_DIRECTORY ${V8_DIR}/build
     SOURCE_DIR "${V8_DIR}"
     CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
-    BUILD_COMMAND msbuild ${V8_DIR}/build/all.sln '/t:All' '/p:Configuration=Debug' '/p:Platform=${MS_TARGET_PLATFORM}'
- #   BUILD_COMMAND msbuild ${V8_DIR}/build/all.sln '/t:v8;v8_libbase;v8_libplatform' '/p:Configuration=Debug' '/p:Platform=${MS_TARGET_PLATFORM}'
+    BUILD_COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
     INSTALL_COMMAND "")
-#  ExternalProject_Add_Step(v8_build icu_build
-#    COMMAND msbuild ${V8_DIR}/third_party/icu/icu.sln /t:icudata;icui18n;icuuc /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
-#    DEPENDEES configure
-#    DEPENDERS build)
+
+  # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
+  ExternalProject_Add_Step(v8_build v8_build_v8
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+  ExternalProject_Add_Step(v8_build v8_build_v8_libbase
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8_libbase /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+  ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
+    WORKING_DIRECTORY ${V8_DIR}/build
+    COMMAND msbuild all.sln /t:v8_libplatform /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+
+  # and now ICU...
+  ExternalProject_Add_Step(v8_build icu_build_icudata
+    WORKING_DIRECTORY ${V8_DIR}/third_party/icu/
+    COMMAND msbuild icu.sln /t:icudata /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+
+  ExternalProject_Add_Step(v8_build icu_build_icui18n
+    WORKING_DIRECTORY ${V8_DIR}/third_party/icu/
+    COMMAND msbuild icu.sln /t:icui18n /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+
+  ExternalProject_Add_Step(v8_build icu_build_icuuc
+    WORKING_DIRECTORY ${V8_DIR}/third_party/icu/
+    COMMAND msbuild icu.sln /t:icuuc /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
+    DEPENDEES configure
+    DEPENDERS build)
+
 
 else()
   ExternalProject_Add(v8_build
