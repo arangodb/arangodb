@@ -55,7 +55,7 @@ list(APPEND V8_GYP_ARGS
 )
 
 if (DEBUG)
-  list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
+#  list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
 endif ()
 
 set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
@@ -214,14 +214,22 @@ set(ICU_INCLUDE_DIR
   FORCE
 )
 
-set(ICU_LIBS
-  "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
-  ${libev_BINARY_DIR}/libev.a
-  CACHE INTERNAL
-  "ICU: Libraries"
-  FORCE
-)
-
+if (MSBUILD)
+  set(ICU_BIN_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
+  set(ICU_LIBS
+    "${ICU_BIN_DIR}/lib/libicui18n.lib;${ICU_BIN_DIR}/lib/libicuuc.lib;${ICU_BIN_DIR}/lib/libicudata.lib"
+    CACHE INTERNAL
+    "ICU: Libraries"
+    FORCE
+    )
+else()
+  set(ICU_LIBS
+    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
+    CACHE INTERNAL
+    "ICU: Libraries"
+    FORCE
+    )
+endif()
 ################################################################################
 ## V8 EXPORTS
 ################################################################################
@@ -240,10 +248,19 @@ set(V8_INCLUDE_DIR
   FORCE
 )
 
-set(V8_LIBS
-  "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-  ${libev_BINARY_DIR}/libev.a
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Libraries"
-  FORCE
-)
+if (MSBUILD)
+  set(V8_BIN_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
+  set(V8_LIBS
+    "${V8_BIN_DIR}/lib/libv8_base.lib;${V8_BIN_DIR}/lib/libv8_libbase.a;${V8_BIN_DIR}/lib/libv8_libplatform.a;${V8_BIN_DIR}/lib/libv8_nosnapshot.a"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+    FORCE
+    )
+else()
+  set(V8_LIBS
+    "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+    FORCE
+    )
+endif()

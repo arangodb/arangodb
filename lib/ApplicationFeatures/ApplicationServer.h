@@ -24,6 +24,7 @@
 #define APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
+#include <functional>
 
 namespace arangodb {
 namespace options {

@@ -717,9 +717,8 @@
 #else
 #define TRI_PLATFORM "win32"
 #endif
-
 // Visual Studio 2013 does not support noexcept, higher versions do
-#if defined(_MSC_FULL_VER) && _MSC_FULL_VER >= 180021114
+#if defined(_MSC_FULL_VER) && _MSC_FULL_VER > 180031101 
 #else
 #define noexcept throw()
 #endif
