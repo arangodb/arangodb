@@ -64,19 +64,6 @@ v8::Handle<v8::Value> V8RevisionId(v8::Isolate* isolate, TRI_voc_rid_t rid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 document id value from the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> V8DocumentId(v8::Isolate* isolate,
-                                   std::string const& collectionName,
-                                   std::string const& key) {
-  std::string const&& id =
-      DocumentHelper::assembleDocumentId(collectionName, key);
-
-  return TRI_V8_STD_STRING(id);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 

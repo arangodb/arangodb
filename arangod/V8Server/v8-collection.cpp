@@ -2645,29 +2645,28 @@ static void JS_DatafilesVocbaseCol(
   v8::Handle<v8::Array> journals = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("journals"), journals);
 
-  for (size_t i = 0; i < structure._journals._length; ++i) {
-    journals->Set((uint32_t)i, TRI_V8_STRING(structure._journals._buffer[i]));
+  uint32_t i = 0;
+  for (auto& it : structure.journals) {
+    journals->Set(++i, TRI_V8_STD_STRING(it));
   }
 
   // compactors
   v8::Handle<v8::Array> compactors = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("compactors"), compactors);
 
-  for (size_t i = 0; i < structure._compactors._length; ++i) {
-    compactors->Set((uint32_t)i,
-                    TRI_V8_STRING(structure._compactors._buffer[i]));
+  i = 0;
+  for (auto& it : structure.compactors) {
+    compactors->Set(++i, TRI_V8_STD_STRING(it));
   }
 
   // datafiles
   v8::Handle<v8::Array> datafiles = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("datafiles"), datafiles);
 
-  for (size_t i = 0; i < structure._datafiles._length; ++i) {
-    datafiles->Set((uint32_t)i, TRI_V8_STRING(structure._datafiles._buffer[i]));
+  i = 0;
+  for (auto& it : structure.datafiles) {
+    datafiles->Set(++i, TRI_V8_STD_STRING(it));
   }
-
-  // free result
-  TRI_DestroyFileStructureCollection(&structure);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

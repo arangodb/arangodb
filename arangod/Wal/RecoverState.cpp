@@ -773,8 +773,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         ++state->errorCount;
         return state->canContinue();
       } else {
-        char* p = TRI_DuplicateString(TRI_CORE_MEM_ZONE, filename.c_str(), filename.size());
-        TRI_PushBackVectorString(&document->_indexFiles, p);
+        document->_indexFiles.emplace_back(filename);
       }
 
       break;

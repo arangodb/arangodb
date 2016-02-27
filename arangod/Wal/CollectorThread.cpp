@@ -1115,11 +1115,10 @@ int CollectorThread::syncDatafileCollection(
   // note: only journals need to be handled here as the journal is the
   // only place that's ever written to. if a journal is full, it will have been
   // sealed and synced already
-  size_t const n = collection->_journals._length;
+  size_t const n = collection->_journals.size();
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_datafile_t* datafile =
-        static_cast<TRI_datafile_t*>(collection->_journals._buffer[i]);
+    TRI_datafile_t* datafile = collection->_journals[i];
 
     // we only need to care about physical datafiles
     if (!datafile->isPhysical(datafile)) {
@@ -1180,11 +1179,11 @@ char* CollectorThread::nextFreeMarkerPosition(
   }
 
   while (collection->_state == TRI_COL_STATE_WRITE) {
-    size_t const n = collection->_journals._length;
+    size_t const n = collection->_journals.size();
 
     for (size_t i = 0; i < n; ++i) {
       // select datafile
-      datafile = static_cast<TRI_datafile_t*>(collection->_journals._buffer[i]);
+      datafile = collection->_journals[i];
 
       // try to reserve space
 

@@ -27,6 +27,7 @@
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
@@ -470,23 +471,17 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   // add the file sizes for datafiles and journals
   TRI_collection_t* base = this;
 
-  for (size_t i = 0; i < base->_datafiles._length; ++i) {
-    auto df = static_cast<TRI_datafile_t const*>(base->_datafiles._buffer[i]);
-
+  for (auto& df : base->_datafiles) {
     info->_datafileSize += (int64_t)df->_initSize;
     ++info->_numberDatafiles;
   }
 
-  for (size_t i = 0; i < base->_journals._length; ++i) {
-    auto df = static_cast<TRI_datafile_t const*>(base->_journals._buffer[i]);
-
+  for (auto& df : base->_journals) {
     info->_journalfileSize += (int64_t)df->_initSize;
     ++info->_numberJournalfiles;
   }
 
-  for (size_t i = 0; i < base->_compactors._length; ++i) {
-    auto df = static_cast<TRI_datafile_t const*>(base->_compactors._buffer[i]);
-
+  for (auto& df : base->_compactors) {
     info->_compactorfileSize += (int64_t)df->_initSize;
     ++info->_numberCompactorfiles;
   }
@@ -1835,7 +1830,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     }
 
-    TRI_PushBackVectorPointer(&document->_journals, journal);
+    document->_journals.emplace_back(journal);
   }
 
   return journal;
@@ -1969,7 +1964,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 
 bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
                                          size_t position, bool isCompactor) {
-  TRI_vector_pointer_t* vector;
+  std::vector<TRI_datafile_t*>* vector;
 
   // either use a journal or a compactor
   if (isCompactor) {
@@ -1979,22 +1974,22 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
   }
 
   // no journal at this position
-  if (vector->_length <= position) {
+  if (vector->size() <= position) {
     TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     return false;
   }
 
   // seal and rename datafile
   TRI_datafile_t* journal =
-      static_cast<TRI_datafile_t*>(vector->_buffer[position]);
+      static_cast<TRI_datafile_t*>(vector->at(position));
   int res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to seal datafile '" << journal->getName(journal) << "': " << TRI_last_error();
 
     if (!isCompactor) {
-      TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&document->_datafiles, journal);
+      vector->erase(vector->begin() + position);
+      document->_datafiles.emplace_back(journal);
     }
 
     return false;
@@ -2014,8 +2009,8 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
     if (!ok) {
       LOG(ERR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
-      TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&document->_datafiles, journal);
+      vector->erase(vector->begin() + position);
+      document->_datafiles.emplace_back(journal);
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
       return false;
@@ -2027,8 +2022,8 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
   }
 
   if (!isCompactor) {
-    TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&document->_datafiles, journal);
+    vector->erase(vector->begin() + position);
+    document->_datafiles.emplace_back(journal);
   }
 
   return true;
@@ -2762,21 +2757,15 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
   }
 
   // construct filename
-  char* number = TRI_StringUInt64(idx->id());
-  char* name = TRI_Concatenate3String("index-", number, ".json");
-  char* filename = TRI_Concatenate2File(document->_directory, name);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+  std::string name("index-" + std::to_string(idx->id()) + ".json");
+  std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
 
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   VPackSlice const idxSlice = builder->slice();
   // and save
   bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      filename, idxSlice, document->_vocbase->_settings.forceSyncProperties);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+      filename.c_str(), idxSlice, document->_vocbase->_settings.forceSyncProperties);
 
   if (!ok) {
     LOG(ERR) << "cannot save index definition: " << TRI_last_error();
@@ -3812,10 +3801,10 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   if (document->_state == TRI_COL_STATE_WRITE) {
-    size_t const n = document->_journals._length;
+    size_t const n = document->_journals.size();
 
     if (n > 0) {
-      TRI_ASSERT(document->_journals._buffer[0] != nullptr);
+      TRI_ASSERT(document->_journals[0] != nullptr);
       TRI_CloseDatafileDocumentCollection(document, 0, false);
 
       res = TRI_ERROR_NO_ERROR;

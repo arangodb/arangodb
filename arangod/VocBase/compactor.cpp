@@ -189,11 +189,7 @@ static TRI_datafile_t* CreateCompactor(TRI_document_collection_t* document,
   TRI_collection_t* collection = document;
 
   // reserve room for one additional entry
-  if (TRI_ReserveVectorPointer(&collection->_compactors, 1) !=
-      TRI_ERROR_NO_ERROR) {
-    // could not get memory, exit early
-    return nullptr;
-  }
+  collection->_compactors.reserve(collection->_compactors.size() + 1);
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -201,11 +197,7 @@ static TRI_datafile_t* CreateCompactor(TRI_document_collection_t* document,
       document, fid, static_cast<TRI_voc_size_t>(maximalSize), true);
 
   if (compactor != nullptr) {
-    int res TRI_UNUSED =
-        TRI_PushBackVectorPointer(&collection->_compactors, compactor);
-
-    // we have reserved space before, so we can be sure the push succeeds
-    TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
+    collection->_compactors.emplace_back(compactor);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -235,14 +227,14 @@ static int CopyMarker(TRI_document_collection_t* document,
 /// @brief locate a datafile, identified by fid, in a vector of datafiles
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LocateDatafile(TRI_vector_pointer_t const* vector,
-                           const TRI_voc_fid_t fid, size_t* position) {
-  size_t const n = vector->_length;
+static bool LocateDatafile(std::vector<TRI_datafile_t*> const& vector,
+                           TRI_voc_fid_t fid, size_t* position) {
+  size_t const n = vector.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto df = static_cast<TRI_datafile_t const*>(vector->_buffer[i]);
+    auto datafile = vector[i];
 
-    if (df->_fid == fid) {
+    if (datafile->_fid == fid) {
       *position = i;
       return true;
     }
@@ -336,7 +328,7 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
-  compaction_context_t* context = static_cast<compaction_context_t*>(data);
+  auto* context = static_cast<compaction_context_t*>(data);
   TRI_datafile_t* compactor = context->_compactor;
 
   TRI_document_collection_t* document = context->_document;
@@ -377,7 +369,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     // must acquire a write-lock as we're about to change the datafiles vector
     TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-    if (!LocateDatafile(&document->_datafiles, datafile->_fid, &i)) {
+    if (!LocateDatafile(document->_datafiles, datafile->_fid, &i)) {
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
@@ -386,9 +378,9 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     }
 
     // put the compactor in place of the datafile
-    document->_datafiles._buffer[i] = compactor;
+    document->_datafiles[i] = compactor;
 
-    if (!LocateDatafile(&document->_compactors, compactor->_fid, &i)) {
+    if (!LocateDatafile(document->_compactors, compactor->_fid, &i)) {
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
@@ -397,7 +389,7 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
     }
 
     // remove the compactor from the list of compactors
-    TRI_RemoveVectorPointer(&document->_compactors, i);
+    document->_compactors.erase(document->_compactors.begin() + i);
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -508,7 +500,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
 
   // remove the compactor from the list of compactors
-  if (!LocateDatafile(&document->_compactors, compactor->_fid, &i)) {
+  if (!LocateDatafile(document->_compactors, compactor->_fid, &i)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
@@ -516,7 +508,7 @@ static int RemoveCompactor(TRI_document_collection_t* document,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_RemoveVectorPointer(&document->_compactors, i);
+  document->_compactors.erase(document->_compactors.begin() + i);
 
   TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -550,7 +542,7 @@ static int RemoveDatafile(TRI_document_collection_t* document,
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
 
   size_t i;
-  if (!LocateDatafile(&document->_datafiles, df->_fid, &i)) {
+  if (!LocateDatafile(document->_datafiles, df->_fid, &i)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
@@ -558,7 +550,7 @@ static int RemoveDatafile(TRI_document_collection_t* document,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_RemoveVectorPointer(&document->_datafiles, i);
+  document->_datafiles.erase(document->_datafiles.begin() + i);
   TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   // update dfi
@@ -762,7 +754,7 @@ static void CompactifyDatafiles(
   // must acquire a write-lock as we're about to change the datafiles vector
   TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  if (!LocateDatafile(&document->_compactors, compactor->_fid, &j)) {
+  if (!LocateDatafile(document->_compactors, compactor->_fid, &j)) {
     // not found
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -893,9 +885,9 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
     return false;
   }
 
-  size_t const n = document->_datafiles._length;
+  size_t const n = document->_datafiles.size();
 
-  if (n == 0 || document->_compactors._length > 0) {
+  if (n == 0 || document->_compactors.size() > 0) {
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
     // failed
@@ -947,7 +939,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
   for (size_t i = start; i < n; ++i) {
     TRI_datafile_t* df =
-        static_cast<TRI_datafile_t*>(document->_datafiles._buffer[i]);
+        static_cast<TRI_datafile_t*>(document->_datafiles[i]);
 
     TRI_ASSERT(df != nullptr);
 

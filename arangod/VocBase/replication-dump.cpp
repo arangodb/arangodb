@@ -169,16 +169,11 @@ static int AppendCollection(TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
 /// data range
 ////////////////////////////////////////////////////////////////////////////////
 
-static void IterateDatafiles(TRI_vector_pointer_t const* datafiles,
+static void IterateDatafiles(std::vector<TRI_datafile_t*> const& datafiles,
                              std::vector<df_entry_t>& result,
                              TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                              bool isJournal) {
-  size_t const n = datafiles->_length;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto df =
-        static_cast<TRI_datafile_t const*>(TRI_AtVectorPointer(datafiles, i));
-
+  for (auto& df : datafiles) {
     df_entry_t entry = {df, df->_dataMin, df->_dataMax, df->_tickMax,
                         isJournal};
 
@@ -220,8 +215,8 @@ static std::vector<df_entry_t> GetRangeDatafiles(
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
   try {
-    IterateDatafiles(&document->_datafiles, datafiles, dataMin, dataMax, false);
-    IterateDatafiles(&document->_journals, datafiles, dataMin, dataMax, true);
+    IterateDatafiles(document->_datafiles, datafiles, dataMin, dataMax, false);
+    IterateDatafiles(document->_journals, datafiles, dataMin, dataMax, true);
   } catch (...) {
     TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
     throw;

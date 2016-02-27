@@ -114,24 +114,24 @@ class Slice;
 /// @brief collection file structure
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_col_file_structure_s {
-  TRI_vector_string_t _journals;
-  TRI_vector_string_t _compactors;
-  TRI_vector_string_t _datafiles;
-  TRI_vector_string_t _indexes;
-} TRI_col_file_structure_t;
+struct TRI_col_file_structure_t {
+  std::vector<std::string> journals;
+  std::vector<std::string> compactors;
+  std::vector<std::string> datafiles;
+  std::vector<std::string> indexes;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_col_state_e {
   TRI_COL_STATE_CLOSED = 1,      // collection is closed
   TRI_COL_STATE_READ = 2,        // collection is opened read only
   TRI_COL_STATE_WRITE = 3,       // collection is opened read/append
   TRI_COL_STATE_OPEN_ERROR = 4,  // an error has occurred while opening
   TRI_COL_STATE_WRITE_ERROR = 5  // an error has occurred while writing
-} TRI_col_state_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection version
@@ -311,10 +311,10 @@ struct TRI_collection_t {
 
   char* _directory;  // directory of the collection
 
-  TRI_vector_pointer_t _datafiles;   // all datafiles
-  TRI_vector_pointer_t _journals;    // all journals
-  TRI_vector_pointer_t _compactors;  // all compactor files
-  TRI_vector_string_t _indexFiles;   // all index filenames
+  std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
+  std::vector<TRI_datafile_t*> _journals;    // all journals
+  std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+  std::vector<std::string> _indexFiles;   // all index filenames
 
   TRI_collection_t() {}
 
@@ -411,12 +411,6 @@ int TRI_CloseCollection(TRI_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_col_file_structure_t TRI_FileStructureCollectionDirectory(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the information
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyFileStructureCollection(TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers in the collection's journals
