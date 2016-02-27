@@ -27,7 +27,6 @@
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
-#include "Basics/vector.h"
 
 // #define DEBUG_JSON_SHAPER 1
 

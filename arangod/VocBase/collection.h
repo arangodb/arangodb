@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
@@ -270,7 +269,7 @@ class VocbaseCollectionInfo {
   /// @brief saves a parameter info block to file
   //////////////////////////////////////////////////////////////////////////////
 
-  int saveToFile(char const*, bool) const;
+  int saveToFile(std::string const&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates settings for this collection info.
@@ -309,17 +308,18 @@ struct TRI_collection_t {
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
 
-  char* _directory;  // directory of the collection
+  std::string _directory;  // directory of the collection
 
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
   std::vector<std::string> _indexFiles;   // all index filenames
 
-  TRI_collection_t() {}
+  TRI_collection_t()
+      : _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
-      : _info(info) {}
+      : _info(info), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   ~TRI_collection_t() {}
 };

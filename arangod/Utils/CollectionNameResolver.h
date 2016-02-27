@@ -197,33 +197,25 @@ class CollectionNameResolver {
     if (ServerState::instance()->isDBServer()) {
       READ_LOCKER(readLocker, _vocbase->_collectionsLock);
 
-      TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
-          TRI_LookupByKeyAssociativePointer(&_vocbase->_collectionsById, &cid));
+      auto it = _vocbase->_collectionsById.find(cid);
 
-      if (nullptr != found) {
-        if (found->_planId == 0) {
+      if (it != _vocbase->_collectionsById.end()) {
+        if ((*it).second->_planId == 0) {
           // DBserver local case
-          char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (n != nullptr) {
-            name = n;
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-          }
+          name = (*it).second->name();
         } else {
           // DBserver case of a shard:
-          name = arangodb::basics::StringUtils::itoa(found->_planId);
+          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
           std::shared_ptr<CollectionInfo> ci =
-              ClusterInfo::instance()->getCollection(found->_dbName, name);
+              ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
           name = ci->name();  // can be empty, if collection unknown
         }
       }
     } else {
       // exactly as in the non-cluster case
-      char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-      if (nullptr != n) {
-        name = n;
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-      }
+      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
     }
+
     if (name.empty()) {
       name = "_unknown";
     }

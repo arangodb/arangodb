@@ -136,8 +136,7 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
   collection->_tickMax = 0;
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
-  collection->_directory = TRI_DuplicateString(
-      TRI_UNKNOWN_MEM_ZONE, directory.c_str(), directory.size());
+  collection->_directory = directory;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,7 +293,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   bool stop = false;
 
   // check files within the directory
-  std::vector<std::string> files = TRI_FilesDirectory(collection->_directory);
+  std::vector<std::string> files = TRI_FilesDirectory(collection->_directory.c_str());
 
   for (auto const& file : files) {
     std::vector<std::string> parts = StringUtils::split(file, '.');
@@ -709,7 +708,6 @@ TRI_collection_t* TRI_CreateCollection(
     try {
       TRI_collection_t* tmp = new TRI_collection_t(parameters);
       collection = tmp;
-      // new TRI_collection_t(parameters);
     } catch (std::exception&) {
       collection = nullptr;
     }
@@ -722,9 +720,6 @@ TRI_collection_t* TRI_CreateCollection(
   }
 
   InitCollection(vocbase, collection, dirname, parameters);
-  /* PANAIA: 1) the parameter file if it exists must be removed
-             2) if collection
-  */
 
   return collection;
 }
@@ -747,11 +742,6 @@ void TRI_DestroyCollection(TRI_collection_t* collection) {
   }
   for (auto& it : collection->_compactors) {
     TRI_FreeDatafile(it);
-  }
-
-  if (collection->_directory != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
-    collection->_directory = nullptr;
   }
 }
 
@@ -1125,7 +1115,7 @@ void VocbaseCollectionInfo::setDeleted(bool deleted) { _deleted = deleted; }
 
 void VocbaseCollectionInfo::clearKeyOptions() { _keyOptions.reset(); }
 
-int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
+int VocbaseCollectionInfo::saveToFile(std::string const& path, bool forceSync) const {
   std::string filename = basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
 
   std::unique_ptr<TRI_json_t> json(CreateJsonCollectionInfo(*this));
@@ -1425,12 +1415,6 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
     if (!ok) {
       LOG(DEBUG) << "cannot open '" << collection->_directory
                  << "', check failed";
-
-      if (collection->_directory != nullptr) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
-        collection->_directory = nullptr;
-      }
-
       return nullptr;
     }
 

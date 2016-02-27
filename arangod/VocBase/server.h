@@ -29,7 +29,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Basics/DataProtector.h"
-#include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 

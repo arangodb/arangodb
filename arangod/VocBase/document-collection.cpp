@@ -762,40 +762,10 @@ static int CreateHeader(TRI_document_collection_t* document,
 static bool RemoveIndexFile(TRI_document_collection_t* collection,
                             TRI_idx_iid_t id) {
   // construct filename
-  char* number = TRI_StringUInt64(id);
+  std::string name("index-" + std::to_string(id) + ".json");
+  std::string filename = arangodb::basics::FileUtils::buildFilename(collection->_directory, name);
 
-  if (number == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG(ERR) << "out of memory when creating index number";
-    return false;
-  }
-
-  char* name = TRI_Concatenate3String("index-", number, ".json");
-
-  if (name == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    LOG(ERR) << "out of memory when creating index name";
-    return false;
-  }
-
-  char* filename = TRI_Concatenate2File(collection->_directory, name);
-
-  if (filename == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-    LOG(ERR) << "out of memory when creating index filename";
-    return false;
-  }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-
-  int res = TRI_UnlinkFile(filename);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  int res = TRI_UnlinkFile(filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot remove index definition: " << TRI_last_error();
@@ -1629,12 +1599,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   }
 
   // remove the temporary file
-  char* tmpfile = TRI_Concatenate2File(collection->_directory, ".tmp");
-  TRI_UnlinkFile(tmpfile);
-  TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
-
-  TRI_ASSERT(document->getShaper() !=
-             nullptr);  // ONLY IN COLLECTION CREATION, PROTECTED by trx here
+  std::string tmpfile = collection->_directory + ".tmp";
+  TRI_UnlinkFile(tmpfile.c_str());
 
   return document;
 }
@@ -1691,22 +1657,18 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
     journal = TRI_CreateDatafile(nullptr, fid, journalSize, true);
   } else {
     // construct a suitable filename (which may be temporary at the beginning)
-    char* number = TRI_StringUInt64(fid);
-    char* jname;
+    std::string jname;
     if (isCompactor) {
-      jname = TRI_Concatenate3String("compaction-", number, ".db");
+      jname = "compaction-";
     } else {
-      jname = TRI_Concatenate3String("temp-", number, ".db");
+      jname = "temp-";
     }
 
-    char* filename = TRI_Concatenate2File(document->_directory, jname);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
+    jname.append(std::to_string(fid) + ".db");
+    std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
 
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
 
       EnsureErrorCode(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
@@ -1715,14 +1677,12 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
     }
 
     // remove an existing temporary file first
-    if (TRI_ExistsFile(filename)) {
+    if (TRI_ExistsFile(filename.c_str())) {
       // remove an existing file first
-      TRI_UnlinkFile(filename);
+      TRI_UnlinkFile(filename.c_str());
     }
 
-    journal = TRI_CreateDatafile(filename, fid, journalSize, true);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    journal = TRI_CreateDatafile(filename.c_str(), fid, journalSize, true);
   }
 
   if (journal == nullptr) {
@@ -1803,14 +1763,10 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   if (!isCompactor) {
     if (journal->isPhysical(journal)) {
       // and use the correct name
-      char* number = TRI_StringUInt64(journal->_fid);
-      char* jname = TRI_Concatenate3String("journal-", number, ".db");
-      char* filename = TRI_Concatenate2File(document->_directory, jname);
+      std::string jname("journal-" + std::to_string(journal->_fid) + ".db");
+      std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-
-      bool ok = TRI_RenameDatafile(journal, filename);
+      bool ok = TRI_RenameDatafile(journal, filename.c_str());
 
       if (!ok) {
         LOG(ERR) << "failed to rename journal '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
@@ -1818,7 +1774,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
         TRI_CloseDatafile(journal);
         TRI_UnlinkFile(journal->getName(journal));
         TRI_FreeDatafile(journal);
-        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
         EnsureErrorCode(document->_lastError);
 
@@ -1826,8 +1781,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
       } else {
         LOG(TRACE) << "renamed journal from '" << journal->getName(journal) << "' to '" << filename << "'";
       }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     }
 
     document->_journals.emplace_back(journal);
@@ -1997,26 +1950,19 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
 
   if (!isCompactor && journal->isPhysical(journal)) {
     // rename the file
-    char* number = TRI_StringUInt64(journal->_fid);
-    char* dname = TRI_Concatenate3String("datafile-", number, ".db");
-    char* filename = TRI_Concatenate2File(document->_directory, dname);
+    std::string dname("datafile-" + std::to_string(journal->_fid) + ".db");
+    std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, dname);
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-
-    bool ok = TRI_RenameDatafile(journal, filename);
+    bool ok = TRI_RenameDatafile(journal, filename.c_str());
 
     if (!ok) {
       LOG(ERR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
 
       vector->erase(vector->begin() + position);
       document->_datafiles.emplace_back(journal);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
       return false;
     }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     LOG(TRACE) << "closed file '" << journal->getName(journal) << "'";
   }

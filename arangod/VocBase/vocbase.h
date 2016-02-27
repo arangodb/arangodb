@@ -196,33 +196,32 @@ extern bool IGNORE_DATAFILE_ERRORS;
 /// @brief collection enum
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_col_type_e {
   TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
-  TRI_COL_TYPE_SHAPE_DEPRECATED = 1,  // not used since ArangoDB 1.5
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
-} TRI_col_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database state
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_state_e {
   TRI_VOCBASE_STATE_INACTIVE = 0,
   TRI_VOCBASE_STATE_NORMAL = 1,
   TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR = 2,
   TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP = 3,
   TRI_VOCBASE_STATE_FAILED_VERSION = 4
-} TRI_vocbase_state_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_type_e {
   TRI_VOCBASE_TYPE_NORMAL = 0,
   TRI_VOCBASE_TYPE_COORDINATOR = 1
-} TRI_vocbase_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
@@ -255,8 +254,8 @@ struct TRI_vocbase_t {
                                                      // dropped that can be
                                                      // removed later
 
-  TRI_associative_pointer_t _collectionsByName;  // collections by name
-  TRI_associative_pointer_t _collectionsById;    // collections by id
+  std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
+  std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
 
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
@@ -486,7 +485,7 @@ char const* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
 /// it is the caller's responsibility to free the name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t);
+std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name

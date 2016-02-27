@@ -124,75 +124,6 @@ TRI_vocbase_col_t::TRI_vocbase_col_t(TRI_vocbase_t* vocbase,
 TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the collection id
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyCid(TRI_associative_pointer_t* array, void const* key) {
-  TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
-
-  return *k;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the collection id
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementCid(TRI_associative_pointer_t* array,
-                               void const* element) {
-  TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
-
-  return e->_cid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a collection id and a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyCid(TRI_associative_pointer_t* array, void const* key,
-                        void const* element) {
-  TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
-  TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
-
-  return *k == e->_cid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyCollectionName(TRI_associative_pointer_t* array,
-                                      void const* key) {
-  char const* k = (char const*)key;
-
-  return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementCollectionName(TRI_associative_pointer_t* array,
-                                          void const* element) {
-  TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
-  std::string const colName(e->name());
-
-  return TRI_FnvHashString(colName.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a collection name and a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyCollectionName(TRI_associative_pointer_t* array,
-                                   void const* key, void const* element) {
-  char const* k = static_cast<char const*>(key);
-  TRI_vocbase_col_t const* e = static_cast<TRI_vocbase_col_t const*>(element);
-
-  std::string const colName(e->name());
-  return TRI_EqualString(k, colName.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief write a drop collection marker into the log
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,22 +169,17 @@ static bool UnregisterCollection(TRI_vocbase_t* vocbase,
   WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
   // pre-condition
-  TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
-             vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
 
   // only if we find the collection by its id, we can delete it by name
-  if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById,
-                                      &collection->_cid) != nullptr) {
+  if (vocbase->_collectionsById.erase(collection->_cid) > 0) {
     // this is because someone else might have created a new collection with the
-    // same name,
-    // but with a different id
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName,
-                                    colName.c_str());
+    // same name, but with a different id
+    vocbase->_collectionsByName.erase(colName);
   }
 
   // post-condition
-  TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
-             vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
 
   return true;
 }
@@ -473,7 +399,7 @@ static bool DropCollectionCallback(TRI_collection_t* col, void* data) {
 
 static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
                                         TRI_col_type_e type, char const* name,
-                                        TRI_voc_cid_t cid, char const* path) {
+                                        TRI_voc_cid_t cid, std::string const& path) {
   // create a new proxy
   auto collection =
       std::make_unique<TRI_vocbase_col_t>(vocbase, type, name, cid, path);
@@ -481,61 +407,50 @@ static TRI_vocbase_col_t* AddCollection(TRI_vocbase_t* vocbase,
   TRI_ASSERT(collection != nullptr);
 
   // check name
-  void const* found;
-  int res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsByName, name,
-                                             collection.get(), &found);
+  auto it = vocbase->_collectionsByName.emplace(name, collection.get());
 
-  if (found != nullptr) {
+  if (!it.second) {
     LOG(ERR) << "duplicate entry for collection name '" << name << "'";
     LOG(ERR) << "collection id " << cid
              << " has same name as already added collection "
-             << static_cast<TRI_vocbase_col_t const*>(found)->_cid;
+             << vocbase->_collectionsByName[name]->_cid;
 
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
     return nullptr;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // OOM. this might have happened AFTER insertion
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    TRI_set_errno(res);
-
-    return nullptr;
-  }
-
   // check collection identifier
   TRI_ASSERT(collection->_cid == cid);
-  res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid,
-                                         collection.get(), &found);
+  try {
+    auto it2 = vocbase->_collectionsById.emplace(cid, collection.get());
 
-  if (found != nullptr) {
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
+    if (!it2.second) {
+      vocbase->_collectionsByName.erase(name);
 
-    LOG(ERR) << "duplicate collection identifier " << collection->_cid
-             << " for name '" << name << "'";
+      LOG(ERR) << "duplicate collection identifier " << collection->_cid
+               << " for name '" << name << "'";
 
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+      TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
 
+      return nullptr;
+    }
+  }
+  catch (...) {
+    vocbase->_collectionsByName.erase(name);
     return nullptr;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // OOM. this might have happend AFTER insertion
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &cid);
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, name);
-    TRI_set_errno(res);
+  TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
 
+  try {
+    vocbase->_collections.emplace_back(collection.get());
+  }
+  catch (...) {
+    vocbase->_collectionsByName.erase(name);
+    vocbase->_collectionsById.erase(cid);
     return nullptr;
   }
-
-  TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
-             vocbase->_collectionsById._nrUsed);
-
-  // this needs the write lock on _collectionsLock
-  // TODO: if the following goes wrong, we still have the collection added into
-  // the associative arrays...
-  vocbase->_collections.emplace_back(collection.get());
 
   return collection.release();
 }
@@ -565,10 +480,9 @@ static TRI_vocbase_col_t* CreateCollection(
   // check that we have a new name
   // .............................................................................
 
-  void const* found = TRI_LookupByKeyAssociativePointer(
-      &vocbase->_collectionsByName, name.c_str());
+  auto it = vocbase->_collectionsByName.find(name);
 
-  if (found != nullptr) {
+  if (it != vocbase->_collectionsByName.end()) {
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     return nullptr;
   }
@@ -643,10 +557,9 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
 
     // check if the new name is unused
-    void const* found = TRI_LookupByKeyAssociativePointer(
-        &vocbase->_collectionsByName, newName);
+    auto it = vocbase->_collectionsByName.find(newName);
 
-    if (found != nullptr) {
+    if (it != vocbase->_collectionsByName.end()) {
       return TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
@@ -701,18 +614,19 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
     // rename and release locks
     // .............................................................................
 
-    TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, oldName);
+    vocbase->_collectionsByName.erase(oldName);
 
     collection->_name = newName;
 
     // this shouldn't fail, as we removed an element above so adding one should
     // be ok
-    found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName,
-                                            newName, collection, false);
-    TRI_ASSERT(found == nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto it2 =
+#endif
+    vocbase->_collectionsByName.emplace(newName, collection);
+    TRI_ASSERT(it2.second);
 
-    TRI_ASSERT(vocbase->_collectionsByName._nrUsed ==
-               vocbase->_collectionsById._nrUsed);
+    TRI_ASSERT(vocbase->_collectionsByName.size() == vocbase->_collectionsById.size());
   }  // _colllectionsLock
 
   // to prevent caching returning now invalid old collection name in db's
@@ -832,8 +746,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
           TRI_vocbase_col_t* c = nullptr;
 
           try {
-            c = AddCollection(vocbase, type, info.namec_str(), info.id(),
-                              file.c_str());
+            c = AddCollection(vocbase, type, info.namec_str(), info.id(), file);
           } catch (...) {
             // if we caught an exception, c is still a nullptr
           }
@@ -1501,16 +1414,11 @@ int TRI_StopCompactorVocBase(TRI_vocbase_t* vocbase) {
 
 std::vector<TRI_vocbase_col_t*> TRI_CollectionsVocBase(TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> result;
-
+ 
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
-  for (size_t i = 0; i < vocbase->_collectionsById._nrAlloc; ++i) {
-    TRI_vocbase_col_t* found =
-        static_cast<TRI_vocbase_col_t*>(vocbase->_collectionsById._table[i]);
-
-    if (found != nullptr) {
-      result.emplace_back(found);
-    }
+  for (auto const& it : vocbase->_collectionsById) {
+    result.emplace_back(it.second);
   }
 
   return result;
@@ -1525,13 +1433,8 @@ std::vector<std::string> TRI_CollectionNamesVocBase(TRI_vocbase_t* vocbase) {
 
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
-  for (size_t i = 0; i < vocbase->_collectionsById._nrAlloc; ++i) {
-    TRI_vocbase_col_t* found =
-        static_cast<TRI_vocbase_col_t*>(vocbase->_collectionsById._table[i]);
-
-    if (found != nullptr) {
-      result.emplace_back(found->name());
-    }
+  for (auto const& it : vocbase->_collectionsById) {
+    result.emplace_back(it.second->name());
   }
 
   return result;
@@ -1627,19 +1530,17 @@ char const* TRI_GetStatusStringCollectionVocBase(
 /// name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
-                                       TRI_voc_cid_t id) {
+std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
+                                             TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
 
-  TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
-      TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
+  auto it = vocbase->_collectionsById.find(id);
 
-  if (found == nullptr) {
-    return nullptr;
+  if (it == vocbase->_collectionsById.end()) {
+    return "";
   }
 
-  std::string const colName(found->name());
-  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, colName.c_str());
+  return (*it).second->name();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1648,19 +1549,22 @@ char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
                                                      char const* name) {
-  char const c = *name;
-
   // if collection name is passed as a stringified id, we'll use the lookupbyid
   // function
   // this is safe because collection names must not start with a digit
-  if (c >= '0' && c <= '9') {
+  if (*name >= '0' && *name <= '9') {
     return TRI_LookupCollectionByIdVocBase(vocbase, StringUtils::uint64(name));
   }
 
   // otherwise we'll look up the collection by name
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
-  return static_cast<TRI_vocbase_col_t*>(
-      TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
+
+  auto it = vocbase->_collectionsByName.find(name);
+
+  if (it == vocbase->_collectionsByName.end()) {
+    return nullptr;
+  }
+  return (*it).second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1670,8 +1574,13 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase(TRI_vocbase_t* vocbase,
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase(TRI_vocbase_t* vocbase,
                                                    TRI_voc_cid_t id) {
   READ_LOCKER(readLocker, vocbase->_collectionsLock);
-  return static_cast<TRI_vocbase_col_t*>(
-      TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
+  
+  auto it = vocbase->_collectionsById.find(id);
+
+  if (it == vocbase->_collectionsById.end()) {
+    return nullptr;
+  }
+  return (*it).second;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1694,30 +1603,36 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
       try {
         TRI_voc_cid_t id =
             arangodb::basics::StringUtils::uint64(name, strlen(name));
-        found = static_cast<TRI_vocbase_col_t*>(
-            TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
+        auto it = vocbase->_collectionsById.find(id);
+
+        if (it != vocbase->_collectionsById.end()) {
+          found = (*it).second;
+        }
       } catch (...) {
         // no need to throw here... found will still be a nullptr
       }
     } else {
-      found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(
-          &vocbase->_collectionsByName, name));
+      auto it = vocbase->_collectionsByName.find(name);
+
+      if (it != vocbase->_collectionsByName.end()) {
+        found = (*it).second;
+      }
     }
   }
 
   if (found != nullptr) {
     return found;
-  } else {
-    // collection not found. now create it
-    VPackBuilder builder;  // DO NOT FILL IT
-    arangodb::VocbaseCollectionInfo parameter(
-        vocbase, name, (TRI_col_type_e)type,
-        (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
-    TRI_vocbase_col_t* collection =
-        TRI_CreateCollectionVocBase(vocbase, parameter, 0, true);
+  } 
+    
+  // collection not found. now create it
+  VPackBuilder builder;  // DO NOT FILL IT
+  arangodb::VocbaseCollectionInfo parameter(
+      vocbase, name, (TRI_col_type_e)type,
+      (TRI_voc_size_t)vocbase->_settings.defaultMaximalSize, builder.slice());
+  TRI_vocbase_col_t* collection =
+      TRI_CreateCollectionVocBase(vocbase, parameter, 0, true);
 
-    return collection;
-  }
+  return collection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2028,8 +1943,12 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase(
   TRI_vocbase_col_t const* collection = nullptr;
   {
     READ_LOCKER(readLocker, vocbase->_collectionsLock);
-    collection = static_cast<TRI_vocbase_col_t const*>(
-        TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &cid));
+
+    auto it = vocbase->_collectionsById.find(cid);
+
+    if (it != vocbase->_collectionsById.end()) {
+      collection = (*it).second;
+    }
   }
 
   if (collection == nullptr) {
@@ -2068,8 +1987,11 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase(
 
   {
     READ_LOCKER(readLocker, vocbase->_collectionsLock);
-    collection = static_cast<TRI_vocbase_col_t const*>(
-        TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
+    auto it = vocbase->_collectionsByName.find(name);
+
+    if (it != vocbase->_collectionsByName.end()) {
+      collection = (*it).second;
+    }
   }
 
   if (collection == nullptr) {
@@ -2275,13 +2197,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
-  TRI_InitAssociativePointer(&_collectionsById, TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyCid, HashElementCid, EqualKeyCid, nullptr);
-
-  TRI_InitAssociativePointer(&_collectionsByName, TRI_UNKNOWN_MEM_ZONE,
-                             HashKeyCollectionName, HashElementCollectionName,
-                             EqualKeyCollectionName, nullptr);
-
   TRI_InitAuthInfo(this);
 
   TRI_CreateUserStructuresVocBase(this);
@@ -2308,9 +2223,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   TRI_DestroyCondition(&_compactorCondition);
 
   TRI_DestroyAuthInfo(this);
-
-  TRI_DestroyAssociativePointer(&_collectionsByName);
-  TRI_DestroyAssociativePointer(&_collectionsById);
 
   delete _cursorRepository;
   delete _collectionKeys;

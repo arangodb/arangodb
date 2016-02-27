@@ -109,18 +109,15 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   }
 
   // collection name not in cache yet
-  char* name = TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid);
+  std::string name(TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid));
 
-  if (name != nullptr) {
+  if (!name.empty()) {
     // insert into cache
     try {
-      dump->_collectionNames.emplace(std::make_pair(cid, std::string(name)));
+      dump->_collectionNames.emplace(cid, name);
     } catch (...) {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
       return nullptr;
     }
-
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
 
     // and look it up again
     return NameFromCid(dump, cid);

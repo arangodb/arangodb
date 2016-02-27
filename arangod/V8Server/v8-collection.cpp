@@ -1204,15 +1204,9 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // if we wouldn't do this, we would risk other threads modifying the name
   // while
   // we're reading it
-  char* name =
-      TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid);
+  std::string name(TRI_GetCollectionNameByIdVocBase(collection->_vocbase, collection->_cid));
 
-  if (name == nullptr) {
-    TRI_V8_RETURN_UNDEFINED();
-  }
-
-  v8::Handle<v8::Value> result = TRI_V8_STRING(name);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

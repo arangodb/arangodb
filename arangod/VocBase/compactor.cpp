@@ -29,9 +29,10 @@
 
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
+#include "Basics/memory-map.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
-#include "Basics/memory-map.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
@@ -39,7 +40,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 
 using namespace arangodb;
 
@@ -251,22 +251,18 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
   TRI_document_collection_t* document =
       static_cast<TRI_document_collection_t*>(data);
   TRI_voc_fid_t fid = datafile->_fid;
-  char* copy = nullptr;
 
-  char* number = TRI_StringUInt64(fid);
-  char* name = TRI_Concatenate3String("deleted-", number, ".db");
-  char* filename = TRI_Concatenate2File(document->_directory, name);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+  std::string copy;
+  std::string name("deleted-" + std::to_string(fid) + ".db");
+  std::string filename = arangodb::basics::FileUtils::buildFilename(document->_directory, name);
 
   bool ok;
 
   if (datafile->isPhysical(datafile)) {
     // copy the current filename
-    copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, datafile->_filename);
+    copy = datafile->_filename;
 
-    ok = TRI_RenameDatafile(datafile, filename);
+    ok = TRI_RenameDatafile(datafile, filename.c_str());
 
     if (!ok) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_last_error();
@@ -280,38 +276,27 @@ static void DropDatafileCallback(TRI_datafile_t* datafile, void* data) {
   if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
   } else if (datafile->isPhysical(datafile)) {
-    int res;
-
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile from disk";
 
-    res = TRI_UnlinkFile(filename);
+    int res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_last_error();
     }
 
     // check for .dead files
-    if (copy != nullptr) {
+    if (!copy.empty()) {
       // remove .dead file for datafile
-      char* deadfile = TRI_Concatenate2String(copy, ".dead");
+      std::string deadfile = copy + ".dead";
 
-      if (deadfile != nullptr) {
-        // check if .dead file exists, then remove it
-        if (TRI_ExistsFile(deadfile)) {
-          TRI_UnlinkFile(deadfile);
-        }
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, deadfile);
+      // check if .dead file exists, then remove it
+      if (TRI_ExistsFile(deadfile.c_str())) {
+        TRI_UnlinkFile(deadfile.c_str());
       }
     }
   }
 
   TRI_FreeDatafile(datafile);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  if (copy != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,28 +322,20 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
   TRI_ASSERT(datafile->_fid == compactor->_fid);
 
   if (datafile->isPhysical(datafile)) {
-    char* realName = TRI_DuplicateString(datafile->_filename);
-
     // construct a suitable tempname
-    char* number = TRI_StringUInt64(datafile->_fid);
-    char* jname = TRI_Concatenate3String("temp-", number, ".db");
-    char* tempFilename = TRI_Concatenate2File(document->_directory, jname);
+    std::string jname("temp-" + std::to_string(datafile->_fid) + ".db");
+    std::string tempFilename = arangodb::basics::FileUtils::buildFilename(document->_directory, jname);
+    std::string realName = datafile->_filename;
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-
-    if (!TRI_RenameDatafile(datafile, tempFilename)) {
+    if (!TRI_RenameDatafile(datafile, tempFilename.c_str())) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "'";
     } else {
-      if (!TRI_RenameDatafile(compactor, realName)) {
+      if (!TRI_RenameDatafile(compactor, realName.c_str())) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "'";
       } else {
         ok = true;
       }
     }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tempFilename);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, realName);
   } else {
     ok = true;
   }

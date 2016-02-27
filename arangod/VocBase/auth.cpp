@@ -405,7 +405,7 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(authSlice));
 
-    if (auth == nullptr) {
+    if (auth != nullptr) {
       TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->username(),
                                       auth.get(), false);
       auth.release();
