@@ -48,6 +48,8 @@ class RestAgencyHandler : public arangodb::RestBaseHandler {
   status_t reportErrorEmptyRequest() ;
   status_t reportTooManySuffices() ;
   status_t unknownMethod() ; 
+  status_t redirect(id_t leader_id) ; 
+  status_t handleReadWrite() ; 
 
   consensus::Agent* _agent;
 

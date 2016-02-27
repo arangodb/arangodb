@@ -37,11 +37,8 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
-<<<<<<< HEAD
 #include "Agency/ApplicationAgency.h"
-=======
 #include "ApplicationServer/ApplicationServer.h"
->>>>>>> cfe62a9f9a3148d031533a899aa3d63523e8eb74
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"

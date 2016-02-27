@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Rest/AnyServer.h"
+#include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestAgencyHandler.h"
@@ -43,8 +43,7 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern AnyServer* ArangoInstance;
-
+extern ArangoServer* ArangoInstance;
 
 RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
     : RestBaseHandler(request), _agent(agent) {
@@ -52,8 +51,7 @@ RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
 
 bool RestAgencyHandler::isDirect() const { return false; }
 
-inline HttpHandler::status_t RestAgencyHandler::reportErrorEmptyRequest ()
-  const {
+inline HttpHandler::status_t RestAgencyHandler::reportErrorEmptyRequest () {
   LOG(WARN) << "Empty request to public agency interface.";
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
@@ -78,19 +76,20 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 }
 
 inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
-  
+  bool accepted;
   if (_request->suffix()[0] == "write") {
-    write_ret_t ret = _agent.write(_request->toVelocyPack());
-    _agent.waitFor (ret);
-    
+    write_ret_t ret = _agent->write(_request->toVelocyPack());
+    accepted = ret.accepted;
+    _agent->waitFor (ret);
   } else {
-    ret = _agent.read(_request->toVelocyPack());
+    ret = _agent->read(_request->toVelocyPack());
+    accepted = ret.accepted;
   }
-  if (ret.accepted) { // We accepted the request
+  if (accepted) { // We accepted the request
     ret.result->close();
     generateResult(ret.result->slice());
   } else {            // We redirect the request
-    _response->setHeader("Location", _agent.config().endpoints[ret.redirect]);
+    _response->setHeader("Location", _agent->config().endpoints[ret.redirect]);
     generateError(HttpResponse::TEMPORARY_REDIRECT,307);
   }
   return HttpHandler::status_t(HANDLER_DONE);
