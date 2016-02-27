@@ -2087,7 +2087,7 @@ textarea,
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 .navbar, footer.footer {
@@ -2106,12 +2106,12 @@ textarea,
   .button-danger:focus, .ajax-file-upload-red:focus {
     background-color: #be342e; }
 
-.deleteButton, .contentTables td span, .edit-index-table .icon_arangodb_roundminus {
+.deleteButton i, .contentTables td span, .edit-index-table .icon_arangodb_roundminus {
   color: #da4f49; }
-  .deleteButton:hover,
+  .deleteButton i:hover,
   .contentTables td span:hover,
   .edit-index-table .icon_arangodb_roundminus:hover,
-  .deleteButton:focus, .contentTables td span:focus, .edit-index-table .icon_arangodb_roundminus:focus {
+  .deleteButton i:focus, .contentTables td span:focus, .edit-index-table .icon_arangodb_roundminus:focus {
     color: #be342e; }
 
 .button-success, .ajax-file-upload {
@@ -2589,13 +2589,13 @@ button.disabled,
   cursor: not-allowed; }
 
 .addButton {
-  font-size: 22px;
+  font-size: 16pt;
   margin-right: 7px;
   margin-top: 2px;
   position: relative; }
 
-.deleteButton {
-  font-size: 22px;
+.deleteButton i {
+  font-size: 16pt;
   padding-right: 3px;
   position: relative;
   top: 3px; }
@@ -6817,6 +6817,13 @@ toolbar {
       .inputEditorWrapper .aqlEditorWrapper table tbody {
         display: block;
         overflow-y: auto; }
+      .inputEditorWrapper .bindParamEditorWrapper table .truncate,
+      .inputEditorWrapper .aqlEditorWrapper table .truncate {
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 30%; }
       .inputEditorWrapper .bindParamEditorWrapper table tr.noBgColor,
       .inputEditorWrapper .aqlEditorWrapper table tr.noBgColor {
         background-color: transparent !important; }
