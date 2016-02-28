@@ -11,13 +11,16 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 ################################################################################
-### @brief getopt library
+### @brief regex library
 ################################################################################
 
-project(getopt)
+project(regex)
 
-set(LIB_GETOPT getopt)
+set(LIB_REGEX regex)
 
+include_directories(.)
+
+if (MSVC)
   foreach (flag_var
 	   CMAKE_C_FLAGS
 	   CMAKE_C_FLAGS_DEBUG
@@ -41,26 +44,26 @@ set(LIB_GETOPT getopt)
 
     message(STATUS "${flag_var}=${${flag_var}}")
   endforeach ()
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                         LIBRARIES
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief LIB_GETOPT
+### @brief LIB_REGEX
 ################################################################################
 
 add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
+add_definitions("-DREGEX_STATIC=1")
 
 add_library(
-  ${LIB_GETOPT}
-  STATIC
-  mygetopt.c
-  )
+    ${LIB_REGEX}
+    STATIC
+    regex.c
+)
 
-include_directories(${PROJECT_SOURCE_DIR})
-
-set(GETOPT_INCLUDE_DIR
+set(REGEX_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"
