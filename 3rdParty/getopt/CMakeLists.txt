@@ -61,4 +61,11 @@ add_library(
 
 include_directories(${PROJECT_SOURCE_DIR})
 
+set(GETOPT_INCLUDE_DIR
+  ${PROJECT_SOURCE_DIR}
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Include Directories"
+  FORCE
+)
+
 endif ()
