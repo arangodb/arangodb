@@ -68,8 +68,14 @@ public:
   void append (query_t const& query);
 
   /**
-   * @brief Update log entry
+   * @brief Log entries (leader)
    */
+  std::vector<index_t> log (query_t const& query, term_t term, id_t lid, size_t size);
+
+  /**
+   * @brief 
+   */
+  void log (query_t const& query, index_t, term_t term, id_t lid, size_t size);
   
   /**
    * @brief Save currentTerm, votedFor, log entries
@@ -85,6 +91,11 @@ public:
    * @brief Find entry at index with term
    */
   bool findit (index_t index, term_t term) const;
+
+  /**
+   * @brief Confirm entry index for agent id
+   */
+  void confirm (id_t id, index_t idx)
   
 private:
   

@@ -119,28 +119,20 @@ append_entries_t Agent::appendEntries (
     return append_entries_t(false,this->term());
   }
 
+  _state.log(query, index_t idx, term, leaderId, _config.size());          // Append all new entries
+  _read_db.apply(query); // once we become leader we create a new spear head
+  _last_commit_index = leadersLastCommitIndex;
   
-  /*
-  if (query->isEmpty()) {              // heartbeat received
-    Builder builder;
-    builder.add("term", Value(this->term())); // Our own term
-    builder.add("voteFor", Value(             // Our vite
-      _constituent.vote(term, leaderId, prevLogIndex, leadersLastCommitIndex)));
-    return query_ret_t(true, id(), std::make_shared<Builder>(builder));
-  } else if (_constituent.leading()) { // We are leading
-    _constituent.follow(term);
-    return _state.log(term, leaderId, prevLogIndex, term, leadersLastCommitIndex);
-  } else {                             // We redirect
-    return query_ret_t(false,_constituent.leaderID());
-    }*/
 }
+
+
 
 //query_ret_t
 write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {             // We are leading
     if (_spear_head.apply(query)) {         // We could apply to spear head? 
       std::vector<index_t> indices =        //    otherwise through
-        _read_db.log (term(), id(), query); // Append to my own log
+        _read_db.log (query, term(), id(), _config.size()); // Append to my own log
       remotelyAppendEntries (indicies);     // Schedule appendEntries RPCs.
     } else {
       throw QUERY_NOT_APPLICABLE;
@@ -162,24 +154,42 @@ void State::run() {
   while (!_stopping) {
     auto dur = std::chrono::system_clock::now();
     std::vector<std::vector<index_t>> work(_config.size());
+
     // Collect all unacknowledged
-    for (auto& i : State.log())  
-      for (size_t j = 0; j < _setup.size(); ++j) 
-        if (!i.ack[j])                 
+    for (auto& i : State.log()) {
+      for (size_t j = 0; j < _setup.size(); ++j) {
+        if (!i.ack[j]) {
           work[j].push_back(i.index);
+        }}}
+
     // (re-)attempt RPCs
-    for (size_t j = 0; j < _setup.size(); ++j)  
+    for (size_t j = 0; j < _setup.size(); ++j) {
       appendEntriesRPC (work[j]);
+    }
+
+    // catch up read db
+    catchUpReadDB();
+    
     // We were too fast?
-    if (dur = std::chrono::system_clock::now() - dur < _poll_interval) 
+    if (dur = std::chrono::system_clock::now() - dur < _poll_interval) {
       std::this_thread::sleep_for (_poll_interval - dur);
+    }
   }
 }
 
-bool State::operator()(ClusterCommResult* ccr) {
-
+bool State::operator(id_t, index_t) (ClusterCommResult* ccr) {
+  CONDITION_LOCKER(guard, _cv);
+  _state.confirm(id_t, index_t);
+  guard.broadcast();
 }
 
+
+void shutdown() {
+  // wake up all blocked rest handlers
+  _stopping = true;
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
+}
 
 
 }}

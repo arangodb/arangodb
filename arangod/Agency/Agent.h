@@ -128,6 +128,8 @@ public:
   config_t    _config;
   status_t    _status;
 
+  index_t     _last_commit_index;
+
   arangodb::Mutex _uncommitedLock;
   
   store<std::string> _spear_head;

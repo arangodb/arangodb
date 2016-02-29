@@ -66,6 +66,7 @@ void Constituent::follow(term_t term) {
 
 void Constituent::lead() {
   _role = LEADER;
+  _agent->lead(); // We need to rebuild spear_head and read_db;
 }
 
 void Constituent::candidate() {
@@ -199,8 +200,9 @@ void Constituent::callElection() {
 }
 
 void Constituent::run() {
-/*
-  while (true) { 
+
+  // Always start off as follower
+  while (!_stopping) { 
     if (_role == FOLLOWER) { 
       _cast = false;                           // New round set not cast vote
       std::this_thread::sleep_for(sleepFor()); // Sleep for random time
@@ -210,7 +212,7 @@ void Constituent::run() {
       callElection();                          // Run for office
     }
   }
-*/
+
 };
 
 

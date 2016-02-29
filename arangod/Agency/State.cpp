@@ -33,17 +33,36 @@ State::~State() {
   save();
 }
 
-void State::log (query_t const& query, term_t term, id_t lid, size_t size) {
+std::vector<size_t> State::log (query_t const& query, term_t term, id_t lid, size_t size) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   index_t idx = _log.end().index+1;
   _log.push_back(idx, term, lid, query.toString(), std::vector<bool>(size));
-    // Sync call arango 
 }
 
-bool findit (index_t index, term_t term) { 
-  for (auto const& i : _log) { // Find entry matching index and term
-    if (i.index == index && i.term == term)
-      return true;
+void State::log (query_t const& query, index_t idx, term_t term, id_t lid, size_t size) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  _log.push_back(idx, term, lid, query.toString(), std::vector<bool>(size));
+}
+
+void State::confirm (id_t id, index_t index) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  _log[index][id] = true;
+}
+
+bool findit (index_t index, term_t term) {
+  auto i = std::begin(_log);
+  while (i != std::end(_log)) { // Find entry matching index and term
+    if ((*i).index == index) {
+      if ((*i).term == term) {
+        return true;
+      } else if ((*i).term < term) {
+        // If an existing entry conflicts with a new one (same index
+        // but different terms), delete the existing entry and all that
+        // follow it (§5.3)
+        _log.erase(i, _log.end()); 
+        return true;
+      }
+    }
   }
   return false;
 }

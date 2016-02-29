@@ -82,9 +82,9 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       reportTooManySuffices();
     } else {
     	if        (_request->suffix()[0] == "appendEntries") {  // replication
-        _agent->appendEntries (_request->headers(), _request->toVelocyPack());
+        _agent->appendEntries (_request->toVelocyPack());
     	} else if (_request->suffix()[0] ==   "requestVote") {  // election
-        _agent->vote (_request->headers(), _request->toVelocyPack());
+        _agent->requestVote (_request->toVelocyPack());
       } else {
         generateError(HttpResponse::NOT_FOUND,404); // nothing 
         return HttpHandler::status_t(HANDLER_DONE);
