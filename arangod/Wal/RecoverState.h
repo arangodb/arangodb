@@ -113,6 +113,15 @@ struct RecoverState {
             failedTransactions.find(transactionId) != failedTransactions.end());
   }
 
+  void resetCollection() {
+    resetCollection(0, 0);
+  }
+  
+  void resetCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+    lastDatabaseId = databaseId;
+    lastCollectionId = collectionId;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release opened collections and databases so they can be shut down
   /// etc.
@@ -221,6 +230,11 @@ struct RecoverState {
   TRI_doc_update_policy_t policy;
   bool ignoreRecoveryErrors;
   int64_t errorCount;
+
+ private:
+  TRI_voc_tick_t lastDatabaseId;
+  TRI_voc_cid_t lastCollectionId;
+
 };
 }
 }

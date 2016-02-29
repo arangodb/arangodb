@@ -30,7 +30,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
-#include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 
@@ -139,7 +138,9 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
       emptyLogfiles(),
       policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr),
       ignoreRecoveryErrors(ignoreRecoveryErrors),
-      errorCount(0) {}
+      errorCount(0),
+      lastDatabaseId(0),
+      lastCollectionId(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the recover state
@@ -507,20 +508,27 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
   try {
     switch (marker->_type) {
+      case TRI_DF_MARKER_PROLOGUE: {
+        // simply note the last state
+        auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
+        state->resetCollection(m->_databaseId, m->_collectionId);
+        return true;
+      }
+
       // -----------------------------------------------------------------------------
       // crud operations
       // -----------------------------------------------------------------------------
 
       case TRI_WAL_MARKER_VPACK_DOCUMENT: {
         // re-insert the document/edge into the collection
-        auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
-        TRI_voc_cid_t collectionId = m->_collectionId;
-        TRI_voc_tick_t databaseId = m->_databaseId;
+        TRI_voc_tick_t databaseId = state->lastDatabaseId; // from prologue
+        TRI_voc_cid_t collectionId = state->lastCollectionId; // from prologue
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
         }
 
+        auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
         TRI_voc_tick_t transactionId = m->_transactionId;
         if (state->ignoreTransaction(transactionId)) {
           // transaction was aborted
@@ -568,14 +576,17 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       case TRI_WAL_MARKER_VPACK_REMOVE: {
         // re-apply the remove operation
-        auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
-        TRI_voc_cid_t collectionId = m->_collectionId;
-        TRI_voc_tick_t databaseId = m->_databaseId;
+        TRI_voc_tick_t databaseId = state->lastDatabaseId; // from prologue
+        TRI_voc_cid_t collectionId = state->lastCollectionId; // from prologue
+
+        TRI_ASSERT(databaseId > 0);
+        TRI_ASSERT(collectionId > 0);
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
         }
 
+        auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
         TRI_voc_tick_t transactionId = m->_transactionId;
         if (state->ignoreTransaction(transactionId)) {
           return true;
@@ -1036,6 +1047,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
         }
         break;
+      }
+      
+      case TRI_DF_MARKER_HEADER: 
+      case TRI_DF_MARKER_FOOTER: {
+        // new datafile or end of datafile. forget state!
+        state->resetCollection();
+        return true;
       }
     }
 

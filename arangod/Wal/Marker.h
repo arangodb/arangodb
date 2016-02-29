@@ -92,8 +92,6 @@ struct document_marker_t : TRI_df_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct vpack_document_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
   TRI_voc_tid_t _transactionId;
   // uint8_t* vpack
 };
@@ -103,8 +101,6 @@ struct vpack_document_marker_t : TRI_df_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct vpack_remove_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
   TRI_voc_tid_t _transactionId;
   // uint8_t* vpack
 };
@@ -319,51 +315,14 @@ class AbortRemoteTransactionMarker : public Marker {
 
 class VPackDocumentMarker : public Marker {
  public:
-  VPackDocumentMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
-                      arangodb::velocypack::Slice const&);
-
-  ~VPackDocumentMarker();
-
- public:
-  inline TRI_voc_tid_t transactionId() const {
-    auto const* m = reinterpret_cast<vpack_document_marker_t const*>(begin());
-    return m->_transactionId;
-  }
-
-  inline uint8_t* vpack() const {
-    // pointer to vpack
-    return reinterpret_cast<uint8_t*>(begin()) +
-           sizeof(vpack_document_marker_t);
-  }
-
-  inline size_t vpackLength() const {
-    VPackSlice slice(vpack());
-    return slice.byteSize();
-  }
+  VPackDocumentMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  ~VPackDocumentMarker() = default;
 };
 
 class VPackRemoveMarker : public Marker {
  public:
-  VPackRemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
-                    arangodb::velocypack::Slice const&);
-
-  ~VPackRemoveMarker();
-
- public:
-  inline TRI_voc_tid_t transactionId() const {
-    auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(begin());
-    return m->_transactionId;
-  }
-
-  inline uint8_t* vpack() const {
-    // pointer to vpack
-    return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_remove_marker_t);
-  }
-
-  inline size_t vpackLength() const {
-    VPackSlice slice(vpack());
-    return slice.byteSize();
-  }
+  VPackRemoveMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  ~VPackRemoveMarker() = default;
 };
 
 }

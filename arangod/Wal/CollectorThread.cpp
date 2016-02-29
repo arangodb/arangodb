@@ -102,6 +102,20 @@ struct CollectorState {
   std::unordered_set<TRI_voc_tid_t> handledTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
+
+  TRI_voc_tick_t lastDatabaseId;
+  TRI_voc_cid_t lastCollectionId;
+
+  CollectorState() : lastDatabaseId(0), lastCollectionId(0) {}
+
+  void resetCollection() {
+    return resetCollection(0, 0);
+  }
+
+  void resetCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+    lastDatabaseId = databaseId;
+    lastCollectionId = collectionId;
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,19 +154,29 @@ static bool ShouldIgnoreCollection(CollectorState const* state,
 
 static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
                        TRI_datafile_t* datafile) {
-  CollectorState* state = reinterpret_cast<CollectorState*>(data);
+  CollectorState* state = static_cast<CollectorState*>(data);
   char const* p = reinterpret_cast<char const*>(marker);
 
   TRI_ASSERT(marker != nullptr);
 
   switch (marker->_type) {
+    case TRI_DF_MARKER_PROLOGUE: {
+      auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
+      state->resetCollection(m->_databaseId, m->_collectionId);
+      return true;
+    }
+
     case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+      TRI_voc_tick_t databaseId = state->lastDatabaseId;
+      TRI_voc_cid_t collectionId = state->lastCollectionId;
+      TRI_ASSERT(databaseId > 0);
+      TRI_ASSERT(collectionId > 0);
+
       auto const* m =
           reinterpret_cast<vpack_document_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
 
-      state->collections[collectionId] = m->_databaseId;
+      state->collections[collectionId] = databaseId;
 
       if (state->failedTransactions.find(transactionId) !=
           state->failedTransactions.end()) {
@@ -172,12 +196,16 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_VPACK_REMOVE: {
+      TRI_voc_tick_t databaseId = state->lastDatabaseId;
+      TRI_voc_cid_t collectionId = state->lastCollectionId;
+      TRI_ASSERT(databaseId > 0);
+      TRI_ASSERT(collectionId > 0);
+
       auto const* m =
           reinterpret_cast<vpack_remove_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
 
-      state->collections[collectionId] = m->_databaseId;
+      state->collections[collectionId] = databaseId;
 
       if (state->failedTransactions.find(transactionId) !=
           state->failedTransactions.end()) {
@@ -273,6 +301,12 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
+    case TRI_DF_MARKER_HEADER: 
+    case TRI_DF_MARKER_FOOTER: {
+      // new datafile or end of datafile. forget state!
+      state->resetCollection();
+      return true;
+    }
 
     default: {
       // do nothing intentionally
@@ -654,6 +688,8 @@ void CollectorThread::processCollectionMarker(
     dfi.numberUncollected--;
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    TRI_ASSERT(slice.isObject());
+
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
@@ -684,6 +720,8 @@ void CollectorThread::processCollectionMarker(
     dfi.numberDeletions++;
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+    TRI_ASSERT(slice.isObject());
+
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));

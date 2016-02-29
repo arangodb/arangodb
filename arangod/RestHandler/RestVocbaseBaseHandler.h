@@ -32,7 +32,6 @@
 #include "Utils/transactions.h"
 
 struct TRI_vocbase_t;
-class VocShaper;
 
 namespace arangodb {
 
@@ -223,14 +222,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateNotModified(TRI_voc_rid_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates first entry from a result set
-  ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDocument(SingleCollectionTransaction& trx, TRI_voc_cid_t,
-                        TRI_doc_mptr_t const&, VocShaper*, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates first entry from a result set

@@ -30,7 +30,6 @@
 #include "Rest/HttpRequest.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
