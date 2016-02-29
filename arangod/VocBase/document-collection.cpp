@@ -2726,8 +2726,15 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateIndexMarker marker(vocbase->_id, document->_info.id(),
-                                            idx->id(), idxSlice);
+    VPackBuilder markerBuilder;
+    markerBuilder.openObject();
+    markerBuilder.add("database", VPackValue(vocbase->_id));
+    markerBuilder.add("cid", VPackValue(document->_info.id()));
+    markerBuilder.add("data", idxSlice);
+    markerBuilder.close();
+
+    arangodb::wal::CreateIndexMarker marker(markerBuilder.slice());
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -2803,8 +2810,17 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
       int res = TRI_ERROR_NO_ERROR;
 
       try {
-        arangodb::wal::DropIndexMarker marker(vocbase->_id,
-                                              document->_info.id(), iid);
+        VPackBuilder markerBuilder;
+        markerBuilder.openObject();
+        markerBuilder.add("database", VPackValue(document->_vocbase->_id));
+        markerBuilder.add("cid", VPackValue(document->_info.id()));
+        markerBuilder.add("data", VPackValue(VPackValueType::Object));
+        markerBuilder.add("id", VPackValue(iid));
+        markerBuilder.close();
+        markerBuilder.close();
+
+        arangodb::wal::DropIndexMarker marker(markerBuilder.slice());
+        
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);

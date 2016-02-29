@@ -917,11 +917,11 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
 /// @brief writes a create-database marker into the log
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
+static int WriteCreateMarker(VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateDatabaseMarker marker(id, slice);
+    arangodb::wal::CreateDatabaseMarker marker(slice);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -952,7 +952,12 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::DropDatabaseMarker marker(id);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(id));
+    builder.close();
+
+    arangodb::wal::DropDatabaseMarker marker(builder.slice());
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -1643,9 +1648,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
 
     if (writeMarker) {
       try {
-        char* tickString = TRI_StringUInt64(databaseId);
-        builder.add("id", VPackValue(tickString));
-        TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+        builder.add("id", VPackValue(std::to_string(databaseId)));
         builder.add("name", VPackValue(name));
       } catch (...) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1703,7 +1706,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
   // write marker into log
   if (writeMarker) {
     builder.close();
-    res = WriteCreateMarker(vocbase->_id, builder.slice());
+    res = WriteCreateMarker(builder.slice());
   }
 
   *database = vocbase;

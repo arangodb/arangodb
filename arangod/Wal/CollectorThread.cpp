@@ -46,6 +46,22 @@ using namespace arangodb;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a slice value into its numeric equivalent
+////////////////////////////////////////////////////////////////////////////////
+    
+template <typename T>
+static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
+  VPackSlice v = slice.get(attribute);
+  if (v.isString()) {
+    return static_cast<T>(std::stoull(v.copyString()));
+  }
+  if (v.isNumber()) {
+    return v.getNumber<T>();
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to an existing datafile statistics struct
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,6 +142,7 @@ static bool ShouldIgnoreCollection(CollectorState const* state,
 static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
                        TRI_datafile_t* datafile) {
   CollectorState* state = reinterpret_cast<CollectorState*>(data);
+  char const* p = reinterpret_cast<char const*>(marker);
 
   TRI_ASSERT(marker != nullptr);
 
@@ -186,10 +203,11 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
-      transaction_abort_marker_t const* m =
-          reinterpret_cast<transaction_abort_marker_t const*>(marker);
+      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+
       // note which abort markers we found
-      state->handledTransactions.emplace(m->_transactionId);
+      state->handledTransactions.emplace(tid);
       break;
     }
 
@@ -207,43 +225,43 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_CREATE_COLLECTION: {
-      collection_create_marker_t const* m =
-          reinterpret_cast<collection_create_marker_t const*>(marker);
+      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection is now considered not dropped
-      state->droppedCollections.erase(m->_collectionId);
+      state->droppedCollections.erase(cid);
       break;
     }
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
-      collection_drop_marker_t const* m =
-          reinterpret_cast<collection_drop_marker_t const*>(marker);
+      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection was dropped and doesn't need to be collected
-      state->droppedCollections.emplace(m->_collectionId);
-      state->structuralOperations.erase(m->_collectionId);
-      state->documentOperations.erase(m->_collectionId);
-      state->operationsCount.erase(m->_collectionId);
-      state->collections.erase(m->_collectionId);
+      state->droppedCollections.emplace(cid);
+      state->structuralOperations.erase(cid);
+      state->documentOperations.erase(cid);
+      state->operationsCount.erase(cid);
+      state->collections.erase(cid);
       break;
     }
 
     case TRI_WAL_MARKER_CREATE_DATABASE: {
-      database_create_marker_t const* m =
-          reinterpret_cast<database_create_marker_t const*>(marker);
+      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "id");
       // note that the database is now considered not dropped
-      state->droppedDatabases.erase(m->_databaseId);
+      state->droppedDatabases.erase(id);
       break;
     }
 
     case TRI_WAL_MARKER_DROP_DATABASE: {
-      database_drop_marker_t const* m =
-          reinterpret_cast<database_drop_marker_t const*>(marker);
+      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "id");
       // note that the database was dropped and doesn't need to be collected
-      state->droppedDatabases.emplace(m->_databaseId);
+      state->droppedDatabases.emplace(id);
 
       // find all collections for the same database and erase their state, too
       for (auto it = state->collections.begin(); it != state->collections.end();
            /* no hoisting */) {
-        if ((*it).second == m->_databaseId) {
+        if ((*it).second == id) {
           state->droppedCollections.emplace((*it).first);
           state->structuralOperations.erase((*it).first);
           state->documentOperations.erase((*it).first);

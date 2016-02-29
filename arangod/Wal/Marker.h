@@ -25,10 +25,7 @@
 #define ARANGOD_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/tri-strings.h"
 #include "VocBase/datafile.h"
-#include "VocBase/Legends.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -38,110 +35,6 @@ namespace arangodb {
 namespace wal {
 
 static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal create database marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct database_create_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  // char* properties
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal drop database marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct database_drop_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal create collection marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct collection_create_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  // char* properties
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal drop collection marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct collection_drop_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal rename collection marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct collection_rename_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  // char* name
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal change collection marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct collection_change_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  // char* properties
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal create index marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct index_create_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  TRI_idx_iid_t _indexId;
-  // char* properties
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal drop index marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct index_drop_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-  TRI_idx_iid_t _indexId;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal transaction begin marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct transaction_begin_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal transaction commit marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct transaction_commit_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal transaction abort marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct transaction_abort_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_tid_t _transactionId;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remote transaction begin marker
@@ -227,6 +120,12 @@ class Marker {
   //////////////////////////////////////////////////////////////////////////////
 
   Marker(TRI_df_marker_t const*, TRI_voc_fid_t);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create marker from a VPackSlice
+  //////////////////////////////////////////////////////////////////////////////
+  
+  Marker(TRI_df_marker_type_e, arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a marker that manages its own memory
@@ -328,110 +227,73 @@ class MarkerEnvelope : public Marker {
  public:
   MarkerEnvelope(TRI_df_marker_t const*, TRI_voc_fid_t);
 
-  ~MarkerEnvelope();
+  ~MarkerEnvelope() = default;
 };
 
 class CreateDatabaseMarker : public Marker {
  public:
-  CreateDatabaseMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
-
-  ~CreateDatabaseMarker();
-
- public:
-  inline char* properties() const {
-    return begin() + sizeof(database_create_marker_t);
-  }
+  explicit CreateDatabaseMarker(arangodb::velocypack::Slice const&);
+  ~CreateDatabaseMarker() = default;
 };
 
 class DropDatabaseMarker : public Marker {
  public:
-  explicit DropDatabaseMarker(TRI_voc_tick_t);
-
-  ~DropDatabaseMarker();
+  explicit DropDatabaseMarker(arangodb::velocypack::Slice const&);
+  ~DropDatabaseMarker() = default;
 };
 
 class CreateCollectionMarker : public Marker {
  public:
-  CreateCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
-
-  ~CreateCollectionMarker();
-
- public:
-  inline char* properties() const {
-    return begin() + sizeof(collection_create_marker_t);
-  }
+  explicit CreateCollectionMarker(arangodb::velocypack::Slice const&);
+  ~CreateCollectionMarker() = default;
 };
 
 class DropCollectionMarker : public Marker {
  public:
-  DropCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t);
-
-  ~DropCollectionMarker();
+  explicit DropCollectionMarker(arangodb::velocypack::Slice const&);
+  ~DropCollectionMarker() = default;
 };
 
 class RenameCollectionMarker : public Marker {
  public:
-  RenameCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
-
-  ~RenameCollectionMarker();
-
- public:
-  inline char* name() const {
-    return begin() + sizeof(collection_rename_marker_t);
-  }
+  explicit RenameCollectionMarker(arangodb::velocypack::Slice const&);
+  ~RenameCollectionMarker() = default;
 };
 
 class ChangeCollectionMarker : public Marker {
  public:
-  ChangeCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
-
-  ~ChangeCollectionMarker();
-
- public:
-  inline char* properties() const {
-    return begin() + sizeof(collection_change_marker_t);
-  }
+  explicit ChangeCollectionMarker(arangodb::velocypack::Slice const&);
+  ~ChangeCollectionMarker() = default;
 };
 
 class CreateIndexMarker : public Marker {
  public:
-  CreateIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t,
-                    arangodb::velocypack::Slice const&);
-
-  ~CreateIndexMarker();
-
- public:
-  inline char* properties() const {
-    return begin() + sizeof(index_create_marker_t);
-  }
+  explicit CreateIndexMarker(arangodb::velocypack::Slice const&);
+  ~CreateIndexMarker() = default;
 };
 
 class DropIndexMarker : public Marker {
  public:
-  DropIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
-
-  ~DropIndexMarker();
+  explicit DropIndexMarker(arangodb::velocypack::Slice const&);
+  ~DropIndexMarker() = default;
 };
 
 class BeginTransactionMarker : public Marker {
  public:
-  BeginTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
-
-  ~BeginTransactionMarker();
+  explicit BeginTransactionMarker(arangodb::velocypack::Slice const&);
+  ~BeginTransactionMarker() = default;
 };
 
 class CommitTransactionMarker : public Marker {
  public:
-  CommitTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
-
-  ~CommitTransactionMarker();
+  explicit CommitTransactionMarker(arangodb::velocypack::Slice const&);
+  ~CommitTransactionMarker() = default;
 };
 
 class AbortTransactionMarker : public Marker {
  public:
-  AbortTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
-
-  ~AbortTransactionMarker();
+  explicit AbortTransactionMarker(arangodb::velocypack::Slice const&);
+  ~AbortTransactionMarker() = default;
 };
 
 class BeginRemoteTransactionMarker : public Marker {
