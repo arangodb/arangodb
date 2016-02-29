@@ -383,29 +383,28 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
   TRI_df_marker_t* result;
   int res;
 
-  compaction_context_t* context = static_cast<compaction_context_t*>(data);
+  auto* context = static_cast<compaction_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
   TRI_voc_fid_t const targetFid = context->_compactor->_fid;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* d =
-        reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-    TRI_voc_key_t key = (char*)d + d->_offsetKey;
+  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    TRI_ASSERT(slice.isObject());
+    VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
+    TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
 
     auto found = static_cast<TRI_doc_mptr_t const*>(
-        primaryIndex->lookupKey(context->_trx, key));
-    bool deleted = (found == nullptr || found->_rid > d->_rid);
+        primaryIndex->lookupKey(context->_trx, keySlice));
+    bool deleted = (found == nullptr || found->_rid > rid);
 
     if (deleted) {
       // found a dead document
       context->_dfi.numberDead++;
       context->_dfi.sizeDead += AlignedMarkerSize<int64_t>(marker);
-      LOG_TOPIC(TRACE, Logger::COMPACTOR) << "found a stale document: " << key;
       return true;
     }
 
@@ -420,10 +419,8 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
-    TRI_ASSERT(found2->getDataPtr() !=
-               nullptr);  // ONLY in COMPACTIFIER, PROTECTED by fake trx outside
-    TRI_ASSERT(((TRI_df_marker_t*)found2->getDataPtr())->_size >
-               0);  // ONLY in COMPACTIFIER, PROTECTED by fake trx outside
+    TRI_ASSERT(found2->getDataPtr() != nullptr);
+    TRI_ASSERT(found2->getMarkerPtr()->_size > 0);
 
     // let marker point to the new position
     found2->setDataPtr(result);
@@ -437,7 +434,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
   }
 
   // deletions
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+  else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     if (context->_keepDeletions) {
       // write to compactor files
       res = CopyMarker(document, context->_compactor, marker, &result);
@@ -534,22 +531,21 @@ static int RemoveDatafile(TRI_document_collection_t* document,
 
 static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
                           TRI_datafile_t* datafile) {
-  compaction_initial_context_t* context =
-      static_cast<compaction_initial_context_t*>(data);
+  auto* context = static_cast<compaction_initial_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* d =
-        reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-    TRI_voc_key_t key = (char*)d + d->_offsetKey;
+  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    TRI_ASSERT(slice.isObject());
+    VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
+    TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
     auto found = static_cast<TRI_doc_mptr_t const*>(
-        primaryIndex->lookupKey(context->_trx, key));
-    bool deleted = (found == nullptr || found->_rid > d->_rid);
+        primaryIndex->lookupKey(context->_trx, keySlice));
+    bool deleted = (found == nullptr || found->_rid > rid);
 
     if (deleted) {
       return true;
@@ -560,8 +556,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   }
 
   // deletions
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION &&
-           context->_keepDeletions) {
+  else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     context->_targetSize += AlignedMarkerSize<int64_t>(marker);
   }
 

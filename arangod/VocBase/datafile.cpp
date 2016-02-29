@@ -606,23 +606,22 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     entry._key = nullptr;
 
-    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-        marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      char const* ptr = reinterpret_cast<char const*>(marker) +
-                        reinterpret_cast<TRI_doc_document_key_marker_t const*>(
-                            marker)->_offsetKey;
-      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
-    } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-      char const* ptr =
-          reinterpret_cast<char const*>(marker) +
-          reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
-      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+    if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+      VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      TRI_ASSERT(slice.isObject());
+      std::string const key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key.c_str(), key.size());
+    } else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
+      VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+      TRI_ASSERT(slice.isObject());
+      std::string const key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+      entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key.c_str(), key.size());
     }
 
     TRI_PushBackVector(&scan._entries, &entry);
 
     size_t size = AlignedMarkerSize<size_t>(marker);
-    currentSize += (TRI_voc_size_t)size;
+    currentSize += static_cast<TRI_voc_size_t>(size);
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       scan._endPosition = currentSize;
@@ -1398,8 +1397,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "document (df)";
     case TRI_DOC_MARKER_KEY_EDGE:
       return "edge (df)";
-    case TRI_DOC_MARKER_KEY_DELETION:
-      return "deletion (df)";
 
     // wal markers
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:

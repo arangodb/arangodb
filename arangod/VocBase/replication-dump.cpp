@@ -295,37 +295,6 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
   }
 
   switch (marker->_type) {
-    case TRI_DOC_MARKER_KEY_DELETION: {
-      TRI_ASSERT(nullptr != document);
-      auto m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey; // TODO vpack
-      keyLength = strlen(key);
-      rid = m->_rid;                    // TODO vpack
-      type = REPLICATION_MARKER_REMOVE; 
-      haveData = false;
-      break;
-    }
-
-    case TRI_DOC_MARKER_KEY_DOCUMENT: {
-      TRI_ASSERT(nullptr != document);
-      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey; // TODO vpack
-      keyLength = strlen(key);
-      rid = m->_rid;                    // TODO vpack
-      type = REPLICATION_MARKER_DOCUMENT;
-      break;
-    }
-
-    case TRI_DOC_MARKER_KEY_EDGE: {
-      TRI_ASSERT(nullptr != document);
-      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-      key = ((char*)m) + m->_offsetKey;
-      keyLength = strlen(key);
-      rid = m->_rid;
-      type = REPLICATION_MARKER_EDGE;
-      break;
-    }
-    
     case TRI_WAL_MARKER_VPACK_DOCUMENT: {
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::vpack_document_marker_t const*>(marker);
@@ -859,8 +828,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     }
 
     while (ptr < end) {
-      TRI_df_marker_t* marker = (TRI_df_marker_t*)ptr;
-      TRI_voc_tick_t foundTick;
+      auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
       if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
         // end of datafile
@@ -875,8 +843,10 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         continue;
       }
 
+      // TODO: handle prologue markers here
+
       // get the marker's tick and check whether we should include it
-      foundTick = marker->_tick;
+      TRI_voc_tick_t foundTick = marker->_tick;
 
       if (foundTick <= dataMin) {
         // marker too old
@@ -889,9 +859,8 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         goto NEXT_DF;
       }
 
-      if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
-          marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
-          marker->_type != TRI_DOC_MARKER_KEY_DELETION) {
+      if (marker->_type != TRI_WAL_MARKER_VPACK_DOCUMENT &&
+          marker->_type != TRI_WAL_MARKER_VPACK_REMOVE) {
         // found a non-data marker...
 
         // check if we can abort searching

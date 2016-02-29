@@ -128,7 +128,6 @@ enum TRI_df_marker_type_e {
   
   TRI_DOC_MARKER_KEY_DOCUMENT = 3007,  // new marker with key values
   TRI_DOC_MARKER_KEY_EDGE = 3008,      // new marker with key values
-  TRI_DOC_MARKER_KEY_DELETION = 3009,  // new marker with key values
 
   TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION = 4023,
   TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION = 4024,
@@ -445,19 +444,6 @@ typedef struct TRI_doc_edge_key_marker_s {
   char _padding_df_marker[4];
 #endif
 } TRI_doc_edge_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile deletion marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_deletion_key_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_rid_t _rid;  // this is the tick for the deletion
-  TRI_voc_tid_t _tid;
-
-  uint16_t _offsetKey;
-} TRI_doc_deletion_key_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
