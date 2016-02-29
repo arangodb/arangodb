@@ -677,7 +677,7 @@ static TRI_voc_cid_t GetCollectionFromWalMarker(TRI_df_marker_t const* marker) {
       if (!slice.isObject()) {
         return 0;
       }
-      VPackSlice const id = slice.get("id");
+      VPackSlice const id = slice.get("cid");
       if (id.isString()) {
         return std::stoull(id.copyString());
       }

@@ -116,7 +116,6 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
       _allowOversizeEntries(true),
       _ignoreLogfileErrors(false),
       _ignoreRecoveryErrors(false),
-      _suppressShapeInformation(false),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
@@ -215,9 +214,6 @@ void LogfileManager::setupOptions(
       "wal.reserve-logfiles", &_reserveLogfiles,
       "maximum number of reserve logfiles to maintain")(
       "wal.slots", &_numberOfSlots, "number of logfile slots to use")(
-      "wal.suppress-shape-information", &_suppressShapeInformation,
-      "do not write shape information for markers (saves a lot of disk space, "
-      "but effectively disables using the write-ahead log for replication)")(
       "wal.sync-interval", &_syncInterval,
       "interval for automatic, non-requested disk syncs (in milliseconds)")(
       "wal.throttle-when-pending", &_throttleWhenPending,
@@ -238,7 +234,7 @@ bool LogfileManager::prepare() {
 
   if (_directory.empty()) {
     // use global configuration variable
-    _directory = (*_databasePath);
+    _directory = *_databasePath;
 
     if (!basics::FileUtils::isDirectory(_directory)) {
       std::string systemErrorStr;
@@ -751,21 +747,13 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allocate space in a logfile for later writing, version for legends
-///
-/// See explanations about legends in the corresponding allocateAndWrite
-/// convenience function.
+/// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate(uint32_t size, TRI_voc_cid_t cid,
-                                  TRI_shape_sid_t sid, uint32_t legendOffset,
-                                  void*& oldLegend) {
+SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                  uint32_t size) {
   if (!_allowWrites) {
-// no writes allowed
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-
+    // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -779,25 +767,19 @@ SlotInfo LogfileManager::allocate(uint32_t size, TRI_voc_cid_t cid,
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
-  return _slots->nextUnused(size, cid, sid, legendOffset, oldLegend);
+  return _slots->nextUnused(databaseId, collectionId, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalize a log entry
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
-  _slots->returnUsed(slotInfo, waitForSync);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write data into the logfile
+/// @brief write data into the logfile, using database id and collection id
 /// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
+SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
+                                              TRI_voc_cid_t collectionId,
+                                              void* src, uint32_t size,
                                               bool waitForSync) {
-  SlotInfo slotInfo = allocate(size);
+  SlotInfo slotInfo = allocate(databaseId, collectionId, size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -827,9 +809,49 @@ SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
 /// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
+SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
+                                              bool waitForSync) {
+  SlotInfo slotInfo = allocate(size);
+
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    return SlotInfoCopy(slotInfo.errorCode);
+  }
+
+  TRI_ASSERT(slotInfo.slot != nullptr);
+
+  try {
+    slotInfo.slot->fill(src, size);
+
+    // we must copy the slotinfo because finalize() will set its internals to 0
+    // again
+    SlotInfoCopy copy(slotInfo.slot);
+
+    finalize(slotInfo, waitForSync);
+    return copy;
+  } catch (...) {
+    // if we don't return the slot we'll run into serious problems later
+    finalize(slotInfo, false);
+
+    return SlotInfoCopy(TRI_ERROR_INTERNAL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalize
+////////////////////////////////////////////////////////////////////////////////
+
 SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker,
                                               bool waitForSync) {
   return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalize a log entry
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
+  _slots->returnUsed(slotInfo, waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,7 @@
 
 #include <v8.h>
 
-struct TRI_df_marker_s;
+struct TRI_df_marker_t;
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
 
@@ -46,7 +46,7 @@ namespace V8VPackWrapper {
 
 v8::Handle<v8::Value> wrap(v8::Isolate*, arangodb::Transaction*,
                            TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
-                           struct TRI_df_marker_s const*);
+                           struct TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a VPackSlice

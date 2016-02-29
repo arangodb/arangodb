@@ -24,7 +24,7 @@
 #include "cleanup.h"
 #include "Basics/files.h"
 #include "Basics/Logger.h"
-#include "Basics/tri-strings.h"
+#include "Basics/ReadLocker.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"

@@ -38,7 +38,6 @@
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
-#include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -211,19 +210,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION: {
-      break;
-    }
-
-    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
-      transaction_remote_abort_marker_t const* m =
-          reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
-      // note which abort markers we found
-      state->handledTransactions.emplace(m->_transactionId);
-      break;
-    }
-
     case TRI_WAL_MARKER_CREATE_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
@@ -246,7 +232,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_CREATE_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "id");
+      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database is now considered not dropped
       state->droppedDatabases.erase(id);
       break;
@@ -254,7 +240,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_DROP_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "id");
+      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database was dropped and doesn't need to be collected
       state->droppedDatabases.emplace(id);
 
@@ -273,6 +259,20 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       }
       break;
     }
+    
+    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
+    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION: {
+      break;
+    }
+
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
+      transaction_remote_abort_marker_t const* m =
+          reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
+      // note which abort markers we found
+      state->handledTransactions.emplace(m->_transactionId);
+      break;
+    }
+
 
     default: {
       // do nothing intentionally
@@ -1301,7 +1301,7 @@ void CollectorThread::initMarker(TRI_df_marker_t* marker,
   TRI_ASSERT(marker != nullptr);
 
   marker->_size = size;
-  marker->_type = (TRI_df_marker_type_t)type;
+  marker->_type = static_cast<TRI_df_marker_type_t>(type);
   marker->_crc = 0;
   marker->_tick = 0;
 }

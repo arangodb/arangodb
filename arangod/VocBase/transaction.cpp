@@ -1056,17 +1056,18 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
+  TRI_document_collection_t* document = operation.document;
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // upgrade the info for the transaction
-  if (waitForSync || operation.document->_info.waitForSync()) {
+  if (waitForSync || document->_info.waitForSync()) {
     trx->_waitForSync = true;
   }
 
   // default is false
   waitForSync = false;
   if (isSingleOperationTransaction) {
-    waitForSync |= operation.document->_info.waitForSync();
+    waitForSync |= document->_info.waitForSync();
   }
 
   TRI_IF_FAILURE("TransactionOperationNoSlot") { return TRI_ERROR_DEBUG; }
@@ -1086,13 +1087,12 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
 
-  TRI_document_collection_t* document = operation.document;
-
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
-    // No document or edge marker, just append it to the WAL:
+    // just append it to the WAL:
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
+            trx->_vocbase->_id, document->_info.id(), 
             operation.marker->mem(), operation.marker->size(), false);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1114,8 +1114,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
-    operation.header->setDataPtr(
-        position);  // PROTECTED by ongoing trx from operation
+    operation.header->setDataPtr(position); 
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }

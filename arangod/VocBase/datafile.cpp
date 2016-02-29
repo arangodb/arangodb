@@ -1407,6 +1407,8 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "header";
     case TRI_DF_MARKER_FOOTER:
       return "footer";
+    case TRI_DF_MARKER_PROLOGUE:
+      return "prologue";
 
     // datafile markers
     case TRI_DOC_MARKER_KEY_DOCUMENT:
