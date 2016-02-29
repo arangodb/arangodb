@@ -352,6 +352,10 @@ function checkManifest(filename, manifest) {
       });
     }
 
+    if (legacy && manifest.defaultDocument === undefined) {
+      manifest.defaultDocument = 'index.html';
+    }
+
     if (typeof manifest.controllers === 'string') {
       manifest.controllers = {'/': manifest.controllers};
     }

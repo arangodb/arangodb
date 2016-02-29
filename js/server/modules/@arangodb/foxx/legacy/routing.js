@@ -333,8 +333,8 @@ function mountController(service, mount, filename) {
 }
 
 exports.routeService = function (service, throwOnErrors) {
+  const defaultDocument = service.manifest.defaultDocument;
   let error = null;
-  let defaultDocument = service.manifest.defaultDocument || 'index.html';
 
   service.routes = {
     urlPrefix: '',
@@ -352,7 +352,7 @@ exports.routeService = function (service, throwOnErrors) {
     }
   };
 
-  if ((service.mount + defaultDocument) !== service.mount) {
+  if (defaultDocument) {
     // only add redirection if src and target are not the same
     service.routes.routes.push({
       url: {match: '/'},
