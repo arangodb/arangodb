@@ -756,17 +756,16 @@ IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
     arangodb::aql::Ast*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) const {
-#if 0
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   SimpleAttributeEqualityMatcher matcher(fields());
+
   size_t const n = _fields.size();
   TRI_ASSERT(node->numMembers() == n);
 
-  // initialize permutations
-  std::vector<PermutationState> permutationStates;
-  permutationStates.reserve(n);
-  size_t maxPermutations = 1;
+  // valueAccess format:
+  // Index in _fields => <isIn, Value>
+  std::unordered_map<size_t, std::pair<bool, arangodb::aql::AstNode const*>>
+      valueAccess;
 
   std::pair<arangodb::aql::Variable const*,
             std::vector<arangodb::basics::AttributeName>> paramPair;
@@ -775,9 +774,6 @@ IndexIterator* HashIndex::iteratorForCondition(
     auto comp = node->getMemberUnchecked(i);
     auto attrNode = comp->getMember(0);
     auto valNode = comp->getMember(1);
-
-    paramPair.first = nullptr;
-    paramPair.second.clear();
 
     if (!attrNode->isAttributeAccessForVariable(paramPair) ||
         paramPair.first != reference) {
@@ -790,135 +786,60 @@ IndexIterator* HashIndex::iteratorForCondition(
       }
     }
 
-    size_t attributePosition = SIZE_MAX;
     for (size_t j = 0; j < _fields.size(); ++j) {
       if (arangodb::basics::AttributeName::isIdentical(
               _fields[j], paramPair.second, true)) {
-        attributePosition = j;
+
+        if (isAttributeExpanded(j)) {
+          TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          valueAccess.emplace(j, std::make_pair(false, valNode));
+        } else {
+          TRI_IF_FAILURE("HashIndex::permutationEQ") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          arangodb::aql::AstNodeType type = comp->type;
+          valueAccess.emplace(j, std::make_pair(type == aql::NODE_TYPE_OPERATOR_BINARY_IN, valNode));
+        }
         break;
       }
     }
+    
+  }
 
-    if (attributePosition == SIZE_MAX) {
-      // index attribute not found in condition. this is a severe error
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    arangodb::aql::AstNodeType type = comp->type;
-
-    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      permutationStates.emplace_back(
-          PermutationState(type, valNode, attributePosition, 1));
-      TRI_IF_FAILURE("HashIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      if (isAttributeExpanded(attributePosition)) {
-        type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
-        permutationStates.emplace_back(
-            PermutationState(type, valNode, attributePosition, 1));
-        TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+  bool needNormalize = false;
+  VPackBuilder searchValues;
+  {
+    // Create the search Values for the lookup
+    VPackArrayBuilder guard(&searchValues);
+    for (size_t i = 0; i < n; ++i) {
+      VPackObjectBuilder searchGuard(&searchValues);
+      auto pair = valueAccess[i];
+      if (pair.first) {
+        // x IN [] Case
+        searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
+        needNormalize = true;
       } else {
-        if (valNode->numMembers() == 0) {
-          return nullptr;
-        }
-        permutationStates.emplace_back(PermutationState(
-            type, valNode, attributePosition, valNode->numMembers()));
-        TRI_IF_FAILURE("HashIndex::permutationIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        maxPermutations *= valNode->numMembers();
+        // x == val Case
+        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
       }
+      pair.second->toVelocyPackValue(searchValues);
     }
   }
 
-  if (permutationStates.empty()) {
-    // can only be caused by empty IN lists
-    return nullptr;
+  if (needNormalize) {
+    VPackBuilder expandedSearchValues;
+    expandInSearchValues(searchValues.slice(), expandedSearchValues);
+    VPackSlice expandedSlice = expandedSearchValues.slice();
+    std::vector<IndexIterator*> iterators;
+    for (auto const& val : VPackArrayIterator(expandedSlice)) {
+      auto iterator = iteratorForSlice(trx, nullptr, val, false);
+      iterators.push_back(iterator);
+    }
+    return new MultiIndexIterator(iterators);
   }
-
-  std::vector<TRI_hash_index_search_value_t*> searchValues;
-  searchValues.reserve(maxPermutations);
-
-  try {
-    // create all permutations
-    auto shaper = _collection->getShaper();
-    size_t current = 0;
-    bool done = false;
-    while (!done) {
-      auto searchValue = std::make_unique<TRI_hash_index_search_value_t>();
-      searchValue->reserve(n);
-
-      bool valid = true;
-      for (size_t i = 0; i < n; ++i) {
-        auto& state = permutationStates[i];
-        std::shared_ptr<VPackBuilder> valBuilder =
-            state.getValue()->toVelocyPackValue();
-
-        if (valBuilder == nullptr) {
-          valid = false;
-          break;
-        }
-
-        auto shaped =
-            TRI_ShapedJsonVelocyPack(shaper, valBuilder->slice(), false);
-
-        if (shaped == nullptr) {
-          // no such shape exists. this means we won't find this value and can
-          // go on with the next permutation
-          valid = false;
-          break;
-        }
-
-        searchValue->_values[state.attributePosition] = *shaped;
-        TRI_Free(shaper->memoryZone(), shaped);
-      }
-
-      if (valid) {
-        searchValues.push_back(searchValue.get());
-        searchValue.release();
-      }
-
-      // now permute
-      while (true) {
-        if (++permutationStates[current].current <
-            permutationStates[current].n) {
-          current = 0;
-          // abort inner iteration
-          break;
-        }
-
-        permutationStates[current].current = 0;
-
-        if (++current >= n) {
-          done = true;
-          break;
-        }
-        // next inner iteration
-      }
-    }
-
-    TRI_ASSERT(searchValues.size() <= maxPermutations);
-
-    // Create the iterator
-    TRI_IF_FAILURE("HashIndex::noIterator") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-  } catch (...) {
-    // prevent a leak here
-    for (auto& it : searchValues) {
-      delete it;
-    }
-    throw;
-  }
-#endif
-
-  VPackBuilder b;
-  b.add(VPackValue(VPackValueType::Null));
-  return new HashIndexIterator(trx, this, b.slice());
+  return iteratorForSlice(trx, nullptr, searchValues.slice(), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
