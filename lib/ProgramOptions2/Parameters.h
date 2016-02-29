@@ -24,12 +24,11 @@
 #define ARANGODB_PROGRAM_OPTIONS_PARAMETERS_H 1
 
 #include "Basics/Common.h"
-#include <limits>
-
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <limits>
 #include <numeric>
 #include <type_traits>
 
