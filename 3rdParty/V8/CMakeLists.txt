@@ -219,7 +219,7 @@ set(ICU_INCLUDE_DIR
 if (MSBUILD)
   set(ICU_BIN_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/lib/libicui18n.lib;${ICU_BIN_DIR}/lib/libicuuc.lib;${ICU_BIN_DIR}/lib/libicudata.lib"
+    "${ICU_BIN_DIR}/lib/icui18n.lib;${ICU_BIN_DIR}/lib/icuuc.lib"
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -253,7 +253,7 @@ set(V8_INCLUDE_DIR
 if (MSBUILD)
   set(V8_BIN_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
   set(V8_LIBS
-    "${V8_BIN_DIR}/lib/libv8_base.lib;${V8_BIN_DIR}/lib/v8_libbase.a;${V8_BIN_DIR}/lib/v8_libplatform.a;${V8_BIN_DIR}/lib/v8_nosnapshot.a"
+    "${V8_BIN_DIR}/lib/v8_base.lib;${V8_BIN_DIR}/lib/v8_libbase.lib;${V8_BIN_DIR}/lib/v8_libplatform.lib;${V8_BIN_DIR}/lib/v8_nosnapshot.lib"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
