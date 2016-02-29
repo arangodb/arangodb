@@ -988,7 +988,16 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
-    // TODO create Multi search iterator
+    VPackSlice expandedSlice = expandedSearchValues.slice();
+    std::vector<IndexIterator*> iterators;
+    for (auto const& val : VPackArrayIterator(expandedSlice)) {
+      auto iterator = lookup(trx, val, reverse);
+      iterators.push_back(iterator);
+    }
+    if (reverse) {
+      std::reverse(iterators.begin(), iterators.end());
+    }
+    return new MultiIndexIterator(iterators);
   }
   return lookup(trx, searchValues.slice(), reverse);
 }
