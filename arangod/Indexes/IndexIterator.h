@@ -73,6 +73,53 @@ class IndexIterator {
 
   virtual void skip(uint64_t count);
 };
-}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a wrapper class to iterate over several IndexIterators.
+///        Each iterator is requested at the index itself.
+///        This iterator does NOT check for uniqueness.
+///        Will always start with the first iterator in the vector. Reverse them
+///        Outside if necessary.
+////////////////////////////////////////////////////////////////////////////////
+
+class MultiIndexIterator : public IndexIterator {
+
+  public:
+   MultiIndexIterator(std::vector<IndexIterator*> iterators)
+     : _iterators(iterators), _currentIdx(0) {
+       if (_iterators.empty()) {
+         _current = nullptr;
+       } else {
+         _current = _iterators.at(0);
+       }
+     };
+
+    ~MultiIndexIterator () {
+      // Free all iterators
+      for (auto& it : _iterators) {
+        delete it;
+      }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief Get the next element
+    ///        If one iterator is exhausted, the next one is used.
+    ///        A nullptr indicates that all iterators are exhausted
+    ////////////////////////////////////////////////////////////////////////////////
+
+    TRI_doc_mptr_t* next() override;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief Reset the cursor
+    ///        This will reset ALL internal iterators and start all over again
+    ////////////////////////////////////////////////////////////////////////////////
+
+    void reset() override;
+
+  private:
+   std::vector<IndexIterator*> _iterators;
+   size_t _currentIdx;
+   IndexIterator* _current;
+};
+}
 #endif

@@ -110,3 +110,39 @@ void IndexIterator::skip(uint64_t count) {
     --count;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next element
+///        If one iterator is exhausted, the next one is used.
+///        A nullptr indicates that all iterators are exhausted
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* MultiIndexIterator::next() {
+  if (_current = nullptr) {
+    return nullptr;
+  }
+  TRI_doc_mptr_t* next = _current->next();
+  while (next == nullptr) {
+    _currentIdx++;
+    if (_currentIdx >= _iterators.size()) {
+      _current = nullptr;
+      return nullptr;
+    }
+    _current = _iterators.at(_currentIdx);
+    next = _current->next();
+  }
+  return next;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reset the cursor
+///        This will reset ALL internal iterators and start all over again
+////////////////////////////////////////////////////////////////////////////////
+
+void MultiIndexIterator::reset() {
+  _current = _iterators.at(0);
+  _currentIdx = 0;
+  for (auto& it : _iterators) {
+    it->reset();
+  }
+}
