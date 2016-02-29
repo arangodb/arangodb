@@ -28,7 +28,6 @@
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

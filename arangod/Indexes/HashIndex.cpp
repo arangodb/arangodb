@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/transaction.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -436,7 +435,7 @@ int HashIndex::lookup(arangodb::Transaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
+/// @brief locates entries in the hash index given a VelocyPack search Array
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup(arangodb::Transaction* trx,
