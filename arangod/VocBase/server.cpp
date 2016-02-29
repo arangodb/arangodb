@@ -954,10 +954,14 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   try {
     VPackBuilder builder;
     builder.openObject();
+    builder.add("database", VPackValue(id));
+    builder.add("data", VPackValue(VPackValueType::Object));
     builder.add("id", VPackValue(id));
+    builder.close();
     builder.close();
 
     arangodb::wal::DropDatabaseMarker marker(builder.slice());
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -1592,20 +1596,23 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
+    
+    // create the database directory
+    if (databaseId == 0) {
+      databaseId = TRI_NewTickServer();
+    }
 
     if (writeMarker) {
       try {
         builder.openObject();
+        builder.add("database", VPackValue(databaseId));
+        builder.add("data", VPackValue(VPackValueType::Object));
+
         // name not yet in use
         defaults->toVelocyPack(builder);
       } catch (...) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
-    }
-
-    // create the database directory
-    if (databaseId == 0) {
-      databaseId = TRI_NewTickServer();
     }
 
     std::string dirname;
@@ -1705,6 +1712,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
 
   // write marker into log
   if (writeMarker) {
+    builder.close(); // close inner
     builder.close();
     res = WriteCreateMarker(builder.slice());
   }

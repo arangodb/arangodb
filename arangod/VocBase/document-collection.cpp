@@ -2793,8 +2793,6 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   {
     READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-    WRITE_LOCKER(writeLocker, document->_lock);
-
     arangodb::aql::QueryCache::instance()->invalidate(
         vocbase, document->_info.namec_str());
     found = document->removeIndex(iid);
@@ -2847,95 +2845,21 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts attribute names to lists of pids and names
-///
-/// In case of an error, all allocated memory in pids and names will be
-/// freed.
+/// @brief converts attribute names to lists of names
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PidNamesByAttributeNames(
-    std::vector<std::string> const& attributes, VocShaper* shaper,
-    std::vector<TRI_shape_pid_t>& pids,
-    std::vector<std::vector<arangodb::basics::AttributeName>>& names,
-    bool sorted, bool create) {
-  pids.reserve(attributes.size());
+static int NamesByAttributeNames(
+    std::vector<std::string> const& attributes,
+    std::vector<std::vector<arangodb::basics::AttributeName>>& names) {
   names.reserve(attributes.size());
 
-  // .............................................................................
-  // sorted case (hash index)
-  // .............................................................................
-
-  if (sorted) {
-    // combine name and pid
-    typedef std::pair<std::vector<arangodb::basics::AttributeName>,
-                      TRI_shape_pid_t> PidNameType;
-    std::vector<PidNameType> pidNames;
-    pidNames.reserve(attributes.size());
-
-    for (auto const& name : attributes) {
-      std::vector<arangodb::basics::AttributeName> attrNameList;
-      TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(!attrNameList.empty());
-      std::vector<std::string> joinedNames;
-      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
-      // We only need the first pid here
-      std::string pidPath = joinedNames[0];
-
-      TRI_shape_pid_t pid;
-
-      if (create) {
-        pid = shaper->findOrCreateAttributePathByName(pidPath.c_str());
-      } else {
-        pid = shaper->lookupAttributePathByName(pidPath.c_str());
-      }
-
-      if (pid == 0) {
-        return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-      }
-
-      pidNames.emplace_back(std::make_pair(attrNameList, pid));
-    }
-
-    // sort according to pid
-    std::sort(pidNames.begin(), pidNames.end(),
-              [](PidNameType const& l, PidNameType const& r)
-                  -> bool { return l.second < r.second; });
-
-    for (auto const& it : pidNames) {
-      pids.emplace_back(it.second);
-      names.emplace_back(it.first);
-    }
-  }
-
-  // .............................................................................
-  // unsorted case (skiplist index)
-  // .............................................................................
-
-  else {
-    for (auto const& name : attributes) {
-      std::vector<arangodb::basics::AttributeName> attrNameList;
-      TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(!attrNameList.empty());
-      std::vector<std::string> joinedNames;
-      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
-      // We only need the first pid here
-      std::string pidPath = joinedNames[0];
-
-      TRI_shape_pid_t pid;
-
-      if (create) {
-        pid = shaper->findOrCreateAttributePathByName(pidPath.c_str());
-      } else {
-        pid = shaper->lookupAttributePathByName(pidPath.c_str());
-      }
-
-      if (pid == 0) {
-        return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-      }
-
-      pids.emplace_back(pid);
-      names.emplace_back(attrNameList);
-    }
+  for (auto const& name : attributes) {
+    std::vector<arangodb::basics::AttributeName> attrNameList;
+    TRI_ParseAttributeString(name, attrNameList);
+    TRI_ASSERT(!attrNameList.empty());
+    std::vector<std::string> joinedNames;
+    TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+    names.emplace_back(attrNameList);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -3215,8 +3139,6 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
     bool& created) {
   READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(writeLocker, document->_lock);
-
   auto idx =
       CreateGeoIndexDocumentCollection(trx, document, location, std::string(),
                                        std::string(), geoJson, iid, created);
@@ -3246,8 +3168,6 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
     std::string const& longitude, bool& created) {
   READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
-  WRITE_LOCKER(writeLocker, document->_lock);
-
   auto idx = CreateGeoIndexDocumentCollection(
       trx, document, std::string(), latitude, longitude, false, iid, created);
 
@@ -3275,14 +3195,9 @@ static arangodb::Index* CreateHashIndexDocumentCollection(
     std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
     bool unique, bool& created) {
   created = false;
-  std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  // determine the sorted shape ids for the attributes
-  int res = PidNamesByAttributeNames(
-      attributes,
-      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      paths, fields, true, true);
+  int res = NamesByAttributeNames(attributes, fields);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -3360,14 +3275,9 @@ static int HashIndexFromVelocyPack(arangodb::Transaction* trx,
 arangodb::Index* TRI_LookupHashIndexDocumentCollection(
     TRI_document_collection_t* document,
     std::vector<std::string> const& attributes, int sparsity, bool unique) {
-  std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  // determine the sorted shape ids for the attributes
-  int res = PidNamesByAttributeNames(
-      attributes,
-      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      paths, fields, true, false);
+  int res = NamesByAttributeNames(attributes, fields);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -3387,8 +3297,6 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
   READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
-
-  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid,
                                                sparse, unique, created);
@@ -3417,13 +3325,9 @@ static arangodb::Index* CreateSkiplistIndexDocumentCollection(
     std::vector<std::string> const& attributes, TRI_idx_iid_t iid, bool sparse,
     bool unique, bool& created) {
   created = false;
-  std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  int res = PidNamesByAttributeNames(
-      attributes,
-      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      paths, fields, false, true);
+  int res = NamesByAttributeNames(attributes, fields);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -3501,14 +3405,9 @@ static int SkiplistIndexFromVelocyPack(arangodb::Transaction* trx,
 arangodb::Index* TRI_LookupSkiplistIndexDocumentCollection(
     TRI_document_collection_t* document,
     std::vector<std::string> const& attributes, int sparsity, bool unique) {
-  std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  // determine the unsorted shape ids for the attributes
-  int res = PidNamesByAttributeNames(
-      attributes,
-      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      paths, fields, false, false);
+  int res = NamesByAttributeNames(attributes, fields);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -3528,8 +3427,6 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
   READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
-
-  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateSkiplistIndexDocumentCollection(
       trx, document, attributes, iid, sparse, unique, created);
@@ -3710,8 +3607,6 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     TRI_idx_iid_t iid, std::string const& attribute, int minWordLength,
     bool& created) {
   READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
-
-  WRITE_LOCKER(writeLocker, document->_lock);
 
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute,
                                                    minWordLength, iid, created);

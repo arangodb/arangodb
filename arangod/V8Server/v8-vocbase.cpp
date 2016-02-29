@@ -1189,9 +1189,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
  
-#warning remove me 
-  *((char*)-1) = '!';
-
   if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
