@@ -44,7 +44,7 @@ if (MSVC)
       set(${flag_var} "${${flag_var}} /MT")
     endif ()
 
-    message(STATUS "${flag_var}=${${flag_var}}")
+    # message(STATUS "${flag_var}=${${flag_var}}")
   endforeach ()
 
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")

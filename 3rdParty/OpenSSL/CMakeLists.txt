@@ -44,14 +44,14 @@ if (WIN32)
     set(OPENSSL_EXT "")
   endif ()
 
-  if (${BITS} == 64)
-    set(OPENSSL_LIB_DIR "${OPENSSL_TOP_DIR}/lib64")
+  if (${BITS} EQUAL 64)
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
   else ()
-    set(OPENSSL_LIB_DIR "${OPENSSL_TOP_DIR}/lib")
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib")
   endif ()
 
   set(OPENSSL_LIBRARIES
-    "${OPENSSL_LIB_DIR}/ssleay32MT${OPENSSL_EXT};${OPENSSL_LIB_DIR}/libeay32MT${OPENSSL_EXT}")
+    "${OPENSSL_LIB_DIR}/ssleay32MT${OPENSSL_EXT}.lib;${OPENSSL_LIB_DIR}/libeay32MT${OPENSSL_EXT}.lib"
     CACHE INTERNAL
     "OpenSSL: Libraries Directory"
     FORCE
