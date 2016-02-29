@@ -268,7 +268,7 @@ set(ZLIB_VERSION
 
 if (WINDOWS)
   set(ZLIB_LIBS
-    ${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE}/zlibstaticd.lib
+    ${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT}/zlibstaticd.lib
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE

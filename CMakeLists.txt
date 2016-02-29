@@ -427,6 +427,10 @@ endif ()
 # ZLIB_INCLUDE_DIR
 
 add_subdirectory(3rdParty)
+foreach (LINK_DIR ${LINK_DIRECTORIES})
+  MESSAGE("xx${LINK_DIR}")
+  link_directories("${LINK_DIR}")
+endforeach()
 
 ################################################################################
 ## GETOPT

@@ -134,7 +134,7 @@ list(APPEND V8_COMPILE_ARGS v8)
 
 #get_cmake_property(_variableNames VARIABLES)
 #foreach (_variableName ${_variableNames})
-    #message(STATUS "${_variableName}=${${_variableName}}")
+#    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach ()
 #--------------------------------------------------------------------------------
 MESSAGE(${V8_GYP_ARGS})
@@ -196,6 +196,7 @@ else()
     CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BUILD_COMMAND $(MAKE) ${V8_COMPILE_ARGS}
     BUILD_IN_SOURCE 1
+    STEP_TARGETS v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
     INSTALL_COMMAND "")
 endif()
 ################################################################################
@@ -225,8 +226,9 @@ if (MSBUILD)
     FORCE
     )
 else()
+  list(APPEND LINK_DIRECTORIES "${ICU_BIN_DIR}")
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a;${ICU_BIN_DIR}/libicudata.a"
+    "icui18n;icuuc;icudata"
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -259,10 +261,14 @@ if (MSBUILD)
     FORCE
     )
 else()
+  list(APPEND LINK_DIRECTORIES "${V8_BIN_DIR}")
   set(V8_LIBS
-    "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
+    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
     )
 endif()
+
+set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+
