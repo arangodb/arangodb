@@ -104,6 +104,35 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["x"]]), [{x:12}]);
       writeAndCheck([[{x:{"op":"delete"}}]]);
       assertEqual(readAndCheck([["x"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to write a single non-top level key
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleNonTopLevel : function () {
+      assertEqual(readAndCheck([["x/y"]]), [{}]);
+      writeAndCheck([[{"x/y":12}]]);
+      assertEqual(readAndCheck([["x/y"]]), [{x:{y:12}}]);
+      writeAndCheck([[{"x/y":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["x"]]), [{x:{}}]);
+      writeAndCheck([[{"x":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["x"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test a precondition
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrecondition : function () {
+      writeAndCheck([[{"a":12}]]);
+      assertEqual(readAndCheck([["a"]]), [{a:12}]);
+      writeAndCheck([[{"a":13},{"a":12}]]);
+      assertEqual(readAndCheck([["a"]]), [{a:13}]);
+      var res = writeAgency([[{"a":14},{"a":12}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(res.bodyParsed, {error:true, successes:[]});
+      writeAndCheck([[{a:{op:"delete"}}]]);
     }
 
   };
