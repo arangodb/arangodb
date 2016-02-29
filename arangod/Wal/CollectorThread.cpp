@@ -238,7 +238,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_CREATE_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection is now considered not dropped
@@ -246,7 +246,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_DROP_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection was dropped and doesn't need to be collected
@@ -258,7 +258,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_CREATE_DATABASE: {
+    case TRI_WAL_MARKER_VPACK_CREATE_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database is now considered not dropped
@@ -266,7 +266,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_DROP_DATABASE: {
+    case TRI_WAL_MARKER_VPACK_DROP_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database was dropped and doesn't need to be collected

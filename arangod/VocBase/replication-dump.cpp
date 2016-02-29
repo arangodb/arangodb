@@ -672,12 +672,12 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
 
 static TRI_voc_cid_t GetCollectionFromWalMarker(TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_WAL_MARKER_CREATE_COLLECTION:
-    case TRI_WAL_MARKER_DROP_COLLECTION:
-    case TRI_WAL_MARKER_RENAME_COLLECTION:
-    case TRI_WAL_MARKER_CHANGE_COLLECTION:
-    case TRI_WAL_MARKER_CREATE_INDEX:
-    case TRI_WAL_MARKER_DROP_INDEX: {
+    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
+    case TRI_WAL_MARKER_VPACK_DROP_INDEX: {
       char const* p = reinterpret_cast<char const*>(marker);
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       if (!slice.isObject()) {

@@ -23,6 +23,7 @@
 
 #include "datafile.h"
 
+#include "Basics/FileUtils.h"
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
@@ -379,9 +380,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
   }
 
   // open the file
-  char* ptr = TRI_Concatenate2String(datafile->_filename, ".new");
-  std::string filename = ptr;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
+  std::string filename = arangodb::basics::FileUtils::buildFilename(datafile->_filename, ".new");
 
   int fd =
       TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
@@ -480,9 +479,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
   datafile->_written = datafile->_next;
 
   // rename files
-  ptr = TRI_Concatenate2String(datafile->_filename, ".corrupted");
-  std::string oldname = ptr;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
+  std::string oldname = arangodb::basics::FileUtils::buildFilename(datafile->_filename, ".corrupted");
 
   res = TRI_RenameFile(datafile->_filename, oldname.c_str());
 
@@ -508,19 +505,14 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
-  TRI_df_scan_t scan;
-  TRI_df_scan_entry_t entry;
-  TRI_voc_size_t currentSize;
-  char* end;
-  char* ptr;
-
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
 
-  ptr = datafile->_data;
-  end = datafile->_data + datafile->_currentSize;
-  currentSize = 0;
+  char* ptr = datafile->_data;
+  char* end = datafile->_data + datafile->_currentSize;
+  TRI_voc_size_t currentSize = 0;
 
+  TRI_df_scan_t scan;
   TRI_InitVector2(&scan._entries, TRI_CORE_MEM_ZONE,
                   sizeof(TRI_df_scan_entry_t), 1024);
 
@@ -535,13 +527,12 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
   }
 
   while (ptr < end) {
-    TRI_df_marker_t* marker = (TRI_df_marker_t*)ptr;
-    bool ok;
-    size_t size;
+    TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(ptr);
 
+    TRI_df_scan_entry_t entry;
     memset(&entry, 0, sizeof(entry));
 
-    entry._position = (TRI_voc_size_t)(ptr - datafile->_data);
+    entry._position = static_cast<TRI_voc_size_t>(ptr - datafile->_data);
     entry._size = marker->_size;
     entry._realSize = AlignedMarkerSize<size_t>(marker);
     entry._tick = marker->_tick;
@@ -601,7 +592,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
       return scan;
     }
 
-    ok = CheckCrcMarker(marker, end);
+    bool ok = CheckCrcMarker(marker, end);
 
     if (!ok) {
       entry._status = 5;
@@ -630,7 +621,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     TRI_PushBackVector(&scan._entries, &entry);
 
-    size = AlignedMarkerSize<size_t>(marker);
+    size_t size = AlignedMarkerSize<size_t>(marker);
     currentSize += (TRI_voc_size_t)size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -1026,9 +1017,8 @@ static int WriteInitialHeaderMarker(TRI_datafile_t* datafile, TRI_voc_fid_t fid,
                                     TRI_voc_size_t maximalSize) {
   // create the header
   TRI_df_header_marker_t header;
-  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER,
-                         sizeof(TRI_df_header_marker_t));
-  header.base._tick = (TRI_voc_tick_t)fid;
+  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  header.base._tick = static_cast<TRI_voc_tick_t>(fid);
 
   header._version = TRI_DF_VERSION;
   header._maximalSize = maximalSize;
@@ -1053,14 +1043,7 @@ static int WriteInitialHeaderMarker(TRI_datafile_t* datafile, TRI_voc_fid_t fid,
 
 static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   TRI_ERRORBUF;
-  TRI_voc_size_t size;
-  TRI_voc_fid_t fid;
-  bool ok;
   void* data;
-  char* ptr;
-  int fd;
-  int res;
-  ssize_t len;
   TRI_stat_t status;
   TRI_df_header_marker_t header;
   void* mmHandle;
@@ -1068,13 +1051,13 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(filename != nullptr);
 
-  fid = GetNumericFilenamePart(filename);
+  TRI_voc_fid_t fid = GetNumericFilenamePart(filename);
 
   // ..........................................................................
   // attempt to open a datafile file
   // ..........................................................................
 
-  fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
@@ -1086,7 +1069,7 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // compute the size of the file
-  res = TRI_FSTAT(fd, &status);
+  int res = TRI_FSTAT(fd, &status);
 
   if (res < 0) {
     TRI_SYSTEM_ERROR();
@@ -1099,7 +1082,7 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // check that file is not too small
-  size = static_cast<TRI_voc_size_t>(status.st_size);
+  TRI_voc_size_t size = static_cast<TRI_voc_size_t>(status.st_size);
 
   if (size < sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t)) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
@@ -1111,10 +1094,10 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   }
 
   // read header from file
-  ptr = (char*)&header;
-  len = sizeof(TRI_df_header_marker_t);
+  char* ptr = (char*)&header;
+  ssize_t len = sizeof(TRI_df_header_marker_t);
 
-  ok = TRI_ReadPointer(fd, ptr, len);
+  bool ok = TRI_ReadPointer(fd, ptr, len);
 
   if (!ok) {
     LOG(ERR) << "cannot read datafile header from '" << filename << "': " << TRI_last_error();
@@ -1425,22 +1408,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "commit remote transaction (wal)";
     case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION:
       return "abort remote transaction (wal)";
-    case TRI_WAL_MARKER_CREATE_COLLECTION:
-      return "create collection (wal)";
-    case TRI_WAL_MARKER_DROP_COLLECTION:
-      return "drop collection (wal)";
-    case TRI_WAL_MARKER_RENAME_COLLECTION:
-      return "rename collection (wal)";
-    case TRI_WAL_MARKER_CHANGE_COLLECTION:
-      return "change collection (wal)";
-    case TRI_WAL_MARKER_CREATE_INDEX:
-      return "create index (wal)";
-    case TRI_WAL_MARKER_DROP_INDEX:
-      return "drop index (wal)";
-    case TRI_WAL_MARKER_CREATE_DATABASE:
-      return "create database (wal)";
-    case TRI_WAL_MARKER_DROP_DATABASE:
-      return "drop database (wal)";
 
     case TRI_WAL_MARKER_VPACK_DOCUMENT:
       return "document (vpack)";

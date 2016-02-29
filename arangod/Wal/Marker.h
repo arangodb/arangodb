@@ -222,6 +222,18 @@ class MarkerEnvelope : public Marker {
   ~MarkerEnvelope() = default;
 };
 
+class VPackDocumentMarker : public Marker {
+ public:
+  VPackDocumentMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  ~VPackDocumentMarker() = default;
+};
+
+class VPackRemoveMarker : public Marker {
+ public:
+  VPackRemoveMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  ~VPackRemoveMarker() = default;
+};
+
 class CreateDatabaseMarker : public Marker {
  public:
   explicit CreateDatabaseMarker(arangodb::velocypack::Slice const&);
@@ -291,34 +303,19 @@ class AbortTransactionMarker : public Marker {
 class BeginRemoteTransactionMarker : public Marker {
  public:
   BeginRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-
-  ~BeginRemoteTransactionMarker();
+  ~BeginRemoteTransactionMarker() = default;
 };
 
 class CommitRemoteTransactionMarker : public Marker {
  public:
   CommitRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-
-  ~CommitRemoteTransactionMarker();
+  ~CommitRemoteTransactionMarker() = default;
 };
 
 class AbortRemoteTransactionMarker : public Marker {
  public:
   AbortRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
-
-  ~AbortRemoteTransactionMarker();
-};
-
-class VPackDocumentMarker : public Marker {
- public:
-  VPackDocumentMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
-  ~VPackDocumentMarker() = default;
-};
-
-class VPackRemoveMarker : public Marker {
- public:
-  VPackRemoveMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
-  ~VPackRemoveMarker() = default;
+  ~AbortRemoteTransactionMarker() = default;
 };
 
 }

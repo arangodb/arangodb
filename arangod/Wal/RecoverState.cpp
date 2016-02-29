@@ -479,7 +479,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_DROP_COLLECTION: {
+    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: {
       // note that the collection was dropped and doesn't need to be recovered
       TRI_voc_cid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
       state->droppedIds.emplace(cid);
@@ -628,7 +628,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       // ddl
       // -----------------------------------------------------------------------------
 
-      case TRI_WAL_MARKER_RENAME_COLLECTION: {
+      case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         VPackSlice const payloadSlice = markerData.get("data");
@@ -692,7 +692,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_CHANGE_COLLECTION: {
+      case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         VPackSlice const payloadSlice = markerData.get("data");
@@ -736,7 +736,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_CREATE_INDEX: {
+      case TRI_WAL_MARKER_VPACK_CREATE_INDEX: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         VPackSlice const payloadSlice = markerData.get("data");
@@ -795,7 +795,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_CREATE_COLLECTION: {
+      case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         VPackSlice const payloadSlice = markerData.get("data");
@@ -895,7 +895,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_CREATE_DATABASE: {
+      case TRI_WAL_MARKER_VPACK_CREATE_DATABASE: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         VPackSlice const payloadSlice = markerData.get("data");
         
@@ -957,7 +957,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_DROP_INDEX: {
+      case TRI_WAL_MARKER_VPACK_DROP_INDEX: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         VPackSlice const payloadSlice = markerData.get("data");
@@ -1008,7 +1008,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_DROP_COLLECTION: {
+      case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
         TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
         
@@ -1035,7 +1035,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      case TRI_WAL_MARKER_DROP_DATABASE: {
+      case TRI_WAL_MARKER_VPACK_DROP_DATABASE: {
         TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
 
         // insert the drop marker

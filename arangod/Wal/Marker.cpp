@@ -122,29 +122,59 @@ MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
+VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
+                                         VPackSlice const& properties)
+    : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
+             sizeof(vpack_document_marker_t) + properties.byteSize()) {
+  auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
+  m->_transactionId = transactionId;
+
+  // store vpack
+  storeSlice(sizeof(vpack_document_marker_t), properties);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
+                                     VPackSlice const& properties)
+    : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
+             sizeof(vpack_remove_marker_t) + properties.byteSize()) {
+  auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
+  m->_transactionId = transactionId;
+
+  // store vpack
+  storeSlice(sizeof(vpack_remove_marker_t), properties);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
 CreateDatabaseMarker::CreateDatabaseMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_CREATE_DATABASE, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_CREATE_DATABASE, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 DropDatabaseMarker::DropDatabaseMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_DROP_DATABASE, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_DROP_DATABASE, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateCollectionMarker::CreateCollectionMarker(VPackSlice const& properties) 
-    : Marker(TRI_WAL_MARKER_CREATE_COLLECTION, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_CREATE_COLLECTION, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 DropCollectionMarker::DropCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_DROP_COLLECTION, properties) {
+    : Marker(TRI_WAL_MARKER_VPACK_DROP_COLLECTION, properties) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,28 +182,28 @@ DropCollectionMarker::DropCollectionMarker(VPackSlice const& properties)
 ////////////////////////////////////////////////////////////////////////////////
 
 RenameCollectionMarker::RenameCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_RENAME_COLLECTION, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_RENAME_COLLECTION, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 ChangeCollectionMarker::ChangeCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_CHANGE_COLLECTION, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 CreateIndexMarker::CreateIndexMarker(VPackSlice const& properties) 
-    : Marker(TRI_WAL_MARKER_CREATE_INDEX, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_CREATE_INDEX, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
 DropIndexMarker::DropIndexMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_DROP_INDEX, properties) {}
+    : Marker(TRI_WAL_MARKER_VPACK_DROP_INDEX, properties) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
@@ -214,12 +244,6 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-BeginRemoteTransactionMarker::~BeginRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -237,12 +261,6 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-CommitRemoteTransactionMarker::~CommitRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,41 +275,5 @@ AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
   m->_databaseId = databaseId;
   m->_transactionId = transactionId;
   m->_externalId = externalId;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
-                                         VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
-             sizeof(vpack_document_marker_t) + properties.byteSize()) {
-  auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
-  m->_transactionId = transactionId;
-
-  // store vpack
-  storeSlice(sizeof(vpack_document_marker_t), properties);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
-                                     VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
-             sizeof(vpack_remove_marker_t) + properties.byteSize()) {
-  auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
-  m->_transactionId = transactionId;
-
-  // store vpack
-  storeSlice(sizeof(vpack_remove_marker_t), properties);
 }
 
