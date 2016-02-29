@@ -33,9 +33,19 @@ State::~State() {
   save();
 }
 
-void State::log (query_t const& query) {
-  MUTEX_LOCKER(mutexLocker, _logLock); 
-  _log.push_back(query);
+void State::log (query_t const& query, term_t term, id_t lid, size_t size) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  index_t idx = _log.end().index+1;
+  _log.push_back(idx, term, lid, query.toString(), std::vector<bool>(size));
+    // Sync call arango 
+}
+
+bool findit (index_t index, term_t term) { 
+  for (auto const& i : _log) { // Find entry matching index and term
+    if (i.index == index && i.term == term)
+      return true;
+  }
+  return false;
 }
 
 bool save (std::string const& ep) {};

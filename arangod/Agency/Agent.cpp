@@ -107,8 +107,18 @@ bool waitFor(std::vector<index_t>& unconfirmed) {
 append_entries_t Agent::appendEntries (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm,
   index_t leadersLastCommitIndex, query_t const& query) {
-  if (term < this->term()) // Reply false if term < currentTerm (§5.1)
+
+  if (term < this->term()) { // Reply false if term < currentTerm (§5.1)
+    LOG(WARN) << "Term of entry to be appended smaller than my own term (§5.1)";
     return append_entries_t(false,this->term());
+  }
+  
+  if (!_state.findit(prevLogIndex, prevLogTerm)) { // Find entry at pli with plt
+    LOG(WARN) << "No entry in logs at index " << prevLogIndex
+              << " and term " prevLogTerm; 
+    return append_entries_t(false,this->term());
+  }
+
   
   /*
   if (query->isEmpty()) {              // heartbeat received

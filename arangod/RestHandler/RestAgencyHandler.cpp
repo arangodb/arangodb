@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -77,13 +78,18 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 
 inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
   bool accepted;
-  if (_request->suffix()[0] == "write") {
-    write_ret_t ret = _agent->write(_request->toVelocyPack());
-    accepted = ret.accepted;
-    _agent->waitFor (ret);
+  typedef arangodb::velocypack::Options opts_t;
+  opts_t opts;
+  if (_request->suffix()[0] == "write") { 
+    write_ret_t ret = _agent->write (
+      _request->toVelocyPack(std::make_shared<opts_t>(opts)));
+    accepted = ret.accepted; 
+    _agent->waitFor (ret); // Wait for confirmation
+    
   } else {
-    ret = _agent->read(_request->toVelocyPack());
-    accepted = ret.accepted;
+    ret = _agent->read(
+      _request->toVelocyPack(std::make_shared<opts_t>(opts))));
+    accepted = ret.accepted; 
   }
   if (accepted) { // We accepted the request
     ret.result->close();

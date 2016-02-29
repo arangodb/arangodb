@@ -80,8 +80,12 @@ public:
    * @brief Load persisted data from above or start with empty log
    */
   bool load (std::string const& ep = "tcp://localhost:8529");
-  
 
+  /**
+   * @brief Find entry at index with term
+   */
+  bool findit (index_t index, term_t term) const;
+  
 private:
   
   arangodb::Mutex _logLock;          /**< @brief Mutex for modifying _log */

@@ -117,15 +117,15 @@ using namespace std::chrono;
  * @brief State entry
  */
 struct log_t {
+  index_t     index;
   term_t      term; 
   id_t        leaderId;
-  index_t     index;
   std::string entry;
   std::vector<bool> ack;
   milliseconds timestamp;
-  log_t (term_t t, id_t lid, index_t idx, std::string const& e,
+  log_t (index_t idx, term_t t, id_t lid, std::string const& e,
          std::vector<bool> const& r) :
-    term(t), leaderId(lid), index(idx), entry(e), ack(r), timestamp (
+    index(idx), term(t), leaderId(lid), entry(e), ack(r), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
 };
   
