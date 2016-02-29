@@ -45,7 +45,13 @@
 #define _WIN32_WINNT 0x501
 #endif  // __MINGW32__
 #if !defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR)
-//#include <dbghelp.h>  // For SymLoadModule64 and al.
+
+// Visual Studio 2013 has to include dbghlp.h, but it breaks 2015
+#if defined(_MSC_FULL_VER) && _MSC_FULL_VER > 180031101 
+#else
+#include <dbghelp.h>  // For SymLoadModule64 and al.
+#endif
+
 #include <errno.h>  // For STRUNCATE
 #endif  // !defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR)
 #include <limits.h>  // For INT_MAX and al.
