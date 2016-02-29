@@ -208,9 +208,10 @@ struct UInt64Parameter : public NumericParameter<uint64_t> {
 
 template <typename T>
 struct BoundedParameter : public T {
-  BoundedParameter(typename T::ValueType* ptr, typename T::ValueType min,
-                   typename T::ValueType max)
-      : T(ptr), minimum(min), maximum(max) {}
+  BoundedParameter(typename T::ValueType* ptr,
+                   typename T::ValueType minimum,
+                   typename T::ValueType maximum)
+      : T(ptr), minimum(minimum), maximum(maximum) {}
 
   std::string set(std::string const& value) override {
     try {
@@ -224,8 +225,8 @@ struct BoundedParameter : public T {
     } catch (...) {
       return "invalid numeric value";
     }
-    return "number out of allowed range (" + std::to_string(min) + " - " +
-           std::to_string(max) + ")";
+    return "number out of allowed range (" + std::to_string(minimum) + " - " +
+           std::to_string(maximum) + ")";
   }
 
   typename T::ValueType minimum;
