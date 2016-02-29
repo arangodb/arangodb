@@ -25,9 +25,8 @@
 #define ARANGOD_UTILS_OPERATION_CURSOR_H 1
 
 #include "Basics/Common.h"
-#include "Utils/OperationResult.h"
-#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Utils/OperationResult.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
@@ -35,6 +34,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+// FORWARD declaration
+class IndexIterator;
 
 struct OperationCursor : public OperationResult {
 
