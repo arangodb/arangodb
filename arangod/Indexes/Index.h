@@ -402,7 +402,7 @@ class Index {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
-                                    arangodb::velocypack::Builder&);
+                                    arangodb::velocypack::Builder&) const;
 
 
  protected:

@@ -618,7 +618,8 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
 ///        entries.
 //////////////////////////////////////////////////////////////////////////////
 
-void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) {
+void Index::expandInSearchValues(VPackSlice const base,
+                                 VPackBuilder& result) const {
   TRI_ASSERT(base.isArray());
 
   VPackArrayBuilder listGuard(&result); 

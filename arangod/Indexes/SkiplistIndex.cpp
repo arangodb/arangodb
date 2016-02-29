@@ -129,7 +129,6 @@ void SkiplistIterator::reset() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next element in the skiplist
-///        TODO Check if this includes left/right border
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* SkiplistIterator::next() {
@@ -138,17 +137,17 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
     return nullptr;
   }
   if (_reverse) {
-    _cursor = _index->_skiplistIndex->prevNode(_cursor);
     if (_cursor == _leftEndPoint) {
       _cursor = nullptr;
       return nullptr;
     }
+    _cursor = _index->_skiplistIndex->prevNode(_cursor);
   } else {
-    _cursor = _cursor->nextNode();
     if (_cursor == _rightEndPoint) {
       _cursor = nullptr;
       return nullptr;
     }
+    _cursor = _cursor->nextNode();
   }
   TRI_ASSERT(_cursor != nullptr);
   TRI_ASSERT(_cursor->document() != nullptr);
@@ -847,300 +846,151 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
-  return nullptr;
-  // TODO Implement this
-  /*
-  // Create the skiplistOperator for the IndexLookup
+  VPackBuilder searchValues;
+  bool needNormalize = false;
   if (node == nullptr) {
-    // We have no condition, we just use sort
-    auto builder = std::make_shared<VPackBuilder>();
-    {
-      VPackArrayBuilder b(builder.get());
-      builder->add(VPackValue(VPackValueType::Null));
-    }
-    std::unique_ptr<TRI_index_operator_t> unboundOperator(
-        TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr,
-                                builder, nullptr , 1));
-    std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
-    unboundOperator.release();
+    // We only use this index for sort. Empty searchValue
+    VPackArrayBuilder guard(&searchValues);
 
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
-      // prevent a (false-positive) memleak here
-      for (auto& it : searchValues) {
-        delete it;
-      }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+  } else {
+    // Create the search Values for the lookup
+    VPackArrayBuilder guard(&searchValues);
 
-    return new SkiplistIndexIterator(trx, this, searchValues, reverse);
-  }
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+    size_t unused = 0;
+    matchAttributes(node, reference, found, unused, true);
 
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  size_t unused = 0;
-  matchAttributes(node, reference, found, unused, true);
+    // found contains all attributes that are relevant for this node.
+    // It might be less than fields().
+    //
+    // Handle the first attributes. They can only be == or IN and only
+    // one node per attribute
 
-  // found contains all attributes that are relevant for this node.
-  // It might be less than fields().
-  //
-  // Handle the first attributes. They can only be == or IN and only
-  // one node per attribute
-
-  auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
-                            arangodb::aql::AstNode const*& access,
-                            arangodb::aql::AstNode const*& value) -> bool {
-    access = comp->getMember(0);
-    value = comp->getMember(1);
-    std::pair<arangodb::aql::Variable const*,
-              std::vector<arangodb::basics::AttributeName>> paramPair;
-    if (!(access->isAttributeAccessForVariable(paramPair) &&
-          paramPair.first == reference)) {
-      access = comp->getMember(1);
-      value = comp->getMember(0);
+    auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
+                              arangodb::aql::AstNode const*& access,
+                              arangodb::aql::AstNode const*& value) -> bool {
+      access = comp->getMember(0);
+      value = comp->getMember(1);
+      std::pair<arangodb::aql::Variable const*,
+                std::vector<arangodb::basics::AttributeName>> paramPair;
       if (!(access->isAttributeAccessForVariable(paramPair) &&
             paramPair.first == reference)) {
-        // Both side do not have a correct AttributeAccess, this should not
-        // happen and indicates
-        // an error in the optimizer
-        TRI_ASSERT(false);
+        access = comp->getMember(1);
+        value = comp->getMember(0);
+        if (!(access->isAttributeAccessForVariable(paramPair) &&
+              paramPair.first == reference)) {
+          // Both side do not have a correct AttributeAccess, this should not
+          // happen and indicates
+          // an error in the optimizer
+          TRI_ASSERT(false);
+        }
+        return true;
       }
-      return true;
-    }
-    return false;
-  };
+      return false;
+    };
 
-  // initialize permutations
-  std::vector<PermutationState> permutationStates;
-  permutationStates.reserve(_fields.size());
-  size_t maxPermutations = 1;
-
-  size_t usedFields = 0;
-  for (; usedFields < _fields.size(); ++usedFields) {
-    // We are in the equality range, we only allow one == or IN node per
-    // attribute
-    auto it = found.find(usedFields);
-    if (it == found.end() || it->second.size() != 1) {
-      // We are either done,
-      // or this is a range.
-      // Continue with more complicated loop
-      break;
-    }
-    auto comp = it->second[0];
-    TRI_ASSERT(comp->numMembers() == 2);
-    arangodb::aql::AstNode const* access = nullptr;
-    arangodb::aql::AstNode const* value = nullptr;
-    getValueAccess(comp, access, value);
-    // We found an access for this field
-    if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      // This is an equalityCheck, we can continue with the next field
-      permutationStates.emplace_back(
-          PermutationState(comp->type, value, usedFields, 1));
-      TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    size_t usedFields = 0;
+    for (; usedFields < _fields.size(); ++usedFields) {
+      auto it = found.find(usedFields);
+      if (it == found.end()) {
+        // We are either done
+        // or this is a range.
+        // Continue with more complicated loop
+        break;
       }
-    } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      if (isAttributeExpanded(usedFields)) {
-        permutationStates.emplace_back(PermutationState(
-            aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
-        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+      VPackObjectBuilder searchElement(&searchValues);
+
+      auto comp = it->second[0];
+      TRI_ASSERT(comp->numMembers() == 2);
+      arangodb::aql::AstNode const* access = nullptr;
+      arangodb::aql::AstNode const* value = nullptr;
+      getValueAccess(comp, access, value);
+      // We found an access for this field
+      
+      if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+        TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+      } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        if (isAttributeExpanded(usedFields)) {
+          searchValues.add(VPackValue(TRI_SLICE_KEY_EQUAL));
+          TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+        } else {
+          needNormalize = true;
+          searchValues.add(VPackValue(TRI_SLICE_KEY_IN));
         }
       } else {
-        if (value->numMembers() == 0) {
-          return nullptr;
-        }
-        permutationStates.emplace_back(PermutationState(
-            comp->type, value, usedFields, value->numMembers()));
-        TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        maxPermutations *= value->numMembers();
+        // This is a one-sided range
+        break;
       }
-    } else {
-      // This is a one-sided range
-      break;
+      // We have to add the value always, the key was added before
+      value->toVelocyPackValue(searchValues);
     }
-  }
 
-  // Now handle the next element, which might be a range
-  bool includeLower = false;
-  bool includeUpper = false;
-  auto lower = std::make_shared<VPackBuilder>();
-  auto upper = std::make_shared<VPackBuilder>();
-  if (usedFields < _fields.size()) {
-    auto it = found.find(usedFields);
-    if (it != found.end()) {
-      auto rangeConditions = it->second;
-      TRI_ASSERT(rangeConditions.size() <= 2);
-
-      for (auto& comp : rangeConditions) {
-        TRI_ASSERT(comp->numMembers() == 2);
-        arangodb::aql::AstNode const* access = nullptr;
-        arangodb::aql::AstNode const* value = nullptr;
-        bool isReverseOrder = getValueAccess(comp, access, value);
-
-        auto setBorder = [&](bool isLower, bool includeBound) -> void {
-          if (isLower == isReverseOrder) {
-            // We set an upper bound
-            TRI_ASSERT(upper->isEmpty());
-            upper = value->toVelocyPackValue();
-            includeUpper = includeBound;
-          } else {
-            // We set an lower bound
-            TRI_ASSERT(lower->isEmpty());
-            lower = value->toVelocyPackValue();
-            includeLower = includeBound;
-          }
-        };
-        // This is not an equalityCheck, set lower or upper
-        switch (comp->type) {
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-            setBorder(false, false);
-            break;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            setBorder(false, true);
-            break;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-            setBorder(true, false);
-            break;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-            setBorder(true, true);
-            break;
+    // Now handle the next element, which might be a range
+    if (usedFields < _fields.size()) {
+      auto it = found.find(usedFields);
+      if (it != found.end()) {
+        auto rangeConditions = it->second;
+        TRI_ASSERT(rangeConditions.size() <= 2);
+        VPackObjectBuilder searchElement(&searchValues);
+        for (auto& comp : rangeConditions) {
+          TRI_ASSERT(comp->numMembers() == 2);
+          arangodb::aql::AstNode const* access = nullptr;
+          arangodb::aql::AstNode const* value = nullptr;
+          bool isReverseOrder = getValueAccess(comp, access, value);
+          // Add the key
+          switch (comp->type) {
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+              if (isReverseOrder) {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+              } else {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+              }
+              break;
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+              if (isReverseOrder) {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+              } else {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+              }
+              break;
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+              if (isReverseOrder) {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_LT));
+              } else {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_GT));
+              }
+              break;
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+              if (isReverseOrder) {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_LE));
+              } else {
+                searchValues.add(VPackValue(TRI_SLICE_KEY_GE));
+              }
+              break;
           default:
             // unsupported right now. Should have been rejected by
             // supportsFilterCondition
             TRI_ASSERT(false);
             return nullptr;
+          }
         }
       }
     }
   }
-
-  std::vector<TRI_index_operator_t*> searchValues;
-  searchValues.reserve(maxPermutations);
-  VPackSlice emptySlice;
-
-  try {
-    if (usedFields == 0) {
-      // We have a range query based on the first _field
-      std::unique_ptr<TRI_index_operator_t> op(
-          buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                             includeUpper, emptySlice, nullptr ));
-
-      if (op != nullptr) {
-        searchValues.emplace_back(op.get());
-        op.release();
-
-        TRI_IF_FAILURE("SkiplistIndex::onlyRangeOperator") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      }
-    } else {
-      bool done = false;
-      // create all permutations
-      while (!done) {
-        auto parameter = std::make_shared<VPackBuilder>();
-        bool valid = true;
-
-        try {
-          VPackArrayBuilder b(parameter.get());
-          for (size_t i = 0; i < usedFields; ++i) {
-            TRI_ASSERT(i < permutationStates.size());
-            auto& state = permutationStates[i];
-
-            std::shared_ptr<VPackBuilder> valueBuilder =
-                state.getValue()->toVelocyPackValue();
-            VPackSlice const value = valueBuilder->slice();
-
-            if (value.isNone()) {
-              valid = false;
-              break;
-            }
-            parameter->add(value);
-          }
-        } catch (...) {
-          // Out of Memory
-          return nullptr;
-        }
-
-        if (valid) {
-          std::unique_ptr<TRI_index_operator_t> tmpOp(
-              TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-                                      parameter, nullptr , usedFields));
-          // Note we create a new RangeOperator always.
-          std::unique_ptr<TRI_index_operator_t> rangeOperator(
-              buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                                 includeUpper, parameter->slice(), nullptr ));
-
-          if (rangeOperator != nullptr) {
-            std::unique_ptr<TRI_index_operator_t> combinedOp(
-                TRI_CreateIndexOperator(
-                    TRI_AND_INDEX_OPERATOR, tmpOp.get(), rangeOperator.get(),
-                    std::make_shared<VPackBuilder>(), nullptr, 2));
-            rangeOperator.release();
-            tmpOp.release();
-            searchValues.emplace_back(combinedOp.get());
-            combinedOp.release();
-            TRI_IF_FAILURE("SkiplistIndex::rangeOperatorNoTmp") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
-          } else {
-            if (tmpOp != nullptr) {
-              searchValues.emplace_back(tmpOp.get());
-              tmpOp.release();
-              TRI_IF_FAILURE("SkiplistIndex::rangeOperatorTmp") {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-              }
-            }
-          }
-        }
-
-        size_t const np = permutationStates.size() - 1;
-        size_t current = 0;
-        // now permute
-        while (true) {
-          if (++permutationStates[np - current].current <
-              permutationStates[np - current].n) {
-            current = 0; // note: resetting the variable has no effect here
-            // abort inner iteration
-            break;
-          }
-
-          permutationStates[np - current].current = 0;
-
-          if (++current >= usedFields) {
-            done = true;
-            break;
-          }
-          // next inner iteration
-        }
-      }
-    }
-
-    if (searchValues.empty()) {
-      return nullptr;
-    }
-
-    if (reverse) {
-      std::reverse(searchValues.begin(), searchValues.end());
-    }
-
-    TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  } catch (...) {
-    // prevent memleak here
-    for (auto& it : searchValues) {
-      delete it;
-    }
-    throw;
+  if (needNormalize) {
+    VPackBuilder expandedSearchValues;
+    expandInSearchValues(searchValues.slice(), expandedSearchValues);
+    // TODO create Multi search iterator
   }
-
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return new SkiplistIndexIterator(trx, this, searchValues, reverse);
-  */
+  return lookup(trx, searchValues.slice(), reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
