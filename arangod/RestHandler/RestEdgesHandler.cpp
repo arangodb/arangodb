@@ -40,25 +40,35 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   HttpRequest::HttpRequestType type = _request->requestType();
 
   // execute one of the CRUD methods
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_GET: {
-      std::vector<traverser::TraverserExpression*> empty;
-      readEdges(empty);
-      break;
+  try {
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_GET: {
+        std::vector<traverser::TraverserExpression*> empty;
+        readEdges(empty);
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_PUT:
+        readFilteredEdges();
+        break;
+      case HttpRequest::HTTP_REQUEST_POST:
+        readEdgesForMultipleVertices();
+        break;
+      case HttpRequest::HTTP_REQUEST_HEAD:
+      case HttpRequest::HTTP_REQUEST_DELETE:
+      case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      default: {
+        generateNotImplemented("ILLEGAL " + EDGES_PATH);
+        break;
+      }
     }
-    case HttpRequest::HTTP_REQUEST_PUT:
-      readFilteredEdges();
-      break;
-    case HttpRequest::HTTP_REQUEST_POST:
-      readEdgesForMultipleVertices();
-      break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_DELETE:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
-      generateNotImplemented("ILLEGAL " + EDGES_PATH);
-      break;
-    }
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (std::exception const& ex) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
   // this handler is done
@@ -79,6 +89,10 @@ bool RestEdgesHandler::getEdgesForVertex(
   }
   TRI_document_collection_t* docCol =
       trx.trxCollection()->_collection->_collection;
+
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
       &trx, docCol, direction, start.cid, const_cast<char*>(start.key));

@@ -2077,7 +2077,7 @@ textarea,
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
 .navbar, footer.footer {
@@ -2095,10 +2095,10 @@ textarea,
   .button-danger:focus {
     background-color: #be342e; }
 
-.deleteButton, a.danger.coordinator, a.danger.dbserver {
+.deleteButton i, a.danger.coordinator, a.danger.dbserver {
   color: #da4f49; }
-  .deleteButton:hover,
-  a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
+  .deleteButton i:hover,
+  a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton i:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
     color: #be342e; }
 
 a.danger.coordinator, a.danger.dbserver {
@@ -2597,13 +2597,13 @@ button.disabled,
   cursor: not-allowed; }
 
 .addButton {
-  font-size: 22px;
+  font-size: 16pt;
   margin-right: 7px;
   margin-top: 2px;
   position: relative; }
 
-.deleteButton {
-  font-size: 22px;
+.deleteButton i {
+  font-size: 16pt;
   padding-right: 3px;
   position: relative;
   top: 3px; }

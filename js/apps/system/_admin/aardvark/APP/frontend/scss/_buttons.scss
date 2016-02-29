@@ -79,19 +79,22 @@ button.disabled,
 .addButton {
   @extend %clickable;
   @extend %icon-positive;
-  font-size: 22px;
+  font-size: 16pt;
   margin-right: 7px;
   margin-top: 2px;
   position: relative;
 }
 
 .deleteButton {
-  @extend %clickable;
-  @extend %icon-negative;
-  font-size: 22px;
-  padding-right: 3px;
-  position: relative;
-  top: 3px;
+
+  i {
+    @extend %clickable;
+    @extend %icon-negative;
+    font-size: 16pt;
+    padding-right: 3px;
+    position: relative;
+    top: 3px;
+  }
 }
 
 #closeBtnInfoView {

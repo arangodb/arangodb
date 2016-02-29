@@ -61,8 +61,9 @@ struct Section {
   }
 
   // print help for a section
-  void printHelp(size_t tw, size_t ow) const {
-    if (hidden || !hasOptions()) {
+  // the special search string "." will show help for all sections, even if hidden
+  void printHelp(std::string const& search, size_t tw, size_t ow) const {
+    if (search != "." && (hidden || !hasOptions())) {
       return;
     }
 
@@ -71,7 +72,7 @@ struct Section {
 
     // propagate print command to options
     for (auto const& it : options) {
-      it.second.printHelp(tw, ow);
+      it.second.printHelp(search, tw, ow);
     }
 
     std::cout << std::endl;

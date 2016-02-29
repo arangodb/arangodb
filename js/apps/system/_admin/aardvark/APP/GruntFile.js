@@ -47,6 +47,7 @@
             "frontend/js/lib/jquery.textfill.min.js",
             "frontend/js/lib/jquery.noty.packaged.min.js",
             "frontend/js/lib/select2.min.js",
+            "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/sigma.min.js",
             "frontend/js/lib/jsoneditor-min.js",

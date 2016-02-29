@@ -10607,6 +10607,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
+    hideArangoNotifications: function() {
+      $.noty.clearQueue();
+      $.noty.closeAll();
+    },
+
     openDocEditor: function (id, type, callback) {
       var ids = id.split("/"),
       self = this;
@@ -25884,6 +25889,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.' + menuItem).addClass('active');
         }
       }
+      arangoHelper.hideArangoNotifications();
     },
 
     showDropdown: function (e) {
@@ -27625,7 +27631,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     currentQuery: {},
     initDone: false,
 
-    bindParamRegExp: /@(@?)(\w+(\d*))/,
+    bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
 
     bindParamTableDesc: {
@@ -27636,7 +27642,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     myQueriesTableDesc: {
       id: "arangoMyQueriesTable",
-      titles: ["Name", "Actions"],
+      titles: ["Name", "Query", "Actions"],
       rows: []
     },
 
@@ -27648,6 +27654,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     initialize: function () {
       this.refreshAQL();
     },
+
+    allowParamToggle: true,
 
     events: {
       "click #executeQuery": "executeQuery",
@@ -27662,6 +27670,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #exportQuery": "exportCustomQueries",
       "click #importQuery": "openImportDialog",
       "click #removeResults": "removeResults",
+      "click #querySpotlight": "showSpotlight",
       "click #deleteQuery": "selectAndDeleteQueryFromTable",
       "click #explQuery": "selectAndExplainQueryFromTable",
       "keyup #arangoBindParamTable input": "updateBindParams",
@@ -27671,11 +27680,44 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #arangoMyQueriesTable #copyQuery" : "selectQueryFromTable",
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
+      'click #switchTypes': 'toggleBindParams',
       "click #arangoMyQueriesTable #runQuery" : "selectAndRunQueryFromTable"
     },
 
     clearQuery: function() {
       this.aqlEditor.setValue('');
+    },
+
+    toggleBindParams: function() {
+
+      if (this.allowParamToggle) {
+        $('#bindParamEditor').toggle();
+        $('#bindParamAceEditor').toggle();
+
+        if ($('#switchTypes').text() === 'JSON') {
+          $('#switchTypes').text('Table');
+          this.updateQueryTable();
+          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"));
+          this.deselect(this.bindParamAceEditor);
+        }
+        else {
+          $('#switchTypes').text('JSON');
+          this.renderBindParamTable();
+        }
+      }
+      else {
+        arangoHelper.arangoError("Bind parameter", "Could not parse bind parameter");
+      }
+      this.resize();
+
+    },
+
+    openExportDialog: function() {
+      $('#queryImportDialog').modal('show'); 
+    },
+
+    closeExportDialo: function() {
+      $('#queryImportDialog').modal('hide'); 
     },
 
     initQueryImport: function () {
@@ -27726,9 +27768,22 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     getCustomQueryValueByName: function (qName) {
+      var obj;
+
       if (qName) {
-        return this.collection.findWhere({name: qName}).get("value");
+        obj = this.collection.findWhere({name: qName});
       }
+      if (obj) {
+        obj = obj.get("value");
+      }
+      else {
+        _.each(this.queries, function(query) {
+          if (query.name === qName) {
+            obj = query.value;
+          }
+        });
+      }
+      return obj;
     },
 
     openImportDialog: function() {
@@ -27757,13 +27812,16 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (e) {
         if (e.currentTarget.id === "toggleQueries1") {
           this.updateQueryTable();
+          $('#bindParamAceEditor').hide();
+          $('#bindParamEditor').show();
+          $('#switchTypes').text('JSON');
         }
       }
 
       var divs = [
-        "aqlEditor", "queryTable", "previewWrapper",
+        "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
-        "saveCurrentQuery", "querySize", "executeQuery", 
+        "saveCurrentQuery", "querySize", "executeQuery", "switchTypes", 
         "explainQuery", "clearQuery", "importQuery", "exportQuery"
       ];
       _.each(divs, function(div) {
@@ -27787,7 +27845,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         name = $(e.currentTarget).children().first().text();
       }
       else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().text();
+        name = $(e.currentTarget).parent().parent().prev().prev().text();
       }
       return name;
     },
@@ -27914,8 +27972,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     explainQuery: function() {
-      if (this.aqlEditor.getValue().length === 0) {
-        arangoHelper.arangoError("Query", "Your query is empty");
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
@@ -27929,6 +27987,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       sentQueryEditor = ace.edit("sentQueryEditor" + counter);
       sentQueryEditor.getSession().setMode("ace/mode/aql");
       outputEditor.getSession().setMode("ace/mode/json");
+      outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
       outputEditor.setReadOnly(true);
       sentQueryEditor.setReadOnly(true);
 
@@ -27959,6 +28019,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
+              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -27969,7 +28030,6 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
           },
           error: function (data) {
-            window.progressView.hide();
             try {
               var temp = JSON.parse(data.responseText);
               arangoHelper.arangoError("Explain error", temp.errorMessage);
@@ -27977,6 +28037,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
+            window.progressView.hide();
             self.handleResult(counter);
             this.removeOutputEditor(counter);
           }
@@ -27987,6 +28048,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     removeOutputEditor: function(counter) {
       $('#outputEditorWrapper' + counter).hide();
       $('#outputEditorWrapper' + counter).remove();
+      if ($('.outputEditorWrapper').length === 0) {
+        $('#removeResults').hide(); 
+      }
     },
 
     getCachedQueryAfterRender: function() {
@@ -28074,11 +28138,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.initQueryImport();
 
       //set height of editor wrapper
-      $('.inputEditorWrapper').height($(window).height() / 10 * 3);
+      $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
       window.setTimeout(function() {
         self.resize();
       }, 10);
       self.deselect(self.aqlEditor);
+    },
+
+    showSpotlight: function() {
+
+      var callback = function(string) {
+        this.aqlEditor.insert(string);
+        $('#aqlEditor .ace_text-input').focus();
+      }.bind(this);
+
+      var cancelCallback = function() {
+        $('#aqlEditor .ace_text-input').focus();
+      };
+
+      window.spotlightView.show(callback, cancelCallback);
     },
 
     resize: function() {
@@ -28101,12 +28179,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.queryPreview.resize();
         //fix my queries preview table resizing issues TODO
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
+        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 3);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
+        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable tbody td .truncate').css('width', $('#queryTable').width() / 3);
       }
     },
 
@@ -28193,19 +28272,26 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       });
 
+      _.each(words, function(word) {
+        word = word.split(",");
+        _.each(word, function(x) {
+          words1.push(x);
+        });
+      });
+
       _.each(words1, function(word) {
         // remove newlines and whitespaces
         words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
         pos++;
       });
-      words1.sort();
 
       var newObject = {};
       _.each(words1, function(word) {
         //found a valid bind param expression
-        if (self.bindParamRegExp.test(word)) {
+        var match = word.match(self.bindParamRegExp);
+        if (match) {
           //if property is not available
-          word = word.substr(1, word.length);
+          word = match[1];
           newObject[word] = '';
         }
       });
@@ -28228,6 +28314,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       var counter = 0;
+
       _.each(this.bindParamTableObj, function(val, key) {
         $('#arangoBindParamTable tbody').append(
           "<tr>" + 
@@ -28278,12 +28365,30 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
       this.aqlEditor.setFontSize("13px");
+
+      this.bindParamAceEditor = ace.edit("bindParamAceEditor");
+      this.bindParamAceEditor.getSession().setMode("ace/mode/json");
+      this.bindParamAceEditor.setFontSize("13px");
+
+      this.bindParamAceEditor.getSession().on('change', function() {
+        try {
+          self.bindParamTableObj = JSON.parse(self.bindParamAceEditor.getValue());
+          self.allowParamToggle = true;
+        }
+        catch (e) {
+          self.allowParamToggle = false;
+        }
+      });
+
       this.aqlEditor.getSession().on('change', function() {
         self.checkForNewBindParams();
         self.renderBindParamTable();
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
+        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"));
+        $('#aqlEditor .ace_text-input').focus();
+
         self.resize();
       });
 
@@ -28314,9 +28419,18 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.aqlEditor.commands.addCommand({
         name: "explainQuery",
-        bindKey: {win: "Ctrl-Shift-E", mac: "Command-Shift-E", linux: "Ctrl-Shift-E"},
+        bindKey: {win: "Ctrl-Shift-Return", mac: "Command-Shift-Return", linux: "Ctrl-Shift-Return"},
         exec: function() {
           self.explainQuery();
+        }
+      });
+
+      this.aqlEditor.commands.addCommand({
+        name: "showSpotlight",
+        bindKey: {win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space"},
+        exec: function() {
+
+          self.showSpotlight();
         }
       });
 
@@ -28330,9 +28444,15 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     updateQueryTable: function () {
-      this.myQueriesTableDesc.rows = this.customQueries;
+      var self = this;
+      this.updateLocalQueries();
 
+      this.myQueriesTableDesc.rows = this.customQueries;
       _.each(this.myQueriesTableDesc.rows, function(k) {
+        k.secondRow = '<div class="truncate">' +
+          JSON.stringify(self.collection.findWhere({name: k.name}).get('value')) +
+        '</div>';
+
         k.thirdRow = '<span class="spanWrapper">' + 
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
           '<span id="explQuery" title="Explain query"><i class="fa fa-comments"></i></i></span>' +
@@ -28345,8 +28465,35 @@ window.ArangoUsers = Backbone.Collection.extend({
         delete k.value;
       });
 
+      function compare(a,b) {
+        if (a.name < b.name) {
+          return -1;
+        }
+        else if (a.name > b.name) {
+          return 1;
+        }
+        else {
+          return 0;
+        }
+      }
+
+      this.myQueriesTableDesc.rows.sort(compare);
+
+      _.each(this.queries, function(val) {
+        if (val.hasOwnProperty('parameter')) {
+          delete val.parameter;
+        }
+        self.myQueriesTableDesc.rows.push({
+          name: val.name,
+          secondRow: '<div class="truncate">' + val.value + '</div>',
+          thirdRow: '<span class="spanWrapper">' + 
+            '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>' 
+        });
+      });
+
       // escape all columns but the third (which contains HTML)
-      this.myQueriesTableDesc.unescaped = [ false, true ];
+      this.myQueriesTableDesc.unescaped = [ false, true, true ];
+
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
@@ -28489,9 +28636,31 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.modalView.hide();
     },
 
-    executeQuery: function () {
+    verifyQueryAndParams: function() {
+      var quit = false;
+
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError("Query", "Your query is empty");
+        quit = true;
+      }
+
+      var keys = [];
+      _.each(this.bindParamTableObj, function(val, key) {
+        if (val === '') {
+          quit = true;
+          keys.push(key);
+        }
+      });
+      if (keys.length > 0) {
+        arangoHelper.arangoError("Bind Parameter", JSON.stringify(keys) + " not defined.");
+      }
+
+      return quit;
+    },
+
+    executeQuery: function () {
+
+      if (this.verifyQueryAndParams()) {
         return;
       }
 
@@ -28509,6 +28678,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       sentQueryEditor.getSession().setMode("ace/mode/aql");
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
+      outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
       outputEditor.setFontSize("13px");
       sentQueryEditor.setFontSize("13px");
       sentQueryEditor.setReadOnly(true);
@@ -28572,10 +28743,9 @@ window.ArangoUsers = Backbone.Collection.extend({
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+              arangoHelper.arangoError('[' + temp.errorNum + ']', temp.errorMessage);
             }
             catch (e) {
-              outputEditor.setValue('ERROR');
               arangoHelper.arangoError("Query error", "ERROR");
             }
             self.handleResult(counter);
@@ -28700,18 +28870,19 @@ window.ArangoUsers = Backbone.Collection.extend({
                     error.errorMessage.match(/'.*'/g)[0],
                     error.errorMessage.match(/\d+:\d+/g)[0]
                   );
-                  arangoHelper.arangoError("Query", error.errorMessage);
                 }
                 else {
-                  console.log(resp);
+                  self.markPositionError(
+                    error.errorMessage.match(/\(\w+\)/g)[0]
+                  );
                 }
+                arangoHelper.arangoError("Query", error.errorMessage);
                 self.removeOutputEditor(counter);
               }
             }
             catch (e) {
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
-              console.log(e);
             }
 
             window.progressView.hide();
@@ -28722,16 +28893,22 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     markPositionError: function(text, pos) {
-      var row = pos.split(":")[0],
-      line = pos.split(":")[1];
-      text = text.substr(1, text.length - 2);
+      var row;
 
-      this.aqlEditor.find(text);
+      if (pos) {
+        row = pos.split(":")[0];
+        text = text.substr(1, text.length - 2);
+      }
 
+      var found = this.aqlEditor.find(text);
+
+      if (!found && pos) {
+        this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
+        this.aqlEditor.selection.selectLine(); 
+      }
       window.setTimeout(function() {
         $('.ace_start').first().css('background', 'rgba(255, 129, 129, 0.7)');
       }, 100);
-
     },
 
     refreshAQL: function() {
@@ -28961,6 +29138,199 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       // Initiate the first prompt.
       handler();
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global Backbone, $, window, setTimeout, Joi, _ */
+/*global templateEngine*/
+
+(function () {
+  "use strict";
+
+  window.SpotlightView = Backbone.View.extend({
+
+    template: templateEngine.createTemplate("spotlightView.ejs"),
+
+    el: "#spotlightPlaceholder",
+
+    displayLimit: 8,
+    typeahead: null,
+    callbackSuccess: null,
+    callbackCancel: null,
+
+    collections: {
+      system: [],
+      doc: [],
+      edge: [],
+    },
+
+    events: {
+      "focusout #spotlight .tt-input" : "hide",
+      "keyup #spotlight .typeahead" : "listenKey"
+    },
+
+    aqlKeywords: 
+      "for|return|filter|sort|limit|let|collect|asc|desc|in|into|" + 
+      "insert|update|remove|replace|upsert|options|with|and|or|not|" + 
+      "distinct|graph|outbound|inbound|any|all|none|aggregate",
+
+    aqlBuiltinFunctions: 
+"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
+"concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
+"like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
+"variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
+"near|within|within_rectangle|is_in_polygon|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|" + 
+"stddev_population|slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value" + 
+"remove_nth|graph_paths|shortest_path|graph_shortest_path|graph_distance_to|graph_traversal|graph_traversal_tree|" + 
+"graph_edges|graph_vertices|neighbors|graph_neighbors|graph_common_neighbors|graph_common_properties|" +
+"graph_eccentricity|graph_betweenness|graph_closeness|graph_absolute_eccentricity|remove_values|" +
+"graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|" +
+"date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
+"date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
+"date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
+"first_list|first_document|parse_identifier|current_user|current_database|" +
+"collections|document|union|union_distinct|intersection|flatten|" +
+"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|random_token|AQL_LAST_ENTRY",
+
+    listenKey: function(e) {
+      if (e.keyCode === 27) {
+        if (this.callbackSuccess) {
+          this.callbackCancel();
+        }
+        this.hide();
+      }
+      else if (e.keyCode === 13) {
+        if (this.callbackSuccess) {
+          this.callbackSuccess($(this.typeahead).val());
+          this.hide();
+        }
+      }
+    },
+
+    substringMatcher: function(strs) {
+      return function findMatches(q, cb) {
+        var matches, substrRegex;
+
+        matches = [];
+
+        substrRegex = new RegExp(q, 'i');
+
+        _.each(strs, function(str) {
+          if (substrRegex.test(str)) {
+            matches.push(str);
+          }
+        });
+
+        cb(matches);
+      };
+    },
+
+    updateDatasets: function() {
+      var self = this;
+      this.collections = {
+        system: [],
+        doc: [],
+        edge: [],
+      };
+
+      window.App.arangoCollectionsStore.each(function(collection) {
+        if (collection.get("isSystem")) {
+          self.collections.system.push(collection.get("name"));
+        }
+        else if (collection.get("type") === 'document') {
+          self.collections.doc.push(collection.get("name"));
+        }
+        else {
+          self.collections.edge.push(collection.get("name"));
+        }
+      });
+    },
+
+    stringToArray: function() {
+      this.aqlKeywordsArray = this.aqlKeywords.split('|');
+      this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
+    },
+
+    show: function(callbackSuccess, callbackCancel) {
+
+      this.callbackSuccess = callbackSuccess;
+      this.callbackCancel = callbackCancel;
+      this.stringToArray();
+      this.updateDatasets();
+
+      var genHeader = function(name, icon, type) {
+        var string = '<div class="header-type"><h4>' + name + '</h4>';
+        if (icon) {
+          string += '<span><i class="fa ' + icon + '"></i></span>';
+        }
+        if (type) {
+          string += '<span class="type">' + type.toUpperCase() + '</span>';
+        }
+        string += '</div>';
+
+        return string;
+      };
+
+      $(this.el).html(this.template.render({}));
+      $(this.el).show();
+
+      this.typeahead = $('#spotlight .typeahead').typeahead(
+        {
+          hint: true,
+          highlight: true,
+          minLength: 1
+        },
+        {
+          name: 'Functions',
+          source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Functions", "fa-code", "aql")
+          }
+        },
+        {
+          name: 'Keywords',
+          source: this.substringMatcher(this.aqlKeywordsArray),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Keywords", "fa-code", "aql")
+          }
+        },
+        {
+          name: 'Documents',
+          source: this.substringMatcher(this.collections.doc),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Documents", "fa-file-text-o", "Collection")
+          }
+        },
+        {
+          name: 'Edges',
+          source: this.substringMatcher(this.collections.edge),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Edges", "fa-share-alt", "Collection")
+          }
+        },
+        {
+          name: 'System',
+          limit: this.displayLimit,
+          source: this.substringMatcher(this.collections.system),
+          templates: {
+            header: genHeader("System", "fa-cogs", "Collection")
+          }
+        }
+      );
+
+      $('#spotlight .typeahead').focus();
+    },
+
+    hide: function() {
+      $(this.el).hide();
     }
 
   });
@@ -30662,8 +31032,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query",
-      "query2": "query2",
+      "query": "query2",
+      "query2": "query",
       "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",
@@ -30727,6 +31097,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         collection: this.foxxList
       });
       window.progressView = new window.ProgressView();
+
       var self = this;
 
       this.userCollection = new window.ArangoUsers();
@@ -30742,6 +31113,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore 
+        });
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();

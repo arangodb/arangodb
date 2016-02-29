@@ -257,6 +257,11 @@
       window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
+    hideArangoNotifications: function() {
+      $.noty.clearQueue();
+      $.noty.closeAll();
+    },
+
     openDocEditor: function (id, type, callback) {
       var ids = id.split("/"),
       self = this;
