@@ -485,7 +485,7 @@ add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ################################################################################
 
 include_directories(${OPENSSL_INCLUDE_DIR})
-add_definitions(-DARANGODB_OPENSSL_VERSION=\"${BOOST_VERSION}\")
+add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 
 if (USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
