@@ -32,6 +32,7 @@
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/transactions.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"

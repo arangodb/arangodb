@@ -34,7 +34,6 @@
 #include "Utils/DocumentHelper.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
@@ -53,6 +52,12 @@
 #define TRI_DEFAULT_BATCH_SIZE 1000
 
 namespace arangodb {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Forward Declaration
+//////////////////////////////////////////////////////////////////////////////
+
+struct OperationCursor;
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;

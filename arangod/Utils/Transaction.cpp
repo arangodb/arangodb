@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Marker.h"
+#include "Utils/OperationCursor.h"
 #include "VocBase/KeyGenerator.h"
 #include "Cluster/ClusterMethods.h"
 
