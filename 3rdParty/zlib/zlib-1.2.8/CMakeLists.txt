@@ -9,7 +9,7 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif ()
 
-project(zlib)
+project(zlib C)
 
 set(zlib_VERSION 1.2.8)
 set(VERSION "1.2.8")
