@@ -1,7 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual,
-  print, print_plain, COMPARE_STRING, NORMALIZE_STRING,
-  help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
+/*jshint globalstrict:false, strict:true */
+/*global assertEqual, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -31,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -45,6 +42,40 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var agencyServers = ARGUMENTS;
+  var whoseTurn = 0;    // used to do round robin on agencyServers
+
+  var request = require("@arangodb/request");
+
+  function readAgency(list) {
+    // We simply try all agency servers in turn until one gives us an HTTP
+    // response:
+    var res = request({url: agencyServers[whoseTurn] + "/read", method: "POST",
+                       followRedirects: true, body: JSON.stringify(list),
+                       headers: {"Content-Type": "application/json"}});
+    res.bodyParsed = JSON.parse(res.body);
+    return res;
+  }
+
+  function writeAgency(list) {
+    // We simply try all agency servers in turn until one gives us an HTTP
+    // response:
+    var res = request({url: agencyServers[whoseTurn] + "/write", method: "POST",
+                       followRedirects: true, body: JSON.stringify(list),
+                       headers: {"Content-Type": "application/json"}});
+    res.bodyParsed = JSON.parse(res.body);
+    return res;
+  }
+
+  function readAndCheck(list) {
+    var res = readAgency(list);
+    assertEqual(res.statusCode, 200);
+    return res.bodyParsed;
+  }
+
+  function writeAndCheck(list) {
+    var res = writeAgency(list);
+    assertEqual(res.statusCode, 200);
+  }
 
   return {
 
@@ -64,13 +95,44 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test global help function
+/// @brief test to write a single top level key
 ////////////////////////////////////////////////////////////////////////////////
 
-    testWait : function () {
-      require("internal").print("Hallo1", agencyServers);
-      require("internal").wait(5);
-      require("internal").print("Hallo1");
+    testSingleTopLevel : function () {
+      assertEqual(readAndCheck([["x"]]), [{}]);
+      writeAndCheck([[{x:12}]]);
+      assertEqual(readAndCheck([["x"]]), [{x:12}]);
+      writeAndCheck([[{x:{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["x"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to write a single non-top level key
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleNonTopLevel : function () {
+      assertEqual(readAndCheck([["x/y"]]), [{}]);
+      writeAndCheck([[{"x/y":12}]]);
+      assertEqual(readAndCheck([["x/y"]]), [{x:{y:12}}]);
+      writeAndCheck([[{"x/y":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["x"]]), [{x:{}}]);
+      writeAndCheck([[{"x":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["x"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test a precondition
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrecondition : function () {
+      writeAndCheck([[{"a":12}]]);
+      assertEqual(readAndCheck([["a"]]), [{a:12}]);
+      writeAndCheck([[{"a":13},{"a":12}]]);
+      assertEqual(readAndCheck([["a"]]), [{a:13}]);
+      var res = writeAgency([[{"a":14},{"a":12}]]);
+      assertEqual(res.statusCode, 412);
+      assertEqual(res.bodyParsed, {error:true, successes:[]});
+      writeAndCheck([[{a:{op:"delete"}}]]);
     }
 
   };
