@@ -46,6 +46,10 @@ using namespace arangodb::wal;
 
 template <typename T>
 static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
+  if (!slice.isObject()) {
+    LOG(ERR) << "invalid value type when looking for attribute '" << attribute << "': expecting object";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
   VPackSlice v = slice.get(attribute);
   if (v.isString()) {
     return static_cast<T>(std::stoull(v.copyString()));
@@ -53,7 +57,9 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   if (v.isNumber()) {
     return v.getNumber<T>();
   }
-  return 0;
+  
+  LOG(ERR) << "invalid value for attribute '" << attribute << "'";
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

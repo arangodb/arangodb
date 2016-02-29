@@ -107,25 +107,26 @@ struct TRI_datafile_t;
 /// @brief state of the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_df_state_e {
   TRI_DF_STATE_CLOSED = 1,       // datafile is closed
   TRI_DF_STATE_READ = 2,         // datafile is opened read only
   TRI_DF_STATE_WRITE = 3,        // datafile is opened read/append
   TRI_DF_STATE_OPEN_ERROR = 4,   // an error has occurred while opening
   TRI_DF_STATE_WRITE_ERROR = 5,  // an error has occurred while writing
   TRI_DF_STATE_RENAME_ERROR = 6  // an error has occurred while renaming
-} TRI_df_state_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_df_marker_type_e {
   TRI_MARKER_MIN = 999,  // not a real marker type,
                          // but used for bounds checking
 
   TRI_DF_MARKER_HEADER = 1000,
   TRI_DF_MARKER_FOOTER = 1001,
+  TRI_DF_MARKER_PROLOGUE = 1002,
 
   TRI_DF_MARKER_BLANK = 1100,
 
@@ -164,7 +165,7 @@ typedef enum {
   TRI_MARKER_MAX  // again, this is not a real
                   // marker, but we use it for
                   // bounds checking
-} TRI_df_marker_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief storage type of the marker
@@ -182,7 +183,7 @@ typedef uint32_t TRI_df_version_t;
 /// @brief scan result
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_scan_s {
+struct TRI_df_scan_t {
   TRI_voc_size_t _currentSize;
   TRI_voc_size_t _maximalSize;
   TRI_voc_size_t _endPosition;
@@ -192,7 +193,7 @@ typedef struct TRI_df_scan_s {
 
   uint32_t _status;
   bool _isSealed;
-} TRI_df_scan_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scan result entry
@@ -205,7 +206,7 @@ typedef struct TRI_df_scan_s {
 ///   5 - CRC failed
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_scan_entry_s {
+struct TRI_df_scan_entry_t {
   TRI_voc_size_t _position;
   TRI_voc_size_t _size;
   TRI_voc_size_t _realSize;
@@ -217,7 +218,7 @@ typedef struct TRI_df_scan_entry_s {
   char* _diagnosis;
   char* _key;
   char const* _typeName;
-} TRI_df_scan_entry_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile
@@ -310,7 +311,7 @@ struct TRI_datafile_t {
 /// and _crc the second.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_marker_s {
+struct TRI_df_marker_t {
   TRI_voc_size_t _size;  // 4 bytes, must be supplied
   TRI_voc_crc_t _crc;    // 4 bytes, will be generated
 
@@ -321,7 +322,7 @@ typedef struct TRI_df_marker_s {
 #endif
 
   TRI_voc_tick_t _tick;  // 8 bytes, will be generated
-} TRI_df_marker_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile header marker
@@ -353,13 +354,24 @@ typedef struct TRI_df_marker_s {
 /// </table>
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_header_marker_s {
+struct TRI_df_header_marker_t {
   TRI_df_marker_t base;  // 24 bytes
 
   TRI_df_version_t _version;    //  4 bytes
   TRI_voc_size_t _maximalSize;  //  4 bytes
   TRI_voc_tick_t _fid;          //  8 bytes
-} TRI_df_header_marker_t;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile footer marker
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_df_prologue_marker_t {
+  TRI_df_marker_t base;  // 24 bytes
+
+  TRI_voc_tick_t _databaseId; // 8 bytes
+  TRI_voc_cid_t _collectionId; // 8 bytes
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile footer marker
@@ -387,18 +399,18 @@ typedef struct TRI_df_header_marker_s {
 /// contains a footer is sealed and read-only.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_footer_marker_s {
+struct TRI_df_footer_marker_t {
   TRI_df_marker_t base;  // 24 bytes
 
   TRI_voc_size_t _maximalSize;  //  4 bytes
   TRI_voc_size_t _totalSize;    //  4 bytes
-} TRI_df_footer_marker_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_col_header_marker_s {
+struct TRI_col_header_marker_t {
   TRI_df_marker_t base;  // 24 bytes
 
   TRI_col_type_t _type;  //  4 bytes
@@ -408,28 +420,7 @@ typedef struct TRI_col_header_marker_s {
 #endif
 
   TRI_voc_cid_t _cid;  //  8 bytes
-} TRI_col_header_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile attribute marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_df_attribute_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_shape_aid_t _aid;
-  TRI_shape_size_t _size;
-
-  // char name[]
-} TRI_df_attribute_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile shape marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_df_shape_marker_s {
-  TRI_df_marker_t base;
-} TRI_df_shape_marker_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile marker with key
@@ -481,50 +472,6 @@ typedef struct TRI_doc_deletion_key_marker_s {
 
   uint16_t _offsetKey;
 } TRI_doc_deletion_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_begin_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-  uint32_t _numCollections;
-#ifdef TRI_PADDING_32
-  char _padding_begin_marker[4];
-#endif
-} TRI_doc_begin_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_commit_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-} TRI_doc_commit_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_abort_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-} TRI_doc_abort_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_prepare_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-} TRI_doc_prepare_transaction_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile

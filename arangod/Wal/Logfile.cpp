@@ -179,6 +179,21 @@ TRI_df_header_marker_t Logfile::getHeaderMarker() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a prologue marker
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_df_prologue_marker_t Logfile::getPrologueMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const {
+  TRI_df_prologue_marker_t header;
+  size_t const size = sizeof(TRI_df_prologue_marker_t);
+  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_PROLOGUE, size);
+
+  header._databaseId = databaseId;
+  header._collectionId = collectionId;
+
+  return header;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a footer marker
 ////////////////////////////////////////////////////////////////////////////////
 

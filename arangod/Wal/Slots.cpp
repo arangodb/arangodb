@@ -50,7 +50,9 @@ Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
       _lastAssignedTick(0),
       _lastCommittedTick(0),
       _lastCommittedDataTick(0),
-      _numEvents(0) {
+      _numEvents(0),
+      _lastDatabaseId(0),
+      _lastCollectionId(0) {
   _slots = new Slot[numberOfSlots];
 }
 
@@ -117,131 +119,22 @@ Slot::TickType Slots::lastCommittedTick() {
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo Slots::nextUnused(uint32_t size) {
-  // we need to use the aligned size for writing
-  uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
-  int iterations = 0;
-  bool hasWaited = false;
-
-  TRI_ASSERT(size > 0);
-
-  while (++iterations < 1000) {
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-
-      Slot* slot = &_slots[_handoutIndex];
-      TRI_ASSERT(slot != nullptr);
-
-      if (slot->isUnused()) {
-        if (hasWaited) {
-          CONDITION_LOCKER(guard, _condition);
-          TRI_ASSERT(_waiting > 0);
-          --_waiting;
-        }
-
-        // cycle until we have a valid logfile
-        while (_logfile == nullptr ||
-               _logfile->freeSize() < static_cast<uint64_t>(alignedSize)) {
-          if (_logfile != nullptr) {
-            // seal existing logfile by creating a footer marker
-            int res = writeFooter(slot);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              return SlotInfo(res);
-            }
-
-            // advance to next slot
-            slot = &_slots[_handoutIndex];
-            _logfileManager->setLogfileSealRequested(_logfile);
-
-            _logfile = nullptr;
-          }
-
-          TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
-            return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
-          }
-
-          // fetch the next free logfile (this may create a new one)
-          Logfile::StatusType status;
-          int res = newLogfile(alignedSize, status);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            if (res != TRI_ERROR_ARANGO_NO_JOURNAL) {
-              return SlotInfo(res);
-            }
-
-            usleep(10 * 1000);
-            // try again in next iteration
-          } else {
-            TRI_ASSERT(_logfile != nullptr);
-
-            if (status == Logfile::StatusType::EMPTY) {
-              // initialize the empty logfile by writing a header marker
-              int res = writeHeader(slot);
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                return SlotInfo(res);
-              }
-
-              // advance to next slot
-              slot = &_slots[_handoutIndex];
-              _logfileManager->setLogfileOpen(_logfile);
-            } else {
-              TRI_ASSERT(status == Logfile::StatusType::OPEN);
-            }
-          }
-        }
-
-        // if we get here, we got a free slot for the actual data...
-
-        char* mem = _logfile->reserve(alignedSize);
-
-        if (mem == nullptr) {
-          return SlotInfo(TRI_ERROR_INTERNAL);
-        }
-
-        // only in this case we return a valid slot
-        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
-
-        return SlotInfo(slot);
-      }
-    }
-
-    // if we get here, all slots are busy
-    CONDITION_LOCKER(guard, _condition);
-    if (!hasWaited) {
-      ++_waiting;
-      hasWaited = true;
-    }
-
-    bool mustWait;
-    {
-      MUTEX_LOCKER(mutexLocker, _lock);
-      mustWait = (_freeSlots == 0);
-    }
-
-    if (mustWait) {
-      guard.wait(10 * 1000);
-    }
-  }
-
-  return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+  return nextUnused(0, 0, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the next unused slot, version for legends
-///
-/// See explanations in arangod/Wal/LogfileManager.cpp in the
-/// corresponding allocateAndWrite method.
+/// @brief return the next unused slot
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
-                           TRI_shape_sid_t sid, uint32_t legendOffset,
-                           void*& oldLegend) {
-  // legendOffset 0 means no legend included
+SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                           uint32_t size) {
+  static size_t const PrologueSize = sizeof(TRI_df_prologue_marker_t);
+
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
   int iterations = 0;
   bool hasWaited = false;
+  bool mustWritePrologue = false;
 
   TRI_ASSERT(size > 0);
 
@@ -257,6 +150,20 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
           CONDITION_LOCKER(guard, _condition);
           TRI_ASSERT(_waiting > 0);
           --_waiting;
+        }
+
+        if (databaseId == 0 && collectionId == 0) {
+          _lastDatabaseId = 0;
+          _lastCollectionId = 0;
+        }
+        else if (!mustWritePrologue &&
+                 databaseId > 0 && 
+                 collectionId > 0 && 
+                 _lastDatabaseId != databaseId && 
+                 _lastCollectionId != collectionId) {
+          // write a prologue
+          alignedSize += PrologueSize;
+          mustWritePrologue = true;
         }
 
         // cycle until we have a valid logfile
@@ -314,25 +221,31 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
 
         // if we get here, we got a free slot for the actual data...
 
-        // Now sort out the legend business:
-        if (legendOffset == 0) {
-          void* legend = _logfile->lookupLegend(cid, sid);
-          if (nullptr == legend) {
-            // Bad, we would need a legend for this marker
-            return SlotInfo(TRI_ERROR_LEGEND_NOT_IN_WAL_FILE);
-          }
-          oldLegend = legend;
-        }
-
         char* mem = _logfile->reserve(alignedSize);
 
         if (mem == nullptr) {
           return SlotInfo(TRI_ERROR_INTERNAL);
         }
 
-        if (legendOffset != 0) {
-          void* legend = static_cast<void*>(mem + legendOffset);
-          _logfile->cacheLegend(cid, sid, legend);
+        if (mustWritePrologue) {
+          // write prologue...
+
+          // hand out the prologue slot and directly fill it
+          int res = writePrologue(slot, databaseId, collectionId);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return SlotInfo(res);
+          }
+
+          // now return the slot
+          mem += PrologueSize; // advance memory pointer
+          
+          // use following slot for the actual data
+          slot = &_slots[_handoutIndex];
+
+          // note database and collection id for next time
+          _lastDatabaseId = databaseId;
+          _lastCollectionId = collectionId;
         }
 
         // only in this case we return a valid slot
@@ -673,7 +586,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::writeHeader(Slot* slot) {
-  TRI_df_header_marker_t&& header = _logfile->getHeaderMarker();
+  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
   size_t const size = header.base._size;
 
   TRI_df_marker_t* mem =
@@ -683,7 +596,31 @@ int Slots::writeHeader(Slot* slot) {
   slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size),
                 _logfile->id(), handout());
   slot->fill(&header.base, size);
-  slot->setReturned(false);  // sync
+  slot->setReturned(false);  // no sync
+
+  // reset values for next write
+  _lastDatabaseId = 0;
+  _lastCollectionId = 0;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a prologue marker
+////////////////////////////////////////////////////////////////////////////////
+
+int Slots::writePrologue(Slot* slot, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+  size_t const size = header.base._size;
+
+  TRI_df_marker_t* mem =
+      reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
+  TRI_ASSERT(mem != nullptr);
+
+  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size),
+                _logfile->id(), handout());
+  slot->fill(&header.base, size);
+  slot->setReturned(false);  // no sync
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -695,7 +632,7 @@ int Slots::writeHeader(Slot* slot) {
 int Slots::writeFooter(Slot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_footer_marker_t&& footer = _logfile->getFooterMarker();
+  TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
   size_t const size = footer.base._size;
 
   TRI_df_marker_t* mem =
@@ -706,6 +643,10 @@ int Slots::writeFooter(Slot* slot) {
                 _logfile->id(), handout());
   slot->fill(&footer.base, size);
   slot->setReturned(true);  // sync
+  
+  // reset values for next write
+  _lastDatabaseId = 0;
+  _lastCollectionId = 0;
 
   return TRI_ERROR_NO_ERROR;
 }

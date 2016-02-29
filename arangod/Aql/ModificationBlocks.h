@@ -31,7 +31,7 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
 
-struct TRI_df_marker_s;
+struct TRI_df_marker_t;
 struct TRI_doc_mptr_t;
 struct TRI_json_t;
 
@@ -71,7 +71,7 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief constructs a master pointer from the marker passed
   //////////////////////////////////////////////////////////////////////////////
 
-  void constructMptr(TRI_doc_mptr_t*, TRI_df_marker_s const*) const;
+  void constructMptr(TRI_doc_mptr_t*, TRI_df_marker_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether a shard key value has changed

@@ -32,6 +32,7 @@
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
