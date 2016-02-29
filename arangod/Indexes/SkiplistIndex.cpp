@@ -292,442 +292,44 @@ static int FillLookupOperator(TRI_index_operator_t* slOperator,
   return TRI_ERROR_NO_ERROR;
 }
 
-size_t SkiplistIterator::size() const { return _intervals.size(); }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reset the cursor
+////////////////////////////////////////////////////////////////////////////////
 
-void SkiplistIterator::initCursor() {
-  size_t const n = size();
-  if (0 < n) {
-    if (_reverse) {
-      // start at last interval, right endpoint
-      _currentInterval = n - 1;
-      _cursor = _intervals.at(_currentInterval)._rightEndPoint;
-    } else {
-      // start at first interval, left endpoint
-      _currentInterval = 0;
-      _cursor = _intervals.at(_currentInterval)._leftEndPoint;
-    }
-  } else {
-    _cursor = nullptr;
-  }
-}
-
-bool SkiplistIterator::hasNext() const {
+void SkiplistIterator::reset() {
   if (_reverse) {
-    return hasPrevIteration();
-  }
-  return hasNextIteration();
-}
-
-TRI_index_element_t* SkiplistIterator::next() {
-  if (_reverse) {
-    return prevIteration();
-  }
-  return nextIteration();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Locates one or more ranges within the skiplist and returns iterator
-////////////////////////////////////////////////////////////////////////////////
-
-// .............................................................................
-// Tests whether the LeftEndPoint is < than RightEndPoint (-1)
-// Tests whether the LeftEndPoint is == to RightEndPoint (0)    [empty]
-// Tests whether the LeftEndPoint is > than RightEndPoint (1)   [undefined]
-// .............................................................................
-
-bool SkiplistIterator::findHelperIntervalValid(
-    SkiplistIteratorInterval const& interval) {
-  Node* lNode = interval._leftEndPoint;
-
-  if (lNode == nullptr) {
-    return false;
-  }
-  // Note that the right end point can be nullptr to indicate the end of
-  // the index.
-
-  Node* rNode = interval._rightEndPoint;
-
-  if (lNode == rNode) {
-    return false;
-  }
-
-  if (lNode->nextNode() == rNode) {
-    // Interval empty, nothing to do with it.
-    return false;
-  }
-
-  if (nullptr != rNode && rNode->nextNode() == lNode) {
-    // Interval empty, nothing to do with it.
-    return false;
-  }
-
-  if (_index->_skiplistIndex->getNrUsed() == 0) {
-    return false;
-  }
-
-  if (lNode == _index->_skiplistIndex->startNode() || nullptr == rNode) {
-    // The index is not empty, the nodes are not neighbours, one of them
-    // is at the boundary, so the interval is valid and not empty.
-    return true;
-  }
-
-  int compareResult =
-      _index->CmpElmElm(lNode->document(), rNode->document(),
-                        arangodb::basics::SKIPLIST_CMP_TOTORDER);
-  return (compareResult == -1);
-  // Since we know that the nodes are not neighbours, we can guarantee
-  // at least one document in the interval.
-}
-
-bool SkiplistIterator::findHelperIntervalIntersectionValid(
-    SkiplistIteratorInterval const& lInterval,
-    SkiplistIteratorInterval const& rInterval,
-    SkiplistIteratorInterval& interval) {
-  Node* lNode = lInterval._leftEndPoint;
-  Node* rNode = rInterval._leftEndPoint;
-
-  if (nullptr == lNode || nullptr == rNode) {
-    // At least one left boundary is the end, intersection is empty.
-    return false;
-  }
-
-  int compareResult;
-  // Now find the larger of the two start nodes:
-  if (lNode == _index->_skiplistIndex->startNode()) {
-    // We take rNode, even if it is the start node as well.
-    compareResult = -1;
-  } else if (rNode == _index->_skiplistIndex->startNode()) {
-    // We take lNode
-    compareResult = 1;
+    _cursor = _rightEndPoint;
   } else {
-    compareResult = _index->CmpElmElm(lNode->document(), rNode->document(),
-                                      arangodb::basics::SKIPLIST_CMP_TOTORDER);
+    _cursor = _leftEndPoint;
   }
-
-  if (compareResult < 1) {
-    interval._leftEndPoint = rNode;
-  } else {
-    interval._leftEndPoint = lNode;
-  }
-
-  lNode = lInterval._rightEndPoint;
-  rNode = rInterval._rightEndPoint;
-
-  // Now find the smaller of the two end nodes:
-  if (nullptr == lNode) {
-    // We take rNode, even is this also the end node.
-    compareResult = 1;
-  } else if (nullptr == rNode) {
-    // We take lNode.
-    compareResult = -1;
-  } else {
-    compareResult = _index->CmpElmElm(lNode->document(), rNode->document(),
-                                      arangodb::basics::SKIPLIST_CMP_TOTORDER);
-  }
-
-  if (compareResult < 1) {
-    interval._rightEndPoint = lNode;
-  } else {
-    interval._rightEndPoint = rNode;
-  }
-
-  return findHelperIntervalValid(interval);
-}
-
-void SkiplistIterator::findHelper(
-    TRI_index_operator_t const* indexOperator,
-    std::vector<SkiplistIteratorInterval>& intervals) {
-  TRI_skiplist_index_key_t values;
-  values._numFields = 0; // initialize to pacify compiler
-  std::vector<SkiplistIteratorInterval> leftResult;
-  std::vector<SkiplistIteratorInterval> rightResult;
-  SkiplistIteratorInterval interval;
-  Node* temp;
-
-  switch (indexOperator->_type) {
-    case TRI_EQ_INDEX_OPERATOR:
-    case TRI_LE_INDEX_OPERATOR:
-    case TRI_LT_INDEX_OPERATOR:
-    case TRI_GE_INDEX_OPERATOR:
-    case TRI_GT_INDEX_OPERATOR: {
-      TRI_relation_index_operator_t* relationOperator =
-        (TRI_relation_index_operator_t*)indexOperator;
-
-      values._fields = relationOperator->_fields;
-      values._numFields = relationOperator->_numFields;
-      break;  // this is to silence a compiler warning
-    }
-
-    default: {
-      // must not access relationOperator->xxx if the operator is not a
-      // relational one otherwise we'll get invalid reads and the prog
-      // might crash
-    }
-  }
-
-  switch (indexOperator->_type) {
-    case TRI_AND_INDEX_OPERATOR: {
-      TRI_logical_index_operator_t* logicalOperator =
-        (TRI_logical_index_operator_t*)indexOperator;
-      findHelper(logicalOperator->_left, leftResult);
-      findHelper(logicalOperator->_right, rightResult);
-
-      size_t nl = leftResult.size();
-      size_t nr = rightResult.size();
-      for (size_t i = 0; i < nl; ++i) {
-        for (size_t j = 0; j < nr; ++j) {
-          auto tempLeftInterval = leftResult[i];
-          auto tempRightInterval = rightResult[j];
-
-          if (findHelperIntervalIntersectionValid(
-                  tempLeftInterval, tempRightInterval, interval)) {
-            intervals.emplace_back(interval);
-          }
-        }
-      }
-      return;
-    }
-
-    case TRI_EQ_INDEX_OPERATOR: {
-      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
-      temp = nullptr;
-      TRI_ASSERT(nullptr != temp);
-      interval._leftEndPoint = temp;
-
-      bool const allAttributesCoveredByCondition =
-          (values._numFields == _index->numPaths());
-
-      if (_index->unique() && allAttributesCoveredByCondition) {
-        // At most one hit:
-        temp = temp->nextNode();
-        if (nullptr != temp) {
-          // HACKI if (0 == _index->CmpKeyElm(&values, temp->document())) {
-          if (true) {
-            interval._rightEndPoint = temp->nextNode();
-            if (findHelperIntervalValid(interval)) {
-              intervals.emplace_back(interval);
-            }
-          }
-        }
-      } else {
-        // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
-        temp = nullptr;
-        interval._rightEndPoint = temp->nextNode();
-        if (findHelperIntervalValid(interval)) {
-          intervals.emplace_back(interval);
-        }
-      }
-      return;
-    }
-
-    case TRI_LE_INDEX_OPERATOR: {
-      interval._leftEndPoint = _index->_skiplistIndex->startNode();
-      // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
-      temp = nullptr;
-      interval._rightEndPoint = temp->nextNode();
-
-      if (findHelperIntervalValid(interval)) {
-        intervals.emplace_back(interval);
-      }
-      return;
-    }
-
-    case TRI_LT_INDEX_OPERATOR: {
-      interval._leftEndPoint = _index->_skiplistIndex->startNode();
-      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
-      temp = nullptr;
-      interval._rightEndPoint = temp->nextNode();
-
-      if (findHelperIntervalValid(interval)) {
-        intervals.emplace_back(interval);
-      }
-      return;
-    }
-
-    case TRI_GE_INDEX_OPERATOR: {
-      // HACKI temp = _index->_skiplistIndex->leftKeyLookup(&values);
-      temp = nullptr;
-      interval._leftEndPoint = temp;
-      interval._rightEndPoint = _index->_skiplistIndex->endNode();
-
-      if (findHelperIntervalValid(interval)) {
-        intervals.emplace_back(interval);
-      }
-      return;
-    }
-
-    case TRI_GT_INDEX_OPERATOR: {
-      // HACKI temp = _index->_skiplistIndex->rightKeyLookup(&values);
-      temp = nullptr;
-      interval._leftEndPoint = temp;
-      interval._rightEndPoint = _index->_skiplistIndex->endNode();
-
-      if (findHelperIntervalValid(interval)) {
-        intervals.emplace_back(interval);
-      }
-      return;
-    }
-
-    default: { TRI_ASSERT(false); }
-
-  }  // end of switch statement
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Attempts to determine if there is a previous document within an
-/// interval or before it - without advancing the iterator.
+/// @brief Get the next element in the skiplist
+///        TODO Check if this includes left/right border
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator::hasPrevIteration() const {
-  // ...........................................................................
-  // if we have more intervals than the one we are currently working
-  // on then of course we have a previous doc, because intervals are nonempty.
-  // ...........................................................................
-  if (_currentInterval > 0) {
-    return true;
-  }
-
-  Node const* leftNode = _index->_skiplistIndex->prevNode(_cursor);
-
-  // Note that leftNode can be nullptr here!
-  // ...........................................................................
-  // If the leftNode == left end point AND there are no more intervals
-  // then we have no next.
-  // ...........................................................................
-  return leftNode != _intervals.at(_currentInterval)._leftEndPoint;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Attempts to determine if there is a next document within an
-/// interval - without advancing the iterator.
-////////////////////////////////////////////////////////////////////////////////
-
-bool SkiplistIterator::hasNextIteration() const {
+TRI_doc_mptr_t* SkiplistIterator::next() {
   if (_cursor == nullptr) {
-    return false;
-  }
-
-  // ...........................................................................
-  // if we have more intervals than the one we are currently working
-  // on then of course we have a next doc, since intervals are nonempty.
-  // ...........................................................................
-  if (_intervals.size() - 1 > _currentInterval) {
-    return true;
-  }
-
-  Node const* leftNode = _cursor->nextNode();
-
-  // Note that leftNode can be nullptr here!
-  // ...........................................................................
-  // If the left == right end point AND there are no more intervals then we have
-  // no next.
-  // ...........................................................................
-  return leftNode != _intervals.at(_currentInterval)._rightEndPoint;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Jumps backwards by 1 and returns the document
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_element_t* SkiplistIterator::prevIteration() {
-  if (_currentInterval >= _intervals.size()) {
+    // We are exhausted already, sorry
     return nullptr;
   }
-  SkiplistIteratorInterval& interval = _intervals.at(_currentInterval);
-
-  // ...........................................................................
-  // use the current cursor and move 1 backward
-  // ...........................................................................
-
-  Node* result = nullptr;
-
-  result = _index->_skiplistIndex->prevNode(_cursor);
-
-  if (result == interval._leftEndPoint) {
-    if (_currentInterval == 0) {
-      _cursor = nullptr;  // exhausted
+  if (_reverse) {
+    _cursor = _index->_skiplistIndex->prevNode(_cursor);
+    if (_cursor == _leftEndPoint) {
+      _cursor = nullptr;
       return nullptr;
     }
-    --_currentInterval;
-    interval = _intervals.at(_currentInterval);
-    _cursor = interval._rightEndPoint;
-    result = _index->_skiplistIndex->prevNode(_cursor);
-  }
-  _cursor = result;
-
-  TRI_ASSERT(result != nullptr);
-  return result->document();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Jumps forwards by jumpSize and returns the document
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_element_t* SkiplistIterator::nextIteration() {
-  if (_cursor == nullptr) {
-    // In this case the iterator is exhausted or does not even have intervals.
-    return nullptr;
-  }
-
-  if (_currentInterval >= _intervals.size()) {
-    return nullptr;
-  }
-  SkiplistIteratorInterval& interval = _intervals.at(_currentInterval);
-
-  while (true) {  // will be left by break
+  } else {
     _cursor = _cursor->nextNode();
-    if (_cursor != interval._rightEndPoint) {
-      if (_cursor == nullptr) {
-        return nullptr;
-      }
-      break;  // we found a next one
-    }
-    if (_currentInterval == _intervals.size() - 1) {
-      _cursor = nullptr;  // exhausted
+    if (_cursor == _rightEndPoint) {
+      _cursor = nullptr;
       return nullptr;
     }
-    ++_currentInterval;
-    interval = _intervals.at(_currentInterval);
-    _cursor = interval._leftEndPoint;
   }
-
-  return _cursor->document();
-}
-
-TRI_doc_mptr_t* SkiplistIndexIterator::next() {
-  while (_iterator == nullptr) {
-    if (_currentOperator == _operators.size()) {
-      // Sorry nothing found at all
-      return nullptr;
-    }
-    // We restart the lookup
-    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
-    if (_iterator == nullptr) {
-      // This iterator was not created.
-      _currentOperator++;
-    }
-  }
-  TRI_ASSERT(_iterator != nullptr);
-  TRI_index_element_t* res = _iterator->next();
-  while (res == nullptr) {
-    // Try the next iterator
-    _currentOperator++;
-    if (_currentOperator == _operators.size()) {
-      // We are done
-      return nullptr;
-    }
-    // Free the former iterator and get the next one
-    delete _iterator;
-    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
-    res = _iterator->next();
-  }
-  return res->document();
-}
-
-void SkiplistIndexIterator::reset() {
-  delete _iterator;
-  _iterator = nullptr;
-  _currentOperator = 0;
+  TRI_ASSERT(_cursor != nullptr);
+  TRI_ASSERT(_cursor->document() != nullptr);
+  return _cursor->document()->document();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -878,6 +480,25 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the interval is valid. It is declared invalid if
+///        one border is nullptr or the right is lower than left.
+////////////////////////////////////////////////////////////////////////////////
+
+bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
+  if (left == nullptr) {
+    return false;
+  }
+  if (right == nullptr) {
+    return false;
+  }
+  if (CmpElmElm(left->document(), right->document(),
+                arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
+    return false;
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ///
 /// Note: this function will not destroy the passed slOperator before it returns
@@ -886,31 +507,163 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
-                                        TRI_index_operator_t* slOperator,
+                                        VPackSlice const searchValues,
                                         bool reverse) const {
-  TRI_ASSERT(slOperator != nullptr);
+  TRI_ASSERT(searchValues.isArray());
+  TRI_ASSERT(searchValues.length() <= _fields.size());
 
-  // .........................................................................
-  // fill the relation operators which may be embedded in the slOperator with
-  // additional information. Recall the slOperator is what information was
-  // received from a user for query the skiplist.
-  // .........................................................................
 
-  int res = FillLookupOperator(slOperator, _collection);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-    return nullptr;
+  VPackBuilder leftSearch;
+  VPackSlice lastNonEq;
+  leftSearch.openArray();
+  for (auto const& it : VPackArrayIterator(searchValues)) {
+    TRI_ASSERT(it.isObject());
+    VPackSlice eq = it.get(TRI_SLICE_KEY_EQUAL);
+    if (eq.isNone()) {
+      lastNonEq = it;
+      break;
+    }
+    leftSearch.add(eq);
   }
 
-  auto results = std::make_unique<SkiplistIterator>(this, reverse);
+  Node* leftBorder = nullptr;
+  Node* rightBorder = nullptr;
+  if (lastNonEq.isNone()) {
+    // We only have equality!
+    leftSearch.close();
+    VPackSlice search = leftSearch.slice();
+    leftBorder = _skiplistIndex->leftKeyLookup(&search);
+    bool allAttributesCoveredByCondition =
+        searchValues.length() == _fields.size();
 
-  results->findHelper(slOperator, results->_intervals);
+    if (unique() && allAttributesCoveredByCondition) {
+      // At most one hit:
+      Node* temp = leftBorder->nextNode();
+      if (nullptr != temp) {
+        if (0 == CmpKeyElm(&search, temp->document())) {
+          rightBorder = temp->nextNode();
+        }
+      }
+    } else {
+      rightBorder = _skiplistIndex->rightKeyLookup(&search);
+      if (rightBorder != nullptr) {
+        rightBorder = rightBorder->nextNode();
+      }
+    }
+  } else {
+    // Copy rightSearch = leftSearch for right border
+    VPackBuilder rightSearch = leftSearch;
 
-  results->initCursor();
+    // Define Lower-Bound 
+    VPackSlice lastLeft = lastNonEq.get(TRI_SLICE_KEY_GE);
+    if (!lastLeft.isNone()) {
+      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_GT));
+      leftSearch.add(lastLeft);
+      leftSearch.close();
+      VPackSlice search = leftSearch.slice();
+      leftBorder = _skiplistIndex->leftKeyLookup(&search);
+      // leftKeyLookup guarantees that we find the element before search. This
+      // should not be in the cursor, but the next one
+      if (leftBorder != nullptr) {
+        // Check for special case: Search returned the left most element. This
+        // could either be included or excluded so we have to treat this special
+        if (!(leftBorder == _skiplistIndex->startNode() &&
+              CmpKeyElm(&search, leftBorder->document()) < 0)) {
+          leftBorder = leftBorder->nextNode();
+        }
+      }
+    } else {
+      lastLeft = lastNonEq.get(TRI_SLICE_KEY_GT);
+      if (!lastLeft.isNone()) {
+        leftSearch.add(lastLeft);
+        leftSearch.close();
+        VPackSlice search = leftSearch.slice();
+        leftBorder = _skiplistIndex->rightKeyLookup(&search);
+        if (leftBorder != nullptr) {
+          if (CmpKeyElm(&search, leftBorder->document()) == 0) {
+            // leftBorder is identical, to search, skip it.
+            // It is guaranteed that the next element is greater than search
+            leftBorder = leftBorder->nextNode();
+          }
+        }
+      } else {
+        // No lower bound set default to (null <= x)
+        leftSearch.close();
+        VPackSlice search = leftSearch.slice();
+        leftBorder = _skiplistIndex->rightKeyLookup(&search);
+        // This is already correct leftBorder
+      }
+    }
+    // NOTE: leftBorder could be nullptr (no element fulfilling condition.)
+    // This is checked later
 
-  // Finally initialize _cursor if the result is not empty:
-  return results.release();
+    // Define upper-bound
+
+    VPackSlice lastRight = lastNonEq.get(TRI_SLICE_KEY_LE);
+    if (!lastRight.isNone()) {
+      TRI_ASSERT(!lastNonEq.hasKey(TRI_SLICE_KEY_LT));
+      rightSearch.add(lastRight);
+      rightSearch.close();
+      VPackSlice search = rightSearch.slice();
+      rightBorder = _skiplistIndex->rightKeyLookup(&search);
+      if (rightBorder != nullptr && CmpKeyElm(&search, rightBorder->document()) > 0) {
+        // if the search is not included equally rightBorder points to
+        // the first element greater than search. This one should not be included
+        // in the iterator. Pick the one before.
+        if (rightBorder == _skiplistIndex->startNode()) {
+          // No previous element. Set right border to nullptr (invalid)
+          rightBorder = nullptr;
+        } else {
+          rightBorder = rightBorder->prevNode();
+        }
+      }
+    } else {
+      lastRight = lastNonEq.get(TRI_SLICE_KEY_LT);
+      if (!lastRight.isNone()) {
+        rightSearch.add(lastLeft);
+        rightSearch.close();
+        VPackSlice search = rightSearch.slice();
+        rightBorder = _skiplistIndex->leftKeyLookup(&search);
+        // Right border is the last element that we need in the cursor, this is good
+        // Special case: we have startNode, this probably does not match the condition
+        // and has to be ignored
+        if (rightBorder == _skiplistIndex->startNode() &&
+            CmpKeyElm(&search, rightBorder->document()) >= 0) {
+          rightBorder = nullptr;
+        }
+      } else {
+        // No upper bound set default to (x <= INFINITY)
+        rightSearch.close();
+        VPackSlice search = rightSearch.slice();
+        rightBorder = _skiplistIndex->rightKeyLookup(&search);
+        if (rightBorder != nullptr && CmpKeyElm(&search, rightBorder->document()) > 0) {
+          if (rightBorder == _skiplistIndex->startNode()) {
+            // No previous element. Set right border to nullptr (invalid)
+            rightBorder = nullptr;
+          } else {
+            rightBorder = rightBorder->prevNode();
+          }
+        }
+      }
+    }
+  }
+
+
+  // Check if the interval is valid and not empty
+  if (intervalValid(leftBorder, rightBorder)) {
+    auto iterator = std::make_unique<SkiplistIterator>(this, reverse, leftBorder, rightBorder);
+    if (iterator == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return iterator.release();
+  }
+
+  // Creates an empty iterator
+  auto iterator = std::make_unique<SkiplistIterator>(this, reverse, nullptr, nullptr);
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return iterator.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1271,6 +1024,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext* context,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
+  return nullptr;
+  // TODO Implement this
+  /*
   // Create the skiplistOperator for the IndexLookup
   if (node == nullptr) {
     // We have no condition, we just use sort
@@ -1281,7 +1037,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
     std::unique_ptr<TRI_index_operator_t> unboundOperator(
         TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr,
-                                builder, nullptr /* HACKI */ , 1));
+                                builder, nullptr , 1));
     std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
     unboundOperator.release();
 
@@ -1445,7 +1201,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       // We have a range query based on the first _field
       std::unique_ptr<TRI_index_operator_t> op(
           buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                             includeUpper, emptySlice, nullptr /* HACKI _shaper */));
+                             includeUpper, emptySlice, nullptr ));
 
       if (op != nullptr) {
         searchValues.emplace_back(op.get());
@@ -1486,17 +1242,17 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
         if (valid) {
           std::unique_ptr<TRI_index_operator_t> tmpOp(
               TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-                                      parameter, nullptr /* HACKI _shaper */, usedFields));
+                                      parameter, nullptr , usedFields));
           // Note we create a new RangeOperator always.
           std::unique_ptr<TRI_index_operator_t> rangeOperator(
               buildRangeOperator(lower->slice(), includeLower, upper->slice(),
-                                 includeUpper, parameter->slice(), nullptr /* HACKI _shaper */));
+                                 includeUpper, parameter->slice(), nullptr ));
 
           if (rangeOperator != nullptr) {
             std::unique_ptr<TRI_index_operator_t> combinedOp(
                 TRI_CreateIndexOperator(
                     TRI_AND_INDEX_OPERATOR, tmpOp.get(), rangeOperator.get(),
-                    std::make_shared<VPackBuilder>(), nullptr /* HACKI _shaper */, 2));
+                    std::make_shared<VPackBuilder>(), nullptr, 2));
             rangeOperator.release();
             tmpOp.release();
             searchValues.emplace_back(combinedOp.get());
@@ -1561,6 +1317,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   }
 
   return new SkiplistIndexIterator(trx, this, searchValues, reverse);
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
