@@ -2690,6 +2690,7 @@ if (list.length > 0) {
       </div>
 
       <div class="pull-right">
+        <span id="querySpotlight"><i class="fa fa-search"></i></span>
         <div class="styled-select">
           <select id="querySize" class="query-size"/>
         </div>
@@ -2702,14 +2703,19 @@ if (list.length > 0) {
         <div id="aqlEditor"></div>
         <div id="queryTable" style="display: none"></div>
       </div>
+
       <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
         <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
         <div id="previewWrapper" class="previewWrapper" style="display: none">
           <div id="previewBar" class="previewBar">
             <span>Preview</span>
           </div>
           <div id="queryPreview"></div>
         </div>
+
       </div>
     </div>
 
@@ -2812,6 +2818,14 @@ if (list.length > 0) {
   </div>
 </script>
 
+<script id="spotlightView.ejs" type="text/template">
+  <div class="spotlightWrapper">
+    <div id="spotlight">
+      <input class="typeahead" type="text" placeholder="Search... ">
+    </div>
+  </div>
+</script>
+
 <script id="statisticBarView.ejs" type="text/template">
   <div class="navlogo display-none">
     <a href="#dashboard" style="padding-left: 15px;">
@@ -2880,7 +2894,7 @@ var cutByResolution = function (str) {
     </td>
     <td class="docsThirdCol">
       <a class="deleteButton">
-      <span class="icon_arangodb_roundminus" data-original-title="Delete document" title="Delete document"></span></a>
+      <span data-original-title="Delete document" title="Delete document"><i class="fa fa-minus-circle"></i></i></span></a>
     </td>
   </tr>
   <% 
@@ -3096,6 +3110,9 @@ var cutByResolution = function (str) {
   <div id="progressPlaceholder" style="display:none">
   </div>
 
+  <div id="spotlightPlaceholder" style="display:none">
+  </div>
+
   </div>
 
   <footer class="footer">
@@ -3109,9 +3126,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1456340072524"></script>
-<script src="libs.js?version=1456340072524"></script>
-<script src="app.js?version=1456340072524"></script>
+<script src="sharedLibs.js?version=1456760585446"></script>
+<script src="libs.js?version=1456760585446"></script>
+<script src="app.js?version=1456760585446"></script>
 
   </body>
 </html>

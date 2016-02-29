@@ -28,6 +28,11 @@
 #include "ProgramOptions2/Option.h"
 #include "ProgramOptions2/Section.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <functional>
+
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 namespace arangodb {
@@ -82,7 +87,8 @@ class ProgramOptions {
         _terminalWidth(terminalWidth),
         _similarity(similarity),
         _processingResult(),
-        _sealed(false) {
+        _sealed(false),
+        _overrideOptions(false) {
     // find progname wildcard in string
     size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
@@ -100,8 +106,18 @@ class ProgramOptions {
   ProcessingResult& processingResult() { return _processingResult; }
 
   // seal the options
-  // tryin to add an option or a section after sealing will throw an error
+  // trying to add an option or a section after sealing will throw an error
   void seal() { _sealed = true; }
+
+  // allow or disallow overriding already set options
+  void allowOverride(bool value) {
+    checkIfSealed();
+    _overrideOptions = value;
+  }
+  
+  bool allowOverride() const {
+    return _overrideOptions;
+  }
 
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
@@ -149,20 +165,24 @@ class ProgramOptions {
   // prints usage information
   void printUsage() const { std::cout << _usage << std::endl << std::endl; }
 
-  // prints a help for all options
-  void printHelp(std::string const& section) const {
+  // prints a help for all options, or the options of a section
+  // the special search string "*" will show help for all sections
+  // the special search string "." will show help for all sections, even if hidden
+  void printHelp(std::string const& search) const {
     printUsage();
 
     size_t const tw = _terminalWidth();
     size_t const ow = optionsWidth();
 
     for (auto const& it : _sections) {
-      if (section == "*" || section == it.second.name) {
-        it.second.printHelp(tw, ow);
+      if (search == "*" || search == "." || search == it.second.name) {
+        it.second.printHelp(search, tw, ow);
       }
     }
 
-    printSectionsHelp();
+    if (search == "*") {
+      printSectionsHelp();
+    }
   }
 
   // prints the names for all section help options
@@ -177,6 +197,28 @@ class ProgramOptions {
     std::cout << std::endl;
   }
 
+  // returns a VPack representation of the option values
+  VPackBuilder toVPack(bool onlyTouched, std::unordered_set<std::string> const& exclude) const {
+    VPackBuilder builder;
+    builder.openObject();
+       
+    walk([&builder, &exclude](Section const&, Option const& option) {
+      std::string full(option.fullName());
+      if (exclude.find(full) != exclude.end()) {
+        // excluded option
+        return;
+      }
+
+      // add key
+      builder.add(VPackValue(full));
+      // add value
+      option.toVPack(builder);
+    }, onlyTouched);
+
+    builder.close();
+    return builder;
+  }
+
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const {
     auto it = _shorthands.find(name);
@@ -188,7 +230,7 @@ class ProgramOptions {
   }
 
   void walk(std::function<void(Section const&, Option const&)> const& callback,
-            bool onlyTouched) {
+            bool onlyTouched) const {
     for (auto const& it : _sections) {
       if (it.second.obsolete) {
         // obsolete section. ignore it
@@ -229,6 +271,11 @@ class ProgramOptions {
 
   // sets a value for an option
   bool setValue(std::string const& name, std::string const& value) {
+    if (!_overrideOptions && _processingResult.touched(name)) {
+      // option already set. don't override it
+      return true;
+    } 
+
     auto parts = Option::splitName(name);
     auto it = _sections.find(parts.first);
 
@@ -432,6 +479,8 @@ class ProgramOptions {
   ProcessingResult _processingResult;
   // whether or not the program options setup is still mutable
   bool _sealed;
+  // allow or disallow overriding already set options
+  bool _overrideOptions;
 };
 }
 }

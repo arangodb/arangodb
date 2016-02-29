@@ -15,6 +15,7 @@
       </div>
 
       <div class="pull-right">
+        <span id="querySpotlight"><i class="fa fa-search"></i></span>
         <div class="styled-select">
           <select id="querySize" class="query-size"/>
         </div>
@@ -27,14 +28,19 @@
         <div id="aqlEditor"></div>
         <div id="queryTable" style="display: none"></div>
       </div>
+
       <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
         <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
         <div id="previewWrapper" class="previewWrapper" style="display: none">
           <div id="previewBar" class="previewBar">
             <span>Preview</span>
           </div>
           <div id="queryPreview"></div>
         </div>
+
       </div>
     </div>
 

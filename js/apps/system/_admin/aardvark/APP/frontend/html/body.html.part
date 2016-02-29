@@ -27,6 +27,9 @@
   <div id="progressPlaceholder" style="display:none">
   </div>
 
+  <div id="spotlightPlaceholder" style="display:none">
+  </div>
+
   </div>
 
   <footer class="footer">

@@ -1,0 +1,42 @@
+diff -bru libev-4.22.orig/ev.c libev-4.22/ev.c
+--- libev-4.22.orig/ev.c	2015-12-20 22:12:53.000000000 +0100
++++ libev-4.22/ev.c	2016-02-24 18:35:42.000000000 +0100
+@@ -480,7 +480,7 @@
+  * This value is good at least till the year 4000.
+  */
+ #define MIN_INTERVAL  0.0001220703125 /* 1/2**13, good till 4000 */
+-/*#define MIN_INTERVAL  0.00000095367431640625 /* 1/2**20, good till 2200 */
++/*#define MIN_INTERVAL  0.00000095367431640625 / * 1/2**20, good till 2200 */
+ 
+ #define MIN_TIMEJUMP  1. /* minimum timejump that gets detected (if monotonic clock available) */
+ #define MAX_BLOCKTIME 59.743 /* never wait longer than this time (to detect time jumps) */
+@@ -1822,7 +1822,11 @@
+   #include "ev_wrap.h"
+ 
+   static struct ev_loop default_loop_struct;
++#ifdef EV_API_STATIC
+   EV_API_DECL struct ev_loop *ev_default_loop_ptr = 0; /* needs to be initialised to make it a definition despite extern */
++#else
++  struct ev_loop *ev_default_loop_ptr = 0; /* needs to be initialised to make it a definition despite extern */
++#endif
+ 
+ #else
+ 
+@@ -1942,7 +1946,7 @@
+   return ncur;
+ }
+ 
+-static void * noinline ecb_cold
++static noinline void * ecb_cold
+ array_realloc (int elem, void *base, int *cur, int cnt)
+ {
+   *cur = array_nextsize (elem, *cur, cnt);
+@@ -3845,7 +3849,7 @@
+   /* common bug, apparently */
+   assert (("libev: ev_io_start called with corrupted watcher", ((WL)w)->next != (WL)w));
+ 
+-  fd_change (EV_A_ fd, w->events & EV__IOFDSET | EV_ANFD_REIFY);
++  fd_change (EV_A_ fd, (w->events & EV__IOFDSET) | EV_ANFD_REIFY);
+   w->events &= ~EV__IOFDSET;
+ 
+   EV_FREQUENT_CHECK;

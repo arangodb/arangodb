@@ -24,10 +24,12 @@
 #define ARANGODB_PROGRAM_OPTIONS_OPTION_H 1
 
 #include "Basics/Common.h"
+#include "ProgramOptions2/Parameters.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
-
-#include "ProgramOptions2/Parameters.h"
 
 namespace arangodb {
 namespace options {
@@ -57,6 +59,10 @@ struct Option {
     }
   }
 
+  void toVPack(VPackBuilder& builder) const {
+    parameter->toVPack(builder);
+  }
+
   // get display name for the option
   std::string displayName() const { return "--" + fullName(); }
 
@@ -69,8 +75,9 @@ struct Option {
   }
 
   // print help for an option
-  void printHelp(size_t tw, size_t ow) const {
-    if (!hidden) {
+  // the special search string "." will show help for all sections, even if hidden
+  void printHelp(std::string const& search, size_t tw, size_t ow) const {
+    if (search == "." || !hidden) {
       std::cout << "  " << pad(nameWithType(), ow) << "   ";
 
       std::string value = description;

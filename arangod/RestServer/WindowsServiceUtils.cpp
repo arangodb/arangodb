@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern AnyServer* ArangoInstance;
+extern arangodb::ArangoServer* ArangoInstance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running flag
@@ -566,6 +566,8 @@ class WindowsArangoServer : public ArangoServer {
  private:
   DWORD _progress;
 
+#if 0
+  //  TODO doesn't work that way.
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
@@ -592,7 +594,7 @@ class WindowsArangoServer : public ArangoServer {
     // startup finished - signalize we're running.
     SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0);
   }
-
+#endif
  public:
   WindowsArangoServer(int argc, char** argv) : ArangoServer(argc, argv) {
     _progress = 2;
@@ -619,7 +621,7 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
 
   IsRunning = true;
   ArangoInstance = new WindowsArangoServer(ARGC, ARGV);
-  ArangoInstance->setMode(rest::AnyServer::ServerMode::MODE_SERVICE);
+  ArangoInstance->setMode(ArangoServer::ServerMode::MODE_SERVICE);
 
   ArangoInstance->start();
   IsRunning = false;

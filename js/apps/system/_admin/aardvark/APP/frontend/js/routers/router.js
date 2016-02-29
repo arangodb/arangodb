@@ -15,8 +15,8 @@
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query",
-      "query2": "query2",
+      "query": "query2",
+      "query2": "query",
       "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",
@@ -80,6 +80,7 @@
         collection: this.foxxList
       });
       window.progressView = new window.ProgressView();
+
       var self = this;
 
       this.userCollection = new window.ArangoUsers();
@@ -95,6 +96,10 @@
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore 
+        });
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();

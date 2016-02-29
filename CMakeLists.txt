@@ -152,6 +152,18 @@ if (NOT GO_FOUND)
 endif ()
 
 ################################################################################
+## ARCHITECTURE
+################################################################################
+
+if (SOLARIS)
+  set(CMAKE_SIZEOF_VOID_P 8)
+  set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
+endif ()
+
+math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
+add_definitions("-DARANGODB_BITS=${BITS}")
+
+################################################################################
 ## COMPILER FEATURES
 ################################################################################
 
@@ -239,6 +251,10 @@ if (MSVC)
   )
 endif ()
 
+################################################################################
+## INCLUDE DIRECTORIES
+################################################################################
+
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
@@ -254,36 +270,6 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)
 if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
 endif ()
-
-if (MSVC)
-  set(MSVC_INCLUDE
-    ${PROJECT_SOURCE_DIR}/WindowsLibraries/${BITS}/include
-    CACHE path
-    "MSVC 3rd party include path"
-  )
-
-  include_directories(${MSVC_INCLUDE})
-
-  set(MSVC_LIB_PATH
-    ${PROJECT_SOURCE_DIR}/WindowsLibraries/${BITS}/lib
-    CACHE path
-    "MSVC 3rd party library path"
-  )
-
-  link_directories(${MSVC_LIB_PATH})
-endif ()
-
-################################################################################
-## ARCHITECTURE
-################################################################################
-
-if (SOLARIS)
-  set(CMAKE_SIZEOF_VOID_P 8)
-  set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
-endif ()
-
-math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DARANGODB_BITS=${BITS}")
 
 ################################################################################
 # BUILD TYPES
