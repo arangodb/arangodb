@@ -33,10 +33,37 @@ State::~State() {
   save();
 }
 
-std::vector<size_t> State::log (query_t const& query, term_t term, id_t lid, size_t size) {
+//Leader
+std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, size_t size) {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  index_t idx = _log.end().index+1;
-  _log.push_back(idx, term, lid, query.toString(), std::vector<bool>(size));
+  std::vector<index_t> idx;
+  Builder builder;
+  for (size_t i = 0; i < query->slice().length()) {
+    idx.push_back(_log.end().index+1);
+    _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
+    builder.add("query", qyery->Slice());
+    builder.add("idx", Value(term));
+    builder.add("term", Value(term));
+    builder.add("leaderID", Value(lid));
+    builder.close();
+  }
+  save (builder.slice());
+  return idx;
+}
+
+//Leader
+void State::log (query_t const& query, std::vector<index_t> cont& idx, term_t term, id_t lid, size_t size) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  Builder builder;
+  for (size_t i = 0; i < query->slice().length()) {
+    _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
+    builder.add("query", qyery->Slice());
+    builder.add("idx", Value(term));
+    builder.add("term", Value(term));
+    builder.add("leaderID", Value(lid));
+    builder.close();
+  }
+  save (builder.slice());
 }
 
 void State::log (query_t const& query, index_t idx, term_t term, id_t lid, size_t size) {
@@ -67,9 +94,15 @@ bool findit (index_t index, term_t term) {
   return false;
 }
 
-bool save (std::string const& ep) {};
+bool save (std::string const& ep) {
+  // Persist to arango db
+  
+};
 
-bool load (std::string const& ep) {};
+load_ret_t load (std::string const& ep) {
+  // Read all from arango db
+  return load_ret_t (currentTerm, votedFor)
+};
 
 
 
