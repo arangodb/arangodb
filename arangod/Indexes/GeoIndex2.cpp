@@ -31,17 +31,15 @@ using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new geo index, type "geo1"
+///        Lat and Lon are stored in the same Array
 ////////////////////////////////////////////////////////////////////////////////
 
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<TRI_shape_pid_t> const& paths, bool geoJson)
+    std::vector<std::string> const& path, bool geoJson)
     : Index(iid, collection, fields, false, true),
-      _paths(paths),
-      _location(paths[0]),
-      _latitude(0),
-      _longitude(0),
+      _location(path),
       _variant(geoJson ? INDEX_GEO_COMBINED_LAT_LON
                        : INDEX_GEO_COMBINED_LON_LAT),
       _geoJson(geoJson),
@@ -62,10 +60,8 @@ GeoIndex2::GeoIndex2(
 GeoIndex2::GeoIndex2(
     TRI_idx_iid_t iid, TRI_document_collection_t* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<TRI_shape_pid_t> const& paths)
+    std::vector<std::vector<std::string>> const& paths)
     : Index(iid, collection, fields, false, true),
-      _paths(paths),
-      _location(0),
       _latitude(paths[0]),
       _longitude(paths[1]),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
@@ -93,40 +89,6 @@ size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
-  std::vector<std::string> f;
-
-  auto shaper = _collection->getShaper();
-
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
-    // index has one field
-
-    // convert location to string
-    char const* location = shaper->attributeNameShapePid(_location);
-
-    if (location != nullptr) {
-      f.emplace_back(location);
-    }
-  } else {
-    // index has two fields
-    char const* latitude = shaper->attributeNameShapePid(_latitude);
-
-    if (latitude != nullptr) {
-      f.emplace_back(latitude);
-    }
-
-    char const* longitude = shaper->attributeNameShapePid(_longitude);
-
-    if (longitude != nullptr) {
-      f.emplace_back(longitude);
-    }
-  }
-
-  if (f.empty()) {
-    // No info to provide
-    return;
-  }
-
   // Basic index
   Index::toVelocyPack(builder, withFigures);
 
@@ -148,31 +110,51 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
 }
 
 int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
-  auto shaper =
-      _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_ASSERT(doc != nullptr);
+  TRI_ASSERT(doc->getDataPtr() != nullptr);
 
-  // lookup latitude and longitude
-  TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(
-      shapedJson, doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  VPackSlice const slice(doc->vpack());
 
-  bool ok;
   double latitude;
   double longitude;
 
-  if (_location != 0) {
-    if (_geoJson) {
-      ok = extractDoubleArray(shaper, &shapedJson, &longitude, &latitude);
-    } else {
-      ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
+  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+    VPackSlice lat = slice.get(_latitude);
+    if (!lat.isNumber()) {
+      // Invalid, no insert. Index is sparse
+      return TRI_ERROR_NO_ERROR;
     }
-  } else {
-    ok = extractDoubleObject(shaper, &shapedJson, 0, &latitude);
-    ok = ok && extractDoubleObject(shaper, &shapedJson, 1, &longitude);
-  }
 
-  if (!ok) {
-    return TRI_ERROR_NO_ERROR;
+    VPackSlice lon = slice.get(_longitude);
+    if (!lon.isNumber()) {
+      // Invalid, no insert. Index is sparse
+      return TRI_ERROR_NO_ERROR;
+    }
+    latitude = lat.getNumericValue<double>();
+    longitude = lon.getNumericValue<double>();
+  } else {
+    VPackSlice loc = slice.get(_location);
+    if (!loc.isArray() || loc.length() < 2) {
+      // Invalid, no insert. Index is sparse
+      return TRI_ERROR_NO_ERROR;
+    }
+    VPackSlice first = loc.at(0);
+    if (!first.isNumber()) {
+      // Invalid, no insert. Index is sparse
+      return TRI_ERROR_NO_ERROR;
+    }
+    VPackSlice second = loc.at(1);
+    if (!second.isNumber()) {
+      // Invalid, no insert. Index is sparse
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (_geoJson) {
+      longitude = first.getNumericValue<double>();
+      latitude = second.getNumericValue<double>();
+    } else {
+      latitude = first.getNumericValue<double>();
+      longitude = second.getNumericValue<double>();
+    }
   }
 
   // and insert into index
@@ -199,35 +181,45 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
 }
 
 int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
-  TRI_shaped_json_t shapedJson;
+  TRI_ASSERT(doc != nullptr);
+  TRI_ASSERT(doc->getDataPtr() != nullptr);
 
-  auto shaper =
-      _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  TRI_EXTRACT_SHAPED_JSON_MARKER(
-      shapedJson, doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  VPackSlice const slice(doc->vpack());
 
-  // lookup OLD latitude and longitude
-  bool ok;
   double latitude;
   double longitude;
 
-  if (_location != 0) {
-    ok = extractDoubleArray(shaper, &shapedJson, &latitude, &longitude);
+  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+    VPackSlice lat = slice.get(_latitude);
+    VPackSlice lon = slice.get(_longitude);
+    TRI_ASSERT(lat.isNumber());
+    latitude = lat.getNumericValue<double>();
+    TRI_ASSERT(lon.isNumber());
+    longitude = lon.getNumericValue<double>();
   } else {
-    ok = extractDoubleObject(shaper, &shapedJson, 0, &latitude);
-    ok = ok && extractDoubleObject(shaper, &shapedJson, 1, &longitude);
+    VPackSlice loc = slice.get(_location);
+    TRI_ASSERT(loc.isArray());
+    TRI_ASSERT(loc.length() >= 2);
+    VPackSlice first = loc.at(0);
+    TRI_ASSERT(first.isNumber());
+    VPackSlice second = loc.at(1);
+    TRI_ASSERT(second.isNumber());
+    if (_geoJson) {
+      longitude = first.getNumericValue<double>();
+      latitude = second.getNumericValue<double>();
+    } else {
+      latitude = first.getNumericValue<double>();
+      longitude = second.getNumericValue<double>();
+    }
   }
 
-  // and remove old entry
-  if (ok) {
-    GeoCoordinate gc;
-    gc.latitude = latitude;
-    gc.longitude = longitude;
-    gc.data = const_cast<void*>(static_cast<void const*>(doc));
+  GeoCoordinate gc;
+  gc.latitude = latitude;
+  gc.longitude = longitude;
+  gc.data = const_cast<void*>(static_cast<void const*>(doc));
 
-    // ignore non-existing elements in geo-index
-    GeoIndex_remove(_geoIndex, &gc);
-  }
+  // ignore non-existing elements in geo-index
+  GeoIndex_remove(_geoIndex, &gc);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -256,168 +248,4 @@ GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx, double lat,
   gc.longitude = lon;
 
   return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from an object
-////////////////////////////////////////////////////////////////////////////////
-
-bool GeoIndex2::extractDoubleObject(VocShaper* shaper,
-                                    TRI_shaped_json_t const* document,
-                                    int which, double* result) {
-  TRI_shape_pid_t const pid = (which == 0 ? _latitude : _longitude);
-
-  TRI_shape_t const* shape;
-  TRI_shaped_json_t json;
-
-  if (!shaper->extractShapedJson(document, 0, pid, &json, &shape)) {
-    return false;
-  }
-
-  if (shape == nullptr) {
-    return false;
-  } else if (json._sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
-    *result = *(double*)json._data.data;
-    return true;
-  } else if (json._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-    return false;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from an array
-////////////////////////////////////////////////////////////////////////////////
-
-bool GeoIndex2::extractDoubleArray(VocShaper* shaper,
-                                   TRI_shaped_json_t const* document,
-                                   double* latitude, double* longitude) {
-  TRI_shape_t const* shape;
-  TRI_shaped_json_t list;
-
-  bool ok = shaper->extractShapedJson(document, 0, _location, &list, &shape);
-
-  if (!ok) {
-    return false;
-  }
-
-  if (shape == nullptr) {
-    return false;
-  }
-
-  // in-homogenous list
-  if (shape->_type == TRI_SHAPE_LIST) {
-    size_t len =
-        TRI_LengthListShapedJson((const TRI_list_shape_t*)shape, &list);
-
-    if (len < 2) {
-      return false;
-    }
-
-    // latitude
-    TRI_shaped_json_t entry;
-    ok = TRI_AtListShapedJson((const TRI_list_shape_t*)shape, &list, 0, &entry);
-
-    if (!ok || entry._sid != BasicShapes::TRI_SHAPE_SID_NUMBER) {
-      return false;
-    }
-
-    *latitude = *(double*)entry._data.data;
-
-    // longitude
-    ok = TRI_AtListShapedJson((const TRI_list_shape_t*)shape, &list, 1, &entry);
-
-    if (!ok || entry._sid != BasicShapes::TRI_SHAPE_SID_NUMBER) {
-      return false;
-    }
-
-    *longitude = *(double*)entry._data.data;
-
-    return true;
-  }
-
-  // homogenous list
-  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
-    const TRI_homogeneous_list_shape_t* hom;
-
-    hom = (const TRI_homogeneous_list_shape_t*)shape;
-
-    if (hom->_sidEntry != BasicShapes::TRI_SHAPE_SID_NUMBER) {
-      return false;
-    }
-
-    size_t len = TRI_LengthHomogeneousListShapedJson(
-        (const TRI_homogeneous_list_shape_t*)shape, &list);
-
-    if (len < 2) {
-      return false;
-    }
-
-    // latitude
-    TRI_shaped_json_t entry;
-    ok = TRI_AtHomogeneousListShapedJson(
-        (const TRI_homogeneous_list_shape_t*)shape, &list, 0, &entry);
-
-    if (!ok) {
-      return false;
-    }
-
-    *latitude = *(double*)entry._data.data;
-
-    // longitude
-    ok = TRI_AtHomogeneousListShapedJson(
-        (const TRI_homogeneous_list_shape_t*)shape, &list, 1, &entry);
-
-    if (!ok) {
-      return false;
-    }
-
-    *longitude = *(double*)entry._data.data;
-
-    return true;
-  }
-
-  // homogeneous list
-  else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-    const TRI_homogeneous_sized_list_shape_t* hom;
-
-    hom = (const TRI_homogeneous_sized_list_shape_t*)shape;
-
-    if (hom->_sidEntry != BasicShapes::TRI_SHAPE_SID_NUMBER) {
-      return false;
-    }
-
-    size_t len = TRI_LengthHomogeneousSizedListShapedJson(
-        (const TRI_homogeneous_sized_list_shape_t*)shape, &list);
-
-    if (len < 2) {
-      return false;
-    }
-
-    // latitude
-    TRI_shaped_json_t entry;
-    ok = TRI_AtHomogeneousSizedListShapedJson(
-        (const TRI_homogeneous_sized_list_shape_t*)shape, &list, 0, &entry);
-
-    if (!ok) {
-      return false;
-    }
-
-    *latitude = *(double*)entry._data.data;
-
-    // longitude
-    ok = TRI_AtHomogeneousSizedListShapedJson(
-        (const TRI_homogeneous_sized_list_shape_t*)shape, &list, 1, &entry);
-
-    if (!ok) {
-      return false;
-    }
-
-    *longitude = *(double*)entry._data.data;
-
-    return true;
-  }
-
-  return false;
 }

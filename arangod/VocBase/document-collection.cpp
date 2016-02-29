@@ -2874,84 +2874,67 @@ static arangodb::Index* CreateGeoIndexDocumentCollection(
     std::string const& location, std::string const& latitude,
     std::string const& longitude, bool geoJson, TRI_idx_iid_t iid,
     bool& created) {
-  TRI_shape_pid_t lat = 0;
-  TRI_shape_pid_t lon = 0;
-  TRI_shape_pid_t loc = 0;
 
-  created = false;
-  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (!location.empty()) {
-    loc = shaper->findOrCreateAttributePathByName(location.c_str());
-
-    if (loc == 0) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-  }
-
-  if (!latitude.empty()) {
-    lat = shaper->findOrCreateAttributePathByName(latitude.c_str());
-
-    if (lat == 0) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-  }
-
-  if (!longitude.empty()) {
-    lon = shaper->findOrCreateAttributePathByName(longitude.c_str());
-
-    if (lon == 0) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-  }
-
-  // check, if we know the index
   arangodb::Index* idx = nullptr;
-
-  if (!location.empty()) {
-    idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson);
-  } else if (!longitude.empty() && !latitude.empty()) {
-    idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude);
-  } else {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-    LOG(TRACE) << "expecting either 'location' or 'latitude' and 'longitude'";
-    return nullptr;
-  }
-
-  if (idx != nullptr) {
-    LOG(TRACE) << "geo-index already created for location '" << location << "'";
-
-    created = false;
-
-    return idx;
-  }
-
-  if (iid == 0) {
-    iid = arangodb::Index::generateId();
-  }
-
+  created = false;
   std::unique_ptr<arangodb::GeoIndex2> geoIndex;
-
-  // create a new index
   if (!location.empty()) {
+    // Use the version with one value
+    std::vector<std::string> loc =
+        arangodb::basics::StringUtils::split(location, ".");
+
+    // check, if we know the index
+    idx = TRI_LookupGeoIndex1DocumentCollection(document, loc, geoJson);
+
+    if (idx != nullptr) {
+      LOG(TRACE) << "geo-index already created for location '" << location << "'";
+      return idx;
+    }
+
+    if (iid == 0) {
+      iid = arangodb::Index::generateId();
+    }
+
     geoIndex.reset(new arangodb::GeoIndex2(
         iid, document,
         std::vector<std::vector<arangodb::basics::AttributeName>>{
             {{location, false}}},
-        std::vector<TRI_shape_pid_t>{loc}, geoJson));
+        loc, geoJson));
 
-    LOG(TRACE) << "created geo-index for location '" << location << "': " << loc;
+    LOG(TRACE) << "created geo-index for location '" << location << "'";
   } else if (!longitude.empty() && !latitude.empty()) {
+    // Use the version with two values
+    std::vector<std::string> lat =
+        arangodb::basics::StringUtils::split(latitude, ".");
+
+    std::vector<std::string> lon =
+        arangodb::basics::StringUtils::split(longitude, ".");
+
+    // check, if we know the index
+    idx = TRI_LookupGeoIndex2DocumentCollection(document, lat, lon);
+
+    if (idx != nullptr) {
+      LOG(TRACE) << "geo-index already created for latitude '" << latitude
+                 << "' and longitude '" << longitude << "'";
+      return idx;
+    }
+
+    if (iid == 0) {
+      iid = arangodb::Index::generateId();
+    }
+
     geoIndex.reset(new arangodb::GeoIndex2(
         iid, document,
         std::vector<std::vector<arangodb::basics::AttributeName>>{
             {{latitude, false}}, {{longitude, false}}},
-        std::vector<TRI_shape_pid_t>{lat, lon}));
+        std::vector<std::vector<std::string>>{lat, lon}));
 
-    LOG(TRACE) << "created geo-index for location '" << location << "': " << lat << ", " << lon;
+    LOG(TRACE) << "created geo-index for latitude '" << latitude
+               << "' and longitude '" << longitude << "'";
+  } else {
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+    LOG(TRACE) << "expecting either 'location' or 'latitude' and 'longitude'";
+    return nullptr;
   }
 
   idx = static_cast<arangodb::GeoIndex2*>(geoIndex.get());
@@ -3077,21 +3060,14 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Index* TRI_LookupGeoIndex1DocumentCollection(
-    TRI_document_collection_t* document, std::string const& location,
+    TRI_document_collection_t* document, std::vector<std::string> const& location,
     bool geoJson) {
-  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  TRI_shape_pid_t loc = shaper->lookupAttributePathByName(location.c_str());
-
-  if (loc == 0) {
-    return nullptr;
-  }
 
   for (auto const& idx : document->allIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX) {
       auto geoIndex = static_cast<arangodb::GeoIndex2*>(idx);
 
-      if (geoIndex->isSame(loc, geoJson)) {
+      if (geoIndex->isSame(location, geoJson)) {
         return idx;
       }
     }
@@ -3105,22 +3081,13 @@ arangodb::Index* TRI_LookupGeoIndex1DocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Index* TRI_LookupGeoIndex2DocumentCollection(
-    TRI_document_collection_t* document, std::string const& latitude,
-    std::string const& longitude) {
-  auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  TRI_shape_pid_t lat = shaper->lookupAttributePathByName(latitude.c_str());
-  TRI_shape_pid_t lon = shaper->lookupAttributePathByName(longitude.c_str());
-
-  if (lat == 0 || lon == 0) {
-    return nullptr;
-  }
-
+    TRI_document_collection_t* document, std::vector<std::string> const& latitude,
+    std::vector<std::string> const& longitude) {
   for (auto const& idx : document->allIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       auto geoIndex = static_cast<arangodb::GeoIndex2*>(idx);
 
-      if (geoIndex->isSame(lat, lon)) {
+      if (geoIndex->isSame(latitude, longitude)) {
         return idx;
       }
     }
