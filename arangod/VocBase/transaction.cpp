@@ -621,7 +621,13 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("database", VPackValue(trx->_vocbase->_id));
+    builder.add("tid", VPackValue(trx->_id));
+    builder.close();
+
+    arangodb::wal::BeginTransactionMarker marker(builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -660,7 +666,13 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("database", VPackValue(trx->_vocbase->_id));
+    builder.add("tid", VPackValue(trx->_id));
+    builder.close();
+
+    arangodb::wal::AbortTransactionMarker marker(builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -691,7 +703,13 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("database", VPackValue(trx->_vocbase->_id));
+    builder.add("tid", VPackValue(trx->_id));
+    builder.close();
+
+    arangodb::wal::CommitTransactionMarker marker(builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();

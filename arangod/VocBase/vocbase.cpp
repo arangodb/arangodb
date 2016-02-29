@@ -128,11 +128,23 @@ TRI_vocbase_col_t::~TRI_vocbase_col_t() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
-                                     TRI_voc_cid_t collectionId) {
+                                     TRI_voc_cid_t collectionId,
+                                     std::string const& name) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::DropCollectionMarker marker(vocbase->_id, collectionId);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("database", VPackValue(vocbase->_id));
+    builder.add("cid", VPackValue(collectionId));
+    builder.add("data", VPackValue(VPackValueType::Object));
+    builder.add("id", VPackValue(collectionId));
+    builder.add("name", VPackValue(name));
+    builder.close();
+    builder.close();
+
+    arangodb::wal::DropCollectionMarker marker(builder.slice());
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -1021,7 +1033,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
     UnregisterCollection(vocbase, collection);
     if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid);
+      WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
     }
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1069,7 +1081,7 @@ static int DropCollection(TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection,
 
     UnregisterCollection(vocbase, collection);
     if (writeMarker) {
-      WriteDropCollectionMarker(vocbase, collection->_cid);
+      WriteDropCollectionMarker(vocbase, collection->_cid, collection->name());
     }
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1681,7 +1693,14 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateCollectionMarker marker(vocbase->_id, cid, slice);
+    VPackBuilder markerBuilder;
+    markerBuilder.openObject();
+    markerBuilder.add("database", VPackValue(vocbase->_id));
+    markerBuilder.add("cid", VPackValue(cid));
+    markerBuilder.add("data", slice);
+    markerBuilder.close();
+
+    arangodb::wal::CreateCollectionMarker marker(markerBuilder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -1890,11 +1909,16 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
     try {
       VPackBuilder builder;
       builder.openObject();
+      builder.add("database", VPackValue(vocbase->_id));
+      builder.add("cid", VPackValue(collection->_cid));
+      builder.add("data", VPackValue(VPackValueType::Object));
+      builder.add("oldName", VPackValue(oldName));
       builder.add("name", VPackValue(newName));
       builder.close();
+      builder.close();
 
-      arangodb::wal::RenameCollectionMarker marker(
-          vocbase->_id, collection->_cid, builder.slice());
+      arangodb::wal::RenameCollectionMarker marker(builder.slice());
+
       arangodb::wal::SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                       false);

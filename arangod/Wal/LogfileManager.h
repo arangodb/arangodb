@@ -379,16 +379,6 @@ class LogfileManager : public rest::ApplicationFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data into the logfile
-  /// this is a convenience function that combines allocate, memcpy and
-  /// finalize,
-  /// this version is for markers with legends
-  //////////////////////////////////////////////////////////////////////////////
-
-  SlotInfoCopy allocateAndWrite(void*, uint32_t, bool, TRI_voc_cid_t,
-                                TRI_shape_sid_t, uint32_t, void*&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
   //////////////////////////////////////////////////////////////////////////////
 

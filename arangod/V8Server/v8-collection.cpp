@@ -1446,14 +1446,17 @@ static void JS_PropertiesVocbaseCol(
       try {
         VPackBuilder infoBuilder;
         infoBuilder.openObject();
+        infoBuilder.add("database", VPackValue(document->_vocbase->_id));
+        infoBuilder.add("cid", VPackValue(document->_info.id()));
+        infoBuilder.add("data", VPackValue(VPackValueType::Object));
         TRI_CreateVelocyPackCollectionInfo(base->_info, infoBuilder);
+        infoBuilder.close();
         infoBuilder.close();
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
 
-        arangodb::wal::ChangeCollectionMarker marker(
-            base->_vocbase->_id, base->_info.id(), infoBuilder.slice());
+        arangodb::wal::ChangeCollectionMarker marker(infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);

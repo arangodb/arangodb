@@ -41,6 +41,22 @@
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a number slice into its numeric equivalent
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
+  VPackSlice v = slice.get(attribute);
+  if (v.isString()) {
+    return static_cast<T>(std::stoull(v.copyString()));
+  }
+  if (v.isNumber()) {
+    return v.getNumber<T>();
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection is volatile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -390,43 +406,34 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
     state->lastTick = marker->_tick;
   }
 
+  char const* p = reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t);
+  VPackSlice const slice(p);
+
   switch (marker->_type) {
     case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION: {
-      transaction_begin_marker_t const* m =
-          reinterpret_cast<transaction_begin_marker_t const*>(marker);
       // insert this transaction into the list of failed transactions
       // we do this because if we don't find a commit marker for this
       // transaction,
       // we'll have it in the failed list at the end of the scan and can ignore
       // it
-      state->failedTransactions.emplace(m->_transactionId,
-                                        std::make_pair(m->_databaseId, false));
+      TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      state->failedTransactions.emplace(tid, std::make_pair(databaseId, false));
       break;
     }
 
     case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION: {
-      transaction_commit_marker_t const* m =
-          reinterpret_cast<transaction_commit_marker_t const*>(marker);
       // remove this transaction from the list of failed transactions
-      state->failedTransactions.erase(m->_transactionId);
+      TRI_voc_tid_t tidValue = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      state->failedTransactions.erase(tidValue);
       break;
     }
 
     case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
       // insert this transaction into the list of failed transactions
-      transaction_abort_marker_t const* m =
-          reinterpret_cast<transaction_abort_marker_t const*>(marker);
-
-      auto it = state->failedTransactions.find(m->_transactionId);
-
-      if (it != state->failedTransactions.end()) {
-        // delete previous element if present
-        state->failedTransactions.erase(m->_transactionId);
-      }
-
-      // and (re-)insert
-      state->failedTransactions.emplace(m->_transactionId,
-                                        std::make_pair(m->_databaseId, true));
+      TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      state->failedTransactions[tid] = std::make_pair(databaseId, true);
       break;
     }
 
@@ -466,10 +473,9 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
-      collection_drop_marker_t const* m =
-          reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be recovered
-      state->droppedIds.insert(m->_collectionId);
+      TRI_voc_cid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      state->droppedIds.emplace(cid);
       break;
     }
   }
@@ -489,577 +495,551 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG(TRACE) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
-
-  switch (marker->_type) {
-    // -----------------------------------------------------------------------------
-    // crud operations
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
-      // re-insert the document/edge into the collection
-      auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      TRI_voc_tick_t transactionId = m->_transactionId;
-      if (state->ignoreTransaction(transactionId)) {
-        // transaction was aborted
-        return true;
-      }
-
-      int res = state->executeSingleOperation(
-          databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-            if (IsVolatile(trx->trxCollection())) {
-              return TRI_ERROR_NO_ERROR;
-            }
-
-            TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
-
-            std::string const collectionName = trx->documentCollection()->_info.name();
-            uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
-
-            OperationOptions options;
-            options.silent = true;
-            options.recoveryMarker = envelope;
-
-            // try an insert first
-            OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);
-            int res = opRes.code;
-
-            if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-              // document/edge already exists, now make it an update
-              opRes = trx->update(collectionName, VPackSlice(ptr), VPackSlice(ptr), options);
-              res = opRes.code;
-            }
-
-            return res;
-          });
-
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
-          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARN) << "unable to insert document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    case TRI_WAL_MARKER_VPACK_REMOVE: {
-      // re-apply the remove operation
-      auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      TRI_voc_tick_t transactionId = m->_transactionId;
-      if (state->ignoreTransaction(transactionId)) {
-        return true;
-      }
-
-      int res = state->executeSingleOperation(
-          databaseId, collectionId, marker, datafile->_fid,
-          [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-            if (IsVolatile(trx->trxCollection())) {
-              return TRI_ERROR_NO_ERROR;
-            }
-            
-            TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
-
-            std::string const collectionName = trx->documentCollection()->_info.name();
-            uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
-
-            OperationOptions options;
-            options.silent = true;
-            options.recoveryMarker = envelope;
-
-            OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
-            int res = opRes.code;
-
-            return res;
-          });
-
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
-          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG(WARN) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    // -----------------------------------------------------------------------------
-    // transactions
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_RENAME_COLLECTION: {
-      auto const* m = reinterpret_cast<collection_rename_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId)) {
-        return true;
-      }
-
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // if the underlying database is gone, we can go on
-        LOG(TRACE) << "cannot open database " << databaseId;
-        return true;
-      }
-
-      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
-
-      if (collection == nullptr) {
-        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-      }
-
-      if (collection == nullptr) {
-        // if the underlying collection is gone, we can go on
-        LOG(TRACE) << "cannot open collection " << collectionId;
-        return true;
-      }
-
-      char const* name =
-          reinterpret_cast<char const*>(m) + sizeof(collection_rename_marker_t);
-
-      // check if other collection exist with target name
-      TRI_vocbase_col_t* other =
-          TRI_LookupCollectionByNameVocBase(vocbase, name);
-
-      if (other != nullptr) {
-        TRI_voc_cid_t otherCid = other->_cid;
-        state->releaseCollection(otherCid);
-        TRI_DropCollectionVocBase(vocbase, other, false);
-      }
-
-
-      int res =
-          TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARN) << "cannot rename collection collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    case TRI_WAL_MARKER_CHANGE_COLLECTION: {
-      auto const* m = reinterpret_cast<collection_change_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId)) {
-        return true;
-      }
-
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // if the underlying database is gone, we can go on
-        LOG(TRACE) << "cannot open database " << databaseId;
-        return true;
-      }
-
-      TRI_document_collection_t* document =
-          state->getCollection(databaseId, collectionId);
-
-      if (document == nullptr) {
-        // if the underlying collection is gone, we can go on
-        LOG(TRACE) << "cannot change properties of collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-        return true;
-      }
-
-      char const* properties =
-          reinterpret_cast<char const*>(m) + sizeof(collection_change_marker_t);
-      std::shared_ptr<VPackBuilder> parsedProperties;
-      try {
-        parsedProperties = VPackParser::fromJson(properties);
-      } catch (...) {
-        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      VPackSlice const slice = parsedProperties->slice();
-
-      int res = TRI_UpdateCollectionInfo(
-          vocbase, document, slice, vocbase->_settings.forceSyncProperties);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      break;
-    }
-
-    // -----------------------------------------------------------------------------
-    // create operations
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_CREATE_INDEX: {
-      auto const* m = reinterpret_cast<index_create_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      TRI_idx_iid_t indexId = m->_indexId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // if the underlying database is gone, we can go on
-        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        return true;
-      }
-
-      TRI_document_collection_t* document =
-          state->getCollection(databaseId, collectionId);
-
-      if (document == nullptr) {
-        // if the underlying collection is gone, we can go on
-        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-        return true;
-      }
       
-      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+  char const* p = reinterpret_cast<char const*>(marker);
+  VPackSlice const markerData(p + sizeof(TRI_df_marker_t));
 
-      if (col == nullptr) {
-        // if the underlying collection gone, we can go on
-        LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-        return true;
+  try {
+    switch (marker->_type) {
+      // -----------------------------------------------------------------------------
+      // crud operations
+      // -----------------------------------------------------------------------------
+
+      case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+        // re-insert the document/edge into the collection
+        auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
+        TRI_voc_cid_t collectionId = m->_collectionId;
+        TRI_voc_tick_t databaseId = m->_databaseId;
+
+        if (state->isDropped(databaseId, collectionId)) {
+          return true;
+        }
+
+        TRI_voc_tick_t transactionId = m->_transactionId;
+        if (state->ignoreTransaction(transactionId)) {
+          // transaction was aborted
+          return true;
+        }
+
+        int res = state->executeSingleOperation(
+            databaseId, collectionId, marker, datafile->_fid,
+            [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
+              if (IsVolatile(trx->trxCollection())) {
+                return TRI_ERROR_NO_ERROR;
+              }
+
+              TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
+
+              std::string const collectionName = trx->documentCollection()->_info.name();
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
+
+              OperationOptions options;
+              options.silent = true;
+              options.recoveryMarker = envelope;
+
+              // try an insert first
+              OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);
+              int res = opRes.code;
+
+              if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+                // document/edge already exists, now make it an update
+                opRes = trx->update(collectionName, VPackSlice(ptr), VPackSlice(ptr), options);
+                res = opRes.code;
+              }
+
+              return res;
+            });
+
+        if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
+            res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
+            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          LOG(WARN) << "unable to insert document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
       }
 
-      char const* properties =
-          reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
-      std::shared_ptr<VPackBuilder> builder;
-      try {
-        builder = VPackParser::fromJson(properties);
-      } catch (...) {
-        LOG(WARN) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      VPackSlice slice = builder->slice();
-      if (!slice.isObject()) {
-        LOG(WARN) << "cannot unpack index properties for index " << indexId << ", collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
+      case TRI_WAL_MARKER_VPACK_REMOVE: {
+        // re-apply the remove operation
+        auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
+        TRI_voc_cid_t collectionId = m->_collectionId;
+        TRI_voc_tick_t databaseId = m->_databaseId;
 
-      std::string const indexName("index-" + std::to_string(indexId) + ".json");
-      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+        if (state->isDropped(databaseId, collectionId)) {
+          return true;
+        }
 
-      bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename.c_str(), slice, vocbase->_settings.forceSyncProperties);
+        TRI_voc_tick_t transactionId = m->_transactionId;
+        if (state->ignoreTransaction(transactionId)) {
+          return true;
+        }
 
-      if (!ok) {
-        LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      } else {
-        document->_indexFiles.emplace_back(filename);
-      }
+        int res = state->executeSingleOperation(
+            databaseId, collectionId, marker, datafile->_fid,
+            [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
+              if (IsVolatile(trx->trxCollection())) {
+                return TRI_ERROR_NO_ERROR;
+              }
+              
+              TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
-      break;
-    }
+              std::string const collectionName = trx->documentCollection()->_info.name();
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
 
-    case TRI_WAL_MARKER_CREATE_COLLECTION: {
-      auto const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
+              OperationOptions options;
+              options.silent = true;
+              options.recoveryMarker = envelope;
 
-      // remove the drop marker
-      state->droppedCollections.erase(collectionId);
+              OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
+              int res = opRes.code;
 
-      if (state->isDropped(databaseId)) {
-        return true;
-      }
+              return res;
+            });
 
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // if the underlying database is gone, we can go on
-        LOG(TRACE) << "cannot open database " << databaseId;
-        return true;
+        if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
+            res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
+            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          LOG(WARN) << "unable to remove document in collection " << collectionId << " of database " << databaseId << ": " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
       }
 
-      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+      // -----------------------------------------------------------------------------
+      // ddl
+      // -----------------------------------------------------------------------------
 
-      if (collection == nullptr) {
-        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-      }
-      
-      if (collection != nullptr) {
-        // drop an existing collection
-        TRI_DropCollectionVocBase(vocbase, collection, false);
-      }
+      case TRI_WAL_MARKER_RENAME_COLLECTION: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot rename collection: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
 
-      char const* properties =
-          reinterpret_cast<char const*>(m) + sizeof(collection_create_marker_t);
-      std::shared_ptr<VPackBuilder> builder;
-      try {
-        builder = VPackParser::fromJson(properties);
-      } catch (...) {
-        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      VPackSlice slice = builder->slice();
-      if (!slice.isObject()) {
-        LOG(WARN) << "cannot unpack collection properties for collection " << collectionId << " in database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
+        if (state->isDropped(databaseId)) {
+          return true;
+        }
 
-      // check if there is another collection with the same name as the one that
-      // we attempt to create
-      VPackSlice const nameSlice = slice.get("name");
-      std::string name = "";
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
-      if (nameSlice.isString()) {
-        name = nameSlice.copyString();
-        collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG(TRACE) << "cannot open database " << databaseId;
+          return true;
+        }
 
-        if (collection != nullptr) {  // && !
-          // TRI_IsSystemNameCollection(name->_value._string.data))
-          // {
-          // if yes, delete it
-          TRI_voc_cid_t otherCid = collection->_cid;
+        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
+        if (collection == nullptr) {
+          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        }
+
+        if (collection == nullptr) {
+          // if the underlying collection is gone, we can go on
+          LOG(TRACE) << "cannot open collection " << collectionId;
+          return true;
+        }
+
+        VPackSlice nameSlice = payloadSlice.get("name");
+        if (!nameSlice.isString()) {
+          LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << ": name attribute is no string";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        std::string name = nameSlice.copyString();
+
+        // check if other collection exist with target name
+        TRI_vocbase_col_t* other =
+            TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+
+        if (other != nullptr) {
+          TRI_voc_cid_t otherCid = other->_cid;
           state->releaseCollection(otherCid);
+          TRI_DropCollectionVocBase(vocbase, other, false);
+        }
+
+        int res =
+            TRI_RenameCollectionVocBase(vocbase, collection, name.c_str(), true, false);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "cannot rename collection " << collectionId << " in database " << databaseId << " to '" << name << "': " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
+      }
+
+      case TRI_WAL_MARKER_CHANGE_COLLECTION: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot change properties of collection: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        if (state->isDropped(databaseId)) {
+          return true;
+        }
+
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG(TRACE) << "cannot open database " << databaseId;
+          return true;
+        }
+
+        TRI_document_collection_t* document =
+            state->getCollection(databaseId, collectionId);
+
+        if (document == nullptr) {
+          // if the underlying collection is gone, we can go on
+          LOG(TRACE) << "cannot change properties of collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          return true;
+        }
+
+        int res = TRI_UpdateCollectionInfo(
+            vocbase, document, payloadSlice, vocbase->_settings.forceSyncProperties);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        break;
+      }
+
+      case TRI_WAL_MARKER_CREATE_INDEX: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot create index for collection: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        
+        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "iid");
+
+        if (state->isDropped(databaseId, collectionId)) {
+          return true;
+        }
+
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          return true;
+        }
+
+        TRI_document_collection_t* document =
+            state->getCollection(databaseId, collectionId);
+
+        if (document == nullptr) {
+          // if the underlying collection is gone, we can go on
+          LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          return true;
+        }
+        
+        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+        if (col == nullptr) {
+          // if the underlying collection gone, we can go on
+          LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          return true;
+        }
+
+        std::string const indexName("index-" + std::to_string(indexId) + ".json");
+        std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+
+        bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+            filename.c_str(), payloadSlice, vocbase->_settings.forceSyncProperties);
+
+        if (!ok) {
+          LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
+          ++state->errorCount;
+          return state->canContinue();
+        } else {
+          document->_indexFiles.emplace_back(filename);
+        }
+
+        break;
+      }
+
+      case TRI_WAL_MARKER_CREATE_COLLECTION: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot create collection: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        
+        // remove the drop marker
+        state->droppedCollections.erase(collectionId);
+
+        if (state->isDropped(databaseId)) {
+          return true;
+        }
+
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG(TRACE) << "cannot open database " << databaseId;
+          return true;
+        }
+
+        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+
+        if (collection == nullptr) {
+          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        }
+        
+        if (collection != nullptr) {
+          // drop an existing collection
           TRI_DropCollectionVocBase(vocbase, collection, false);
         }
-      } else {
-        LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
+
+        // check if there is another collection with the same name as the one that
+        // we attempt to create
+        VPackSlice const nameSlice = payloadSlice.get("name");
+        std::string name = "";
+
+        if (nameSlice.isString()) {
+          name = nameSlice.copyString();
+          collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+
+          if (collection != nullptr) {  // && !
+            // TRI_IsSystemNameCollection(name->_value._string.data))
+            // {
+            // if yes, delete it
+            TRI_voc_cid_t otherCid = collection->_cid;
+
+            state->releaseCollection(otherCid);
+            TRI_DropCollectionVocBase(vocbase, collection, false);
+          }
+        } else {
+          LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        // fiddle "isSystem" value, which is not contained in the JSON file
+        bool isSystemValue = false;
+        if (!name.empty()) {
+          isSystemValue = name[0] == '_';
+        }
+
+        VPackBuilder bx;
+        bx.openObject();
+        bx.add("isSystem", VPackValue(isSystemValue));
+        bx.close();
+        VPackSlice isSystem = bx.slice();
+        VPackBuilder b2 = VPackCollection::merge(payloadSlice, isSystem, false);
+
+        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice());
+
+        if (state->willBeDropped(collectionId)) {
+          // in case we detect that this collection is going to be deleted anyway,
+          // set
+          // the sync properties to false temporarily
+          bool oldSync = vocbase->_settings.forceSyncProperties;
+          vocbase->_settings.forceSyncProperties = false;
+          collection =
+              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+          vocbase->_settings.forceSyncProperties = oldSync;
+
+        } else {
+          // collection will be kept
+          collection =
+              TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
+        }
+
+        if (collection == nullptr) {
+          LOG(WARN) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
       }
 
-      // fiddle "isSystem" value, which is not contained in the JSON file
-      bool isSystemValue = false;
-      if (!name.empty()) {
-        isSystemValue = name[0] == '_';
+      case TRI_WAL_MARKER_CREATE_DATABASE: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot create database: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        
+        // remove the drop marker
+        state->droppedDatabases.erase(databaseId);
+        TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+
+        if (vocbase != nullptr) {
+          // remove already existing database
+          int statusCode =
+              TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
+          WaitForDeletion(state->server, databaseId, statusCode);
+        }
+
+        VPackSlice const nameSlice = payloadSlice.get("name");
+
+        if (!nameSlice.isString()) {
+          LOG(WARN) << "cannot unpack database properties for database " << databaseId;
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        std::string nameString = nameSlice.copyString();
+
+        // remove already existing database with same name
+        vocbase =
+            TRI_LookupDatabaseByNameServer(state->server, nameString.c_str());
+
+        if (vocbase != nullptr) {
+          TRI_voc_tick_t otherId = vocbase->_id;
+
+          state->releaseDatabase(otherId);
+          int statusCode = TRI_DropDatabaseServer(
+              state->server, nameString.c_str(), false, false);
+          WaitForDeletion(state->server, otherId, statusCode);
+        }
+
+        TRI_vocbase_defaults_t defaults;
+        TRI_GetDatabaseDefaultsServer(state->server, &defaults);
+
+        vocbase = nullptr;
+        WaitForDeletion(state->server, databaseId,
+                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+        int res = TRI_CreateDatabaseServer(state->server, databaseId,
+                                          nameString.c_str(), &defaults,
+                                          &vocbase, false);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
       }
 
-      VPackBuilder bx;
-      bx.openObject();
-      bx.add("isSystem", VPackValue(isSystemValue));
-      bx.close();
-      VPackSlice isSystem = bx.slice();
-      VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
-      slice = b2.slice();
+      case TRI_WAL_MARKER_DROP_INDEX: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        VPackSlice const payloadSlice = markerData.get("data");
+        
+        if (!payloadSlice.isObject()) {
+          LOG(WARN) << "cannot drop index for collection: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        
+        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "id");
 
-      arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
+        if (state->isDropped(databaseId, collectionId)) {
+          return true;
+        }
 
-      if (state->willBeDropped(collectionId)) {
-        // in case we detect that this collection is going to be deleted anyway,
-        // set
-        // the sync properties to false temporarily
-        bool oldSync = vocbase->_settings.forceSyncProperties;
-        vocbase->_settings.forceSyncProperties = false;
-        collection =
-            TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
-        vocbase->_settings.forceSyncProperties = oldSync;
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
-      } else {
-        // collection will be kept
-        collection =
-            TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
-      }
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG(TRACE) << "cannot open database " << databaseId;
+          return true;
+        }
 
-      if (collection == nullptr) {
-        LOG(WARN) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
+        TRI_document_collection_t* document =
+            state->getCollection(databaseId, collectionId);
+        if (document == nullptr) {
+          // if the underlying collection gone, we can go on
+          return true;
+        }
 
-    case TRI_WAL_MARKER_CREATE_DATABASE: {
-      auto const* m = reinterpret_cast<database_create_marker_t const*>(marker);
-      TRI_voc_tick_t databaseId = m->_databaseId;
+        TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
 
-      // remove the drop marker
-      state->droppedDatabases.erase(databaseId);
-      TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+        if (col == nullptr) {
+          // if the underlying collection gone, we can go on
+          return true;
+        }
 
-      if (vocbase != nullptr) {
-        // remove already existing database
-        int statusCode =
-            TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
-        WaitForDeletion(state->server, databaseId, statusCode);
-      }
-
-      char const* properties =
-          reinterpret_cast<char const*>(m) + sizeof(database_create_marker_t);
-      std::shared_ptr<VPackBuilder> parsedProperties;
-      try {
-        parsedProperties = VPackParser::fromJson(properties);
-      } catch (...) {
-        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      VPackSlice const slice = parsedProperties->slice();
-
-      if (!slice.isObject()) {
-        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      VPackSlice const nameSlice = slice.get("name");
-
-      if (!nameSlice.isString()) {
-        LOG(WARN) << "cannot unpack database properties for database " << databaseId;
-        ++state->errorCount;
-        return state->canContinue();
-      }
-
-      std::string nameString = nameSlice.copyString();
-
-      // remove already existing database with same name
-      vocbase =
-          TRI_LookupDatabaseByNameServer(state->server, nameString.c_str());
-
-      if (vocbase != nullptr) {
-        TRI_voc_tick_t otherId = vocbase->_id;
-
-        state->releaseDatabase(otherId);
-        int statusCode = TRI_DropDatabaseServer(
-            state->server, nameString.c_str(), false, false);
-        WaitForDeletion(state->server, otherId, statusCode);
-      }
-
-      TRI_vocbase_defaults_t defaults;
-      TRI_GetDatabaseDefaultsServer(state->server, &defaults);
-
-      vocbase = nullptr;
-      WaitForDeletion(state->server, databaseId,
-                      TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-      int res = TRI_CreateDatabaseServer(state->server, databaseId,
-                                         nameString.c_str(), &defaults,
-                                         &vocbase, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(WARN) << "cannot create database " << databaseId << ": " << TRI_errno_string(res);
-        ++state->errorCount;
-        return state->canContinue();
-      }
-      break;
-    }
-
-    // -----------------------------------------------------------------------------
-    // drop operations
-    // -----------------------------------------------------------------------------
-
-    case TRI_WAL_MARKER_DROP_INDEX: {
-      auto const* m = reinterpret_cast<index_drop_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      TRI_idx_iid_t indexId = m->_indexId;
-
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
-
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // if the underlying database is gone, we can go on
-        LOG(TRACE) << "cannot open database " << databaseId;
-        return true;
-      }
-
-      TRI_document_collection_t* document =
-          state->getCollection(databaseId, collectionId);
-      if (document == nullptr) {
-        // if the underlying collection gone, we can go on
-        return true;
-      }
-
-      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-
-      if (col == nullptr) {
-        // if the underlying collection gone, we can go on
-        return true;
-      }
-
-      // ignore any potential error returned by this call
-      TRI_DropIndexDocumentCollection(document, indexId, false);
-      TRI_RemoveFileIndexCollection(document, indexId);
-
-      // additionally remove the index file
-      std::string const indexName("index-" + std::to_string(indexId) + ".json");
-      std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
-
-      TRI_UnlinkFile(filename.c_str());
-      break;
-    }
-
-    case TRI_WAL_MARKER_DROP_COLLECTION: {
-      auto const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      // insert the drop marker
-      state->droppedCollections.insert(collectionId);
-
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-
-      if (vocbase == nullptr) {
-        // database already deleted - do nothing
-        return true;
-      }
-
-      // ignore any potential error returned by this call
-      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
-
-      if (collection == nullptr) {
-        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-      }
-
-      if (collection != nullptr) {
-        TRI_DropCollectionVocBase(vocbase, collection, false);
-      }
-      break;
-    }
-
-    case TRI_WAL_MARKER_DROP_DATABASE: {
-      database_drop_marker_t const* m =
-          reinterpret_cast<database_drop_marker_t const*>(marker);
-      TRI_voc_tick_t databaseId = m->_databaseId;
-
-      // insert the drop marker
-      state->droppedDatabases.insert(databaseId);
-      TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
-
-      if (vocbase != nullptr) {
         // ignore any potential error returned by this call
-        TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
-      }
-      break;
-    }
-  }
+        TRI_DropIndexDocumentCollection(document, indexId, false);
+        TRI_RemoveFileIndexCollection(document, indexId);
 
-  return true;
+        // additionally remove the index file
+        std::string const indexName("index-" + std::to_string(indexId) + ".json");
+        std::string const filename(arangodb::basics::FileUtils::buildFilename(col->path(), indexName));
+
+        TRI_UnlinkFile(filename.c_str());
+        break;
+      }
+
+      case TRI_WAL_MARKER_DROP_COLLECTION: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        
+        // insert the drop marker
+        state->droppedCollections.emplace(collectionId);
+
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+        if (vocbase == nullptr) {
+          // database already deleted - do nothing
+          return true;
+        }
+
+        // ignore any potential error returned by this call
+        TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+
+        if (collection == nullptr) {
+          collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+        }
+
+        if (collection != nullptr) {
+          TRI_DropCollectionVocBase(vocbase, collection, false);
+        }
+        break;
+      }
+
+      case TRI_WAL_MARKER_DROP_DATABASE: {
+        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+
+        // insert the drop marker
+        state->droppedDatabases.emplace(databaseId);
+        TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+
+        if (vocbase != nullptr) {
+          // ignore any potential error returned by this call
+          TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
+        }
+        break;
+      }
+    }
+
+    return true;
+  }
+  catch (...) {
+    LOG(WARN) << "cannot replay marker";
+    ++state->errorCount;
+    return state->canContinue();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1125,6 +1105,8 @@ int RecoverState::abortOpenTransactions() {
 
   LOG(TRACE) << "writing abort markers for still open transactions";
   int res = TRI_ERROR_NO_ERROR;
+      
+  VPackBuilder builder;
 
   try {
     // write abort markers for all transactions
@@ -1138,8 +1120,13 @@ int RecoverState::abortOpenTransactions() {
       }
 
       TRI_voc_tick_t databaseId = (*it).second.first;
+     
+      builder.openObject();
+      builder.add("database", VPackValue(databaseId)); 
+      builder.add("tid", VPackValue(transactionId));
+      builder.close();
 
-      AbortTransactionMarker marker(databaseId, transactionId);
+      AbortTransactionMarker marker(builder.slice());
       SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(
               marker.mem(), marker.size(), false);
@@ -1147,6 +1134,9 @@ int RecoverState::abortOpenTransactions() {
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
+
+      // recycle builder
+      builder.clear();
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
