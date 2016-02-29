@@ -179,6 +179,7 @@ DocumentAccessor& DocumentAccessor::at (int64_t index) {
 triagens::basics::Json DocumentAccessor::toJson () {
   if (_current == nullptr) {
     // we're still pointing to the original document
+    TRI_ASSERT(_mptr != nullptr);
     auto shaper = _document->getShaper();
 
     // fetch document from mptr
