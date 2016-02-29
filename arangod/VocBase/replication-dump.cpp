@@ -281,7 +281,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
   TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
   char const* key = nullptr;
-  size_t keyLength = 0;
+  VPackValueLength keyLength = 0;
   TRI_voc_rid_t rid = 0;
   bool haveData = true;
 #if 0  

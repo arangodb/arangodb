@@ -40,6 +40,10 @@ struct TRI_transaction_collection_s;
 // Define search slice attribute names
 #define TRI_SLICE_KEY_EQUAL "eq"
 #define TRI_SLICE_KEY_IN "in"
+#define TRI_SLICE_KEY_LE "le"
+#define TRI_SLICE_KEY_LT "lt"
+#define TRI_SLICE_KEY_GE "ge"
+#define TRI_SLICE_KEY_GT "gt"
 
 namespace arangodb {
 

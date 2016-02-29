@@ -29,7 +29,6 @@
 #include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
-#include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -61,7 +60,7 @@ class Transaction;
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator {
+class SkiplistIterator : public IndexIterator {
  private:
   friend class SkiplistIndex;
 
@@ -70,95 +69,42 @@ class SkiplistIterator {
   typedef arangodb::basics::SkipListNode<VPackSlice,
                                          TRI_index_element_t> Node;
 
-  struct SkiplistIteratorInterval {
-    Node* _leftEndPoint;
-    Node* _rightEndPoint;
-
-    SkiplistIteratorInterval()
-        : _leftEndPoint(nullptr), _rightEndPoint(nullptr) {}
-  };
-
  private:
   SkiplistIndex const* _index;
-  size_t _currentInterval;  // starts with 0, current interval used
   bool _reverse;
   Node* _cursor;
-  std::vector<SkiplistIteratorInterval> _intervals;
+
+  Node* _leftEndPoint;   // Interval left border, first excluded element
+  Node* _rightEndPoint;  // Interval right border, first excluded element
 
  public:
-  SkiplistIterator(SkiplistIndex const* idx, bool reverse)
-      : _index(idx), _currentInterval(0), _reverse(reverse), _cursor(nullptr) {}
-
-  ~SkiplistIterator() {}
+  SkiplistIterator(SkiplistIndex const* idx, bool reverse, Node* left,
+                   Node* right)
+      : _index(idx),
+        _reverse(reverse),
+        _leftEndPoint(left),
+        _rightEndPoint(right) {
+    reset(); // Initializes the cursor
+  }
 
   // always holds the last node returned, initially equal to
-  // the _leftEndPoint of the first interval (or the
-  // _rightEndPoint of the last interval in the reverse
-  // case), can be nullptr if there are no intervals
-  // (yet), or, in the reverse case, if the cursor is
-  // at the end of the last interval. Additionally
-  // in the non-reverse case _cursor is set to nullptr
-  // if the cursor is exhausted.
-  // See SkiplistNextIterationCallback and
-  // SkiplistPrevIterationCallback for the exact
-  // condition for the iterator to be exhausted.
+  // the _leftEndPoint (or the
+  // _rightEndPoint in the reverse case),
+  // can be nullptr if the iterator is exhausted.
 
  public:
-  size_t size() const;
 
-  bool hasNext() const;
-
-  TRI_index_element_t* next();
-
-  void initCursor();
-
-  void findHelper(TRI_index_operator_t const* indexOperator,
-                  std::vector<SkiplistIteratorInterval>& interval);
-
- private:
-  bool hasPrevIteration() const;
-  TRI_index_element_t* prevIteration();
-
-  bool hasNextIteration() const;
-  TRI_index_element_t* nextIteration();
-
-  bool findHelperIntervalIntersectionValid(
-      SkiplistIteratorInterval const& lInterval,
-      SkiplistIteratorInterval const& rInterval,
-      SkiplistIteratorInterval& interval);
-
-  bool findHelperIntervalValid(SkiplistIteratorInterval const& interval);
-};
-
-class SkiplistIndexIterator final : public IndexIterator {
- public:
-  SkiplistIndexIterator(arangodb::Transaction* trx, SkiplistIndex const* index,
-                        std::vector<TRI_index_operator_t*> op, bool reverse)
-      : _trx(trx),
-        _index(index),
-        _operators(op),
-        _reverse(reverse),
-        _currentOperator(0),
-        _iterator(nullptr) {}
-
-  ~SkiplistIndexIterator() {
-    for (auto& op : _operators) {
-      delete op;
-    }
-    delete _iterator;
-  }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the next element in the skiplist
+  ////////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* next() override;
 
-  void reset() override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Reset the cursor
+  ////////////////////////////////////////////////////////////////////////////////
 
- private:
-  arangodb::Transaction* _trx;
-  SkiplistIndex const* _index;
-  std::vector<TRI_index_operator_t*> _operators;
-  bool _reverse;
-  size_t _currentOperator;
-  SkiplistIterator* _iterator;
+  void reset() override;
 };
 
 class SkiplistIndex final : public PathBasedIndex {
@@ -225,13 +171,11 @@ class SkiplistIndex final : public PathBasedIndex {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief attempts to locate an entry in the skip list index
   ///
-  /// Note: this function will not destroy the passed slOperator before it
-  /// returns
   /// Warning: who ever calls this function is responsible for destroying
-  /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
+  /// the velocypack::Slice and the SkiplistIterator* results
   //////////////////////////////////////////////////////////////////////////////
 
-  SkiplistIterator* lookup(arangodb::Transaction*, TRI_index_operator_t*,
+  SkiplistIterator* lookup(arangodb::Transaction*, arangodb::velocypack::Slice const,
                            bool) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
@@ -275,9 +219,21 @@ class SkiplistIndex final : public PathBasedIndex {
       size_t&, bool) const;
 
  private:
+
+  // Shorthand for the skiplist node
+  typedef arangodb::basics::SkipListNode<VPackSlice,
+                                         TRI_index_element_t> Node;
+
   ElementElementComparator CmpElmElm;
 
   KeyElementComparator CmpKeyElm;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks if the interval is valid. It is declared invalid if
+  ///        one border is nullptr or the right is lower than left.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool intervalValid(Node* left, Node* right) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual skiplist index
