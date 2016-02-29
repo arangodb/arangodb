@@ -8,7 +8,6 @@
   width: 100%;
 
   .aqlEditorWrapper {
-    background: #f6f6f6;
     border: 0 !important;
     border-right: 3px solid $c-content-border !important;
     float: left;
@@ -22,31 +21,30 @@
     tr {
       cursor: copy;
     }
-  }  
+  }
 
   .bindParamEditorWrapper,
   .aqlEditorWrapper {
-    background: #eee;
     overflow: hidden;
 
     .stringtype {
-      color: black;
+      color: $c-sh-string;
     }
 
     .objecttype {
-      color: blue;
+      color: $c-sh-object;
     }
 
     .arraytype {
-      color: green;
+      color: $c-sh-array;
     }
-    
+
     .numbertype {
-      color: red;
+      color: $c-sh-number;
     }
 
     .booleantype {
-      color: lightgreen;
+      color: $c-sh-keyword;
     }
 
     table {
@@ -59,7 +57,7 @@
       }
 
       .truncate {
-        opacity: 0.8;
+        opacity: .8;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -135,7 +133,7 @@
 
       th {
         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-        height: 17px;
+        height: 34px;
         padding: 0;
         width: 50%;
       }
@@ -151,18 +149,24 @@
     }
 
     .aceAction {
-      background-color: rgba(0, 0, 0, .6);
+      background-color: rgb(133, 133, 133);
       border-radius: 3px;
       color: $c-white;
       cursor: pointer;
       font-size: 13pt;
+      height: 23px;
+      line-height: 22px;
       opacity: .8;
       position: absolute;
-      right: 10px;
+      right: 5px;
       text-align: center;
-      top: 10px;
+      top: 5px;
       width: 33px;
       z-index: 10;
+
+      &.type {
+        font-size: 8pt;
+      }
 
       i {
         margin-bottom: 3px;
@@ -181,10 +185,12 @@
         background-color: $c-white;
         border-bottom: 1px solid $c-content-border;
         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-        height: 17px;
+        height: 34px;
 
         span {
           margin-left: 5px;
+          padding-top: 8px;
+          position: absolute;
         }
       }
 
@@ -230,7 +236,7 @@
     color: $c-white;
     cursor: pointer;
     position: relative;
-    right: -27px;
+    right: -24px;
     top: 45px;
     z-index: 10;
   }

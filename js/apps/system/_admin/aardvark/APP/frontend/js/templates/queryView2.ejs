@@ -28,14 +28,19 @@
         <div id="aqlEditor"></div>
         <div id="queryTable" style="display: none"></div>
       </div>
+
       <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
         <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
         <div id="previewWrapper" class="previewWrapper" style="display: none">
           <div id="previewBar" class="previewBar">
             <span>Preview</span>
           </div>
           <div id="queryPreview"></div>
         </div>
+
       </div>
     </div>
 
@@ -52,12 +57,6 @@
   </div>
 
   <div id="outputEditors" class="outputEditors">
-  </div>
-
-  <div class="aqlSpotlightWrapper">
-    <div id="aql-spotlight">
-      <input class="typeahead" type="text" placeholder="Search for Collections, AQL and more">
-    </div>
   </div>
 
   <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">

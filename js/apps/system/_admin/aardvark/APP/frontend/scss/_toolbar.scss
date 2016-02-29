@@ -1,7 +1,14 @@
 %toolbarSpan {
-  padding: 1px 4px 3px;
+  padding: 5px 8px;
   position: relative;
-  top: 4px;
+  top: 5px;
+
+  &:hover {
+    background-color: $c-positive;
+    border-radius: 3px;
+    color: $c-white;
+    cursor: pointer;
+  }
 }
 
 .arangoToolbar {
@@ -36,6 +43,8 @@
   }
 
   i {
+    cursor: pointer;
+    font-size: 11pt;
     font-style: normal;
 
     &.fa {
@@ -56,6 +65,7 @@
     background: $c-info-blue;
     border-radius: 3px;
     color: $c-white;
+    margin-left: 5px;
   }
 
   .styled-select {

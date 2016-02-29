@@ -6043,9 +6043,14 @@ div.headerBar {
   width: 10%; }
 
 .arangoToolbar span {
-  padding: 1px 4px 3px;
+  padding: 5px 8px;
   position: relative;
-  top: 4px; }
+  top: 5px; }
+  .arangoToolbar span:hover {
+    background-color: #8aa051;
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer; }
 
 .arangoToolbar {
   background-color: #fff;
@@ -6065,6 +6070,8 @@ div.headerBar {
     font-weight: 100;
     margin-left: 10px; }
   .arangoToolbar i {
+    cursor: pointer;
+    font-size: 11pt;
     font-style: normal; }
     .arangoToolbar i.fa {
       margin-right: 5px; }
@@ -6780,7 +6787,6 @@ toolbar {
   min-height: 300px;
   width: 100%; }
   .inputEditorWrapper .aqlEditorWrapper {
-    background: #f6f6f6;
     border: 0 !important;
     border-right: 3px solid rgba(140, 138, 137, 0.25) !important;
     float: left;
@@ -6792,23 +6798,22 @@ toolbar {
     cursor: copy; }
   .inputEditorWrapper .bindParamEditorWrapper,
   .inputEditorWrapper .aqlEditorWrapper {
-    background: #eee;
     overflow: hidden; }
     .inputEditorWrapper .bindParamEditorWrapper .stringtype,
     .inputEditorWrapper .aqlEditorWrapper .stringtype {
-      color: black; }
+      color: #ce2f30; }
     .inputEditorWrapper .bindParamEditorWrapper .objecttype,
     .inputEditorWrapper .aqlEditorWrapper .objecttype {
-      color: blue; }
+      color: #00f; }
     .inputEditorWrapper .bindParamEditorWrapper .arraytype,
     .inputEditorWrapper .aqlEditorWrapper .arraytype {
-      color: green; }
+      color: #00f; }
     .inputEditorWrapper .bindParamEditorWrapper .numbertype,
     .inputEditorWrapper .aqlEditorWrapper .numbertype {
-      color: red; }
+      color: #044; }
     .inputEditorWrapper .bindParamEditorWrapper .booleantype,
     .inputEditorWrapper .aqlEditorWrapper .booleantype {
-      color: lightgreen; }
+      color: #c12dad; }
     .inputEditorWrapper .bindParamEditorWrapper table,
     .inputEditorWrapper .aqlEditorWrapper table {
       border-top: 0;
@@ -6819,7 +6824,7 @@ toolbar {
         overflow-y: auto; }
       .inputEditorWrapper .bindParamEditorWrapper table .truncate,
       .inputEditorWrapper .aqlEditorWrapper table .truncate {
-        opacity: 0.8;
+        opacity: .8;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -6879,7 +6884,7 @@ toolbar {
       .inputEditorWrapper .bindParamEditorWrapper table th,
       .inputEditorWrapper .aqlEditorWrapper table th {
         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-        height: 17px;
+        height: 34px;
         padding: 0;
         width: 50%; }
   .inputEditorWrapper .aqlEditorWrapper,
@@ -6890,18 +6895,23 @@ toolbar {
       background: #da4f49; }
     .inputEditorWrapper .aqlEditorWrapper .aceAction,
     .inputEditorWrapper .bindParamEditorWrapper .aceAction {
-      background-color: rgba(0, 0, 0, 0.6);
+      background-color: #858585;
       border-radius: 3px;
       color: #fff;
       cursor: pointer;
       font-size: 13pt;
+      height: 23px;
+      line-height: 22px;
       opacity: .8;
       position: absolute;
-      right: 10px;
+      right: 5px;
       text-align: center;
-      top: 10px;
+      top: 5px;
       width: 33px;
       z-index: 10; }
+      .inputEditorWrapper .aqlEditorWrapper .aceAction.type,
+      .inputEditorWrapper .bindParamEditorWrapper .aceAction.type {
+        font-size: 8pt; }
       .inputEditorWrapper .aqlEditorWrapper .aceAction i,
       .inputEditorWrapper .bindParamEditorWrapper .aceAction i {
         margin-bottom: 3px; }
@@ -6917,10 +6927,12 @@ toolbar {
         background-color: #fff;
         border-bottom: 1px solid rgba(140, 138, 137, 0.25);
         font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-        height: 17px; }
+        height: 34px; }
         .inputEditorWrapper .aqlEditorWrapper .previewWrapper .previewBar span,
         .inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar span {
-          margin-left: 5px; }
+          margin-left: 5px;
+          padding-top: 8px;
+          position: absolute; }
       .inputEditorWrapper .aqlEditorWrapper .previewWrapper #queryPreview,
       .inputEditorWrapper .bindParamEditorWrapper .previewWrapper #queryPreview {
         height: 100%; }
@@ -6951,7 +6963,7 @@ toolbar {
     color: #fff;
     cursor: pointer;
     position: relative;
-    right: -27px;
+    right: -24px;
     top: 45px;
     z-index: 10; }
   .outputEditorWrapper .ace_editor {
@@ -7865,6 +7877,82 @@ input.gv-radio-button {
   100% {
     left: 5px;
     top: 20px; } }
+
+#spotlightPlaceholder {
+  background-color: rgba(0, 0, 0, 0.25);
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 2000; }
+
+.spotlightWrapper {
+  height: 50px;
+  left: 25%;
+  position: absolute;
+  top: 115px;
+  width: 50%; }
+  .spotlightWrapper .twitter-typeahead {
+    width: 100%; }
+  .spotlightWrapper .tt-highlight {
+    color: #5bc0de;
+    font-weight: 400; }
+  .spotlightWrapper input {
+    box-sizing: border-box;
+    height: 40px !important; }
+  .spotlightWrapper .tt-dataset {
+    clear: both; }
+  .spotlightWrapper .tt-menu {
+    background: #3d4246;
+    border-radius: 3px;
+    color: #fff;
+    width: 100%; }
+    .spotlightWrapper .tt-menu .header-type {
+      background: #32373b;
+      clear: both;
+      color: #fff;
+      height: 30px;
+      padding-left: 5px; }
+      .spotlightWrapper .tt-menu .header-type h4 {
+        float: left;
+        margin: 4px 0 0;
+        padding: 0; }
+      .spotlightWrapper .tt-menu .header-type .fa {
+        font-size: 12pt;
+        margin-left: 6px;
+        margin-top: 6px; }
+      .spotlightWrapper .tt-menu .header-type .type {
+        background-color: #5bc0de;
+        border-radius: 3px;
+        float: right;
+        margin: 4px;
+        padding: 0 5px; }
+    .spotlightWrapper .tt-menu .tt-cursor {
+      background-color: #fff;
+      color: #000; }
+    .spotlightWrapper .tt-menu .tt-selectable {
+      padding-left: 10px; }
+  .spotlightWrapper .typeahead {
+    background: #3d4246;
+    background-color: #3d4246;
+    border: 0 solid #3d4246;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 22px;
+    height: 30px;
+    line-height: 30px;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none;
+    padding: 8px 12px;
+    width: 100%; }
+  .spotlightWrapper .typeahead:focus {
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
 
 .application-detail-view section.info {
   float: left;
