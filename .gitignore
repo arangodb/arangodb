@@ -1,4 +1,3 @@
-js-*.h
 .deps
 .dirstamp
 *.o
@@ -17,11 +16,6 @@ js-*.h
 *.diff
 *.patch
 *.lnk
-
-.idea
-.setup-mr-directories
-.setup-js-directories
-.file-list-js
 
 testresult.json
 
@@ -60,12 +54,10 @@ Documentation/Books/Users/manual.mobi
 Documentation/Books/Users/manual.pdf
 Documentation/Books/Makefile
 Documentation/Books/Users/node_modules/
-Documentation/Examples/*.generated
 Documentation/Books/ppbooks/
+Documentation/Books/allComments.txt
 
 UnitTests/HttpInterface/logs/
-UnitTests/basics_suite
-UnitTests/geo_suite
 
 arangod/Aql/grammar.c
 arangod/Aql/grammar.cpp
@@ -88,12 +80,11 @@ lib/JsonParser/json-parser.c
 lib/JsonParser/json-parser.cpp
 lib/V8/v8-json.cpp
 
-cppcheck.log
-cppcheck.tmp
-
 Installation/epm/arangodb.sublist
 Installation/MacOSX/Bundle/Info.plist
+
 nbproject/
+.idea
 
 test.cpp.txt
 
@@ -112,7 +103,6 @@ js/apps/*
 js/apps/system/_admin/aardvark/APP/node_modules/*
 
 3rdParty/etcd/src/
-Documentation/Books/allComments.txt
 
 .gdb-history
 npm-debug.log
