@@ -25,7 +25,6 @@
 #include "Basics/Logger.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/VocShaper.h"
 
 using namespace arangodb;
 

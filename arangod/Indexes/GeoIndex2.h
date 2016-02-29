@@ -27,11 +27,8 @@
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-
-class VocShaper;
 
 namespace arangodb {
 
