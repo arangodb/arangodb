@@ -208,11 +208,10 @@ static void FreeOperations(TRI_transaction_t* trx) {
           auto it2 = stats.find(fid);
 
           if (it2 == stats.end()) {
-            stats.emplace(fid,
-                          std::make_pair(1, TRI_DF_ALIGN_BLOCK(marker->_size)));
+            stats.emplace(fid, std::make_pair(1, AlignedMarkerSize<int64_t>(marker)));
           } else {
             (*it2).second.first++;
-            (*it2).second.second += TRI_DF_ALIGN_BLOCK(marker->_size);
+            (*it2).second.second += AlignedMarkerSize<int64_t>(marker);
           }
         }
       }
@@ -1141,8 +1140,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
           operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
       document->_datafileStatistics.increaseDead(
-          operation.oldHeader._fid, 1,
-          static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size)));
+          operation.oldHeader._fid, 1, AlignedMarkerSize<int64_t>(marker));
     }
   } else {
     // operation is buffered and might be rolled back

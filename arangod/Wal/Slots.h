@@ -165,7 +165,7 @@ class Slots {
   /// @brief writes a prologue for a document/remove marker
   //////////////////////////////////////////////////////////////////////////////
   
-  int writePrologue(Slot*, TRI_voc_tick_t, TRI_voc_cid_t);
+  int writePrologue(Slot*, void*, TRI_voc_tick_t, TRI_voc_cid_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write a footer marker

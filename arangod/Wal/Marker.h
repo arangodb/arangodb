@@ -150,10 +150,6 @@ class Marker {
 
   inline TRI_voc_fid_t fid() const { return _fid; }
 
-  static inline size_t alignedSize(size_t size) {
-    return TRI_DF_ALIGN_BLOCK(size);
-  }
-
   inline void* mem() const { return static_cast<void*>(_buffer); }
 
   inline char* begin() const { return _buffer; }

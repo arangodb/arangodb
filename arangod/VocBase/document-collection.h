@@ -90,6 +90,14 @@ struct TRI_doc_mptr_t {
     _dataptr = that._dataptr;
     _hash = that._hash;
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a pointer to the beginning of the marker
+  //////////////////////////////////////////////////////////////////////////////
+  
+  inline struct TRI_df_marker_t const* getMarkerPtr() const { 
+    return static_cast<TRI_df_marker_t const*>(_dataptr); 
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the beginning of the marker

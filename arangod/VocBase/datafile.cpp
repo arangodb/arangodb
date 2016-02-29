@@ -543,7 +543,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     entry._position = (TRI_voc_size_t)(ptr - datafile->_data);
     entry._size = marker->_size;
-    entry._realSize = TRI_DF_ALIGN_BLOCK(marker->_size);
+    entry._realSize = AlignedMarkerSize<size_t>(marker);
     entry._tick = marker->_tick;
     entry._type = marker->_type;
     entry._status = 1;
@@ -630,7 +630,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     TRI_PushBackVector(&scan._entries, &entry);
 
-    size = TRI_DF_ALIGN_BLOCK(marker->_size);
+    size = AlignedMarkerSize<size_t>(marker);
     currentSize += (TRI_voc_size_t)size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -758,8 +758,8 @@ static bool TryRepairDatafile(TRI_datafile_t* datafile) {
       }
     }
 
-    size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
-    currentSize += (TRI_voc_size_t)size;
+    size_t size = AlignedMarkerSize<TRI_voc_size_t>(marker);
+    currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       return true;
@@ -975,8 +975,8 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
       maxTick = marker->_tick;
     }
 
-    size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
-    currentSize += (TRI_voc_size_t)size;
+    size_t size = AlignedMarkerSize<size_t>(marker);
+    currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
       LOG(DEBUG) << "found footer, reached end of datafile '" << datafile->getName(datafile) << "', current size " << currentSize;
@@ -1537,7 +1537,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
                                TRI_df_marker_t** position,
                                TRI_voc_size_t maximalJournalSize) {
   *position = nullptr;
-  size = TRI_DF_ALIGN_BLOCK(size);
+  size = AlignedSize<TRI_voc_size_t>(size);
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
@@ -1723,8 +1723,7 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
   }
 
   while (ptr < end) {
-    TRI_df_marker_t const* marker =
-        reinterpret_cast<TRI_df_marker_t const*>(ptr);
+    auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
     if (marker->_size == 0) {
       return true;
@@ -1737,8 +1736,7 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
       return false;
     }
 
-    size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
-    ptr += size;
+    ptr += AlignedMarkerSize<size_t>(marker);
   }
 
   return true;

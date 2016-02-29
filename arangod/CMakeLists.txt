@@ -259,7 +259,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/Legends.cpp
   VocBase/Shaper.cpp
   VocBase/Traverser.cpp
   VocBase/VocShaper.cpp

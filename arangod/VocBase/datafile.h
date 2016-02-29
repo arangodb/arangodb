@@ -89,13 +89,7 @@ struct TRI_datafile_t;
 /// @brief datafile version
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DF_VERSION (1)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief alignment in datafile blocks
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_DF_BLOCK_ALIGNMENT (8)
+#define TRI_DF_VERSION (2)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum size of a single marker (in bytes)
@@ -546,12 +540,23 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const*);
 void TRI_InitMarkerDatafile(char*, TRI_df_marker_type_e, TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aligns in datafile blocks
+/// @brief returns the 8-byte aligned size for the value
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DF_ALIGN_BLOCK(a)                                      \
-  ((((a) + TRI_DF_BLOCK_ALIGNMENT - 1) / TRI_DF_BLOCK_ALIGNMENT) * \
-   TRI_DF_BLOCK_ALIGNMENT)
+template <typename T>
+static inline T AlignedSize(T value) {
+  return (value + 7) - ((value + 7) & 7);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the 8-byte aligned size for the marker
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+static inline T AlignedMarkerSize(TRI_df_marker_t const* marker) {
+  size_t value = marker->_size;
+  return static_cast<T>((value + 7) - ((value + 7) & 7));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the marker-specific offset to the vpack payload

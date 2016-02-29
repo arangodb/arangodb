@@ -152,7 +152,7 @@ int Logfile::judge(std::string const& filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* Logfile::reserve(size_t size) {
-  size = TRI_DF_ALIGN_BLOCK(size);
+  size = AlignedSize<size_t>(size);
 
   char* result = _df->_next;
 

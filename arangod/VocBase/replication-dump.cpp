@@ -867,7 +867,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         break;
       }
 
-      ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+      ptr += AlignedMarkerSize<size_t>(marker);
 
       if (marker->_type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
@@ -1051,7 +1051,7 @@ int TRI_DumpLogReplication(
           break;
         }
 
-        ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+        ptr += AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->_tick;
@@ -1180,7 +1180,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           break;
         }
 
-        ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+        ptr += AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->_tick;

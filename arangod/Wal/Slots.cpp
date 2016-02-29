@@ -131,7 +131,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
   static size_t const PrologueSize = sizeof(TRI_df_prologue_marker_t);
 
   // we need to use the aligned size for writing
-  uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
+  uint32_t alignedSize = AlignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
   bool mustWritePrologue = false;
@@ -231,7 +231,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
           // write prologue...
 
           // hand out the prologue slot and directly fill it
-          int res = writePrologue(slot, databaseId, collectionId);
+          int res = writePrologue(slot, mem, databaseId, collectionId);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return SlotInfo(res);
@@ -589,12 +589,10 @@ int Slots::writeHeader(Slot* slot) {
   TRI_df_header_marker_t header = _logfile->getHeaderMarker();
   size_t const size = header.base._size;
 
-  TRI_df_marker_t* mem =
-      reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
+  auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
 
-  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size),
-                _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&header.base, size);
   slot->setReturned(false);  // no sync
 
@@ -609,16 +607,13 @@ int Slots::writeHeader(Slot* slot) {
 /// @brief write a prologue marker
 ////////////////////////////////////////////////////////////////////////////////
 
-int Slots::writePrologue(Slot* slot, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+  TRI_df_prologue_marker_t header = _logfile->getPrologueMarker(databaseId, collectionId);
   size_t const size = header.base._size;
 
-  TRI_df_marker_t* mem =
-      reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
 
-  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size),
-                _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&header.base, size);
   slot->setReturned(false);  // no sync
 
@@ -635,12 +630,10 @@ int Slots::writeFooter(Slot* slot) {
   TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
   size_t const size = footer.base._size;
 
-  TRI_df_marker_t* mem =
-      reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
+  auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
 
-  slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size),
-                _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&footer.base, size);
   slot->setReturned(true);  // sync
   

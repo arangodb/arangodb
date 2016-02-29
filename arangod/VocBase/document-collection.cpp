@@ -817,11 +817,11 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker + sizeof(arangodb::wal::vpack_document_marker_t)));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
-  
+ 
   SetRevision(document, rid, false);
   document->_keyGenerator->track(key);
 
@@ -858,7 +858,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     if (res != TRI_ERROR_NO_ERROR) {
       document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
-      LOG(ERR) << "inserting document into indexes failed with error: " << TRI_errno_string(res);
+      LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
     }
@@ -867,7 +867,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     // update the datafile info
     state->_dfi->numberAlive++;
-    state->_dfi->sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
+    state->_dfi->sizeAlive += AlignedMarkerSize<int64_t>(marker);
   }
 
   // it is an update, but only if found has a smaller revision identifier
@@ -877,9 +877,9 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     TRI_doc_mptr_t oldData = *found;
 
     // update the header info
+    found->_rid = rid;
     found->_fid = fid;
     found->setDataPtr(marker);
-    found->_rid = rid;
 
     document->_masterPointers.moveBack(found, &oldData);  // ONLY IN OPENITERATOR
 
@@ -892,17 +892,16 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     }
 
     if (oldData.getDataPtr() != nullptr) { 
-      int64_t size = (int64_t)((TRI_df_marker_t const*)oldData.getDataPtr())
-                         ->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      int64_t size = static_cast<int64_t>(oldData.getMarkerPtr()->_size);
 
       dfi->numberAlive--;
-      dfi->sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
+      dfi->sizeAlive -= AlignedSize<int64_t>(size);
       dfi->numberDead++;
-      dfi->sizeDead += TRI_DF_ALIGN_BLOCK(size);
+      dfi->sizeDead += AlignedSize<int64_t>(size);
     }
 
     state->_dfi->numberAlive++;
-    state->_dfi->sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(marker->_size);
+    state->_dfi->sizeAlive += AlignedMarkerSize<int64_t>(marker);
   }
 
   // it is a stale update
@@ -910,9 +909,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     TRI_ASSERT(found->getDataPtr() != nullptr);
 
     state->_dfi->numberDead++;
-    state->_dfi->sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(
-        ((TRI_df_marker_t*)found->getDataPtr())
-            ->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    state->_dfi->sizeDead += AlignedSize<int64_t>(found->getMarkerPtr()->_size);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -928,11 +925,11 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker + sizeof(arangodb::wal::vpack_remove_marker_t)));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
-
+ 
   SetRevision(document, rid, false);
   document->_keyGenerator->track(key);
 
@@ -966,16 +963,14 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
       dfi = FindDatafileStats(state, found->_fid);
     }
 
-    TRI_ASSERT(found->getDataPtr() !=
-               nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    TRI_ASSERT(found->getDataPtr() != nullptr);
 
-    int64_t size = (int64_t)((TRI_df_marker_t*)found->getDataPtr())
-                       ->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    int64_t size = AlignedSize<int64_t>(found->getMarkerPtr()->_size);
 
     dfi->numberAlive--;
-    dfi->sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
+    dfi->sizeAlive -= AlignedSize<int64_t>(size);
     dfi->numberDead++;
-    dfi->sizeDead += TRI_DF_ALIGN_BLOCK(size);
+    dfi->sizeDead += AlignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
     DeletePrimaryIndex(trx, document, found, false);
@@ -999,8 +994,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   TRI_voc_tick_t tick = marker->_tick;
 
   int res;
-
-LOG(INFO) << "scanning " << TRI_NameMarkerDatafile(marker);
 
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile,

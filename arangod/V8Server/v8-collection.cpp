@@ -1923,6 +1923,7 @@ static void JS_InsertVocbaseVPack(
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
 

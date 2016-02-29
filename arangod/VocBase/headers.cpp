@@ -41,12 +41,12 @@ static inline size_t GetBlockSize(size_t blockNumber) {
 
   if (blockNumber < 8) {
     // use a small block size in the beginning to save memory
-    return (size_t)(BLOCK_SIZE_UNIT << blockNumber);
+    return static_cast<size_t>(BLOCK_SIZE_UNIT << blockNumber);
   }
 
   // use a block size of 32768
   // this will use 32768 * sizeof(TRI_doc_mptr_t) bytes, i.e. 1.5 MB
-  return (size_t)(BLOCK_SIZE_UNIT << 8);
+  return static_cast<size_t>(BLOCK_SIZE_UNIT << 8);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,15 +99,11 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
   TRI_ASSERT(old->getDataPtr() !=
              nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
 
-  int64_t newSize =
-      (int64_t)(((TRI_df_marker_t*)header->getDataPtr())
-                    ->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-  int64_t oldSize =
-      (int64_t)(((TRI_df_marker_t*)old->getDataPtr())
-                    ->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t newSize = static_cast<int64_t>(header->getMarkerPtr()->_size);  
+  int64_t oldSize = static_cast<int64_t>(old->getMarkerPtr()->_size);
 
   // we must adjust the size of the collection
-  _totalSize += (TRI_DF_ALIGN_BLOCK(newSize) - TRI_DF_ALIGN_BLOCK(oldSize));
+  _totalSize += (AlignedSize<int64_t>(newSize) - AlignedSize<int64_t>(oldSize));
 
   TRI_ASSERT(_totalSize > 0);
 }
@@ -123,26 +119,19 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   }
 
   TRI_ASSERT(_nrAllocated > 0);
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-  TRI_ASSERT(((TRI_df_marker_t*)header->getDataPtr())->_size >
-             0);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(header->getDataPtr() != nullptr);
+  TRI_ASSERT(header->getMarkerPtr()->_size > 0);
   TRI_ASSERT(old != nullptr);
-  TRI_ASSERT(old->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(old->getDataPtr() != nullptr);
 
-  int64_t newSize =
-      (int64_t)(((TRI_df_marker_t*)header->getDataPtr())
-                    ->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-  int64_t oldSize =
-      (int64_t)(((TRI_df_marker_t*)old->getDataPtr())
-                    ->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t newSize = static_cast<int64_t>(header->getMarkerPtr()->_size);
+  int64_t oldSize = static_cast<int64_t>(old->getMarkerPtr()->_size);
 
   // Please note the following: This operation is only used to revert an
   // update operation. The "new" document is removed again and the "old"
   // one is used once more. Therefore, the signs in the following statement
   // are actually OK:
-  _totalSize -= (TRI_DF_ALIGN_BLOCK(newSize) - TRI_DF_ALIGN_BLOCK(oldSize));
+  _totalSize -= (AlignedSize<int64_t>(newSize) - AlignedSize<int64_t>(oldSize));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,16 +140,14 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
 
 void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
   TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(header->getDataPtr() != nullptr); 
 
-  int64_t size = (int64_t)((TRI_df_marker_t*)header->getDataPtr())
-             ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t size = static_cast<int64_t>(header->getMarkerPtr()->_size);
   TRI_ASSERT(size > 0);
 
   TRI_ASSERT(_nrLinked > 0);
   _nrLinked--;
-  _totalSize -= TRI_DF_ALIGN_BLOCK(size);
+  _totalSize -= AlignedSize<int64_t>(size);
 
   if (_nrLinked == 0) {
     TRI_ASSERT(_totalSize == 0);
@@ -179,16 +166,13 @@ void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
     return;
   }
 
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-
-  int64_t size = (int64_t)((TRI_df_marker_t*)header->getDataPtr())
-                     ->_size;  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(header->getDataPtr() != nullptr);
+  int64_t size = static_cast<int64_t>(header->getMarkerPtr()->_size);
   TRI_ASSERT(size > 0);
 
   this->move(header, old);
   _nrLinked++;
-  _totalSize += TRI_DF_ALIGN_BLOCK(size);
+  _totalSize += AlignedSize<int64_t>(size);
   TRI_ASSERT(_totalSize > 0);
 }
 
@@ -245,7 +229,7 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
 
   _nrAllocated++;
   _nrLinked++;
-  _totalSize += (int64_t)TRI_DF_ALIGN_BLOCK(size);
+  _totalSize += AlignedSize<int64_t>(size);
 
   return result;
 }
@@ -294,7 +278,6 @@ void TRI_headers_t::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
 void TRI_headers_t::adjustTotalSize(int64_t oldSize, int64_t newSize) {
   // oldSize = size of marker in WAL
   // newSize = size of marker in datafile
-
-  _totalSize -= (TRI_DF_ALIGN_BLOCK(oldSize) - TRI_DF_ALIGN_BLOCK(newSize));
+  _totalSize -= (AlignedSize<int64_t>(oldSize) - AlignedSize<int64_t>(newSize));
 }
 

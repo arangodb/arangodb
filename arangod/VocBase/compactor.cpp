@@ -173,14 +173,6 @@ struct compaction_info_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a marker's size
-////////////////////////////////////////////////////////////////////////////////
-
-static inline int64_t AlignedSize(TRI_df_marker_t const* marker) {
-  return static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compactor file, based on a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -412,7 +404,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     if (deleted) {
       // found a dead document
       context->_dfi.numberDead++;
-      context->_dfi.sizeDead += AlignedSize(marker);
+      context->_dfi.sizeDead += AlignedMarkerSize<int64_t>(marker);
       LOG_TOPIC(TRACE, Logger::COMPACTOR) << "found a stale document: " << key;
       return true;
     }
@@ -441,7 +433,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     }
 
     context->_dfi.numberAlive++;
-    context->_dfi.sizeAlive += AlignedSize(marker);
+    context->_dfi.sizeAlive += AlignedMarkerSize<int64_t>(marker);
   }
 
   // deletions
@@ -564,13 +556,13 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
     }
 
     context->_keepDeletions = true;
-    context->_targetSize += AlignedSize(marker);
+    context->_targetSize += AlignedMarkerSize<int64_t>(marker);
   }
 
   // deletions
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION &&
            context->_keepDeletions) {
-    context->_targetSize += AlignedSize(marker);
+    context->_targetSize += AlignedMarkerSize<int64_t>(marker);
   }
 
   return true;

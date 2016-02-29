@@ -409,7 +409,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       char* ptr = datafile->_data;
 
       // skip the datafile header
-      ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
+      ptr += AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
       cm = (TRI_col_header_marker_t*)ptr;
 
       if (cm->base._type != TRI_COL_MARKER_HEADER) {

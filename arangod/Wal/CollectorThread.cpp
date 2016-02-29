@@ -163,12 +163,12 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     case TRI_DF_MARKER_PROLOGUE: {
       auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
       state->resetCollection(m->_databaseId, m->_collectionId);
-      return true;
+      break;
     }
 
     case TRI_WAL_MARKER_VPACK_DOCUMENT: {
-      TRI_voc_tick_t databaseId = state->lastDatabaseId;
-      TRI_voc_cid_t collectionId = state->lastCollectionId;
+      TRI_voc_tick_t const databaseId = state->lastDatabaseId;
+      TRI_voc_cid_t const collectionId = state->lastCollectionId;
       TRI_ASSERT(databaseId > 0);
       TRI_ASSERT(collectionId > 0);
 
@@ -196,8 +196,8 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_WAL_MARKER_VPACK_REMOVE: {
-      TRI_voc_tick_t databaseId = state->lastDatabaseId;
-      TRI_voc_cid_t collectionId = state->lastCollectionId;
+      TRI_voc_tick_t const databaseId = state->lastDatabaseId;
+      TRI_voc_cid_t const collectionId = state->lastCollectionId;
       TRI_ASSERT(databaseId > 0);
       TRI_ASSERT(collectionId > 0);
 
@@ -231,7 +231,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      TRI_voc_tid_t const tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
 
       // note which abort markers we found
       state->handledTransactions.emplace(tid);
@@ -240,42 +240,42 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_WAL_MARKER_CREATE_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection is now considered not dropped
-      state->droppedCollections.erase(cid);
+      state->droppedCollections.erase(collectionId);
       break;
     }
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection was dropped and doesn't need to be collected
-      state->droppedCollections.emplace(cid);
-      state->structuralOperations.erase(cid);
-      state->documentOperations.erase(cid);
-      state->operationsCount.erase(cid);
-      state->collections.erase(cid);
+      state->droppedCollections.emplace(collectionId);
+      state->structuralOperations.erase(collectionId);
+      state->documentOperations.erase(collectionId);
+      state->operationsCount.erase(collectionId);
+      state->collections.erase(collectionId);
       break;
     }
 
     case TRI_WAL_MARKER_CREATE_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database is now considered not dropped
-      state->droppedDatabases.erase(id);
+      state->droppedDatabases.erase(database);
       break;
     }
 
     case TRI_WAL_MARKER_DROP_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t id = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database was dropped and doesn't need to be collected
-      state->droppedDatabases.emplace(id);
+      state->droppedDatabases.emplace(database);
 
       // find all collections for the same database and erase their state, too
       for (auto it = state->collections.begin(); it != state->collections.end();
            /* no hoisting */) {
-        if ((*it).second == id) {
+        if ((*it).second == database) {
           state->droppedCollections.emplace((*it).first);
           state->structuralOperations.erase((*it).first);
           state->documentOperations.erase((*it).first);
@@ -305,7 +305,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     case TRI_DF_MARKER_FOOTER: {
       // new datafile or end of datafile. forget state!
       state->resetCollection();
-      return true;
+      break;
     }
 
     default: {
@@ -699,12 +699,12 @@ void CollectorThread::processCollectionMarker(
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
-      dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+      dfi.sizeDead += AlignedSize<int64_t>(datafileMarkerSize);
     } else {
       // update size info
       document->_masterPointers.adjustTotalSize(
-          TRI_DF_ALIGN_BLOCK(walMarker->_size),
-          TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
+          AlignedSize<int64_t>(walMarker->_size),
+          AlignedSize<int64_t>(datafileMarkerSize));
 
       // we can safely update the master pointer's dataptr value
       found->setDataPtr(
@@ -712,7 +712,7 @@ void CollectorThread::processCollectionMarker(
       found->_fid = fid;
 
       dfi.numberAlive++;
-      dfi.sizeAlive += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+      dfi.sizeAlive += AlignedSize<int64_t>(datafileMarkerSize);
     }
   } else if (walMarker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     auto& dfi = createDfi(cache, fid);
@@ -729,7 +729,7 @@ void CollectorThread::processCollectionMarker(
     if (found != nullptr && found->_rid > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
-      dfi.sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+      dfi.sizeDead += AlignedSize<int64_t>(datafileMarkerSize);
     }
   }
 }
@@ -1219,7 +1219,7 @@ char* CollectorThread::nextFreeMarkerPosition(
     TRI_document_collection_t* document, TRI_voc_tick_t tick,
     TRI_df_marker_type_e type, TRI_voc_size_t size, CollectorCache* cache) {
   TRI_collection_t* collection = document;
-  size = TRI_DF_ALIGN_BLOCK(size);
+  size = AlignedSize<TRI_voc_size_t>(size);
 
   char* dst = nullptr;
   TRI_datafile_t* datafile = nullptr;

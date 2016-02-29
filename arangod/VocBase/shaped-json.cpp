@@ -29,7 +29,6 @@
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/Legends.h"
 #include "VocBase/VocShaper.h"
 
 // #define DEBUG_JSON_SHAPER 1
@@ -2592,6 +2591,3 @@ void TRI_PrintShapeValues(TRI_shape_value_t* values, size_t n) {
 
 template bool TRI_StringifyArrayShapedJson<VocShaper>(
     VocShaper*, struct TRI_string_buffer_t*, TRI_shaped_json_t const*, bool);
-template bool TRI_StringifyArrayShapedJson<arangodb::basics::LegendReader>(
-    arangodb::basics::LegendReader*, struct TRI_string_buffer_t*,
-    TRI_shaped_json_t const*, bool);
