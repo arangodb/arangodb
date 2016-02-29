@@ -29,11 +29,9 @@
 #include "Basics/AssocUnique.h"
 #include "Indexes/PathBasedIndex.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

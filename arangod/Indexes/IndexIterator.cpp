@@ -118,7 +118,7 @@ void IndexIterator::skip(uint64_t count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* MultiIndexIterator::next() {
-  if (_current = nullptr) {
+  if (_current == nullptr) {
     return nullptr;
   }
   TRI_doc_mptr_t* next = _current->next();

@@ -27,11 +27,8 @@
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-
-class VocShaper;
 
 namespace arangodb {
 
@@ -41,11 +38,11 @@ class GeoIndex2 final : public Index {
 
   GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-            std::vector<TRI_shape_pid_t> const&, bool);
+            std::vector<std::string> const&, bool);
 
   GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-            std::vector<TRI_shape_pid_t> const&);
+            std::vector<std::vector<std::string>> const&);
 
   ~GeoIndex2();
 
@@ -102,44 +99,25 @@ class GeoIndex2 final : public Index {
   GeoCoordinates* nearQuery(arangodb::Transaction*, double, double,
                             size_t) const;
 
-  bool isSame(TRI_shape_pid_t location, bool geoJson) const {
-    return (_location != 0 && _location == location && _geoJson == geoJson);
+  bool isSame(std::vector<std::string> location, bool geoJson) const {
+    return (!_location.empty() && _location == location && _geoJson == geoJson);
   }
 
-  bool isSame(TRI_shape_pid_t latitude, TRI_shape_pid_t longitude) const {
-    return (_latitude != 0 && _longitude != 0 && _latitude == latitude &&
-            _longitude == longitude);
+  bool isSame(std::vector<std::string> latitude,
+              std::vector<std::string> longitude) const {
+    return (!_latitude.empty() && !_longitude.empty() &&
+            _latitude == latitude && _longitude == longitude);
   }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts a double value from an object
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool extractDoubleObject(VocShaper*, struct TRI_shaped_json_s const*, int,
-                           double*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts a double value from an array
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool extractDoubleArray(VocShaper*, struct TRI_shaped_json_s const*, double*,
-                          double*);
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the attribute paths
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_shape_pid_t> const _paths;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief attribute paths
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_shape_pid_t _location;
-  TRI_shape_pid_t _latitude;
-  TRI_shape_pid_t _longitude;
+  std::vector<std::string>  _location;
+  std::vector<std::string>  _latitude;
+  std::vector<std::string>  _longitude;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the geo index variant (geo1 or geo2)

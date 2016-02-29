@@ -745,7 +745,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t*, TRI_idx_iid_t,
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Index* TRI_LookupGeoIndex1DocumentCollection(
-    TRI_document_collection_t*, std::string const&, bool);
+    TRI_document_collection_t*, std::vector<std::string> const&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, attribute style
@@ -754,7 +754,8 @@ arangodb::Index* TRI_LookupGeoIndex1DocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Index* TRI_LookupGeoIndex2DocumentCollection(
-    TRI_document_collection_t*, std::string const&, std::string const&);
+    TRI_document_collection_t*, std::vector<std::string> const&,
+    std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style

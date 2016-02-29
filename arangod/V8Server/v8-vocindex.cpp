@@ -596,9 +596,10 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             TRI_EnsureGeoIndex1DocumentCollection(
                 &trx, document, iid, attributes[0], geoJson, created));
       } else {
+        std::vector<std::string> location =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex1DocumentCollection(document, attributes[0],
-                                                  geoJson));
+            TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson));
       }
       break;
     }
@@ -613,9 +614,12 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             TRI_EnsureGeoIndex2DocumentCollection(
                 &trx, document, iid, attributes[0], attributes[1], created));
       } else {
+        std::vector<std::string> lat =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
+        std::vector<std::string> lon =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex2DocumentCollection(document, attributes[0],
-                                                  attributes[1]));
+            TRI_LookupGeoIndex2DocumentCollection(document, lon, lat));
       }
       break;
     }
