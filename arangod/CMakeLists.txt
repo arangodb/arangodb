@@ -167,7 +167,6 @@ add_executable(${BIN_ARANGOD}
   HttpServer/HttpsCommTask.cpp
   HttpServer/HttpsServer.cpp
   HttpServer/PathHandler.cpp
-  IndexOperators/index-operator.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
   Indexes/GeoIndex2.cpp

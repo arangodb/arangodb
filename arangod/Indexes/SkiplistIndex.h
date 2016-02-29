@@ -29,7 +29,6 @@
 #include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
-#include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
