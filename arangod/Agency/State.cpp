@@ -28,9 +28,13 @@
 
 using namespace arangodb::consensus;
 
-State::State() {}
-State::~State() {
-  save();
+State::State() {
+}
+
+State::~State() {}
+
+State::configure (size_t size) {
+  _log.push_back(log_t (0, 0, 0, "", std::vector<bool>(size,true)));
 }
 
 //Leader
@@ -41,8 +45,9 @@ std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, si
   for (size_t i = 0; i < query->slice().length()) {
     idx.push_back(_log.end().index+1);
     _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
+    _log.end().ack[lid] = true; // Leader confirms myself
     builder.add("query", qyery->Slice());
-    builder.add("idx", Value(term));
+    builder.add("idx", Value(idx[i]));
     builder.add("term", Value(term));
     builder.add("leaderID", Value(lid));
     builder.close();
@@ -51,16 +56,16 @@ std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, si
   return idx;
 }
 
-//Leader
+//Follower
 void State::log (query_t const& query, std::vector<index_t> cont& idx, term_t term, id_t lid, size_t size) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   Builder builder;
   for (size_t i = 0; i < query->slice().length()) {
     _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
-    builder.add("query", qyery->Slice());
-    builder.add("idx", Value(term));
-    builder.add("term", Value(term));
-    builder.add("leaderID", Value(lid));
+    builder.add("query", qyery->Slice());  // query
+    builder.add("idx", Value(idx[i]));     // log index
+    builder.add("term", Value(term));      // term
+    builder.add("leaderID", Value(lid));   // leader id
     builder.close();
   }
   save (builder.slice());
@@ -77,6 +82,7 @@ void State::confirm (id_t id, index_t index) {
 }
 
 bool findit (index_t index, term_t term) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
   auto i = std::begin(_log);
   while (i != std::end(_log)) { // Find entry matching index and term
     if ((*i).index == index) {
@@ -94,9 +100,29 @@ bool findit (index_t index, term_t term) {
   return false;
 }
 
+collect_ret_t collectUnacked (id_t id) {
+  // Collect all unacknowledged
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::vector<index_t> work;
+  bool found_first = false;
+  id_t prev_log_term;
+  index_t prev_log_index;
+  for (size_t i = 0; i < _log.end(); ++i) {
+    if (!_log[i].ack[id]) {
+      work.push_back(_log[i].index);
+      if (!found_first) {
+        prev_log_term = _log[i-1].term;
+        prev_log_index = _log[i-1].index;
+        found_first = true;
+      }
+    }
+  }
+  return collect_ret_t(prev_log_index, prev_log_term, work);
+}
+
 bool save (std::string const& ep) {
   // Persist to arango db
-  
+  // AQL votedFor, lastCommit
 };
 
 load_ret_t load (std::string const& ep) {

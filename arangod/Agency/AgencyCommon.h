@@ -140,6 +140,14 @@ struct append_entries_t {
   append_entries_t (term_t t, bool s) : term(t), success(s) {}
 };
 
+struct collect_ret_t {
+  prev_log_index;
+  prev_log_term;
+  std::vector<index_t> indices;
+  collect_ret_t (index_t pli, term_t plt, std::vector<index_t> idx) :
+    prev_log_index(pli), prev_log_term(plt), indices(idx) {}
+}
+
 }}
 
 inline arangodb::LoggerStream& operator<< (

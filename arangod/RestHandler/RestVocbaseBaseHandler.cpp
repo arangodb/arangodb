@@ -51,7 +51,7 @@ std::string const RestVocbaseBaseHandler::AGENCY_PATH = "/_api/agency";
 /// @brief agency private path
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH = "/_api/agency";
+std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH = "/_api/agency_priv";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path

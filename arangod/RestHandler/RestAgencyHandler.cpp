@@ -84,11 +84,10 @@ inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
     write_ret_t ret = _agent->write (
       _request->toVelocyPack(std::make_shared<opts_t>(opts)));
     accepted = ret.accepted; 
-    _agent->waitFor (ret); // Wait for confirmation
-    
+    _agent->waitFor (ret.indices); // Wait for confirmation
   } else {
     ret = _agent->read(
-      _request->toVelocyPack(std::make_shared<opts_t>(opts))));
+      _request->toVelocyPack(std::make_shared<opts_t>(opts)));
     accepted = ret.accepted; 
   }
   if (accepted) { // We accepted the request

@@ -34,7 +34,7 @@ Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
   //readPersistence(); // Read persistence (log )
   _constituent.configure(this);
-  _state.configure(this);
+  _state.configure(_config.size());
 }
 
 id_t Agent::id() const { return _config.id;}
@@ -125,15 +125,42 @@ append_entries_t Agent::appendEntries (
   
 }
 
+append_entries_t Agent::appendEntriesRPC (
+  id_t slave_id, collect_ret_t const& entries) {
+    
+	std::vector<ClusterCommResult> result;
 
+  // RPC path
+  std::stringstream path;
+  path << "/_api/agency_priv/appendEntries?term=" << _term << "&leaderId="
+       << id() << "&prevLogIndex=" << entries.prev_log_index << "&prevLogTerm="
+       << entries.prev_log_term << "&leaderCommitId=" << commitId;
+
+  // Headers
+	std::unique_ptr<std::map<std::string, std::string>> headerFields =
+	  std::make_unique<std::map<std::string, std::string> >();
+
+  // Body
+  Builder builder;
+  builder.add("term", Value(term()));
+  builder.add("voteGranted", Value(
+                _constituent.vote(id, t, lastLogIndex, lastLogTerm)));
+  builder.close();
+  
+  arangodb::ClusterComm::instance()->asyncRequest
+    ("1", 1, _config.end_points[slave_id],
+     rest::HttpRequest::HTTP_REQUEST_GET,
+     path.str(), std::make_shared<std::string>(body), headerFields,
+     std::make_shared<arangodb::ClusterCommCallback>(_agent_callbacks),
+     1.0, true);
+}
 
 //query_ret_t
 write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {             // We are leading
     if (_spear_head.apply(query)) {         // We could apply to spear head? 
       std::vector<index_t> indices =        //    otherwise through
-        _read_db.log (query, term(), id(), _config.size()); // Append to my own log
-      remotelyAppendEntries (indicies);     // Schedule appendEntries RPCs.
+        _state.log (query, term(), id(), _config.size()); // Append to my own log
     } else {
       throw QUERY_NOT_APPLICABLE;
     }
@@ -156,16 +183,16 @@ void State::run() {
     std::vector<std::vector<index_t>> work(_config.size());
 
     // Collect all unacknowledged
-    for (auto& i : State.log()) {
-      for (size_t j = 0; j < _setup.size(); ++j) {
-        if (!i.ack[j]) {
-          work[j].push_back(i.index);
-        }}}
+    for (size_t i = 0; i < _size() ++i) {
+      if (i != id()) {
+        work[i] = _state.collectUnAcked(i);
+      }}
 
     // (re-)attempt RPCs
     for (size_t j = 0; j < _setup.size(); ++j) {
-      appendEntriesRPC (work[j]);
-    }
+      if (j != id() && work[j].size()) {
+        appendEntriesRPC(j, work[j]);
+      }}
 
     // catch up read db
     catchUpReadDB();

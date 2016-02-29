@@ -55,13 +55,18 @@ public:
   /**
    * @brief Default constructor
    */
-  State ();
+  State (const size_t size);
   
   /**
    * @brief Default Destructor
    */
   virtual ~State();
   
+  /**
+   * @brief Configure this state machine
+   */
+  void configure (size_t size);
+
   /**
    * @brief Append log entry
    */
@@ -95,7 +100,12 @@ public:
   /**
    * @brief Confirm entry index for agent id
    */
-  void confirm (id_t id, index_t idx)
+  void confirm (id_t id, index_t idx);
+
+  /**
+   * @brief Collect all unacknowledged for agent id
+   */
+  collect_ret_t collectUnacked (id_t id);
   
 private:
   

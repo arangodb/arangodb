@@ -24,6 +24,7 @@
 #ifndef __ARANGODB_CONSENSUS_AGENT__
 #define __ARANGODB_CONSENSUS_AGENT__
 
+#include "AgentCallbacks.h"
 #include "AgencyCommon.h"
 #include "Constituent.h"
 #include "State.h"
@@ -32,7 +33,8 @@
 namespace arangodb {
 namespace consensus {
     
-class Agent : public arangodb::Thread { // We need to asynchroneously append entries
+class Agent : public arangodb::Thread, {
+              // We need to asynchroneously append entries
   
 public:
   
@@ -110,8 +112,8 @@ public:
    * @brief Invoked by leader to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  append_entries_t append_entries_t (term_t, id_t, index_t, term_t, index_t,
-                                     query_t const&);
+  append_entries_t appendEntries (term_t, id_t, index_t, term_t, index_t,
+                                  query_t const&);
 
   /**
    * @brief 1. Deal with appendEntries to slaves.
@@ -119,8 +121,11 @@ public:
    */
   void run ();
 
-
+  void reportIn (id_t id, std::vector<index_t> idx);
+  
   bool waitFor (std::vector<index_t> entries);
+
+  operator (id_t id, index_t idx) (ClusterCommResult *);
 
   private:
   Constituent _constituent; /**< @brief Leader election delegate */
@@ -128,12 +133,15 @@ public:
   config_t    _config;
   status_t    _status;
 
-  index_t     _last_commit_index;
+  std::atomic<index_t> _last_commit_index;
+  index_t     _last_commit_index_tmp;
 
   arangodb::Mutex _uncommitedLock;
   
   store<std::string> _spear_head;
   store<std::string> _read_db;
+
+  AgentCallbacks _agent_callbacks;
 
   arangodb::basics::ConditionVariable _cv;
 
