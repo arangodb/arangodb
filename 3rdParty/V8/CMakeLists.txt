@@ -147,7 +147,7 @@ if (MSBUILD)
     WORKING_DIRECTORY ${V8_DIR}/build
     SOURCE_DIR "${V8_DIR}"
     CONFIGURE_COMMAND ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
-    BUILD_COMMAND 
+    BUILD_COMMAND ""
     INSTALL_COMMAND "")
 
 
@@ -176,11 +176,13 @@ if (MSBUILD)
     COMMAND msbuild all.sln /t:v8 /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
     DEPENDEES configure
     DEPENDERS build)
+
   ExternalProject_Add_Step(v8_build v8_build_v8_libbase
     WORKING_DIRECTORY ${V8_DIR}/build
     COMMAND msbuild all.sln /t:v8_libbase /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
     DEPENDEES configure
     DEPENDERS build)
+
   ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
     WORKING_DIRECTORY ${V8_DIR}/build
     COMMAND msbuild all.sln /t:v8_libplatform /p:Configuration=Debug /p:Platform=${MS_TARGET_PLATFORM}
@@ -251,7 +253,7 @@ set(V8_INCLUDE_DIR
 if (MSBUILD)
   set(V8_BIN_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
   set(V8_LIBS
-    "${V8_BIN_DIR}/lib/libv8_base.lib;${V8_BIN_DIR}/lib/libv8_libbase.a;${V8_BIN_DIR}/lib/libv8_libplatform.a;${V8_BIN_DIR}/lib/libv8_nosnapshot.a"
+    "${V8_BIN_DIR}/lib/libv8_base.lib;${V8_BIN_DIR}/lib/v8_libbase.a;${V8_BIN_DIR}/lib/v8_libplatform.a;${V8_BIN_DIR}/lib/v8_nosnapshot.a"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
