@@ -460,11 +460,14 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
                                       TRI_df_marker_t const* marker) {
   auto m = reinterpret_cast<arangodb::wal::vpack_document_marker_t const*>(marker);
 
+#if 0
+  // TODO
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+#endif  
   
   VPackSlice slice(reinterpret_cast<char const*>(VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
 
@@ -494,11 +497,14 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
                                     TRI_df_marker_t const* marker) {
   auto m = reinterpret_cast<arangodb::wal::vpack_remove_marker_t const*>(marker);
 
+#if 0
+  // TODO
   int res = AppendContext(dump, m->_databaseId, m->_collectionId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+#endif  
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
   APPEND_UINT64(dump->_buffer, m->_transactionId);

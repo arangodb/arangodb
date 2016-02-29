@@ -562,7 +562,7 @@ static inline size_t VPackOffset(TRI_df_marker_type_t type) {
 
   if (t == TRI_WAL_MARKER_VPACK_DOCUMENT ||
       t == TRI_WAL_MARKER_VPACK_REMOVE) {
-    return sizeof(TRI_df_marker_t) + 24;
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t);
   }
   TRI_ASSERT(false);
   return 0;

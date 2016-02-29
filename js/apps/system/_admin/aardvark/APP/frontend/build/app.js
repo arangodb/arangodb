@@ -27655,6 +27655,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.refreshAQL();
     },
 
+    allowParamToggle: true,
+
     events: {
       "click #executeQuery": "executeQuery",
       "click #explainQuery": "explainQuery",
@@ -27678,11 +27680,36 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #arangoMyQueriesTable #copyQuery" : "selectQueryFromTable",
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
+      'click #switchTypes': 'toggleBindParams',
       "click #arangoMyQueriesTable #runQuery" : "selectAndRunQueryFromTable"
     },
 
     clearQuery: function() {
       this.aqlEditor.setValue('');
+    },
+
+    toggleBindParams: function() {
+
+      if (this.allowParamToggle) {
+        $('#bindParamEditor').toggle();
+        $('#bindParamAceEditor').toggle();
+
+        if ($('#switchTypes').text() === 'JSON') {
+          $('#switchTypes').text('Table');
+          this.updateQueryTable();
+          this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, "\t"));
+          this.deselect(this.bindParamAceEditor);
+        }
+        else {
+          $('#switchTypes').text('JSON');
+          this.renderBindParamTable();
+        }
+      }
+      else {
+        arangoHelper.arangoError("Bind parameter", "Could not parse bind parameter");
+      }
+      this.resize();
+
     },
 
     openExportDialog: function() {
@@ -27741,9 +27768,22 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     getCustomQueryValueByName: function (qName) {
+      var obj;
+
       if (qName) {
-        return this.collection.findWhere({name: qName}).get("value");
+        obj = this.collection.findWhere({name: qName});
       }
+      if (obj) {
+        obj = obj.get("value");
+      }
+      else {
+        _.each(this.queries, function(query) {
+          if (query.name === qName) {
+            obj = query.value;
+          }
+        });
+      }
+      return obj;
     },
 
     openImportDialog: function() {
@@ -27772,13 +27812,16 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (e) {
         if (e.currentTarget.id === "toggleQueries1") {
           this.updateQueryTable();
+          $('#bindParamAceEditor').hide();
+          $('#bindParamEditor').show();
+          $('#switchTypes').text('JSON');
         }
       }
 
       var divs = [
         "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
-        "saveCurrentQuery", "querySize", "executeQuery", 
+        "saveCurrentQuery", "querySize", "executeQuery", "switchTypes", 
         "explainQuery", "clearQuery", "importQuery", "exportQuery"
       ];
       _.each(divs, function(div) {
@@ -27944,6 +27987,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       sentQueryEditor = ace.edit("sentQueryEditor" + counter);
       sentQueryEditor.getSession().setMode("ace/mode/aql");
       outputEditor.getSession().setMode("ace/mode/json");
+      outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
       outputEditor.setReadOnly(true);
       sentQueryEditor.setReadOnly(true);
 
@@ -28093,7 +28138,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.initQueryImport();
 
       //set height of editor wrapper
-      $('.inputEditorWrapper').height($(window).height() / 10 * 3);
+      $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
       window.setTimeout(function() {
         self.resize();
       }, 10);
@@ -28101,42 +28146,17 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     showSpotlight: function() {
-      var collections = [];
-      window.App.arangoCollectionsStore.each(function(collection) {
-        collections.push(collection.get("name"));
-      });
 
-      var substringMatcher = function(strs) {
-        return function findMatches(q, cb) {
-          var matches, substrRegex;
+      var callback = function(string) {
+        this.aqlEditor.insert(string);
+        $('#aqlEditor .ace_text-input').focus();
+      }.bind(this);
 
-          matches = [];
-
-          substrRegex = new RegExp(q, 'i');
-
-          _.each(strs, function(str) {
-            if (substrRegex.test(str)) {
-              matches.push(str);
-            }
-          });
-
-          cb(matches);
-        };
+      var cancelCallback = function() {
+        $('#aqlEditor .ace_text-input').focus();
       };
 
-      $('#aql-spotlight .typeahead').typeahead({
-        hint: true,
-        highlight: true,
-        minLength: 1
-      },
-      {
-        name: 'collections',
-        source: substringMatcher(collections)
-      });
-    },
-
-    initSpotlight: function() {
-
+      window.spotlightView.show(callback, cancelCallback);
     },
 
     resize: function() {
@@ -28264,7 +28284,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         words[pos] = word.replace(/(\r\n|\n|\r)/gm,"");
         pos++;
       });
-      words1.sort();
 
       var newObject = {};
       _.each(words1, function(word) {
@@ -28294,12 +28313,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.getCachedQuery();
       }
 
-      var counter = 0, self = this;
-
-      var test = Object.keys(this.bindParamTableObj).sort(function(a,b) {
-        return self.bindParamTableObj[a] - self.bindParamTableObj[b];
-      });
-      console.log(test);
+      var counter = 0;
 
       _.each(this.bindParamTableObj, function(val, key) {
         $('#arangoBindParamTable tbody').append(
@@ -28351,12 +28365,30 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
       this.aqlEditor.setFontSize("13px");
+
+      this.bindParamAceEditor = ace.edit("bindParamAceEditor");
+      this.bindParamAceEditor.getSession().setMode("ace/mode/json");
+      this.bindParamAceEditor.setFontSize("13px");
+
+      this.bindParamAceEditor.getSession().on('change', function() {
+        try {
+          self.bindParamTableObj = JSON.parse(self.bindParamAceEditor.getValue());
+          self.allowParamToggle = true;
+        }
+        catch (e) {
+          self.allowParamToggle = false;
+        }
+      });
+
       this.aqlEditor.getSession().on('change', function() {
         self.checkForNewBindParams();
         self.renderBindParamTable();
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
+        self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, "\t"));
+        $('#aqlEditor .ace_text-input').focus();
+
         self.resize();
       });
 
@@ -28393,6 +28425,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       });
 
+      this.aqlEditor.commands.addCommand({
+        name: "showSpotlight",
+        bindKey: {win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space"},
+        exec: function() {
+
+          self.showSpotlight();
+        }
+      });
+
       this.queryPreview = ace.edit("queryPreview");
       this.queryPreview.getSession().setMode("ace/mode/aql");
       this.queryPreview.setReadOnly(true);
@@ -28404,8 +28445,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     updateQueryTable: function () {
       var self = this;
-      this.myQueriesTableDesc.rows = this.customQueries;
+      this.updateLocalQueries();
 
+      this.myQueriesTableDesc.rows = this.customQueries;
       _.each(this.myQueriesTableDesc.rows, function(k) {
         k.secondRow = '<div class="truncate">' +
           JSON.stringify(self.collection.findWhere({name: k.name}).get('value')) +
@@ -28423,8 +28465,35 @@ window.ArangoUsers = Backbone.Collection.extend({
         delete k.value;
       });
 
+      function compare(a,b) {
+        if (a.name < b.name) {
+          return -1;
+        }
+        else if (a.name > b.name) {
+          return 1;
+        }
+        else {
+          return 0;
+        }
+      }
+
+      this.myQueriesTableDesc.rows.sort(compare);
+
+      _.each(this.queries, function(val) {
+        if (val.hasOwnProperty('parameter')) {
+          delete val.parameter;
+        }
+        self.myQueriesTableDesc.rows.push({
+          name: val.name,
+          secondRow: '<div class="truncate">' + val.value + '</div>',
+          thirdRow: '<span class="spanWrapper">' + 
+            '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>' 
+        });
+      });
+
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
+
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
@@ -28609,6 +28678,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       sentQueryEditor.getSession().setMode("ace/mode/aql");
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
+      outputEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
       outputEditor.setFontSize("13px");
       sentQueryEditor.setFontSize("13px");
       sentQueryEditor.setReadOnly(true);
@@ -29067,6 +29138,199 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       // Initiate the first prompt.
       handler();
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global Backbone, $, window, setTimeout, Joi, _ */
+/*global templateEngine*/
+
+(function () {
+  "use strict";
+
+  window.SpotlightView = Backbone.View.extend({
+
+    template: templateEngine.createTemplate("spotlightView.ejs"),
+
+    el: "#spotlightPlaceholder",
+
+    displayLimit: 8,
+    typeahead: null,
+    callbackSuccess: null,
+    callbackCancel: null,
+
+    collections: {
+      system: [],
+      doc: [],
+      edge: [],
+    },
+
+    events: {
+      "focusout #spotlight .tt-input" : "hide",
+      "keyup #spotlight .typeahead" : "listenKey"
+    },
+
+    aqlKeywords: 
+      "for|return|filter|sort|limit|let|collect|asc|desc|in|into|" + 
+      "insert|update|remove|replace|upsert|options|with|and|or|not|" + 
+      "distinct|graph|outbound|inbound|any|all|none|aggregate",
+
+    aqlBuiltinFunctions: 
+"to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
+"concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
+"like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
+"variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
+"near|within|within_rectangle|is_in_polygon|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|" + 
+"stddev_population|slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value" + 
+"remove_nth|graph_paths|shortest_path|graph_shortest_path|graph_distance_to|graph_traversal|graph_traversal_tree|" + 
+"graph_edges|graph_vertices|neighbors|graph_neighbors|graph_common_neighbors|graph_common_properties|" +
+"graph_eccentricity|graph_betweenness|graph_closeness|graph_absolute_eccentricity|remove_values|" +
+"graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|" +
+"date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
+"date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
+"date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
+"first_list|first_document|parse_identifier|current_user|current_database|" +
+"collections|document|union|union_distinct|intersection|flatten|" +
+"ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|random_token|AQL_LAST_ENTRY",
+
+    listenKey: function(e) {
+      if (e.keyCode === 27) {
+        if (this.callbackSuccess) {
+          this.callbackCancel();
+        }
+        this.hide();
+      }
+      else if (e.keyCode === 13) {
+        if (this.callbackSuccess) {
+          this.callbackSuccess($(this.typeahead).val());
+          this.hide();
+        }
+      }
+    },
+
+    substringMatcher: function(strs) {
+      return function findMatches(q, cb) {
+        var matches, substrRegex;
+
+        matches = [];
+
+        substrRegex = new RegExp(q, 'i');
+
+        _.each(strs, function(str) {
+          if (substrRegex.test(str)) {
+            matches.push(str);
+          }
+        });
+
+        cb(matches);
+      };
+    },
+
+    updateDatasets: function() {
+      var self = this;
+      this.collections = {
+        system: [],
+        doc: [],
+        edge: [],
+      };
+
+      window.App.arangoCollectionsStore.each(function(collection) {
+        if (collection.get("isSystem")) {
+          self.collections.system.push(collection.get("name"));
+        }
+        else if (collection.get("type") === 'document') {
+          self.collections.doc.push(collection.get("name"));
+        }
+        else {
+          self.collections.edge.push(collection.get("name"));
+        }
+      });
+    },
+
+    stringToArray: function() {
+      this.aqlKeywordsArray = this.aqlKeywords.split('|');
+      this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
+    },
+
+    show: function(callbackSuccess, callbackCancel) {
+
+      this.callbackSuccess = callbackSuccess;
+      this.callbackCancel = callbackCancel;
+      this.stringToArray();
+      this.updateDatasets();
+
+      var genHeader = function(name, icon, type) {
+        var string = '<div class="header-type"><h4>' + name + '</h4>';
+        if (icon) {
+          string += '<span><i class="fa ' + icon + '"></i></span>';
+        }
+        if (type) {
+          string += '<span class="type">' + type.toUpperCase() + '</span>';
+        }
+        string += '</div>';
+
+        return string;
+      };
+
+      $(this.el).html(this.template.render({}));
+      $(this.el).show();
+
+      this.typeahead = $('#spotlight .typeahead').typeahead(
+        {
+          hint: true,
+          highlight: true,
+          minLength: 1
+        },
+        {
+          name: 'Functions',
+          source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Functions", "fa-code", "aql")
+          }
+        },
+        {
+          name: 'Keywords',
+          source: this.substringMatcher(this.aqlKeywordsArray),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Keywords", "fa-code", "aql")
+          }
+        },
+        {
+          name: 'Documents',
+          source: this.substringMatcher(this.collections.doc),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Documents", "fa-file-text-o", "Collection")
+          }
+        },
+        {
+          name: 'Edges',
+          source: this.substringMatcher(this.collections.edge),
+          limit: this.displayLimit,
+          templates: {
+            header: genHeader("Edges", "fa-share-alt", "Collection")
+          }
+        },
+        {
+          name: 'System',
+          limit: this.displayLimit,
+          source: this.substringMatcher(this.collections.system),
+          templates: {
+            header: genHeader("System", "fa-cogs", "Collection")
+          }
+        }
+      );
+
+      $('#spotlight .typeahead').focus();
+    },
+
+    hide: function() {
+      $(this.el).hide();
     }
 
   });
@@ -30833,6 +31097,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         collection: this.foxxList
       });
       window.progressView = new window.ProgressView();
+
       var self = this;
 
       this.userCollection = new window.ArangoUsers();
@@ -30848,6 +31113,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore 
+        });
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();

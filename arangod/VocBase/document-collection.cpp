@@ -671,43 +671,6 @@ static void EnsureErrorCode(int code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new entry in the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertPrimaryIndex(arangodb::Transaction* trx,
-                              TRI_document_collection_t* document,
-                              TRI_doc_mptr_t* header, bool isRollback) {
-  TRI_IF_FAILURE("InsertPrimaryIndex") { return TRI_ERROR_DEBUG; }
-
-  TRI_doc_mptr_t* found;
-
-  TRI_ASSERT(document != nullptr);
-  TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  // insert into primary index
-  auto primaryIndex = document->primaryIndex();
-  int res = primaryIndex->insertKey(trx, header, (void const**)&found);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (found == nullptr) {
-    // success
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // we found a previous revision in the index
-  // the found revision is still alive
-  LOG(TRACE) << "document '" << TRI_EXTRACT_MARKER_KEY(header) << "' already existed with revision " << // ONLY IN INDEX << " while creating revision " << PROTECTED by RUNTIME
-      (unsigned long long)found->_rid;
-
-  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an entry from the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -724,34 +687,6 @@ static int DeletePrimaryIndex(arangodb::Transaction* trx,
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates and initially populates a document master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-static int CreateHeader(TRI_document_collection_t* document,
-                        TRI_doc_document_key_marker_t const* marker,
-                        TRI_voc_fid_t fid, TRI_voc_key_t key, uint64_t hash,
-                        TRI_doc_mptr_t** result) {
-  size_t markerSize = (size_t)marker->base._size;
-  TRI_ASSERT(markerSize > 0);
-
-  // get a new header pointer
-  TRI_doc_mptr_t* header =
-      document->_masterPointers.request(markerSize);  // ONLY IN OPENITERATOR
-
-  if (header == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  header->_rid = marker->_rid;
-  header->_fid = fid;
-  header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash = hash;
-  *result = header;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -774,25 +709,6 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates an existing header
-////////////////////////////////////////////////////////////////////////////////
-
-static void UpdateHeader(TRI_voc_fid_t fid, TRI_df_marker_t const* m,
-                         TRI_doc_mptr_t* newHeader,
-                         TRI_doc_mptr_t const* oldHeader) {
-  TRI_doc_document_key_marker_t const* marker;
-
-  marker = (TRI_doc_document_key_marker_t const*)m;
-
-  TRI_ASSERT(marker != nullptr);
-  TRI_ASSERT(m->_size > 0);
-
-  newHeader->_rid = marker->_rid;
-  newHeader->_fid = fid;
-  newHeader->setDataPtr(marker);  // ONLY IN OPENITERATOR
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -835,12 +751,6 @@ static inline TRI_voc_rid_t GetRevisionId(TRI_voc_rid_t previous) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief size of operations buffer for the open iterator
-////////////////////////////////////////////////////////////////////////////////
-
-static size_t OpenIteratorBufferSize = 128;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief state during opening of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -850,7 +760,6 @@ struct open_iterator_state_t {
   TRI_voc_fid_t _fid;
   std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
   DatafileStatisticsContainer* _dfi;
-  TRI_vector_t _operations;
   TRI_vocbase_t* _vocbase;
   arangodb::Transaction* _trx;
   uint64_t _deletions;
@@ -878,16 +787,6 @@ struct open_iterator_state_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief container for a single collection operation (used during opening)
-////////////////////////////////////////////////////////////////////////////////
-
-struct open_iterator_operation_t {
-  TRI_voc_document_operation_e _type;
-  TRI_df_marker_t const* _marker;
-  TRI_voc_fid_t _fid;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a statistics container for a given file id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -908,90 +807,57 @@ static DatafileStatisticsContainer* FindDatafileStats(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply an insert/update operation when opening a collection
+/// @brief process a document (or edge) marker when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int OpenIteratorApplyInsert(open_iterator_state_t* state,
-                                   open_iterator_operation_t const* operation) {
+static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
+                                            TRI_datafile_t* datafile,
+                                            open_iterator_state_t* state) {
+  auto const fid = datafile->_fid;
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  TRI_df_marker_t const* marker = operation->_marker;
-  TRI_doc_document_key_marker_t const* d =
-      reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
-
-  if (state->_fid != operation->_fid) {
-    // update the state
-    state->_fid = operation->_fid;
-    state->_dfi = FindDatafileStats(state, operation->_fid);
-  }
-
-  SetRevision(document, d->_rid, false);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#if 0
-  // currently disabled because it is too chatty in trace mode
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    LOG(TRACE) << "document: fid " << operation->_fid << ", key " << ((char*) d + d->_offsetKey) << ", rid " << d->_rid << ", _offsetJson " << d->_offsetJson << ", _offsetKey " << d->_offsetKey;
-  }
-  else {
-    TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-    LOG(TRACE) << "edge: fid " << operation->_fid << ", key " << ((char*) d + d->_offsetKey) << ", fromKey " << ((char*) e + e->_offsetFromKey) << ", toKey " << ((char*) e + e->_offsetToKey) << ", rid " << d->_rid << ", _offsetJson " << d->_offsetJson << ", _offsetKey " << d->_offsetKey;
-
-  }
-#endif
-
-#endif
-
-  TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
+  VPackSlice const slice(reinterpret_cast<char const*>(marker + sizeof(arangodb::wal::vpack_document_marker_t)));
+  VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  std::string const key(keySlice.copyString());
+  TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+  
+  SetRevision(document, rid, false);
   document->_keyGenerator->track(key);
 
   ++state->_documents;
+ 
+  if (state->_fid != fid) {
+    // update the state
+    state->_fid = fid;
+    state->_dfi = FindDatafileStats(state, fid);
+  }
 
   auto primaryIndex = document->primaryIndex();
 
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
-  arangodb::basics::BucketPosition slot;
-  uint64_t hash;
-  auto found = static_cast<TRI_doc_mptr_t const*>(
-      primaryIndex->lookupKey(trx, key, slot, hash));
+  auto found = primaryIndex->lookupKey(trx, keySlice);
 
   // it is a new entry
   if (found == nullptr) {
-    TRI_doc_mptr_t* header;
+    TRI_doc_mptr_t* header = document->_masterPointers.request(marker->_size);  // ONLY IN OPENITERATOR
 
-    // get a header
-    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*)marker,
-                           operation->_fid, key, hash, &header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "out of memory";
-
-      return TRI_set_errno(res);
+    if (header == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_ASSERT(header != nullptr);
+    header->_rid = rid;
+    header->_fid = fid;
+    header->setDataPtr(marker);  // ONLY IN OPENITERATOR
+    header->_hash = primaryIndex->calculateHash(trx, keySlice);
+
     // insert into primary index
-    if (state->_initialCount != -1) {
-      // we can now use an optimized insert method
-      res = primaryIndex->insertKey(trx, header, slot);
-
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-        document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
-      }
-    } else {
-      // use regular insert method
-      res = InsertPrimaryIndex(trx, document, header, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // insertion failed
-        document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
-      }
-    }
+    void const* result = nullptr;
+    int res = primaryIndex->insertKey(trx, header, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
       LOG(ERR) << "inserting document into indexes failed with error: " << TRI_errno_string(res);
 
       return res;
@@ -1005,16 +871,17 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
   }
 
   // it is an update, but only if found has a smaller revision identifier
-  else if (found->_rid < d->_rid ||
-           (found->_rid == d->_rid && found->_fid <= operation->_fid)) {
+  else if (found->_rid < rid ||
+           (found->_rid == rid && found->_fid <= fid)) {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
-    TRI_doc_mptr_t* newHeader = const_cast<TRI_doc_mptr_t*>(found);
-
     // update the header info
-    UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_masterPointers.moveBack(newHeader, &oldData);  // ONLY IN OPENITERATOR
+    found->_fid = fid;
+    found->setDataPtr(marker);
+    found->_rid = rid;
+
+    document->_masterPointers.moveBack(found, &oldData);  // ONLY IN OPENITERATOR
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
@@ -1024,10 +891,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
       dfi = FindDatafileStats(state, oldData._fid);
     }
 
-    if (oldData.getDataPtr() !=
-        nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-      TRI_ASSERT(oldData.getDataPtr() !=
-                 nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (oldData.getDataPtr() != nullptr) { 
       int64_t size = (int64_t)((TRI_df_marker_t const*)oldData.getDataPtr())
                          ->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
@@ -1043,8 +907,7 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 
   // it is a stale update
   else {
-    TRI_ASSERT(found->getDataPtr() !=
-               nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    TRI_ASSERT(found->getDataPtr() != nullptr);
 
     state->_dfi->numberDead++;
     state->_dfi->sizeDead += (int64_t)TRI_DF_ALIGN_BLOCK(
@@ -1056,42 +919,35 @@ static int OpenIteratorApplyInsert(open_iterator_state_t* state,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply a delete operation when opening a collection
+/// @brief process a deletion marker when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int OpenIteratorApplyRemove(open_iterator_state_t* state,
-                                   open_iterator_operation_t const* operation) {
-  TRI_doc_mptr_t* found;
-
+static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
+                                            TRI_datafile_t* datafile,
+                                            open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  TRI_df_marker_t const* marker = operation->_marker;
-  TRI_doc_deletion_key_marker_t const* d =
-      (TRI_doc_deletion_key_marker_t const*)marker;
+  VPackSlice const slice(reinterpret_cast<char const*>(marker + sizeof(arangodb::wal::vpack_remove_marker_t)));
+  VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  std::string const key(keySlice.copyString());
+  TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
 
-  SetRevision(document, d->_rid, false);
+  SetRevision(document, rid, false);
+  document->_keyGenerator->track(key);
 
   ++state->_deletions;
 
-  if (state->_fid != operation->_fid) {
+  if (state->_fid != datafile->_fid) {
     // update the state
-    state->_fid = operation->_fid;
-    state->_dfi = FindDatafileStats(state, operation->_fid);
+    state->_fid = datafile->_fid;
+    state->_dfi = FindDatafileStats(state, datafile->_fid);
   }
-
-  TRI_voc_key_t key = ((char*)d) + d->_offsetKey;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG(TRACE) << "deletion: fid " << operation->_fid << ", key " << (char*)key << ", rid " << d->_rid << ", deletion " << marker->_tick;
-#endif
-
-  document->_keyGenerator->track(key);
 
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   auto primaryIndex = document->primaryIndex();
-  found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(trx, key));
+  TRI_doc_mptr_t* found = primaryIndex->lookupKey(trx, keySlice);
 
   // it is a new entry, so we missed the create
   if (found == nullptr) {
@@ -1133,130 +989,6 @@ static int OpenIteratorApplyRemove(open_iterator_state_t* state,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply an operation when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorApplyOperation(
-    open_iterator_state_t* state, open_iterator_operation_t const* operation) {
-  if (operation->_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    return OpenIteratorApplyRemove(state, operation);
-  } else if (operation->_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    return OpenIteratorApplyInsert(state, operation);
-  }
-
-  LOG(ERR) << "logic error in " << __FUNCTION__;
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add an operation to the list of operations when opening a collection
-/// if the operation does not belong to a designated transaction, it is
-/// executed directly
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorAddOperation(open_iterator_state_t* state,
-                                    TRI_voc_document_operation_e type,
-                                    TRI_df_marker_t const* marker,
-                                    TRI_voc_fid_t fid) {
-  open_iterator_operation_t operation;
-  operation._type = type;
-  operation._marker = marker;
-  operation._fid = fid;
-
-  if (state->_tid == 0) {
-    return OpenIteratorApplyOperation(state, &operation);
-  }
-
-  return TRI_PushBackVector(&state->_operations, &operation);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the list of operations during opening
-////////////////////////////////////////////////////////////////////////////////
-
-static void OpenIteratorResetOperations(open_iterator_state_t* state) {
-  size_t n = TRI_LengthVector(&state->_operations);
-
-  if (n > OpenIteratorBufferSize * 2) {
-    // free some memory
-    TRI_DestroyVector(&state->_operations);
-    TRI_InitVector2(&state->_operations, TRI_UNKNOWN_MEM_ZONE,
-                    sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
-  } else {
-    TRI_ClearVector(&state->_operations);
-  }
-
-  state->_tid = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort an ongoing transaction when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorAbortTransaction(open_iterator_state_t* state) {
-  if (state->_tid != 0) {
-    LOG(INFO) << "rolling back uncommitted transaction " << state->_tid;
-    OpenIteratorResetOperations(state);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a document (or edge) marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
-                                            TRI_datafile_t* datafile,
-                                            open_iterator_state_t* state) {
-  TRI_doc_document_key_marker_t const* d =
-      (TRI_doc_document_key_marker_t const*)marker;
-
-  if (d->_tid > 0) {
-    // marker has a transaction id
-    if (d->_tid != state->_tid) {
-      // we have a different transaction ongoing
-      LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
-
-      OpenIteratorAbortTransaction(state);
-
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  return OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_INSERT,
-                                  marker, datafile->_fid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a deletion marker when opening a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
-                                            TRI_datafile_t* datafile,
-                                            open_iterator_state_t* state) {
-  TRI_doc_deletion_key_marker_t const* d =
-      (TRI_doc_deletion_key_marker_t const*)marker;
-
-  if (d->_tid > 0) {
-    // marker has a transaction id
-    if (d->_tid != state->_tid) {
-      // we have a different transaction ongoing
-      LOG(WARN) << "logic error in " << __FUNCTION__ << ", fid " << datafile->_fid << ". found tid: " << d->_tid << ", expected tid: " << state->_tid << ". this may also be the result of an aborted transaction";
-
-      OpenIteratorAbortTransaction(state);
-
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_REMOVE, marker,
-                           datafile->_fid);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for open
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1268,8 +1000,9 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
 
   int res;
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-      marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+LOG(INFO) << "scanning " << TRI_NameMarkerDatafile(marker);
+
+  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile,
                                            static_cast<open_iterator_state_t*>(data));
 
@@ -1280,7 +1013,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
-  } else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+  } else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile,
                                            static_cast<open_iterator_state_t*>(data));
   } else {
@@ -1305,7 +1038,8 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   if (tick > document->_tickMax) {
     if (marker->_type != TRI_DF_MARKER_HEADER &&
         marker->_type != TRI_DF_MARKER_FOOTER &&
-        marker->_type != TRI_COL_MARKER_HEADER) {
+        marker->_type != TRI_COL_MARKER_HEADER &&
+        marker->_type != TRI_DF_MARKER_PROLOGUE) {
       document->_tickMax = tick;
     }
   }
@@ -1480,23 +1214,10 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
     openState._initialCount = collection->_info.initialCount();
   }
 
-  int res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE,
-                            sizeof(open_iterator_operation_t),
-                            OpenIteratorBufferSize);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
   LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.namec_str() << "'";
-
-  // abort any transaction that's unfinished after iterating over all markers
-  OpenIteratorAbortTransaction(&openState);
-
-  TRI_DestroyVector(&openState._operations);
 
   // update the real statistics for the collection
   try {
@@ -4535,9 +4256,7 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
     Transaction* trx, VPackSlice const* slice) {
-  auto marker = new arangodb::wal::VPackDocumentMarker(
-      _vocbase->_id, _info.id(), trx->getInternals()->_id, *slice);
-  return marker;
+  return new arangodb::wal::VPackDocumentMarker(trx->getInternals()->_id, *slice);
 }
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
@@ -4551,9 +4270,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
     Transaction* trx, VPackSlice const* slice) {
-  auto marker = new arangodb::wal::VPackRemoveMarker(
-      _vocbase->_id, _info.id(), trx->getInternals()->_id, *slice);
-  return marker;
+  return new arangodb::wal::VPackRemoveMarker(trx->getInternals()->_id, *slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4737,11 +4454,6 @@ int TRI_document_collection_t::insertPrimaryIndex(arangodb::Transaction* trx,
     // success
     return TRI_ERROR_NO_ERROR;
   }
-
-  // we found a previous revision in the index
-  // the found revision is still alive
-  LOG(TRACE) << "document '" << TRI_EXTRACT_MARKER_KEY(header) << "' already existed with revision " << // ONLY IN INDEX << " while creating revision " << PROTECTED by RUNTIME
-      (unsigned long long)found->_rid;
 
   return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
 }

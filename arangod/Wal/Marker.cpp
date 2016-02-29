@@ -269,49 +269,29 @@ AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker() {}
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tick_t databaseId,
-                                         TRI_voc_cid_t collectionId,
-                                         TRI_voc_tid_t transactionId,
-                                         VPackSlice const& slice)
+VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
+                                         VPackSlice const& properties)
     : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
-             sizeof(vpack_document_marker_t) + slice.byteSize()) {
+             sizeof(vpack_document_marker_t) + properties.byteSize()) {
   auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
-  memcpy(vpack(), slice.begin(), slice.byteSize());
+  storeSlice(sizeof(vpack_document_marker_t), properties);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-VPackDocumentMarker::~VPackDocumentMarker() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tick_t databaseId,
-                                     TRI_voc_cid_t collectionId,
-                                     TRI_voc_tid_t transactionId,
-                                     VPackSlice const& slice)
+VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
+                                     VPackSlice const& properties)
     : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
-             sizeof(vpack_remove_marker_t) + slice.byteSize()) {
+             sizeof(vpack_remove_marker_t) + properties.byteSize()) {
   auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
   m->_transactionId = transactionId;
 
   // store vpack
-  memcpy(vpack(), slice.begin(), slice.byteSize());
+  storeSlice(sizeof(vpack_remove_marker_t), properties);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
-VPackRemoveMarker::~VPackRemoveMarker() {}
 

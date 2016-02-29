@@ -104,7 +104,7 @@ class KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void track(TRI_voc_key_t) = 0;
+  virtual void track(std::string const&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a VelocyPack representation of the generator
@@ -176,7 +176,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  void track(TRI_voc_key_t) override;
+  void track(std::string const&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the generator name (must be lowercase)
@@ -229,7 +229,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  void track(TRI_voc_key_t) override;
+  void track(std::string const&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the generator name (must be lowercase)

@@ -2703,14 +2703,19 @@ if (list.length > 0) {
         <div id="aqlEditor"></div>
         <div id="queryTable" style="display: none"></div>
       </div>
+
       <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
         <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
         <div id="previewWrapper" class="previewWrapper" style="display: none">
           <div id="previewBar" class="previewBar">
             <span>Preview</span>
           </div>
           <div id="queryPreview"></div>
         </div>
+
       </div>
     </div>
 
@@ -2727,12 +2732,6 @@ if (list.length > 0) {
   </div>
 
   <div id="outputEditors" class="outputEditors">
-  </div>
-
-  <div class="aqlSpotlightWrapper">
-    <div id="aql-spotlight">
-      <input class="typeahead" type="text" placeholder="Search for Collections, AQL and more">
-    </div>
   </div>
 
   <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
@@ -2816,6 +2815,14 @@ if (list.length > 0) {
   <div id="shell_workspace_header"/>
   <div id="shell_workspace" class="shell_workspace">
     <div id="replShell" class="replShell"/>
+  </div>
+</script>
+
+<script id="spotlightView.ejs" type="text/template">
+  <div class="spotlightWrapper">
+    <div id="spotlight">
+      <input class="typeahead" type="text" placeholder="Search... ">
+    </div>
   </div>
 </script>
 
@@ -3103,6 +3110,9 @@ var cutByResolution = function (str) {
   <div id="progressPlaceholder" style="display:none">
   </div>
 
+  <div id="spotlightPlaceholder" style="display:none">
+  </div>
+
   </div>
 
   <footer class="footer">
@@ -3116,9 +3126,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1456501174653"></script>
-<script src="libs.js?version=1456501174653"></script>
-<script src="app.js?version=1456501174653"></script>
+<script src="sharedLibs.js?version=1456760585446"></script>
+<script src="libs.js?version=1456760585446"></script>
+<script src="app.js?version=1456760585446"></script>
 
   </body>
 </html>
