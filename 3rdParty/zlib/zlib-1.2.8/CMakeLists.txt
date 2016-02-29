@@ -266,12 +266,21 @@ set(ZLIB_VERSION
   FORCE
 )
 
-set(ZLIB_LIBS
-  ${zlib_BINARY_DIR}/libz.a
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Libraries"
-  FORCE
-)
+if (WINDOWS)
+  set(ZLIB_LIBS
+    ${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE}/zlibstaticd.lib
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+    FORCE
+  )
+else ()
+  set(ZLIB_LIBS
+    ${zlib_BINARY_DIR}/libz.a
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+    FORCE
+  )
+endif ()
 
 set(ZLIB_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
