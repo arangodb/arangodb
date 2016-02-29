@@ -512,6 +512,10 @@ static void ExecuteSkiplistQuery(
     std::string const& signature, query_t type) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  // TODO Reimplement!
+  TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return;
+  /*
 
   // expecting index, example, skip, and limit
   if (args.Length() < 2) {
@@ -663,6 +667,7 @@ static void ExecuteSkiplistQuery(
   }
 
   return TRI_V8_RETURN(result);
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
