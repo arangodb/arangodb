@@ -1,25 +1,25 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// DISCLAIMER
+// ///
+// /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+// /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// ///
+// /// Licensed under the Apache License, Version 2.0 (the "License");
+// /// you may not use this file except in compliance with the License.
+// /// You may obtain a copy of the License at
+// ///
+// ///     http://www.apache.org/licenses/LICENSE-2.0
+// ///
+// /// Unless required by applicable law or agreed to in writing, software
+// /// distributed under the License is distributed on an "AS IS" BASIS,
+// /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// /// See the License for the specific language governing permissions and
+// /// limitations under the License.
+// ///
+// /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+// ///
+// /// @author Dr. Frank Celler
+// ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitializeRest.h"
 
@@ -131,29 +131,28 @@ void opensslCleanup() {
 
 namespace arangodb {
 namespace rest {
-void InitializeRest(int argc, char* argv[]) {
-  TRIAGENS_BASICS_INITIALIZE(argc, argv);
+  void InitializeRest(int argc, char* argv[]) {
+    TRIAGENS_BASICS_INITIALIZE(argc, argv);
 
-  SSL_library_init();
-  SSL_load_error_strings();
-  OpenSSL_add_all_algorithms();
-  ERR_load_crypto_strings();
+    SSL_library_init();
+    SSL_load_error_strings();
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
 
-  opensslSetup();
+    opensslSetup();
 
-  Version::initialize();
+    Version::initialize();
+  }
+
+  void arangodb::rest::ShutdownRest() {
+    opensslCleanup();
+
+    ERR_free_strings();
+    EVP_cleanup();
+    CRYPTO_cleanup_all_ex_data();
+
+    TRIAGENS_BASICS_SHUTDOWN;
+  }
+
 }
-
-void ShutdownRest() {
-  opensslCleanup();
-
-  ERR_free_strings();
-  EVP_cleanup();
-  CRYPTO_cleanup_all_ex_data();
-
-  TRIAGENS_BASICS_SHUTDOWN;
 }
-}
-}
-
-

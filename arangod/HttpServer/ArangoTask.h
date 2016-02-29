@@ -144,6 +144,8 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
 
     virtual int32_t getCompatibility() const = 0;
 
+    virtual bool handleRead();
+
     bool setup(Scheduler* scheduler, EventLoop loop) override;
 
     void cleanup() override;
@@ -151,8 +153,6 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     bool handleEvent(EventToken token, EventType events) override;
 
     void signalTask(TaskData*) override;
-
-    bool handleRead() override;
 
     void completedWriteBuffer() override;
 

@@ -1180,7 +1180,7 @@ int main(int argc, char* argv[]) {
   OutputDirectory = FileUtils::currentDirectory(&err)
                         .append(TRI_DIR_SEPARATOR_STR)
                         .append("dump");
-  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
+  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint(8529));
 
   // .............................................................................
   // parse the program options

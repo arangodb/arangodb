@@ -72,7 +72,7 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   if (specification.size() < 7) {
     return "";
   }
-
+  static int _detectProtocol;
   std::string copy = specification;
   StringUtils::trimInPlace(copy);
   copy = StringUtils::tolower(copy);
@@ -85,10 +85,12 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   // read protocol from string
   if (StringUtils::isPrefix(copy, "http@")) {
     copy = copy.substr(5);
+    _detectProtocol = 0;
   }
 
   if (StringUtils::isPrefix(copy, "velocy@")) {
     copy = copy.substr(7);
+    _detectProtocol = 1;
   }
 
 #if TRI_HAVE_LINUX_SOCKETS
@@ -133,7 +135,12 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
     found = temp.find("]", 1);
     if (found != string::npos && found > 2 && found + 1 == temp.size()) {
       // hostname only (e.g. [address])
-      return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+      if(_detectProtocol == 1){
+        return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVstream);
+      }else{
+        return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+      }
+      
     }
 
     // invalid address specification
@@ -149,7 +156,12 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   }
 
   // hostname only
-  return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+
+  if(_detectProtocol == 1){
+      return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVstream);
+  }else{
+      return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,6 +189,8 @@ Endpoint* Endpoint::serverFactory(std::string const& specification,
 Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
                             std::string const& specification, int listenBacklog,
                             bool reuseAddress) {
+
+  static int _detectProtocol;
   if (specification.size() < 7) {
     return nullptr;
   }
@@ -203,8 +217,10 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     std::string protoString = StringUtils::tolower(copy.substr(0, found));
     if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
+      _detectProtocol = 0;
     } else if(protoString == "velocy"){
       copy = copy.substr(strlen("velocy@"));
+      _detectProtocol = 1;
     }else {
       // invalid protocol
       return nullptr;
@@ -255,8 +271,15 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
       std::string portStr = copy.substr(1, found - 1);
-      return new EndpointIpV6(type, encryption, specification, listenBacklog,
+
+      if(_detectProtocol == 1){
+        return new EndpointIpV6(type, encryption, specification, listenBacklog,
+                              reuseAddress, portStr, EndpointIp::_defaultPortVstream);
+      }else{
+        return new EndpointIpV6(type, encryption, specification, listenBacklog,
                               reuseAddress, portStr, EndpointIp::_defaultPort);
+      }
+
     }
 
     // invalid address specification
@@ -275,8 +298,13 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   }
 
   // hostname only
+  if(_detectProtocol == 1){
+  return new EndpointIpV4(type, encryption, specification, listenBacklog,
+                          reuseAddress, copy, EndpointIp::_defaultPortVstream);
+  }else{
   return new EndpointIpV4(type, encryption, specification, listenBacklog,
                           reuseAddress, copy, EndpointIp::_defaultPort);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,12 +316,12 @@ bool Endpoint::operator==(Endpoint const& that) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the default endpoint
+/// @brief return the default endpoint(http/vstream)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const Endpoint::getDefaultEndpoint() {
+std::string const Endpoint::getDefaultEndpoint(uint16_t const defaultPort) {
   return "tcp://" + EndpointIp::_defaultHost + ":" +
-         StringUtils::itoa(EndpointIp::_defaultPort);
+         StringUtils::itoa(defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

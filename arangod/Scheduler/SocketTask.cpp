@@ -32,6 +32,8 @@
 
 #include <errno.h>
 
+#include <map>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -146,6 +148,63 @@ bool SocketTask::fillReadBuffer() {
 
   return true;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the read buffer
+////////////////////////////////////////////////////////////////////////////////
+
+bool SocketTask::fillVelocyStream() {
+  // reserve some memory for reading
+  // if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+  //   // out of memory
+  //   LOG_TRACE("out of memory");
+
+  //   return false;
+  // }
+
+  int nr = TRI_READ_SOCKET(_commSocket, &_readBufferVstream, READ_BLOCK_SIZE, 0); // Create Method for VelocyStream
+
+  if (nr > 0) {
+    // _readBuffer->increaseLength(nr);
+    // return true;
+  }
+
+  if (nr == 0) {
+    LOG_TRACE("read returned 0");
+    _clientClosed = true;
+
+    return false;
+  }
+
+  int myerrno = errno;
+
+  if (myerrno == EINTR) {
+    // read interrupted by signal
+    return fillReadBuffer();
+  }
+
+  if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
+    LOG_DEBUG("read from socket failed with %d: %s", (int)myerrno,
+              strerror(myerrno));
+
+    return false;
+  }
+
+  TRI_ASSERT(myerrno == EWOULDBLOCK || myerrno == EAGAIN);
+
+  // from man(2) read:
+  // The  file  descriptor  fd  refers  to  a socket and has been marked
+  // nonblocking (O_NONBLOCK),
+  // and the read would block.  POSIX.1-2001 allows
+  // either error to be returned for this case, and does not require these
+  // constants to have the same value,
+  // so a  portable  application  should check for both possibilities.
+  LOG_TRACE("read would block with %d: %s", (int)myerrno, strerror(myerrno));
+
+  return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a write

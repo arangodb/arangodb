@@ -41,6 +41,11 @@
 #include <WS2tcpip.h>
 #endif
 
+// For reading and wiriting velocypack bytes
+#include <velocypack/Builder.h>
+
+// using namespace arangodb::basics;
+// using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -276,7 +281,13 @@ int TRI_closesocket(TRI_socket_t);
 int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead,
                    int flags);
 
+int TRI_readsocket(TRI_socket_t, arangodb::velocypack::Builder* buffer, size_t numBytesToRead,
+                   int flags);
+
 int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite,
+                    int flags);
+
+int TRI_writesocket(TRI_socket_t, arangodb::velocypack::Builder* buffer, size_t numBytesToWrite,
                     int flags);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -29,9 +29,11 @@
 #include "HttpServer/ArangoTask.h" 
 #include "VelocyServer/VelocyCommTask.h"
 #include "HttpServer/GeneralHandlerFactory.h"
-// #include "VelocyServer/VelocyHandlerFactory.h"
 #include "HttpServer/GeneralServer.h"
 #include "Scheduler/Scheduler.h"
+
+#include <map>
+#include <string>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -85,333 +87,385 @@ VelocyCommTask::~VelocyCommTask() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool VelocyCommTask::processRead() {
-  if (_requestPending && _readBuffer->c_str() == nullptr) {
+
+  ValueLength len;
+  int count;
+  bool messageComplete = false;
+  std::string message_vpack, elements = ""; //Elements of vpack array concatenated into one
+  struct velocystream vstream;
+  if (_requestPending) { // && (_readBufferVstream == Null)
     return false;
   }
-  bool handleRequest = false;
+  // Converting VelocyStream Builder to struct format, VelocyStream -> Char[] -> Struct(velocystream)
 
-  // still trying to read the header fields
-	  if (!_readRequestBody) {
-	  	// starting a new request
-	    if (_newRequest) {
-	      // acquire a new statistics entry for the request
-	      RequestStatisticsAgent::acquire();
+  Slice s(_readBufferVstream.start());
+  const char * str = s.getString(len);
+  memcpy(&vstream, str, sizeof(vstream)); // Converted back to VelocyStream format
 
-	      _newRequest = false;
-	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
-	      _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
-	      _fullUrl = "";
-	      _denyCredentials = false;
-	      _acceptDeflate = false;
+  uint32_t chunk = vstream.chunkx >> 1;
 
-	      _sinceCompactification++;
-	    }
+  uint32_t isFirstChunk = vstream.chunkx & 0x1;
 
-      requestStatisticsAgentSetReadStart();
+  if(isFirstChunk == 1) {
+    
+    vpackMapHeader[vstream.messageId] = vstream.vpacks[0]; // Currently supports all headers fields in one vpack
+    // Assuming header comes in one packet we don't need to concatenate header. However it shouyld be accounted in
+    // messageCount function.
+    messageCount[vstream.messageId] = chunk - 1; // '-1' beacuse heder is itself part of a chunk 
+    if((messageCount[vstream.messageId] = count-1) == 0){ //In case there is no Body message in VelocyStream
+      messageComplete = true;
+    }
+    elements = "";
+  } else {
+    //Try to use Lambda instead of it
+    for(int i = 0; i < vstream.vpacks.size(); i++){
+      Slice s(vstream.vpacks[i].start());
+      elements.append(s.getString(len));
+    }
 
-	    if (_isFirstChunk && _readBuffer->length() > MaximalHeaderSize) {
-	      LOG_WARNING("maximal header size is %d, request header size is %d",
-	                  (int)MaximalHeaderSize, (int)_readBuffer->length());
+    std::map<uint32_t, std::string>::const_iterator it = vpackMapBody.find(vstream.messageId);
+    bool present  = it!= vpackMapBody.end();
+    if(present){
+      message_vpack = vpackMapBody[vstream.messageId];
+      message_vpack.append(elements);
+      vpackMapBody[vstream.messageId] = message_vpack; // Assuming packet's are
+    }else{
+      vpackMapBody[vstream.messageId] = elements; // If first packet is received.
+    }
 
-	      // header is too large
-	      GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
-	                            getCompatibility());
+    count = messageCount.find(vstream.messageId)->second;
+    // messageCount[vstream.messageId] = count-1;
+    if((messageCount[vstream.messageId] = count-1) == 0){
+      messageComplete = true;
+      _header = vpackMapHeader[vstream.messageId];
+      _body = vpackMapBody[vstream.messageId];
+      message_id = vstream.messageId;
+    }
+  }
 
-	      resetState(true);
-	      handleResponse(&response);
 
-	      return false;
-	    }
+///////////////////////////////////////////////
+  if(messageComplete) {
+    bool handleRequest = false;
 
-	if (_readBuffer->c_str() == nullptr) {
+    // still trying to read the header fields
+  	  if (!_readRequestBody) {
+  	  	// starting a new request
+  	    if (_newRequest) {
+  	      // acquire a new statistics entry for the request
+  	      RequestStatisticsAgent::acquire();
 
-	  // @TODO: Create a new handler in HandlerFactory for VelocyStream
-    /// insert _request here
-      // // check that we know, how to serve this request and update the connection
-      // // information, i. e. client and server addresses and ports and create a
-      // // request context for that request
-      // _request = _server->handlerFactory()->createRequest(
-      //     _connectionInfo, _readBuffer->c_str() + _startPosition,
-      //     _readPosition - _startPosition);
+  	      _newRequest = false;
+  	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
+  	      _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
+  	      _fullUrl = "";
+  	      _denyCredentials = false;
+  	      _acceptDeflate = false;
 
-      if (_request == nullptr) {
-        LOG_ERROR("cannot generate request");
+  	      _sinceCompactification++;
+  	    }
 
-        // internal server error
-        GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_SERVER_ERROR, getCompatibility());
+        requestStatisticsAgentSetReadStart();
 
-        // we need to close the connection, because there is no way we
-        // know how to remove the body and then continue
-        resetState(true);
-        handleResponse(&response);
+  	    if (isFirstChunk && sizeof(_header) > MaximalHeaderSize) {
+  	      LOG_WARNING("maximal header size is %d, request header size is %d",
+  	                  (int)MaximalHeaderSize, sizeof(_header));
 
-        return false;
-      }
+  	      // header is too large
+  	      GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
+  	                            getCompatibility());
 
-      _request->setClientTaskId(_taskId);
+  	      resetState(true);
+  	      handleResponse(&response);
 
-      // check VSTREAM protocol version
-      _httpVersion = _request->protocolVersion();
+  	      return false;
+  	    }
 
-      // Currently we have aonly Vstream version 1.0 available
-      if (_httpVersion != GeneralRequest::VSTREAM_1_0) {
-        GeneralResponse response(GeneralResponse::VSTREAM_VERSION_NOT_SUPPORTED,
-                              getCompatibility());
+  	if (_body.c_str() == nullptr) {
 
-        // we need to close the connection, because there is no way we
-        // know what to remove and then continue
-        resetState(true);
-        handleResponse(&response);
+        _request = _server->handlerFactory()->createRequestVpack( _connectionInfo, _header, sizeof(_header), isFirstChunk, message_id);
 
-        return false;
-      }
+        if (_request == nullptr) {
+          LOG_ERROR("cannot generate request");
 
-      // check max URL length
-      _fullUrl = _request->fullUrl();
+          // internal server error
+          GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_SERVER_ERROR, getCompatibility());
 
-      if (_fullUrl.size() > 16384) {
-        GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_URI_TOO_LONG,
-                              getCompatibility());
+          // we need to close the connection, because there is no way we
+          // know how to remove the body and then continue
+          resetState(true);
+          handleResponse(&response);
 
-        // we need to close the connection, because there is no way we
-        // know what to remove and then continue
-        resetState(true);
-        handleResponse(&response);
-
-        return false;
-      }
-
-      // update the connection information, i. e. client and server addresses
-      // and ports
-      _request->setProtocol(_server->protocol());
-
-      LOG_TRACE("server port %d, client port %d",
-                (int)_connectionInfo.serverPort,
-                (int)_connectionInfo.clientPort);
-
-      // keep track of the original value of the "origin" request header (if
-      // any)
-      // we need this value to handle CORS requests
-      _origin = _request->header("origin");
-
-      if (!_origin.empty()) {
-        // check for Access-Control-Allow-Credentials header
-        bool found;
-        std::string const& allowCredentials =
-            _request->header("access-control-allow-credentials", found);
-
-        if (found) {
-          _denyCredentials = !StringUtils::boolean(allowCredentials);
-        }
-      }
-
-      // store the original request's type. we need it later when responding
-      // (original request object gets deleted before responding)
-      _requestType = _request->requestType();
-
-      requestStatisticsAgentSetRequestType(_requestType);
-
-      // handle different VSTREAM methods
-      switch (_requestType) {
-        case GeneralRequest::VSTREAM_REQUEST_GET:
-        case GeneralRequest::VSTREAM_REQUEST_DELETE:
-        case GeneralRequest::VSTREAM_REQUEST_HEAD:
-        case GeneralRequest::VSTREAM_REQUEST_OPTIONS:
-        case GeneralRequest::VSTREAM_REQUEST_POST:
-        case GeneralRequest::VSTREAM_REQUEST_PUT:
-        case GeneralRequest::VSTREAM_REQUEST_PATCH: 
-        case GeneralRequest::VSTREAM_REQUEST_CRED:
-        case GeneralRequest::VSTREAM_REQUEST_REGISTER:
-        case GeneralRequest::VSTREAM_REQUEST_STATUS:{
-          // technically, sending a body for an VSTREAM DELETE request is not
-          // forbidden, but it is not explicitly supported
-          // bool const expectContentLength =
-          //     (_requestType == GeneralRequest::VSTREAM_REQUEST_POST ||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_PUT ||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_PATCH ||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS ||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE ||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
-          //      _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
-
-        if(!_isFirstChunk){ 
-          if (_readBuffer->length() == 0) {
-            handleRequest = true;
-          }
-        }  
-          break;
+          return false;
         }
 
-        default: {
+        _request->setClientTaskId(_taskId);
 
-          LOG_WARNING( "got corrupted VELOCYSTREAM request ");
+        // check VSTREAM protocol version
+        _httpVersion = _request->protocolVersion();
 
-          // bad request, method not allowed
-          GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_METHOD_NOT_ALLOWED,
+        // Currently we have only Vstream version 1.0 available
+        if (_httpVersion != GeneralRequest::VSTREAM_1_0) {
+          GeneralResponse response(GeneralResponse::VSTREAM_VERSION_NOT_SUPPORTED,
                                 getCompatibility());
 
           // we need to close the connection, because there is no way we
           // know what to remove and then continue
           resetState(true);
-
-          // force a socket close, response will be ignored!
-          TRI_CLOSE_SOCKET(_commSocket);
-          TRI_invalidatesocket(&_commSocket);
-
-          // might delete this
           handleResponse(&response);
 
           return false;
         }
+
+        // check max URL length
+        _fullUrl = _request->fullUrl();
+
+        if (_fullUrl.size() > 16384) {
+          GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_URI_TOO_LONG,
+                                getCompatibility());
+
+          // we need to close the connection, because there is no way we
+          // know what to remove and then continue
+          resetState(true);
+          handleResponse(&response);
+
+          return false;
+        }
+
+        // update the connection information, i. e. client and server addresses
+        // and ports
+        _request->setProtocol(_server->protocol());
+
+        LOG_TRACE("server port %d, client port %d",
+                  (int)_connectionInfo.serverPort,
+                  (int)_connectionInfo.clientPort);
+
+        // keep track of the original value of the "origin" request header (if
+        // any)
+        // we need this value to handle CORS requests
+        _origin = _request->header("origin");
+
+        if (!_origin.empty()) {
+          // check for Access-Control-Allow-Credentials header
+          bool found;
+          std::string const& allowCredentials =
+              _request->header("access-control-allow-credentials", found);
+
+          if (found) {
+            _denyCredentials = !StringUtils::boolean(allowCredentials);
+          }
+        }
+
+        // store the original request's type. we need it later when responding
+        // (original request object gets deleted before responding)
+        _requestType = _request->requestType();
+
+        requestStatisticsAgentSetRequestType(_requestType);
+
+        // handle different VSTREAM methods
+        switch (_requestType) {
+          case GeneralRequest::VSTREAM_REQUEST_GET:
+          case GeneralRequest::VSTREAM_REQUEST_DELETE:
+          case GeneralRequest::VSTREAM_REQUEST_HEAD:
+          case GeneralRequest::VSTREAM_REQUEST_OPTIONS:
+          case GeneralRequest::VSTREAM_REQUEST_POST:
+          case GeneralRequest::VSTREAM_REQUEST_PUT:
+          case GeneralRequest::VSTREAM_REQUEST_PATCH: 
+          case GeneralRequest::VSTREAM_REQUEST_CRED:
+          case GeneralRequest::VSTREAM_REQUEST_REGISTER:
+          case GeneralRequest::VSTREAM_REQUEST_STATUS:{
+            // technically, sending a body for an VSTREAM DELETE request is not
+            // forbidden, but it is not explicitly supported
+            bool const expectContent
+             =
+                (_requestType == GeneralRequest::VSTREAM_REQUEST_POST ||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_PUT ||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_PATCH ||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS ||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_DELETE ||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_CRED||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_REGISTER||
+                 _requestType == GeneralRequest::VSTREAM_REQUEST_STATUS);
+
+          if(!isFirstChunk){ 
+            if (_body.length() == 0) {
+              handleRequest = true;
+            }
+          }  
+            break;
+          }
+
+          default: {
+
+            LOG_WARNING( "got corrupted VELOCYSTREAM request ");
+
+            // bad request, method not allowed
+            GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_METHOD_NOT_ALLOWED,
+                                  getCompatibility());
+
+            // we need to close the connection, because there is no way we
+            // know what to remove and then continue
+            resetState(true);
+
+            // force a socket close, response will be ignored!
+            TRI_CLOSE_SOCKET(_commSocket);
+            TRI_invalidatesocket(&_commSocket);
+
+            // might delete this
+            handleResponse(&response);
+
+            return false;
+          }
+        }
+
+        // .............................................................................
+        // check if server is active
+        // .............................................................................
+
+        Scheduler const* scheduler =
+            _server->scheduler(); 
+
+        if (scheduler != nullptr && !scheduler->isActive()) {
+          LOG_TRACE("cannot serve request - server is inactive");
+
+          GeneralResponse response(GeneralResponse::VSTREAM_SERVICE_UNAVAILABLE,
+                                getCompatibility());
+
+          resetState(true);
+          handleResponse(&response);
+
+          return false;
+        }
+
+        // @TODO: handle write buffer here for vpack
+        // if (_readRequestBody) {  
+        //   bool found;
+        //   std::string const& expect = _request->header("expect", found);
+
+        //   if (found && StringUtils::trim(expect) == "100-continue") {
+        //     LOG_TRACE("received a 100-continue request");
+
+        //     auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
+        //     buffer->appendText(
+        //         TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
+
+        //     _writeBuffers.push_back(buffer.get());
+        //     buffer.release();
+
+        //     _writeBuffersStats.push_back(nullptr);
+
+        //     fillWriteBuffer();
+        //   }
+        // }
+
+    	} 
+    } 
+
+    // readRequestBody might have changed, so cannot use else
+    if (!isFirstChunk) {
+
+      // read "bodyLength" from read buffer and add this body to "GeneralRequest"
+      _request->setBody(_body.c_str(), sizeof(_body));
+
+      LOG_TRACE("%d", (int)sizeof(_body));
+
+      // remove body from read buffer and reset read position
+      _readRequestBody = false;
+      handleRequest = true;
+    }
+
+    if (!handleRequest) {
+      return false;
+    }
+    if(!isFirstChunk){
+    	requestStatisticsAgentSetReadEnd();
+    	requestStatisticsAgentAddReceivedBytes(_body.length());
+    }
+    bool const isOptionsRequest =
+        (_requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS);
+    resetState(false);
+
+    // .............................................................................
+    // keep-alive handling
+    // .............................................................................
+
+    std::string connectionType =
+        StringUtils::tolower(_request->header("connection"));
+
+    if (connectionType == "close") {
+      LOG_DEBUG("connection close requested by client");
+      _closeRequested = true;
+    } else if (connectionType != "keep-alive") {
+      LOG_DEBUG("no keep-alive, connection close requested by client");
+      _closeRequested = true;
+    } else if (_keepAliveTimeout <= 0.0) {
+      LOG_DEBUG("keep-alive disabled by admin");
+      _closeRequested = true;
+    }
+
+    // .............................................................................
+    // authenticate
+    // .............................................................................
+
+    auto const compatibility = _request->compatibility();
+
+    GeneralResponse::VstreamResponseCode authResult = GeneralResponse::VSTREAM_OK;
+
+        // _server->handlerFactory()->authenticateRequestVstream(_request); //@TODO: Create authentication handler for velocypack
+
+    if (authResult == GeneralResponse::VSTREAM_OK || isOptionsRequest) {
+      if (isOptionsRequest) {
+        processCorsOptions(compatibility);
+      } else {
+        processRequest(compatibility);
+      }
+    }
+
+      // not found
+    else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_NOT_FOUND) {
+      GeneralResponse response(authResult, compatibility);
+
+      // arangodb::velocypack::Builder b;                                                                                                         
+    	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+    	response.bodyVpack().add("error", arangodb::velocypack::Value("true"));                                                                              
+    	response.bodyVpack().add("errorMessage", arangodb::velocypack::Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
+    	response.bodyVpack().add("code:", arangodb::velocypack::Value(std::to_string((int)authResult)));                                                 
+    	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
+    	response.bodyVpack().close();
+
+      clearRequest();
+      handleResponse(&response); // Create a response for builder objects
+    }
+
+    // forbidden
+    else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_FORBIDDEN) {
+      GeneralResponse response(authResult, compatibility);
+      // arangodb::velocypack::Builder b;                                                                                                         
+    	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+    	response.bodyVpack().add("error", Value("true"));                                                                              
+    	response.bodyVpack().add("errorMessage", Value("change password"));                                                                                  
+    	response.bodyVpack().add("code:", Value(authResult));                                                 
+    	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
+    	response.bodyVpack().close();
+
+      clearRequest();
+      handleResponse(&response);
+    } else{
+    	GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_UNAUTHORIZED, compatibility);
+      std::string const realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
+
+      if (sendWwwAuthenticateHeader()) {
+        response.setHeader(TRI_CHAR_LENGTH_PAIR("www-authenticate"),
+                           realm.c_str());
       }
 
-      // .............................................................................
-      // check if server is active
-      // .............................................................................
-
-      Scheduler const* scheduler =
-          _server->scheduler(); 
-
-      if (scheduler != nullptr && !scheduler->isActive()) {
-        LOG_TRACE("cannot serve request - server is inactive");
-
-        GeneralResponse response(GeneralResponse::VSTREAM_SERVICE_UNAVAILABLE,
-                              getCompatibility());
-
-        resetState(true);
-        handleResponse(&response);
-
-        return false;
-      }
-
-      // @TODO: handle write buffer here for vpack
-      // if (_readRequestBody) {  
-      //   bool found;
-      //   std::string const& expect = _request->header("expect", found);
-
-      //   if (found && StringUtils::trim(expect) == "100-continue") {
-      //     LOG_TRACE("received a 100-continue request");
-
-      //     auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
-      //     buffer->appendText(
-      //         TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
-
-      //     _writeBuffers.push_back(buffer.get());
-      //     buffer.release();
-
-      //     _writeBuffersStats.push_back(nullptr);
-
-      //     fillWriteBuffer();
-      //   }
-      // }
-
-  	} 
-  } 
-
-  // readRequestBody might have changed, so cannot use else
-  if (!_isFirstChunk) {
-
-    // read "bodyLength" from read buffer and add this body to "GeneralRequest"
-    _request->setBody(_readBuffer->c_str(), _readBuffer->length());
-
-    // LOG_TRACE("%s", std::to_string(_readBuffer->length()));
-
-    // remove body from read buffer and reset read position
-    _readRequestBody = false;
-    handleRequest = true;
-  }
-
-  if (!handleRequest) {
+      clearRequest();
+      handleResponse(&response);
+    }
+    return true;
+  } else {
     return false;
-  }
-  if(!_isFirstChunk){
-  	requestStatisticsAgentSetReadEnd();
-  	requestStatisticsAgentAddReceivedBytes(_readBuffer->length());
-  }
-  bool const isOptionsRequest =
-      (_requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS);
-  resetState(false);
-
-  // .............................................................................
-  // keep-alive handling
-  // .............................................................................
-
-  std::string connectionType =
-      StringUtils::tolower(_request->header("connection"));
-
-  if (connectionType == "close") {
-    LOG_DEBUG("connection close requested by client");
-    _closeRequested = true;
-  } else if (connectionType != "keep-alive") {
-    LOG_DEBUG("no keep-alive, connection close requested by client");
-    _closeRequested = true;
-  } else if (_keepAliveTimeout <= 0.0) {
-    LOG_DEBUG("keep-alive disabled by admin");
-    _closeRequested = true;
-  }
-
-  // .............................................................................
-  // authenticate
-  // .............................................................................
-
-  auto const compatibility = _request->compatibility();
-
-  GeneralResponse::VstreamResponseCode authResult = GeneralResponse::VSTREAM_OK;
-
-      // _server->handlerFactory()->authenticateRequestVstream(_request); //@TODO: Create authentication handler for velocypack
-
-  if (authResult == GeneralResponse::VSTREAM_OK || isOptionsRequest) {
-    if (isOptionsRequest) {
-      processCorsOptions(compatibility);
-    } else {
-      processRequest(compatibility);
-    }
-  }
-
-    // not found
-  else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_NOT_FOUND) {
-    GeneralResponse response(authResult, compatibility);
-
-    // arangodb::velocypack::Builder b;                                                                                                         
-  	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
-  	response.bodyVpack().add("error", arangodb::velocypack::Value("true"));                                                                              
-  	response.bodyVpack().add("errorMessage", arangodb::velocypack::Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
-  	response.bodyVpack().add("code:", arangodb::velocypack::Value(std::to_string((int)authResult)));                                                 
-  	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
-  	response.bodyVpack().close();
-
-    clearRequest();
-    handleResponse(&response); // Create a response for builder objects
-  }
-
-  // forbidden
-  else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_FORBIDDEN) {
-    GeneralResponse response(authResult, compatibility);
-    // arangodb::velocypack::Builder b;                                                                                                         
-  	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
-  	response.bodyVpack().add("error", Value("true"));                                                                              
-  	response.bodyVpack().add("errorMessage", Value("change password"));                                                                                  
-  	response.bodyVpack().add("code:", Value(authResult));                                                 
-  	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
-  	response.bodyVpack().close();
-
-    clearRequest();
-    handleResponse(&response
-      );
-  } else{
-  	GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_UNAUTHORIZED, compatibility);
-    std::string const realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
-
-    if (sendWwwAuthenticateHeader()) {
-      response.setHeader(TRI_CHAR_LENGTH_PAIR("www-authenticate"),
-                         realm.c_str());
-    }
-
-    clearRequest();
-    handleResponse(&response);
-  }
-  return true;
+  }  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,4 +702,37 @@ int32_t VelocyCommTask::getCompatibility() const {
   }
 
   return GeneralRequest::MinCompatibility;
+}
+
+bool VelocyCommTask::handleRead() {
+  bool res = true;
+
+  if (!_setupDone.load(std::memory_order_relaxed)) {
+    return res;
+  }
+
+  if (!_closeRequested) {
+    res = fillVelocyStream();
+
+    // process as much data as we got
+    while (processRead()) {
+      if (_closeRequested) {
+        break;
+      }
+    }
+  } else {
+    // if we don't close here, the scheduler thread may fall into a
+    // busy wait state, consuming 100% CPU!
+    _clientClosed = true;
+  }
+
+  if (_clientClosed) {
+    res = false;
+    _server->handleCommunicationClosed(this);
+  } else if (!res) {
+    _clientClosed = true;
+    _server->handleCommunicationFailure(this);
+  }
+
+  return res;
 }

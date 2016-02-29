@@ -214,6 +214,20 @@ GeneralRequest* GeneralHandlerFactory::createRequest(ConnectionInfo const& info,
   return request;
 }
 
+/// vstream
+
+GeneralRequest* GeneralHandlerFactory::createRequestVpack(ConnectionInfo const& info,
+                                               velocypack::Builder ptr, size_t length, bool isFirst, uint64_t id) {
+  GeneralRequest* request = new GeneralRequest(info, ptr, length, 32, isFirst, id,_minCompatibility,
+                                         _allowMethodOverride); //Have remove chunk (32)
+
+  if (request != nullptr) {
+    setRequestContext(request);
+  }
+
+  return request;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////

@@ -2452,7 +2452,7 @@ int main(int argc, char* args[]) {
     BaseClient.setupSpecificHelp("foxx-manager", foxxManagerHelp.str());
   }
 
-  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
+  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint(8529));
 
   // .............................................................................
   // parse the program options

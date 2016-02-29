@@ -56,7 +56,9 @@ class EndpointIp : public Endpoint {
   /// @brief default port number if none specified
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint16_t const _defaultPort;
+  static uint16_t const _defaultPort; // Http
+
+  static uint16_t const _defaultPortVstream; // Vstream
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default host if none specified

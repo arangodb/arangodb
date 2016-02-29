@@ -92,6 +92,7 @@ int TRI_closesocket(TRI_socket_t s) {
   return res;
 }
 
+// For reading byte via http protocol
 int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
                    int flags) {
   int res;
@@ -103,7 +104,33 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
   return res;
 }
 
+// For reading byte via velocystream protocol
+int TRI_readsocket(TRI_socket_t s, arangodb::velocypack::Builder* buffer, size_t numBytesToRead,
+                   int flags) {
+  int res;
+  #ifdef _WIN32
+    res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
+  #else
+    res = read(s.fileDescriptor, buffer, numBytesToRead);
+  #endif
+  return res;
+}
+
+// For writing byte for http protocol
 int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite,
+                    int flags) {
+  int res;
+#ifdef _WIN32
+  res =
+      send(s.fileHandle, (char const*)(buffer), (int)(numBytesToWrite), flags);
+#else
+  res = (int)write(s.fileDescriptor, buffer, numBytesToWrite);
+#endif
+  return res;
+}
+
+// For writing bytes for VelocyStream protocol @TODO: change send to sendmsg for sending greater number of packets
+int TRI_writesocket(TRI_socket_t s, arangodb::velocypack::Builder* buffer, size_t numBytesToWrite,
                     int flags) {
   int res;
 #ifdef _WIN32

@@ -873,7 +873,7 @@ int main(int argc, char* argv[]) {
   // set defaults
   // .............................................................................
 
-  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
+  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint(8529));
 
   // .............................................................................
   // parse the program options

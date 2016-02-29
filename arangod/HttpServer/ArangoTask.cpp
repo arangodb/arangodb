@@ -261,39 +261,6 @@ void ArangoTask::signalTask(TaskData* data) {
   }
 }
 
-bool ArangoTask::handleRead() {
-  bool res = true;
-
-  if (!_setupDone.load(std::memory_order_relaxed)) {
-    return res;
-  }
-
-  if (!_closeRequested) {
-    res = fillReadBuffer();
-
-    // process as much data as we got
-    while (processRead()) {
-      if (_closeRequested) {
-        break;
-      }
-    }
-  } else {
-    // if we don't close here, the scheduler thread may fall into a
-    // busy wait state, consuming 100% CPU!
-    _clientClosed = true;
-  }
-
-  if (_clientClosed) {
-    res = false;
-    _server->handleCommunicationClosed(this);
-  } else if (!res) {
-    _clientClosed = true;
-    _server->handleCommunicationFailure(this);
-  }
-
-  return res;
-}
-
 void ArangoTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
   _writeLength = 0;
