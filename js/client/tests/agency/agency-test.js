@@ -1,7 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual,
-  print, print_plain, COMPARE_STRING, NORMALIZE_STRING,
-  help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
+/*jshint globalstrict:false, strict:true */
+/*global assertEqual, assertNotEqual, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -31,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("@arangodb").db;
+var console = require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -45,6 +43,19 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var agencyServers = ARGUMENTS;
+  var whoseTurn = 0;    // used to do round robin on agencyServers
+
+  let request = require("@arangodb/request");
+
+  function readAgency(list) {
+    // We simply try all agency servers in turn until one gives us an HTTP
+    // response:
+    while (true) {
+      var res = request({url: agencyServers[whoseTurn], method: "POST",
+                         followRedirects: true, body: JSON.stringify(list)});
+      console.log(res);
+    }
+  }
 
   return {
 
@@ -71,6 +82,9 @@ function agencyTestSuite () {
       require("internal").print("Hallo1", agencyServers);
       require("internal").wait(5);
       require("internal").print("Hallo1");
+      readAgency();
+      assertEqual(1, 1);
+      assertNotEqual(1, 2);
     }
 
   };
