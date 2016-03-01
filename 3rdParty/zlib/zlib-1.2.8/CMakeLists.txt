@@ -268,18 +268,20 @@ set(ZLIB_VERSION
 
 if (WINDOWS)
   set(ZLIB_LIBS
-    ${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT}/zlibstaticd.lib
+    zlibstaticd
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
   )
+  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT}")
 else ()
   set(ZLIB_LIBS
-    ${zlib_BINARY_DIR}/libz.a
+    z
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
   )
+  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}")
 endif ()
 
 set(ZLIB_INCLUDE_DIR
@@ -288,3 +290,5 @@ set(ZLIB_INCLUDE_DIR
   "${PROJECT_NAME}: Include Directories"
   FORCE
 )
+
+set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
