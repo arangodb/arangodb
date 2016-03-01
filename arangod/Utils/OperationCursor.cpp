@@ -25,6 +25,11 @@
 
 using namespace arangodb;
 
+
+void OperationCursor::reset() {
+  _indexIterator->reset();
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next default batchSize many elements.
 ///        Check hasMore()==true before using this
@@ -38,10 +43,12 @@ int OperationCursor::getMore() {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements.
 ///        Check hasMore()==true before using this
+///        If useExternals is set to true all elements in the vpack are
+///        externals. Otherwise they are inlined.
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-int OperationCursor::getMore(uint64_t batchSize) {
+int OperationCursor::getMore(uint64_t batchSize, bool useExternals) {
   // This may throw out of memory
   if (!hasMore()) {
     TRI_ASSERT(false);
@@ -56,7 +63,11 @@ int OperationCursor::getMore(uint64_t batchSize) {
   while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
     --batchSize;
     --_limit;
-    _builder.add(VPackSlice(mptr->vpack()));
+    if (useExternals) {
+      _builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+    } else {
+      _builder.add(VPackSlice(mptr->vpack()));
+    }
   }
   if (batchSize > 0 || _limit == 0) {
     // Iterator empty, there is no more
