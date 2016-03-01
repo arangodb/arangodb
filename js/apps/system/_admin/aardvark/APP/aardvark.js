@@ -330,6 +330,7 @@ controller.post("/job", function(req, res) {
       id: req.body().id,
       collection: req.body().collection, 
       type: req.body().type,
+      model: 'job',
       desc: req.body().desc
     });
 
@@ -350,8 +351,10 @@ controller.post("/job", function(req, res) {
 
 controller.del("/job/", function(req, res) {
 
-  db.aardvark.truncate();
-  return res.json(true);
+  db.aardvark.removeByExample({
+    model: 'job'
+  }, true);
+  res.json(true);
 
 }).summary("Store job id of a running job")
   .notes("This function stores a job id into a system collection.");
