@@ -64,7 +64,7 @@ inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::unknownMethod () {
+inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod () {
   LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
@@ -83,21 +83,23 @@ inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
   if (_request->suffix()[0] == "write") { 
     write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
     accepted = ret.accepted; 
-    _agent->waitFor (ret.indices); // Wait for confirmation
+    _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
   } else {
     read_ret_t ret = _agent->read(_request->toVelocyPack(&options));
     accepted = ret.accepted; 
     ret.result->close();
     generateResult(ret.result->slice());
   }
-  
+
+  /*
   if (!accepted) { // We accepted the request
-    ret.result->close();
-    generateResult(ret.result->slice());
+    //ret.result->close();
+    //generateResult(ret.result->slice());
   } else {            // We redirect the request
     _response->setHeader("Location", _agent->config().endpoints[ret.redirect]);
     generateError(HttpResponse::TEMPORARY_REDIRECT,307);
   }
+  */
   return HttpHandler::status_t(HANDLER_DONE);
 }
 

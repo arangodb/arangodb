@@ -38,7 +38,7 @@ public:
   AgentCallback();
   explicit AgentCallback(Agent* agent);
 
-  virtual bool operator ()(arangodb::ClusterCommResult*);
+  virtual bool operator()(arangodb::ClusterCommResult*);
 
   void shutdown();
 

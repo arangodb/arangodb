@@ -46,9 +46,28 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
  private:
 
+  template<class T> inline bool readValue (char const* name, T& val) const {
+    bool found = true;
+    std::string val_str(_request->value(name, found));
+    if (!found) {
+      LOG(WARN) << "Mandatory query string " << name << "missing.";
+      return false;
+    } else {
+      try {
+        val = std::stol(val_str);
+      } catch (std::invalid_argument const&) {
+        LOG(WARN) << "Value for query string " << name <<
+          "cannot be converted to integral type";
+        return false;
+      }
+    }
+    return true;
+  }
+
+
   status_t reportErrorEmptyRequest() ;
   status_t reportTooManySuffices() ;
-  status_t unknownMethod() ; 
+  status_t reportBadQuery(); 
 
   consensus::Agent* _agent;
 

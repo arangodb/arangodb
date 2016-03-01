@@ -67,7 +67,7 @@ public:
   /**
    * @brief Vote request
    */
-  query_t requestVote(term_t , id_t, index_t, index_t);
+  priv_rpc_ret_t requestVote(term_t , id_t, index_t, index_t);
   
   /**
    * @brief Provide configuration
@@ -99,6 +99,8 @@ public:
    */
   id_t leaderID () const;
 
+  bool lead ();
+
   /**
    * @brief Attempt write
    */
@@ -113,7 +115,7 @@ public:
    * @brief Received by followers to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  bool recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+  priv_rpc_ret_t recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
     term_t prevTerm, index_t lastCommitIndex, query_t const& queries);
 
   /**
@@ -145,7 +147,20 @@ public:
    */
   size_t size() const;
 
+  /**
+   * @brief Catch up read db to _last_commit_index
+   */
   void catchUpReadDB();
+
+  /**
+   * @brief Rebuild DBs by applying state log to empty DB
+   */
+  bool rebuildDBs();
+
+  /**
+   * @brief Last log entry
+   */
+  log_t const& lastLog () const;
 
 private:
 
@@ -170,7 +185,8 @@ private:
 
   std::vector<index_t> _confirmed;
   arangodb::Mutex _confirmedLock;          /**< @brief Mutex for modifying _confirmed */
-
+  arangodb::Mutex _dbLock;
+  
 };
 
 }

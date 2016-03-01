@@ -111,7 +111,7 @@ size_t Constituent::notifyAll () {
 
 
 bool Constituent::vote(term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
- 	if (id == _id) {       // Won't vote for myself should never happen.
+ 	if (leaderId == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
 	} else {
 	  if (term > _term) {  // Candidate with higher term: ALWAYS turn follower if not already
@@ -128,7 +128,7 @@ bool Constituent::vote(term_t term, id_t leaderId, index_t prevLogIndex, term_t 
         break;
       }
       _cast = true;      // Note that I voted this time around.
-      _leader_id = id;   // The guy I voted for I assume leader.
+      _leader_id = leaderId;   // The guy I voted for I assume leader.
       follow (term);     
 			return true;
 		} else {             // Myself running or leading
@@ -158,8 +158,8 @@ void Constituent::callElection() {
   std::stringstream path;
 
   path << "/_api/agency/requestVote?term=" << _term << "&candidateId=" << _id
-       << "&lastLogIndex=" << _agent.lastLogIndex() << "&lastLogTerm="
-       << _agent.LastLogTerm();
+       << "&lastLogIndex=" << _agent->lastLog().index << "&lastLogTerm="
+       << _agent->lastLog().term;
     
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id) {
@@ -171,7 +171,7 @@ void Constituent::callElection() {
     }
 	}
 
-	std::this_thread::sleep_for(.9*_agent->config().min_ping); // Wait timeout
+	std::this_thread::sleep_for(duration_t(.9*_agent->config().min_ping)); // Wait timeout
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id) {

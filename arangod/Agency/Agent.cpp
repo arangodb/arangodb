@@ -27,6 +27,7 @@
 #include <chrono>
 
 using namespace arangodb::velocypack;
+
 namespace arangodb {
 namespace consensus {
 
@@ -34,7 +35,6 @@ Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
   _constituent.configure(this);
-  _state.load(); // read persistent database
 }
 
 id_t Agent::id() const { return _config.id;}
@@ -53,14 +53,10 @@ inline size_t Agent::size() const {
   return _config.size();
 }
 
-query_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
+priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
                            index_t lastLogTerm) {
-  Builder builder;
-  builder.add("term", Value(term()));
-  builder.add("voteGranted", Value(
-                _constituent.vote(id, t, lastLogIndex, lastLogTerm)));
-  builder.close();
-	return std::make_shared<Builder>(builder);
+  return priv_rpc_ret_t(
+    _constituent.vote(id, t, lastLogIndex, lastLogTerm),this->term());
 }
 
 Config<double> const& Agent::config () const {
@@ -87,10 +83,10 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
 void Agent::catchUpReadDB() {}; // TODO
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
-
+  
   CONDITION_LOCKER(guard, _rest_cv);
   auto start = std::chrono::system_clock::now();
-
+  
   while (true) {
     
     _rest_cv.wait();
@@ -103,8 +99,9 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     if (std::chrono::system_clock::now() - start > timeout) {
       return false;
     }
-    if (_last_commit_index > index)
+    if (_last_commit_index > index) {
       return true;
+    }
   }
   // We should never get here
   TRI_ASSERT(false);
@@ -128,7 +125,7 @@ void Agent::reportIn (id_t id, index_t index) {
   _rest_cv.broadcast();
 }
 
-bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
 
   // Update commit index
@@ -146,7 +143,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
                 queries->slice()[i+1].getUInt(), term, leaderId);
   }
   
-  return true;
+  return priv_rpc_ret_t(true, this->term());
 }
 
 append_entries_t Agent::sendAppendEntriesRPC (
@@ -175,7 +172,7 @@ append_entries_t Agent::sendAppendEntriesRPC (
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_GET,
      path.str(), std::make_shared<std::string>(builder.toString()), headerFields,
-     std::make_shared<arangodb::ClusterCommCallback>(_agent_callback),
+     std::make_shared<AgentCallback>(this),
      1.0, true);
 }
 
@@ -243,6 +240,19 @@ void Agent::beginShutdown() {
   // wake up all blocked rest handlers
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
+}
+
+inline bool Agent::lead () {
+  rebuildDBs();
+}
+
+inline bool Agent::rebuildDBs() {
+  MUTEX_LOCKER(mutexLocker, _dbLock);
+  return true;
+}
+
+inline log_t const& Agent::lastLog() const {
+  return _state.lastLog();
 }
 
 

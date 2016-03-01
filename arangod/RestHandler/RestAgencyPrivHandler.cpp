@@ -31,6 +31,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <typeinfo>
+
 #include "Basics/Logger.h"
 
 using namespace arangodb;
@@ -64,9 +66,8 @@ inline HttpHandler::status_t RestAgencyPrivHandler::reportTooManySuffices () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-inline HttpHandler::status_t RestAgencyPrivHandler::unknownMethod () {
-  LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
-  generateError(HttpResponse::NOT_FOUND,404);
+inline HttpHandler::status_t RestAgencyPrivHandler::reportBadQuery () {
+  generateError(HttpResponse::BAD,400);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -75,22 +76,48 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     arangodb::velocypack::Options opts;
-
     if (_request->suffix().size() == 0) { // empty request
-      reportErrorEmptyRequest();
+      return reportErrorEmptyRequest();
     } else if (_request->suffix().size() > 1) { // request too long
-      reportTooManySuffices();
+      return reportTooManySuffices();
     } else {
-    	if        (_request->suffix()[0] == "appendEntries") {  // replication
-        _agent->appendEntries (_request->toVelocyPack());
-    	} else if (_request->suffix()[0] ==   "requestVote") {  // election
-        _agent->requestVote (_request->toVelocyPack());
+      term_t term, prevLogTerm;
+      id_t id; // leaderId for appendEntries, cadidateId for requestVote
+      index_t prevLogIndex, leaderCommit;
+    	if (_request->suffix()[0] == "appendEntries") {  // appendEntries
+        if (readValue("term", term) &&
+            readValue("leaderId", id) &&
+            readValue("prevLogIndex", prevLogIndex) &&
+            readValue("prevLogTerm", prevLogTerm) && 
+            readValue("leaderCommit", leaderCommit)) { // found all values
+          priv_rpc_ret_t ret = _agent->recvAppendEntriesRPC(
+            term, id, prevLogIndex, prevLogTerm, leaderCommit,
+            _request->toVelocyPack(&opts));
+          if (ret.success) {
+            result.add("term", VPackValue(ret.term));
+            result.add("success", VPackValue(ret.success));
+          } else {
+            // Should neve get here
+            TRI_ASSERT(false);
+          }
+        } else {
+          return reportBadQuery(); // bad query
+        }
+    	} else if (_request->suffix()[0] ==   "requestVote") {  // requestVote
+        if (readValue("term", term) &&
+            readValue("candidateId", id) &&
+            readValue("prevLogIndex", prevLogIndex) &&
+            readValue("prevLogTerm", prevLogTerm)) {
+          priv_rpc_ret_t ret = _agent->requestVote (term, id, prevLogIndex,
+                                                    prevLogTerm);
+          result.add("term", VPackValue(ret.term));
+          result.add("voteGranted", VPackValue(ret.success));
+        }
       } else {
-        generateError(HttpResponse::NOT_FOUND,404); // nothing 
+        generateError(HttpResponse::NOT_FOUND,404); // nothing else here
         return HttpHandler::status_t(HANDLER_DONE);
       }
     }
-    
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);
@@ -101,3 +128,8 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
 }
 
 
+
+/*
+  term_t term, id_t leaderId, index_t prevIndex,
+    term_t prevTerm, index_t lastCommitIndex, query_t const& queries
+ */

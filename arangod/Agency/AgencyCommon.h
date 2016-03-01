@@ -126,8 +126,7 @@ struct log_t {
   id_t        leaderId;
   std::string entry;
   milliseconds timestamp;
-  log_t (index_t idx, term_t t, id_t lid, std::string const& e,
-         std::vector<bool> const& r) :
+  log_t (index_t idx, term_t t, id_t lid, std::string const& e) :
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
 };
@@ -150,6 +149,12 @@ struct collect_ret_t {
   collect_ret_t (index_t pli, term_t plt, std::vector<index_t> const& idx) :
     prev_log_index(pli), prev_log_term(plt), indices(idx) {}
   size_t size() const {return indices.size();}
+};
+
+struct priv_rpc_ret_t {
+  bool success;
+  term_t term;
+  priv_rpc_ret_t (bool s, term_t t) : success(s), term(t) {}
 };
 
 }}

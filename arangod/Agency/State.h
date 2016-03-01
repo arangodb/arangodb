@@ -63,11 +63,6 @@ public:
   virtual ~State();
   
   /**
-   * @brief Configure this state machine
-   */
-  void configure (size_t size);
-
-  /**
    * @brief Append log entry
    */
   void append (query_t const& query);
@@ -83,32 +78,38 @@ public:
   void log (std::string const& query, index_t, term_t term, id_t lid);
 
   /**
-   * @brief Save currentTerm, votedFor, log entries
-   */
-  bool save (std::string const& ep = "tcp://localhost:8529");
-
-  /**
-   * @brief Load persisted data from above or start with empty log
-   */
-  bool load (std::string const& ep = "tcp://localhost:8529");
-
-  /**
    * @brief Find entry at index with term
    */
-  bool findit (index_t index, term_t term) const;
+  bool findit (index_t index, term_t term);
 
   /**
    * @brief Collect all from index on
    */
   collect_ret_t collectFrom (index_t index);
 
-  log_t const& operator[](index_t t) {
-    
-  }
+  /**
+   * @brief log entry at index i
+   */
+  log_t const& operator[](index_t) const;
+
+  /**
+   * @brief last log entry
+   */
+  log_t const& lastLog () const;
   
 private:
   
-  arangodb::Mutex _logLock;          /**< @brief Mutex for modifying _log */
+  /**
+   * @brief Save currentTerm, votedFor, log entries
+   */
+  bool save (arangodb::velocypack::Builder const&);
+
+  /**
+   * @brief Load persisted data from above or start with empty log
+   */
+  bool load ();
+
+  mutable arangodb::Mutex _logLock;          /**< @brief Mutex for modifying _log */
   std::vector<log_t> _log;          /**< @brief  State entries */
   
 };
