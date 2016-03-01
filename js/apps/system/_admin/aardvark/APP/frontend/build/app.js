@@ -28289,6 +28289,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
+
+      //fire execute if return was pressed
+      if (e.ctrlKey && e.keyCode === 13) {
+        this.executeQuery();
+      }
     },
 
     checkForNewBindParams: function() {
@@ -28857,6 +28862,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.deselect(self.aqlEditor);
         if (Object.keys(bindParam).length > 0) {
           self.bindParamTableObj = bindParam;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+
           if ($('#bindParamEditor').is(':visible')) {
             self.renderBindParamTable();
           }
