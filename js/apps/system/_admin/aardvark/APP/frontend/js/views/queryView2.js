@@ -1250,6 +1250,8 @@
         self.deselect(self.aqlEditor);
         if (Object.keys(bindParam).length > 0) {
           self.bindParamTableObj = bindParam;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+
           if ($('#bindParamEditor').is(':visible')) {
             self.renderBindParamTable();
           }
