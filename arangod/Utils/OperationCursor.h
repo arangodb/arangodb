@@ -100,7 +100,7 @@ struct OperationCursor : public OperationResult {
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-  int getMore(uint64_t batchSize);
+  int getMore(uint64_t);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next default batchSize many elements.
@@ -109,6 +109,15 @@ struct OperationCursor : public OperationResult {
 //////////////////////////////////////////////////////////////////////////////
 
   int getMore();
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Skip the next toSkip many elements.
+///        skipped will be increased by the amount of skipped elements afterwards
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
+  int skip(uint64_t, uint64_t&);
 };
 
 }

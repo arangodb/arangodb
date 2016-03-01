@@ -64,3 +64,32 @@ int OperationCursor::getMore(uint64_t batchSize) {
   }
   return TRI_ERROR_NO_ERROR;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Skip the next toSkip many elements.
+///        skipped will be increased by the amount of skipped elements afterwards
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
+int OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
+  if (!hasMore()) {
+    TRI_ASSERT(false);
+    // You requested more even if you should have checked it before.
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  if (toSkip > _limit) {
+    // Short-cut, we jump to the end
+    _limit = 0;
+    _hasMore = false;
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  _indexIterator->skip(toSkip, skipped);
+  _limit -= skipped;
+  if (skipped != toSkip || _limit == 0) {
+    _hasMore = false;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
