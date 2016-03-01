@@ -682,6 +682,11 @@
         });
       }
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
+
+      //fire execute if return was pressed
+      if (e.ctrlKey && e.keyCode === 13) {
+        this.executeQuery();
+      }
     },
 
     checkForNewBindParams: function() {
