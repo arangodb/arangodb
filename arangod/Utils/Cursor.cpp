@@ -26,14 +26,15 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -276,12 +277,19 @@ static bool IncludeAttribute(
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  TRI_ASSERT(_ex != nullptr);
+  auto resolver = std::make_unique<CollectionNameResolver>(_vocbase);
+  std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(TransactionContext::createCustomTypeHandler(_vocbase, resolver.get()));
 
-  auto shaper = _ex->_document->getShaper();
+  TRI_ASSERT(_ex != nullptr);
   auto const restrictionType = _ex->_restrictions.type;
 
   buffer.appendText("\"result\":[");
+
+  // copy original options
+  VPackOptions options = VPackOptions::Defaults;
+  options.customTypeHandler = customTypeHandler.get(); 
+
+  VPackBuilder result;
 
   size_t const n = batchSize();
 
@@ -294,31 +302,17 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
       buffer.appendChar(',');
     }
 
-    auto marker =
-        static_cast<TRI_df_marker_t const*>(_ex->_documents->at(_position++));
+    char const* p = reinterpret_cast<char const*>(_ex->_documents->at(_position++));
+    VPackSlice const slice(p + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
 
-    TRI_shaped_json_t shaped;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-    // Only Temporary wait for Shaped ==> VPack
-    std::unique_ptr<TRI_json_t> tmp(TRI_JsonShapedJson(shaper, &shaped)); 
-    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(tmp.get());
-
-    if (builder == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    VPackSlice const shapedSlice = builder->slice();
-    VPackBuilder result;
     {
+      result.clear();
+
       VPackObjectBuilder b(&result);
       // Copy over shaped values
-      for (auto const& entry : VPackObjectIterator(shapedSlice)) {
-        std::string key = entry.key.copyString();
-        if (key == TRI_VOC_ATTRIBUTE_ID || key == TRI_VOC_ATTRIBUTE_KEY ||
-            key == TRI_VOC_ATTRIBUTE_FROM || key == TRI_VOC_ATTRIBUTE_TO ||
-            key == TRI_VOC_ATTRIBUTE_REV) {
-          // This if excludes all internal values. Just to make sure they are not present when added later.
-          continue;
-        }
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key(entry.key.copyString());
+
         if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields, key)) {
           // Ignore everything that should be excluded or not included
           continue;
@@ -327,51 +321,12 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
         result.add(key, entry.value);
       }
       // append the internal attributes
-   
-      // _id, _key, _rev
-      char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_ID)) {
-        std::string id(
-            _ex->_resolver.getCollectionName(_ex->_document->_info.id()));
-        id.push_back('/');
-        id.append(key);
-        result.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(id));
-      }
-      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_KEY)) {
-        result.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-      }
-      if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_REV)) {
-        std::string rev = std::to_string(TRI_EXTRACT_MARKER_RID(marker)); 
-        result.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
-      }
-
-#if 0
-      // TODO
-      if (TRI_IS_EDGE_MARKER(marker)) {
-        if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_FROM)) {
-          // _from
-          std::string from(_ex->_resolver.getCollectionNameCluster(
-              TRI_EXTRACT_MARKER_FROM_CID(marker)));
-          from.push_back('/');
-          from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-          result.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(from));
-        }
-
-        if (IncludeAttribute(restrictionType, _ex->_restrictions.fields, TRI_VOC_ATTRIBUTE_TO)) {
-          // _to
-          std::string to(_ex->_resolver.getCollectionNameCluster(
-              TRI_EXTRACT_MARKER_TO_CID(marker)));
-          to.push_back('/');
-          to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-          result.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(to));
-        }
-      }
-#endif      
     }
-    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-        buffer.stringBuffer());
-    VPackDumper dumper(&bufferAdapter);
+
+    arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
+
     try {
+      VPackDumper dumper(&bufferAdapter, &options);
       dumper.dump(result.slice());
     } catch (...) {
       /// TODO correct error Handling!
