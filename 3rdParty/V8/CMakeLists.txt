@@ -242,7 +242,7 @@ if (WIN32)
     "${V8_LIBRARY_DIR}/lib/v8_base.lib;${V8_LIBRARY_DIR}/lib/v8_libbase.lib;${V8_LIBRARY_DIR}/lib/v8_libplatform.lib;${V8_LIBRARY_DIR}/lib/v8_nosnapshot.lib"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
-    )
+  )
 
 else ()
 
@@ -315,7 +315,6 @@ else ()
     "icui18n;icuuc;icudata"
     CACHE INTERNAL
     "ICU: Libraries"
-    FORCE
   )
 endif()
 

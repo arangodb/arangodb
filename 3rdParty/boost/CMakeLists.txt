@@ -37,7 +37,7 @@ if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
   if (HAVE_USABLE_BOOT_LIBRARIES)
     option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
   else ()
-    message("cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
+    message(STATUS "cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
     option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
   endif ()
 else ()
@@ -45,7 +45,7 @@ else ()
 endif ()
 
 if (NOT USE_BOOST_UNITTESTS)
-  message("BOOST unit-tests are disabled")
+  message(STATUS "BOOST unit-tests are disabled")
 endif ()
 
 set(BOOST_VERSION
