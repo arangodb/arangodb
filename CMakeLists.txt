@@ -170,9 +170,15 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   set(CMAKE_COMPILER_IS_INTEL 1)
 endif ()
 
-set(BASE_FLAGS)
-set(BASE_C_FLAGS ${CMAKE_C_FLAGS})
-set(BASE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+if (WINDOWS)
+  set(BASE_FLAGS "/WIN32 /D_WINDOWS /W3")
+  set(BASE_C_FLAGS)
+  set(BASE_CXX_FLAGS "/GR /EHsc")
+else ()
+  set(BASE_FLAGS)
+  set(BASE_C_FLAGS ${CMAKE_C_FLAGS})
+  set(BASE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+endif ()
 
 if (SOLARIS)
   set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
@@ -347,6 +353,12 @@ if (CMAKE_COMPILER_IS_GNUCC)
 
   set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
 
+  set(CMAKE_C_FLAGS                ""                               CACHE STRING "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C release with debug info flags")
+
   set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C++ minimal size flags")
@@ -358,6 +370,12 @@ elseif (CMAKE_COMPILER_IS_CLANG)
 
   set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
 
+  set(CMAKE_C_FLAGS                ""                               CACHE STRING "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C release with debug info flags")
+
   set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C++ minimal size flags")
@@ -367,17 +385,29 @@ elseif (CMAKE_COMPILER_IS_CLANG)
 elseif (MSVC) 
   message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
 
-  set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/MTd"                         CACHE STRING "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT"                            CACHE STRING "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT"       CACHE STRING "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT" CACHE STRING "C++ release with debug info flags")
+  set(CMAKE_C_FLAGS                ""                                 CACHE STRING "default C++ compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D_DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE STRING "C++ debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"           CACHE STRING "C++ minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"           CACHE STRING "C++ release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /D NDEBUG"       CACHE STRING "C++ release with debug info flags")
+
+  set(CMAKE_CXX_FLAGS                ""                                 CACHE STRING "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D_DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE STRING "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"           CACHE STRING "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"           CACHE STRING "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /D NDEBUG"       CACHE STRING "C++ release with debug info flags")
 
 else ()
   # unknown compiler
   message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
 
   set(BASE_FLAGS "${BASE_FLAGS} -Wall")
+
+  set(CMAKE_C_FLAGS                ""                               CACHE STRING "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
@@ -471,8 +501,8 @@ message(STATUS)
 # ZLIB_INCLUDE_DIR
 
 add_subdirectory(3rdParty)
+
 foreach (LINK_DIR ${LINK_DIRECTORIES})
-  MESSAGE("xx${LINK_DIR}")
   link_directories("${LINK_DIR}")
 endforeach()
 
