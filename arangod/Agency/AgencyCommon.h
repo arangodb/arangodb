@@ -107,9 +107,9 @@ typedef std::initializer_list<index_t> index_list_t;
 struct write_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
-  std::vector<index_t> lindices; // Indices of log entries (if any) to wait for
+  std::vector<index_t> indices; // Indices of log entries (if any) to wait for
   write_ret_t (bool a, id_t id, index_list_t const& idx = index_list_t()) :
-    accepted(a), redirect(id), lindices(idx) {}
+    accepted(a), redirect(id), indices(idx) {}
 };
 
 using namespace std::chrono;
@@ -121,11 +121,10 @@ struct log_t {
   term_t      term; 
   id_t        leaderId;
   std::string entry;
-  std::vector<bool> ack;
   milliseconds timestamp;
   log_t (index_t idx, term_t t, id_t lid, std::string const& e,
          std::vector<bool> const& r) :
-    index(idx), term(t), leaderId(lid), entry(e), ack(r), timestamp (
+    index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
 };
   
@@ -141,12 +140,12 @@ struct append_entries_t {
 };
 
 struct collect_ret_t {
-  prev_log_index;
-  prev_log_term;
+  index_t prev_log_index;
+  term_t prev_log_term;
   std::vector<index_t> indices;
   collect_ret_t (index_t pli, term_t plt, std::vector<index_t> idx) :
     prev_log_index(pli), prev_log_term(plt), indices(idx) {}
-}
+};
 
 }}
 

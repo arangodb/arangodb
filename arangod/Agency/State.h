@@ -55,7 +55,7 @@ public:
   /**
    * @brief Default constructor
    */
-  State (const size_t size);
+  State ();
   
   /**
    * @brief Default Destructor

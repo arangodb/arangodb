@@ -32,9 +32,8 @@ namespace consensus {
 Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
-  //readPersistence(); // Read persistence (log )
   _constituent.configure(this);
-  _state.configure(_config.size());
+  _state.read(); // read persistent database
 }
 
 id_t Agent::id() const { return _config.id;}
@@ -81,23 +80,26 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
 }
 
 
-bool waitFor(std::vector<index_t>& unconfirmed) {
+bool waitFor (index_t index, std::chrono::duration timeout = 2.0) {
+
+  CONDITION_LOCKER(guard, _cv_rest);
+  auto start = std::chrono::system_clock::now();
+
   while (true) {
-    CONDITION_LOCKER(guard, _cv);
-    // Shutting down
+    
+    _cv.wait();
+    
+    // shutting down
     if (_stopping) {      
       return false;
     }
-    // Remove any unconfirmed which is confirmed
-    for (size_t i = 0; i < unconfirmed.size(); ++i) { 
-      if (auto found = find (_unconfirmed.begin(), _unconfirmed.end(),
-                             unconfirmed[i])) {
-        unconfirmed.erase(found);
-      }
-    }
-    // none left? 
-    if (unconfirmed.size() ==0) {
-      return true;        
+     // timeout?
+    if (std::chrono::system_clock::now() - start > timeout)
+      return false;
+    // more than half have confirmed
+    if (std::count_if(_confirmed.begin(), _confirmed.end(),
+                      [](index_t i) {return i >= index}) > size()/2) {
+      return true;
     }
   }
   // We should never get here
@@ -156,11 +158,13 @@ append_entries_t Agent::appendEntriesRPC (
 }
 
 //query_ret_t
-write_ret_t Agent::write (query_t const& query)  {
-  if (_constituent.leading()) {             // We are leading
-    if (_spear_head.apply(query)) {         // We could apply to spear head? 
-      std::vector<index_t> indices =        //    otherwise through
+write_ret_t Agent::write (query_t const& query)  { // Signal auf die _cv
+  if (_constituent.leading()) {                    // We are leading
+    if (_spear_head.apply(query)) {                // We could apply to spear head? 
+      std::vector<index_t> indices =               //    otherwise through
         _state.log (query, term(), id(), _config.size()); // Append to my own log
+      _confirmed[id()]++;
+      return 
     } else {
       throw QUERY_NOT_APPLICABLE;
     }
@@ -186,18 +190,20 @@ void State::run() {
     for (size_t i = 0; i < _size() ++i) {
       if (i != id()) {
         work[i] = _state.collectUnAcked(i);
-      }}
+      }
+    }
 
     // (re-)attempt RPCs
     for (size_t j = 0; j < _setup.size(); ++j) {
       if (j != id() && work[j].size()) {
         appendEntriesRPC(j, work[j]);
-      }}
+      }
+    }
 
     // catch up read db
     catchUpReadDB();
     
-    // We were too fast?
+    // We were too fast?m wait _cvw
     if (dur = std::chrono::system_clock::now() - dur < _poll_interval) {
       std::this_thread::sleep_for (_poll_interval - dur);
     }
@@ -210,6 +216,9 @@ bool State::operator(id_t, index_t) (ClusterCommResult* ccr) {
   guard.broadcast();
 }
 
+inline size_t size() const {
+  return _config.size();
+}
 
 void shutdown() {
   // wake up all blocked rest handlers

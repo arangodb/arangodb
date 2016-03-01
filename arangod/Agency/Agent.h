@@ -24,16 +24,18 @@
 #ifndef __ARANGODB_CONSENSUS_AGENT__
 #define __ARANGODB_CONSENSUS_AGENT__
 
-#include "AgentCallbacks.h"
 #include "AgencyCommon.h"
+#include "AgentCallback.h"
 #include "Constituent.h"
 #include "State.h"
 #include "Store.h"
 
+#include <boost/property_tree/ptree.hpp>
+
 namespace arangodb {
 namespace consensus {
     
-class Agent : public arangodb::Thread, {
+class Agent : public arangodb::Thread {
               // We need to asynchroneously append entries
   
 public:
@@ -121,17 +123,21 @@ public:
    */
   void run ();
 
+  /**
+   * @brief Report appended entries from AgentCallback
+   */
   void reportIn (id_t id, std::vector<index_t> idx);
   
-  bool waitFor (std::vector<index_t> entries);
+  /**
+   * @brief Wait for slaves to confirm appended entries
+   */
+  bool waitFor (std::vector<index_t> entries, std::chrono::duration timeout=2.0);
 
-  operator (id_t id, index_t idx) (ClusterCommResult *);
+private:
 
-  private:
   Constituent _constituent; /**< @brief Leader election delegate */
   State       _state;       /**< @brief Log replica              */
-  config_t    _config;
-  status_t    _status;
+  config_t    _config;      /**< @brief Command line arguments   */
 
   std::atomic<index_t> _last_commit_index;
   index_t     _last_commit_index_tmp;
@@ -141,11 +147,14 @@ public:
   store<std::string> _spear_head;
   store<std::string> _read_db;
 
-  AgentCallbacks _agent_callbacks;
+  AgentCallback _agent_callback;
 
-  arangodb::basics::ConditionVariable _cv;
+  arangodb::basics::ConditionVariable _cv;      // agency callbacks
+  arangodb::basics::ConditionVariable _cv_rest; // rest handler
 
   std::atomic<bool> _stopping;
+
+  std::vector<index_t> _confirmed;
 
 };
 

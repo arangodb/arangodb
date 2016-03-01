@@ -24,12 +24,14 @@
 #ifndef __ARANGODB_CONSENSUS_AGENT__
 #define __ARANGODB_CONSENSUS_AGENT__
 
-#include "Agent.h"
+#include "Cluster/ClusterComm.h"
+
+class Agent;
 
 namespace arangodb {
 namespace consensus {
 
-class AgentCallbacks : public arangodb::ClusterCommCallback {
+class AgentCallback : public arangodb::ClusterCommCallback {
 
 public:
   
@@ -44,8 +46,6 @@ private:
   Agent* _agent;
   
 };
-
-
 
 }} // namespace
 

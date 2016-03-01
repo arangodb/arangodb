@@ -34,7 +34,7 @@ State::State() {
 State::~State() {}
 
 State::configure (size_t size) {
-  _log.push_back(log_t (0, 0, 0, "", std::vector<bool>(size,true)));
+  _log.push_back(log_t (0, 0, 0, "");
 }
 
 //Leader
@@ -44,8 +44,7 @@ std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, si
   Builder builder;
   for (size_t i = 0; i < query->slice().length()) {
     idx.push_back(_log.end().index+1);
-    _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
-    _log.end().ack[lid] = true; // Leader confirms myself
+    _log.push_back(idx[i], term, lid, query.toString());
     builder.add("query", qyery->Slice());
     builder.add("idx", Value(idx[i]));
     builder.add("term", Value(term));
@@ -78,7 +77,7 @@ void State::log (query_t const& query, index_t idx, term_t term, id_t lid, size_
 
 void State::confirm (id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  _log[index][id] = true;
+  _log[index].ack[id] = true;
 }
 
 bool findit (index_t index, term_t term) {
