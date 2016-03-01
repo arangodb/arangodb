@@ -116,7 +116,7 @@ install(
 
 install_config(arangoimp)
 
-add_dependencies(arangoimp zlibstatic) # v8_build includes ICU build
+add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
 
 ################################################################################
 ## arangorestore
