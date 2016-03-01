@@ -136,4 +136,8 @@ endif ()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
 
+################################################################################
+## LINK_DIRECTORIES
+################################################################################
+
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)

@@ -27,14 +27,12 @@ set(OPENSSL_VERSION
   "${OPENSSL_VERSION}"
   CACHE INTERNAL
   "OpenSSL: Version"
-  FORCE
 )
 
 set(OPENSSL_INCLUDE_DIR
   "${OPENSSL_INCLUDE_DIR}"
   CACHE INTERNAL
   "OpenSSL: Include Directory"
-  FORCE
 )
 
 if (WIN32)
@@ -51,16 +49,15 @@ if (WIN32)
   endif ()
 
   set(OPENSSL_LIBRARIES
-    "${OPENSSL_LIB_DIR}/ssleay32MT${OPENSSL_EXT}.lib;${OPENSSL_LIB_DIR}/libeay32MT${OPENSSL_EXT}.lib"
+    debug "${OPENSSL_LIB_DIR}/ssleay32MTd.lib;${OPENSSL_LIB_DIR}/libeay32MTd.lib"
+    optimized "${OPENSSL_LIB_DIR}/ssleay32MT.lib;${OPENSSL_LIB_DIR}/libeay32MT.lib"
     CACHE INTERNAL
-    "OpenSSL: Libraries Directory"
-    FORCE
+    "OpenSSL: libraries"
   )
 else ()
   set(OPENSSL_LIBRARIES
     "${OPENSSL_LIBRARIES}"
     CACHE INTERNAL
-    "OpenSSL: Libraries Directory"
-    FORCE
+    "OpenSSL: libraries"
   )
 endif ()

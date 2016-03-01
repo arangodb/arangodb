@@ -22,17 +22,16 @@ set(LIB_GETOPT getopt)
 ### @brief LIB_GETOPT
 ################################################################################
 
+include_directories(${PROJECT_SOURCE_DIR})
+
 add_library(
   ${LIB_GETOPT}
   STATIC
   mygetopt.c
-  )
-
-include_directories(${PROJECT_SOURCE_DIR})
+)
 
 set(GETOPT_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"
-  FORCE
 )

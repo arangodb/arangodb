@@ -59,12 +59,10 @@ set(BOOST_INCLUDE_DIR
   "${Boost_INCLUDE_DIR}"
   CACHE INTERNAL
   "Boost: Include Directory"
-  FORCE
 )
 
 set(BOOST_LIBS
   "${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}"
   CACHE INTERNAL
   "Boost: Libraries"
-  FORCE
 )

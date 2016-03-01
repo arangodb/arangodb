@@ -18,34 +18,6 @@ project(regex)
 
 set(LIB_REGEX regex)
 
-include_directories(.)
-
-if (MSVC)
-  foreach (flag_var
-	   CMAKE_C_FLAGS
-	   CMAKE_C_FLAGS_DEBUG
-	   CMAKE_C_FLAGS_RELEASE
-	   CMAKE_C_FLAGS_MINSIZEREL
-	   CMAKE_C_FLAGS_RELWITHDEBINFO
-	   CMAKE_CXX_FLAGS
-	   CMAKE_CXX_FLAGS_DEBUG
-	   CMAKE_CXX_FLAGS_RELEASE
-	   CMAKE_CXX_FLAGS_MINSIZEREL
-	   CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    if (${flag_var} MATCHES "/MD")
-      string(REGEX REPLACE "/MDd?" "" ${flag_var} "${${flag_var}}")
-    endif ()
-
-    if (flag_var MATCHES "DEBUG")
-      set(${flag_var} "${${flag_var}} /MTd")
-    else ()
-      set(${flag_var} "${${flag_var}} /MT")
-    endif ()
-
-    message(STATUS "${flag_var}=${${flag_var}}")
-  endforeach ()
-endif ()
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                         LIBRARIES
 ## -----------------------------------------------------------------------------
@@ -54,7 +26,8 @@ endif ()
 ### @brief LIB_REGEX
 ################################################################################
 
-add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
+include_directories(.)
+
 add_definitions("-DREGEX_STATIC=1")
 
 add_library(
@@ -67,5 +40,4 @@ set(REGEX_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"
-  FORCE
 )
