@@ -25,72 +25,40 @@
 #include "Basics/Logger.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "FulltextIndex/fulltext-wordlist.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/VocShaper.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extraction context
+/// @brief walk over the attribute. Also Extract sub-attributes and elements in
+///        list.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TextExtractorContext {
-  std::vector<std::pair<char const*, size_t>>* _positions;
-  VocShaper* _shaper;
-};
+static bool ExtractWords(std::vector<std::string>& words,
+                         VPackSlice const value,
+                         size_t minWordLength) {
+  if (value.isString()) {
+    // extract the string value for the indexed attribute
+    std::string text = value.copyString();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief walk over an array shape and extract the string values
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ArrayTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
-                               char const*, char const* shapedJson,
-                               uint64_t length, void* data) {
-  char* text;
-  size_t textLength;
-  bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
-
-  if (ok) {
-    // add string value found
-    try {
-      static_cast<TextExtractorContext*>(data)
-          ->_positions->emplace_back(text, textLength);
-    } catch (...) {
+    // parse the document text
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(
+        words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+    // We don't care for the result. If the result is false, words stays
+    // unchanged and is not indexed
+  } else if (value.isArray()) {
+    for (auto const& v : VPackArrayIterator(value)) {
+      ExtractWords(words, v, minWordLength);
+    }
+  } else if (value.isObject()) {
+    for (auto const& v : VPackObjectIterator(value)) {
+      ExtractWords(words, v.value, minWordLength);
     }
   }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief walk over a list shape and extract the string values
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ListTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
-                              char const* shapedJson, uint64_t length,
-                              void* data) {
-  if (shape->_type == TRI_SHAPE_ARRAY) {
-    // a sub-object
-    TRI_IterateShapeDataArray(static_cast<TextExtractorContext*>(data)->_shaper,
-                              shape, shapedJson, ArrayTextExtractor, data);
-  } else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
-             shape->_type == TRI_SHAPE_LONG_STRING) {
-    char* text;
-    size_t textLength;
-    bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
-
-    if (ok) {
-      // add string value found
-      try {
-        static_cast<TextExtractorContext*>(data)
-            ->_positions->emplace_back(text, textLength);
-      } catch (...) {
-      }
-    }
-  }
-
-  return true;
 }
 
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
@@ -100,19 +68,11 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
             std::vector<std::vector<arangodb::basics::AttributeName>>{
                 {{attribute, false}}},
             false, true),
-      _pid(0),
       _fulltextIndex(nullptr),
       _minWordLength(minWordLength > 0 ? minWordLength : 1) {
   TRI_ASSERT(iid != 0);
 
-  // look up the attribute
-  auto shaper =
-      _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  _pid = shaper->findOrCreateAttributePathByName(attribute.c_str());
-
-  if (_pid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  _attr = arangodb::basics::StringUtils::split(attribute, ".");
 
   _fulltextIndex = TRI_CreateFtsIndex(2048, 1, 1);
 
@@ -139,8 +99,6 @@ size_t FulltextIndex::memory() const {
 void FulltextIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
-
-  // hard-coded
   builder.add("unique", VPackValue(false));
   builder.add("sparse", VPackValue(true));
   builder.add("minLength", VPackValue(_minWordLength));
@@ -150,25 +108,20 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                           bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
-  TRI_fulltext_wordlist_t* words = wordlist(doc);
+  std::vector<std::string> words = wordlist(doc);
 
-  if (words == nullptr) {
+  if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG(WARN) << "could not build wordlist";
     return res;
   }
 
-  if (words->_numWords > 0) {
-    // TODO: use status codes
-    if (!TRI_InsertWordsFulltextIndex(
-            _fulltextIndex, (TRI_fulltext_doc_t)((uintptr_t)doc), words)) {
-      LOG(ERR) << "adding document to fulltext index failed";
-      res = TRI_ERROR_INTERNAL;
-    }
+  // TODO: use status codes
+  if (!TRI_InsertWordsFulltextIndex(
+          _fulltextIndex, (TRI_fulltext_doc_t)((uintptr_t)doc), words)) {
+    LOG(ERR) << "adding document to fulltext index failed";
+    res = TRI_ERROR_INTERNAL;
   }
-
-  TRI_FreeWordlistFulltextIndex(words);
-
   return res;
 }
 
@@ -198,98 +151,23 @@ int FulltextIndex::cleanup() {
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* FulltextIndex::wordlist(
+std::vector<std::string> FulltextIndex::wordlist(
     TRI_doc_mptr_t const* document) {
-  TRI_shaped_json_t shaped;
-  TRI_shaped_json_t shapedJson;
-  TRI_shape_t const* shape;
+  std::vector<std::string> words;
+  try {
+    VPackSlice const slice(document->vpack());
+    VPackSlice const value = slice.get(_attr);
 
-  // extract the shape
-  auto shaper = _collection->getShaper();
-
-  TRI_EXTRACT_SHAPED_JSON_MARKER(
-      shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool ok =
-      shaper->extractShapedJson(&shaped, 0, _pid, &shapedJson,
-                                &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (!ok || shape == nullptr) {
-    return nullptr;
-  }
-
-  TRI_vector_string_t* words;
-
-  // extract the string value for the indexed attribute
-  if (shape->_type == TRI_SHAPE_SHORT_STRING ||
-      shape->_type == TRI_SHAPE_LONG_STRING) {
-    char* text;
-    size_t textLength;
-    ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text,
-                                   &textLength);
-
-    if (!ok) {
-      return nullptr;
+    if (!value.isString() || value.isArray()) {
+      // Invalid Input
+      return words;
     }
 
-    // parse the document text
-    words = TRI_get_words(text, textLength, (size_t)_minWordLength,
-                          (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true);
-  } else if (shape->_type == TRI_SHAPE_ARRAY) {
-    std::vector<std::pair<char const*, size_t>> values;
-    TextExtractorContext context{&values, shaper};
-    TRI_IterateShapeDataArray(shaper, shape, shapedJson._data.data,
-                              ArrayTextExtractor, &context);
-
-    words = nullptr;
-    for (auto const& it : values) {
-      if (!TRI_get_words(words, it.first, it.second, (size_t)_minWordLength,
-                         (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
-        if (words != nullptr) {
-          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-        }
-        return nullptr;
-      }
-    }
-  } else if (shape->_type == TRI_SHAPE_LIST ||
-             shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
-             shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
-    std::vector<std::pair<char const*, size_t>> values;
-    TextExtractorContext context{&values, shaper};
-    TRI_IterateShapeDataList(shaper, shape, shapedJson._data.data,
-                             ListTextExtractor, &context);
-
-    words = nullptr;
-    for (auto const& it : values) {
-      if (!TRI_get_words(words, it.first, it.second, (size_t)_minWordLength,
-                         (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
-        if (words != nullptr) {
-          TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-        }
-        return nullptr;
-      }
-    }
-  } else {
-    words = nullptr;
+    ExtractWords(words, value, _minWordLength);
+  } catch (...) {
+    // Backwards compatibility
+    // The pre-vpack impl. did just ignore all errors and returned nulltpr
+    return words;
   }
-
-  if (words == nullptr) {
-    return nullptr;
-  }
-
-  TRI_fulltext_wordlist_t* wordlist =
-      TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
-
-  if (wordlist == nullptr) {
-    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    return nullptr;
-  }
-
-  // this really is a hack, but it works well:
-  // make the word list vector think it's empty and free it
-  // this does not free the word list, that we have already over the result
-  words->_length = 0;
-  words->_buffer = nullptr;
-  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-
-  return wordlist;
+  return words;
 }
