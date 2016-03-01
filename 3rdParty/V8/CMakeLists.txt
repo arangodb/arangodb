@@ -13,8 +13,6 @@ endif ()
 project(V8)
 set(V8_VERSION 4.3.61)
 
-option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
-
 # create target directory
 
 set(V8_DIR "${CMAKE_CURRENT_SOURCE_DIR}/V8-${V8_VERSION}")
@@ -44,27 +42,12 @@ endif () # TODO: ARM? Win32?
 
 # target architecture
 
-if (USE_DEBUG_V8)
-  set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
-else ()
-  set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
-endif ()
-
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
   -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
-
-if (USE_DEBUG_V8)
-  list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
-endif ()
-
-# library directories
-
-set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
-set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
 ################################################################################
 ## ICU EXPORTS
@@ -118,128 +101,128 @@ if (WIN32)
     set(MS_TARGET_PLATFORM Win32)
   endif ()
 
-  if (USE_DEBUG_V8)
-    set(MS_TARGET_CONF Debug)
-  else ()
-    set(MS_TARGET_CONF Release)
-  endif ()
-
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
-  
-  list(APPEND V8_GYP_ARGS
-    -Dcomponent=static_library
-    -Dlibrary=static_library
-    -Dmode=${WIN_GYP_RELEASE_TYPE}
-    #--depth=2
-    #-Dv8_use_external_startup_data=1
-    #-Dicu_gyp_path=../third_party/icu/icu.gyp
-    #-Dv8_optimized_debug=0
-    #-Dos_posix=0
-    #-Dclang=0
-    #-Dwant_separate_host_toolset=0
-    #-Dwant_separate_host_toolset=0
-  )
 
-  set(V8_TARGETS "v8\;v8_libbase\;v8_libplatform")
-  set(ICU_TARGETS "icudata\;icui18n\;icuuc")
+  set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
 
-  ExternalProject_Add(v8_build
-    BUILD_IN_SOURCE
-      TRUE
-    WORKING_DIRECTORY
-      ${V8_DIR}/build
-    SOURCE_DIR
-      "${V8_DIR}"
-    CONFIGURE_COMMAND
-      ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
-    BUILD_COMMAND
-      ""
-    INSTALL_COMMAND
-      ""
-  )
+  foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
+    string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
 
-  # and now ICU...
-  ExternalProject_Add_Step(v8_build icu_build_icudata
-    WORKING_DIRECTORY
-      ${V8_DIR}/third_party/icu
-    COMMAND
-      msbuild icu.sln /t:icudata /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    list(APPEND V8_GYP_ARGS
+      -Dcomponent=static_library
+      -Dlibrary=static_library
+      -Dmode=${MS_TARGET_CONF_LOWER}
+      #--depth=2
+      #-Dv8_use_external_startup_data=1
+      #-Dicu_gyp_path=../third_party/icu/icu.gyp
+      #-Dv8_optimized_debug=0
+      #-Dos_posix=0
+      #-Dclang=0
+      #-Dwant_separate_host_toolset=0
+    )
 
-  ExternalProject_Add_Step(v8_build icu_build_icui18n
-    WORKING_DIRECTORY
-      ${V8_DIR}/third_party/icu
-    COMMAND
-      msbuild icu.sln /t:icui18n /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    ExternalProject_Add(v8_build
+      BUILD_IN_SOURCE
+        TRUE
+      WORKING_DIRECTORY
+        ${V8_DIR}/build
+      SOURCE_DIR
+        "${V8_DIR}"
+      CONFIGURE_COMMAND
+        ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+      BUILD_COMMAND
+        ""
+      INSTALL_COMMAND
+        ""
+    )
 
-  ExternalProject_Add_Step(v8_build icu_build_icuuc
-    WORKING_DIRECTORY
-      ${V8_DIR}/third_party/icu
-    COMMAND
-      msbuild icu.sln /t:icuuc /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    # and now ICU...
+    ExternalProject_Add_Step(v8_build icu_build_icudata
+      WORKING_DIRECTORY
+        ${V8_DIR}/third_party/icu
+      COMMAND
+        msbuild icu.sln /t:icudata /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
 
-  # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
-  ExternalProject_Add_Step(v8_build v8_build_v8
-    WORKING_DIRECTORY
-      ${V8_DIR}/build
-    COMMAND
-      msbuild all.sln /t:v8 /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    ExternalProject_Add_Step(v8_build icu_build_icui18n
+      WORKING_DIRECTORY
+        ${V8_DIR}/third_party/icu
+      COMMAND
+        msbuild icu.sln /t:icui18n /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
 
-  ExternalProject_Add_Step(v8_build v8_build_v8_libbase
-    WORKING_DIRECTORY
-      ${V8_DIR}/build
-    COMMAND
-      msbuild all.sln /t:v8_libbase /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    ExternalProject_Add_Step(v8_build icu_build_icuuc
+      WORKING_DIRECTORY
+        ${V8_DIR}/third_party/icu
+      COMMAND
+        msbuild icu.sln /t:icuuc /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
 
-  ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
-    WORKING_DIRECTORY
-      ${V8_DIR}/build
-    COMMAND
-      msbuild all.sln /t:v8_libplatform /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-    DEPENDEES
-      configure
-    DEPENDERS
-      build
-  )
+    # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
+    ExternalProject_Add_Step(v8_build v8_build_v8
+      WORKING_DIRECTORY
+        ${V8_DIR}/build
+      COMMAND
+        msbuild all.sln /t:v8 /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
 
-  set(ICU_LIBRARY_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
+    ExternalProject_Add_Step(v8_build v8_build_v8_libbase
+      WORKING_DIRECTORY
+        ${V8_DIR}/build
+      COMMAND
+        msbuild all.sln /t:v8_libbase /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
+
+    ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
+      WORKING_DIRECTORY
+        ${V8_DIR}/build
+      COMMAND
+        msbuild all.sln /t:v8_libplatform /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+      DEPENDEES
+        configure
+      DEPENDERS
+        build
+    )
+  endforeach ()
+
+  set(ICU_LIBRARY_DEBUG "${V8_DIR}/build/Debug")
+  set(ICU_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(ICU_LIBS
-    "${ICU_LIBRARY_DIR}/lib/icui18n.lib;${ICU_LIBRARY_DIR}/lib/icuuc.lib"
+    debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib;${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib;${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
     )
 
-  set(V8_LIBRARY_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}")
+  set(V8_LIBRARY_DEBUG "${V8_DIR}/build/Debug")
+  set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(V8_LIBS
-    "${V8_LIBRARY_DIR}/lib/v8_base.lib;${V8_LIBRARY_DIR}/lib/v8_libbase.lib;${V8_LIBRARY_DIR}/lib/v8_libplatform.lib;${V8_LIBRARY_DIR}/lib/v8_nosnapshot.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib;${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib;${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib;${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib;${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib;${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib;${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -249,6 +232,21 @@ else ()
 ################################################################################
 ## UNIX
 ################################################################################
+
+  option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
+
+  if (USE_DEBUG_V8)
+    set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
+  else ()
+    set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
+  endif ()
+
+  if (USE_DEBUG_V8)
+    list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
+  endif ()
+
+  set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
+  set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
   set(GYP_MAIN ${V8_DIR}/build/gyp/gyp_main.py)
 
@@ -316,10 +314,7 @@ else ()
     CACHE INTERNAL
     "ICU: Libraries"
   )
+
+  set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
-################################################################################
-## EXPORTS
-################################################################################
-
-set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
