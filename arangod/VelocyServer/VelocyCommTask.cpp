@@ -55,7 +55,7 @@ using namespace arangodb::rest;
 VelocyCommTask::VelocyCommTask(GeneralServer* server, TRI_socket_t socket,
                            ConnectionInfo const& info, double keepAliveTimeout)
     : Task("VelocyCommTask"), 
-      ArangoTask(server, socket, info, keepAliveTimeout, "HttpCommTask", 
+      ArangoTask(server, socket, info, keepAliveTimeout, "VelocyCommTask", 
                             GeneralRequest::VSTREAM_UNKNOWN, GeneralRequest::VSTREAM_REQUEST_ILLEGAL),
       _isFirstChunk()
     {

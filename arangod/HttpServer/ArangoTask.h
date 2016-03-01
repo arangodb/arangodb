@@ -148,10 +148,12 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
 
     bool setup(Scheduler* scheduler, EventLoop loop) override;
 
+    // void cleanup() override {};
     void cleanup() override;
 
     bool handleEvent(EventToken token, EventType events) override;
 
+    // void signalTask(TaskData*) override final;
     void signalTask(TaskData*) override;
 
     void completedWriteBuffer() override;

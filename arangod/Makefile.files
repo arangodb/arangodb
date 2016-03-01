@@ -104,12 +104,14 @@ arangod_libarangod_a_SOURCES = \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/HttpServer/ApplicationEndpointServer.cpp \
 	arangod/HttpServer/ArangoTask.cpp \
+	arangod/HttpServer/ArangosCommTask.cpp \
 	arangod/HttpServer/AsyncJobManager.cpp \
 	arangod/HttpServer/HttpCommTask.cpp \
 	arangod/HttpServer/GeneralHandler.cpp \
 	arangod/HttpServer/GeneralHandlerFactory.cpp \
 	arangod/HttpServer/HttpListenTask.cpp \
 	arangod/HttpServer/GeneralServer.cpp \
+	arangod/HttpServer/GeneralsServer.cpp \
 	arangod/HttpServer/GeneralServerJob.cpp \
 	arangod/HttpServer/HttpsCommTask.cpp \
 	arangod/HttpServer/HttpsServer.cpp \

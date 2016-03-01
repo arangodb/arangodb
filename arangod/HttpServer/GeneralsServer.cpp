@@ -19,38 +19,50 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Aalekh Nigam
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VelocysServer.h"
+#include "GeneralsServer.h"
 
-#include "VelocyServer/VelocysCommTask.h"
+#include "HttpServer/HttpsCommTask.h"
 
 using namespace arangodb::rest;
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new velocy server
+/// @brief constructs a new general(http/velocy) server
 ////////////////////////////////////////////////////////////////////////////////
 
-VelocysServer::VelocysServer(Scheduler* scheduler, Dispatcher* dispatcher,
+GeneralsServer::GeneralsServer(Scheduler* scheduler, Dispatcher* dispatcher,
                          GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
-    : GeneralsServer(scheduler, dispatcher, handlerFactory, jobManager,
-                 keepAliveTimeout){}
+    : GeneralServer(scheduler, dispatcher, handlerFactory, jobManager,
+                 keepAliveTimeout),
+      _ctx(ctx),
+      _verificationMode(SSL_VERIFY_NONE),
+      _verificationCallback(0) {}
 
 
-VelocysServer::~VelocysServer() {
+GeneralsServer::~GeneralsServer() {
   // don't free context here but in dtor of ApplicationEndpointServer
   // SSL_CTX_free(ctx);
 }
 
-ArangoTask* VelocysServer::createCommTask(TRI_socket_t s,
-                                          const ConnectionInfo& info) {
-  return new VelocysCommTask(this, s, info, _keepAliveTimeout, _ctx,
-                           _verificationMode, _verificationCallback);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralsServer::setVerificationMode(int mode) { _verificationMode = mode; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+void GeneralsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+  _verificationCallback = func;
 }
-
-
 
 
