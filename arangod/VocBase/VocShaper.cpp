@@ -1126,8 +1126,7 @@ void TRI_InspectShapedSub(TRI_shaped_sub_t const* element,
     ptr = (char const*)&element->_value._data;
     length = BasicShapes::TypeLengths[element->_sid];
   } else {
-    ptr = mptr->getShapedJsonPtr() +
-          element->_value._position._offset;  // ONLY IN INDEX
+    ptr = nullptr; // TODO: mptr->getShapedJsonPtr() + element->_value._position._offset;  // ONLY IN INDEX
     length = element->_value._position._length;
   }
 }

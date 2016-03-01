@@ -159,7 +159,7 @@ char* Logfile::reserve(size_t size) {
   char* result = _df->_next;
 
   _df->_next += size;
-  _df->_currentSize += (TRI_voc_size_t)size;
+  _df->_currentSize += static_cast<TRI_voc_size_t>(size);
 
   return result;
 }

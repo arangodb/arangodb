@@ -427,11 +427,12 @@ static void MapDeleteIndexedVPack(
 
 v8::Handle<v8::Value> V8VPackWrapper::wrap(v8::Isolate* isolate, arangodb::Transaction* trx,
                                            TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
-                                           TRI_df_marker_t const* marker) {
-  TRI_ASSERT(marker != nullptr);
+                                           TRI_doc_mptr_t const* mptr) {
+  TRI_ASSERT(mptr != nullptr);
   TRI_ASSERT(ditch != nullptr);
 
-  bool const doCopy = TRI_IsWalDataMarkerDatafile(marker);
+  bool const doCopy = mptr->pointsToWal();
+  auto marker = mptr->getMarkerPtr();
 
   if (doCopy) {
     // we'll create a full copy of the slice
@@ -491,16 +492,6 @@ v8::Handle<v8::Value> V8VPackWrapper::wrap(v8::Isolate* isolate, arangodb::Trans
   AddCollectionId(isolate, result, trx, marker);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a VPackSlice
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> V8VPackWrapper::wrap(v8::Isolate* isolate, arangodb::Transaction* trx,
-                                           TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
-                                           TRI_doc_mptr_t const* mptr) {
-  return wrap(isolate, trx, cid, ditch, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

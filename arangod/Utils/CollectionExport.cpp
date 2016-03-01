@@ -89,7 +89,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (TRI_IsFullyCollectedDocumentCollection(_document)) {
+      if (_document->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);
@@ -126,10 +126,8 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
           break;
         }
 
-        void const* marker = ptr->getDataPtr();
-
-        if (!TRI_IsWalDataMarkerDatafile(marker)) {
-          _documents->emplace_back(marker);
+        if (!ptr->pointsToWal()) {
+          _documents->emplace_back(ptr->getMarkerPtr());
           --limit;
         }
       }

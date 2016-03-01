@@ -130,20 +130,18 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
         // done
         break;
       }
-
-      void const* marker = ptr->getDataPtr();
-
-      if (TRI_IsWalDataMarkerDatafile(marker)) {
+      
+      if (ptr->pointsToWal()) {
         continue;
       }
 
-      auto df = static_cast<TRI_df_marker_t const*>(marker);
+      auto marker = ptr->getMarkerPtr();
 
-      if (df->_tick > maxTick) {
+      if (marker->_tick > maxTick) {
         continue;
       }
 
-      _markers->emplace_back(df);
+      _markers->emplace_back(marker);
     }
 
     trx.finish(res);

@@ -485,8 +485,7 @@ bool ExampleMatcher::matches(TRI_voc_cid_t cid,
       // Match _rev
       it = def._internal.find(internalAttr::rev);
       if (it != def._internal.end()) {
-        if (arangodb::basics::StringUtils::uint64(it->second.key) !=
-            mptr->_rid) {
+        if (arangodb::basics::StringUtils::uint64(it->second.key) != mptr->revisionId()) {
           goto nextExample;
         }
       }

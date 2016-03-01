@@ -41,19 +41,19 @@ static inline uint64_t HashKey(void* userData, uint8_t const* key) {
   return VPackSlice(key).hash();
 }
 
-static inline uint64_t HashElement(void* userData,
+static inline uint64_t HashElement(void*,
                                    TRI_doc_mptr_t const* element) {
-  return element->_hash;
+  return element->getHash();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement(void* userData, uint8_t const* key,
+static bool IsEqualKeyElement(void*, uint8_t const* key,
                               uint64_t const hash,
                               TRI_doc_mptr_t const* element) {
-  if (hash != element->_hash) {
+  if (hash != element->getHash()) {
     return false;
   }
   
@@ -66,9 +66,9 @@ static bool IsEqualKeyElement(void* userData, uint8_t const* key,
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement(void* userData, TRI_doc_mptr_t const* left,
+static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
                                   TRI_doc_mptr_t const* right) {
-  if (left->_hash != right->_hash) {
+  if (left->getHash() != right->getHash()) {
     return false;
   }
 

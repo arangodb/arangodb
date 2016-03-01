@@ -234,7 +234,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson(
   TRI_ASSERT(collection != nullptr);
 
   TRI_GET_GLOBALS();
-  bool const doCopy = TRI_IsWalDataMarkerDatafile(marker);
+  bool const doCopy = true; // TODO: TRI_IsWalDataMarkerDatafile(marker);
 
   if (doCopy) {
     // we'll create a full copy of the document

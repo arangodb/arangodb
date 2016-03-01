@@ -345,13 +345,6 @@ class Transaction {
           uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all documents
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int all(TRI_transaction_collection_t*, std::vector<std::string>&, bool lock);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit and an internal
   /// offset into the primary index. this can be used for incremental access to
   /// the documents without restarting the index scan at the begin

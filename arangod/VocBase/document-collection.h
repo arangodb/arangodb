@@ -54,23 +54,26 @@ class Slice;
 }
 }
 
+#define TRI_WAL_FILE_BITMASK 0x8000000000000000ULL
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_mptr_t {
-  TRI_voc_rid_t _rid;     // this is the revision identifier
-  TRI_voc_fid_t _fid;     // this is the datafile identifier
-  uint64_t _hash;         // the pre-calculated hash value of the key
- protected:
-  void const*
-      _dataptr;  // this is the pointer to the beginning of the raw marker
+ private:
+  // this is the datafile identifier
+  TRI_voc_fid_t _fid;   
+  // the pre-calculated hash value of the key
+  uint64_t _hash;       
+  // this is the pointer to the beginning of the raw marker
+  void const* _dataptr; 
+    
+  static_assert(sizeof(TRI_voc_fid_t) == sizeof(uint64_t), "invalid fid size");
 
  public:
   TRI_doc_mptr_t()
-      : _rid(0),
-        _fid(0),
+      : _fid(0),
         _hash(0),
         _dataptr(nullptr) {}
 
@@ -78,77 +81,72 @@ struct TRI_doc_mptr_t {
   ~TRI_doc_mptr_t() {}
 
   void clear() {
-    _rid = 0;
     _fid = 0;
-    setDataPtr(nullptr);
     _hash = 0;
+    setDataPtr(nullptr);
   }
 
+  // This is for cases where we explicitly have to copy originals!
   void copy(TRI_doc_mptr_t const& that) {
-    // This is for cases where we explicitly have to copy originals!
-    _rid = that._rid;
     _fid = that._fid;
     _dataptr = that._dataptr;
     _hash = that._hash;
   }
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the marker
-  //////////////////////////////////////////////////////////////////////////////
+  // return the hash value for the primary key encapsulated by this
+  // master pointer
+  inline uint64_t getHash() const { return _hash; }
   
+  // sets the hash value for the primary key encapsulated by this
+  // master pointer
+  inline void setHash(uint64_t hash) { _hash = hash; }
+
+  // return the datafile id.
+  inline TRI_voc_fid_t getFid() const { 
+    // unmask the WAL bit
+    return (_fid & ~TRI_WAL_FILE_BITMASK);
+  }
+
+  // sets datafile id. note that the highest bit of the file id must
+  // not be set. the high bit will be used internally to distinguish
+  // between WAL files and datafiles. if the highest bit is set, the
+  // master pointer points into the WAL, and if not, it points into
+  // a datafile
+  inline void setFid(TRI_voc_fid_t fid, bool isWal) {
+    TRI_ASSERT((_fid & TRI_WAL_FILE_BITMASK) == 0);
+    // set the WAL bit if required
+    _fid = fid;
+    if (isWal) {
+      _fid |= TRI_WAL_FILE_BITMASK;
+    }
+  }
+
+  // return a pointer to the beginning of the marker 
   inline struct TRI_df_marker_t const* getMarkerPtr() const { 
     return static_cast<TRI_df_marker_t const*>(_dataptr); 
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the marker
-  //////////////////////////////////////////////////////////////////////////////
-
+  // return a pointer to the beginning of the marker
   inline void const* getDataPtr() const { return _dataptr; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set the pointer to the beginning of the memory for the marker
-  //////////////////////////////////////////////////////////////////////////////
+  // set the pointer to the beginning of the memory for the marker
+  inline void setDataPtr(void const* value) { _dataptr = value; }
 
-  inline void setDataPtr(void const* d) { _dataptr = d; }
-  
+  // return a pointer to the beginning of the vpack  
   inline uint8_t const* vpack() const { 
-    TRI_df_marker_t const* marker =
-        static_cast<TRI_df_marker_t const*>(_dataptr);
-
-    return reinterpret_cast<uint8_t const*>(marker) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+    return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+  }
+  
+  // whether or not the master pointer points into the WAL
+  // the master pointer points into the WAL if the highest bit of
+  // the _fid value is set, and to a datafile otherwise
+  inline bool pointsToWal() const {
+    // check whether the WAL bit is set
+    return ((_fid & TRI_WAL_FILE_BITMASK) == 1);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the shaped json stored in the
-  /// marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  char const* getShapedJsonPtr() const {
-#if 0    
-    TRI_df_marker_t const* marker =
-        static_cast<TRI_df_marker_t const*>(_dataptr);
-
-    TRI_ASSERT(marker != nullptr);
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-        marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      auto offset =
-          (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))
-              ->_offsetJson;
-      return reinterpret_cast<char const*>(marker) + offset;
-    } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-               marker->_type == TRI_WAL_MARKER_EDGE) {
-      auto offset =
-          (reinterpret_cast<arangodb::wal::document_marker_t const*>(marker))
-              ->_offsetJson;
-      return reinterpret_cast<char const*>(marker) + offset;
-    }
-#endif
-    TRI_ASSERT(false);
-
-    return nullptr;
-  }
+  // return the marker's revision id
+  TRI_voc_rid_t revisionId() const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,6 +237,15 @@ struct TRI_document_collection_t : public TRI_collection_t {
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief update statistics for a collection
+  /// note: the write-lock for the collection must be held to call this
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setLastRevision(TRI_voc_rid_t, bool force);
+
+  bool isFullyCollected();
 
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();
@@ -332,10 +339,11 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
   int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
+ public:
   int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
+ private:
   int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
-  int postInsertIndexes(arangodb::Transaction*, TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two object slices
@@ -665,20 +673,6 @@ void TRI_DestroyDocumentCollection(TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeDocumentCollection(TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update statistics for a collection
-/// note: the write-lock for the collection must be held to call this
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateRevisionDocumentCollection(TRI_document_collection_t*,
-                                          TRI_voc_rid_t, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a collection is fully collected
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFullyCollectedDocumentCollection(TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a VelocyPack description

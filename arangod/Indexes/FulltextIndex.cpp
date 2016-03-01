@@ -38,7 +38,7 @@ using namespace arangodb;
 ///        list.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractWords(std::vector<std::string>& words,
+static void ExtractWords(std::vector<std::string>& words,
                          VPackSlice const value,
                          size_t minWordLength) {
   if (value.isString()) {

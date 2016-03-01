@@ -1037,6 +1037,131 @@ static int WriteInitialHeaderMarker(TRI_datafile_t* datafile, TRI_voc_fid_t fid,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new anonymous datafile
+///
+/// this is only supported on certain platforms (Linux, MacOS)
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
+
+static TRI_datafile_t* CreateAnonymousDatafile(TRI_voc_fid_t fid,
+                                               TRI_voc_size_t maximalSize) {
+#ifdef TRI_MMAP_ANONYMOUS
+  // fd -1 is required for "real" anonymous regions
+  int fd = -1;
+  int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
+#else
+  // ugly workaround if MAP_ANONYMOUS is not available
+  int fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    return nullptr;
+  }
+
+  int flags = MAP_PRIVATE;
+#endif
+
+  // memory map the data
+  void* data;
+  void* mmHandle;
+  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags,
+                           fd, &mmHandle, 0, &data);
+
+#ifdef MAP_ANONYMOUS
+// nothing to do
+#else
+  // close auxilliary file
+  TRI_CLOSE(fd);
+  fd = -1;
+#endif
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    LOG(ERR) << "cannot memory map anonymous region: " << TRI_last_error();
+    return nullptr;
+  }
+
+  // create datafile structure
+  TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
+
+  if (datafile == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    LOG(ERR) << "out of memory";
+    return nullptr;
+  }
+
+  InitDatafile(datafile, nullptr, fd, mmHandle, maximalSize, 0, fid,
+               static_cast<char*>(data));
+
+  return datafile;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new physical datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_datafile_t* CreatePhysicalDatafile(char const* filename,
+                                              TRI_voc_fid_t fid,
+                                              TRI_voc_size_t maximalSize) {
+  TRI_ASSERT(filename != nullptr);
+
+  int fd = CreateDatafile(filename, maximalSize);
+
+  if (fd < 0) {
+    // an error occurred
+    return nullptr;
+  }
+
+  // memory map the data
+  void* data;
+  void* mmHandle;
+  int flags = MAP_SHARED;
+#ifdef __linux__
+  // try populating the mapping already
+  flags |= MAP_POPULATE;
+#endif
+  ssize_t res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
+                           &mmHandle, 0, &data);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+    TRI_CLOSE(fd);
+
+    // remove empty file
+    TRI_UnlinkFile(filename);
+
+    LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string((int)res) << "'";
+    return nullptr;
+  }
+
+  // create datafile structure
+  auto datafile = static_cast<TRI_datafile_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
+
+  if (datafile == nullptr) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    TRI_CLOSE(fd);
+
+    LOG(ERR) << "out of memory";
+    return nullptr;
+  }
+
+  InitDatafile(datafile, TRI_DuplicateString(filename), fd, mmHandle,
+               maximalSize, 0, fid, static_cast<char*>(data));
+
+  // Advise OS that sequential access is going to happen:
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
+
+  return datafile;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1195,13 +1320,13 @@ TRI_datafile_t* TRI_CreateDatafile(char const* filename, TRI_voc_fid_t fid,
   // create either an anonymous or a physical datafile
   if (filename == nullptr) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-    datafile = TRI_CreateAnonymousDatafile(fid, maximalSize);
+    datafile = CreateAnonymousDatafile(fid, maximalSize);
 #else
     // system does not support anonymous mmap
     return nullptr;
 #endif
   } else {
-    datafile = TRI_CreatePhysicalDatafile(filename, fid, maximalSize);
+    datafile = CreatePhysicalDatafile(filename, fid, maximalSize);
   }
 
   if (datafile == nullptr) {
@@ -1228,131 +1353,6 @@ TRI_datafile_t* TRI_CreateDatafile(char const* filename, TRI_voc_fid_t fid,
   }
 
   LOG(DEBUG) << "created datafile '" << datafile->getName(datafile) << "' of size " << (unsigned int)maximalSize << " and page-size " << (unsigned int)PageSize;
-
-  return datafile;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new anonymous datafile
-///
-/// this is only supported on certain platforms (Linux, MacOS)
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_ANONYMOUS_MMAP
-
-TRI_datafile_t* TRI_CreateAnonymousDatafile(TRI_voc_fid_t fid,
-                                            TRI_voc_size_t maximalSize) {
-#ifdef TRI_MMAP_ANONYMOUS
-  // fd -1 is required for "real" anonymous regions
-  int fd = -1;
-  int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
-#else
-  // ugly workaround if MAP_ANONYMOUS is not available
-  int fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
-
-  if (fd == -1) {
-    return nullptr;
-  }
-
-  int flags = MAP_PRIVATE;
-#endif
-
-  // memory map the data
-  void* data;
-  void* mmHandle;
-  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags,
-                           fd, &mmHandle, 0, &data);
-
-#ifdef MAP_ANONYMOUS
-// nothing to do
-#else
-  // close auxilliary file
-  TRI_CLOSE(fd);
-  fd = -1;
-#endif
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-
-    LOG(ERR) << "cannot memory map anonymous region: " << TRI_last_error();
-    return nullptr;
-  }
-
-  // create datafile structure
-  TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
-
-  if (datafile == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    LOG(ERR) << "out of memory";
-    return nullptr;
-  }
-
-  InitDatafile(datafile, nullptr, fd, mmHandle, maximalSize, 0, fid,
-               static_cast<char*>(data));
-
-  return datafile;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new physical datafile
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreatePhysicalDatafile(char const* filename,
-                                           TRI_voc_fid_t fid,
-                                           TRI_voc_size_t maximalSize) {
-  TRI_ASSERT(filename != nullptr);
-
-  int fd = CreateDatafile(filename, maximalSize);
-
-  if (fd < 0) {
-    // an error occurred
-    return nullptr;
-  }
-
-  // memory map the data
-  void* data;
-  void* mmHandle;
-  int flags = MAP_SHARED;
-#ifdef __linux__
-  // try populating the mapping already
-  flags |= MAP_POPULATE;
-#endif
-  ssize_t res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
-                           &mmHandle, 0, &data);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-    TRI_CLOSE(fd);
-
-    // remove empty file
-    TRI_UnlinkFile(filename);
-
-    LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string((int)res) << "'";
-    return nullptr;
-  }
-
-  // create datafile structure
-  auto datafile = static_cast<TRI_datafile_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
-
-  if (datafile == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    TRI_CLOSE(fd);
-
-    LOG(ERR) << "out of memory";
-    return nullptr;
-  }
-
-  InitDatafile(datafile, TRI_DuplicateString(filename), fd, mmHandle,
-               maximalSize, 0, fid, static_cast<char*>(data));
-
-  // Advise OS that sequential access is going to happen:
-  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
-                   TRI_MADVISE_SEQUENTIAL);
 
   return datafile;
 }
