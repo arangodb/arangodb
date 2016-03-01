@@ -21,9 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "headers.h"
+#include "MasterPointers.h"
 #include "Basics/Logger.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the size (number of entries) for a block, based on a function
@@ -53,7 +56,7 @@ static inline size_t GetBlockSize(size_t blockNumber) {
 /// @brief creates the headers
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_headers_t::TRI_headers_t()
+MasterPointers::MasterPointers()
     : _freelist(nullptr),
       _nrAllocated(0),
       _nrLinked(0),
@@ -66,7 +69,7 @@ TRI_headers_t::TRI_headers_t()
 /// @brief destroys the headers
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_headers_t::~TRI_headers_t() {
+MasterPointers::~MasterPointers() {
   for (auto& it : _blocks) {
     delete[] it;
   }
@@ -76,7 +79,7 @@ TRI_headers_t::~TRI_headers_t() {
 /// @brief returns the memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_headers_t::memory() const {
+uint64_t MasterPointers::memory() const {
   return _nrAllocated * sizeof(TRI_doc_mptr_t); 
 }
 
@@ -85,7 +88,7 @@ uint64_t TRI_headers_t::memory() const {
 /// this is called when there is an update operation on a document
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
+void MasterPointers::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
@@ -103,7 +106,7 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
   int64_t oldSize = static_cast<int64_t>(old->getMarkerPtr()->_size);
 
   // we must adjust the size of the collection
-  _totalSize += (AlignedSize<int64_t>(newSize) - AlignedSize<int64_t>(oldSize));
+  _totalSize += (DatafileHelper::AlignedSize<int64_t>(newSize) - DatafileHelper::AlignedSize<int64_t>(oldSize));
 
   TRI_ASSERT(_totalSize > 0);
 }
@@ -113,7 +116,7 @@ void TRI_headers_t::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) 
 /// (specified in "old"), note that this is only used in revert operations
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
+void MasterPointers::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
@@ -131,14 +134,14 @@ void TRI_headers_t::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   // update operation. The "new" document is removed again and the "old"
   // one is used once more. Therefore, the signs in the following statement
   // are actually OK:
-  _totalSize -= (AlignedSize<int64_t>(newSize) - AlignedSize<int64_t>(oldSize));
+  _totalSize -= (DatafileHelper::AlignedSize<int64_t>(newSize) - DatafileHelper::AlignedSize<int64_t>(oldSize));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a header from the linked list, without freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
+void MasterPointers::unlink(TRI_doc_mptr_t* header) {
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(header->getDataPtr() != nullptr); 
 
@@ -147,7 +150,7 @@ void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
 
   TRI_ASSERT(_nrLinked > 0);
   _nrLinked--;
-  _totalSize -= AlignedSize<int64_t>(size);
+  _totalSize -= DatafileHelper::AlignedSize<int64_t>(size);
 
   if (_nrLinked == 0) {
     TRI_ASSERT(_totalSize == 0);
@@ -161,7 +164,7 @@ void TRI_headers_t::unlink(TRI_doc_mptr_t* header) {
 /// (specified in "old")
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
+void MasterPointers::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
   if (header == nullptr) {
     return;
   }
@@ -172,7 +175,7 @@ void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
 
   this->move(header, old);
   _nrLinked++;
-  _totalSize += AlignedSize<int64_t>(size);
+  _totalSize += DatafileHelper::AlignedSize<int64_t>(size);
   TRI_ASSERT(_totalSize > 0);
 }
 
@@ -180,7 +183,7 @@ void TRI_headers_t::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
 /// @brief requests a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
+TRI_doc_mptr_t* MasterPointers::request(size_t size) {
   TRI_doc_mptr_t* header;
 
   TRI_ASSERT(size > 0);
@@ -229,7 +232,7 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
 
   _nrAllocated++;
   _nrLinked++;
-  _totalSize += AlignedSize<int64_t>(size);
+  _totalSize += DatafileHelper::AlignedSize<int64_t>(size);
 
   return result;
 }
@@ -238,7 +241,7 @@ TRI_doc_mptr_t* TRI_headers_t::request(size_t size) {
 /// @brief releases a header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
+void MasterPointers::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
   if (header == nullptr) {
     return;
   }
@@ -275,9 +278,9 @@ void TRI_headers_t::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
 /// this is called by the collector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_headers_t::adjustTotalSize(int64_t oldSize, int64_t newSize) {
+void MasterPointers::adjustTotalSize(int64_t oldSize, int64_t newSize) {
   // oldSize = size of marker in WAL
   // newSize = size of marker in datafile
-  _totalSize -= (AlignedSize<int64_t>(oldSize) - AlignedSize<int64_t>(newSize));
+  _totalSize -= (DatafileHelper::AlignedSize<int64_t>(oldSize) - DatafileHelper::AlignedSize<int64_t>(newSize));
 }
 

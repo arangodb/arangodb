@@ -21,29 +21,31 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_HEADERS_H
-#define ARANGOD_VOC_BASE_HEADERS_H 1
+#ifndef ARANGOD_VOC_BASE_MASTER_POINTERS_H
+#define ARANGOD_VOC_BASE_MASTER_POINTERS_H 1
 
 #include "Basics/Common.h"
 
 struct TRI_doc_mptr_t;
 
-class TRI_headers_t {
-  TRI_headers_t(TRI_headers_t const&) = delete;
-  TRI_headers_t& operator=(TRI_headers_t const&) = delete;
+namespace arangodb {
+
+class MasterPointers {
+  MasterPointers(MasterPointers const&) = delete;
+  MasterPointers& operator=(MasterPointers const&) = delete;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the headers
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_headers_t();
+  MasterPointers();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys the headers
   //////////////////////////////////////////////////////////////////////////////
 
-  ~TRI_headers_t();
+  ~MasterPointers();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -118,5 +120,7 @@ class TRI_headers_t {
 
   std::vector<TRI_doc_mptr_t const*> _blocks;
 };
+
+}
 
 #endif

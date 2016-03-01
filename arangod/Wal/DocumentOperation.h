@@ -4,7 +4,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/headers.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 

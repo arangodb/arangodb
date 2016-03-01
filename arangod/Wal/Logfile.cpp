@@ -24,7 +24,9 @@
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "VocBase/DatafileHelper.h"
 
+using namespace arangodb;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +154,7 @@ int Logfile::judge(std::string const& filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* Logfile::reserve(size_t size) {
-  size = AlignedSize<size_t>(size);
+  size = DatafileHelper::AlignedSize<size_t>(size);
 
   char* result = _df->_next;
 

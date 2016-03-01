@@ -36,6 +36,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -389,7 +390,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
   // new or updated document
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
     TRI_ASSERT(slice.isObject());
     VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
     TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -404,7 +405,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     if (deleted) {
       // found a dead document
       context->_dfi.numberDead++;
-      context->_dfi.sizeDead += AlignedMarkerSize<int64_t>(marker);
+      context->_dfi.sizeDead += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
       return true;
     }
 
@@ -430,7 +431,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     }
 
     context->_dfi.numberAlive++;
-    context->_dfi.sizeAlive += AlignedMarkerSize<int64_t>(marker);
+    context->_dfi.sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
   // deletions
@@ -536,7 +537,7 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 
   // new or updated document
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
     TRI_ASSERT(slice.isObject());
     VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
     TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -552,12 +553,12 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
     }
 
     context->_keepDeletions = true;
-    context->_targetSize += AlignedMarkerSize<int64_t>(marker);
+    context->_targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
   // deletions
   else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
-    context->_targetSize += AlignedMarkerSize<int64_t>(marker);
+    context->_targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
   return true;

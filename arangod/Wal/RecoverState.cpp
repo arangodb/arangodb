@@ -30,6 +30,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
+#include "VocBase/DatafileHelper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 
@@ -37,6 +38,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,7 +547,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->_info.name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(marker->_type);
 
               OperationOptions options;
               options.silent = true;
@@ -602,7 +604,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->_info.name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(marker->_type);
 
               OperationOptions options;
               options.silent = true;

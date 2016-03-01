@@ -31,12 +31,14 @@
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/server.h"
 
 #include <sstream>
 
 // #define DEBUG_DATAFILE 1
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,8 +144,7 @@ static std::string DiagnoseMarker(TRI_df_marker_t const* marker,
   std::ostringstream result;
 
   if (marker == nullptr) {
-    result << "marker is undefined. should not happen";
-    return result.str();
+    return "marker is undefined. should not happen";
   }
 
   // check marker type
@@ -178,14 +179,13 @@ static std::string DiagnoseMarker(TRI_df_marker_t const* marker,
   }
 
   if (reinterpret_cast<char const*>(marker) + marker->_size > end) {
-    result << "marker size is beyond end of datafile";
-    return result.str();
+    return "marker size is beyond end of datafile";
   }
 
   TRI_voc_crc_t crc = CalculateCrcValue(marker);
 
   if (marker->_crc == crc) {
-    result << "crc checksum is correct";
+    return "crc checksum is correct";
   } else {
     result << "crc checksum (hex " << std::hex << marker->_crc
            << ") is wrong. expecting (hex " << std::hex << crc << ")";
@@ -534,7 +534,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     entry._position = static_cast<TRI_voc_size_t>(ptr - datafile->_data);
     entry._size = marker->_size;
-    entry._realSize = AlignedMarkerSize<size_t>(marker);
+    entry._realSize = DatafileHelper::AlignedMarkerSize<size_t>(marker);
     entry._tick = marker->_tick;
     entry._type = marker->_type;
     entry._status = 1;
@@ -607,12 +607,12 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
     entry._key = nullptr;
 
     if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
       TRI_ASSERT(slice.isObject());
       std::string const key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
       entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key.c_str(), key.size());
     } else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+      VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
       TRI_ASSERT(slice.isObject());
       std::string const key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
       entry._key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, key.c_str(), key.size());
@@ -620,7 +620,7 @@ static TRI_df_scan_t ScanDatafile(TRI_datafile_t const* datafile) {
 
     TRI_PushBackVector(&scan._entries, &entry);
 
-    size_t size = AlignedMarkerSize<size_t>(marker);
+    size_t size = DatafileHelper::AlignedMarkerSize<size_t>(marker);
     currentSize += static_cast<TRI_voc_size_t>(size);
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -748,7 +748,7 @@ static bool TryRepairDatafile(TRI_datafile_t* datafile) {
       }
     }
 
-    size_t size = AlignedMarkerSize<TRI_voc_size_t>(marker);
+    size_t size = DatafileHelper::AlignedMarkerSize<TRI_voc_size_t>(marker);
     currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -965,7 +965,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
       maxTick = marker->_tick;
     }
 
-    size_t size = AlignedMarkerSize<size_t>(marker);
+    size_t size = DatafileHelper::AlignedMarkerSize<size_t>(marker);
     currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -1501,7 +1501,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
                                TRI_df_marker_t** position,
                                TRI_voc_size_t maximalJournalSize) {
   *position = nullptr;
-  size = AlignedSize<TRI_voc_size_t>(size);
+  size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
@@ -1700,7 +1700,7 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
       return false;
     }
 
-    ptr += AlignedMarkerSize<size_t>(marker);
+    ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
   }
 
   return true;

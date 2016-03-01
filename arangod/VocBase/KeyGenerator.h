@@ -41,7 +41,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }
-}
+
 class KeyGenerator {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -252,6 +252,8 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 
   uint64_t _increment;  // increment value
 };
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a document id (collection name + / + document key)

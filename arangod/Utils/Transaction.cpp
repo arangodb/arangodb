@@ -24,11 +24,12 @@
 #include "Utils/transactions.h"
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
-#include "Indexes/PrimaryIndex.h"
-#include "Storage/Marker.h"
-#include "Utils/OperationCursor.h"
-#include "VocBase/KeyGenerator.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/PrimaryIndex.h"
+#include "Utils/OperationCursor.h"
+#include "VocBase/DatafileHelper.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/MasterPointers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -785,7 +786,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     // add _id attribute
     uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
     *p++ = 0xf3; // custom type for _id
-    MarkerHelper::storeNumber<uint64_t>(p, cid, sizeof(uint64_t));
+    DatafileHelper::StoreNumber<uint64_t>(p, cid, sizeof(uint64_t));
 
     merge.close();
 

@@ -518,40 +518,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const*);
 void TRI_InitMarkerDatafile(char*, TRI_df_marker_type_e, TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the 8-byte aligned size for the value
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static inline T AlignedSize(T value) {
-  return (value + 7) - ((value + 7) & 7);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the 8-byte aligned size for the marker
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static inline T AlignedMarkerSize(TRI_df_marker_t const* marker) {
-  size_t value = marker->_size;
-  return static_cast<T>((value + 7) - ((value + 7) & 7));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the marker-specific offset to the vpack payload
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t VPackOffset(TRI_df_marker_type_t type) {
-  auto t = static_cast<TRI_df_marker_type_e>(type);
-
-  if (t == TRI_WAL_MARKER_VPACK_DOCUMENT ||
-      t == TRI_WAL_MARKER_VPACK_REMOVE) {
-    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t);
-  }
-  TRI_ASSERT(false);
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a marker is valid
 ////////////////////////////////////////////////////////////////////////////////
 

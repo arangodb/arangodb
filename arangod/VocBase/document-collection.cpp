@@ -45,11 +45,12 @@
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
-#include "VocBase/headers.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
 #include "VocBase/shape-accessor.h"
 #include "VocBase/update-policy.h"
@@ -817,7 +818,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -867,7 +868,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
     // update the datafile info
     state->_dfi->numberAlive++;
-    state->_dfi->sizeAlive += AlignedMarkerSize<int64_t>(marker);
+    state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
   // it is an update, but only if found has a smaller revision identifier
@@ -895,13 +896,13 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
       int64_t size = static_cast<int64_t>(oldData.getMarkerPtr()->_size);
 
       dfi->numberAlive--;
-      dfi->sizeAlive -= AlignedSize<int64_t>(size);
+      dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
       dfi->numberDead++;
-      dfi->sizeDead += AlignedSize<int64_t>(size);
+      dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
     }
 
     state->_dfi->numberAlive++;
-    state->_dfi->sizeAlive += AlignedMarkerSize<int64_t>(marker);
+    state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
   // it is a stale update
@@ -909,7 +910,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     TRI_ASSERT(found->getDataPtr() != nullptr);
 
     state->_dfi->numberDead++;
-    state->_dfi->sizeDead += AlignedSize<int64_t>(found->getMarkerPtr()->_size);
+    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->_size);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -925,7 +926,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -965,12 +966,12 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
     TRI_ASSERT(found->getDataPtr() != nullptr);
 
-    int64_t size = AlignedSize<int64_t>(found->getMarkerPtr()->_size);
+    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->_size);
 
     dfi->numberAlive--;
-    dfi->sizeAlive -= AlignedSize<int64_t>(size);
+    dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
     dfi->numberDead++;
-    dfi->sizeDead += AlignedSize<int64_t>(size);
+    dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
     DeletePrimaryIndex(trx, document, found, false);
