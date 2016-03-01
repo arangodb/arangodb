@@ -106,23 +106,22 @@ if (WIN32)
 
   set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
 
+  list(APPEND V8_GYP_ARGS
+    -Dcomponent=static_library
+    -Dlibrary=static_library
+    #--depth=2
+    #-Dv8_use_external_startup_data=1
+    #-Dicu_gyp_path=../third_party/icu/icu.gyp
+    #-Dv8_optimized_debug=0
+    #-Dos_posix=0
+    #-Dclang=0
+    #-Dwant_separate_host_toolset=0
+  )
+
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
 
-    list(APPEND V8_GYP_ARGS
-      -Dcomponent=static_library
-      -Dlibrary=static_library
-      -Dmode=${MS_TARGET_CONF_LOWER}
-      #--depth=2
-      #-Dv8_use_external_startup_data=1
-      #-Dicu_gyp_path=../third_party/icu/icu.gyp
-      #-Dv8_optimized_debug=0
-      #-Dos_posix=0
-      #-Dclang=0
-      #-Dwant_separate_host_toolset=0
-    )
-
-    ExternalProject_Add(v8_build
+    ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE
         TRUE
       WORKING_DIRECTORY
@@ -130,7 +129,7 @@ if (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+        ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
@@ -138,7 +137,7 @@ if (WIN32)
     )
 
     # and now ICU...
-    ExternalProject_Add_Step(v8_build icu_build_icudata
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icudata
       WORKING_DIRECTORY
         ${V8_DIR}/third_party/icu
       COMMAND
@@ -149,7 +148,7 @@ if (WIN32)
         build
     )
 
-    ExternalProject_Add_Step(v8_build icu_build_icui18n
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icui18n
       WORKING_DIRECTORY
         ${V8_DIR}/third_party/icu
       COMMAND
@@ -160,7 +159,7 @@ if (WIN32)
         build
     )
 
-    ExternalProject_Add_Step(v8_build icu_build_icuuc
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icuuc
       WORKING_DIRECTORY
         ${V8_DIR}/third_party/icu
       COMMAND
@@ -172,7 +171,7 @@ if (WIN32)
     )
 
     # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
-    ExternalProject_Add_Step(v8_build v8_build_v8
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8
       WORKING_DIRECTORY
         ${V8_DIR}/build
       COMMAND
@@ -183,7 +182,7 @@ if (WIN32)
         build
     )
 
-    ExternalProject_Add_Step(v8_build v8_build_v8_libbase
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8_libbase
       WORKING_DIRECTORY
         ${V8_DIR}/build
       COMMAND
@@ -194,7 +193,7 @@ if (WIN32)
         build
     )
 
-    ExternalProject_Add_Step(v8_build v8_build_v8_libplatform
+    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_v8_libplatform
       WORKING_DIRECTORY
         ${V8_DIR}/build
       COMMAND
