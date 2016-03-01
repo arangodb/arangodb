@@ -27,6 +27,7 @@
 #include "Basics/JsonHelper.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -150,7 +151,7 @@ class VelocyPackHelper {
   /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_json_t* velocyPackToJson(VPackSlice const&);
+  static TRI_json_t* velocyPackToJson(VPackSlice const&, VPackOptions const* = &VPackOptions::Defaults);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack
