@@ -22,17 +22,17 @@ Key Features in ArangoDB
   safe. No hassle in your client.
 
 Here is an AQL query that makes use of all those features:
-  AQL Query Example  AQL Query Example
+ AQL Query Example
 Joins and transactions are key features for flexible, secure data designs,
 widely used in relational databases but lacking in many NoSQL products.
-However, there is no need to forget them in ArangoDB. You decide how and when
+However, there is no need to forego them in ArangoDB. You decide how and when
 to use joins and strong consistency guarantees, without sacrificing performance
 and scalability.
 Furthermore, ArangoDB offers a JavaScript framework called Foxx that is
 executed in the database server with direct access to the data. Build your own
 data-centric microservices with a few lines of code:
 Microservice Example
-  Microservice Example  Microservice Example
+ Microservice Example
 By extending the HTTP API with user code written in JavaScript, ArangoDB can be
 turned into a strict schema-enforcing persistence engine.
 Next step, bundle your Foxx application as a docker_container and get it
@@ -63,7 +63,7 @@ For more in-depth information read the design_goals_of_ArangoDB
 
 Latest Release - ArangoDB 2.6
 
-The What&#8217;s_new_in_ArangoDB_2.6 can be found in the documentation.
+The What's_new_in_ArangoDB_2.6 can be found in the documentation.
 New collection export HTTP REST API: ArangoDB now provides a dedicated
 collection export API, which can take snapshots of entire collections more
 efficiently than the general-purpose cursor API. The export API is useful to

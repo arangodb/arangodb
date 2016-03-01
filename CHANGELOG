@@ -1,4 +1,4 @@
-v2.8.4 (XXXX-XX-XX)
+v2.8.4 (2016-03-01)
 -------------------
 
 * global modules are no longer incorrectly resolved outside the ArangoDB
