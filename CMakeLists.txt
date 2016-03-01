@@ -77,11 +77,13 @@ set(TEST_GEO_SUITE    geo_suite)
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
+  NEWLINE_STYLE UNIX
 )
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+  NEWLINE_STYLE UNIX
 )
 
 ################################################################################
