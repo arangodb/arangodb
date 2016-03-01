@@ -29,6 +29,10 @@
 /// @brief bye bye message
 ////////////////////////////////////////////////////////////////////////////////
 
+#if _WIN32
+#pragma execution_character_set("utf-8")
+#endif
+
 #define TRI_UNICODE_LRM "\xE2\x80\x8E"
 #define TRI_UNICODE_RLM "\xE2\x80\x8F"
 #define TRI_BYE_MESSAGE_CH "Uf wiederluege!"
