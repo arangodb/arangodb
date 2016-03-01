@@ -283,6 +283,11 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     result->setDocumentCollection(_outRegOld,
                                   trxCollection->_collection->_collection);
   }
+        
+  VPackBuilder builder;
+
+  OperationOptions options;
+  options.waitForSync = ep->_options.waitForSync;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -314,6 +319,11 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
+      // create a slice for the key
+      builder.clear();
+      builder.add(VPackValue(key));
+      VPackSlice const keySlice(builder.data());
+
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         // read "old" version
         if (a.isShaped()) {
@@ -329,9 +339,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // no error. we expect to have a key
 
         // all exceptions are caught in _trx->remove()
-        errorCode =
-            _trx->remove(trxCollection, key, 0, TRI_DOC_UPDATE_LAST_WRITE, 0,
-                         nullptr, ep->_options.waitForSync);
+        OperationResult opRes = _trx->remove(_collection->name, keySlice, options);
+        errorCode = opRes.code;
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
             ignoreDocumentNotFound) {
@@ -340,9 +349,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-          result->setValue(dstRow, _outRegOld,
-                           AqlValue(reinterpret_cast<TRI_df_marker_t const*>(
-                               nptr.getDataPtr())));
+          result->setValue(dstRow, _outRegOld, AqlValue(nptr.getMarkerPtr()));
         }
       }
 

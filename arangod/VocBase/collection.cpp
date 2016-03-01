@@ -36,6 +36,7 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -409,7 +410,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       char* ptr = datafile->_data;
 
       // skip the datafile header
-      ptr += AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
+      ptr += DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
       cm = (TRI_col_header_marker_t*)ptr;
 
       if (cm->base._type != TRI_COL_MARKER_HEADER) {

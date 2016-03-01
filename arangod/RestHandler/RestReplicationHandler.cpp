@@ -1511,8 +1511,10 @@ int RestReplicationHandler::processRestoreCollection(
           return res;
         }
 
-        res = trx.truncate(trx.trxCollection(), false);
-        res = trx.finish(res);
+        OperationOptions options;
+        OperationResult opRes = trx.truncate(name, options);
+
+        res = trx.finish(opRes.code);
 
         return res;
       }

@@ -30,9 +30,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/collection.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/headers.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
@@ -44,6 +45,7 @@ namespace arangodb {
 class EdgeIndex;
 class ExampleMatcher;
 class Index;
+class KeyGenerator;
 class PrimaryIndex;
 class Transaction;
 namespace velocypack {
@@ -52,7 +54,6 @@ class Slice;
 }
 }
 
-class KeyGenerator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
@@ -115,7 +116,7 @@ struct TRI_doc_mptr_t {
     TRI_df_marker_t const* marker =
         static_cast<TRI_df_marker_t const*>(_dataptr);
 
-    return reinterpret_cast<uint8_t const*>(marker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+    return reinterpret_cast<uint8_t const*>(marker) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -261,8 +262,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   mutable arangodb::Ditches _ditches;
 
-  TRI_headers_t _masterPointers;
-  KeyGenerator* _keyGenerator;
+  arangodb::MasterPointers _masterPointers;
+  arangodb::KeyGenerator* _keyGenerator;
 
   std::vector<arangodb::Index*> _indexes;
 

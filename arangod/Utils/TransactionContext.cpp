@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
-#include "Storage/Marker.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
@@ -53,7 +53,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
                                      "invalid value type");
     }
   
-    uint64_t cid = MarkerHelper::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
     char buffer[512];  // This is enough for collection name + _key
     size_t len = resolver->getCollectionName(&buffer[0], cid);
     buffer[len] = '/';
@@ -82,7 +82,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
                                      "invalid value type");
     }
     
-    uint64_t cid = MarkerHelper::readNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+    uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
     std::string result(resolver->getCollectionName(cid));
     result.push_back('/');
     VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);

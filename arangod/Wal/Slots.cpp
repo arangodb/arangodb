@@ -25,10 +25,12 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/Logger.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/datafile.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
+using namespace arangodb;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +133,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
   static size_t const PrologueSize = sizeof(TRI_df_prologue_marker_t);
 
   // we need to use the aligned size for writing
-  uint32_t alignedSize = AlignedSize<uint32_t>(size);
+  uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
   bool mustWritePrologue = false;

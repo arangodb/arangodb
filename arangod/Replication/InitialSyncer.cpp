@@ -979,20 +979,17 @@ int InitialSyncer::handleCollectionSync(
 
       return res;
     }
-      
-    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
 
-    res = trx.truncate(trx.trxCollection(), false);
+    OperationOptions options;      
+    OperationResult opRes = trx.truncate(collectionName, options);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!opRes.successful()) {
       errorMsg = "unable to truncate collection '" + collectionName + "': " +
-                 TRI_errno_string(res);
-      return res;
+                 TRI_errno_string(opRes.code);
+      return opRes.code;
     }
 
-    res = trx.commit();
+    res = trx.finish(opRes.code);
     
     return res;
   }
@@ -1796,20 +1793,17 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
             return res;
           }
     
-          if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
+          OperationOptions options;
+          OperationResult opRes = trx.truncate(col->name(), options);
 
-          res = trx.truncate(trx.trxCollection(), false);
-
-          if (res != TRI_ERROR_NO_ERROR) {
+          if (!opRes.successful()) {
             errorMsg = "unable to truncate " + collectionMsg + ": " +
-                       TRI_errno_string(res);
+                       TRI_errno_string(opRes.code);
 
-            return res;
+            return opRes.code;
           }
 
-          res = trx.commit();
+          res = trx.finish(opRes.code);
 
           if (res != TRI_ERROR_NO_ERROR) {
             errorMsg = "unable to truncate " + collectionMsg + ": " +

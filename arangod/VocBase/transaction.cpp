@@ -28,6 +28,7 @@
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -46,6 +47,8 @@
 #define LOG_TRX(...) while (0) LOG(TRACE)
 
 #endif
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether the collection is currently locked
@@ -208,10 +211,10 @@ static void FreeOperations(TRI_transaction_t* trx) {
           auto it2 = stats.find(fid);
 
           if (it2 == stats.end()) {
-            stats.emplace(fid, std::make_pair(1, AlignedMarkerSize<int64_t>(marker)));
+            stats.emplace(fid, std::make_pair(1, DatafileHelper::AlignedMarkerSize<int64_t>(marker)));
           } else {
             (*it2).second.first++;
-            (*it2).second.second += AlignedMarkerSize<int64_t>(marker);
+            (*it2).second.second += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
           }
         }
       }
@@ -1140,7 +1143,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
           operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
       document->_datafileStatistics.increaseDead(
-          operation.oldHeader._fid, 1, AlignedMarkerSize<int64_t>(marker));
+          operation.oldHeader._fid, 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
     }
   } else {
     // operation is buffered and might be rolled back

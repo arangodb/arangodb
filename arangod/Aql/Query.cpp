@@ -30,7 +30,6 @@
 #include "Aql/Parser.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
-#include "Aql/ShortStringStorage.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/WorkMonitor.h"

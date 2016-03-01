@@ -217,7 +217,6 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TaskManager.cpp
   Scheduler/TimerTask.cpp
   Statistics/statistics.cpp
-  Storage/Marker.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
@@ -268,7 +267,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
   VocBase/edge-collection.cpp
-  VocBase/headers.cpp
+  VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp

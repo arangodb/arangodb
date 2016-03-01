@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -298,7 +299,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     case TRI_WAL_MARKER_VPACK_DOCUMENT: {
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::vpack_document_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_DOCUMENT;
@@ -311,7 +312,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     case TRI_WAL_MARKER_VPACK_REMOVE: {
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::vpack_remove_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_REMOVE;
@@ -438,7 +439,7 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
   }
 #endif  
   
-  VPackSlice slice(reinterpret_cast<char const*>(VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
+  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
   APPEND_UINT64(dump->_buffer, m->_transactionId);
@@ -479,7 +480,7 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
   
-  VPackSlice slice(reinterpret_cast<char const*>(VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
+  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
 
@@ -835,7 +836,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         break;
       }
 
-      ptr += AlignedMarkerSize<size_t>(marker);
+      ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
       if (marker->_type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
@@ -1020,7 +1021,7 @@ int TRI_DumpLogReplication(
           break;
         }
 
-        ptr += AlignedMarkerSize<size_t>(marker);
+        ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->_tick;
@@ -1149,7 +1150,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           break;
         }
 
-        ptr += AlignedMarkerSize<size_t>(marker);
+        ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->_tick;

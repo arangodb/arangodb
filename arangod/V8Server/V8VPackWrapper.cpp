@@ -24,13 +24,13 @@
 #include "V8VPackWrapper.h"
 #include "Basics/conversions.h"
 #include "Basics/Logger.h"
-#include "Storage/Marker.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/datafile.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 
@@ -63,7 +63,7 @@ static int const SLOT_DITCH = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline VPackSlice VPackFromMarker(TRI_df_marker_t const* marker) {
-  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + VPackOffset(marker->_type);
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(marker->_type);
   return VPackSlice(ptr);
 }
 
@@ -79,7 +79,7 @@ static void AddCollectionId(v8::Isolate* isolate, v8::Handle<v8::Object> self,
  
   // extract cid from marker 
   VPackSlice id = slice.get(TRI_VOC_ATTRIBUTE_ID);
-  uint64_t cid = MarkerHelper::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
 
   VPackValueLength keyLength;
   char const* key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength); 

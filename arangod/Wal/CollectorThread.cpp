@@ -35,6 +35,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -189,7 +190,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
       state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
@@ -218,7 +219,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(m) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
       state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
@@ -687,7 +688,7 @@ void CollectorThread::processCollectionMarker(
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
     TRI_ASSERT(slice.isObject());
 
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
@@ -699,12 +700,12 @@ void CollectorThread::processCollectionMarker(
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
-      dfi.sizeDead += AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     } else {
       // update size info
       document->_masterPointers.adjustTotalSize(
-          AlignedSize<int64_t>(walMarker->_size),
-          AlignedSize<int64_t>(datafileMarkerSize));
+          DatafileHelper::AlignedSize<int64_t>(walMarker->_size),
+          DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize));
 
       // we can safely update the master pointer's dataptr value
       found->setDataPtr(
@@ -712,14 +713,14 @@ void CollectorThread::processCollectionMarker(
       found->_fid = fid;
 
       dfi.numberAlive++;
-      dfi.sizeAlive += AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeAlive += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     }
   } else if (walMarker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
     dfi.numberDeletions++;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
     TRI_ASSERT(slice.isObject());
 
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
@@ -729,7 +730,7 @@ void CollectorThread::processCollectionMarker(
     if (found != nullptr && found->_rid > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
-      dfi.sizeDead += AlignedSize<int64_t>(datafileMarkerSize);
+      dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     }
   }
 }
@@ -1219,7 +1220,7 @@ char* CollectorThread::nextFreeMarkerPosition(
     TRI_document_collection_t* document, TRI_voc_tick_t tick,
     TRI_df_marker_type_e type, TRI_voc_size_t size, CollectorCache* cache) {
   TRI_collection_t* collection = document;
-  size = AlignedSize<TRI_voc_size_t>(size);
+  size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
 
   char* dst = nullptr;
   TRI_datafile_t* datafile = nullptr;
