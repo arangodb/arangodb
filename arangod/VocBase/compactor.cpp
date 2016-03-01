@@ -398,9 +398,8 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
 
-    auto found = static_cast<TRI_doc_mptr_t const*>(
-        primaryIndex->lookupKey(context->_trx, keySlice));
-    bool deleted = (found == nullptr || found->_rid > rid);
+    auto found = primaryIndex->lookupKey(context->_trx, keySlice);
+    bool deleted = (found == nullptr || found->revisionId() > rid);
 
     if (deleted) {
       // found a dead document
@@ -544,9 +543,8 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
-    auto found = static_cast<TRI_doc_mptr_t const*>(
-        primaryIndex->lookupKey(context->_trx, keySlice));
-    bool deleted = (found == nullptr || found->_rid > rid);
+    auto found = primaryIndex->lookupKey(context->_trx, keySlice);
+    bool deleted = (found == nullptr || found->revisionId() > rid);
 
     if (deleted) {
       return true;

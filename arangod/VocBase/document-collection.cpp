@@ -32,6 +32,7 @@
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "FulltextIndex/fulltext-index.h"
@@ -67,6 +68,18 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+   
+TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
+  VPackSlice const slice(vpack());
+  VPackSlice const revisionSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
+  if (revisionSlice.isString()) {
+    return arangodb::basics::VelocyPackHelper::stringUInt64(revisionSlice);
+  }
+  else if (revisionSlice.isNumber()) {
+    return revisionSlice.getNumber<TRI_voc_rid_t>();
+  }
+  return 0; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
@@ -739,19 +752,6 @@ static int CleanupIndexes(TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a new revision id if not yet set
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t GetRevisionId(TRI_voc_rid_t previous) {
-  if (previous != 0) {
-    return previous;
-  }
-
-  // generate new revision id
-  return static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief state during opening of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -848,10 +848,9 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    header->_rid = rid;
     header->_fid = fid;
-    header->setDataPtr(marker);  // ONLY IN OPENITERATOR
     header->_hash = primaryIndex->calculateHash(trx, keySlice);
+    header->setDataPtr(marker);  // ONLY IN OPENITERATOR
 
     // insert into primary index
     void const* result = nullptr;
@@ -872,13 +871,12 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   }
 
   // it is an update, but only if found has a smaller revision identifier
-  else if (found->_rid < rid ||
-           (found->_rid == rid && found->_fid <= fid)) {
+  else if (found->revisionId() < rid ||
+           (found->revisionId() == rid && found->_fid <= fid)) {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
     // update the header info
-    found->_rid = rid;
     found->_fid = fid;
     found->setDataPtr(marker);
 
@@ -3644,7 +3642,6 @@ TRI_ASSERT(false);
 
     // update the header we got
     void* mem = operation.marker->mem();
-    header->_rid = rid;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
     header->_hash = hash;
 
@@ -3825,7 +3822,6 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
   }
 
   TRI_ASSERT(mptr->getDataPtr() != nullptr);
-  TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3844,8 +3840,6 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
   uint64_t const hash = key.hash();
 
-  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(slice);
-  
   std::unique_ptr<arangodb::wal::Marker> marker;
   if (options.recoveryMarker == nullptr) {
     marker.reset(createVPackInsertMarker(trx, slice));
@@ -3895,7 +3889,6 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    header->_rid = revisionId;
     header->_hash = hash;
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
@@ -3998,7 +3991,6 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
   
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
-    TRI_ASSERT(mptr->_rid > 0);
   }
 
   if (markerTick > 0) {
@@ -4085,7 +4077,6 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
   
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
-    TRI_ASSERT(mptr->_rid > 0);
   }
 
   if (markerTick > 0) {
@@ -4295,7 +4286,7 @@ int TRI_document_collection_t::lookupDocument(
   }
 
   if (policy != nullptr) {
-    return policy->check(header->_rid);
+    return policy->check(header->revisionId());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -4329,9 +4320,7 @@ int TRI_document_collection_t::updateDocument(arangodb::Transaction* trx,
   TRI_doc_mptr_t* newHeader = oldHeader;
 
   // update the header. this will modify oldHeader, too !!!
-  newHeader->_rid = revisionId;
-  newHeader->setDataPtr(
-      operation.marker->mem()); 
+  newHeader->setDataPtr(operation.marker->mem()); 
 
   // insert new document into secondary indexes
   res = insertSecondaryIndexes(trx, newHeader, false);
@@ -4434,8 +4423,7 @@ int TRI_document_collection_t::insertPrimaryIndex(arangodb::Transaction* trx,
   TRI_doc_mptr_t* found;
 
   TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() !=
-             nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_ASSERT(header->getDataPtr() != nullptr); 
 
   // insert into primary index
   int res = primaryIndex()->insertKey(trx, header, (void const**)&found);

@@ -1073,19 +1073,29 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
   // TODO vpack
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    TRI_voc_rid_t rid = 0;
+    if (WR) {
+      rid = mptr->revisionId();
+    }
+
     localCrc = TRI_Crc32HashString(
         TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
     // TRI_DocumentIteratorDocumentCollection
     if (WR) {
-      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+      localCrc += TRI_Crc32HashPointer(&rid, sizeof(TRI_voc_rid_t));
     }
   } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
+    TRI_voc_rid_t rid = 0;
+    if (WR) {
+      rid = mptr->revisionId();
+    }
+
     localCrc = TRI_Crc32HashString(
         TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
     // TRI_DocumentIteratorDocumentCollection
     if (WR) {
-      localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
+      localCrc += TRI_Crc32HashPointer(&rid, sizeof(TRI_voc_rid_t));
     }
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {

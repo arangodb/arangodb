@@ -54,13 +54,11 @@ class Slice;
 }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_mptr_t {
-  TRI_voc_rid_t _rid;     // this is the revision identifier
   TRI_voc_fid_t _fid;     // this is the datafile identifier
   uint64_t _hash;         // the pre-calculated hash value of the key
  protected:
@@ -69,8 +67,7 @@ struct TRI_doc_mptr_t {
 
  public:
   TRI_doc_mptr_t()
-      : _rid(0),
-        _fid(0),
+      : _fid(0),
         _hash(0),
         _dataptr(nullptr) {}
 
@@ -78,15 +75,13 @@ struct TRI_doc_mptr_t {
   ~TRI_doc_mptr_t() {}
 
   void clear() {
-    _rid = 0;
     _fid = 0;
-    setDataPtr(nullptr);
     _hash = 0;
+    setDataPtr(nullptr);
   }
 
   void copy(TRI_doc_mptr_t const& that) {
     // This is for cases where we explicitly have to copy originals!
-    _rid = that._rid;
     _fid = that._fid;
     _dataptr = that._dataptr;
     _hash = that._hash;
@@ -113,11 +108,10 @@ struct TRI_doc_mptr_t {
   inline void setDataPtr(void const* d) { _dataptr = d; }
   
   inline uint8_t const* vpack() const { 
-    TRI_df_marker_t const* marker =
-        static_cast<TRI_df_marker_t const*>(_dataptr);
-
-    return reinterpret_cast<uint8_t const*>(marker) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+    return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
   }
+
+  TRI_voc_rid_t revisionId() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the beginning of the shaped json stored in the

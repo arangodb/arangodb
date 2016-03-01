@@ -695,7 +695,7 @@ void CollectorThread::processCollectionMarker(
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
-    if (found == nullptr || found->_rid != revisionId ||
+    if (found == nullptr || found->revisionId() != revisionId ||
         found->getDataPtr() != walMarker) {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
@@ -727,7 +727,7 @@ void CollectorThread::processCollectionMarker(
 
     auto found = document->primaryIndex()->lookupKey(&trx, slice.get(TRI_VOC_ATTRIBUTE_KEY));
 
-    if (found != nullptr && found->_rid > revisionId) {
+    if (found != nullptr && found->revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);

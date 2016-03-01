@@ -542,10 +542,10 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   }
   
   TRI_ASSERT(mptr.getDataPtr() != nullptr);
-  if (expectedRevision != 0 && expectedRevision != mptr._rid) {
+  if (expectedRevision != 0 && expectedRevision != mptr.revisionId()) {
     // still return 
     VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,
@@ -763,7 +763,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     
-    buildDocumentIdentity(resultBuilder, cid, keyString, mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, keyString, mptr.revisionId(), "");
     return TRI_ERROR_NO_ERROR;
   };
 
@@ -946,7 +946,7 @@ OperationResult Transaction::updateLocal(std::string const& collectionName,
   if (res == TRI_ERROR_ARANGO_CONFLICT) {
     // still return 
     VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,
@@ -1130,7 +1130,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
   if (res == TRI_ERROR_ARANGO_CONFLICT) {
     // still return 
     VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, key, mptr._rid, "");
+    buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
 
     return OperationResult(resultBuilder.steal(), nullptr, "",
         TRI_ERROR_ARANGO_CONFLICT,

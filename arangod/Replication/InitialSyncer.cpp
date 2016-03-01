@@ -1450,7 +1450,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         if (mptr == nullptr) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (std::to_string(mptr->_rid) !=
+        } else if (std::to_string(mptr->revisionId()) !=
                    std::string(ridJson->_value._string.data,
                                ridJson->_value._string.length - 1)) {
           // key found, but rid differs
