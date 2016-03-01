@@ -1,12 +1,9 @@
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global configurations
-///
-/// @file
-///
 /// DISCLAIMER
 ///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2014 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,51 +21,46 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler, Lucas Dohmen
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require("@arangodb").db;
 var internal = require("internal");
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the configuration collection
+/// @brief the frontend collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function getConfigurationCollection () {
-  var configuration = db._collection("_configuration");
+function getFrontendCollection () {
+  var frontend = db._collection("_frontend");
 
-  if (configuration === null) {
-    throw new Error("_configuration collection not (yet) available");
+  if (frontend === null) {
+    throw new Error("_frontend collection not (yet) available");
   }
-  return configuration;
+  return frontend;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the notification configuration
+/// @brief the notifications configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.notifications = {};
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the versions notification configuration
+/// @brief returns the versions notification
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.notifications.versions = function () {
   var n = "notifications";
   var v = "versions";
   var d;
-  var configuration = getConfigurationCollection();
+  var frontend = getFrontendCollection();
 
   try {
-    d = configuration.document(n);
+    d = frontend.document(n);
   }
   catch (err) {
     try {
-      d = configuration.save({ _key: n });
+      d = frontend.save({ _key: n });
     }
     catch (err2) {
       d = {};
@@ -89,22 +81,20 @@ exports.notifications.versions = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the versions notification collections
+/// @brief sets the versions notification
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.notifications.setVersions = function (data) {
   var n = "notifications";
   var d;
-  var configuration = getConfigurationCollection();
+  var frontend = getFrontendCollection();
 
   try {
-    d = configuration.document(n);
+    d = frontend.document(n);
   }
   catch (err) {
-    d = configuration.save({ _key: n });
+    d = frontend.save({ _key: n });
   }
 
-  configuration.update(n, data);
+  frontend.update(n, data);
 };
-
-

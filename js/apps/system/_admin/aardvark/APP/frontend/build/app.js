@@ -27642,7 +27642,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     myQueriesTableDesc: {
       id: "arangoMyQueriesTable",
-      titles: ["Name", "Query", "Actions"],
+      titles: ["Name", "Actions"],
       rows: []
     },
 
@@ -27815,6 +27815,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('#bindParamAceEditor').hide();
           $('#bindParamEditor').show();
           $('#switchTypes').text('JSON');
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+          this.queryPreview.setValue("No query selected.");
+          this.deselect(this.queryPreview);
+          
+          this.resize();
+        }
+        else {
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
+          this.resize();
         }
       }
 
@@ -27845,7 +27854,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         name = $(e.currentTarget).children().first().text();
       }
       else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().prev().text();
+        name = $(e.currentTarget).parent().parent().prev().text();
       }
       return name;
     },
@@ -27893,6 +27902,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.toggleQueries();
       }
 
+      $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
       this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
@@ -27932,12 +27942,22 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     downloadQueryResult: function(e) {
+      console.log($(e.currentTarget));
       var count = $(e.currentTarget).attr('counter'),
       editor = ace.edit("sentQueryEditor" + count),
       query = editor.getValue();
 
+      console.log(this.bindParamTableObj);
       if (query !== '' || query !== undefined || query !== null) {
-        window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
+        if (Object.keys(this.bindParamTableObj) === 0) {
+          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
+        }
+        else {
+          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({
+            query: query,
+            bindVars: this.bindParamTableObj
+          }))));
+        }
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");
@@ -27991,6 +28011,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
       outputEditor.setReadOnly(true);
       sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(outputEditor);
+      this.setEditorAutoHeight(sentQueryEditor);
 
       this.fillExplain(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -28005,9 +28027,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.execPending = false;
 
       if (queryData) {
-        window.progressView.show(
-          "Explain is operating..."
-        );
+
+        var afterResult = function() {
+          $('#outputEditorWrapper' + counter + ' #spinner').remove();
+          $('#outputEditor' + counter).css('opacity', '1');
+          $('#outputEditorWrapper' + counter + ' .fa-close').show();
+          $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        };
 
         $.ajax({
           type: "POST",
@@ -28019,7 +28045,6 @@ window.ArangoUsers = Backbone.Collection.extend({
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
-              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -28028,6 +28053,7 @@ window.ArangoUsers = Backbone.Collection.extend({
               $.noty.closeAll();
               self.handleResult(counter);
             }
+            afterResult();
           },
           error: function (data) {
             try {
@@ -28037,9 +28063,9 @@ window.ArangoUsers = Backbone.Collection.extend({
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
-            window.progressView.hide();
             self.handleResult(counter);
-            this.removeOutputEditor(counter);
+            self.removeOutputEditor(counter);
+            afterResult();
           }
         });
       }
@@ -28166,7 +28192,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     resizeFunction: function() {
       if ($('#toggleQueries1').is(':visible')) {
         this.aqlEditor.resize();
-        //fix bind table resizing issues
         $('#arangoBindParamTable thead').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable thead th').css('width', $('#bindParamEditor').width() / 2);
         $('#arangoBindParamTable tr').css('width', $('#bindParamEditor').width());
@@ -28177,15 +28202,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       else {
         this.queryPreview.resize();
-        //fix my queries preview table resizing issues TODO
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 3);
-        $('#arangoMyQueriesTable tbody td .truncate').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
       }
     },
 
@@ -28449,11 +28471,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.myQueriesTableDesc.rows = this.customQueries;
       _.each(this.myQueriesTableDesc.rows, function(k) {
-        k.secondRow = '<div class="truncate">' +
-          JSON.stringify(self.collection.findWhere({name: k.name}).get('value')) +
-        '</div>';
-
-        k.thirdRow = '<span class="spanWrapper">' + 
+        k.secondRow = '<span class="spanWrapper">' + 
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
           '<span id="explQuery" title="Explain query"><i class="fa fa-comments"></i></i></span>' +
           '<span id="runQuery" title="Run query"><i class="fa fa-play-circle-o"></i></i></span>' +
@@ -28485,7 +28503,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         self.myQueriesTableDesc.rows.push({
           name: val.name,
-          secondRow: '<div class="truncate">' + val.value + '</div>',
           thirdRow: '<span class="spanWrapper">' + 
             '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>' 
         });
@@ -28683,6 +28700,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       outputEditor.setFontSize("13px");
       sentQueryEditor.setFontSize("13px");
       sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(outputEditor);
+      this.setEditorAutoHeight(sentQueryEditor);
 
       this.fillResult(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -28766,7 +28785,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
-        maxLines: Infinity
+        maxLines: 100,
+        minLines: 3
       }); 
     },
 
@@ -28793,25 +28813,23 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var self = this;
 
-      var cancelRunningQuery = function() {
+
+      var cancelRunningQuery = function(id, counter) {
 
         $.ajax({
-          url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+          url: '/_api/job/'+ encodeURIComponent(id) + "/cancel",
           type: 'PUT',
           success: function() {
             window.clearTimeout(self.checkQueryTimer);
+            $('#outputEditorWrapper' + counter).remove();
             arangoHelper.arangoNotification("Query", "Query canceled.");
-            window.progressView.hide();
-            //TODO REMOVE OUTPUT BOX
           }
         });
       };
 
-      window.progressView.show(
-        "Query is operating...",
-        cancelRunningQuery,
-        "Cancel Query"
-      );
+      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').bind('click', function() {
+        cancelRunningQuery(queryID, counter);
+      });
 
       self.timer.start();
       this.execPending = false;
@@ -28834,8 +28852,52 @@ window.ArangoUsers = Backbone.Collection.extend({
         warningsFunc(data);
         window.progressView.hide();
 
-        var time = self.timer.getTimeAndReset()/1000 + " s";
-        $('#outputEditorWrapper' + counter + ' .queryExecutionTime2').text(time);
+        var appendSpan = function(value, icon) {
+          $('#outputEditorWrapper' + counter + ' .pull-left').append(
+            '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
+          );
+        };
+
+        $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
+        var time = self.timer.getTimeAndReset() / 1000 + " s";
+        appendSpan(time, 'fa-clock-o');
+
+        if (data.extra) {
+          if (data.extra.stats) {
+            console.log(data.extra.stats);
+            if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
+              appendSpan(
+                data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
+              );
+              if (data.extra.stats.writesIgnored === 0) {
+                appendSpan(
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive'
+                );
+              }
+              else {
+                appendSpan(
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning'
+                );
+              }
+            }
+            if (data.extra.stats.scannedFull > 0) {
+              appendSpan(
+                data.extra.stats.scannedFull + ' scanned full', 'fa-exclamation-circle warning'
+              );
+            }
+            else {
+              appendSpan(
+                data.extra.stats.scannedFull + ' scanned full', 'fa-check-circle positive'
+              );
+            }
+          }
+        }
+
+        $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        $('#outputEditorWrapper' + counter + ' .fa-close').show();
+        $('#outputEditor' + counter).css('opacity', '1');
+        $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
+        $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
@@ -28881,6 +28943,7 @@ window.ArangoUsers = Backbone.Collection.extend({
               }
             }
             catch (e) {
+              console.log(e);
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
             }
@@ -28997,7 +29060,7 @@ window.ArangoUsers = Backbone.Collection.extend({
               }
             }.bind(self);
             self.collection.saveCollectionQueries(callback);
-          }//TODO
+          }
           self.updateLocalQueries();
 
           if (originCallback) {

@@ -326,10 +326,11 @@ controller.post("/job", function(req, res) {
   if (req.body().id && req.body().collection && req.body().type && req.body().desc) {
 
     //store id in _system
-    db.aardvark.save({
+    db._frontend.save({
       id: req.body().id,
       collection: req.body().collection, 
       type: req.body().type,
+      model: 'job',
       desc: req.body().desc
     });
 
@@ -350,8 +351,10 @@ controller.post("/job", function(req, res) {
 
 controller.del("/job/", function(req, res) {
 
-  db.aardvark.truncate();
-  return res.json(true);
+  db._frontend.removeByExample({
+    model: 'job'
+  }, true);
+  res.json(true);
 
 }).summary("Store job id of a running job")
   .notes("This function stores a job id into a system collection.");
@@ -367,7 +370,7 @@ controller.del("/job/:id", function(req, res) {
   var id = req.params("id");
 
   if (id) {
-    db.aardvark.removeByExample({
+    db._frontend.removeByExample({
       id: id
     }, true);
     res.json(true);
@@ -387,7 +390,7 @@ controller.del("/job/:id", function(req, res) {
 
 controller.get("/job", function(req, res) {
 
-  var result = db.aardvark.all().toArray();
+  var result = db._frontend.all().toArray();
   res.json(result);
 
 }).summary("Return all job ids.")
