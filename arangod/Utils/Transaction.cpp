@@ -405,51 +405,6 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
                          TRI_ERROR_NO_ERROR, false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read all documents
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::all(TRI_transaction_collection_t* trxCollection,
-                     std::vector<std::string>& ids, bool lock) {
-  TRI_document_collection_t* document = documentCollection(trxCollection);
-
-  if (lock) {
-    // READ-LOCK START
-    int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
-  if (orderDitch(trxCollection) == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  auto idx = document->primaryIndex();
-  size_t used = idx->size();
-
-  if (used > 0) {
-    arangodb::basics::BucketPosition step;
-    uint64_t total = 0;
-
-    while (true) {
-      TRI_doc_mptr_t const* mptr = idx->lookupSequential(this, step, total);
-
-      if (mptr == nullptr) {
-        break;
-      }
-      ids.emplace_back(TRI_EXTRACT_MARKER_KEY(mptr));
-    }
-  }
-
-  if (lock) {
-    this->unlock(trxCollection, TRI_TRANSACTION_READ);
-    // READ-LOCK END
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of a collection
 //////////////////////////////////////////////////////////////////////////////

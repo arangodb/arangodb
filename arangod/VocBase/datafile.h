@@ -299,13 +299,11 @@ struct TRI_datafile_t {
 struct TRI_df_marker_t {
   TRI_voc_size_t _size;  // 4 bytes, must be supplied
   TRI_voc_crc_t _crc;    // 4 bytes, will be generated
-
   TRI_df_marker_type_t _type;  // 4 bytes, must be supplied
-
+  
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
-
   TRI_voc_tick_t _tick;  // 8 bytes, will be generated
 };
 
@@ -411,7 +409,7 @@ struct TRI_col_header_marker_t {
 /// @brief document datafile marker with key
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_document_key_marker_s {
+struct TRI_doc_document_key_marker_t {
   TRI_df_marker_t base;
 
   TRI_voc_rid_t _rid;  // this is the tick for a create and update
@@ -425,13 +423,13 @@ typedef struct TRI_doc_document_key_marker_s {
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
-} TRI_doc_document_key_marker_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge datafile marker with key
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_edge_key_marker_s {
+struct TRI_doc_edge_key_marker_t {
   TRI_doc_document_key_marker_t base;
 
   TRI_voc_cid_t _toCid;
@@ -443,7 +441,7 @@ typedef struct TRI_doc_edge_key_marker_s {
 #ifdef TRI_PADDING_32
   char _padding_df_marker[4];
 #endif
-} TRI_doc_edge_key_marker_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
@@ -454,34 +452,6 @@ typedef struct TRI_doc_edge_key_marker_s {
 
 TRI_datafile_t* TRI_CreateDatafile(char const*, TRI_voc_fid_t fid,
                                    TRI_voc_size_t, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new anonymous datafile
-///
-/// You must specify a maximal size for the datafile. The maximal
-/// size must be divisible by the page size. If it is not, then the size is
-/// rounded down. The memory for the datafile is mmapped. The create function
-/// automatically adds a @ref TRI_df_footer_marker_t to the file.
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_ANONYMOUS_MMAP
-TRI_datafile_t* TRI_CreateAnonymousDatafile(TRI_voc_fid_t, TRI_voc_size_t);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new physical datafile
-///
-/// You must specify a directory. This directory must exist and must be
-/// writable. You must also specify a maximal size for the datafile. The maximal
-/// size must be divisible by the page size. If it is not, then the size is
-/// rounded down.  The datafile is created as sparse file. So there is a chance
-/// that writing to the datafile will fill up your filesystem. This file is then
-/// mapped into the address of the process using mmap. The create function
-/// automatically adds a @ref TRI_df_footer_marker_t to the file.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreatePhysicalDatafile(char const*, TRI_voc_fid_t,
-                                           TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
