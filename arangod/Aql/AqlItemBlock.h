@@ -135,6 +135,16 @@ class AqlItemBlock {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill a slot in the item block with an external VelocyPack value.
+  ///        This value should not be freed.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setExternal(size_t index, RegisterId varNr,
+                   arangodb::velocypack::Slice external) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief eraseValue, erase the current value of a register and freeing it
   /// if this was the last reference to the value
   /// use with caution only in special situations when it can be ensured that

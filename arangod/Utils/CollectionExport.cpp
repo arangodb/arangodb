@@ -100,13 +100,14 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
                                             _name, TRI_TRANSACTION_READ);
 
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
-                true);  // already locked by guard above
+    // already locked by guard above
+    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
     auto idx = _document->primaryIndex();
     size_t maxDocuments = idx->size();
     if (limit > 0 && limit < maxDocuments) {

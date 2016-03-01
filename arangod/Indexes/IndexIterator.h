@@ -71,7 +71,7 @@ class IndexIterator {
 
   virtual void reset();
 
-  virtual void skip(uint64_t count);
+  virtual void skip(uint64_t count, uint64_t& skipped);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

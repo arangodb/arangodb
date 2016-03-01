@@ -26,21 +26,20 @@
 
 #include "Basics/Common.h"
 #include "Utils/AqlTransaction.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+#include "Utils/OperationCursor.h"
 
 namespace arangodb {
 namespace aql {
 
-struct CollectionScanner {
-  CollectionScanner(arangodb::AqlTransaction*, TRI_transaction_collection_t*);
+class CollectionScanner {
+ public:
+  CollectionScanner(arangodb::AqlTransaction*, std::string const&, bool);
 
-  virtual ~CollectionScanner();
+  ~CollectionScanner();
 
-  virtual int scan(std::vector<TRI_doc_mptr_t>&, size_t) = 0;
+  arangodb::velocypack::Slice scan(size_t);
 
-  virtual void reset() = 0;
+  void reset();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forwards the cursor n elements. Does not read the data.
@@ -49,37 +48,10 @@ struct CollectionScanner {
   ///        really skipped
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int forward(size_t, size_t&) = 0;
+  int forward(size_t, uint64_t&);
 
-  arangodb::AqlTransaction* trx;
-  TRI_transaction_collection_t* trxCollection;
-  uint64_t totalCount;
-  arangodb::basics::BucketPosition position;
-};
-
-struct RandomCollectionScanner final : public CollectionScanner {
-  RandomCollectionScanner(arangodb::AqlTransaction*,
-                          TRI_transaction_collection_t*);
-
-  int scan(std::vector<TRI_doc_mptr_t>&, size_t) override;
-
-  void reset() override;
-
-  int forward(size_t, size_t&) override;
-
-  arangodb::basics::BucketPosition initialPosition;
-  uint64_t step;
-};
-
-struct LinearCollectionScanner final : public CollectionScanner {
-  LinearCollectionScanner(arangodb::AqlTransaction*,
-                          TRI_transaction_collection_t*);
-
-  int scan(std::vector<TRI_doc_mptr_t>&, size_t) override;
-
-  void reset() override;
-
-  int forward(size_t, size_t&) override;
+ private:
+  OperationCursor _cursor;
 };
 }
 }

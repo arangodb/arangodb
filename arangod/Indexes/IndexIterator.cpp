@@ -103,11 +103,12 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexIterator::skip(uint64_t count) {
+void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
   // TODO: Can be improved
   while (count > 0 && next() != nullptr) {
     --count;
+    skipped++;
   }
 }
 

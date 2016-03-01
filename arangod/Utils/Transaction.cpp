@@ -1776,7 +1776,8 @@ OperationCursor Transaction::indexScan(
     return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  iterator->skip(skip);
+  uint64_t unused = 0;
+  iterator->skip(skip, unused);
 
   return OperationCursor(transactionContext()->orderCustomTypeHandler(),
                          iterator.release(), limit, batchSize);

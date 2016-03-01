@@ -41,18 +41,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
       _posInDocuments(0),
       _random(ep->_random),
       _mustStoreResult(true) {
-  auto trxCollection = _trx->trxCollection(_collection->cid());
-  if (trxCollection != nullptr) {
-    _trx->orderDitch(trxCollection);
-  }
-
-  if (_random) {
-    // random scan
-    _scanner = new RandomCollectionScanner(_trx, trxCollection);
-  } else {
-    // default: linear scan
-    _scanner = new LinearCollectionScanner(_trx, trxCollection);
-  }
+  _scanner = new CollectionScanner(_trx, _collection->getName(), _random);
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
@@ -63,7 +52,8 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
-  _documents.clear();
+  VPackSlice none;
+  _documents = none;
   _posInDocuments = 0;
 }
 
@@ -73,7 +63,7 @@ void EnumerateCollectionBlock::initializeDocuments() {
 
 bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   throwIfKilled();  // check if we were aborted
-  size_t skippedHere = 0;
+  uint64_t skippedHere = 0;
 
   int res = _scanner->forward(toSkip, skippedHere);
 
@@ -83,7 +73,8 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 
   skipped += skippedHere;
 
-  _documents.clear();
+  VPackSlice none;
+  _documents = none;
   _posInDocuments = 0;
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
@@ -111,22 +102,19 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::vector<TRI_doc_mptr_t> newDocs;
-  newDocs.reserve(hint);
+  _documents = _scanner->scan(hint);
+  TRI_ASSERT(_documents.isArray());
+  VPackValueLength count = _documents.length();
 
-  int res = _scanner->scan(newDocs, hint);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  if (newDocs.empty()) {
+  if (count == 0) {
+    VPackSlice none;
+    _documents = none;
     return false;
   }
 
-  _engine->_stats.scannedFull += static_cast<int64_t>(newDocs.size());
+  _engine->_stats.scannedFull += static_cast<int64_t>(count);
 
-  _documents.swap(newDocs);
+  _documentsSize = static_cast<size_t>(count);
   _posInDocuments = 0;
 
   return true;
@@ -182,14 +170,14 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   size_t const curRegs = cur->getNrRegs();
 
   // Get more documents from collection if _documents is empty:
-  if (_posInDocuments >= _documents.size()) {
+  if (_posInDocuments >= _documentsSize) {
     if (!moreDocuments(atMost)) {
       _done = true;
       return nullptr;
     }
   }
 
-  size_t available = _documents.size() - _posInDocuments;
+  size_t available = _documentsSize - _posInDocuments;
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
@@ -219,9 +207,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setShaped(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                     reinterpret_cast<TRI_df_marker_t const*>(
-                         _documents[_posInDocuments].getDataPtr()));
+      res->setExternal(j, static_cast<arangodb::aql::RegisterId>(curRegs),
+                       _documents.at(_posInDocuments));
       // No harm done, if the setValue throws!
     }
 
@@ -229,7 +216,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   }
 
   // Advance read position:
-  if (_posInDocuments >= _documents.size()) {
+  if (_posInDocuments >= _documentsSize) {
     // we have exhausted our local documents buffer
     // fetch more documents into our buffer
     if (!moreDocuments(atMost)) {
@@ -257,18 +244,19 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  if (!_documents.empty()) {
-    if (_posInDocuments < _documents.size()) {
+  if (!_documents.isNone()) {
+    if (_posInDocuments < _documentsSize) {
       // We still have unread documents in the _documents buffer
       // Just skip them
-      size_t couldSkip = _documents.size() - _posInDocuments;
+      size_t couldSkip = _documentsSize - _posInDocuments;
       if (atMost <= couldSkip) {
         // More in buffer then to skip.
         _posInDocuments += atMost;
         return atMost;
       }
       // Skip entire buffer
-      _documents.clear();
+      VPackSlice none;
+      _documents = none;
       _posInDocuments = 0;
       skipped += couldSkip;
     }
@@ -276,7 +264,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
 
   // No _documents buffer. But could Skip more
   // Fastforward the _scanner
-  TRI_ASSERT(_documents.empty());
+  TRI_ASSERT(_documents.isNone());
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {

@@ -134,6 +134,15 @@ TransactionContext::~TransactionContext() {
     _resolver = nullptr;
   }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief factory to create a custom type handler, not managed
+//////////////////////////////////////////////////////////////////////////////
+
+VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_t* vocbase, 
+                                                                    CollectionNameResolver const* resolver) {
+  return new CustomTypeHandler(vocbase, resolver);
+}
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
@@ -141,7 +150,7 @@ TransactionContext::~TransactionContext() {
 
 std::shared_ptr<VPackCustomTypeHandler> TransactionContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler.reset(new CustomTypeHandler(_vocbase, getResolver()));
+    _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
