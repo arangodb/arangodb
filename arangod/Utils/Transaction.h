@@ -333,13 +333,6 @@ class Transaction {
   OperationResult any(std::string const&, uint64_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief read any (random) document
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int any(TRI_transaction_collection_t*, TRI_doc_mptr_t*);
-  
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit and an internal
   /// offset into the primary index. this can be used for incremental access to
   /// the documents without restarting the index scan at the begin
@@ -358,15 +351,6 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int all(TRI_transaction_collection_t*, std::vector<std::string>&, bool lock);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readSlice(TRI_transaction_collection_t*,
-                std::vector<TRI_doc_mptr_t>&, int64_t, uint64_t,
-                uint64_t&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read all master pointers, using skip and limit and an internal
@@ -660,73 +644,6 @@ class Transaction {
                   expectedRevision, actualRevision, forceSync);
   }
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief delete a single document
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int remove(TRI_transaction_collection_t* trxCollection,
-             std::string const& key, TRI_voc_rid_t rid,
-             TRI_doc_update_policy_e policy, TRI_voc_rid_t expectedRevision,
-             TRI_voc_rid_t* actualRevision, bool forceSync) {
-    TRI_doc_update_policy_t updatePolicy(policy, expectedRevision,
-                                         actualRevision);
-
-    try {
-      return TRI_RemoveShapedJsonDocumentCollection(
-          this, trxCollection, (TRI_voc_key_t)key.c_str(), rid, nullptr,
-          &updatePolicy, !isLocked(trxCollection, TRI_TRANSACTION_WRITE),
-          forceSync);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief truncate a collection
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int truncate(TRI_transaction_collection_t* const trxCollection,
-               bool forceSync) {
-    std::vector<std::string> ids;
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_ASSERT(isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-    int res = all(trxCollection, ids, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    try {
-      for (auto const& it : ids) {
-        res = TRI_RemoveShapedJsonDocumentCollection(
-            this, trxCollection, (TRI_voc_key_t)it.c_str(), 0,
-            nullptr,  // marker
-            nullptr,  // policy
-            false, forceSync);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          // halt on first error
-          break;
-        }
-      }
-    } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    return res;
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////

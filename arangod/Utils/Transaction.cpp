@@ -405,40 +405,6 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read any (random) document
-/// DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::any(TRI_transaction_collection_t* trxCollection,
-                     TRI_doc_mptr_t* mptr) {
-  TRI_ASSERT(mptr != nullptr);
-  TRI_document_collection_t* document = documentCollection(trxCollection);
-
-  // READ-LOCK START
-  int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  if (orderDitch(trxCollection) == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  auto idx = document->primaryIndex();
-  arangodb::basics::BucketPosition intPos;
-  arangodb::basics::BucketPosition pos;
-  uint64_t step = 0;
-  uint64_t total = 0;
-
-  TRI_doc_mptr_t* found = idx->lookupRandom(this, intPos, pos, step, total);
-  if (found != nullptr) {
-    *mptr = *found;
-  }
-  this->unlock(trxCollection, TRI_TRANSACTION_READ);
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read all documents
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -479,87 +445,6 @@ int Transaction::all(TRI_transaction_collection_t* trxCollection,
     this->unlock(trxCollection, TRI_TRANSACTION_READ);
     // READ-LOCK END
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read all master pointers, using skip and limit
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
-                           std::vector<TRI_doc_mptr_t>& docs, int64_t skip,
-                           uint64_t limit, uint64_t& total) {
-  TRI_document_collection_t* document = documentCollection(trxCollection);
-
-  if (limit == 0) {
-    // nothing to do
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // READ-LOCK START
-  int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (orderDitch(trxCollection) == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  uint64_t count = 0;
-  auto idx = document->primaryIndex();
-  TRI_doc_mptr_t const* mptr = nullptr;
-
-  if (skip < 0) {
-    arangodb::basics::BucketPosition position;
-    do {
-      mptr = idx->lookupSequentialReverse(this, position);
-      ++skip;
-    } while (skip < 0 && mptr != nullptr);
-
-    if (mptr == nullptr) {
-      this->unlock(trxCollection, TRI_TRANSACTION_READ);
-      // To few elements, skipped all
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    do {
-      mptr = idx->lookupSequentialReverse(this, position);
-
-      if (mptr == nullptr) {
-        break;
-      }
-      ++count;
-      docs.emplace_back(*mptr);
-    } while (count < limit);
-
-    this->unlock(trxCollection, TRI_TRANSACTION_READ);
-    return TRI_ERROR_NO_ERROR;
-  }
-  arangodb::basics::BucketPosition position;
-
-  while (skip > 0) {
-    mptr = idx->lookupSequential(this, position, total);
-    --skip;
-    if (mptr == nullptr) {
-      // To few elements, skipped all
-      this->unlock(trxCollection, TRI_TRANSACTION_READ);
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  do {
-    mptr = idx->lookupSequential(this, position, total);
-    if (mptr == nullptr) {
-      break;
-    }
-    ++count;
-    docs.emplace_back(*mptr);
-  } while (count < limit);
-
-  this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
   return TRI_ERROR_NO_ERROR;
 }
