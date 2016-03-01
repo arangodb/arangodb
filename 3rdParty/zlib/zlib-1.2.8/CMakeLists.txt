@@ -9,7 +9,7 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif ()
 
-project(zlib)
+project(zlib C)
 
 set(zlib_VERSION 1.2.8)
 set(VERSION "1.2.8")
@@ -263,19 +263,30 @@ set(ZLIB_VERSION
   ${zlib_VERSION}
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
-  FORCE
 )
 
-set(ZLIB_LIBS
-  ${zlib_BINARY_DIR}/libz.a
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Libraries"
-  FORCE
-)
+if (WINDOWS)
+  set(ZLIB_LIBS
+    zlibstaticd
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+  )
+
+  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT}")
+else ()
+  set(ZLIB_LIBS
+    z
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+  )
+
+  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}")
+endif ()
 
 set(ZLIB_INCLUDE_DIR
   ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: Include Directories"
-  FORCE
 )
+
+set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
