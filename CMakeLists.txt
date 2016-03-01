@@ -20,6 +20,8 @@ if (APPLE)
   endif ()
 endif ()
 
+option(VERBOSE OFF)
+
 project(ArangoDB)
 
 # where to find CMAKE modules
@@ -141,7 +143,7 @@ get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 find_package(Go 1.2)
 
 if (NOT GO_FOUND)
-  message("Go version >=1.2 not found. etcd will not be built.")
+  message(STATUS "Go version >=1.2 not found. etcd will not be built.")
 endif ()
 
 ################################################################################
@@ -171,7 +173,7 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS "/WIN32 /D_WINDOWS /W3")
+  set(BASE_FLAGS "/DWIN32 /D_WINDOWS /W3")
   set(BASE_C_FLAGS)
   set(BASE_CXX_FLAGS "/GR /EHsc")
 else ()
@@ -345,11 +347,15 @@ endif ()
 ## FLAGS
 ################################################################################
 
+if (VERBOSE)
 message(STATUS)
+endif ()
 
 # compiler options
 if (CMAKE_COMPILER_IS_GNUCC)
-  message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
+  if (VERBOSE)
+    message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
+  endif ()
 
   set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
 
@@ -366,7 +372,9 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
 
 elseif (CMAKE_COMPILER_IS_CLANG)
-  message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+  if (VERBOSE)
+    message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+  endif ()
 
   set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
 
@@ -383,7 +391,9 @@ elseif (CMAKE_COMPILER_IS_CLANG)
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
 
 elseif (MSVC) 
-  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  if (VERBOSE)
+    message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  endif ()
 
   set(CMAKE_C_FLAGS                ""                                 CACHE STRING "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D_DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE STRING "C++ debug flags")
@@ -416,7 +426,9 @@ else ()
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
 endif ()
 
-message(STATUS)
+if (VERBOSE)
+  message(STATUS)
+endif ()
 
 set(CMAKE_C_FLAGS                "${BASE_FLAGS} ${BASE_C_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG          "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
@@ -430,49 +442,51 @@ set(CMAKE_CXX_FLAGS_RELEASE        "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL}")
 
-message(STATUS "Info CMAKE_C_FLAGS")
-message(STATUS "${CMAKE_C_FLAGS}")
-message(STATUS)
+if (VERBOSE)
+  message(STATUS "Info CMAKE_C_FLAGS")
+  message(STATUS "${CMAKE_C_FLAGS}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_C_FLAGS_DEBUG")
-message(STATUS "${CMAKE_C_FLAGS_DEBUG}")
-message(STATUS)
+  message(STATUS "Info CMAKE_C_FLAGS_DEBUG")
+  message(STATUS "${CMAKE_C_FLAGS_DEBUG}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_C_FLAGS_RELEASE")
-message(STATUS "${CMAKE_C_FLAGS_RELEASE}")
-message(STATUS)
+  message(STATUS "Info CMAKE_C_FLAGS_RELEASE")
+  message(STATUS "${CMAKE_C_FLAGS_RELEASE}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_C_FLAGS_RELWITHDEBINFO")
-message(STATUS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-message(STATUS)
+  message(STATUS "Info CMAKE_C_FLAGS_RELWITHDEBINFO")
+  message(STATUS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_C_FLAGS_MINSIZEREL")
-message(STATUS "${CMAKE_C_FLAGS_MINSIZEREL}")
-message(STATUS)
+  message(STATUS "Info CMAKE_C_FLAGS_MINSIZEREL")
+  message(STATUS "${CMAKE_C_FLAGS_MINSIZEREL}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_CXX_FLAGS")
-message(STATUS "${CMAKE_CXX_FLAGS}")
-message(STATUS)
+  message(STATUS "Info CMAKE_CXX_FLAGS")
+  message(STATUS "${CMAKE_CXX_FLAGS}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_CXX_FLAGS_DEBUG")
-message(STATUS "${CMAKE_CXX_FLAGS_DEBUG}")
-message(STATUS)
+  message(STATUS "Info CMAKE_CXX_FLAGS_DEBUG")
+  message(STATUS "${CMAKE_CXX_FLAGS_DEBUG}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_CXX_FLAGS_RELEASE")
-message(STATUS "${CMAKE_CXX_FLAGS_RELEASE}")
-message(STATUS)
+  message(STATUS "Info CMAKE_CXX_FLAGS_RELEASE")
+  message(STATUS "${CMAKE_CXX_FLAGS_RELEASE}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_CXX_FLAGS_RELWITHDEBINFO")
-message(STATUS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-message(STATUS)
+  message(STATUS "Info CMAKE_CXX_FLAGS_RELWITHDEBINFO")
+  message(STATUS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_CXX_FLAGS_MINSIZEREL")
-message(STATUS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
-message(STATUS)
+  message(STATUS "Info CMAKE_CXX_FLAGS_MINSIZEREL")
+  message(STATUS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  message(STATUS)
 
-message(STATUS "Info CMAKE_EXE_LINKER_FLAGS")
-message(STATUS "${CMAKE_EXE_LINKER_FLAGS}")
-message(STATUS)
+  message(STATUS "Info CMAKE_EXE_LINKER_FLAGS")
+  message(STATUS "${CMAKE_EXE_LINKER_FLAGS}")
+  message(STATUS)
+endif ()
 
 ################################################################################
 ## 3RD PARTY
