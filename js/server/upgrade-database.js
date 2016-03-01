@@ -1043,21 +1043,21 @@
     });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createConfiguration
+/// @brief createFrontend
 ///
-/// create the _configuration collection
+/// create the _frontend collection
 ////////////////////////////////////////////////////////////////////////////////
 
     addTask({
-      name:        "createConfiguration",
-      description: "setup _configuration collection",
+      name:        "createFrontend",
+      description: "setup _frontend collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
       cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        var name = "_configuration";
+        var name = "_frontend";
         var result = createSystemCollection(name, {
           waitForSync: false,
           journalSize: 1024 * 1024
