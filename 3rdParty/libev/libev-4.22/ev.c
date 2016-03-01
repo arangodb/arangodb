@@ -2678,6 +2678,11 @@ childcb (EV_P_ ev_signal *sw, int revents)
 
 /*****************************************************************************/
 
+#if !EV_USE_IOCP && ! EV_USE_PORT && ! EV_USE_KQUEUE && ! EV_USE_EPOLL && ! EV_USE_POLL && ! EV_USE_SELECT
+#error "configuration didn't find any useable backends!"
+#endif
+
+
 #if EV_USE_IOCP
 # include "ev_iocp.c"
 #endif
