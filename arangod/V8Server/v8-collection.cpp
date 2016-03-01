@@ -1886,7 +1886,7 @@ static void JS_InsertVocbaseVPack(
     options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
   }
 
-  if (!args[docIdx]->IsObject() || args[docIdx]->IsArray()) {
+  if (!args[docIdx]->IsObject()) {
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
@@ -1895,37 +1895,53 @@ static void JS_InsertVocbaseVPack(
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
+  v8::Handle<v8::Value> payload = args[0];
 
-  int res = TRI_V8ToVPack(isolate, builder, args[docIdx]->ToObject(), true);
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  if (isEdgeCollection) {
-    // Just insert from and to. Check is done later.
-    std::string tmpId = ExtractIdString(isolate, args[0]);
-    if (tmpId.empty()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
+    int res = TRI_V8ToVPack(isolate, builder, obj, true);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
-    builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(tmpId));
 
-    tmpId = ExtractIdString(isolate, args[1]);
-    if (tmpId.empty()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    if (isEdgeCollection) {
+      // Just insert from and to. Check is done later.
+      std::string tmpId = ExtractIdString(isolate, obj);
+      if (tmpId.empty()) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      }
+      builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(tmpId));
+
+      tmpId = ExtractIdString(isolate, args[1]);
+      if (tmpId.empty()) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      }
+      builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(tmpId));
     }
-    builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(tmpId));
-  }
 
-  builder.close();
+    builder.close();
+  };
+
+  if (payload->IsArray()) {
+    VPackArrayBuilder b(&builder);
+    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(payload);
+    uint32_t const n = array->Length();
+    for (uint32_t i = 0; i < n; ++i) {
+      doOneDocument(array->Get(i));
+    }
+  } else {
+    doOneDocument(payload);
+  }
 
   // load collection
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  if (! payload->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
-  res = trx.begin();
+  int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
