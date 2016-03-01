@@ -116,6 +116,29 @@ std::string TRI_document_collection_t::label() const {
   return std::string(_vocbase->_name) + " / " + _info.name();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update statistics for a collection
+/// note: the write-lock for the collection must be held to call this
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_document_collection_t::setLastRevision(TRI_voc_rid_t rid, bool force) {
+  if (rid > 0) {
+    _info.setRevision(rid, force);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection is fully collected
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_document_collection_t::isFullyCollected() {
+  READ_LOCKER(readLocker, _lock);
+
+  int64_t uncollected = _uncollectedLogfileEntries.load();
+
+  return (uncollected == 0);
+}
+
 void TRI_document_collection_t::setNextCompactionStartIndex(size_t index) {
   MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   _nextCompactionStartIndex = index;
@@ -685,27 +708,6 @@ static void EnsureErrorCode(int code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an entry from the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-static int DeletePrimaryIndex(arangodb::Transaction* trx,
-                              TRI_document_collection_t* document,
-                              TRI_doc_mptr_t const* header, bool isRollback) {
-  TRI_IF_FAILURE("DeletePrimaryIndex") { return TRI_ERROR_DEBUG; }
-
-  auto primaryIndex = document->primaryIndex();
-  auto found = primaryIndex->removeKey(
-      trx,
-      TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (found == nullptr) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -929,7 +931,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
  
-  SetRevision(document, rid, false);
+  document->setLastRevision(rid, false);
   document->_keyGenerator->track(key);
 
   ++state->_deletions;
@@ -972,7 +974,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
-    DeletePrimaryIndex(trx, document, found, false);
+    document->deletePrimaryIndex(trx, found);
     --document->_numberDocuments;
 
     // free the header
@@ -1512,6 +1514,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 ///
 /// Note: the function will not acquire any locks. It is the task of the caller
 /// to ensure the collection is properly locked
+/// TODO: remove
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_DocumentIteratorDocumentCollection(
@@ -1969,15 +1972,6 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pid name structure
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct pid_name_s {
-  TRI_shape_pid_t _pid;
-  char* _name;
-} pid_name_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts extracts a field list from a VelocyPack object
 ///        Does not copy any data, caller has to make sure that data
 ///        in slice stays valid until this return value is destroyed.
@@ -2370,31 +2364,6 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update statistics for a collection
-/// note: the write-lock for the collection must be held to call this
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateRevisionDocumentCollection(TRI_document_collection_t* document,
-                                          TRI_voc_rid_t rid, bool force) {
-  if (rid > 0) {
-    SetRevision(document, rid, force);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a collection is fully collected
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFullyCollectedDocumentCollection(
-    TRI_document_collection_t* document) {
-  READ_LOCKER(readLocker, document->_lock);
-
-  int64_t uncollected = document->_uncollectedLogfileEntries.load();
-
-  return (uncollected == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4398,16 +4367,11 @@ int TRI_document_collection_t::insertDocument(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res =
-      TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res == TRI_ERROR_NO_ERROR) {
+    *mptr = *header;
   }
-
-  *mptr = *header;
-
-  res = postInsertIndexes(trx, header);
 
   return res;
 }
@@ -4523,31 +4487,6 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief post-insert operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_document_collection_t::postInsertIndexes(arangodb::Transaction* trx,
-                                                 TRI_doc_mptr_t* header) {
-  if (!useSecondaryIndexes()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  auto const& indexes = allIndexes();
-  size_t const n = indexes.size();
-  // TODO: remove usage of TRI_transaction_collection_t here
-  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
-      trx->getInternals(), _info.id(), TRI_TRANSACTION_WRITE);
-
-  for (size_t i = 1; i < n; ++i) {
-    auto idx = indexes[i];
-    idx->postInsert(trx, trxCollection, header);
-  }
-
-  // post-insert will never return an error
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -59,11 +59,13 @@ class Slice;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_mptr_t {
-  TRI_voc_fid_t _fid;     // this is the datafile identifier
-  uint64_t _hash;         // the pre-calculated hash value of the key
+  // this is the datafile identifier
+  TRI_voc_fid_t _fid;   
+  // the pre-calculated hash value of the key
+  uint64_t _hash;       
  protected:
-  void const*
-      _dataptr;  // this is the pointer to the beginning of the raw marker
+  // this is the pointer to the beginning of the raw marker
+  void const* _dataptr; 
 
  public:
   TRI_doc_mptr_t()
@@ -80,69 +82,36 @@ struct TRI_doc_mptr_t {
     setDataPtr(nullptr);
   }
 
+  // This is for cases where we explicitly have to copy originals!
   void copy(TRI_doc_mptr_t const& that) {
-    // This is for cases where we explicitly have to copy originals!
     _fid = that._fid;
     _dataptr = that._dataptr;
     _hash = that._hash;
   }
+
+  // whether or not the master pointer points into the WAL
+  inline bool pointsToWal() const {
+    return true;
+  }
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the marker
-  //////////////////////////////////////////////////////////////////////////////
-  
+  // return a pointer to the beginning of the marker 
   inline struct TRI_df_marker_t const* getMarkerPtr() const { 
     return static_cast<TRI_df_marker_t const*>(_dataptr); 
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the marker
-  //////////////////////////////////////////////////////////////////////////////
-
+  // return a pointer to the beginning of the marker
   inline void const* getDataPtr() const { return _dataptr; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set the pointer to the beginning of the memory for the marker
-  //////////////////////////////////////////////////////////////////////////////
-
+  // set the pointer to the beginning of the memory for the marker
   inline void setDataPtr(void const* d) { _dataptr = d; }
-  
+
+  // return a pointer to the beginning of the vpack  
   inline uint8_t const* vpack() const { 
     return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
   }
 
+  // return the marker's revision id
   TRI_voc_rid_t revisionId() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a pointer to the beginning of the shaped json stored in the
-  /// marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  char const* getShapedJsonPtr() const {
-#if 0    
-    TRI_df_marker_t const* marker =
-        static_cast<TRI_df_marker_t const*>(_dataptr);
-
-    TRI_ASSERT(marker != nullptr);
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-        marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      auto offset =
-          (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))
-              ->_offsetJson;
-      return reinterpret_cast<char const*>(marker) + offset;
-    } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-               marker->_type == TRI_WAL_MARKER_EDGE) {
-      auto offset =
-          (reinterpret_cast<arangodb::wal::document_marker_t const*>(marker))
-              ->_offsetJson;
-      return reinterpret_cast<char const*>(marker) + offset;
-    }
-#endif
-    TRI_ASSERT(false);
-
-    return nullptr;
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,6 +202,15 @@ struct TRI_document_collection_t : public TRI_collection_t {
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief update statistics for a collection
+  /// note: the write-lock for the collection must be held to call this
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setLastRevision(TRI_voc_rid_t, bool force);
+
+  bool isFullyCollected();
 
   void setNextCompactionStartIndex(size_t);
   size_t getNextCompactionStartIndex();
@@ -326,10 +304,11 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
   int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
+ public:
   int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
+ private:
   int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
-  int postInsertIndexes(arangodb::Transaction*, TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two object slices
@@ -659,20 +638,6 @@ void TRI_DestroyDocumentCollection(TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeDocumentCollection(TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update statistics for a collection
-/// note: the write-lock for the collection must be held to call this
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UpdateRevisionDocumentCollection(TRI_document_collection_t*,
-                                          TRI_voc_rid_t, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a collection is fully collected
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFullyCollectedDocumentCollection(TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a VelocyPack description

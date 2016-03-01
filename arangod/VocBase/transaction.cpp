@@ -1140,8 +1140,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       // update datafile statistics for the old header
       TRI_ASSERT(operation.oldHeader._fid > 0);
 
-      TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-          operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
+      TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();
       document->_datafileStatistics.increaseDead(
           operation.oldHeader._fid, 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
     }
@@ -1150,8 +1149,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
-      trxCollection->_operations =
-          new std::vector<arangodb::wal::DocumentOperation*>;
+      trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
       trx->_hasOperations = true;
     }
 
@@ -1160,8 +1158,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-  // TODO!!!!!!!!!
-  // TRI_UpdateRevisionDocumentCollection(document, revisionId, false);
+  document->setLastRevision(static_cast<TRI_voc_tick_t>(operation.tick), false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

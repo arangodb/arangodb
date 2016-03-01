@@ -130,7 +130,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
         }
       }
 
-      if (!TRI_IsFullyCollectedDocumentCollection(document)) {
+      if (!document->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,

@@ -36,7 +36,6 @@ struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
 struct TRI_transaction_collection_s;
 
-
 // Define search slice attribute names
 #define TRI_SLICE_KEY_EQUAL "eq"
 #define TRI_SLICE_KEY_IN "in"
@@ -350,9 +349,6 @@ class Index {
                      bool) = 0;
   virtual int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                      bool) = 0;
-  virtual int postInsert(arangodb::Transaction*,
-                         struct TRI_transaction_collection_s*,
-                         struct TRI_doc_mptr_t const*);
   virtual int batchInsert(arangodb::Transaction*,
                           std::vector<TRI_doc_mptr_t const*> const*, size_t);
 

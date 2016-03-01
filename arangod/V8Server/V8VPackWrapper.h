@@ -46,14 +46,6 @@ namespace V8VPackWrapper {
 
 v8::Handle<v8::Value> wrap(v8::Isolate*, arangodb::Transaction*,
                            TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
-                           struct TRI_df_marker_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a VPackSlice
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> wrap(v8::Isolate*, arangodb::Transaction*,
-                           TRI_voc_cid_t cid, arangodb::DocumentDitch* ditch,
                            struct TRI_doc_mptr_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -834,7 +834,7 @@ static void CompactifyDatafiles(
 
 static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
   // we can hopefully get away without the lock here...
-  //  if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+  //  if (! document->isFullyCollected()) {
   //    return false;
   //  }
 
