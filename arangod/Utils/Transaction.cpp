@@ -990,9 +990,10 @@ OperationResult Transaction::replace(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (oldValue.isArray() || newValue.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  if ((!oldValue.isArray() ^ !newValue.isArray()) ||
+      (oldValue.isArray() && oldValue.length() != newValue.length())) {
+    // must provide two lists or two single documents
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
   OperationOptions optionsCopy = options;
@@ -1014,6 +1015,10 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
                                                 VPackSlice const& oldValue,
                                                 VPackSlice const& newValue,
                                                 OperationOptions& options) {
+  if (oldValue.isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
@@ -1078,77 +1083,100 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  // read key and expected revision
-  std::string const key(Transaction::extractKey(&oldValue));
-  TRI_voc_rid_t const expectedRevision = Transaction::extractRevisionId(&oldValue);
-
-  // generate a new tick value
-  TRI_voc_tick_t const revisionId = TRI_NewTickServer();
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-
-  VPackBuilder builder;
-  builder.openObject();
-
-  VPackObjectIterator it(newValue);
-  while (it.valid()) {
-    // let all but the system attributes pass
-    std::string k = it.key().copyString();
-    if (k[0] != '_' ||
-        (k != TRI_VOC_ATTRIBUTE_KEY &&
-         k != TRI_VOC_ATTRIBUTE_ID &&
-         k != TRI_VOC_ATTRIBUTE_REV &&
-         k != TRI_VOC_ATTRIBUTE_FROM &&
-         k != TRI_VOC_ATTRIBUTE_TO)) {
-      builder.add(k, it.value());
-    }
-    it.next();
-  }
-  // finally add the (new) _rev attributes
-  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
-  builder.close();
-
-  VPackSlice sanitized = builder.slice();
-
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  
-  TRI_doc_mptr_t mptr;
-  TRI_voc_rid_t actualRevision = 0;
-  TRI_doc_update_policy_t policy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
-
+  // Replace is a read and a write, let's get the write lock already
+  // for the read operation:
   int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
   
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
 
-  res = document->replace(this, &oldValue, &sanitized, &mptr, &policy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
+  VPackBuilder builder;        // used repeatedly in closure
+  VPackBuilder resultBuilder;  // building the complete result
 
-  if (res == TRI_ERROR_ARANGO_CONFLICT) {
-    // still return 
-    VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
+  auto workForOneDocument = [&](VPackSlice const oldVal,
+                                VPackSlice const newVal) -> int {
 
-    return OperationResult(resultBuilder.steal(), nullptr, "",
-        TRI_ERROR_ARANGO_CONFLICT,
-        options.waitForSync || document->_info.waitForSync()); 
-  } else if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
+    // read key and expected revision
+    std::string const key(Transaction::extractKey(&oldVal));
+    TRI_voc_rid_t const expectedRevision 
+        = Transaction::extractRevisionId(&oldVal);
+
+    // generate a new tick value
+    TRI_voc_tick_t const revisionId = TRI_NewTickServer();
+
+    builder.clear();
+    {
+      VPackObjectBuilder b(&builder);
+      VPackObjectIterator it(newValue);
+      while (it.valid()) {
+        // let all but the system attributes pass
+        std::string k = it.key().copyString();
+        if (k[0] != '_' ||
+            (k != TRI_VOC_ATTRIBUTE_KEY &&
+             k != TRI_VOC_ATTRIBUTE_ID &&
+             k != TRI_VOC_ATTRIBUTE_REV &&
+             k != TRI_VOC_ATTRIBUTE_FROM &&
+             k != TRI_VOC_ATTRIBUTE_TO)) {
+          builder.add(k, it.value());
+        }
+        it.next();
+      }
+      // finally add the (new) _rev attributes
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
+    }
+
+    VPackSlice sanitized = builder.slice();
+
+    TRI_doc_mptr_t mptr;
+    TRI_voc_rid_t actualRevision = 0;
+    TRI_doc_update_policy_t policy(expectedRevision == 0 ? 
+                                   TRI_DOC_UPDATE_LAST_WRITE :
+                                   TRI_DOC_UPDATE_ERROR, 
+                                   expectedRevision, &actualRevision);
+
+    res = document->replace(this, &oldValue, &sanitized, &mptr, &policy,
+        options, !isLocked(document, TRI_TRANSACTION_WRITE));
+
+    if (res == TRI_ERROR_ARANGO_CONFLICT) {
+      // still return 
+      buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
+      return TRI_ERROR_ARANGO_CONFLICT;
+    } else if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+
+    if (!options.silent) {
+      buildDocumentIdentity(resultBuilder, cid, key, std::to_string(revisionId), std::to_string(actualRevision));
+    }
+    return TRI_ERROR_NO_ERROR;
+  };
+
+  res = TRI_ERROR_NO_ERROR;
+
+  if (oldValue.isArray()) {
+    // We already know that both oldValue and newValue are arrays and that
+    // they have equal length!
+    VPackArrayBuilder b(&resultBuilder);
+    VPackArrayIterator oIt(oldValue);
+    VPackArrayIterator nIt(newValue);
+    while (oIt.valid() && nIt.valid()) {
+      res = workForOneDocument(oIt.value(), nIt.value());
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+      ++oIt;
+      ++nIt;
+    }
+  } else {
+    res = workForOneDocument(oldValue, newValue);
   }
-
-  TRI_ASSERT(mptr.getDataPtr() != nullptr);
-
-  if (options.silent) {
-    return OperationResult(TRI_ERROR_NO_ERROR);
-  }
-
-  VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, key, std::to_string(revisionId), std::to_string(actualRevision));
-
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+  return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync); 
 }
 

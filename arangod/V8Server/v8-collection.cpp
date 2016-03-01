@@ -379,13 +379,27 @@ static void ReplaceVocbaseCol(bool useCollection,
 
   if (argLength < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
+        "replace(<document(s)>, <data>, {overwrite: booleanValue, waitForSync: "
         "booleanValue})");
   }
 
-  // we're only accepting "real" object documents
-  if (!args[1]->IsObject() || args[1]->IsArray()) {
+  // we're only accepting "real" object documents or arrays of such, if this
+  // is the collection method
+  if (!args[1]->IsObject()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (args[1]->IsArray() && !useCollection) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (args[0]->IsArray() ^ args[1]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (args[0]->IsArray()) {  // then both are arrays, check equal length
+    auto a = v8::Local<v8::Array>::Cast(args[0]);
+    auto b = v8::Local<v8::Array>::Cast(args[1]);
+    if (a->Length() != b->Length()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
   }
 
   if (args.Length() > 2) {
@@ -435,54 +449,84 @@ static void ReplaceVocbaseCol(bool useCollection,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (!args[1]->IsObject() || args[1]->IsArray()) {
-    // we're only accepting "real" object documents
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  VPackBuilder builder;
-  std::string collectionName;
-
   auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
   
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      !overwrite, args[0]);
+  VPackBuilder builder;   // to build the search value
+  std::string collectionName;
 
+  if (!useCollection) {  // the db._replace case
+    int res = ParseDocumentOrDocumentHandle(
+        isolate, vocbase, transactionContext->getResolver(), col,
+        collectionName, builder, !overwrite, args[0]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+  // In case of useCollection we already have a collection object and
+  // do not need to free it later.
   LocalCollectionGuard g(useCollection ? nullptr
                                        : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(!collectionName.empty());
+
+  // In either case we now have a collection object col
+
+  SingleCollectionTransaction trx(transactionContext, collectionName,
+                                  TRI_TRANSACTION_WRITE);
+  if (!useCollection || !args[0]->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
 
-  TRI_ASSERT(col != nullptr);
-
-  TRI_ASSERT(!collectionName.empty());
-  VPackSlice search = builder.slice();
-  TRI_ASSERT(search.isObject());
-
-  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-
-  res = trx.begin();
-
+  int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
   VPackBuilder updateBuilder;
-  res = TRI_V8ToVPack(isolate, updateBuilder, args[1], false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal) {
+    std::string collName;
+    if (!ExtractDocumentHandle(isolate, searchVal, collName, builder, false)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    }
+  };
+
+  auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
+    auto savePos = updateBuilder.buffer()->size();
+    int res = TRI_V8ToVPack(isolate, updateBuilder, newVal, false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    if (savePos == updateBuilder.buffer()->size()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
+    }
+  };
+
+  // In the !useCollection case the search value is already prepared, we 
+  // only have to set up the single replacement document:
+  if (!useCollection) {
+    workOnOneDocument(args[1]);
+  } else if (args[0]->IsArray()) {
+    // we deal with the single document case:
+    workOnOneSearchVal(args[0]);
+    workOnOneDocument(args[1]);
+  } else { // finally, the array case, note that we already know that the two
+           // arrays have equal length!
+    VPackArrayBuilder b1(&builder);
+    VPackArrayBuilder b2(&updateBuilder);
+    auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
+    auto documents = v8::Local<v8::Array>::Cast(args[1]);
+    for (uint32_t i = 0; i < searchVals->Length(); i++) {
+      workOnOneSearchVal(searchVals->Get(i));
+      workOnOneDocument(documents->Get(i));
+    }
   }
 
-  VPackSlice update = updateBuilder.slice();
-
-  if (update.isNone()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
-  }
+  VPackSlice const search = builder.slice();
+  VPackSlice const update = updateBuilder.slice();
 
   OperationResult opResult = trx.replace(collectionName, search, update, options);
 
