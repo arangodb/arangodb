@@ -236,7 +236,7 @@ if (WIN32)
     FORCE
     )
 
-  set(V8_LIBRARY_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}")
+  set(V8_LIBRARY_DIR "${V8_DIR}/build/${MS_TARGET_CONF}")
 
   set(V8_LIBS
     "${V8_LIBRARY_DIR}/lib/v8_base.lib;${V8_LIBRARY_DIR}/lib/v8_libbase.lib;${V8_LIBRARY_DIR}/lib/v8_libplatform.lib;${V8_LIBRARY_DIR}/lib/v8_nosnapshot.lib"
