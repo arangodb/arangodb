@@ -420,9 +420,13 @@
       this.execPending = false;
 
       if (queryData) {
-        window.progressView.show(
-          "Explain is operating..."
-        );
+
+        var afterResult = function() {
+          $('#outputEditorWrapper' + counter + ' #spinner').remove();
+          $('#outputEditor' + counter).css('opacity', '1');
+          $('#outputEditorWrapper' + counter + ' .fa-close').show();
+          $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        };
 
         $.ajax({
           type: "POST",
@@ -434,7 +438,6 @@
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
-              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -443,6 +446,7 @@
               $.noty.closeAll();
               self.handleResult(counter);
             }
+            afterResult();
           },
           error: function (data) {
             try {
@@ -452,9 +456,9 @@
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
-            window.progressView.hide();
             self.handleResult(counter);
-            this.removeOutputEditor(counter);
+            self.removeOutputEditor(counter);
+            afterResult();
           }
         });
       }
@@ -1202,25 +1206,23 @@
 
       var self = this;
 
-      var cancelRunningQuery = function() {
+
+      var cancelRunningQuery = function(id, counter) {
 
         $.ajax({
-          url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+          url: '/_api/job/'+ encodeURIComponent(id) + "/cancel",
           type: 'PUT',
           success: function() {
             window.clearTimeout(self.checkQueryTimer);
+            $('#outputEditorWrapper' + counter).remove();
             arangoHelper.arangoNotification("Query", "Query canceled.");
-            window.progressView.hide();
-            //TODO REMOVE OUTPUT BOX
           }
         });
       };
 
-      window.progressView.show(
-        "Query is operating...",
-        cancelRunningQuery,
-        "Cancel Query"
-      );
+      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').bind('click', function() {
+        cancelRunningQuery(queryID, counter);
+      });
 
       self.timer.start();
       this.execPending = false;
@@ -1248,6 +1250,10 @@
             '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
           );
         };
+
+        $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
+        var time = self.timer.getTimeAndReset() / 1000 + " s";
+        appendSpan(time, 'fa-clock-o');
 
         if (data.extra) {
           if (data.extra.stats) {
@@ -1280,8 +1286,11 @@
           }
         }
 
-        var time = self.timer.getTimeAndReset() / 1000 + " s";
-        $('#outputEditorWrapper' + counter + ' .queryExecutionTime2').text(time);
+        $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        $('#outputEditorWrapper' + counter + ' .fa-close').show();
+        $('#outputEditor' + counter).css('opacity', '1');
+        $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
+        $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);

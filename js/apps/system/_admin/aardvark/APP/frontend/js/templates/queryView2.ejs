@@ -104,27 +104,26 @@
     <div class="arangoToolbar arangoToolbarTop">
       <div class="pull-left">
         <span class="toolbarType"><%=type%></span>
-        <% if (type === 'Query') { %>
-          <span><i class="fa fa-clock-o"></i><i class="queryExecutionTime2"></i></span>
-        <% } %>
+          <span id="spinner"><i class="fa fa-spinner fa-spin"></i><i>Query is operating ...</i></span>
       </div>
       <div class="pull-right">
-        <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>"></i></span>
+        <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>" style="display: none"></i></span>
       </div>
       <div class="pull-right">
         <% if (type === 'Query') { %>
-          <span class="switchAce" counter="<%=counter%>">Result</span>
+          <span class="switchAce" counter="<%=counter%>" style="display: none">Result</span>
         <% } else { %>
           <span class="switchAce" counter="<%=counter%>">AQL</span>
         <% } %>
       </div>
     </div>
-    <div id="outputEditor<%= counter %>"></div>
+    <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
     <div id="sentQueryEditor<%= counter %>" style="display: none"></div>
     <div class="arangoToolbar arangoToolbarBottom">
       <div class="pull-right">
         <% if (type === 'Query') { %>
-          <button id="downloadQueryResult" counter="<%=counter%>" class="button-success">Download</button>
+          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none" class="button-success">Download</button>
+          <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
         <% } %>
       </div>
     </div>
