@@ -34,11 +34,11 @@ State::State() {
 State::~State() {}
 
 State::configure (size_t size) {
-  _log.push_back(log_t (0, 0, 0, "");
+  _log.push_back(log_t (0, 0, 0, ""));
 }
 
 //Leader
-std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, size_t size) {
+std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   std::vector<index_t> idx;
   Builder builder;
@@ -56,13 +56,13 @@ std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid, si
 }
 
 //Follower
-void State::log (query_t const& query, std::vector<index_t> cont& idx, term_t term, id_t lid, size_t size) {
+void State::log (std::string const& query, index_t index, term_t term, id_t lid) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   Builder builder;
   for (size_t i = 0; i < query->slice().length()) {
-    _log.push_back(idx[i], term, lid, query.toString(), std::vector<bool>(size));
+    _log.push_back(index, term, lid, query.toString());
     builder.add("query", qyery->Slice());  // query
-    builder.add("idx", Value(idx[i]));     // log index
+    builder.add("idx", Value(index));     // log index
     builder.add("term", Value(term));      // term
     builder.add("leaderID", Value(lid));   // leader id
     builder.close();
@@ -70,17 +70,7 @@ void State::log (query_t const& query, std::vector<index_t> cont& idx, term_t te
   save (builder.slice());
 }
 
-void State::log (query_t const& query, index_t idx, term_t term, id_t lid, size_t size) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  _log.push_back(idx, term, lid, query.toString(), std::vector<bool>(size));
-}
-
-void State::confirm (id_t id, index_t index) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  _log[index].ack[id] = true;
-}
-
-bool findit (index_t index, term_t term) {
+bool State::findit (index_t index, term_t term) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   auto i = std::begin(_log);
   while (i != std::end(_log)) { // Find entry matching index and term
@@ -99,32 +89,31 @@ bool findit (index_t index, term_t term) {
   return false;
 }
 
-collect_ret_t collectUnacked (id_t id) {
-  // Collect all unacknowledged
+log const& State::operator[](index_t index) const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  return _log[index];
+}
+
+collect_ret_t State::collectFrom (index_t index) {
+  // Collect all from index on
   MUTEX_LOCKER(mutexLocker, _logLock);
   std::vector<index_t> work;
-  bool found_first = false;
   id_t prev_log_term;
   index_t prev_log_index;
-  for (size_t i = 0; i < _log.end(); ++i) {
-    if (!_log[i].ack[id]) {
-      work.push_back(_log[i].index);
-      if (!found_first) {
-        prev_log_term = _log[i-1].term;
-        prev_log_index = _log[i-1].index;
-        found_first = true;
-      }
-    }
+  prev_log_term = _log[index-1].term;
+  prev_log_index = _log[index-1].index;
+  for (size_t i = index; i < _log.end(); ++i) {
+    work.push_back(_log[i].index);
   }
   return collect_ret_t(prev_log_index, prev_log_term, work);
 }
 
-bool save (std::string const& ep) {
+bool State::save (std::string const& ep) {
   // Persist to arango db
   // AQL votedFor, lastCommit
 };
 
-load_ret_t load (std::string const& ep) {
+load_ret_t State::load (std::string const& ep) {
   // Read all from arango db
   return load_ret_t (currentTerm, votedFor)
 };

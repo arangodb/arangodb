@@ -39,8 +39,10 @@ typedef enum AGENCY_STATUS {
   OK = 0,
   RETRACTED_CANDIDACY_FOR_HIGHER_TERM, // Vote for higher term candidate
                                        // while running. Strange!
-  RESIGNED_LEADERSHIP_FOR_HIGHER_TERM  // Vote for higher term candidate
+  RESIGNED_LEADERSHIP_FOR_HIGHER_TERM, // Vote for higher term candidate
                                        // while leading. Very bad!
+  LOWER_TERM_APPEND_ENTRIES_RPC,
+  NO_MATCHING_PREVLOG
 } status_t;
 
 typedef uint64_t term_t;                           // Term type
@@ -67,11 +69,11 @@ template<class T> struct Config {
     append_entries_retry_interval(appent_i), end_points(end_p) {}
 /*    void print (arangodb::LoggerStream& l) const {
       l << "Config: "
-        << "min_ping(" << min_ping << ")"
-        << "max_ping(" << max_ping << ")"
-        << "size(" << end_points.size() << ")"
-        << end_points;
-        }*/
+      << "min_ping(" << min_ping << ")"
+      << "max_ping(" << max_ping << ")"
+      << "size(" << end_points.size() << ")"
+      << end_points;
+      }*/
   inline size_t size() const {return end_points.size();}
 };
 
@@ -110,6 +112,8 @@ struct write_ret_t {
   std::vector<index_t> indices; // Indices of log entries (if any) to wait for
   write_ret_t (bool a, id_t id, index_list_t const& idx = index_list_t()) :
     accepted(a), redirect(id), indices(idx) {}
+  write_ret_t (bool a, id_t id, std::vector<index_t> const& idx) :
+    accepted(a), redirect(id), indices(idx) {}
 };
 
 using namespace std::chrono;
@@ -127,7 +131,6 @@ struct log_t {
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
 };
-  
 
 enum AGENCY_EXCEPTION {
   QUERY_NOT_APPLICABLE
@@ -143,8 +146,10 @@ struct collect_ret_t {
   index_t prev_log_index;
   term_t prev_log_term;
   std::vector<index_t> indices;
-  collect_ret_t (index_t pli, term_t plt, std::vector<index_t> idx) :
+  collect_ret_t () : prev_log_index(0), prev_log_term(0) {}
+  collect_ret_t (index_t pli, term_t plt, std::vector<index_t> const& idx) :
     prev_log_index(pli), prev_log_term(plt), indices(idx) {}
+  size_t size() const {return indices.size();}
 };
 
 }}

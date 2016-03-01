@@ -21,24 +21,24 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_AGENT__
-#define __ARANGODB_CONSENSUS_AGENT__
+#ifndef __ARANGODB_CONSENSUS_AGENT_CALLBACK__
+#define __ARANGODB_CONSENSUS_AGENT_CALLBACK__
 
 #include "Cluster/ClusterComm.h"
 
-class Agent;
-
 namespace arangodb {
 namespace consensus {
+
+class Agent;
 
 class AgentCallback : public arangodb::ClusterCommCallback {
 
 public:
   
   AgentCallback();
-  AgentCallback(Agent* agent);
+  explicit AgentCallback(Agent* agent);
 
-  bool operator ()(ClusterCommResult*);
+  virtual bool operator ()(arangodb::ClusterCommResult*);
 
   void shutdown();
 

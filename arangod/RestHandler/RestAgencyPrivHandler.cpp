@@ -89,9 +89,8 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
         generateError(HttpResponse::NOT_FOUND,404); // nothing 
         return HttpHandler::status_t(HANDLER_DONE);
       }
-        
     }
-      
+    
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);

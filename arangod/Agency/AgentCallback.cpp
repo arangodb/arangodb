@@ -9,11 +9,11 @@ AgentCallback::AgentCallback() : _agent(0) {}
 
 AgentCallback::AgentCallback(Agent* agent) : _agent(agent) {}
 
-void AgentCallback::shutdown() {
+void AgentCallbacbk::shutdown() {
   _agent = 0;
 }
 
-bool AgentCallback::operator()(ClusterCommResult* res) {
+bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   
   if (res->status == CL_COMM_RECEIVED) {
     id_t agent_id;

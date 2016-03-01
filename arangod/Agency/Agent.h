@@ -36,7 +36,6 @@ namespace arangodb {
 namespace consensus {
     
 class Agent : public arangodb::Thread {
-              // We need to asynchroneously append entries
   
 public:
   
@@ -111,27 +110,42 @@ public:
   read_ret_t read (query_t const&) const;
   
   /**
+   * @brief Received by followers to replicate log entries (§5.3);
+   *        also used as heartbeat (§5.2).
+   */
+  bool recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+    term_t prevTerm, index_t lastCommitIndex, query_t const& queries);
+
+  /**
    * @brief Invoked by leader to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  append_entries_t appendEntries (term_t, id_t, index_t, term_t, index_t,
-                                  query_t const&);
-
+  append_entries_t sendAppendEntriesRPC (id_t slave_id,
+    collect_ret_t const& entries);
+    
   /**
    * @brief 1. Deal with appendEntries to slaves.
    *        2. Report success of write processes. 
    */
-  void run ();
+  void run () override final;
+  void beginShutdown () override;
 
   /**
    * @brief Report appended entries from AgentCallback
    */
-  void reportIn (id_t id, std::vector<index_t> idx);
+  void reportIn (id_t id, index_t idx);
   
   /**
    * @brief Wait for slaves to confirm appended entries
    */
-  bool waitFor (std::vector<index_t> entries, duration_t timeout = duration_t(2.0));
+  bool waitFor (index_t last_entry, duration_t timeout = duration_t(2.0));
+
+  /**
+   * @brief Convencience size of agency
+   */
+  size_t size() const;
+
+  void catchUpReadDB();
 
 private:
 
@@ -140,7 +154,6 @@ private:
   config_t    _config;      /**< @brief Command line arguments   */
 
   std::atomic<index_t> _last_commit_index;
-  index_t     _last_commit_index_tmp;
 
   arangodb::Mutex _uncommitedLock;
   
@@ -150,11 +163,13 @@ private:
   AgentCallback _agent_callback;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
-  arangodb::basics::ConditionVariable _cv_rest; // rest handler
+  arangodb::basics::ConditionVariable _rest_cv; // rest handler
+
 
   std::atomic<bool> _stopping;
 
   std::vector<index_t> _confirmed;
+  arangodb::Mutex _confirmedLock;          /**< @brief Mutex for modifying _confirmed */
 
 };
 

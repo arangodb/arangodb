@@ -75,13 +75,13 @@ public:
   /**
    * @brief Log entries (leader)
    */
-  std::vector<index_t> log (query_t const& query, term_t term, id_t lid, size_t size);
+  std::vector<index_t> log (query_t const& query, term_t term, id_t lid);
 
   /**
-   * @brief 
+   * @brief Log entry follower
    */
-  void log (query_t const& query, index_t, term_t term, id_t lid, size_t size);
-  
+  void log (std::string const& query, index_t, term_t term, id_t lid);
+
   /**
    * @brief Save currentTerm, votedFor, log entries
    */
@@ -98,14 +98,13 @@ public:
   bool findit (index_t index, term_t term) const;
 
   /**
-   * @brief Confirm entry index for agent id
+   * @brief Collect all from index on
    */
-  void confirm (id_t id, index_t idx);
+  collect_ret_t collectFrom (index_t index);
 
-  /**
-   * @brief Collect all unacknowledged for agent id
-   */
-  collect_ret_t collectUnacked (id_t id);
+  log_t const& operator[](index_t t) {
+    
+  }
   
 private:
   
