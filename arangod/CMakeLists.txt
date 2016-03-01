@@ -154,7 +154,6 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-list.cpp
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
-  FulltextIndex/fulltext-wordlist.cpp
   GeoIndex/GeoIndex.cpp
   HttpServer/ApplicationEndpointServer.cpp
   HttpServer/AsyncJobManager.cpp

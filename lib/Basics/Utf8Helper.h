@@ -135,17 +135,9 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_vector_string_t* getWords(char const* text, size_t textLength,
-                                size_t minimalWordLength,
-                                size_t maximalWordLength, bool lowerCase);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the words of a UTF-8 string.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool getWords(TRI_vector_string_t*& words, char const* text,
-                size_t textLength, size_t minimalWordLength,
-                size_t maximalWordLength, bool lowerCase);
+  bool getWords(std::vector<std::string>& words, std::string const& text,
+                size_t minimalWordLength, size_t maximalWordLength,
+                bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a regex matcher for the specified pattern
@@ -219,21 +211,5 @@ int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
 
 char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_get_words(char const* text, size_t textLength,
-                                   size_t minimalWordLength,
-                                   size_t maximalWordLength, bool lowerCase);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
-                   size_t textLength, size_t minimalWordLength,
-                   size_t maximalWordLength, bool lowerCase);
 
 #endif

@@ -29,17 +29,8 @@
 #include "Basics/SkipList.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-
-typedef struct {
-  TRI_shaped_json_t* _fields;  // list of shaped json objects which the
-                               // collection should know about
-  size_t _numFields;           // Note that the number of fields coming from
-                               // a query can be smaller than the number of
-                               // fields indexed
-} TRI_skiplist_index_key_t;
 
 namespace arangodb {
 namespace aql {
@@ -199,13 +190,6 @@ class SkiplistIndex final : public PathBasedIndex {
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;
-
-  int _CmpElmElm(TRI_index_element_t const* leftElement,
-                 TRI_index_element_t const* rightElement,
-                 arangodb::basics::SkipListCmpType cmptype);
-
-  int _CmpKeyElm(TRI_skiplist_index_key_t const* leftKey,
-                 TRI_index_element_t const* rightElement);
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
