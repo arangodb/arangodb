@@ -360,88 +360,36 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string collection = _request->value("collection", found);
+  std::string const collectionName = _request->value("collection", found);
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
     returnType = "path";
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return getAllDocumentsCoordinator(collection, returnType);
-  }
-
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_READ);
-
-  std::vector<std::string> ids;
-
-  // .............................................................................
-  // inside read transaction
-  // .............................................................................
+                                          collectionName, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
+  OperationOptions options;
+  OperationResult opRes = trx.allKeys(collectionName, returnType, options);
 
-  res = trx.all(trx.trxCollection(), ids, true);
-
-  TRI_col_type_e type = trx.documentCollection()->_info.type();
-
-  res = trx.finish(res);
-
-  // .............................................................................
-  // outside read transaction
-  // .............................................................................
+  res = trx.finish(opRes.code);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  std::string prefix;
-
-  if (returnType == "key") {
-    prefix = "";
-  } else if (returnType == "id") {
-    prefix = trx.resolver()->getCollectionName(cid) + "/";
-  } else {
-    // default return type: paths to documents
-    if (type == TRI_COL_TYPE_EDGE) {
-      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' +
-               trx.resolver()->getCollectionName(cid) + '/';
-    } else {
-      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' +
-               trx.resolver()->getCollectionName(cid) + '/';
-    }
-  }
-
-  try {
-    // generate result
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("documents", VPackValue(VPackValueType::Array));
-
-    for (auto const& id : ids) {
-      std::string v(prefix);
-      v.append(id);
-      result.add(VPackValue(v));
-    }
-    result.close();
-    result.close();
-
-    VPackSlice s = result.slice();
-    // and generate a response
-    generateResult(s);
-  } catch (...) {
-    // Ignore the error
-  }
+  // generate response
+  generateResult(VPackSlice(opRes.buffer->data()));
   return true;
 }
 

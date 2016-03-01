@@ -1428,6 +1428,112 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all document keys in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::allKeys(std::string const& collectionName,
+                                     std::string const& type,
+                                     OperationOptions const& options) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  
+  std::string prefix;
+
+  if (type == "key") {
+    prefix = "";
+  } else if (type == "id") {
+    prefix = collectionName + "/";
+  } else {
+    // default return type: paths to documents
+    if (isEdgeCollection(collectionName)) {
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + collectionName + "/";
+    } else {
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + collectionName + "/";
+    }
+  }
+  
+  OperationOptions optionsCopy = options;
+
+  if (ServerState::instance()->isCoordinator()) {
+    return allKeysCoordinator(collectionName, type, prefix, optionsCopy);
+  }
+
+  return allKeysLocal(collectionName, type, prefix, optionsCopy);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all document keys in a collection, coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::allKeysCoordinator(std::string const& collectionName,
+                                                std::string const& type,
+                                                std::string const& prefix,
+                                                OperationOptions& options) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches all document keys in a collection, local
+////////////////////////////////////////////////////////////////////////////////
+
+OperationResult Transaction::allKeysLocal(std::string const& collectionName,
+                                          std::string const& type,
+                                          std::string const& prefix,
+                                          OperationOptions& options) {
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  if (orderDitch(trxCollection(cid)) == nullptr) {
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationResult(res);
+  }
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(VPackValueType::Object));
+  resultBuilder.add("documents", VPackValue(VPackValueType::Array));
+  
+  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ALL, "", {}, 0, UINT64_MAX, 1000, false);
+
+  while (cursor.hasMore()) {
+    int res = cursor.getMore();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+  
+    std::string value;
+    VPackSlice docs = cursor.slice();
+    VPackArrayIterator it(docs);
+    while (it.valid()) {
+      value.assign(prefix);
+      value.append(it.value().get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+      resultBuilder.add(VPackValue(value));
+      it.next();
+    }
+  }
+
+  resultBuilder.close(); // array
+  resultBuilder.close(); // object
+
+  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return OperationCursor(res);
+  }
+
+  return OperationResult(resultBuilder.steal(),
+                         transactionContext()->orderCustomTypeHandler(), "",
+                         TRI_ERROR_NO_ERROR, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches all documents in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
