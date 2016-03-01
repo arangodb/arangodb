@@ -22,14 +22,6 @@ endif ()
 
 project(ArangoDB)
 
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo
-      CACHE string
-      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-      FORCE
-  )
-endif ()
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
@@ -96,6 +88,7 @@ configure_file(
 
 if (WIN32)
   set(WINDOWS TRUE)
+  set(MSBUILD TRUE)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -138,7 +131,7 @@ if (SOLARIS)
   set(MAKE gmake)
 else ()
   set(MAKE make)
-endif()
+endif ()
 
 find_package(FLEX)
 find_package(BISON)
@@ -177,6 +170,10 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   set(CMAKE_COMPILER_IS_INTEL 1)
 endif ()
 
+set(BASE_FLAGS)
+set(BASE_C_FLAGS ${CMAKE_C_FLAGS})
+set(BASE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
 if (SOLARIS)
   set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
@@ -187,17 +184,20 @@ if (SOLARIS)
   list(APPEND SYSTEM_LIBRARIES nsl socket)
 
   # force 64bit compile
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I /opt/csw/include -D_REENTRANT -m64")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /opt/csw/include -D_REENTRANT -m64")
+  set(BASE_FLAGS "${BASE_FLAGS} -I /opt/csw/include -D_REENTRANT -m64")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+  set(BASE_FLAGS "${BASE_FLAGS} -std=gnu89")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++11")
+endif ()
+
+if (APPLE AND CMAKE_COMPILER_IS_CLANG)
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
+  add_definitions("-Wno-deprecated-declarations")
 endif ()
 
 # need c++11
@@ -207,47 +207,16 @@ include(CheckCXX11Features)
 # need threads
 find_package(Threads REQUIRED)
 
-if (APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
-  if (CMAKE_COMPILER_IS_CLANG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-    add_definitions("-Wno-deprecated-declarations")
-  endif ()
-endif ()
-
 if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
   add_definitions("-DUSE_REGEX_STATIC=1")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 
-  foreach (flag_var
-	   CMAKE_C_FLAGS
-	   CMAKE_C_FLAGS_DEBUG
-	   CMAKE_C_FLAGS_RELEASE
-	   CMAKE_C_FLAGS_MINSIZEREL
-	   CMAKE_C_FLAGS_RELWITHDEBINFO
-           CMAKE_CXX_FLAGS
-           CMAKE_CXX_FLAGS_DEBUG
-           CMAKE_CXX_FLAGS_RELEASE
-           CMAKE_CXX_FLAGS_MINSIZEREL
-           CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    if (${flag_var} MATCHES "/MD")
-      string(REGEX REPLACE "/MDd?" "" ${flag_var} "${${flag_var}}")
-    endif ()
-
-    if (flag_var MATCHES "DEBUG")
-      set(${flag_var} "${${flag_var}} /MTd")
-    else ()
-      set(${flag_var} "${${flag_var}} /MT")
-    endif ()
-  endforeach()
-
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
   set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /ignore:4099"
+    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /MACHINE:x64 /ignore:4099"
   )
 endif ()
 
@@ -272,40 +241,6 @@ if (CUSTOM_INCLUDES)
 endif ()
 
 ################################################################################
-# BUILD TYPES
-################################################################################
-
-string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TL)
-
-set(DEBUG FALSE)
-
-if (WINDOWS)
-  if (CMAKE_BUILD_TYPE_TL MATCHES debug)
-    set(DEBUG TRUE)
-    set(WIN_RELEASE_TYPE Debug)
-    set(WIN_GYP_RELEASE_TYPE Debug)
-  elseif (CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
-    set(WIN_RELEASE_TYPE RelWithDebInfo)
-    set(WIN_GYP_RELEASE_TYPE release)
-  elseif (CMAKE_BUILD_TYPE_TL MATCHES release)
-    set(WIN_RELEASE_TYPE Release)
-    set(WIN_GYP_RELEASE_TYPE release)
-  endif () 
-else ()
-  if (CMAKE_BUILD_TYPE_TL MATCHES debug)
-    set(DEBUG TRUE)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g")
-  elseif (CMAKE_BUILD_TYPE_TL MATCHES relwithdebinfo)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -g")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
-  elseif (CMAKE_BUILD_TYPE_TL MATCHES release)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-  endif () 
-endif ()
-
-################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
 
@@ -317,7 +252,7 @@ else ()
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
   list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
 
-  if (NOT "${cmake_target_arch_len}" STREQUAL "1")
+  if (NOT "${cmake_target_arch_len}" EQUAL "1")
     set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
     set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
   else ()
@@ -330,7 +265,7 @@ else ()
   include(OptimizeForArchitecture)
   OptimizeForArchitecture()
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
+  set(BASE_FLAGS "${BASE_FLAGS} ${Vc_ARCHITECTURE_FLAGS}")
 endif ()
 
 ################################################################################
@@ -401,6 +336,115 @@ if (USE_TCMALLOC)
 endif ()
 
 ################################################################################
+## FLAGS
+################################################################################
+
+message(STATUS)
+
+# compiler options
+if (CMAKE_COMPILER_IS_GNUCC)
+  message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
+
+  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
+
+  set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
+
+elseif (CMAKE_COMPILER_IS_CLANG)
+  message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+
+  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
+
+  set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
+
+elseif (MSVC) 
+  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+
+  set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/MTd"                         CACHE STRING "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT"                            CACHE STRING "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT"       CACHE STRING "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT" CACHE STRING "C++ release with debug info flags")
+
+else ()
+  # unknown compiler
+  message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+
+  set(BASE_FLAGS "${BASE_FLAGS} -Wall")
+
+  set(CMAKE_CXX_FLAGS                ""                               CACHE STRING "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE STRING "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE STRING "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE STRING "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE STRING "C++ release with debug info flags")
+endif ()
+
+message(STATUS)
+
+set(CMAKE_C_FLAGS                "${BASE_FLAGS} ${BASE_C_FLAGS}")
+set(CMAKE_C_FLAGS_DEBUG          "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_RELEASE        "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_C_FLAGS_MINSIZEREL     "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL}")
+
+set(CMAKE_CXX_FLAGS                "${BASE_FLAGS} ${BASE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG          "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_CXX_FLAGS_RELEASE        "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+
+message(STATUS "Info CMAKE_C_FLAGS")
+message(STATUS "${CMAKE_C_FLAGS}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_C_FLAGS_DEBUG")
+message(STATUS "${CMAKE_C_FLAGS_DEBUG}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_C_FLAGS_RELEASE")
+message(STATUS "${CMAKE_C_FLAGS_RELEASE}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_C_FLAGS_RELWITHDEBINFO")
+message(STATUS "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_C_FLAGS_MINSIZEREL")
+message(STATUS "${CMAKE_C_FLAGS_MINSIZEREL}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_CXX_FLAGS")
+message(STATUS "${CMAKE_CXX_FLAGS}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_CXX_FLAGS_DEBUG")
+message(STATUS "${CMAKE_CXX_FLAGS_DEBUG}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_CXX_FLAGS_RELEASE")
+message(STATUS "${CMAKE_CXX_FLAGS_RELEASE}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_CXX_FLAGS_RELWITHDEBINFO")
+message(STATUS "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_CXX_FLAGS_MINSIZEREL")
+message(STATUS "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+message(STATUS)
+
+message(STATUS "Info CMAKE_EXE_LINKER_FLAGS")
+message(STATUS "${CMAKE_EXE_LINKER_FLAGS}")
+message(STATUS)
+
+################################################################################
 ## 3RD PARTY
 ################################################################################
 
@@ -438,7 +482,6 @@ endforeach()
 
 if (WINDOWS)
   include_directories(${GETOPT_INCLUDE_DIR})
-  add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
 endif ()
 
 ################################################################################
@@ -447,7 +490,6 @@ endif ()
 
 if (WINDOWS)
   include_directories(${REGEX_INCLUDE_DIR})
-  add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
 endif ()
 
 ################################################################################
@@ -579,7 +621,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
   ${OPENSSL_LIBRARIES}
-  ${V8_LIBS}
   ${ICU_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
@@ -591,12 +632,12 @@ add_subdirectory(arangod)
 add_subdirectory(UnitTests)
 add_subdirectory(Documentation)
 
-add_dependencies(arangob zlibstatic v8_build)
-add_dependencies(arangod ev zlibstatic v8_build)
-add_dependencies(arangodump zlibstatic v8_build)
-add_dependencies(arangoimp zlibstatic v8_build)
+add_dependencies(arangob       zlibstatic v8_build)
+add_dependencies(arangod ev    zlibstatic v8_build)
+add_dependencies(arangodump    zlibstatic v8_build)
+add_dependencies(arangoimp     zlibstatic v8_build)
 add_dependencies(arangorestore zlibstatic v8_build)
-add_dependencies(arangosh zlibstatic v8_build)
+add_dependencies(arangosh      zlibstatic v8_build)
 
 if (USE_BOOST_UNITTESTS)
   add_dependencies(basics_suite v8_build)
