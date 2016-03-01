@@ -202,7 +202,7 @@ void Constituent::callElection() {
 void Constituent::run() {
 
   // Always start off as follower
-  while (!_stopping) { 
+  while (!isStopping()) { 
     if (_role == FOLLOWER) { 
       _cast = false;                           // New round set not cast vote
       std::this_thread::sleep_for(sleepFor()); // Sleep for random time

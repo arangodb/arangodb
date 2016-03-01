@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
+#include "Basics/ConditionLocker.h"
 
 #include <chrono>
 
@@ -33,7 +34,7 @@ Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
   _constituent.configure(this);
-  _state.read(); // read persistent database
+  _state.load(); // read persistent database
 }
 
 id_t Agent::id() const { return _config.id;}
@@ -67,7 +68,7 @@ void Agent::print (arangodb::LoggerStream& logger) const {
 }
 
 void Agent::report(status_t status) {
-  _status = status;
+  //_status = status;
 }
 
 id_t Agent::leaderID () const {
@@ -80,7 +81,7 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
 }
 
 
-bool waitFor (index_t index, std::chrono::duration timeout = 2.0) {
+bool Agent::waitFor (index_t index, duration_t timeout) {
 
   CONDITION_LOCKER(guard, _cv_rest);
   auto start = std::chrono::system_clock::now();
@@ -90,7 +91,7 @@ bool waitFor (index_t index, std::chrono::duration timeout = 2.0) {
     _cv.wait();
     
     // shutting down
-    if (_stopping) {      
+    if (this->isStopping()) {      
       return false;
     }
      // timeout?
@@ -182,7 +183,7 @@ read_ret_t Agent::read (query_t const& query) const {
 }
 
 void State::run() {
-  while (!_stopping) {
+  while (!this->isStopping()) {
     auto dur = std::chrono::system_clock::now();
     std::vector<std::vector<index_t>> work(_config.size());
 
@@ -210,19 +211,13 @@ void State::run() {
   }
 }
 
-bool State::operator(id_t, index_t) (ClusterCommResult* ccr) {
-  CONDITION_LOCKER(guard, _cv);
-  _state.confirm(id_t, index_t);
-  guard.broadcast();
-}
-
-inline size_t size() const {
+inline size_t Agent::size() const {
   return _config.size();
 }
 
-void shutdown() {
+void Agent::shutdown() {
   // wake up all blocked rest handlers
-  _stopping = true;
+  _agent_callback.shutdown();
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }

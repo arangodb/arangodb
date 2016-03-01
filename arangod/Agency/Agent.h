@@ -131,7 +131,7 @@ public:
   /**
    * @brief Wait for slaves to confirm appended entries
    */
-  bool waitFor (std::vector<index_t> entries, std::chrono::duration timeout=2.0);
+  bool waitFor (std::vector<index_t> entries, duration_t timeout = duration_t(2.0));
 
 private:
 
