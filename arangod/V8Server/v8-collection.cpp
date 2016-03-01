@@ -429,6 +429,7 @@ static void ReplaceVocbaseCol(bool useCollection,
 
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t const* col = nullptr;
+  std::string collectionName;
 
   if (useCollection) {
     // called as db.collection.replace()
@@ -439,7 +440,8 @@ static void ReplaceVocbaseCol(bool useCollection,
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    vocbase = col->_vocbase;
+    vocbase = col->vocbase();
+    collectionName = col->name();
   } else {
     // called as db._replace()
     vocbase = GetContextVocBase(isolate);
@@ -452,7 +454,6 @@ static void ReplaceVocbaseCol(bool useCollection,
   auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
   
   VPackBuilder builder;   // to build the search value
-  std::string collectionName;
 
   if (!useCollection) {  // the db._replace case
     int res = ParseDocumentOrDocumentHandle(
@@ -509,12 +510,13 @@ static void ReplaceVocbaseCol(bool useCollection,
   // only have to set up the single replacement document:
   if (!useCollection) {
     workOnOneDocument(args[1]);
-  } else if (args[0]->IsArray()) {
+  } else if (!args[0]->IsArray()) {
     // we deal with the single document case:
     workOnOneSearchVal(args[0]);
     workOnOneDocument(args[1]);
   } else { // finally, the array case, note that we already know that the two
            // arrays have equal length!
+    TRI_ASSERT(args[0]->IsArray() && args[1]->IsArray());
     VPackArrayBuilder b1(&builder);
     VPackArrayBuilder b2(&updateBuilder);
     auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
