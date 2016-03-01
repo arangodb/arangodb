@@ -198,7 +198,7 @@ if (SOLARIS)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set(BASE_FLAGS "${BASE_FLAGS} -std=gnu89")
+  set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
@@ -445,6 +445,18 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL}")
 
 if (VERBOSE)
+  message(STATUS "Info BASE_FLAGS")
+  message(STATUS "${BASE_FLAGS}")
+  message(STATUS)
+
+  message(STATUS "Info BASE_C_FLAGS")
+  message(STATUS "${BASE_C_FLAGS}")
+  message(STATUS)
+
+  message(STATUS "Info BASE_CXX_FLAGS")
+  message(STATUS "${BASE_CXX_FLAGS}")
+  message(STATUS)
+
   message(STATUS "Info CMAKE_C_FLAGS")
   message(STATUS "${CMAKE_C_FLAGS}")
   message(STATUS)
