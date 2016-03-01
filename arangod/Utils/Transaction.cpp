@@ -737,40 +737,50 @@ OperationResult Transaction::insert(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (value.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   // Validate Edges
   if (isEdgeCollection(collectionName)) {
     // Check _from
-    size_t split;
-    VPackSlice from = value.get(TRI_VOC_ATTRIBUTE_FROM);
-    if (!from.isString()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    std::string docId = from.copyString();
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    std::string cName = docId.substr(0, split);
-    if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
+    auto checkFrom = [&](VPackSlice const value) -> void {
+      size_t split;
+      VPackSlice from = value.get(TRI_VOC_ATTRIBUTE_FROM);
+      if (!from.isString()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      }
+      std::string docId = from.copyString();
+      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      }
+      std::string cName = docId.substr(0, split);
+      if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+    };
 
     // Check _to
-    VPackSlice to = value.get(TRI_VOC_ATTRIBUTE_TO);
-    if (!to.isString()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    docId = to.copyString();
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    cName = docId.substr(0, split);
-    if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    auto checkTo = [&](VPackSlice const value) -> void {
+      size_t split;
+      VPackSlice to = value.get(TRI_VOC_ATTRIBUTE_TO);
+      if (!to.isString()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      }
+      std::string docId = to.copyString();
+      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      }
+      std::string cName = docId.substr(0, split);
+      if (TRI_COL_TYPE_UNKNOWN == resolver()->getCollectionType(cName)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+    };
+
+    if (value.isArray()) {
+      for (auto s : VPackArrayIterator(value)) {
+        checkFrom(s);
+        checkTo(s);
+      }
+    } else {
+      checkFrom(value);
+      checkTo(value);
     }
   }
 
@@ -792,6 +802,12 @@ OperationResult Transaction::insert(std::string const& collectionName,
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const& value,
                                                OperationOptions& options) {
+
+  if (value.isArray()) {
+    // must provide a document object
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
   std::map<std::string, std::string> headers;
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
@@ -847,70 +863,83 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  // add missing attributes for document (_id, _rev, _key)
-  VPackBuilder merge;
-  merge.openObject();
-   
-  // generate a new tick value
-  TRI_voc_tick_t const revisionId = TRI_NewTickServer();
-  std::string keyString;
-  // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  auto key = value.get(TRI_VOC_ATTRIBUTE_KEY);
-
-  if (key.isNone()) {
-    // "_key" attribute not present in object
-    keyString = document->_keyGenerator->generate(revisionId);
-    merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString));
-  } else if (!key.isString()) {
-    // "_key" present but wrong type
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  } else {
-    keyString = key.copyString();
-    int res = document->_keyGenerator->validate(keyString, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      // invalid key value
-      return OperationResult(res);
-    }
-  }
-  
-  // add _rev attribute
-  merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
-
-  // add _id attribute
-  uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
-  *p++ = 0xf3; // custom type for _id
-  MarkerHelper::storeNumber<uint64_t>(p, cid, sizeof(uint64_t));
-
-  merge.close();
-
-  VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
-  VPackSlice insertSlice = toInsert.slice();
-  
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  TRI_doc_mptr_t mptr;
-  int res = document->insert(this, &insertSlice, &mptr, options, !isLocked(document, TRI_TRANSACTION_WRITE));
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
-  }
-
-  if (options.silent) {
-    // no need to construct the result object
-    return OperationResult(TRI_ERROR_NO_ERROR);
-  }
-
-  TRI_ASSERT(mptr.getDataPtr() != nullptr);
-  
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, keyString, mptr._rid, "");
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+  auto workForOneDocument = [&](VPackSlice const value) -> int {
+    // add missing attributes for document (_id, _rev, _key)
+    VPackBuilder merge;
+    merge.openObject();
+     
+    // generate a new tick value
+    TRI_voc_tick_t const revisionId = TRI_NewTickServer();
+    std::string keyString;
+    auto key = value.get(TRI_VOC_ATTRIBUTE_KEY);
+
+    if (key.isNone()) {
+      // "_key" attribute not present in object
+      keyString = document->_keyGenerator->generate(revisionId);
+      merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString));
+    } else if (!key.isString()) {
+      // "_key" present but wrong type
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    } else {
+      keyString = key.copyString();
+      int res = document->_keyGenerator->validate(keyString, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // invalid key value
+        return res;
+      }
+    }
+    
+    // add _rev attribute
+    merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
+
+    // add _id attribute
+    uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
+    *p++ = 0xf3; // custom type for _id
+    MarkerHelper::storeNumber<uint64_t>(p, cid, sizeof(uint64_t));
+
+    merge.close();
+
+    VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
+    VPackSlice insertSlice = toInsert.slice();
+    
+    TRI_doc_mptr_t mptr;
+    int res = document->insert(this, &insertSlice, &mptr, options,
+        !isLocked(document, TRI_TRANSACTION_WRITE));
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    if (options.silent) {
+      // no need to construct the result object
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    
+    buildDocumentIdentity(resultBuilder, cid, keyString, mptr._rid, "");
+    return TRI_ERROR_NO_ERROR;
+  };
+
+  int res;
+  if (value.isArray()) {
+    VPackArrayBuilder b(&resultBuilder);
+    for (auto const s : VPackArrayIterator(value)) {
+      res = workForOneDocument(s);
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
+  } else {
+    res = workForOneDocument(value);
+  }
+
+  return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync); 
 }
   

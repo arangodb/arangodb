@@ -262,18 +262,13 @@ void RestVocbaseBaseHandler::generate20x(
     TRI_col_type_e type) {
 
   VPackSlice slice = result.slice();
-  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.isObject() || slice.isArray());
   _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
-
-  std::string escapedHandle(DocumentHelper::assembleDocumentId(
-      collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
-  if (_request->compatibility() < 10400L) {
-    // pre-1.4 location header (e.g. /_api/document/xyz)
-    _response->setHeader("location", 8,
-                         std::string(DOCUMENT_PATH + "/" + escapedHandle));
-  } else {
-    // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
+  if (slice.isObject()) {
+    _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
+    // pre 1.4 location headers withdrawn for >= 3.0
+    std::string escapedHandle(DocumentHelper::assembleDocumentId(
+        collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
     if (type == TRI_COL_TYPE_EDGE) {
       _response->setHeader("location", 8,
                            std::string("/_db/" + _request->databaseName() +
