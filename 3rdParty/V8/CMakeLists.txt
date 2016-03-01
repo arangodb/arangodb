@@ -118,6 +118,8 @@ if (WIN32)
     #-Dwant_separate_host_toolset=0
   )
 
+  add_custom_target(v8_build)
+
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
 
@@ -135,6 +137,8 @@ if (WIN32)
       INSTALL_COMMAND
         ""
     )
+
+    add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
 
     # and now ICU...
     ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icudata
