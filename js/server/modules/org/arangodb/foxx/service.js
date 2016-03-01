@@ -1,7 +1,5 @@
 'use strict';
 const _ = require('underscore');
-const ArangoError = require('org/arangodb').ArangoError;
-const errors = require('org/arangodb').errors;
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
@@ -374,23 +372,8 @@ class FoxxService {
       });
     }
 
-    try {
-      module.load(filename);
-      return module.exports;
-    } catch(e) {
-      if (e instanceof ArangoError) {
-        e.errorMessage += "\n(app relative include paths not supported anymore) \nFile: " + filename;
-        throw e;
-      }
-      var err = new ArangoError({
-        errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
-        + '\nFile: ' + filename
-      });
-      err.stack = e.stack;
-      err.cause = e;
-      throw err;
-    }
+    module.load(filename);
+    return module.exports;
   }
 
   get exports() {

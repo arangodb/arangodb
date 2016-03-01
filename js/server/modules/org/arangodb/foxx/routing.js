@@ -604,10 +604,7 @@ var routeApp = function (app, isInstallProcess) {
     // return the new routes
     return routes;
   } catch (e) {
-    console.error("Cannot compute Foxx application routes: %s", String(e));
-    if (e.hasOwnProperty("stack")) {
-      console.errorLines(e.stack);
-    }
+    console.errorLines(`Cannot compute Foxx application routes:\n${e.stack}`);
     if (isInstallProcess) {
       throw e;
     }

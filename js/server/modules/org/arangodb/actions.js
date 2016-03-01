@@ -134,6 +134,7 @@ function createCallbackFromActionCallbackString (callback, parentModule, route) 
   try {
     actionModule._compile(`module.exports = ${callback}`, route.name);
   } catch (e) {
+    console.errorLines(e.stack);
     return notImplementedFunction(route, util.format(
       "could not generate callback for '%s'",
       callback

@@ -4013,12 +4013,6 @@ void TRI_LogV8Exception (v8::Isolate* isolate,
 
       LOG_ERROR("!%s", l.c_str());
     }
-
-    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
-
-    if (*stacktrace && stacktrace.length() > 0) {
-      LOG_ERROR("stacktrace: %s", *stacktrace);
-    }
   }
 }
 

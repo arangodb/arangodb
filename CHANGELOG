@@ -4,6 +4,8 @@ v2.8.4 (XXXX-XX-XX)
 * global modules are no longer incorrectly resolved outside the ArangoDB
   JavaScript directory or the Foxx service's root directory (issue #1577)
 
+* improved error messages from Foxx and JavaScript (issues #1564, #1565, #1744)
+
 
 v2.8.3 (2016-02-22)
 -------------------
