@@ -832,7 +832,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
  
   if (state->_fid != fid) {
     // update the state
-    state->_fid = fid;
+    state->_fid = fid; // when we're here, we're looking at a datafile
     state->_dfi = FindDatafileStats(state, fid);
   }
 
@@ -850,8 +850,8 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    header->_fid = fid;
-    header->_hash = primaryIndex->calculateHash(trx, keySlice);
+    header->setFid(fid, false);
+    header->setHash(primaryIndex->calculateHash(trx, keySlice));
     header->setDataPtr(marker);  // ONLY IN OPENITERATOR
 
     // insert into primary index
@@ -874,22 +874,22 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   // it is an update, but only if found has a smaller revision identifier
   else if (found->revisionId() < rid ||
-           (found->revisionId() == rid && found->_fid <= fid)) {
+           (found->revisionId() == rid && found->getFid() <= fid)) {
     // save the old data
     TRI_doc_mptr_t oldData = *found;
 
     // update the header info
-    found->_fid = fid;
+    found->setFid(fid, false); // when we're here, we're looking at a datafile
     found->setDataPtr(marker);
 
     document->_masterPointers.moveBack(found, &oldData);  // ONLY IN OPENITERATOR
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
-    if (oldData._fid == state->_fid) {
+    if (oldData.getFid() == state->_fid) {
       dfi = state->_dfi;
     } else {
-      dfi = FindDatafileStats(state, oldData._fid);
+      dfi = FindDatafileStats(state, oldData.getFid());
     }
 
     if (oldData.getDataPtr() != nullptr) { 
@@ -958,10 +958,10 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     // update the datafile info
     DatafileStatisticsContainer* dfi;
 
-    if (found->_fid == state->_fid) {
+    if (found->getFid() == state->_fid) {
       dfi = state->_dfi;
     } else {
-      dfi = FindDatafileStats(state, found->_fid);
+      dfi = FindDatafileStats(state, found->getFid());
     }
 
     TRI_ASSERT(found->getDataPtr() != nullptr);
@@ -3858,7 +3858,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 
     // update the header we got
     void* mem = operation.marker->mem();
-    header->_hash = hash;
+    header->setHash(hash);
     header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
 
     // insert into indexes

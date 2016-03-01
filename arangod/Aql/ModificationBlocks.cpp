@@ -184,8 +184,7 @@ int ModificationBlock::extractKey(AqlValue const& value,
 
 void ModificationBlock::constructMptr(TRI_doc_mptr_t* dst,
                                       TRI_df_marker_t const* marker) const {
-  dst->_fid = 0;
-  dst->_hash = 0;
+  dst->clear();
   dst->setDataPtr(marker);
 }
 

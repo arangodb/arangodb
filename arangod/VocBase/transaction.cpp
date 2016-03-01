@@ -204,9 +204,8 @@ static void FreeOperations(TRI_transaction_t* trx) {
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          TRI_voc_fid_t fid = op->oldHeader._fid;
-          TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-              op->oldHeader.getDataPtr());  // PROTECTED by trx from above
+          TRI_voc_fid_t fid = op->oldHeader.getFid();
+          auto marker = op->oldHeader.getMarkerPtr();
 
           auto it2 = stats.find(fid);
 
@@ -1122,9 +1121,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
 
   // set header file id
-  operation.header->_fid = fid;
-
-  TRI_ASSERT(operation.header->_fid > 0);
+  TRI_ASSERT(fid > 0);
+  operation.header->setFid(fid, true); // always in WAL
 
   if (isSingleOperationTransaction) {
     // operation is directly executed
@@ -1138,11 +1136,9 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
-      TRI_ASSERT(operation.oldHeader._fid > 0);
-
       TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();
       document->_datafileStatistics.increaseDead(
-          operation.oldHeader._fid, 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
+          operation.oldHeader.getFid(), 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
     }
   } else {
     // operation is buffered and might be rolled back

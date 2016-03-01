@@ -674,10 +674,8 @@ void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
     TRI_document_collection_t* document, CollectorCache* cache,
     CollectorOperation const& operation) {
-  TRI_df_marker_t const* walMarker =
-      reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
-  TRI_df_marker_t const* marker =
-      reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
+  auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
+  auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
   TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
@@ -710,7 +708,7 @@ void CollectorThread::processCollectionMarker(
       // we can safely update the master pointer's dataptr value
       found->setDataPtr(
           static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
-      found->_fid = fid;
+      found->setFid(fid, false); // points to datafile now
 
       dfi.numberAlive++;
       dfi.sizeAlive += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);

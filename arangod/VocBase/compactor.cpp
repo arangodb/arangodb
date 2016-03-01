@@ -425,8 +425,8 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     // let marker point to the new position
     found2->setDataPtr(result);
     // update fid in case it changes
-    if (found2->_fid != targetFid) {
-      found2->_fid = targetFid;
+    if (found2->getFid() != targetFid) {
+      found2->setFid(targetFid, false);
     }
 
     context->_dfi.numberAlive++;

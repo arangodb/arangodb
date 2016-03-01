@@ -47,7 +47,7 @@ struct EdgeInfo {
       : cid(pcid), mptr(pmptr) {}
 
   bool operator==(EdgeInfo const& other) const {
-    if (cid == other.cid && mptr._hash == other.mptr._hash) {
+    if (cid == other.cid && mptr.getHash() == other.mptr.getHash()) {
       // We have to look into the key now. The only source of truth.
       char const* l = TRI_EXTRACT_MARKER_KEY(&mptr);
       char const* r = TRI_EXTRACT_MARKER_KEY(&other.mptr);
