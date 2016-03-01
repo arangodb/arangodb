@@ -25,64 +25,31 @@
 
 using namespace arangodb::aql;
 
-CollectionScanner::CollectionScanner(
-    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
-    : trx(trx), trxCollection(trxCollection), totalCount(0) {}
+CollectionScanner::CollectionScanner(arangodb::AqlTransaction* trx,
+                                     std::string const& collection,
+                                     bool readRandom)
+    : _cursor(trx->indexScan(collection,
+                             (readRandom ? Transaction::CursorType::ANY
+                                         : Transaction::CursorType::ALL),
+                             "", VPackSlice(), 0, UINT64_MAX, 1000, false)) {
+      TRI_ASSERT(_cursor.successful());
+    }
 
 CollectionScanner::~CollectionScanner() {}
 
-RandomCollectionScanner::RandomCollectionScanner(
-    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
-    : CollectionScanner(trx, trxCollection), step(0) {}
-
-int RandomCollectionScanner::scan(std::vector<TRI_doc_mptr_t>& docs,
-                                  size_t batchSize) {
-  return trx->any(trxCollection, docs, initialPosition, position,
-                  static_cast<uint64_t>(batchSize), step, totalCount);
+VPackSlice CollectionScanner::scan(size_t batchSize) {
+  if (!_cursor.hasMore()) {
+    VPackSlice empty;
+    return empty;
+  }
+  _cursor.getMore(batchSize, true);
+  return _cursor.slice();
 }
 
-int RandomCollectionScanner::forward(size_t batchSize, size_t& skipped) {
-  // Basic implementation, no gain
-  std::vector<TRI_doc_mptr_t> unusedDocs;
-  unusedDocs.reserve(batchSize);
-  int res = scan(unusedDocs, batchSize);
-  skipped += unusedDocs.size();
-  // TRI_doc_mptr_t is never freed
-  unusedDocs.clear();
-  return res;
+int CollectionScanner::forward(size_t batchSize, uint64_t& skipped) {
+  return _cursor.skip(batchSize, skipped);
 }
 
-void RandomCollectionScanner::reset() {
-  initialPosition.reset();
-  position.reset();
-  step = 0;
+void CollectionScanner::reset() {
+  _cursor.reset();
 }
-
-LinearCollectionScanner::LinearCollectionScanner(
-    arangodb::AqlTransaction* trx, TRI_transaction_collection_t* trxCollection)
-    : CollectionScanner(trx, trxCollection) {}
-
-int LinearCollectionScanner::scan(std::vector<TRI_doc_mptr_t>& docs,
-                                  size_t batchSize) {
-  uint64_t skip = 0;
-  return trx->readIncremental(trxCollection, docs, position,
-                              static_cast<uint64_t>(batchSize), skip,
-                              UINT64_MAX, totalCount);
-}
-
-int LinearCollectionScanner::forward(size_t batchSize, size_t& skipped) {
-  // Basic implementation, no gain
-  std::vector<TRI_doc_mptr_t> unusedDocs;
-  uint64_t toSkip = static_cast<uint64_t>(batchSize);
-
-  int res = trx->readIncremental(trxCollection, unusedDocs, position, 0,
-                                 toSkip,  // Will be modified. Will reach 0 if
-                                 // batchSize many docs have been skipped
-                                 UINT64_MAX, totalCount);
-  uint64_t reallySkipped = static_cast<uint64_t>(batchSize) - toSkip;
-  skipped += static_cast<size_t>(reallySkipped);
-  TRI_ASSERT(unusedDocs.empty());
-  return res;
-}
-
-void LinearCollectionScanner::reset() { position.reset(); }
