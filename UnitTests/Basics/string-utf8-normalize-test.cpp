@@ -168,61 +168,57 @@ BOOST_AUTO_TEST_CASE (tst_3) {
 BOOST_AUTO_TEST_CASE (tst_4) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, true);
-  BOOST_CHECK(words != NULL);
+  std::vector<std::string> words;
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, true);
+  BOOST_CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(5, (int) words->_length);
-  BOOST_CHECK_EQUAL("der", words->_buffer[0]);
-  BOOST_CHECK_EQUAL("müller", words->_buffer[1]);
-  BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
-  BOOST_CHECK_EQUAL("die", words->_buffer[3]);
-  BOOST_CHECK_EQUAL("post", words->_buffer[4]);
+  BOOST_CHECK_EQUAL(5UL, words.size());
+  BOOST_CHECK_EQUAL("der", words[0]);
+  BOOST_CHECK_EQUAL("müller", words[1]);
+  BOOST_CHECK_EQUAL("geht", words[2]);
+  BOOST_CHECK_EQUAL("die", words[3]);
+  BOOST_CHECK_EQUAL("post", words[4]);
   
-  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+  words.clear();
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, true);
+  BOOST_CHECK(!words.empty());
   
-
-  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, true);
-  BOOST_CHECK(words != NULL);
-  
-  BOOST_CHECK_EQUAL(3, (int) words->_length);
-  BOOST_CHECK_EQUAL("müller", words->_buffer[0]);
-  BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
-  BOOST_CHECK_EQUAL("post", words->_buffer[2]);
+  BOOST_CHECK_EQUAL(3UL, words.size());
+  BOOST_CHECK_EQUAL("müller", words[0]);
+  BOOST_CHECK_EQUAL("geht", words[1]);
+  BOOST_CHECK_EQUAL("post", words[2]);
     
-  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-
-  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, true);
-  BOOST_CHECK(words == NULL);
+  words.clear();
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 3, UINT32_MAX, true);
+  BOOST_CHECK(words.empty());
 }
 
 BOOST_AUTO_TEST_CASE (tst_5) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, false);
-  BOOST_CHECK(words != NULL);
+  std::vector<std::string> words;
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 3, UINT32_MAX, false);
+  BOOST_CHECK(!words.empty());
   
-  BOOST_CHECK_EQUAL(5, (int) words->_length);
-  BOOST_CHECK_EQUAL("Der", words->_buffer[0]);
-  BOOST_CHECK_EQUAL("Müller", words->_buffer[1]);
-  BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
-  BOOST_CHECK_EQUAL("die", words->_buffer[3]);
-  BOOST_CHECK_EQUAL("Post", words->_buffer[4]);
+  BOOST_CHECK_EQUAL(5UL, words.size());
+  BOOST_CHECK_EQUAL("Der", words[0]);
+  BOOST_CHECK_EQUAL("Müller", words[1]);
+  BOOST_CHECK_EQUAL("geht", words[2]);
+  BOOST_CHECK_EQUAL("die", words[3]);
+  BOOST_CHECK_EQUAL("Post", words[4]);
     
-  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+  words.clear();
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, testString, 4, UINT32_MAX, false);
+  BOOST_CHECK(!words.empty());
   
-
-  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, false);
-  BOOST_CHECK(words != NULL);
-  
-  BOOST_CHECK_EQUAL(3, (int) words->_length);
-  BOOST_CHECK_EQUAL("Müller", words->_buffer[0]);
-  BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
-  BOOST_CHECK_EQUAL("Post", words->_buffer[2]);
+  BOOST_CHECK_EQUAL(3UL, words.size());
+  BOOST_CHECK_EQUAL("Müller", words[0]);
+  BOOST_CHECK_EQUAL("geht", words[1]);
+  BOOST_CHECK_EQUAL("Post", words[2]);
     
-  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-
-  words = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, false);
-  BOOST_CHECK(words == NULL);
+  words.clear();
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.getWords(words, "", 4, UINT32_MAX, false);
+  BOOST_CHECK(words.empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END ()
