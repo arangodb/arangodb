@@ -4205,7 +4205,7 @@ function unitTest(cases, options) {
   results.status = globalStatus;
   results.crashed = serverCrashed;
 
-  if (globalStatus) {
+  if (globalStatus && !serverCrashed) {
     cleanupDBDirectories(options);
   } else {
     print("since some tests weren't successfully, not cleaning up: \n" +
