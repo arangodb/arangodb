@@ -27938,18 +27938,19 @@ window.ArangoUsers = Backbone.Collection.extend({
         $(e.currentTarget).text('Result');
       }
       $('#outputEditor' + count).toggle();
-      $('#sentQueryEditor' + count).toggle();
+      $('#sentWrapper' + count).toggle();
+      this.deselect(ace.edit("outputEditor" + count));
+      this.deselect(ace.edit("sentQueryEditor" + count));
+      this.deselect(ace.edit("sentBindParamEditor" + count));
     },
 
     downloadQueryResult: function(e) {
-      console.log($(e.currentTarget));
       var count = $(e.currentTarget).attr('counter'),
       editor = ace.edit("sentQueryEditor" + count),
       query = editor.getValue();
 
-      console.log(this.bindParamTableObj);
       if (query !== '' || query !== undefined || query !== null) {
-        if (Object.keys(this.bindParamTableObj) === 0) {
+        if (Object.keys(this.bindParamTableObj).length === 0) {
           window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
         }
         else {
@@ -28004,15 +28005,24 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var counter = this.outputCounter,
       outputEditor = ace.edit("outputEditor" + counter),
-      sentQueryEditor = ace.edit("sentQueryEditor" + counter);
+      sentQueryEditor = ace.edit("sentQueryEditor" + counter),
+      sentBindParamEditor = ace.edit("sentBindParamEditor" + counter);
+
       sentQueryEditor.getSession().setMode("ace/mode/aql");
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentQueryEditor);
+
+      outputEditor.setReadOnly(true);
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
-      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
-      outputEditor.setReadOnly(true);
-      sentQueryEditor.setReadOnly(true);
       this.setEditorAutoHeight(outputEditor);
-      this.setEditorAutoHeight(sentQueryEditor);
+
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentBindParamEditor.getSession().setMode("ace/mode/json");
+      sentBindParamEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentBindParamEditor);
 
       this.fillExplain(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -28691,17 +28701,26 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var counter = this.outputCounter,
       outputEditor = ace.edit("outputEditor" + counter),
-      sentQueryEditor = ace.edit("sentQueryEditor" + counter);
+      sentQueryEditor = ace.edit("sentQueryEditor" + counter),
+      sentBindParamEditor = ace.edit("sentBindParamEditor" + counter);
+
       sentQueryEditor.getSession().setMode("ace/mode/aql");
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setFontSize("13px");
+      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentQueryEditor);
+
+      outputEditor.setFontSize("13px");
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
-      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
-      outputEditor.setFontSize("13px");
-      sentQueryEditor.setFontSize("13px");
-      sentQueryEditor.setReadOnly(true);
       this.setEditorAutoHeight(outputEditor);
-      this.setEditorAutoHeight(sentQueryEditor);
+
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentBindParamEditor.getSession().setMode("ace/mode/json");
+      sentBindParamEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentBindParamEditor);
 
       this.fillResult(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -28831,6 +28850,24 @@ window.ArangoUsers = Backbone.Collection.extend({
         cancelRunningQuery(queryID, counter);
       });
 
+      $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function() {
+        var aql = ace.edit("sentQueryEditor" + counter).getValue();
+        var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
+        self.aqlEditor.setValue(aql);
+        self.deselect(self.aqlEditor);
+        if (Object.keys(bindParam).length > 0) {
+          self.bindParamTableObj = bindParam;
+          if ($('#bindParamEditor').is(':visible')) {
+            self.renderBindParamTable();
+          }
+          else {
+            self.bindParamAceEditor.setValue(JSON.stringify(bindParam));
+            self.deselect(self.bindParamAceEditor);
+          }
+        }
+        $("html, body").animate({ scrollTop: 0 }, "fast");
+      });
+
       self.timer.start();
       this.execPending = false;
 
@@ -28853,7 +28890,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         window.progressView.hide();
 
         var appendSpan = function(value, icon) {
-          $('#outputEditorWrapper' + counter + ' .pull-left').append(
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
             '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
           );
         };
@@ -28864,7 +28901,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         if (data.extra) {
           if (data.extra.stats) {
-            console.log(data.extra.stats);
             if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
               appendSpan(
                 data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
@@ -28882,12 +28918,12 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
             if (data.extra.stats.scannedFull > 0) {
               appendSpan(
-                data.extra.stats.scannedFull + ' scanned full', 'fa-exclamation-circle warning'
+                data.extra.stats.scannedFull + ' full collection scan', 'fa-exclamation-circle warning'
               );
             }
             else {
               appendSpan(
-                data.extra.stats.scannedFull + ' scanned full', 'fa-check-circle positive'
+                data.extra.stats.scannedFull + ' full collection scan', 'fa-check-circle positive'
               );
             }
           }
@@ -28897,6 +28933,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $('#outputEditorWrapper' + counter + ' .fa-close').show();
         $('#outputEditor' + counter).css('opacity', '1');
         $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
+        $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').show();
         $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
 
         self.setEditorAutoHeight(outputEditor);
