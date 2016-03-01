@@ -227,7 +227,7 @@ if (WIN32)
       build
   )
 
-  set(ICU_LIBRARY_DIR "${V8_DIR}/build/${CMAKE_BUILD_TYPE_INIT}/")
+  set(ICU_LIBRARY_DIR "${V8_DIR}/build/${MS_TARGET_CONF}/")
 
   set(ICU_LIBS
     "${ICU_LIBRARY_DIR}/lib/icui18n.lib;${ICU_LIBRARY_DIR}/lib/icuuc.lib"
