@@ -114,7 +114,7 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        struct TRI_json_t*, struct TRI_json_t*, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);

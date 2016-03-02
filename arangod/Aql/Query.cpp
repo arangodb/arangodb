@@ -45,6 +45,9 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
@@ -168,7 +171,7 @@ bool Query::DoDisableQueryTracking = false;
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
-             TRI_json_t* bindParameters, TRI_json_t* options, QueryPart part)
+             std::shared_ptr<VPackBuilder> bindParameters, TRI_json_t* options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
       _vocbase(vocbase),
@@ -312,7 +315,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   std::unique_ptr<Query> clone;
 
   clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
-                        _queryLength, nullptr, options.get(), part));
+                        _queryLength, std::shared_ptr<VPackBuilder>(), options.get(), part));
   options.release();
 
   if (_plan != nullptr) {

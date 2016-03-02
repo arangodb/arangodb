@@ -666,14 +666,14 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
         index, &myCollection2, trx, argv, startPos, vars, regs, false);
 
     if (indexResult.isNumber()) {
-      auto&& indexString = std::to_string(indexResult.toInt64());
+      auto indexString(std::to_string(indexResult.toInt64()));
       auto j = result.extractObjectMember(trx, myCollection,
                                           indexString.c_str(), true, _buffer);
       indexResult.destroy();
       result.destroy();
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     } else if (indexResult.isString()) {
-      auto&& value = indexResult.toString();
+      auto value(indexResult.toString());
       indexResult.destroy();
 
       auto j = result.extractObjectMember(trx, myCollection, value.c_str(),

@@ -50,8 +50,6 @@
 /// concrete sub-class @ref TRI_document_collection_t.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_t;
-
 namespace arangodb {
 class CollectionInfo;
 namespace velocypack {

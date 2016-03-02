@@ -32,6 +32,9 @@
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1413,7 +1416,7 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::injectBindParameters(BindParameters& parameters) {
-  auto p = parameters();
+  auto& p = parameters.get();
 
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
@@ -1425,7 +1428,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto it = p.find(std::string(param, length));
+      auto const& it = p.find(std::string(param, length));
 
       if (it == p.end()) {
         // query uses a bind parameter that was not defined by the user
@@ -1436,11 +1439,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       // mark the bind parameter as being used
       (*it).second.second = true;
 
-      auto value = (*it).second.first;
+      auto& value = (*it).second.first;
 
       if (*param == '@') {
         // collection parameter
-        TRI_ASSERT(TRI_IsStringJson(value));
+        TRI_ASSERT(value.isString());
 
         // check if the collection was used in a data-modification query
         bool isWriteCollection = false;
@@ -1454,9 +1457,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         }
 
         // turn node into a collection node
-        size_t const length = value->_value._string.length - 1;
+        VPackValueLength length;
+        char const* stringValue = value.getString(length);
+        // TODO: can we get away without registering the string value here?
         char const* name =
-            _query->registerString(value->_value._string.data, length);
+            _query->registerString(stringValue, static_cast<size_t>(length));
 
         node = createNodeCollection(name, isWriteCollection
                                               ? TRI_TRANSACTION_WRITE
@@ -1474,7 +1479,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           }
         }
       } else {
-        node = nodeFromJson(value, false);
+        node = nodeFromVPack(value, false);
 
         if (node != nullptr) {
           // already mark node as constant here
@@ -2997,6 +3002,70 @@ AstNode* Ast::nodeFromJson(TRI_json_t const* json, bool copyStringValues) {
 
       node->addMember(createNodeObjectElement(
           attributeName, nameLength, nodeFromJson(value, copyStringValues)));
+    }
+
+    return node;
+  }
+
+  return createNodeValueNull();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST node from vpack
+/// if copyStringValues is `true`, then string values will be copied and will
+/// be freed with the query afterwards. when set to `false`, string values
+/// will not be copied and not freed by the query. the caller needs to make
+/// sure then that string values are valid through the query lifetime.
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
+  if (slice.isBoolean()) {
+    return createNodeValueBool(slice.getBoolean());
+  }
+
+  if (slice.isNumber()) {
+    return createNodeValueDouble(slice.getNumber<double>());
+  }
+
+  if (slice.isString()) {
+    VPackValueLength length;
+    char const* p = slice.getString(length);
+
+    if (copyStringValues) {
+      // we must copy string values!
+      p = _query->registerString(p, static_cast<size_t>(length));
+    }
+    // we can get away without copying string values
+    return createNodeValueString(p, length);
+  }
+
+  if (slice.isArray()) {
+    auto node = createNodeArray();
+    node->members.reserve(slice.length());
+ 
+    for (auto const& it : VPackArrayIterator(slice)) {
+      node->addMember(nodeFromVPack(it, copyStringValues)); 
+    }
+
+    return node;
+  }
+
+  if (slice.isObject()) {
+    auto node = createNodeObject();
+    node->members.reserve(slice.length());
+
+    for (auto const& it : VPackObjectIterator(slice)) {
+      VPackValueLength nameLength;
+      char const* attributeName = it.key.getString(nameLength);
+
+      if (copyStringValues) {
+        // create a copy of the string value
+        attributeName =
+            _query->registerString(attributeName, static_cast<size_t>(nameLength));
+      }
+
+      node->addMember(createNodeObjectElement(
+          attributeName, nameLength, nodeFromVPack(it.value, copyStringValues)));
     }
 
     return node;
