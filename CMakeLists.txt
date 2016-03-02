@@ -220,6 +220,7 @@ include(CheckCXX11Features)
 find_package(Threads REQUIRED)
 
 if (MSVC)
+  configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
   add_definitions("-DUSE_REGEX_STATIC=1")
