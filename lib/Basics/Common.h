@@ -183,9 +183,9 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #define TRI_ASSERT(expr)    \
   do {                      \
     if (!(expr)) {          \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace(); \
-      TRI_FlushDebugging(); \
-      assert(expr);         \
+      std::abort();         \
     }                       \
   } while (0)
 

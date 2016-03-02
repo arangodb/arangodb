@@ -204,11 +204,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
   char* checkValue = MakeValue(value);
 
   if (checkValue != nullptr) {
-    char* found;
-    char* copy;
-    size_t n;
-
-    found = strstr(FailurePoints, checkValue);
+    char* found = strstr(FailurePoints, checkValue);
 
     if (found == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -223,7 +219,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
       return;
     }
 
-    copy = static_cast<char*>(
+    char* copy = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                      strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
@@ -233,7 +229,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
     }
 
     // copy start of string
-    n = found - FailurePoints;
+    size_t n = found - FailurePoints;
     memcpy(copy, FailurePoints, n);
 
     // copy remainder of string
@@ -402,6 +398,16 @@ void TRI_PrintBacktrace() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FlushDebugging() {
+  Logger::flush();
+  Logger::shutdown(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the logger and shuts it down
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FlushDebugging(char const* file, int line, char const* message) {
+  LOG(FATAL) << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown(true);
 }
