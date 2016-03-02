@@ -456,13 +456,20 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  int res = lock(trxCol, TRI_TRANSACTION_WRITE);
+  int res = lock(trxCol, TRI_TRANSACTION_READ);
   
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   auto primaryIndex = document->primaryIndex();
   primaryIndex->invokeOnAllElements(callback);
+  
+  res = unlock(trxCol, TRI_TRANSACTION_READ);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////

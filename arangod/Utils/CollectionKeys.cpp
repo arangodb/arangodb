@@ -22,21 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeys.h"
-#include "Basics/hashes.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
-#include "Utils/TransactionContext.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -119,33 +116,19 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto idx = _document->primaryIndex();
-    _markers->reserve(idx->size());
-
-    arangodb::basics::BucketPosition position;
-
-    uint64_t total = 0;
-
-    while (true) {
-      auto ptr = idx->lookupSequential(&trx, position, total);
-
-      if (ptr == nullptr) {
-        // done
-        break;
-      }
-      
-      if (ptr->pointsToWal()) {
-        continue;
+    trx.invokeOnAllElements(_document->_info.name(), [this, &maxTick](TRI_doc_mptr_t const* mptr) {
+      if (mptr->pointsToWal()) {
+        return;
       }
 
-      auto marker = ptr->getMarkerPtr();
+      auto marker = mptr->getMarkerPtr();
 
       if (marker->_tick > maxTick) {
-        continue;
+        return;
       }
 
       _markers->emplace_back(marker);
-    }
+    });
 
     trx.finish(res);
   }
@@ -195,10 +178,10 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps keys into the JSON
+/// @brief dumps keys into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpKeys(arangodb::basics::Json& json, size_t chunk,
+void CollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
                               size_t chunkSize) const {
   size_t from = chunk * chunkSize;
   size_t to = (chunk + 1) * chunkSize;
@@ -217,44 +200,31 @@ void CollectionKeys::dumpKeys(arangodb::basics::Json& json, size_t chunk,
     VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
     TRI_ASSERT(current.isObject());
 
-    arangodb::basics::Json array(arangodb::basics::Json::Array, 2);
-    array.add(arangodb::basics::Json(current.get(TRI_VOC_ATTRIBUTE_KEY).copyString()));
-    array.add(arangodb::basics::Json(current.get(TRI_VOC_ATTRIBUTE_REV).copyString()));
-
-    json.add(array);
+    result.openArray();
+    result.add(current.get(TRI_VOC_ATTRIBUTE_KEY));
+    result.add(current.get(TRI_VOC_ATTRIBUTE_REV));
+    result.close();
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps documents into the JSON
+/// @brief dumps documents into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
-                              size_t chunkSize, TRI_json_t const* ids) const {
-  if (!TRI_IsArrayJson(ids)) {
+void CollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
+                              size_t chunkSize, VPackSlice const& ids) const {
+  if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
   size_t const offset = DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
   
-  auto resolver = std::make_unique<CollectionNameResolver>(_vocbase);
-  std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(TransactionContext::createCustomTypeHandler(_vocbase, resolver.get()));
-
-  VPackOptions options;
-  options.customTypeHandler = customTypeHandler.get();
-
-  size_t const n = TRI_LengthArrayJson(ids);
-
-  for (size_t i = 0; i < n; ++i) {
-    auto valueJson =
-        static_cast<TRI_json_t const*>(TRI_AtVector(&ids->_value._objects, i));
-
-    if (!TRI_IsNumberJson(valueJson)) {
+  for (auto const& it : VPackArrayIterator(ids)) {
+    if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
 
-    size_t position =
-        chunk * chunkSize + static_cast<size_t>(valueJson->_value._number);
+    size_t position = chunk * chunkSize + it.getNumber<size_t>();
 
     if (position >= _markers->size()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -262,24 +232,8 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
     
     VPackSlice current(reinterpret_cast<char const*>(_markers->at(position)) + offset);
     TRI_ASSERT(current.isObject());
-
-    TRI_json_t* doc = arangodb::basics::VelocyPackHelper::velocyPackToJson(current, &options);
-
-    if (doc != nullptr) {
-      json.transfer(doc);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
-    }
+  
+    result.add(current);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps documents into the JSON
-////////////////////////////////////////////////////////////////////////////////
-
-void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
-                              size_t chunkSize, VPackSlice const& ids) const {
-  std::unique_ptr<TRI_json_t> jsonIds(
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(ids));
-  dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
 

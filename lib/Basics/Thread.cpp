@@ -75,16 +75,20 @@ void Thread::startThread(void* arg) {
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
 
-  WorkMonitor::pushThread(ptr);
+  bool pushed = WorkMonitor::pushThread(ptr);
 
   try {
     ptr->runMe();
   } catch (...) {
-    WorkMonitor::popThread(ptr);
+    if (pushed) {
+      WorkMonitor::popThread(ptr);
+    }
     throw;
   }
 
-  WorkMonitor::popThread(ptr);
+  if (pushed) {
+    WorkMonitor::popThread(ptr);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +124,17 @@ TRI_tid_t Thread::currentThreadId() {
 #endif
 #endif
 }
+  
+std::string Thread::stringify(ThreadState state) {
+  switch (state) {
+    case ThreadState::CREATED: return "created";
+    case ThreadState::STARTED: return "started";
+    case ThreadState::STOPPING: return "stopping";
+    case ThreadState::STOPPED: return "stopped";
+    case ThreadState::DETACHED: return "detached";
+  }
+  return "unknown";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a thread
@@ -142,22 +157,22 @@ Thread::Thread(std::string const& name)
 ////////////////////////////////////////////////////////////////////////////////
 
 Thread::~Thread() {
-  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << ")";
+  auto state = _state.load();
+  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << "), state: " << stringify(state);
 
-  if (_state.load() == ThreadState::STOPPED) {
-#ifdef TRI_HAVE_POSIX_THREADS
-    int res = pthread_detach(_thread);
+  if (state == ThreadState::STOPPED) {
+    int res = TRI_JoinThread(&_thread);
 
     if (res != 0) {
       LOG_TOPIC(INFO, Logger::THREADS) << "cannot detach thread";
     }
 
     _state.store(ThreadState::DETACHED);
-#endif
   }
 
-  if (_state.load() != ThreadState::DETACHED) {
-    LOG(FATAL) << "thread is not detached, hard shutdown";
+  state = _state.load();
+  if (state != ThreadState::DETACHED) {
+    LOG(FATAL) << "thread is not detached but " << stringify(state) << ". shutting down hard";
     FATAL_ERROR_EXIT();
   }
 }

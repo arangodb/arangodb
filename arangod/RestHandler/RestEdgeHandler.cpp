@@ -22,13 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgeHandler.h"
-#include "Basics/conversions.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterMethods.h"
-#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -190,61 +185,3 @@ bool RestEdgeHandler::createDocument() {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document (an edge), coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
-                                                bool waitForSync,
-                                                VPackSlice const& document,
-                                                char const* from,
-                                                char const* to) {
-  std::string const& dbname = _request->databaseName();
-
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::unique_ptr<TRI_json_t> json(
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(document));
-  int error = arangodb::createEdgeOnCoordinator(dbname, collname, waitForSync,
-                                                json, from, to, responseCode,
-                                                resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error, "");
-
-    return false;
-  }
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_READ
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_READ_ALL
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_READ_HEAD
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_REPLACE
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_UPDATES
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock API_EDGE_DELETE
-////////////////////////////////////////////////////////////////////////////////

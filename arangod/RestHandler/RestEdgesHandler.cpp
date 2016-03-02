@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
@@ -191,6 +192,7 @@ bool RestEdgesHandler::readEdges(
     arangodb::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
     arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
         responseCode, contentType, resultDocument);
@@ -242,19 +244,29 @@ bool RestEdgesHandler::readEdges(
     return false;
   }
 
-  arangodb::basics::Json result(arangodb::basics::Json::Object, 4);
-  result("edges", documents);
-  result("error", arangodb::basics::Json(false));
-  result("code", arangodb::basics::Json(200));
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  // build edges
+  resultBuilder.add(VPackValue("edges")); // only key 
+
+  // temporarily use json (TODO: remove this)
+  res = arangodb::basics::JsonHelper::toVelocyPack(documents.json(), resultBuilder);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
+  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
+  resultBuilder.add("filtered", VPackValue(filtered));
+  resultBuilder.close(); // inner object
+  resultBuilder.close();
   arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
 
-  stats("scannedIndex",
-        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
-  result("stats", stats);
-
   // and generate a response
-  generateResult(result.json());
+  generateResult(resultBuilder.slice());
 
   return true;
 }
