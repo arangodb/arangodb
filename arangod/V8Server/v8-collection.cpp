@@ -495,14 +495,9 @@ static void ReplaceVocbaseCol(bool useCollection,
   };
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
-    auto savePos = updateBuilder.buffer()->size();
     int res = TRI_V8ToVPack(isolate, updateBuilder, newVal, false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    if (savePos == updateBuilder.buffer()->size()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
     }
   };
 
