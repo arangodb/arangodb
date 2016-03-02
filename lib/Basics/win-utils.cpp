@@ -156,13 +156,13 @@ int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
         these will fail with errors.
       int result =
         WSACleanup();  // could this cause error on server termination?
-      */
       if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated
         printf(
             "ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup "
             "returned error %d.",
             result);
+      */
         return -1;
       }
       return 0;
