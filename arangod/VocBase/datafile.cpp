@@ -1547,7 +1547,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
     return TRI_ERROR_ARANGO_DATAFILE_FULL;
   }
 
-  *position = (TRI_df_marker_t*)datafile->_next;
+  *position = reinterpret_cast<TRI_df_marker_t*>(datafile->_next);
 
   TRI_ASSERT(*position != nullptr);
 

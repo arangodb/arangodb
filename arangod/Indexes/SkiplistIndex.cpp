@@ -989,12 +989,20 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
-    for (auto const& val : VPackArrayIterator(expandedSlice)) {
-      auto iterator = lookup(trx, val, reverse);
-      iterators.push_back(iterator);
+    try {
+      for (auto const& val : VPackArrayIterator(expandedSlice)) {
+        auto iterator = lookup(trx, val, reverse);
+        iterators.push_back(iterator);
+      }
+      if (reverse) {
+        std::reverse(iterators.begin(), iterators.end());
+      }
     }
-    if (reverse) {
-      std::reverse(iterators.begin(), iterators.end());
+    catch (...) {
+      for (auto& it : iterators) {
+        delete it;
+      }
+      throw; 
     }
     return new MultiIndexIterator(iterators);
   }
