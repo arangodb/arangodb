@@ -41,6 +41,8 @@ if (USE_BOOST_UNITTESTS)
     ${BOOST_LIBS}
     ${SYSTEM_LIBRARIES}
   )
+
+  add_dependencies(basics_suite v8_build)
 endif ()
 
 ################################################################################
@@ -60,4 +62,6 @@ if (USE_BOOST_UNITTESTS)
     ${BOOST_LIBS}
     ${SYSTEM_LIBRARIES}
   )
+
+  add_dependencies(geo_suite v8_build)
 endif ()

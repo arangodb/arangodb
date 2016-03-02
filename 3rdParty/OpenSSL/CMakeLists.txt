@@ -27,19 +27,37 @@ set(OPENSSL_VERSION
   "${OPENSSL_VERSION}"
   CACHE INTERNAL
   "OpenSSL: Version"
-  FORCE
 )
 
 set(OPENSSL_INCLUDE_DIR
   "${OPENSSL_INCLUDE_DIR}"
   CACHE INTERNAL
   "OpenSSL: Include Directory"
-  FORCE
 )
 
-set(OPENSSL_LIBRARIES
-  "${OPENSSL_LIBRARIES}"
-  CACHE INTERNAL
-  "OpenSSL: Libraries Directory"
-  FORCE
-)
+if (WIN32)
+  if (DEBUG)
+    set(OPENSSL_EXT "d")
+  else ()
+    set(OPENSSL_EXT "")
+  endif ()
+
+  if (${BITS} EQUAL 64)
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
+  else ()
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib")
+  endif ()
+
+  set(OPENSSL_LIBRARIES
+    debug "${OPENSSL_LIB_DIR}/ssleay32MTd.lib;${OPENSSL_LIB_DIR}/libeay32MTd.lib"
+    optimized "${OPENSSL_LIB_DIR}/ssleay32MT.lib;${OPENSSL_LIB_DIR}/libeay32MT.lib"
+    CACHE INTERNAL
+    "OpenSSL: libraries"
+  )
+else ()
+  set(OPENSSL_LIBRARIES
+    "${OPENSSL_LIBRARIES}"
+    CACHE INTERNAL
+    "OpenSSL: libraries"
+  )
+endif ()

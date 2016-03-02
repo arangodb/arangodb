@@ -40,6 +40,8 @@ def DebugOutput(mode, message, *args):
 def FindBuildFiles():
   extension = '.gyp'
   files = os.listdir(os.getcwd())
+  print files
+  print '-'*80
   build_files = []
   for file in files:
     if file.endswith(extension):
