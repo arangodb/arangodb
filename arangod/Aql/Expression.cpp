@@ -35,7 +35,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
