@@ -329,20 +329,12 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 
 set(CPACK_STRIP_FILES "ON")
 
-if (DARWIN)
-  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-elseif (BUILD_PACKAGE STREQUAL "debian")
-  set(CPACK_PACKAGE_NAME "arangodb")
-elseif (MSVC)
-  set(CPACK_PACKAGE_NAME "ArangoDB")
-endif ()
-
 # debian
 if (BUILD_PACKAGE STREQUAL "debian")
-
+  set(CPACK_PACKAGE_NAME "arangodb")
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
-    "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
+    "${PROJECT_SOURCE_DIR}/Installation/Debian/arangodb.postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/arangodb.preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/arangodb.postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/arangodb.prerm;")
   
   install(
     FILES ${PROJECT_SOURCE_DIR}/Installation/Debian/rc.arangodb
@@ -361,6 +353,7 @@ endif ()
 
 # OSX bundle 
 if (DARWIN)
+  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
   set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
   set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
   set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
@@ -369,6 +362,7 @@ endif ()
 
 # MS installer
 if (MSVC)
+  set(CPACK_PACKAGE_NAME "ArangoDB")
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
   set(BITS 64)
