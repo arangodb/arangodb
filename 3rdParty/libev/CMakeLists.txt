@@ -87,7 +87,7 @@ if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
              CMAKE_CXX_FLAGS_RELEASE
              CMAKE_CXX_FLAGS_MINSIZEREL
              CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    set(${flag} "${${flag}} -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare -Wno-old-style-declaration")
+    set(${flag} "${${flag}} -Wno-all")
   endforeach()
 endif ()
 
