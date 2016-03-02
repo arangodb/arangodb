@@ -209,7 +209,7 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
           cid, VertexFilterInfo(
                    trx, col, new ExampleMatcher(
                                  isolate, v8::Handle<v8::Array>::Cast(example),
-                                 shaper, errorMessage)));
+                                 errorMessage)));
     }
   } else {
     // Has to be Object
@@ -218,7 +218,7 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
           cid, VertexFilterInfo(
                    trx, col, new ExampleMatcher(
                                  isolate, v8::Handle<v8::Array>::Cast(example),
-                                 shaper, errorMessage)));
+                                 errorMessage)));
     }
   }
 }
@@ -270,12 +270,12 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
   if (example->IsArray()) {
     _edgeFilter.emplace(
         cid, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
-                                shaper, errorMessage));
+                                errorMessage));
   } else {
     // Has to be Object
     _edgeFilter.emplace(
         cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                                shaper, errorMessage));
+                                errorMessage));
   }
 }
 
@@ -289,8 +289,7 @@ void BasicOptions::addEdgeFilter(Json const& example, VocShaper* shaper,
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid,
-                        new ExampleMatcher(example.json(), shaper, resolver));
+    _edgeFilter.emplace(cid, new ExampleMatcher(example.json(), resolver));
   }
 }
 
@@ -304,8 +303,7 @@ void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid,
-                        new ExampleMatcher(example, shaper, resolver, true));
+    _edgeFilter.emplace(cid, new ExampleMatcher(example, resolver, true));
   }
 }
 

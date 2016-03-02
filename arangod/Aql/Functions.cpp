@@ -3604,7 +3604,7 @@ AqlValue$ Functions::EdgesVPack(arangodb::aql::Query* query,
     if ((exampleSlice.isArray() && exampleSlice.length() != 0)|| exampleSlice.isObject()) {
       try {
         matcher.reset(
-            new arangodb::ExampleMatcher(exampleSlice, shaper, resolver, false));
+            new arangodb::ExampleMatcher(exampleSlice, resolver, false));
       } catch (arangodb::basics::Exception const& e) {
         if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
           throw;

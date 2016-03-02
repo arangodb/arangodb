@@ -785,7 +785,7 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string errorMessage;
   std::unique_ptr<ExampleMatcher> matcher;
   try {
-    matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
+    matcher.reset(new ExampleMatcher(isolate, example, errorMessage));
   } catch (Exception& e) {
     if (e.code() == TRI_RESULT_ELEMENT_NOT_FOUND) {
       // empty result
