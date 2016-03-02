@@ -162,24 +162,6 @@ void ArangoTask::setupDone() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the write buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoTask::fillWriteBuffer() {
-  if (!hasWriteBuffer() && !_writeBuffers.empty()) {
-    StringBuffer* buffer = _writeBuffers.front();
-    _writeBuffers.pop_front();
-
-    TRI_ASSERT(buffer != nullptr);
-
-    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-    _writeBuffersStats.pop_front();
-
-    setWriteBuffer(buffer, statistics);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the request object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -225,60 +207,6 @@ bool ArangoTask::handleEvent(EventToken token, EventType events) {
   }
 
   return result;
-}
-
-void ArangoTask::signalTask(TaskData* data) {
-  // data response
-  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->transfer(this);
-    handleResponse(data->_response.get());
-    processRead();
-  }
-
-  // data chunk
-  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
-    size_t len = data->_data.size();
-
-    if (0 == len) {
-      finishedChunked();
-    } else {
-      StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
-
-      TRI_ASSERT(buffer != nullptr);
-
-      buffer->appendHex(len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-      buffer->appendText(data->_data.c_str(), len);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-      sendChunk(buffer);
-    }
-  }
-
-  // do not know, what to do - give up
-  else {
-    _scheduler->destroyTask(this);
-  }
-}
-
-void ArangoTask::completedWriteBuffer() {
-  _writeBuffer = nullptr;
-  _writeLength = 0;
-
-  if (_writeBufferStatistics != nullptr) {
-    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
-
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-    _writeBufferStatistics = nullptr;
-  }
-
-  fillWriteBuffer();
-
-  if (!_clientClosed && _closeRequested && !hasWriteBuffer() &&
-      _writeBuffers.empty() && !_isChunked) {
-    _clientClosed = true;
-    _server->handleCommunicationClosed(this);
-  }
 }
 
 void ArangoTask::handleTimeout() {

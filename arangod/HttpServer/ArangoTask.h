@@ -71,7 +71,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
 
     void sendChunk(basics::StringBuffer*);
 
-
+    void sendChunk(arangodb::velocypack::Builder*);
     //////////////////////////////////////////////////////////////////////////////
     /// @brief chunking is finished
     //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief fills the write buffer
     //////////////////////////////////////////////////////////////////////////////
 
-    void fillWriteBuffer();
+    virtual void fillWriteBuffer();
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief handles CORS options
@@ -154,9 +154,9 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     bool handleEvent(EventToken token, EventType events) override;
 
     // void signalTask(TaskData*) override final;
-    void signalTask(TaskData*) override;
+    virtual void signalTask(TaskData*);
 
-    void completedWriteBuffer() override;
+    virtual void completedWriteBuffer();
 
     void handleTimeout() override;
 
@@ -179,6 +179,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
 
     std::deque<basics::StringBuffer*> _writeBuffers;
 
+    std::deque<arangodb::velocypack::Builder*> _writeBuffersVstream;
     //////////////////////////////////////////////////////////////////////////////
     /// @brief statistics buffers
     //////////////////////////////////////////////////////////////////////////////

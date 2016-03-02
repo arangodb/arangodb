@@ -60,5 +60,3 @@ class VelocysServer : public GeneralsServer {
 }
 
 #endif
-
-

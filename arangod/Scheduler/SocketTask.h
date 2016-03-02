@@ -29,6 +29,8 @@
 
 #include "Scheduler/Task.h"
 
+#include "Basics/StringBuffer.h"
+
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Statistics/StatisticsAgent.h"
@@ -139,11 +141,17 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void setWriteBuffer(basics::StringBuffer*, TRI_request_statistics_t*);
 
+  void setWriteBuffer(arangodb::velocypack::Builder* buffer, TRI_request_statistics_t* statistics);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks for presence of an active write buffer
   //////////////////////////////////////////////////////////////////////////////
 
   bool hasWriteBuffer() const;
+
+  //vstream
+
+  bool hasWriteBufferVstream() const;
 
   
  protected:
@@ -201,7 +209,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   /// @brief the current write buffer (vstream)
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder _writeBufferVstream;
+  arangodb::velocypack::Builder* _writeBufferVstream;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current write buffer statistics
@@ -227,7 +235,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   /// @brief for retrieving serialized velocystream packet from socket
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Builder _readBufferVstream;
+  arangodb::velocypack::Builder* _readBufferVstream;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief client has closed the connection

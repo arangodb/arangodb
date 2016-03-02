@@ -24,7 +24,7 @@
 #include "VelocyCommTask.h"
 
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
+// #include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
 #include "HttpServer/ArangoTask.h" 
 #include "VelocyServer/VelocyCommTask.h"
@@ -70,7 +70,7 @@ VelocyCommTask::~VelocyCommTask() {
   // LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
 
   // free write buffers and statistics
-  for (auto& i : _writeBuffers) {
+  for (auto& i : _writeBuffersVstream) {
     delete i;
   }
 
@@ -89,6 +89,8 @@ VelocyCommTask::~VelocyCommTask() {
 bool VelocyCommTask::processRead() {
 
   ValueLength len;
+  uint64_t message_id;
+  arangodb::velocypack::Builder* bhj;
   int count;
   bool messageComplete = false;
   std::string message_vpack, elements = ""; //Elements of vpack array concatenated into one
@@ -98,7 +100,7 @@ bool VelocyCommTask::processRead() {
   }
   // Converting VelocyStream Builder to struct format, VelocyStream -> Char[] -> Struct(velocystream)
 
-  Slice s(_readBufferVstream.start());
+  Slice s(_readBufferVstream->start());
   const char * str = s.getString(len);
   memcpy(&vstream, str, sizeof(vstream)); // Converted back to VelocyStream format
 
@@ -108,7 +110,7 @@ bool VelocyCommTask::processRead() {
 
   if(isFirstChunk == 1) {
     
-    vpackMapHeader[vstream.messageId] = vstream.vpacks[0]; // Currently supports all headers fields in one vpack
+    vpackMapHeader[vstream.messageId] = vstream.vpacks; // Currently supports all headers fields in one vpack
     // Assuming header comes in one packet we don't need to concatenate header. However it shouyld be accounted in
     // messageCount function.
     messageCount[vstream.messageId] = chunk - 1; // '-1' beacuse heder is itself part of a chunk 
@@ -118,10 +120,10 @@ bool VelocyCommTask::processRead() {
     elements = "";
   } else {
     //Try to use Lambda instead of it
-    for(int i = 0; i < vstream.vpacks.size(); i++){
-      Slice s(vstream.vpacks[i].start());
+    // for(int i = 0; i < vstream.vpacks.size(); i++){
+      Slice s(vstream.vpacks.start());
       elements.append(s.getString(len));
-    }
+    // }
 
     std::map<uint32_t, std::string>::const_iterator it = vpackMapBody.find(vstream.messageId);
     bool present  = it!= vpackMapBody.end();
@@ -140,6 +142,8 @@ bool VelocyCommTask::processRead() {
       _header = vpackMapHeader[vstream.messageId];
       _body = vpackMapBody[vstream.messageId];
       message_id = vstream.messageId;
+      // setVstreamValues();
+      setVstreamValues(messageComplete, message_id);
     }
   }
 
@@ -149,39 +153,39 @@ bool VelocyCommTask::processRead() {
     bool handleRequest = false;
 
     // still trying to read the header fields
-  	  if (!_readRequestBody) {
-  	  	// starting a new request
-  	    if (_newRequest) {
-  	      // acquire a new statistics entry for the request
-  	      RequestStatisticsAgent::acquire();
+      if (!_readRequestBody) {
+        // starting a new request
+        if (_newRequest) {
+          // acquire a new statistics entry for the request
+          RequestStatisticsAgent::acquire();
 
-  	      _newRequest = false;
-  	      _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
-  	      _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
-  	      _fullUrl = "";
-  	      _denyCredentials = false;
-  	      _acceptDeflate = false;
+          _newRequest = false;
+          _httpVersion = GeneralRequest::VSTREAM_UNKNOWN;
+          _requestType = GeneralRequest::VSTREAM_REQUEST_ILLEGAL;
+          _fullUrl = "";
+          _denyCredentials = false;
+          _acceptDeflate = false;
 
-  	      _sinceCompactification++;
-  	    }
+          _sinceCompactification++;
+        }
 
         requestStatisticsAgentSetReadStart();
 
-  	    if (isFirstChunk && sizeof(_header) > MaximalHeaderSize) {
-  	      LOG_WARNING("maximal header size is %d, request header size is %d",
-  	                  (int)MaximalHeaderSize, sizeof(_header));
+        if (isFirstChunk && sizeof(_header) > MaximalHeaderSize) {
+          LOG_WARNING("maximal header size is %d, request header size is %d",
+                      (int)MaximalHeaderSize, (int)sizeof(_header));
 
-  	      // header is too large
-  	      GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
-  	                            getCompatibility());
+          // header is too large
+          GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
+                                getCompatibility());
 
-  	      resetState(true);
-  	      handleResponse(&response);
+          resetState(true);
+          handleResponse(&response);
 
-  	      return false;
-  	    }
+          return false;
+        }
 
-  	if (_body.c_str() == nullptr) {
+    if (_body.c_str() == nullptr) {
 
         _request = _server->handlerFactory()->createRequestVpack( _connectionInfo, _header, sizeof(_header), isFirstChunk, message_id);
 
@@ -194,7 +198,7 @@ bool VelocyCommTask::processRead() {
           // we need to close the connection, because there is no way we
           // know how to remove the body and then continue
           resetState(true);
-          handleResponse(&response);
+          (&response);
 
           return false;
         }
@@ -338,27 +342,44 @@ bool VelocyCommTask::processRead() {
         }
 
         // @TODO: handle write buffer here for vpack
-        // if (_readRequestBody) {  
-        //   bool found;
-        //   std::string const& expect = _request->header("expect", found);
+        if (_readRequestBody) {  
+          bool found;
+          uint32_t firstChunk;
 
-        //   if (found && StringUtils::trim(expect) == "100-continue") {
-        //     LOG_TRACE("received a 100-continue request");
+          std::string const& expect = _request->header("expect", found);
 
-        //     auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
-        //     buffer->appendText(
-        //         TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
+          if (found && StringUtils::trim(expect) == "100-continue") {
+            LOG_TRACE("received a 100-continue request");
 
-        //     _writeBuffers.push_back(buffer.get());
-        //     buffer.release();
+            // auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE);
+            arangodb::velocypack::Builder* buffer;
+            // buffer->add(Value("HTTP/1.1 100 (Continue)"));
+            buffer->add("status", Value(100));
+            buffer->add("status-message", Value("(Continue)"));
+            buffer->add("protocol", Value("VELOCY/1.0"));
 
-        //     _writeBuffersStats.push_back(nullptr);
+            firstChunk = (uint32_t)_isFirstChunk?1:0;
+            // setVstreamValues(bool isFirst, uint64_t messageId)
+            velocystream vst;
+            vst.length = sizeof(buffer);
+            vst.chunkx = ((std::uint32_t)1) | ((std::uint64_t)firstChunk);
+            vst.messageId = _message_id;
+            vst.vpacks = *buffer; 
 
-        //     fillWriteBuffer();
-        //   }
-        // }
+            const char *d = static_cast<char*>(static_cast<void*>(&vst));
+          
+            bhj->add(Value(d));
 
-    	} 
+            _writeBuffersVstream.push_back(bhj);
+            // buffer->release();
+
+            _writeBuffersStats.push_back(nullptr);
+
+            fillWriteBuffer();
+          }
+        }
+
+      } 
     } 
 
     // readRequestBody might have changed, so cannot use else
@@ -378,8 +399,8 @@ bool VelocyCommTask::processRead() {
       return false;
     }
     if(!isFirstChunk){
-    	requestStatisticsAgentSetReadEnd();
-    	requestStatisticsAgentAddReceivedBytes(_body.length());
+      requestStatisticsAgentSetReadEnd();
+      requestStatisticsAgentAddReceivedBytes(_body.length());
     }
     bool const isOptionsRequest =
         (_requestType == GeneralRequest::VSTREAM_REQUEST_OPTIONS);
@@ -426,12 +447,12 @@ bool VelocyCommTask::processRead() {
       GeneralResponse response(authResult, compatibility);
 
       // arangodb::velocypack::Builder b;                                                                                                         
-    	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
-    	response.bodyVpack().add("error", arangodb::velocypack::Value("true"));                                                                              
-    	response.bodyVpack().add("errorMessage", arangodb::velocypack::Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
-    	response.bodyVpack().add("code:", arangodb::velocypack::Value(std::to_string((int)authResult)));                                                 
-    	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
-    	response.bodyVpack().close();
+      response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+      response.bodyVpack().add("error", arangodb::velocypack::Value("true"));                                                                              
+      response.bodyVpack().add("errorMessage", arangodb::velocypack::Value(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));                                                                                  
+      response.bodyVpack().add("code:", arangodb::velocypack::Value(std::to_string((int)authResult)));                                                 
+      response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)));
+      response.bodyVpack().close();
 
       clearRequest();
       handleResponse(&response); // Create a response for builder objects
@@ -441,17 +462,17 @@ bool VelocyCommTask::processRead() {
     else if (authResult == GeneralResponse::VstreamResponseCode::VSTREAM_FORBIDDEN) {
       GeneralResponse response(authResult, compatibility);
       // arangodb::velocypack::Builder b;                                                                                                         
-    	response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
-    	response.bodyVpack().add("error", Value("true"));                                                                              
-    	response.bodyVpack().add("errorMessage", Value("change password"));                                                                                  
-    	response.bodyVpack().add("code:", Value(authResult));                                                 
-    	response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
-    	response.bodyVpack().close();
+      response.bodyVpack().add(arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));                                                                                   
+      response.bodyVpack().add("error", Value("true"));                                                                              
+      response.bodyVpack().add("errorMessage", Value("change password"));                                                                                  
+      response.bodyVpack().add("code:", Value(authResult));                                                 
+      response.bodyVpack().add("errorNum", Value(std::to_string(TRI_ERROR_USER_CHANGE_PASSWORD)));
+      response.bodyVpack().close();
 
       clearRequest();
       handleResponse(&response);
     } else{
-    	GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_UNAUTHORIZED, compatibility);
+      GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_UNAUTHORIZED, compatibility);
       std::string const realm = "basic realm=\"" + _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
       if (sendWwwAuthenticateHeader()) {
@@ -472,25 +493,26 @@ bool VelocyCommTask::processRead() {
 /// @brief sends more chunked data
 ////////////////////////////////////////////////////////////////////////////////
 
-// void VelocyCommTask::sendChunk(arangodb::velocypack::Builder buffer) {
-//   if (_isChunked) {
-//     TRI_ASSERT(buffer != nullptr);
+void VelocyCommTask::sendChunk(arangodb::velocypack::Builder* buffer) {
+  if (_isChunked) {
+    TRI_ASSERT(buffer != nullptr);
 
-//     _writeBuffers.push_back(buffer);
-//     _writeBuffersStats.push_back(nullptr);
+    _writeBuffersVstream.push_back(buffer);
+    _writeBuffersStats.push_back(nullptr);
 
-//     fillWriteBuffer();
-//   } else {
-//     delete buffer;
-//   }
-// }
+    fillWriteBuffer();
+  } else {
+    delete buffer;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
 void VelocyCommTask::addResponse(GeneralResponse* response) {
-
+  uint32_t firstChunk;
+  arangodb::velocypack::Builder* bhj;
   if (!_origin.empty()) {
 
     LOG_TRACE("handling CORS response");
@@ -523,26 +545,39 @@ void VelocyCommTask::addResponse(GeneralResponse* response) {
                                                // responseBodyLength + 128);
 
   // reserve a buffer with some spare capacity
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
-                                               responseBodyLength + 128);
+  // auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE,
+                                               // responseBodyLength + 128);
+  arangodb::velocypack::Builder* buffer;
 
   // write header
-  response->writeHeader(buffer.get());
+  response->writeHeader(buffer);
 
   // @TODO : Need to revaluate this, behavior is not same as Http should be VelocyPack instead
   // // write body
-  // if (_requestType != GeneralRequest::VSTREAM_REQUEST_HEAD) {
-  //   if (_isChunked) {
-  //     if (0 != responseBodyLength) {
-  //       buffer->appendHex(response->body().length());
-  //       buffer->appendText(response->body());
-  //     }
-  //   } else {
-  //     buffer->appendText(response->body());
-  //   }
-  // }
+  if (_requestType != GeneralRequest::VSTREAM_REQUEST_HEAD) {
 
-  _writeBuffers.push_back(buffer.get());
+    const char * val = static_cast<char*>(static_cast<void*>(&response->body()));
+    buffer->add(Value(val));
+    // buffer->add(Value(response->body()));
+
+    firstChunk = (uint32_t)_isFirstChunk?1:0;
+    velocystream vst;
+    vst.length = sizeof(buffer);
+    vst.chunkx = ((std::uint32_t)1) | ((std::uint64_t)firstChunk);
+    vst.messageId = _message_id;
+    vst.vpacks = *buffer;  // Think fo some better alternative
+
+    const char *d = static_cast<char*>(static_cast<void*>(&vst));
+  
+    bhj->add(Value(d));   
+        // buffer->appendText(response->body());
+  }
+  if(bhj == nullptr){
+    _writeBuffersVstream.push_back(buffer);
+  } else {
+    _writeBuffersVstream.push_back(bhj);
+  }
+  
   // auto b = buffer.release();
 
   // LOG_TRACE("VSTREAM WRITE FOR %p: %s", (void*)this, b->c_str());
@@ -735,4 +770,76 @@ bool VelocyCommTask::handleRead() {
   }
 
   return res;
+}
+
+void VelocyCommTask::setVstreamValues(bool isFirst, uint64_t messageId) {
+
+  _isFirstChunk = isFirst;
+  _message_id = messageId;
+}
+
+void VelocyCommTask::completedWriteBuffer() {
+  _writeBufferVstream = NULL;
+  _writeLength = 0;
+
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+
+    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
+    _writeBufferStatistics = nullptr;
+  }
+
+  fillWriteBuffer();
+
+  if (!_clientClosed && _closeRequested && !hasWriteBufferVstream() &&
+      _writeBuffersVstream.empty() && !_isChunked) {
+    _clientClosed = true;
+    _server->handleCommunicationClosed(this);
+  }
+}
+
+void VelocyCommTask::fillWriteBuffer() {
+  if (!hasWriteBufferVstream() && !_writeBuffersVstream.empty()) {
+    arangodb::velocypack::Builder* buffer = _writeBuffersVstream.front();
+    _writeBuffersVstream.pop_front();
+
+    TRI_ASSERT(buffer != nullptr);
+
+    TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+    _writeBuffersStats.pop_front();
+
+    setWriteBuffer(buffer, statistics);
+  }
+}
+
+void VelocyCommTask::signalTask(TaskData* data) {
+  // data response
+  if (data->_type == TaskData::TASK_DATA_RESPONSE) {
+    data->transfer(this);
+    handleResponse(data->_response.get());
+    processRead();
+  }
+
+  // data chunk
+  else if (data->_type == TaskData::TASK_DATA_CHUNK) {
+    size_t len = data->_data.size();
+
+    if (0 == len) {
+      finishedChunked();
+    } else {
+      // new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len)
+      velocypack::Builder* buffer;
+
+      TRI_ASSERT(buffer != nullptr);
+
+      buffer->add(Value(data->_data.c_str()));
+
+      sendChunk(buffer);
+    }
+  }
+
+  // do not know, what to do - give up
+  else {
+    _scheduler->destroyTask(this);
+  }
 }

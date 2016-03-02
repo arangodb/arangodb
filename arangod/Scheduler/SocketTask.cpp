@@ -213,16 +213,25 @@ bool SocketTask::fillVelocyStream() {
 bool SocketTask::handleWrite() {
   size_t len = 0;
 
-  if (nullptr != _writeBuffer) {
+  if ( nullptr != _writeBuffer ) {
     TRI_ASSERT(_writeBuffer->length() >= _writeLength);
     len = _writeBuffer->length() - _writeLength;
+  }
+
+  if(_writeBufferVstream) {
+    TRI_ASSERT(sizeof(_writeBufferVstream) >= _writeLength);
   }
 
   int nr = 0;
 
   if (0 < len) {
-    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength,
-                          (int)len, 0);
+    if(_writeBufferVstream){
+      nr = TRI_WRITE_SOCKET(_commSocket, _writeBufferVstream, sizeof(_writeBufferVstream), 0); 
+    }else{
+      nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength,
+                          (int)len, 0);  
+    }
+    
 
     if (nr < 0) {
       int myerrno = errno;
@@ -252,16 +261,21 @@ bool SocketTask::handleWrite() {
     if (nullptr != _writeBuffer) {
       delete _writeBuffer;
       _writeBuffer = nullptr;
+      TRI_ASSERT(_writeBuffer == nullptr);
     }
-
-    TRI_ASSERT(_writeBuffer == nullptr);
+    if(_writeBufferVstream) {
+      delete _writeBufferVstream;
+      TRI_ASSERT(_writeBufferVstream == NULL);
+    }
 
     completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
     setKeepAliveTimeout(_keepAliveTimeout);
   } else {
-    _writeLength += nr;
+    if(nullptr != _writeBuffer) {
+        _writeLength += nr;
+    }
   }
 
   if (_clientClosed) {
@@ -269,7 +283,7 @@ bool SocketTask::handleWrite() {
   }
 
   // we might have a new write buffer or none at all
-  if (_writeBuffer == nullptr) {
+  if ((_writeBuffer == nullptr) || !(_writeBufferVstream)) {
     _scheduler->stopSocketEvents(_writeWatcher);
   } else {
     _scheduler->startSocketEvents(_writeWatcher);
@@ -280,7 +294,7 @@ bool SocketTask::handleWrite() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets an active write buffer
+/// @brief sets an active write buffer (http)
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::setWriteBuffer(StringBuffer* buffer,
@@ -322,13 +336,55 @@ void SocketTask::setWriteBuffer(StringBuffer* buffer,
   }
 }
 
+// VelocyStream
+
+void SocketTask::setWriteBuffer(arangodb::velocypack::Builder* buffer,
+                                TRI_request_statistics_t* statistics) {
+  TRI_ASSERT(buffer != nullptr);
+
+  _writeBufferStatistics = statistics;
+
+  if (_writeBufferStatistics != nullptr) {
+    _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+    _writeBufferStatistics->_sentBytes += sizeof(buffer);
+  }
+
+  _writeLength = 0;
+
+  if (!buffer) {
+    delete buffer;
+
+    completedWriteBuffer();
+  } else {
+    if (_writeBufferVstream != nullptr) {
+      delete _writeBufferVstream;
+    }
+
+    _writeBufferVstream = buffer;
+  }
+
+  if (_clientClosed) {
+    return;
+  }
+
+  // we might have a new write buffer or none at all
+  TRI_ASSERT(_tid == Thread::currentThreadId());
+
+  if (_writeBufferVstream == nullptr) {
+    _scheduler->stopSocketEvents(_writeWatcher);
+  } else {
+    _scheduler->startSocketEvents(_writeWatcher);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for presence of an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::hasWriteBuffer() const { return _writeBuffer != nullptr; }
 
-
+// Vstream
+bool SocketTask::hasWriteBufferVstream() const { return _writeBufferVstream != NULL; }
 
 bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 #ifdef _WIN32

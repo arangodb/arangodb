@@ -37,8 +37,11 @@ HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
                          GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
-    : GeneralsServer(scheduler, dispatcher, handlerFactory, jobManager,
-                 keepAliveTimeout){}
+    : GeneralServer(scheduler, dispatcher, handlerFactory, jobManager,
+                 keepAliveTimeout),
+      _ctx(ctx),
+      _verificationMode(SSL_VERIFY_NONE),
+      _verificationCallback(0) {}
 
 
 HttpsServer::~HttpsServer() {
@@ -46,10 +49,25 @@ HttpsServer::~HttpsServer() {
   // SSL_CTX_free(ctx);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpsServer::setVerificationMode(int mode) { _verificationMode = mode; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+  _verificationCallback = func;
+}
+
+
+
 ArangoTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           const ConnectionInfo& info) {
   return new HttpsCommTask(this, s, info, _keepAliveTimeout, _ctx,
                            _verificationMode, _verificationCallback);
 }
-
-

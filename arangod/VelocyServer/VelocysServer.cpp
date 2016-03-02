@@ -50,7 +50,3 @@ ArangoTask* VelocysServer::createCommTask(TRI_socket_t s,
   return new VelocysCommTask(this, s, info, _keepAliveTimeout, _ctx,
                            _verificationMode, _verificationCallback);
 }
-
-
-
-

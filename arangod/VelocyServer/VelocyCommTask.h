@@ -111,6 +111,16 @@ class VelocyCommTask : public ArangoTask {
   int32_t getCompatibility() const;
 
   bool handleRead();
+
+  void setVstreamValues(bool, uint64_t);
+
+  void completedWriteBuffer() override;
+  
+  void fillWriteBuffer() override;
+
+  void signalTask(TaskData* data) override;
+
+  void sendChunk(arangodb::velocypack::Builder* buffer);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief to check whether the recieved packet(s) is header (VStream)
@@ -144,8 +154,7 @@ class VelocyCommTask : public ArangoTask {
     uint32_t length;
     uint32_t chunkx; // chunkx = chunk + isFirstChunk
     uint64_t messageId;
-    uint64_t messageLength;
-    std::vector<velocypack::Builder> vpacks; // Collection of all Velocypacks
+    arangodb::velocypack::Builder vpacks; // Collection of all Velocypacks
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -160,7 +169,13 @@ class VelocyCommTask : public ArangoTask {
 
   std::string _body;
 
-  uint64_t message_id;
+  uint64_t _message_id;
+
+  uint32_t _vstreamWriteLength;
+
+  uint32_t _vstreamWritechunk;
+
+  uint64_t _messageLength;
 
 };
 }

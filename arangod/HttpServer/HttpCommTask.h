@@ -120,7 +120,13 @@ class HttpCommTask : public ArangoTask {
 
   // bool handleRead() override;
   bool handleRead();
+
+  void completedWriteBuffer() override;
   
+  void fillWriteBuffer() override;
+
+  void signalTask(TaskData* data) override;
+
  protected:
 
   //////////////////////////////////////////////////////////////////////////////
