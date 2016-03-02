@@ -162,9 +162,9 @@ int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
             "ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup "
             "returned error %d.",
             result);
-      */
         return -1;
       }
+      */
       return 0;
     }
 
