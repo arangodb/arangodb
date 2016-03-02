@@ -113,7 +113,6 @@ struct TRI_doc_mptr_t {
   // master pointer points into the WAL, and if not, it points into
   // a datafile
   inline void setFid(TRI_voc_fid_t fid, bool isWal) {
-    TRI_ASSERT((_fid & TRI_WAL_FILE_BITMASK) == 0);
     // set the WAL bit if required
     _fid = fid;
     if (isWal) {
