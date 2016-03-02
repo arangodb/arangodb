@@ -76,7 +76,7 @@ class AssocUnique {
   typedef std::function<bool(UserData*, Element const*, Element const*)>
       IsEqualElementElementFuncType;
 
-  typedef std::function<void(Element*)> CallbackElementFuncType;
+  typedef std::function<bool(Element*)> CallbackElementFuncType;
 
  private:
   struct Bucket {
@@ -856,8 +856,9 @@ class AssocUnique {
         if (b._table[i] == nullptr) {
           continue;
         }
-        // don't increment i
-        callback(b._table[i]);
+        if (!callback(b._table[i])) {
+          return;
+        }
       }
     }
   }
@@ -879,7 +880,9 @@ class AssocUnique {
         }
         // intentionally don't increment i
         auto old = b._table[i];
-        callback(b._table[i]);
+        if (!callback(b._table[i])) {
+          return;
+        }
         if (b._nrUsed == 0) {
           break;
         }

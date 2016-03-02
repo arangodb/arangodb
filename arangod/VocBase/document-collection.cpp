@@ -3288,10 +3288,11 @@ std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_t> filtered;
 
-  auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
+  auto work = [&matcher, &filtered](TRI_doc_mptr_t const* ptr) {
     if (matcher.matches(0, ptr)) {
       filtered.emplace_back(*ptr);
     }
+    return true;
   };
   document->primaryIndex()->invokeOnAllElements(work);
   return filtered;

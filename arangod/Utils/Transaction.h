@@ -394,7 +394,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(std::string const& collectionName,
-                           std::function<void(TRI_doc_mptr_t const*)>);
+                           std::function<bool(TRI_doc_mptr_t const*)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection

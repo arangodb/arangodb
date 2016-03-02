@@ -308,11 +308,11 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
     return false;
   }
 
-
   ClearAuthInfo(vocbase);
-  auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
-    std::unique_ptr<VocbaseAuthInfo> auth(
-        ConvertAuthInfo(vocbase, ptr));
+
+  auto work = [&](TRI_doc_mptr_t const* ptr) {
+    std::unique_ptr<VocbaseAuthInfo> auth(ConvertAuthInfo(vocbase, ptr));
+
     if (auth != nullptr) {
       VocbaseAuthInfo* old = vocbase->_authInfo.at(auth->username());
 
@@ -322,6 +322,7 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
       vocbase->_authInfo.erase(auth->username());
       auth.release();
     }
+    return true;
   };
 
   trx.invokeOnAllElements(collection->_name, work);

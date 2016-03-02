@@ -437,7 +437,7 @@ TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName)
 //////////////////////////////////////////////////////////////////////////////
 
 void Transaction::invokeOnAllElements(std::string const& collectionName,
-                                      std::function<void(TRI_doc_mptr_t const*)> callback) {
+                                      std::function<bool(TRI_doc_mptr_t const*)> callback) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   if (ServerState::instance()->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -1585,7 +1585,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   VPackBuilder keyBuilder;
   auto primaryIndex = document->primaryIndex();
 
-  std::function<void(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
+  std::function<bool(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
     VPackSlice slice(mptr->vpack());
     VPackSlice keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
 
@@ -1601,6 +1601,8 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
+    return true;
   };
 
   try {

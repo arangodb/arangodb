@@ -38,8 +38,9 @@ using namespace arangodb;
 /// @brief Frees an index element
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeElement(TRI_index_element_t* element) {
+static inline bool FreeElement(TRI_index_element_t* element) {
   TRI_index_element_t::freeElement(element);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
