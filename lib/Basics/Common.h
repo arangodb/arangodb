@@ -177,22 +177,23 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 /// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_ASSERT
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#ifndef TRI_ASSERT
 #define TRI_ASSERT(expr)    \
   do {                      \
     if (!(expr)) {          \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace(); \
-      assert(expr);         \
+      std::abort();         \
     }                       \
   } while (0)
-#endif
 
 #else
 
-#ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) do { } while (0)
+
 #endif
 
 #endif
