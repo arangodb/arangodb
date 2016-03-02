@@ -159,37 +159,6 @@ bool RestDocumentHandler::createDocument() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::createDocumentCoordinator(
-    char const* collection, bool waitForSync, VPackSlice const& document) {
-  std::string const& dbname = _request->databaseName();
-  std::string const collname(collection);
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::map<std::string, std::string> headers =
-      arangodb::getForwardableRequestHeaders(_request);
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  int res = arangodb::createDocumentOnCoordinator(
-      dbname, collname, waitForSync, document, headers, responseCode,
-      resultHeaders, resultBody);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
-    return false;
-  }
-
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single or all documents
 ///
 /// Either readSingleDocument or readAllDocuments.
@@ -310,51 +279,6 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a single a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
-                                                 std::string const& key,
-                                                 bool generateBody) {
-  std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  TRI_voc_rid_t rev = 0;
-  bool found;
-  char const* revstr = _request->value("rev", found);
-  if (found) {
-    rev = StringUtils::uint64(revstr);
-  }
-
-  int error = arangodb::getDocumentOnCoordinator(
-      dbname, collname, key, rev, headers, generateBody, responseCode,
-      resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error, "");
-    return false;
-  }
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-
-  if (!generateBody) {
-    // a head request...
-    _response->headResponse(
-        (size_t)StringUtils::uint64(resultHeaders["content-length"]));
-  } else {
-    _response->body().appendText(resultBody.c_str(), resultBody.size());
-  }
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_READ_ALL
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -391,32 +315,6 @@ bool RestDocumentHandler::readAllDocuments() {
   // generate response
   generateResult(VPackSlice(opRes.buffer->data()));
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a single a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::getAllDocumentsCoordinator(
-    std::string const& collname, std::string const& returnType) {
-  std::string const& dbname = _request->databaseName();
-
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::string contentType;
-  std::string resultBody;
-
-  int error = arangodb::getAllDocumentsOnCoordinator(
-      dbname, collname, returnType, responseCode, contentType, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error, "");
-    return false;
-  }
-  // Return the response we got:
-  createResponse(responseCode);
-  _response->setContentType(contentType);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,48 +472,6 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief modifies a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::modifyDocumentCoordinator(
-    std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch, VPackSlice const& document) {
-  std::string const& dbname = _request->databaseName();
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  bool keepNull = true;
-  if (!strcmp(_request->value("keepNull"), "false")) {
-    keepNull = false;
-  }
-  bool mergeObjects = true;
-  if (TRI_EqualString(_request->value("mergeObjects"), "false")) {
-    mergeObjects = false;
-  }
-
-  int error = arangodb::modifyDocumentOnCoordinator(
-      dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
-      mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error, "");
-    return false;
-  }
-
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_DELETE
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -694,33 +550,3 @@ bool RestDocumentHandler::deleteDocument() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::deleteDocumentCoordinator(
-    std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync) {
-  std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  int error = arangodb::deleteDocumentOnCoordinator(
-      dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
-      resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error, "");
-    return false;
-  }
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
-}
