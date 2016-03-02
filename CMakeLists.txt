@@ -463,6 +463,14 @@ if (VERBOSE)
   message(STATUS "${BASE_CXX_FLAGS}")
   message(STATUS)
 
+  message(STATUS "Info BASE_LD_FLAGS")
+  message(STATUS "${BASE_LD_FLAGS}")
+  message(STATUS)
+
+  message(STATUS "Info BASE_LIBS")
+  message(STATUS "${BASE_LIBS}")
+  message(STATUS)
+
   message(STATUS "Info CMAKE_C_FLAGS")
   message(STATUS "${CMAKE_C_FLAGS}")
   message(STATUS)
