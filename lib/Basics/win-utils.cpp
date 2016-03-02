@@ -150,9 +150,13 @@ int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
 
   switch (finalizeWhat) {
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
+      /*
+        TODO: we can't always determine when to call this properly. 
+        if we have closed libev, its ok, if we have active socket operations
+        these will fail with errors.
       int result =
-          WSACleanup();  // could this cause error on server termination?
-
+        WSACleanup();  // could this cause error on server termination?
+      */
       if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated
         printf(
