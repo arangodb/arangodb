@@ -156,10 +156,12 @@ Thread::~Thread() {
 #endif
   }
 
+#ifdef TRI_HAVE_POSIX_THREADS
   if (_state.load() != ThreadState::DETACHED) {
     LOG(FATAL) << "thread is not detached, hard shutdown";
     FATAL_ERROR_EXIT();
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

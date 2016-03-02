@@ -722,7 +722,7 @@ static void QueueMessage(char const* function, char const* file, long int line,
 class LogThread : public Thread {
  public:
   explicit LogThread(std::string const& name) : Thread(name) {}
-  ~LogThread() {shutdown();}
+  ~LogThread() { shutdown(); }
 
  public:
   void run();
@@ -748,6 +748,7 @@ void LogThread::run() {
     delete msg;
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief LogTopic
 ////////////////////////////////////////////////////////////////////////////////
@@ -1146,7 +1147,7 @@ void Logger::initialize(bool threaded) {
   LoggingActive.store(true);
 
   // generate threaded logging?
-  ThreadedLogging.store(threaded, std::memory_order_relaxed);
+  ThreadedLogging.store(threaded, std::memory_order_seq_cst);
 
   if (threaded) {
     LoggingThread = std::make_unique<LogThread>("Logging");
@@ -1173,9 +1174,9 @@ void Logger::shutdown(bool clearBuffers) {
     return;
   }
 
-  // logging is now inactive (this will terminate the logging thread)
   LoggingActive.store(false, std::memory_order_seq_cst);
 
+  // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (ThreadedLogging) {
     // ignore all errors for now as we cannot log them anywhere...
