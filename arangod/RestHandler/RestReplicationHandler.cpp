@@ -39,7 +39,9 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/transactions.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -2608,8 +2610,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     keys->create(tickEnd);
     size_t const count = keys->count();
 
-    auto keysRepository = static_cast<arangodb::CollectionKeysRepository*>(
-        _vocbase->_collectionKeys);
+    auto keysRepository = _vocbase->_collectionKeys;
 
     try {
       keysRepository->store(keys.get());
@@ -2670,8 +2671,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = static_cast<arangodb::CollectionKeysRepository*>(
-        _vocbase->_collectionKeys);
+    auto keysRepository = _vocbase->_collectionKeys;
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -2782,8 +2782,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    auto keysRepository = static_cast<arangodb::CollectionKeysRepository*>(
-        _vocbase->_collectionKeys);
+    auto keysRepository = _vocbase->_collectionKeys;
     TRI_ASSERT(keysRepository != nullptr);
 
     auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -2798,10 +2797,17 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     }
 
     try {
-      arangodb::basics::Json json(arangodb::basics::Json::Array, chunkSize);
+      auto resolver = std::make_unique<CollectionNameResolver>(_vocbase);
+      std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(TransactionContext::createCustomTypeHandler(_vocbase, resolver.get()));
+
+      VPackOptions options;
+      options.customTypeHandler = customTypeHandler.get();
+
+      VPackBuilder resultBuilder(&options);
+      resultBuilder.openArray();
 
       if (keys) {
-        collectionKeys->dumpKeys(json, chunk, chunkSize);
+        collectionKeys->dumpKeys(resultBuilder, chunk, chunkSize);
       } else {
         bool success;
         std::shared_ptr<VPackBuilder> parsedIds =
@@ -2810,12 +2816,14 @@ void RestReplicationHandler::handleCommandFetchKeys() {
           collectionKeys->release();
           return;
         }
-        collectionKeys->dumpDocs(json, chunk, chunkSize, parsedIds->slice());
+        collectionKeys->dumpDocs(resultBuilder, chunk, chunkSize, parsedIds->slice());
       }
+
+      resultBuilder.close();
 
       collectionKeys->release();
 
-      generateResult(HttpResponse::OK, json.json());
+      generateResult(resultBuilder.slice());
     } catch (...) {
       collectionKeys->release();
       throw;
@@ -2842,8 +2850,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffix[1];
 
-  auto keys = static_cast<arangodb::CollectionKeysRepository*>(
-      _vocbase->_collectionKeys);
+  auto keys = _vocbase->_collectionKeys;
   TRI_ASSERT(keys != nullptr);
 
   auto collectionKeysId = static_cast<arangodb::CollectionKeysId>(
@@ -2855,16 +2862,14 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
     return;
   }
 
-  createResponse(HttpResponse::ACCEPTED);
-  _response->setContentType("application/json; charset=utf-8");
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  resultBuilder.add("id", VPackValue(id)); // id as a string
+  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add("code", VPackValue(static_cast<int>(HttpResponse::ACCEPTED)));
+  resultBuilder.close();
 
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json.set("id", arangodb::basics::Json(id));  // id as a string!
-  json.set("error", arangodb::basics::Json(false));
-  json.set("code", arangodb::basics::Json(
-                       static_cast<double>(_response->responseCode())));
-
-  json.dump(_response->body());
+  generateResult(HttpResponse::ACCEPTED, resultBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
