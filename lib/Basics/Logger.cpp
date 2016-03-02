@@ -99,6 +99,12 @@ static Mutex LogTopicNamesLock;
 static std::map<std::string, LogTopic*> LogTopicNames;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex to initialize, flush and shutdown logging
+////////////////////////////////////////////////////////////////////////////////
+
+static Mutex InitializeMutex;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief message container
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1124,15 +1130,16 @@ std::vector<LogBuffer> Logger::bufferedEntries(LogLevel level, uint64_t start,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::atomic<bool> IsInitialized(false);
 static std::atomic<bool> ShutdownInitalized(false);
 static std::unique_ptr<LogThread> LoggingThread;
 
 static void ShutdownLogging() { Logger::shutdown(true); }
 
 void Logger::initialize(bool threaded) {
-  if (!IsInitialized) {
-    IsInitialized = true;
+  MUTEX_LOCKER(locker, InitializeMutex);
+    
+  if (LoggingActive.load(std::memory_order_seq_cst)) {
+    return;
   }
 
   // logging is now active
@@ -1159,27 +1166,22 @@ void Logger::initialize(bool threaded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::shutdown(bool clearBuffers) {
-  if (!IsInitialized) {
+  MUTEX_LOCKER(locker, InitializeMutex);
+  
+  if (!LoggingActive.load(std::memory_order_seq_cst)) {
+    // if logging not activated or already shutdown, then we can abort here
     return;
   }
 
   // logging is now inactive (this will terminate the logging thread)
-  LoggingActive.store(false, std::memory_order_relaxed);
+  LoggingActive.store(false, std::memory_order_seq_cst);
 
   // join with the logging thread
   if (ThreadedLogging) {
-    LoggingActive.store(false, std::memory_order_relaxed);
-
     // ignore all errors for now as we cannot log them anywhere...
     LoggingThread->beginShutdown();
 
-    for (size_t i = 0; i < 10; ++i) {
-      if (LoggingThread->isRunning()) {
-        break;
-      }
-
-      usleep(100 * 1000);
-    }
+    LoggingThread.reset();    
   }
 
   // cleanup appenders
@@ -1222,7 +1224,10 @@ void Logger::reopen() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Logger::flush() {
-  if (!IsInitialized) {
+  MUTEX_LOCKER(locker, InitializeMutex);
+  
+  if (!LoggingActive.load(std::memory_order_seq_cst)) {
+    // logging not (or not yet) initialized
     return;
   }
 
