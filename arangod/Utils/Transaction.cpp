@@ -990,7 +990,7 @@ OperationResult Transaction::replace(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if ((!oldValue.isArray() ^ !newValue.isArray()) ||
+  if ((oldValue.isArray() ^ newValue.isArray()) ||
       (oldValue.isArray() && oldValue.length() != newValue.length())) {
     // must provide two lists or two single documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1111,7 +1111,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
     builder.clear();
     {
       VPackObjectBuilder b(&builder);
-      VPackObjectIterator it(newValue);
+      VPackObjectIterator it(newVal);
       while (it.valid()) {
         // let all but the system attributes pass
         std::string k = it.key().copyString();
@@ -1138,7 +1138,7 @@ OperationResult Transaction::replaceLocal(std::string const& collectionName,
                                    TRI_DOC_UPDATE_ERROR, 
                                    expectedRevision, &actualRevision);
 
-    res = document->replace(this, &oldValue, &sanitized, &mptr, &policy,
+    res = document->replace(this, &oldVal, &sanitized, &mptr, &policy,
         options, !isLocked(document, TRI_TRANSACTION_WRITE));
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
