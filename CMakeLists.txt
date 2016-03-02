@@ -359,7 +359,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
+  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 
   set(CMAKE_C_FLAGS                ""                               CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
@@ -378,7 +378,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra")
+  set(BASE_FLAGS "${BASE_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 
   set(CMAKE_C_FLAGS                ""                               CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
