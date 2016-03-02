@@ -209,7 +209,7 @@ const ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
 const JS_DIR = fs.join(TOP_DIR, "js");
 const LOGS_DIR = fs.join(TOP_DIR, "logs");
 const PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
-const UNITTESTS_DIR = fs.join(TOP_DIR, "UnitTests");
+const UNITTESTS_DIR = fs.join(TOP_DIR, fs.join("build", "tests"));
 
 function makeResults(testname) {
   const startTime = time();
@@ -4205,7 +4205,7 @@ function unitTest(cases, options) {
   results.status = globalStatus;
   results.crashed = serverCrashed;
 
-  if (globalStatus) {
+  if (globalStatus && !serverCrashed) {
     cleanupDBDirectories(options);
   } else {
     print("since some tests weren't successfully, not cleaning up: \n" +

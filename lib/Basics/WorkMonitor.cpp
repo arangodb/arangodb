@@ -484,6 +484,7 @@ void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
 WorkDescription* WorkMonitor::deactivateWorkDescription() {
   if (Thread::CURRENT_THREAD == nullptr) {
     WorkDescription* desc = CURRENT_WORK_DESCRIPTION;
+    TRI_ASSERT(desc != nullptr);
     CURRENT_WORK_DESCRIPTION = desc->_prev.load();
     return desc;
   } else {

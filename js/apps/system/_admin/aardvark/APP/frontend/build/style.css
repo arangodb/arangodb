@@ -6094,7 +6094,8 @@ div.headerBar {
 
 .arangoToolbarBottom {
   border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px; }
+  border-bottom-right-radius: 3px;
+  clear: both; }
   .arangoToolbarBottom #executeQuery {
     margin-right: 5px; }
   .arangoToolbarBottom .button-close:last-child {
@@ -6974,6 +6975,9 @@ toolbar {
     width: 100%; }
     .outputEditorWrapper .ace_editor .ace_active-line {
       background: #fff !important; }
+  .outputEditorWrapper .sentWrapper .pull-right,
+  .outputEditorWrapper .sentWrapper .pull-left {
+    width: 50%; }
 
 .display-none {
   display: none; }

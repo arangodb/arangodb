@@ -1,4 +1,4 @@
-%toolbarSpan {
+%toolbarspan {
   padding: 5px 8px;
   position: relative;
   top: 5px;
@@ -49,7 +49,7 @@
   }
 
   span {
-    @extend %toolbarSpan;
+    @extend %toolbarspan;
     font-weight: 100;
     margin-left: 10px;
   }
@@ -83,6 +83,7 @@
 .arangoToolbarBottom {
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  clear: both;
 
   #executeQuery {
     margin-right: 5px;
