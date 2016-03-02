@@ -129,9 +129,9 @@ void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
 /// @brief pushes a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushThread(Thread* thread) {
+bool WorkMonitor::pushThread(Thread* thread) {
   if (WORK_MONITOR_STOPPED.load()) {
-    return;
+    return false;
   }
   
   TRI_ASSERT(thread != nullptr);
@@ -151,6 +151,8 @@ void WorkMonitor::pushThread(Thread* thread) {
   } catch (...) {
     throw;
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

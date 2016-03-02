@@ -115,7 +115,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, 0); }
+int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, nullptr); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
