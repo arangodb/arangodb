@@ -758,9 +758,6 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
   v8::Handle<v8::Object> example = args[0]->ToObject();
 
   // extract skip and limit

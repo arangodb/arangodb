@@ -24,9 +24,10 @@
 #ifndef ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H
 #define ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H 1
 
-#include "v8.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
+
+#include <v8.h>
 
 struct TRI_doc_mptr_t;
 
