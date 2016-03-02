@@ -1,0 +1,3 @@
+/var/lib/arangodb
+/var/lib/arangodb-apps
+/var/log/arangodb
