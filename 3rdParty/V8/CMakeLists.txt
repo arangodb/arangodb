@@ -264,6 +264,7 @@ else ()
 
   list(APPEND V8_GYP_ARGS
     -Ibuild/standalone.gypi
+    -Dv8_use_snapshot=true
     --depth=.
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
