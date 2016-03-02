@@ -228,7 +228,9 @@ static int V8ToVPack(BuilderContext& context,
       }
     }
 
-    context.builder.close();
+    if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
+      context.builder.close();
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -261,6 +263,7 @@ static int V8ToVPack(BuilderContext& context,
 
     if (parameter->IsRegExp() || parameter->IsFunction() ||
         parameter->IsExternal()) {
+      // TODO: Need externals which refer to our data files?
       return TRI_ERROR_BAD_PARAMETER;
     }
 
@@ -329,10 +332,7 @@ static int V8ToVPack(BuilderContext& context,
       int res = V8ToVPack(context, o->Get(key), *str, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        // to mimic behavior of previous ArangoDB versions, we need to silently
-        // ignore this error
-        // a better solution would be:
-        // return res;
+        return res;
       }
     }
 
