@@ -25,14 +25,11 @@
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Rest/SslInterface.h"
 #include "Utils/transactions.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shape-accessor.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -47,27 +44,6 @@ static uint64_t HashKey(TRI_associative_pointer_t* array, void const* key) {
   char const* k = (char const*)key;
 
   return TRI_FnvHashString(k);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the auth info
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementAuthInfo(TRI_associative_pointer_t* array,
-                                    void const* element) {
-  VocbaseAuthInfo const* e = static_cast<VocbaseAuthInfo const*>(element);
-  return e->hash();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares an auth info and a username
-////////////////////////////////////////////////////////////////////////////////
-
-static bool EqualKeyAuthInfo(TRI_associative_pointer_t* array, void const* key,
-                             void const* element) {
-  char const* k = (char const*)key;
-  VocbaseAuthInfo const* e = static_cast<VocbaseAuthInfo const*>(element);
-  return e->isEqualName(k);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,33 +157,13 @@ static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
-                                        TRI_document_collection_t* document,
                                         TRI_doc_mptr_t const* mptr) {
-  auto shaper =
-      document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
-  TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(
-      shapedJson, mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
+  VPackSlice slice(mptr->vpack());
+  if (slice.isNone()) {
     return nullptr;
   }
-
-  std::unique_ptr<TRI_json_t> json(TRI_JsonShapedJson(shaper, &shapedJson));
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  std::shared_ptr<VPackBuilder> parsed =
-      arangodb::basics::JsonHelper::toVelocyPack(json.get());
-
-  if (parsed == nullptr) {
-    return nullptr;
-  }
-
-  std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
+  std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(slice));
   return auth.release();  // maybe a nullptr
 }
 
@@ -219,24 +175,18 @@ static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
 
 static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   // clear auth info table
-  void** beg = vocbase->_authInfo._table;
-  void** end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
-  void** ptr = beg;
-
-  for (; ptr < end; ++ptr) {
-    if (*ptr) {
-      VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(*ptr);
-      delete auth;
-      *ptr = nullptr;
+  for (auto& it : vocbase->_authInfo) {
+    if (it.second != nullptr) {
+      delete it.second;
+      it.second = nullptr;
     }
   }
-
-  vocbase->_authInfo._nrUsed = 0;
+  vocbase->_authInfo.clear();
 
   // clear cache
-  beg = vocbase->_authCache._table;
-  end = vocbase->_authCache._table + vocbase->_authCache._nrAlloc;
-  ptr = beg;
+  void** beg = vocbase->_authCache._table;
+  void** end = vocbase->_authCache._table + vocbase->_authCache._nrAlloc;
+  void** ptr = beg;
 
   for (; ptr < end; ++ptr) {
     if (*ptr) {
@@ -282,9 +232,6 @@ bool VocbaseAuthInfo::mustChange() const { return _mustChange; }
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitAuthInfo(TRI_vocbase_t* vocbase) {
-  TRI_InitAssociativePointer(&vocbase->_authInfo, TRI_CORE_MEM_ZONE, HashKey,
-                             HashElementAuthInfo, EqualKeyAuthInfo, nullptr);
-
   TRI_InitAssociativePointer(&vocbase->_authCache, TRI_CORE_MEM_ZONE, HashKey,
                              HashElementAuthCache, EqualKeyAuthCache, nullptr);
 
@@ -299,7 +246,6 @@ void TRI_DestroyAuthInfo(TRI_vocbase_t* vocbase) {
   TRI_ClearAuthInfo(vocbase);
 
   TRI_DestroyAssociativePointer(&vocbase->_authCache);
-  TRI_DestroyAssociativePointer(&vocbase->_authInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,29 +308,23 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
 
-  {
-    WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
+  ClearAuthInfo(vocbase);
+  auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
+    std::unique_ptr<VocbaseAuthInfo> auth(
+        ConvertAuthInfo(vocbase, ptr));
+    if (auth != nullptr) {
+      VocbaseAuthInfo* old = vocbase->_authInfo.at(auth->username());
 
-    ClearAuthInfo(vocbase);
-    auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
-      std::unique_ptr<VocbaseAuthInfo> auth(
-          ConvertAuthInfo(vocbase, document, ptr));
-      if (auth != nullptr) {
-        VocbaseAuthInfo* old =
-            static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
-                &vocbase->_authInfo, auth->username(), auth.get(), true));
-        auth.release();
-
-        if (old != nullptr) {
-          delete old;
-        }
+      if (old != nullptr) {
+        delete old;
       }
-    };
+      vocbase->_authInfo.erase(auth->username());
+      auth.release();
+    }
+  };
 
-    document->primaryIndex()->invokeOnAllElements(work);
-  }
+  trx.invokeOnAllElements(collection->_name, work);
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
@@ -406,8 +346,10 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
     std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(authSlice));
 
     if (auth != nullptr) {
-      TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->username(),
-                                      auth.get(), false);
+      auto it = vocbase->_authInfo.find(auth->username());
+      if (it == vocbase->_authInfo.end()) {
+        vocbase->_authInfo.emplace(auth->username(), auth.get());
+      }
       auth.release();
     }
   }
@@ -469,10 +411,13 @@ bool TRI_ExistsAuthenticationAuthInfo(TRI_vocbase_t* vocbase,
   // look up username
   READ_LOCKER(readLocker, vocbase->_authInfoLock);
 
-  // We do not take responsiblity for the data
-  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(
-      TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
+  auto it = vocbase->_authInfo.find(username);
+  if (it == vocbase->_authInfo.end()) {
+    return false;
+  }
 
+  // We do not take responsiblity for the data
+  VocbaseAuthInfo* auth = it->second;
   return (auth != nullptr && auth->isActive());
 }
 
@@ -491,9 +436,13 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
     // look up username
     READ_LOCKER(readLocker, vocbase->_authInfoLock);
 
-    // We do not take responsibilty for the data
-    auth = static_cast<VocbaseAuthInfo*>(
-        TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
+    auto it = vocbase->_authInfo.find(username);
+    if (it == vocbase->_authInfo.end()) {
+      return false;
+    }
+
+    // We do not take responsiblity for the data
+    auth = it->second;
 
     if (auth == nullptr || !auth->isActive()) {
       return false;

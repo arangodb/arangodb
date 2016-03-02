@@ -48,6 +48,7 @@ class Builder;
 namespace aql {
 class QueryList;
 }
+class VocbaseAuthInfo;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
@@ -267,7 +268,7 @@ struct TRI_vocbase_t {
   arangodb::CursorRepository* _cursorRepository;
   arangodb::CollectionKeysRepository* _collectionKeys;
 
-  TRI_associative_pointer_t _authInfo;
+  std::unordered_map<std::string, arangodb::VocbaseAuthInfo*> _authInfo;
   TRI_associative_pointer_t _authCache;
   arangodb::basics::ReadWriteLock _authInfoLock;
   bool _authInfoLoaded;  // flag indicating whether the authentication info was
