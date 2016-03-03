@@ -33,7 +33,6 @@
 #include "Scheduler/events.h"
 #include "Statistics/StatisticsAgent.h"
 
-
 namespace arangodb {
 namespace rest {
 class Dispatcher;
@@ -41,7 +40,6 @@ class GeneralHandlerFactory;
 class GeneralRequest;
 class GeneralServer;
 class VelocyServer;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http/vstream handlers
@@ -51,7 +49,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
   GeneralHandler(GeneralHandler const&) = delete;
   GeneralHandler& operator=(GeneralHandler const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler
@@ -69,7 +66,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
  protected:
   ~GeneralHandler();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief status of execution
@@ -89,7 +85,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
     status_e _status;
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if a handler is executed directly
@@ -139,7 +134,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
 
   virtual void addResponse(GeneralHandler*);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the id of the underlying task
@@ -197,7 +191,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
 
   GeneralResponse* stealResponse();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new HTTP response
@@ -210,7 +203,6 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
   //////////////////////////////////////////////////////////////////////////////
 
   void createResponse(GeneralResponse::VstreamResponseCode);
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler id
@@ -252,5 +244,3 @@ class GeneralHandler : public RequestStatisticsAgent, public arangodb::WorkItem 
 }
 
 #endif
-
-

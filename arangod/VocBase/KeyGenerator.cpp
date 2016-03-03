@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
-
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Basics/voc-errors.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-
+#include "Basics/voc-errors.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
+
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup table for key checks
@@ -73,7 +72,7 @@ KeyGenerator::KeyGenerator(bool allowUserKeys)
 KeyGenerator::~KeyGenerator() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the generator type from JSON
+/// @brief get the generator type from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::GeneratorType KeyGenerator::generatorType(
@@ -87,15 +86,14 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  std::string typeName = type.copyString();
+  std::string const typeName =
+      arangodb::basics::StringUtils::tolower(type.copyString());
 
-  if (TRI_CaseEqualString(typeName.c_str(),
-                          TraditionalKeyGenerator::name().c_str())) {
+  if (typeName == TraditionalKeyGenerator::name()) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  if (TRI_CaseEqualString(typeName.c_str(),
-                          AutoIncrementKeyGenerator::name().c_str())) {
+  if (typeName == AutoIncrementKeyGenerator::name()) {
     return KeyGenerator::TYPE_AUTOINCREMENT;
   }
 
@@ -257,7 +255,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
-  return std::move(arangodb::basics::StringUtils::itoa(tick));
+  return arangodb::basics::StringUtils::itoa(tick);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +346,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
   uint64_t keyValue;
 
   {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     // user has not specified a key, generate one based on algorithm
     if (_lastValue < _offset) {
@@ -368,7 +366,7 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return std::move(arangodb::basics::StringUtils::itoa(keyValue));
+  return arangodb::basics::StringUtils::itoa(keyValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,7 +389,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
   uint64_t intValue = arangodb::basics::StringUtils::uint64(key);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(_lock);
+    MUTEX_LOCKER(mutexLocker, _lock);
     // update our last value
     _lastValue = intValue;
   }
@@ -405,7 +403,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
 
 void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
   // check the numeric key part
-  uint64_t value = TRI_UInt64String(key);
+  uint64_t value = StringUtils::uint64(key);
 
   if (value > _lastValue) {
     // and update our last value

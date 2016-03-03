@@ -27,12 +27,10 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
 #include "Rest/GeneralRequest.h"
+#include "Basics/Logger.h"
 
-using namespace std;
 using namespace arangodb::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions
@@ -52,14 +50,13 @@ static std::map<std::string, TRI_action_t*> PrefixActions;
 
 static ReadWriteLock ActionsLock;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
                                       TRI_action_t* action) {
-  WRITE_LOCKER(ActionsLock);
+  WRITE_LOCKER(writeLocker, ActionsLock);
 
   std::string url = name;
 
@@ -78,11 +75,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR(
-            "trying to define two incompatible actions of type '%s' and '%s' "
-            "for prefix url '%s'",
-            oldAction->_type.c_str(), action->_type.c_str(),
-            action->_url.c_str());
+        LOG(ERR) << "trying to define two incompatible actions of type '" << oldAction->_type << "' and '" << action->_type << "' for prefix url '" << action->_url << "'";
 
         delete oldAction;
       } else {
@@ -97,11 +90,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR(
-            "trying to define two incompatible actions of type '%s' and type "
-            "'%s' for url '%s'",
-            oldAction->_type.c_str(), action->_type.c_str(),
-            action->_url.c_str());
+        LOG(ERR) << "trying to define two incompatible actions of type '" << oldAction->_type << "' and type '" << action->_type << "' for url '" << action->_url << "'";
 
         delete oldAction;
       } else {
@@ -112,8 +101,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
   }
 
   // some debug output
-  LOG_DEBUG("created %s %saction '%s'", action->_type.c_str(),
-            (action->_isPrefix ? "prefix " : ""), url.c_str());
+  LOG(DEBUG) << "created " << action->_type << " " << (action->_isPrefix ? "prefix " : "") << " '" << url << "'";
 
   // return old or new action description
   return action;
@@ -130,7 +118,7 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::GeneralRequest* request) {
   // find a direct match
   std::string name = StringUtils::join(suffix, '/');
 
-  READ_LOCKER(ActionsLock);
+  READ_LOCKER(readLocker, ActionsLock);
   std::map<std::string, TRI_action_t*>::iterator i = Actions.find(name);
 
   if (i != Actions.end()) {
@@ -171,5 +159,3 @@ void TRI_CleanupActions() {
   }
   PrefixActions.clear();
 }
-
-

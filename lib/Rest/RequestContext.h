@@ -34,9 +34,7 @@ namespace rest {
 
 class GeneralRequest;
 
-
 class RequestContext {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the request context
@@ -50,7 +48,6 @@ class RequestContext {
   RequestContext(const RequestContext&);
   RequestContext& operator=(const RequestContext&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get request user
@@ -70,12 +67,15 @@ class RequestContext {
 
   virtual GeneralResponse::HttpResponseCode authenticate() = 0;
 
+<<<<<<< HEAD
   //////////////////////////////////////////////////////////////////////////////
   /// @brief authenticate user (vstream)
   //////////////////////////////////////////////////////////////////////////////
 
   virtual GeneralResponse::VstreamResponseCode authenticateVstream() = 0;
   
+=======
+>>>>>>> upstream/devel
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the request of the context
@@ -87,5 +87,3 @@ class RequestContext {
 }
 
 #endif
-
-

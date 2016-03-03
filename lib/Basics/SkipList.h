@@ -28,13 +28,14 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/random.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
 namespace arangodb {
 namespace basics {
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist node
@@ -139,7 +140,6 @@ class SkipList {
   size_t _memoryUsed;
 
  public:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new skiplist
   ///
@@ -188,7 +188,6 @@ class SkipList {
     freeNode(_start);
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the start node, note that this does not return the first
   /// data node but the (internal) artificial node stored under _start. This
@@ -374,11 +373,11 @@ class SkipList {
   bool isArray() const { return _isArray; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
+  /// @brief Appends information about statistics in the given VelocyPack.
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToJson(TRI_memory_zone_t* zone, Json& json) {
-    json("nrUsed", Json(static_cast<double>(_nrUsed)));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("nrUsed", VPackValue(_nrUsed));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -485,7 +484,6 @@ class SkipList {
     return pos[0];
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allocate a new SkipListNode of a certain height. If height is 0,
@@ -707,5 +705,3 @@ class SkipList {
 }  // namespace arangodb
 
 #endif
-
-

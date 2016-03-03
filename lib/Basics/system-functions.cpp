@@ -23,7 +23,6 @@
 
 #include "Basics/Common.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memrchr
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +67,7 @@ int gettimeofday(struct timeval* tv, void* tz) {
 /// @brief gets a line
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRI_HAVE_GETLINE
+#if !defined(TRI_HAVE_GETLINE)
 
 static int const line_size = 256;
 
@@ -134,7 +133,7 @@ void TRI_localtime(time_t tt, struct tm* tb) {
 
 #else
 
-#ifdef TRI_HAVE_LOCALTIME_S
+#ifdef ARANGODB_HAVE_LOCALTIME_S
 
   localtime_s(tb, &tt);
 
@@ -214,5 +213,3 @@ size_t TRI_numberProcessors() {
 
 #endif
 }
-
-

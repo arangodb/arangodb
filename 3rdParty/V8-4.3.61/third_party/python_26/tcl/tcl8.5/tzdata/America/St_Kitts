@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:America/St_Kitts) {
-    {-9223372036854775808 -15052 0 LMT}
-    {-1825098548 -14400 0 AST}
-}

@@ -25,7 +25,6 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
@@ -58,9 +57,9 @@ CollectionExport::~CollectionExport() {
     _ditch->ditches()->freeDocumentDitch(_ditch, false);
   }
 
+  // if not already done
   delete _guard;
 }
-
 
 void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
@@ -101,7 +100,8 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
                                             _document->_vocbase, _name);
 
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true); // already locked by guard above
+    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
+                true);  // already locked by guard above
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -137,6 +137,14 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     trx.finish(res);
   }
+
+  // delete guard right now as we're about to return
+  // if we would continue holding the guard's collection lock and return,
+  // and the export object gets later freed in a different thread, then all
+  // would be lost. so we'll release the lock here and rely on the cleanup
+  // thread not unloading the collection (as we've acquired a document ditch
+  // for the collection already - this will prevent unloading of the collection's
+  // datafiles etc.)
+  delete _guard;
+  _guard = nullptr;
 }
-
-

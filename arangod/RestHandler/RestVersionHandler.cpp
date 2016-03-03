@@ -22,30 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
-
-#include "Rest/AnyServer.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/ArangoServer.h"
 #include "Rest/Version.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern AnyServer* ArangoInstance;
-
+extern ArangoServer* ArangoInstance;
 
 RestVersionHandler::RestVersionHandler(GeneralRequest* request)
     : RestBaseHandler(request) {}
 
-
 bool RestVersionHandler::isDirect() const { return true; }
-
 
 GeneralHandler::status_t RestVersionHandler::execute() {
   try {

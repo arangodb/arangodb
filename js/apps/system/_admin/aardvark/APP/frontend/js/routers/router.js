@@ -15,8 +15,10 @@
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query",
+      "query": "query2",
+      "query2": "query",
       "queryManagement": "queryManagement",
+      "workMonitor": "workMonitor",
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
@@ -24,8 +26,50 @@
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs"
+      "logs": "logs",
+      "test": "test"
     },
+
+    checkUser: function () {
+      var callback = function(error, user) {
+        if (error || user === null) {
+          this.navigate("login", {trigger: true});
+        }
+        else {
+          this.initOnce();
+        }
+      }.bind(this);
+
+      this.userCollection.whoAmI(callback); 
+    },
+
+    waitForInit: function(origin, param1, param2) {
+      if (!this.initFinished) {
+        setTimeout(function() {
+          if (!param1) {
+            origin(false);
+          }
+          if (param1 && !param2) {
+            origin(param1, false);
+          }
+          if (param1 && param2) {
+            origin(param1, param2, false);
+          }
+        }, 100);
+      } else {
+        if (!param1) {
+          origin(true);
+        }
+        if (param1 && !param2) {
+          origin(param1, true);
+        }
+        if (param1 && param2) {
+          origin(param1, param2, true);
+        }
+      }
+    },
+
+    initFinished: false,
 
     initialize: function () {
       // This should be the only global object
@@ -36,37 +80,45 @@
         collection: this.foxxList
       });
       window.progressView = new window.ProgressView();
+
       var self = this;
 
       this.userCollection = new window.ArangoUsers();
 
       this.initOnce = function () {
         this.initOnce = function() {};
+        this.initFinished = true;
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
-        this.currentDB.fetch({
-          async: false
-        });
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
-        this.arangoCollectionsStore.fetch({async: false});
+        this.arangoCollectionsStore.fetch();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore 
+        });
 
         this.footerView = new window.FooterView();
         this.notificationList = new window.NotificationCollection();
-        this.naviView = new window.NavigationView({
-          database: this.arangoDatabase,
-          currentDB: this.currentDB,
-          notificationCollection: self.notificationList,
-          userCollection: this.userCollection
+
+        this.currentDB.fetch({
+          success: function() {
+            self.naviView = new window.NavigationView({
+              database: self.arangoDatabase,
+              currentDB: self.currentDB,
+              notificationCollection: self.notificationList,
+              userCollection: self.userCollection
+            });
+            self.naviView.render();
+          }
         });
 
         this.queryCollection = new window.ArangoQueries();
 
         this.footerView.render();
-        this.naviView.render();
 
         window.checkVersion();
       }.bind(this);
@@ -78,17 +130,10 @@
 
     },
 
-    checkUser: function () {
-      if (this.userCollection.whoAmI() === null) {
-        this.navigate("login", {trigger: true});
-        return false;
-      }
-      this.initOnce();
-      return true;
-    },
-
-    logs: function () {
-      if (!this.checkUser()) {
+    logs: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.logs.bind(this));
         return;
       }
       if (!this.logsView) {
@@ -116,46 +161,61 @@
         });
       }
       this.logsView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    applicationDetail: function (mount) {
-      if (!this.checkUser()) {
+    applicationDetail: function (mount, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applicationDetail.bind(this), mount);
         return;
       }
-      this.naviView.selectMenuItem('applications-menu');
+      var callback = function() {
+        if (!this.hasOwnProperty('applicationDetailView')) {
+          this.applicationDetailView = new window.ApplicationDetailView({
+            model: this.foxxList.get(decodeURIComponent(mount))
+          });
+        }
+
+        this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
+        this.applicationDetailView.render('swagger');
+      }.bind(this);
 
       if (this.foxxList.length === 0) {
-        this.foxxList.fetch({ async: false });
-      }
-      if (!this.hasOwnProperty('applicationDetailView')) {
-        this.applicationDetailView = new window.ApplicationDetailView({
-          model: this.foxxList.get(decodeURIComponent(mount))
+        this.foxxList.fetch({
+          success: function() {
+            callback();
+          }
         });
       }
-
-      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
-      this.applicationDetailView.render('swagger');
+      else {
+        callback();
+      }
     },
 
-    login: function () {
-      if (this.userCollection.whoAmI() !== null) {
-        this.navigate("", {trigger: true});
-        return false;
-      }
-      if (!this.loginView) {
-        this.loginView = new window.loginView({
-          collection: this.userCollection
-        });
-      }
-      this.loginView.render();
+    login: function (initialized) {
+      var callback = function(error, user) {
+        if (error || user === null) {
+          if (!this.loginView) {
+            this.loginView = new window.loginView({
+              collection: this.userCollection
+            });
+          }
+          this.loginView.render();
+        }
+        else {
+          this.navigate("", {trigger: true});
+        }
+      }.bind(this);
+      this.userCollection.whoAmI(callback);
     },
 
-    collections: function () {
-      if (!this.checkUser()) {
+    collections: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.collections.bind(this));
         return;
       }
-      var naviView = this.naviView, self = this;
+      var self = this;
       if (!this.collectionsView) {
         this.collectionsView = new window.CollectionsView({
           collection: this.arangoCollectionsStore
@@ -164,13 +224,14 @@
       this.arangoCollectionsStore.fetch({
         success: function () {
           self.collectionsView.render();
-          naviView.selectMenuItem('collections-menu');
         }
       });
     },
 
-    documents: function (colid, pageid) {
-      if (!this.checkUser()) {
+    documents: function (colid, pageid, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.documents.bind(this), colid, pageid);
         return;
       }
       if (!this.documentsView) {
@@ -185,8 +246,10 @@
 
     },
 
-    document: function (colid, docid) {
-      if (!this.checkUser()) {
+    document: function (colid, docid, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.document.bind(this), colid, docid);
         return;
       }
       if (!this.documentView) {
@@ -197,23 +260,35 @@
       this.documentView.colid = colid;
       this.documentView.docid = docid;
       this.documentView.render();
-      var type = arangoHelper.collectionApiType(colid);
-      this.documentView.setType(type);
+
+      var callback = function(error, type) {
+        if (!error) {
+          this.documentView.setType(type);
+        }
+        else {
+          console.log("Error", "Could not fetch collection type");
+        }
+      }.bind(this);
+
+      arangoHelper.collectionApiType(colid, null, callback);
     },
 
-    shell: function () {
-      if (!this.checkUser()) {
+    shell: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.shell.bind(this));
         return;
       }
       if (!this.shellView) {
         this.shellView = new window.shellView();
       }
       this.shellView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    query: function () {
-      if (!this.checkUser()) {
+    query: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.query.bind(this));
         return;
       }
       if (!this.queryView) {
@@ -222,11 +297,56 @@
         });
       }
       this.queryView.render();
-      this.naviView.selectMenuItem('query-menu');
     },
 
-    queryManagement: function () {
-      if (!this.checkUser()) {
+    query2: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.query2.bind(this));
+        return;
+      }
+      if (!this.queryView2) {
+        this.queryView2 = new window.queryView2({
+          collection: this.queryCollection
+        });
+      }
+      this.queryView2.render();
+    },
+    
+    test: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.test.bind(this));
+        return;
+      }
+      if (!this.testView) {
+        this.testView = new window.testView({
+        });
+      }
+      this.testView.render();
+    },
+
+    workMonitor: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.workMonitor.bind(this));
+        return;
+      }
+      if (!this.workMonitorCollection) {
+        this.workMonitorCollection = new window.WorkMonitorCollection();
+      }
+      if (!this.workMonitorView) {
+        this.workMonitorView = new window.workMonitorView({
+          collection: this.workMonitorCollection
+        });
+      }
+      this.workMonitorView.render();
+    },
+
+    queryManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.queryManagement.bind(this));
         return;
       }
       if (!this.queryManagementView) {
@@ -235,35 +355,44 @@
         });
       }
       this.queryManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    databases: function () {
-      if (!this.checkUser()) {
+    databases: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.databases.bind(this));
         return;
       }
-      if (arangoHelper.databaseAllowed() === true) {
-        if (! this.databaseView) {
-          this.databaseView = new window.databaseView({
-            users: this.userCollection,
-            collection: this.arangoDatabase
-          });
+
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get list of allowed databases");
+          this.navigate("#", {trigger: true});
+          $('#databaseNavi').css('display', 'none');
+          $('#databaseNaviSelect').css('display', 'none');
         }
-        this.databaseView.render();
-        this.naviView.selectMenuItem('databases-menu');
-      } else {
-        this.navigate("#", {trigger: true});
-        this.naviView.selectMenuItem('dashboard-menu');
-        $('#databaseNavi').css('display', 'none');
-        $('#databaseNaviSelect').css('display', 'none');
-      }
+        else {
+          if (! this.databaseView) {
+            this.databaseView = new window.databaseView({
+              users: this.userCollection,
+              collection: this.arangoDatabase
+            });
+          }
+          this.databaseView.render();
+          }
+      }.bind(this);
+
+      arangoHelper.databaseAllowed(callback);
     },
 
-    dashboard: function () {
-      if (!this.checkUser()) {
+    dashboard: function (initialized) {
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.dashboard.bind(this));
         return;
       }
-      this.naviView.selectMenuItem('dashboard-menu');
+
       if (this.dashboardView === undefined) {
         this.dashboardView = new window.DashboardView({
           dygraphConfig: window.dygraphConfig,
@@ -273,8 +402,10 @@
       this.dashboardView.render();
     },
 
-    graphManagement: function () {
-      if (!this.checkUser()) {
+    graphManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.graphManagement.bind(this));
         return;
       }
       if (!this.graphManagementView) {
@@ -287,11 +418,12 @@
         );
       }
       this.graphManagementView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
-    showGraph: function (name) {
-      if (!this.checkUser()) {
+    showGraph: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.showGraph.bind(this), name);
         return;
       }
       if (!this.graphManagementView) {
@@ -302,14 +434,17 @@
             collectionCollection: this.arangoCollectionsStore
           }
         );
+        this.graphManagementView.render(name, true);
       }
-      this.graphManagementView.render();
-      this.graphManagementView.loadGraphViewer(name);
-      this.naviView.selectMenuItem('graphviewer-menu');
+      else {
+        this.graphManagementView.loadGraphViewer(name);
+      }
     },
 
-    applications: function () {
-      if (!this.checkUser()) {
+    applications: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.applications.bind(this));
         return;
       }
       if (this.applicationsView === undefined) {
@@ -318,11 +453,12 @@
         });
       }
       this.applicationsView.reload();
-      this.naviView.selectMenuItem('applications-menu');
     },
 
-    handleSelectDatabase: function () {
-      if (!this.checkUser()) {
+    handleSelectDatabase: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.handleSelectDatabase.bind(this));
         return;
       }
       this.naviView.handleSelectDatabase();
@@ -338,10 +474,15 @@
       if (this.queryView) {
         this.queryView.resize();
       }
+      if (this.queryView2) {
+        this.queryView2.resize();
+      }
     },
 
-    userManagement: function () {
-      if (!this.checkUser()) {
+    userManagement: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.userManagement.bind(this));
         return;
       }
       if (!this.userManagementView) {
@@ -350,11 +491,12 @@
         });
       }
       this.userManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
     },
 
-    userProfile: function () {
-      if (!this.checkUser()) {
+    userProfile: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.userProfile.bind(this));
         return;
       }
       if (!this.userManagementView) {
@@ -363,7 +505,6 @@
         });
       }
       this.userManagementView.render(true);
-      this.naviView.selectMenuItem('tools-menu');
     }
   });
 

@@ -41,6 +41,33 @@ true != null              // true
 42 NOT IN [ 17, 40, 50 ]  // true
 ```
 
+!SUBSUBSECTION Array comparison operators
+
+The comparison operators also exist as *array variant*. In the array
+variant, the operator is prefixed with one of the keywords *ALL*, *ANY*
+or *NONE*. Using one of these keywords changes the operator behavior to
+execute the comparison operation for all, any, or none of its left hand 
+argument values. It is therefore expected that the left hand argument
+of an array operator is an array.
+
+Examples:
+
+```
+[ 1, 2, 3 ] ANY == 2             // true
+[ 1, 2, 3 ] ANY == 4             // false
+[ 1, 2, 3 ] ANY > 0              // true
+[ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
+[ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
+[ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
+[ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
+[ 1, 2, 3 ] ALL > 2              // false
+[ 1, 2, 3 ] ALL > 0              // true
+[ 1, 2, 3 ] NONE IN [ 3 ]        // false
+[ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+[ 1, 2, 3 ] NONE < 99            // false
+[ 1, 2, 3 ] NONE > 10            // true
+```
+
 !SUBSUBSECTION Logical operators
 
 The following logical operators are supported in AQL:

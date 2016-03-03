@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
+#include "Aql/Quantifier.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -39,7 +40,6 @@
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "constant" global object for NULL which can be shared by all
@@ -62,7 +62,6 @@ TRI_json_t const Expression::TrueJson = {TRI_JSON_BOOLEAN, {true}};
 
 TRI_json_t const Expression::FalseJson = {TRI_JSON_BOOLEAN, {false}};
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +81,6 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
 
   ast->query()->registerWarning(code, msg.c_str());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the expression
@@ -142,7 +140,6 @@ Expression::~Expression() {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all variables used in the expression
@@ -281,7 +278,6 @@ void Expression::invalidate() {
   // expression data will be freed in the destructor
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an AQL list node
 /// this performs either a binary search (if the node is sorted) or a
@@ -293,11 +289,14 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              TRI_document_collection_t const* rightCollection,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
-  TRI_ASSERT_EXPENSIVE(right.isArray());
+  TRI_ASSERT(right.isArray());
 
   size_t const n = right.arraySize();
 
-  if (n > 3 && (node->getBoolValue() || node->getMember(1)->isSorted())) {
+  if (n > 3 && 
+      (node->getMember(1)->isSorted() ||
+      ((node->type == NODE_TYPE_OPERATOR_BINARY_IN || 
+        node->type == NODE_TYPE_OPERATOR_BINARY_NIN) && node->getBoolValue()))) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -372,7 +371,7 @@ void Expression::analyzeExpression() {
     _isDeterministic = _node->isDeterministic();
 
     if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      TRI_ASSERT_EXPENSIVE(_node->numMembers() == 1);
+      TRI_ASSERT(_node->numMembers() == 1);
       auto member = _node->getMemberUnchecked(0);
       std::vector<char const*> parts{
           static_cast<char const*>(_node->getData())};
@@ -407,7 +406,7 @@ void Expression::analyzeExpression() {
 
       bool isSafeForOptimization;
       _attributes =
-          std::move(Ast::getReferencedAttributes(_node, isSafeForOptimization));
+          Ast::getReferencedAttributes(_node, isSafeForOptimization);
 
       if (!isSafeForOptimization) {
         _attributes.clear();
@@ -462,8 +461,8 @@ void Expression::buildExpression() {
 
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
-    size_t startPos, std::vector<Variable const*> const& vars,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
@@ -505,6 +504,16 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return executeSimpleExpressionComparison(node, trx, argv, startPos, vars,
                                                regs);
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+      return executeSimpleExpressionArrayComparison(node, trx, argv, startPos, vars,
+                                                    regs);
     case NODE_TYPE_OPERATOR_TERNARY:
       return executeSimpleExpressionTernary(node, trx, argv, startPos, vars,
                                             regs);
@@ -581,7 +590,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   // object lookup, e.g. users.name
-  TRI_ASSERT_EXPENSIVE(node->numMembers() == 1);
+  TRI_ASSERT(node->numMembers() == 1);
 
   auto member = node->getMemberUnchecked(0);
   auto name = static_cast<char const*>(node->getData());
@@ -635,7 +644,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
       result.destroy();
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     } else if (indexResult.isString()) {
-      auto value(std::move(indexResult.toString()));
+      auto value(indexResult.toString());
       indexResult.destroy();
 
       try {
@@ -795,8 +804,7 @@ AqlValue Expression::executeSimpleExpressionReference(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      return AqlValue(
-          new Json(TRI_UNKNOWN_MEM_ZONE, copy));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
   }
 
@@ -1053,6 +1061,132 @@ AqlValue Expression::executeSimpleExpressionComparison(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Expression::executeSimpleExpressionArrayComparison(
+    AstNode const* node, arangodb::AqlTransaction* trx,
+    AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs) {
+  TRI_document_collection_t const* leftCollection = nullptr;
+  AqlValue left =
+      executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv,
+                              startPos, vars, regs, false);
+  TRI_document_collection_t const* rightCollection = nullptr;
+  AqlValue right =
+      executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv,
+                              startPos, vars, regs, false);
+
+  if (!left.isArray()) {
+    // left operand must be an array
+    left.destroy();
+    right.destroy();
+    // do not throw, but return "false" instead
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+  }
+  
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // IN and NOT IN
+    if (!right.isArray()) {
+      // right operand must be a list, otherwise we return false
+      left.destroy();
+      right.destroy();
+      // do not throw, but return "false" instead
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+    }
+  }
+
+  size_t const n = left.arraySize();
+  std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
+
+  TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
+ 
+  // for equality and non-equality we can use a binary comparison
+  bool const compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+                            node->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
+
+  bool overallResult = true;
+  size_t matches = 0;
+  size_t numLeft = n;
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto leftItem = left.extractArrayMember(trx, leftCollection, static_cast<int64_t>(i), false);
+    AqlValue leftItemValue(&leftItem);
+    bool result;
+
+    // IN and NOT IN
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+      result =
+          findInArray(leftItemValue, right, nullptr, rightCollection, trx, node);
+    
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+        // revert the result in case of a NOT IN
+        result = !result;
+      }
+    }
+    else {
+      // other operators
+      int compareResult = AqlValue::Compare(trx, leftItemValue, nullptr,
+                                            right, rightCollection, compareUtf8);
+
+      result = false;
+      switch (node->type) {
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+          result = (compareResult == 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+          result = (compareResult != 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+          result = (compareResult < 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+          result = (compareResult <= 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+          result = (compareResult > 0);
+          break;
+        case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+          result = (compareResult >= 0);
+          break;
+        default:
+          TRI_ASSERT(false);
+      }
+    }
+    
+    --numLeft;
+      
+    if (result) {
+      ++matches;
+      if (matches > requiredMatches.second) {
+        // too many matches
+        overallResult = false;
+        break;
+      }
+      if (matches >= requiredMatches.first && matches + numLeft <= requiredMatches.second) {
+        // enough matches
+        overallResult = true;
+        break;
+      }
+    }
+    else {
+      if (matches + numLeft < requiredMatches.first) {
+        // too few matches
+        overallResult = false;
+        break;
+      }
+    }
+  }
+      
+  left.destroy();
+  right.destroy();
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, overallResult ? &TrueJson : &FalseJson, Json::NOFREE));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with TERNARY
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1269,8 +1403,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
 AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::AqlTransaction* trx, AqlItemBlock const* argv,
-    size_t startPos, std::vector<Variable const*> const& vars,
+    arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
+    std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
@@ -1343,5 +1477,3 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
       return AqlValue(new Json(Json::Null));
   }
 }
-
-

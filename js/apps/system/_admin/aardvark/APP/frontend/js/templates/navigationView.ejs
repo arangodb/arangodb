@@ -3,7 +3,7 @@
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
-    <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
+    <li class="graph-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Services</a>
     </li>
@@ -28,6 +28,9 @@
         </li>
         <li class="dropdown-item">
           <a id="queryManagement" class="tab" href="#queryManagement">Query Management</a>
+        </li>
+        <li class="dropdown-item">
+          <a id="workMonitor" class="tab" href="#workMonitor">Work Monitor</a>
         </li>
       </ul>
     </li>
@@ -62,11 +65,13 @@
     <% } %>
 
     <option value="#collections">Collections</option>
-    <option value="#demo">Demo</option>
     <option value="#applications">Services</option>
     <option value="#graph">Graph</option>
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
+    <option value="#userManagement">User Management</option>
+    <option value="#queryManagement">Query Management</option>
+    <option value="#workMonitor">Work Monitor</option>
 
     <% if(currentDB.get('isSystem')) { %>
 

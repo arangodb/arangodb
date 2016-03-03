@@ -99,6 +99,9 @@ case of a crash. Clients should therefore not use the asynchronous feature
 when they have strict durability requirements or if they rely on the immediate 
 result of the request they send.
 
+For details on the subsequent processing
+[read on under Async Result handling](../HttpAsyncResultsManagement/README.md).
+
 !SECTION Authentication
 
 Client authentication can be achieved by using the *Authorization* HTTP header in

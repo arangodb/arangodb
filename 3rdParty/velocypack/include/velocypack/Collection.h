@@ -118,7 +118,6 @@ class Collection {
     }
   }
   
-//  template<>
   static void keys(Slice const& slice, std::vector<std::string>& result) {
     // pre-allocate result vector
     result.reserve(checkOverflow(slice.length()));
@@ -126,7 +125,7 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace_back(std::move(it.key().copyString()));
+      result.emplace_back(it.key().copyString());
       it.next();
     }
   }
@@ -171,11 +170,11 @@ class Collection {
     return remove(*slice, keys);
   }
 
-  static Builder merge(Slice const& left, Slice const& right, bool mergeValues);
+  static Builder merge(Slice const& left, Slice const& right, bool mergeValues, bool nullMeansRemove = false);
 
   static Builder merge(Slice const* left, Slice const* right,
-                       bool mergeValues) {
-    return merge(*left, *right, mergeValues);
+                       bool mergeValues, bool nullMeansRemove = false) {
+    return merge(*left, *right, mergeValues, nullMeansRemove);
   }
 
   static void visitRecursive(

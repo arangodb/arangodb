@@ -30,7 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -54,7 +54,6 @@ static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, GeneralRequest* request);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +66,6 @@ static ApplicationV8* GlobalV8Dealer = nullptr;
 
 class v8_action_t : public TRI_action_t {
  public:
-
   v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {
     _type = "JAVASCRIPT";
   }
@@ -77,7 +75,7 @@ class v8_action_t : public TRI_action_t {
   //////////////////////////////////////////////////////////////////////////////
 
   void createCallback(v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
-    WRITE_LOCKER(_callbacksLock);
+    WRITE_LOCKER(writeLocker, _callbacksLock);
 
     std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
         _callbacks.find(isolate);
@@ -88,7 +86,6 @@ class v8_action_t : public TRI_action_t {
 
     _callbacks[isolate].Reset(isolate, callback);
   }
-
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
                               Mutex* dataLock, void** data) {
@@ -122,15 +119,14 @@ class v8_action_t : public TRI_action_t {
     }
 
     // locate the callback
-    READ_LOCKER(_callbacksLock);
+    READ_LOCKER(readLocker, _callbacksLock);
 
     {
       std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG_WARNING("no callback function for JavaScript action '%s'",
-                    _url.c_str());
+        LOG(WARN) << "no callback function for JavaScript action '" << _url << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -143,7 +139,7 @@ class v8_action_t : public TRI_action_t {
 
       // and execute it
       {
-        MUTEX_LOCKER(*dataLock);
+        MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != 0) {
           result.canceled = true;
@@ -167,7 +163,7 @@ class v8_action_t : public TRI_action_t {
       }
 
       {
-        MUTEX_LOCKER(*dataLock);
+        MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = 0;
       }
     }
@@ -176,10 +172,9 @@ class v8_action_t : public TRI_action_t {
     return result;
   }
 
-
-  bool cancel(Mutex* dataLock, void** data) {
+  bool cancel(Mutex* dataLock, void** data) override {
     {
-      MUTEX_LOCKER(*dataLock);
+      MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
       if (*data == 0) {
@@ -210,7 +205,6 @@ class v8_action_t : public TRI_action_t {
 
   ReadWriteLock _callbacksLock;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the action options
@@ -471,19 +465,19 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   v8::Handle<v8::Object> valuesObject = v8::Object::New(isolate);
   std::map<std::string, std::string> values = request->values();
 
-  for (std::map<std::string, std::string>::iterator i = values.begin(); i != values.end();
-       ++i) {
+  for (std::map<std::string, std::string>::iterator i = values.begin();
+       i != values.end(); ++i) {
     valuesObject->ForceSet(TRI_V8_STD_STRING(i->first),
                            TRI_V8_STD_STRING(i->second));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
-  std::map<std::string, std::vector<char const*>*> arrayValues = request->arrayValues();
+  std::map<std::string, std::vector<char const*>*> arrayValues =
+      request->arrayValues();
 
-  for (std::map<std::string, std::vector<char const*>*>::iterator i = arrayValues.begin();
-       i != arrayValues.end(); ++i) {
-    std::string const& k = i->first;
-    std::vector<char const*>* v = i->second;
+  for (auto& arrayValue : arrayValues) {
+    std::string const& k = arrayValue.first;
+    std::vector<char const*>* v = arrayValue.second;
 
     v8::Handle<v8::Array> list =
         v8::Array::New(isolate, static_cast<int>(v->size()));
@@ -615,8 +609,8 @@ static GeneralResponse* ResponseV8ToCpp(v8::Isolate* isolate,
       response->body().appendText(content, length);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
     } else {
-      std::string msg =
-          std::string("cannot read file '") + *filename + "': " + TRI_last_error();
+      std::string msg = std::string("cannot read file '") + *filename + "': " +
+                        TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
       response->setResponseCode(GeneralResponse::SERVER_ERROR);
@@ -677,6 +671,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     v8::Handle<v8::Function> callback, GeneralRequest* request) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
+  v8::TryCatch tryCatch;
 
   TRI_GET_GLOBALS();
 
@@ -777,7 +772,6 @@ static TRI_action_result_t ExecuteActionVocbase(
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
 ///
@@ -833,10 +827,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (action != nullptr) {
       action->createCallback(isolate, callback);
     } else {
-      LOG_ERROR("cannot create callback for V8 action");
+      LOG(ERR) << "cannot create callback for V8 action";
     }
   } else {
-    LOG_ERROR("cannot define V8 action");
+    LOG(ERR) << "cannot define V8 action";
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1275,7 +1269,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 /// Below Debugging Functions. Only compiled in maintainer mode.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path, // Note: Has to be properly encoded!
@@ -1294,9 +1288,7 @@ static bool clusterSendToAllServers(
   for (auto const& sid : DBServers) {
     std::unique_ptr<std::map<std::string, std::string>> headers(
         new std::map<std::string, std::string>());
-    cc->asyncRequest("", coordTransactionID, "server:" + sid,
-                     method,
-                     url,
+    cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }
 
@@ -1326,7 +1318,7 @@ static bool clusterSendToAllServers(
 /// intentionally cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1355,7 +1347,7 @@ static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Set a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1377,8 +1369,9 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_PUT, "");
+    int res = clusterSendToAllServers(
+          dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+          arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1397,7 +1390,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// Remove a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_DebugRemoveFailAt(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1420,8 +1413,9 @@ static void JS_DebugRemoveFailAt(
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE, "");
+    int res = clusterSendToAllServers(
+        dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+        arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1451,7 +1445,7 @@ static void JS_DebugClearFailAt(
   }
 
 // if failure testing is not enabled, this is a no-op
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_ClearFailurePointsDebugging();
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1464,8 +1458,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE,
-        "");
+        arangodb::rest::GeneralRequest::RequestType::HTTP_REQUEST_DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1480,11 +1473,11 @@ static void JS_DebugClearFailAt(
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,
                           std::string const& modules) {
-// debugging functions
+  // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"),
                                JS_DebugSegfault);
@@ -1496,4 +1489,3 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_DebugRemoveFailAt);
 #endif
 }
-

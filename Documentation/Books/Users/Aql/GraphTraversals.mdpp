@@ -103,6 +103,17 @@ You have two options here, you can either use a named graph (see [the graphs cha
 
 Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the named version.
 
+!SUBSUBSECTION Working on collection sets with mixed directions:
+
+For traversals with a **list of edge collections** you can optionally specify the direction for some of the edge collections.
+Say for example you have three edge collections `edges1`, `edges2` and `edges3`, where in `edges2` the direction has no relevance but in `edges1` and `edges3`
+the direction should be taken into account. In this case you can use `OUTBOUND` as general traversal direction and `ANY` specifically for `edges2` in the following statement:
+
+`FOR vertex IN OUTBOUND startVertex edges1, ANY edges2, edges3`
+
+All collections in the list that do not specify their own direction will use the direction defined after `IN`.
+This allows to use a different direction for each collection in your traversal.
+
 !SUBSECTION Using filters and the explainer to extrapolate the costs
 
 All three variables emitted by the traversals might as well be used in filter statements.

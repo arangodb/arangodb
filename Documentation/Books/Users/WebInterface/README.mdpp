@@ -79,15 +79,7 @@ than version 9 are likely to not support this.
 
 !SECTION AQL Editor Tab 
 
-The *AQL Editor* tab allows to execute ad-hoc AQL queries.
-
-Type in a query in the bottom box and execute it by pressing the *Submit* button.
-The query result will be shown in the box at the top.
-The editor provides a few example queries that can be used as templates.
-
-There is also the option to add own frequently used queries here. Note that own 
-queries will be stored in the browser's local storage and the web interface has
-no control over when the browser's local storage is cleared.
+The [AQL Editor tab](../Aql/AqlWithWebInterface.md) allows to execute ad-hoc AQL queries.
 
 !SECTION Tools Tab
 

@@ -1,0 +1,141 @@
+#!/usr/bin/make -f
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This is the debhelper compatibility version to use.
+# export DH_COMPAT=7
+
+CFLAGS = -g
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+CFLAGS += -O0
+else
+CFLAGS += -O3
+endif
+
+ifeq (yes,$(shell test -f /opt/gnu/bin/gcc && echo yes))
+USE_CC  = CC=/opt/gnu/bin/gcc
+USE_CXX = CXX=/opt/gnu/bin/g++
+else
+USE_CC  = CC=gcc
+USE_CXX = CXX=g++
+endif
+
+build-arch: build
+build-indep: build
+build: build-stamp
+build-stamp:
+	dh_testdir
+
+	# Add here commands to compile the package.
+	./configure $(USE_CC) $(USE_CXX) \
+		--program-prefix= \
+		--prefix=/usr \
+		--exec-prefix=/usr \
+		--bindir=/usr/bin \
+		--sbindir=/usr/sbin \
+		--sysconfdir=/etc \
+		--datadir=/usr/share \
+		--includedir=/usr/include \
+		--libdir=/usr/lib \
+		--libexecdir=/usr/lib \
+		--localstatedir=/var \
+		--sharedstatedir=/usr/com \
+		--mandir=/usr/share/man \
+		--infodir=/usr/share/info \
+		--enable-all-in-one-etcd \
+		--enable-tcmalloc
+
+	# hidden files
+	rm -f js/node/node_modules/cheerio/.jshintrc
+	rm -f js/node/node_modules/cheerio/node_modules/htmlparser2/.gitattributes
+	rm -f js/node/node_modules/sinon/node_modules/util/.zuul.yml
+	rm -f js/node/node_modules/sinon/node_modules/formatio/node_modules/samsam/.project
+	rm -f js/node/node_modules/moment/.vimrc-local
+	rm -f js/node/node_modules/moment/.sauce-labs.creds
+	rm -f js/node/node_modules/htmlparser2/.gitattributes
+
+	# executables
+	rm -f js/node/node_modules/cheerio/scripts/prepublish
+	rm -f js/node/node_modules/buster-format/node_modules/buster-core/vendor/buster-util/jstdhtml
+	rm -f js/node/node_modules/buster-format/node_modules/buster-core/run-tests
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/bin.js
+	rm -f js/node/node_modules/buster-format/node_modules/buster-core/vendor/sinon/build
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/setup.sh
+	rm -f js/node/node_modules/buster-format/run-tests
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
+
+	# empty
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/sub/b
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/c
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/e
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/d
+	rm -f js/node/node_modules/iced-coffee-script/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/f
+
+	# not used
+	rm -rf js/node/node_modules/js-yaml/demo
+
+	rm -f .file-list-js
+	make -j12 all
+
+	# --- end custom part for compiling
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp
+
+	# Add here commands to clean up after the build process.
+	make clean || true
+	# --- end custom part for cleaning up
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+	dh_auto_install
+
+# Build architecture-independent files here.
+binary-indep: build install
+	# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+#	dh_installdebconf
+	dh_installdocs
+	dh_installexamples
+	dh_installmenu
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+	dh_installinit
+	dh_installcron
+	dh_installman
+	dh_installinfo
+	dh_install
+#	dh_undocumented
+	dh_installchangelogs
+	dh_link
+	dh_strip --dbg-package=arangodb-dbg
+	dh_compress
+	dh_fixperms
+#	dh_makeshlibs
+	dh_installdeb
+#	dh_perl
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install

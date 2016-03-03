@@ -48,7 +48,6 @@ namespace basics {
 class StringBuffer;
 }
 
-
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,13 +62,12 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  private:
   static size_t const READ_BLOCK_SIZE = 10000;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task with a given socket
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  explicit SocketTask(TRI_socket_t, double);
+  SocketTask(TRI_socket_t, double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes a socket task
@@ -80,7 +78,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  protected:
   ~SocketTask();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// set a request timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -88,7 +85,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  public:
   void setKeepAliveTimeout(double);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fills the read buffer
@@ -133,7 +129,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   virtual void handleTimeout() = 0;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets an active write buffer
@@ -153,9 +148,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   bool hasWriteBufferVstream() const;
 
-  
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -164,10 +157,8 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void cleanup() override;
 
-
   bool handleEvent(EventToken token, EventType) override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief event for keep-alive timeout
@@ -243,7 +234,6 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   bool _clientClosed;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current thread identifier
@@ -255,5 +245,3 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 }
 
 #endif
-
-

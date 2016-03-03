@@ -28,8 +28,6 @@
 
 using namespace arangodb::rest;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,12 +35,8 @@ using namespace arangodb::rest;
 HttpListenTask::HttpListenTask(GeneralServer* server, Endpoint* endpoint)
     : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
-
-
 bool HttpListenTask::handleConnected(TRI_socket_t s,
                                      const ConnectionInfo& info, bool _isHttp) {
   _server->handleConnected(s, info, _isHttp);
   return true;
 }
-
-

@@ -172,21 +172,17 @@ struct Function2
 template <typename R, typename P1 = NullType, typename P2 = NullType>
 class Functor {
  public:
-
   Functor() : _function(0) {}
-
 
   template <typename T>
   Functor(T& obj, R (T::*fptr)()) {
     _function = new Function0<T, R>(obj, fptr);
   }
 
-
   template <typename T>
   Functor(T& obj, R (T::*fptr)(P1)) {
     _function = new Function1<T, R, P1>(obj, fptr);
   }
-
 
   template <typename T>
   Functor(T& obj, R (T::*fptr)(P1, P2)) {
@@ -198,7 +194,6 @@ class Functor {
   //////////////////////////////////////////////////////////////////////////////
 
   Functor(const Functor& src) : _function(0) { copy(*this, src); }
-
 
   ~Functor() {
     if (_function) {
@@ -265,4 +260,3 @@ typedef Functor<void, NullType, NullType> Command;
 }
 
 #endif
-

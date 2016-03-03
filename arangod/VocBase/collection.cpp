@@ -23,26 +23,28 @@
 
 #include "collection.h"
 
-#include <regex.h>
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
 
+#include "Basics/FileUtils.h"
+#include "Basics/JsonHelper.h"
+#include "Basics/Logger.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/random.h"
+#include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -63,7 +65,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
     return 0;
   }
 
-  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+  return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,18 +84,6 @@ static int FilenameComparator(const void* lhs, const void* rhs) {
     return numLeft < numRight ? -1 : 1;
   }
   return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort datafile filenames on startup
-////////////////////////////////////////////////////////////////////////////////
-
-static bool FilenameStringComparator(std::string const& lhs,
-                                     std::string const& rhs) {
-  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
-  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
-  return numLeft < numRight;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +136,8 @@ static void SortDatafiles(TRI_vector_pointer_t* files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
-                           char* directory, VocbaseCollectionInfo const& info) {
+                           std::string const& directory,
+                           VocbaseCollectionInfo const& info) {
   TRI_ASSERT(collection != nullptr);
 
   collection->_info.update(info);
@@ -155,7 +146,8 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
   collection->_tickMax = 0;
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
-  collection->_directory = directory;
+  collection->_directory = TRI_DuplicateString(
+      TRI_UNKNOWN_MEM_ZONE, directory.c_str(), directory.size());
 
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
@@ -168,151 +160,140 @@ static void InitCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
+  LOG_TOPIC(TRACE, Logger::DATAFILES) << "scanning collection directory '"
+                                      << path << "'";
+
   TRI_col_file_structure_t structure;
-  regex_t re;
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
 
-  if (regcomp(&re,
-              "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*"
-              ")\\.(db|json)(\\.dead)?$",
-              REG_EXTENDED) != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return structure;
-  }
-
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
   for (auto const& file : files) {
-    regmatch_t matches[5];
+    std::vector<std::string> parts = StringUtils::split(file, '.');
 
-    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]),
-                matches, 0) == 0) {
-      // file type: (journal|datafile|index|compactor)
-      char const* first = file.c_str() + matches[1].rm_so;
-      size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
 
-      // extension
-      char const* third = file.c_str() + matches[3].rm_so;
-      size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
+    std::string filename = FileUtils::buildFilename(path, file);
+    std::string extension = parts[1];
+    std::string isDead = (parts.size() > 2) ? parts[2] : "";
 
-      // isdead?
-      size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
 
-      // .............................................................................
-      // file is dead
-      // .............................................................................
+    if (next.size() < 2) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
 
-      if (fourthLen > 0) {
-        char* filename;
+    std::string filetype = next[0];
+    next.erase(next.begin());
+    std::string qualifier = StringUtils::join(next, '-');
 
-        filename = TRI_Concatenate2File(path, file.c_str());
+    // .............................................................................
+    // file is dead
+    // .............................................................................
 
-        if (filename != nullptr) {
-          LOG_TRACE("removing .dead file '%s'", filename);
-          TRI_UnlinkFile(filename);
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-        }
-      }
-
-      // .............................................................................
-      // file is an index
-      // .............................................................................
-
-      else if (TRI_EqualString("index", first, firstLen) &&
-               TRI_EqualString("json", third, thirdLen)) {
-        char* filename;
-
-        filename = TRI_Concatenate2File(path, file.c_str());
-        TRI_PushBackVectorString(&structure._indexes, filename);
-      }
-
-      // .............................................................................
-      // file is a journal or datafile
-      // .............................................................................
-
-      else if (TRI_EqualString("db", third, thirdLen)) {
-        std::string filename = TRI_Concatenate2File(path, file.c_str());
-
-        // file is a journal
-        if (TRI_EqualString("journal", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._journals,
-                                   TRI_DuplicateString(filename.c_str()));
-        }
-
-        // file is a datafile
-        else if (TRI_EqualString("datafile", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._datafiles,
-                                   TRI_DuplicateString(filename.c_str()));
-        }
-
-        // file is a left-over compaction file. rename it back
-        else if (TRI_EqualString("compaction", first, firstLen)) {
-          char* relName;
-          char* newName;
-
-          relName = TRI_Concatenate2String(
-              "datafile-", file.c_str() + strlen("compaction-"));
-          newName = TRI_Concatenate2File(path, relName);
-          TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
-
-          if (TRI_ExistsFile(newName)) {
-            // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
-            // the datafile
-            TRI_UnlinkFile(filename.c_str());
-
-            LOG_WARNING("removing left-over compaction file '%s'",
-                        filename.c_str());
-
-            TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-            continue;
-          } else {
-            int res;
-
-            // this should fail, but shouldn't do any harm either...
-            TRI_UnlinkFile(newName);
-
-            // rename the compactor to a datafile
-            res = TRI_RenameFile(filename.c_str(), newName);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("unable to rename compaction file '%s'",
-                        filename.c_str());
-
-              TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-
-              continue;
-            }
-          }
-
-          TRI_PushBackVectorString(&structure._datafiles, newName);
-        }
-
-        // temporary file, we can delete it!
-        else if (TRI_EqualString("temp", first, firstLen)) {
-          LOG_WARNING(
-              "found temporary file '%s', which is probably a left-over. "
-              "deleting it",
-              filename.c_str());
-          TRI_UnlinkFile(filename.c_str());
-        }
-
-        // ups, what kind of file is that
-        else {
-          LOG_ERROR("unknown datafile type '%s'", file.c_str());
-        }
+    if (!isDead.empty()) {
+      if (isDead == "dead") {
+        FileUtils::remove(filename);
       } else {
-        LOG_ERROR("unknown datafile type '%s'", file.c_str());
+        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+            << "ignoring file '" << file
+            << "' because it does not look like a datafile";
+      }
+
+      continue;
+    }
+
+    // .............................................................................
+    // file is an index
+    // .............................................................................
+
+    if (filetype == "index" && extension == "json") {
+      TRI_PushBackVectorString(
+          &structure._indexes,
+          TRI_DuplicateString(filename.c_str(), filename.size()));
+      continue;
+    }
+
+    // .............................................................................
+    // file is a journal or datafile
+    // .............................................................................
+
+    if (extension == "db") {
+      // file is a journal
+      if (filetype == "journal") {
+        TRI_PushBackVectorString(&structure._journals,
+                                 TRI_DuplicateString(filename.c_str()));
+      }
+
+      // file is a datafile
+      else if (filetype == "datafile") {
+        TRI_PushBackVectorString(&structure._datafiles,
+                                 TRI_DuplicateString(filename.c_str()));
+      }
+
+      // file is a left-over compaction file. rename it back
+      else if (filetype == "compaction") {
+        std::string relName = "datafile-" + qualifier + "." + extension;
+        std::string newName = FileUtils::buildFilename(path, relName);
+
+        if (FileUtils::exists(newName)) {
+          // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
+          // the datafile
+
+          FileUtils::remove(filename);
+
+          LOG_TOPIC(WARN, Logger::DATAFILES)
+              << "removing left-over compaction file '" << filename << "'";
+
+          continue;
+        } else {
+          int res;
+
+          // this should fail, but shouldn't do any harm either...
+          FileUtils::remove(newName);
+
+          // rename the compactor to a datafile
+          res = TRI_RenameFile(filename.c_str(), newName.c_str());
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(ERR, Logger::DATAFILES)
+                << "unable to rename compaction file '" << filename << "'";
+            continue;
+          }
+        }
+
+        TRI_PushBackVectorString(&structure._datafiles,
+                                 TRI_DuplicateString(newName.c_str()));
+      }
+
+      // temporary file, we can delete it!
+      else if (filetype == "temp") {
+        LOG_TOPIC(WARN, Logger::DATAFILES)
+            << "found temporary file '" << filename
+            << "', which is probably a left-over. deleting it";
+        FileUtils::remove(filename);
+      }
+
+      // ups, what kind of file is that
+      else {
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile type '"
+                                          << file << "'";
       }
     }
   }
-
-  regfree(&re);
 
   // now sort the files in the structures that we created.
   // the sorting allows us to iterate the files in the correct order
@@ -329,25 +310,16 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
+  LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
+                                      << collection->_directory << "'";
+
   TRI_datafile_t* datafile;
   TRI_vector_pointer_t all;
   TRI_vector_pointer_t compactors;
   TRI_vector_pointer_t datafiles;
   TRI_vector_pointer_t journals;
   TRI_vector_pointer_t sealed;
-  bool stop;
-  regex_t re;
-
-  if (regcomp(&re,
-              "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*"
-              ")\\.(db|json)(\\.dead)?$",
-              REG_EXTENDED) != 0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return false;
-  }
-
-  stop = false;
+  bool stop = false;
 
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(collection->_directory);
@@ -359,193 +331,192 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
   TRI_InitVectorPointer(&all, TRI_UNKNOWN_MEM_ZONE);
 
   for (auto const& file : files) {
-    regmatch_t matches[5];
+    std::vector<std::string> parts = StringUtils::split(file, '.');
 
-    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]),
-                matches, 0) == 0) {
-      char const* first = file.c_str() + matches[1].rm_so;
-      size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
 
-      char const* third = file.c_str() + matches[3].rm_so;
-      size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
+    std::string extension = parts[1];
+    std::string isDead = (parts.size() > 2) ? parts[2] : "";
 
-      size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
 
-      // check for temporary & dead files
+    if (next.size() < 2) {
+      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+          << "ignoring file '" << file
+          << "' because it does not look like a datafile";
+      continue;
+    }
 
-      if (fourthLen > 0 || TRI_EqualString("temp", first, firstLen)) {
-        // found a temporary file. we can delete it!
-        char* filename;
+    std::string filename =
+        FileUtils::buildFilename(collection->_directory, file);
+    std::string filetype = next[0];
+    next.erase(next.begin());
+    std::string qualifier = StringUtils::join(next, '-');
 
-        filename = TRI_Concatenate2File(collection->_directory, file.c_str());
+    // .............................................................................
+    // file is dead
+    // .............................................................................
 
-        LOG_TRACE(
-            "found temporary file '%s', which is probably a left-over. "
-            "deleting it",
-            filename);
-        TRI_UnlinkFile(filename);
-        TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    if (!isDead.empty() || filetype == "temp") {
+      if (isDead == "dead" || filetype == "temp") {
+        LOG_TOPIC(TRACE, Logger::DATAFILES)
+            << "found temporary file '" << filename
+            << "', which is probably a left-over. deleting it";
+        FileUtils::remove(filename);
+        continue;
+      } else {
+        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+            << "ignoring file '" << file
+            << "' because it does not look like a datafile";
         continue;
       }
+    }
 
-      // .............................................................................
-      // file is an index, just store the filename
-      // .............................................................................
+    // .............................................................................
+    // file is an index, just store the filename
+    // .............................................................................
 
-      if (TRI_EqualString("index", first, firstLen) &&
-          TRI_EqualString("json", third, thirdLen)) {
-        char* filename;
+    if (filetype == "index" && extension == "json") {
+      TRI_PushBackVectorString(
+          &collection->_indexFiles,
+          TRI_DuplicateString(filename.c_str(), filename.size()));
+      continue;
+    }
 
-        filename = TRI_Concatenate2File(collection->_directory, file.c_str());
-        TRI_PushBackVectorString(&collection->_indexFiles, filename);
-      }
+    // .............................................................................
+    // file is a journal or datafile, open the datafile
+    // .............................................................................
 
-      // .............................................................................
-      // file is a journal or datafile, open the datafile
-      // .............................................................................
+    if (extension == "db") {
+      TRI_col_header_marker_t* cm;
 
-      else if (TRI_EqualString("db", third, thirdLen)) {
-        char* filename;
-        char* ptr;
-        TRI_col_header_marker_t* cm;
+      // found a compaction file. now rename it back
+      if (filetype == "compaction") {
+        std::string relName = "datafile-" + qualifier + "." + extension;
+        std::string newName =
+            FileUtils::buildFilename(collection->_directory, relName);
 
-        if (TRI_EqualString("compaction", first, firstLen)) {
-          // found a compaction file. now rename it back
-          char* relName;
-          char* newName;
+        if (FileUtils::exists(newName)) {
+          // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
+          // the datafile
+          FileUtils::remove(filename);
 
-          filename = TRI_Concatenate2File(collection->_directory, file.c_str());
-          relName = TRI_Concatenate2String(
-              "datafile-", file.c_str() + strlen("compaction-"));
-          newName = TRI_Concatenate2File(collection->_directory, relName);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
-
-          if (TRI_ExistsFile(newName)) {
-            // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
-            // the datafile
-            LOG_WARNING("removing unfinished compaction file '%s'", filename);
-            TRI_UnlinkFile(filename);
-
-            TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-            continue;
-          } else {
-            int res;
-
-            res = TRI_RenameFile(filename, newName);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("unable to rename compaction file '%s' to '%s'",
-                        filename, newName);
-              TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-              TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-              stop = true;
-              break;
-            }
-          }
-
-          TRI_Free(TRI_CORE_MEM_ZONE, filename);
-          // reuse newName
-          filename = newName;
+          LOG_TOPIC(WARN, Logger::DATAFILES)
+              << "removing unfinished compaction file '" << filename << "'";
+          continue;
         } else {
-          filename = TRI_Concatenate2File(collection->_directory, file.c_str());
-        }
+          int res;
 
-        TRI_ASSERT(filename != nullptr);
-        datafile = TRI_OpenDatafile(filename, ignoreErrors);
+          // this should fail, but shouldn't do any harm either...
+          FileUtils::remove(newName);
 
-        if (datafile == nullptr) {
-          collection->_lastError = TRI_errno();
-          LOG_ERROR("cannot open datafile '%s': %s", filename,
-                    TRI_last_error());
+          res = TRI_RenameFile(filename.c_str(), newName.c_str());
 
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-          stop = true;
-          break;
-        }
-
-        TRI_PushBackVectorPointer(&all, datafile);
-
-        // check the document header
-        ptr = datafile->_data;
-        // skip the datafile header
-        ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
-        cm = (TRI_col_header_marker_t*)ptr;
-
-        if (cm->base._type != TRI_COL_MARKER_HEADER) {
-          LOG_ERROR(
-              "collection header mismatch in file '%s', expected "
-              "TRI_COL_MARKER_HEADER, found %lu",
-              filename, (unsigned long)cm->base._type);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-          stop = true;
-          break;
-        }
-
-        if (cm->_cid != collection->_info.id()) {
-          LOG_ERROR("collection identifier mismatch, expected %llu, found %llu",
-                    (unsigned long long)collection->_info.id(),
-                    (unsigned long long)cm->_cid);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-          stop = true;
-          break;
-        }
-
-        // file is a journal
-        if (TRI_EqualString("journal", first, firstLen)) {
-          if (datafile->_isSealed) {
-            if (datafile->_state != TRI_DF_STATE_READ) {
-              LOG_WARNING(
-                  "strange, journal '%s' is already sealed; must be a left "
-                  "over; will use it as datafile",
-                  filename);
-            }
-
-            TRI_PushBackVectorPointer(&sealed, datafile);
-          } else {
-            TRI_PushBackVectorPointer(&journals, datafile);
-          }
-        }
-
-        // file is a compactor
-        else if (TRI_EqualString("compactor", first, firstLen)) {
-          // ignore
-        }
-
-        // file is a datafile (or was a compaction file)
-        else if (TRI_EqualString("datafile", first, firstLen) ||
-                 TRI_EqualString("compaction", first, firstLen)) {
-          if (!datafile->_isSealed) {
-            LOG_ERROR("datafile '%s' is not sealed, this should never happen",
-                      filename);
-
-            collection->_lastError =
-                TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(ERR, Logger::DATAFILES)
+                << "unable to rename compaction file '" << filename << "' to '"
+                << newName << "'";
             stop = true;
             break;
-          } else {
-            TRI_PushBackVectorPointer(&datafiles, datafile);
           }
         }
 
-        else {
-          LOG_ERROR("unknown datafile '%s'", file.c_str());
-        }
-
-        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-      } else {
-        LOG_ERROR("unknown datafile '%s'", file.c_str());
+        // reuse newName
+        filename = newName;
       }
+
+      datafile = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
+
+      if (datafile == nullptr) {
+        collection->_lastError = TRI_errno();
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
+                                          << filename
+                                          << "': " << TRI_last_error();
+
+        stop = true;
+        break;
+      }
+
+      TRI_PushBackVectorPointer(&all, datafile);
+
+      // check the document header
+      char* ptr = datafile->_data;
+
+      // skip the datafile header
+      ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
+      cm = (TRI_col_header_marker_t*)ptr;
+
+      if (cm->base._type != TRI_COL_MARKER_HEADER) {
+        LOG(ERR) << "collection header mismatch in file '" << filename
+                 << "', expected TRI_COL_MARKER_HEADER, found "
+                 << cm->base._type;
+
+        stop = true;
+        break;
+      }
+
+      if (cm->_cid != collection->_info.id()) {
+        LOG(ERR) << "collection identifier mismatch, expected "
+                 << collection->_info.id() << ", found " << cm->_cid;
+
+        stop = true;
+        break;
+      }
+
+      // file is a journal
+      if (filetype == "journal") {
+        if (datafile->_isSealed) {
+          if (datafile->_state != TRI_DF_STATE_READ) {
+            LOG_TOPIC(WARN, Logger::DATAFILES)
+                << "strange, journal '" << filename
+                << "' is already sealed; must be a left over; will use "
+                   "it as datafile";
+          }
+
+          TRI_PushBackVectorPointer(&sealed, datafile);
+        } else {
+          TRI_PushBackVectorPointer(&journals, datafile);
+        }
+      }
+
+      // file is a compactor
+      else if (filetype == "compactor") {
+        // ignore
+      }
+
+      // file is a datafile (or was a compaction file)
+      else if (filetype == "datafile" || filetype == "compaction") {
+        if (!datafile->_isSealed) {
+          LOG_TOPIC(ERR, Logger::DATAFILES)
+              << "datafile '" << filename
+              << "' is not sealed, this should never happen";
+
+          collection->_lastError =
+              TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+
+          stop = true;
+          break;
+        } else {
+          TRI_PushBackVectorPointer(&datafiles, datafile);
+        }
+      }
+
+      else {
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file
+                                          << "'";
+      }
+    } else {
+      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file << "'";
     }
   }
 
-  regfree(&re);
-
   size_t i, n;
+
   // convert the sealed journals into datafiles
   if (!stop) {
     n = sealed._length;
@@ -569,13 +540,12 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
 
       if (ok) {
         TRI_PushBackVectorPointer(&datafiles, datafile);
-        LOG_DEBUG("renamed sealed journal to '%s'", filename);
+        LOG(DEBUG) << "renamed sealed journal to '" << filename << "'";
       } else {
         collection->_lastError = datafile->_lastError;
         stop = true;
-        LOG_ERROR(
-            "cannot rename sealed log-file to %s, this should not happen: %s",
-            filename, TRI_last_error());
+        LOG(ERR) << "cannot rename sealed log-file to " << filename
+                 << ", this should not happen: " << TRI_last_error();
         break;
       }
 
@@ -592,7 +562,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
     for (i = 0; i < n; ++i) {
       datafile = static_cast<TRI_datafile_t*>(all._buffer[i]);
 
-      LOG_TRACE("closing datafile '%s'", datafile->_filename);
+      LOG(TRACE) << "closing datafile '" << datafile->_filename << "'";
 
       TRI_CloseDatafile(datafile);
       TRI_FreeDatafile(datafile);
@@ -631,7 +601,7 @@ static void FreeDatafilesVector(TRI_vector_pointer_t* vector) {
   for (size_t i = 0; i < n; ++i) {
     TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(vector->_buffer[i]);
 
-    LOG_TRACE("freeing collection datafile");
+    LOG(TRACE) << "freeing collection datafile";
 
     TRI_ASSERT(datafile != nullptr);
     TRI_FreeDatafile(datafile);
@@ -656,8 +626,8 @@ static bool IterateDatafilesVector(const TRI_vector_pointer_t* const files,
     TRI_datafile_t* datafile =
         static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(files, i));
 
-    LOG_TRACE("iterating over datafile '%s', fid %llu",
-              datafile->getName(datafile), (unsigned long long)datafile->_fid);
+    LOG(TRACE) << "iterating over datafile '" << datafile->getName(datafile)
+               << "', fid " << datafile->_fid;
 
     if (!TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
@@ -707,7 +677,7 @@ static bool IterateFiles(TRI_vector_string_t* vector,
 
   for (size_t i = 0; i < n; ++i) {
     char* filename = TRI_AtVectorString(vector, i);
-    LOG_DEBUG("iterating over collection journal file '%s'", filename);
+    LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
     TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
 
@@ -721,47 +691,21 @@ static bool IterateFiles(TRI_vector_string_t* vector,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
-///
-/// it is the caller's responsibility to check if the returned string is NULL
-/// and to free it if not.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetDirectoryCollection(char const* path, char const* name,
-                                 TRI_col_type_e type, TRI_voc_cid_t cid) {
+static std::string GetCollectionDirectory(char const* path, char const* name,
+                                          TRI_voc_cid_t cid) {
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(name != nullptr);
 
-  char* tmp1 = TRI_StringUInt64(cid);
+  std::string filename("collection-");
+  filename.append(std::to_string(cid));
+  filename.push_back('-');
+  filename.append(std::to_string(TRI_UInt32Random()));
 
-  if (tmp1 == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  char* tmp2 = TRI_Concatenate2String("collection-", tmp1);
-
-  if (tmp2 == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  char* filename = TRI_Concatenate2File(path, tmp2);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-
-  if (filename == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // might be NULL
-  return filename;
+  return arangodb::basics::FileUtils::buildFilename(path, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -776,9 +720,9 @@ TRI_collection_t* TRI_CreateCollection(
       parameters.maximalSize()) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
-    LOG_ERROR(
-        "cannot create datafile '%s' in '%s', maximal size '%u' is too small",
-        parameters.namec_str(), path, (unsigned int)parameters.maximalSize());
+    LOG(ERR) << "cannot create datafile '" << parameters.namec_str() << "' in '"
+             << path << "', maximal size '"
+             << (unsigned int)parameters.maximalSize() << "' is too small";
 
     return nullptr;
   }
@@ -786,30 +730,22 @@ TRI_collection_t* TRI_CreateCollection(
   if (!TRI_IsDirectory(path)) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG_ERROR("cannot create collection '%s', path is not a directory", path);
+    LOG(ERR) << "cannot create collection '" << path
+             << "', path is not a directory";
 
     return nullptr;
   }
 
-  char* filename = TRI_GetDirectoryCollection(
-      path, parameters.namec_str(), parameters.type(), parameters.id());
-
-  if (filename == nullptr) {
-    LOG_ERROR("cannot create collection '%s': %s", parameters.namec_str(),
-              TRI_last_error());
-    return nullptr;
-  }
+  std::string const dirname =
+      GetCollectionDirectory(path, parameters.namec_str(), parameters.id());
 
   // directory must not exist
-  if (TRI_ExistsFile(filename)) {
+  if (TRI_ExistsFile(dirname.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG_ERROR(
-        "cannot create collection '%s' in directory '%s': directory already "
-        "exists",
-        parameters.namec_str(), filename);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+             << "' in directory '" << dirname
+             << "': directory already exists";
 
     return nullptr;
   }
@@ -817,73 +753,51 @@ TRI_collection_t* TRI_CreateCollection(
   // use a temporary directory first. this saves us from leaving an empty
   // directory
   // behind, an the server refusing to start
-  char* tmpname = TRI_Concatenate2String(filename, ".tmp");
+  std::string const tmpname = dirname + ".tmp";
 
   // create directory
   std::string errorMessage;
   long systemError;
-  int res = TRI_CreateDirectory(tmpname, systemError, errorMessage);
+  int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
-              parameters.namec_str(), path, TRI_errno_string(res), systemError,
-              errorMessage.c_str());
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
 
     return nullptr;
   }
 
-  TRI_IF_FAILURE("CreateCollection::tempDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    return nullptr;
-  }
+  TRI_IF_FAILURE("CreateCollection::tempDirectory") { return nullptr; }
 
   // create a temporary file
-  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
-  res = TRI_WriteFile(tmpfile, "", 0);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  std::string const tmpfile(
+      arangodb::basics::FileUtils::buildFilename(tmpname.c_str(), ".tmp"));
+  res = TRI_WriteFile(tmpfile.c_str(), "", 0);
 
-  TRI_IF_FAILURE("CreateCollection::tempFile") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    return nullptr;
-  }
+  TRI_IF_FAILURE("CreateCollection::tempFile") { return nullptr; }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
-              parameters.namec_str(), path, TRI_errno_string(res), systemError,
-              errorMessage.c_str());
-    TRI_RemoveDirectory(tmpname);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
   }
 
-  TRI_IF_FAILURE("CreateCollection::renameDirectory") {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    return nullptr;
-  }
+  TRI_IF_FAILURE("CreateCollection::renameDirectory") { return nullptr; }
 
-  res = TRI_RenameFile(tmpname, filename);
+  res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
-              parameters.namec_str(), path, TRI_errno_string(res), systemError,
-              errorMessage.c_str());
-    TRI_RemoveDirectory(tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+             << "' in directory '" << path << "': " << TRI_errno_string(res)
+             << " - " << systemError << " - " << errorMessage;
+    TRI_RemoveDirectory(tmpname.c_str());
 
     return nullptr;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
 
   // now we have the collection directory in place with the correct name and a
   // .tmp file in it
@@ -899,17 +813,13 @@ TRI_collection_t* TRI_CreateCollection(
     }
 
     if (collection == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-      LOG_ERROR("cannot create collection '%s': out of memory", path);
+      LOG(ERR) << "cannot create collection '" << path << "': out of memory";
 
       return nullptr;
     }
   }
 
-  // we are passing filename to this struct, so we must not free it if you use
-  // the struct later
-  InitCollection(vocbase, collection, filename, parameters);
+  InitCollection(vocbase, collection, dirname, parameters);
   /* PANAIA: 1) the parameter file if it exists must be removed
              2) if collection
   */
@@ -947,7 +857,6 @@ void TRI_FreeCollection(TRI_collection_t* collection) {
   TRI_DestroyCollection(collection);
   delete collection;
 }
-
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
@@ -1110,8 +1019,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       planId = planIdSlice.getNumericValue<TRI_voc_cid_t>();
     } else if (planIdSlice.isString()) {
       std::string tmp = planIdSlice.copyString();
-      planId = static_cast<TRI_voc_cid_t>(
-          TRI_UInt64String2(tmp.c_str(), tmp.length()));
+      planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
     }
 
     if (planId > 0) {
@@ -1123,8 +1031,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _cid = cidSlice.getNumericValue<TRI_voc_cid_t>();
     } else if (cidSlice.isString()) {
       std::string tmp = cidSlice.copyString();
-      _cid = static_cast<TRI_voc_cid_t>(
-          TRI_UInt64String2(tmp.c_str(), tmp.length()));
+      _cid = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
     }
 
     if (options.hasKey("keyOptions")) {
@@ -1179,8 +1086,8 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
   char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
 
   if (filename == nullptr) {
-    LOG_ERROR("cannot load parameter info for collection '%s', out of memory",
-              path);
+    LOG(ERR) << "cannot load parameter info for collection '" << path
+             << "', out of memory";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -1194,8 +1101,8 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(filePath);
   VPackSlice slice = content->slice();
   if (!slice.isObject()) {
-    LOG_ERROR("cannot open '%s', collection parameters are not readable",
-              filename);
+    LOG(ERR) << "cannot open '" << filename
+             << "', collection parameters are not readable";
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
@@ -1225,9 +1132,8 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
-      LOG_WARNING(
-          "collection '%s' has an old version and needs to be upgraded.",
-          info.namec_str());
+      LOG(WARN) << "collection '" << info.namec_str()
+                << "' has an old version and needs to be upgraded.";
     }
   }
   return info;
@@ -1318,7 +1224,8 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
   if (json == nullptr) {
-    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    LOG(ERR) << "cannot save collection properties file '" << filename
+             << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1329,12 +1236,12 @@ int VocbaseCollectionInfo::saveToFile(char const* path, bool forceSync) const {
   int res;
   if (!ok) {
     res = TRI_errno();
-    LOG_ERROR("cannot save collection properties file '%s': %s", filename,
-              TRI_last_error());
+    LOG(ERR) << "cannot save collection properties file '" << filename
+             << "': " << TRI_last_error();
   } else {
     res = TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   return res;
@@ -1361,8 +1268,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       if (slice.hasKey("journalSize")) {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "journalSize", vocbase->_settings.defaultMaximalSize);
-      }
-      else {
+      } else {
         _maximalSize = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
             slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
       }
@@ -1378,8 +1284,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-      }
-      else {
+      } else {
         _maximalSize =
             arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
                 slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
@@ -1397,8 +1302,7 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "journalSize", _maximalSize);
-    }
-    else {
+    } else {
       _maximalSize =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(
               slice, "maximalSize", _maximalSize);
@@ -1428,76 +1332,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _isSystem = other.isSystem();
   _isVolatile = other.isVolatile();
   _waitForSync = other.waitForSync();
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return JSON information about the collection from the collection's
-/// "parameter.json" file. This function does not require the collection to be
-/// loaded.
-/// The caller must make sure that the "parameter.json" file is not modified
-/// while this function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_ReadJsonCollectionInfo(TRI_vocbase_col_t* collection) {
-  char* filename =
-      TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
-
-  // load JSON description of the collection
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over the index (JSON) files of a collection, using a callback
-/// function for each.
-/// This function does not require the collection to be loaded.
-/// The caller must make sure that the files are not modified while this
-/// function is called.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_IterateJsonIndexesCollectionInfo(TRI_vocbase_col_t* collection,
-                                         int (*filter)(TRI_vocbase_col_t*,
-                                                       char const*, void*),
-                                         void* data) {
-  regex_t re;
-  int res;
-
-  if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) !=
-      0) {
-    LOG_ERROR("unable to compile regular expression");
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  std::vector<std::string> files = TRI_FilesDirectory(collection->_path);
-  res = TRI_ERROR_NO_ERROR;
-
-  // sort by index id
-  std::sort(files.begin(), files.end(), FilenameStringComparator);
-
-  for (auto const& file : files) {
-    if (regexec(&re, file.c_str(), (size_t)0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->_path, file.c_str());
-
-      res = filter(collection, fqn, data);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-    }
-  }
-
-  regfree(&re);
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1530,8 +1364,7 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo(
 }
 
 void TRI_CreateVelocyPackCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info,
-    VPackBuilder& builder) {
+    arangodb::VocbaseCollectionInfo const& info, VPackBuilder& builder) {
   // This function might throw
   //
   TRI_ASSERT(!builder.isClosed());
@@ -1603,6 +1436,7 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
   // Save name for rollback
   std::string oldName = collection->_info.name();
   collection->_info.rename(name);
+
   int res = collection->_info.saveToFile(collection->_directory, true);
   if (res != TRI_ERROR_NO_ERROR) {
     // Rollback
@@ -1611,7 +1445,6 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
@@ -1705,8 +1538,8 @@ void TRI_IterateIndexCollection(TRI_collection_t* collection,
     bool ok = iterator(filename, data);
 
     if (!ok) {
-      LOG_ERROR("cannot load index '%s' for collection '%s'", filename,
-                collection->_info.namec_str());
+      LOG(ERR) << "cannot load index '" << filename << "' for collection '"
+               << collection->_info.namec_str() << "'";
     }
   }
 }
@@ -1723,7 +1556,7 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
   if (!TRI_IsDirectory(path)) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
-    LOG_ERROR("cannot open '%s', not a directory or not found", path);
+    LOG(ERR) << "cannot open '" << path << "', not a directory or not found";
 
     return nullptr;
   }
@@ -1734,18 +1567,20 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
         VocbaseCollectionInfo::fromFile(path, vocbase,
                                         "",  // Name will be set later on
                                         true);
-    InitCollection(vocbase, collection, TRI_DuplicateString(path), info);
+    InitCollection(vocbase, collection, std::string(path), info);
 
     double start = TRI_microtime();
 
-    LOG_ACTION("open-collection { collection: %s/%s }", vocbase->_name,
-               collection->_info.namec_str());
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "open-collection { collection: " << vocbase->_name << "/"
+        << collection->_info.name();
 
     // check for journals and datafiles
     bool ok = CheckCollection(collection, ignoreErrors);
 
     if (!ok) {
-      LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
+      LOG(DEBUG) << "cannot open '" << collection->_directory
+                 << "', check failed";
 
       if (collection->_directory != nullptr) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
@@ -1755,14 +1590,15 @@ TRI_collection_t* TRI_OpenCollection(TRI_vocbase_t* vocbase,
       return nullptr;
     }
 
-    LOG_TIMER((TRI_microtime() - start),
-              "open-collection { collection: %s/%s }", vocbase->_name,
-              collection->_info.namec_str());
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+        << " s, open-collection { collection: " << vocbase->_name << "/"
+        << collection->_info.name() << " }";
 
     return collection;
   } catch (...) {
-    LOG_ERROR("cannot load collection parameter file '%s': %s", path,
-              TRI_last_error());
+    LOG(ERR) << "cannot load collection parameter file '" << path
+             << "': " << TRI_last_error();
     return nullptr;
   }
 }
@@ -1818,7 +1654,7 @@ bool TRI_IterateTicksCollection(char const* const path,
   TRI_ASSERT(iterator != nullptr);
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
-  LOG_TRACE("iterating ticks of journal '%s'", path);
+  LOG(TRACE) << "iterating ticks of journal '" << path << "'";
 
   bool result;
 
@@ -1890,5 +1726,3 @@ bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
 
   return true;
 }
-
-

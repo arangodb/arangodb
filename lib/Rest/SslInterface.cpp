@@ -32,7 +32,6 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -209,7 +208,7 @@ void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
 }
 
 std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
-                 size_t passLength, int iter, int keyLength) {
+                      size_t passLength, int iter, int keyLength) {
   unsigned char* dk =
       (unsigned char*)TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
 
@@ -217,14 +216,15 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
                          (int)saltLength, iter, keyLength, dk);
 
   // return value as hex
-  std::string result = StringUtils::encodeHex(std::string((char*)dk, keyLength));
+  std::string result =
+      StringUtils::encodeHex(std::string((char*)dk, keyLength));
   TRI_SystemFree(dk);
 
   return result;
 }
 
 std::string sslHMAC(char const* key, size_t keyLength, char const* message,
-               size_t messageLen, Algorithm algorithm) {
+                    size_t messageLen, Algorithm algorithm) {
   EVP_MD* evp_md = nullptr;
 
   if (algorithm == Algorithm::ALGORITHM_SHA1) {
@@ -263,7 +263,8 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   // secret, secretLen = message
   // result must == BASE64(response, responseLen)
 
-  std::string s = sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
+  std::string s =
+      sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
 
   if (s.length() == responseLen &&
       s.compare(std::string(response, responseLen)) == 0) {
@@ -316,4 +317,3 @@ void saltChar(char*& result, size_t length) {
 }
 }
 }
-

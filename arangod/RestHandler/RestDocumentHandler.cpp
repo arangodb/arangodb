@@ -79,7 +79,6 @@ GeneralHandler::status_t RestDocumentHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_CREATE
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,8 +480,8 @@ bool RestDocumentHandler::readAllDocuments() {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getAllDocumentsCoordinator(std::string const& collname,
-                                                     std::string const& returnType) {
+bool RestDocumentHandler::getAllDocumentsCoordinator(
+    std::string const& collname, std::string const& returnType) {
   std::string const& dbname = _request->databaseName();
 
   arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
@@ -792,9 +791,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::modifyDocumentCoordinator(
-    std::string const& collname, std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
-    VPackSlice const& document) {
+    std::string const& collname, std::string const& key,
+    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
+    bool isPatch, VPackSlice const& document) {
   std::string const& dbname = _request->databaseName();
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
@@ -921,8 +920,8 @@ bool RestDocumentHandler::deleteDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocumentCoordinator(
-    std::string const& collname, std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync) {
+    std::string const& collname, std::string const& key,
+    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync) {
   std::string const& dbname = _request->databaseName();
   arangodb::rest::GeneralResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
@@ -946,5 +945,3 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= arangodb::rest::GeneralResponse::BAD;
 }
-
-

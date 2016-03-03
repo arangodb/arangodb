@@ -34,12 +34,26 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
+#include "Basics/Logger.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/locks.h"
+<<<<<<< HEAD
 #include "Basics/logging.h"
 #include "Basics/InitializeBasics.h"
 #include "Basics/threads.h"
 #include "Rest/GeneralResponse.h"
+=======
+#include "Basics/mimetypes.h"
+#include "Basics/process-utils.h"
+#include "Basics/random.h"
+#include "Basics/Thread.h"
+>>>>>>> upstream/devel
 #include "Rest/Version.h"
+
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -58,10 +72,17 @@ unsigned long opensslThreadId() { return (unsigned long)TRI_CurrentThreadId(); }
 // The compiler chooses the right one from the following two,
 // according to the type of the return value of pthread_self():
 
+#ifndef __sun
 template <typename T>
 void setter(CRYPTO_THREADID* id, T p) {
   CRYPTO_THREADID_set_pointer(id, p);
 }
+#else
+template <typename T>
+void setter(CRYPTO_THREADID* id, T p) {
+  CRYPTO_THREADID_set_pointer(id, (void *) (intptr_t) p);
+}
+#endif
 
 #ifndef __APPLE__
 template <>
@@ -71,7 +92,7 @@ void setter(CRYPTO_THREADID* id, unsigned long val) {
 #endif
 
 static void arango_threadid_func(CRYPTO_THREADID* id) {
-  auto self = TRI_CurrentThreadId();
+  auto self = Thread::currentThreadId();
 
   setter<decltype(self)>(id, self);
 }
@@ -125,14 +146,42 @@ void opensslCleanup() {
 }
 }
 
+using namespace arangodb::basics;
+
 // -----------------------------------------------------------------------------
 // initialization
 // -----------------------------------------------------------------------------
 
 namespace arangodb {
 namespace rest {
+<<<<<<< HEAD
   void InitializeRest(int argc, char* argv[]) {
     TRIAGENS_BASICS_INITIALIZE(argc, argv);
+=======
+void InitializeRest(int argc, char* argv[]) {
+  TRI_InitializeMemory();
+  TRI_InitializeDebugging();
+  TRI_InitializeError();
+  TRI_InitializeFiles();
+  TRI_InitializeMimetypes();
+  Logger::initialize(false);
+  TRI_InitializeHashes();
+  TRI_InitializeRandom();
+  TRI_InitializeProcess(argc, argv);
+
+  // use the rng so the linker does not remove it from the executable
+  // we might need it later because .so files might refer to the symbols
+  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
+  Random::UniformInteger random(0, INT32_MAX);
+  random.random();
+  Random::selectVersion(v);
+
+#ifdef TRI_BROKEN_CXA_GUARD
+  pthread_cond_t cond;
+  pthread_cond_init(&cond, 0);
+  pthread_cond_broadcast(&cond);
+#endif
+>>>>>>> upstream/devel
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -147,6 +196,7 @@ namespace rest {
   void arangodb::rest::ShutdownRest() {
     opensslCleanup();
 
+<<<<<<< HEAD
     ERR_free_strings();
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
@@ -156,3 +206,17 @@ namespace rest {
 
 }
 }
+=======
+  TRI_ShutdownProcess();
+  TRI_ShutdownRandom();
+  TRI_ShutdownHashes();
+  Logger::shutdown(true);
+  TRI_ShutdownMimetypes();
+  TRI_ShutdownFiles();
+  TRI_ShutdownError();
+  TRI_ShutdownDebugging();
+  TRI_ShutdownMemory();
+}
+}
+}
+>>>>>>> upstream/devel

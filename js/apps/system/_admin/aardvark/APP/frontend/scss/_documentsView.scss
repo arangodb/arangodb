@@ -5,7 +5,6 @@
 .new-index-view {
   input[type='checkbox'] {
     float: left;
-    margin-top: -9px;
   }
 
   table {
@@ -48,6 +47,23 @@
     margin-left: 10px;
   }
 
+  tfoot {
+
+    border-top: 1px solid $c-modal-table-border-bottom;
+
+    i {
+      color: $c-positive;
+      font-size: 19px;
+      margin-left: 16px;
+      margin-top: 5px;
+    }
+
+    i:hover {
+      color: $c-positive-hover;
+      cursor: pointer;
+    }
+  }
+
 }
 
 .contentIn {
@@ -59,11 +75,45 @@
   }
 }
 
-.index-button-bar {
-  margin-top: 15px;
+#collectionEditIndexTable {
+  thead {
+    border-bottom: 1px solid $c-grey;
+  }
+}
 
-  button {
-    margin-left: 0;
+.newIndexClass {
+  table {
+    border-top: 1px solid $c-modal-table-border-bottom;
+    margin-bottom: 60px;
+
+    select {
+      margin-right: 7px;
+    }
+
+    .arangoicon {
+      float: right;
+      margin-right: -12px;
+      margin-top: 5px;
+    }
+  }
+}
+
+.index-button-bar {
+
+  float: right;
+
+  i {
+    color: $c-positive;
+    font-size: 16pt;
+    margin-right: 43px;
+  }
+
+  i:hover {
+    cursor: pointer;
+  }
+
+  #cancelIndex {
+    margin-right: 13px;
   }
 }
 

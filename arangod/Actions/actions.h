@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -36,7 +35,6 @@ class GeneralResponse;
 class GeneralRequest;
 }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action result
@@ -78,10 +76,10 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
                                       arangodb::rest::GeneralRequest*,
-                                      arangodb::basics::Mutex* dataLock,
+                                      arangodb::Mutex* dataLock,
                                       void** data) = 0;
 
-  virtual bool cancel(arangodb::basics::Mutex* dataLock, void** data) = 0;
+  virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
   std::string _type;
   std::string _url;
@@ -91,7 +89,6 @@ class TRI_action_t {
   bool _isPrefix;
   bool _allowUseDatabase;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
@@ -113,5 +110,3 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::GeneralRequest* request);
 void TRI_CleanupActions();
 
 #endif
-
-

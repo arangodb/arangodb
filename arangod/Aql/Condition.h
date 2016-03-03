@@ -39,7 +39,6 @@ struct Index;
 class SortCondition;
 struct Variable;
 
-
 enum ConditionPartCompareResult {
   IMPOSSIBLE = 0,
   SELF_CONTAINED_IN_OTHER = 1,
@@ -54,7 +53,6 @@ enum ConditionPartCompareResult {
 ////////////////////////////////////////////////////////////////////////////////
 
 enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
-
 
 struct ConditionPart {
   static ConditionPartCompareResult const ResultsTable[3][7][7];
@@ -177,16 +175,13 @@ struct ConditionPart {
   bool isExpanded;
 };
 
-
 class Condition {
-  
  private:
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
   typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
   typedef std::unordered_map<Variable const*, AttributeUsageType>
       VariableUsageType;
 
-  
  public:
   Condition(Condition const&) = delete;
   Condition& operator=(Condition const&) = delete;
@@ -204,7 +199,6 @@ class Condition {
 
   ~Condition();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the condition root
@@ -242,6 +236,12 @@ class Condition {
 
     return arangodb::basics::Json(zone, _root->toJson(zone, verbose));
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export the condition as VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a condition from JSON
@@ -300,7 +300,13 @@ class Condition {
                                     std::vector<Index const*>&,
                                     SortCondition const*);
 
-  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the attributes for a sub-condition that are const
+  /// (i.e. compared with equality)
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes (Variable const*, bool);
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort ORs for the same attribute so they are in ascending value
@@ -327,7 +333,7 @@ class Condition {
 /// @brief validate the condition's AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void validateAst(AstNode const*, int);
 #endif
 
@@ -387,7 +393,6 @@ class Condition {
                                             std::vector<Index const*>&,
                                             SortCondition const*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the AST, used for memory management
@@ -417,5 +422,3 @@ class Condition {
 }
 
 #endif
-
-

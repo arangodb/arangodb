@@ -41,14 +41,14 @@ std::string Builder::toString() const {
   std::string buffer;
   StringSink sink(&buffer);
   Dumper::dump(slice(), &sink, &options);
-  return std::move(buffer);
+  return buffer;
 }
 
 std::string Builder::toJson() const {
   std::string buffer;
   StringSink sink(&buffer);
   Dumper::dump(slice(), &sink);
-  return std::move(buffer);
+  return buffer;
 }
 
 void Builder::doActualSort(std::vector<SortEntry>& entries) {

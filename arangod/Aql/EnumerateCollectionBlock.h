@@ -36,7 +36,6 @@ struct Collection;
 struct CollectionScanner;
 class ExecutionEngine;
 
-
 class EnumerateCollectionBlock : public ExecutionBlock {
  public:
   EnumerateCollectionBlock(ExecutionEngine* engine,
@@ -88,7 +87,6 @@ class EnumerateCollectionBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection
@@ -131,4 +129,3 @@ class EnumerateCollectionBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

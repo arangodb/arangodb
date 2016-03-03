@@ -25,6 +25,8 @@
 #include "Basics/json.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply default settings
@@ -67,5 +69,3 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
   builder->close();
   return builder;
 }
-
-

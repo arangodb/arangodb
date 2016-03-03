@@ -21,24 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-#include <iostream>
-
 #include "ApplicationScheduler.h"
 
+#include <iostream>
+
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/process-utils.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 namespace {
 
@@ -71,7 +67,7 @@ class ControlCTask : public SignalTask {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG_WARNING("unable to install control-c handler");
+      LOG(WARN) << "unable to install control-c handler";
     }
   }
 
@@ -95,16 +91,16 @@ class ControlCTask : public SignalTask {
   }
 
  public:
-  bool handleSignal() {
+  bool handleSignal() override {
     std::string msg = _server->getName() + " [shutting down]";
 
     TRI_SetProcessTitle(msg.c_str());
 
     if (_seen == 0) {
-      LOG_INFO("control-c received, beginning shut down sequence");
+      LOG(INFO) << "control-c received, beginning shut down sequence";
       _server->beginShutdown();
     } else {
-      LOG_ERROR("control-c received (again!), terminating");
+      LOG(ERR) << "control-c received (again!), terminating";
       _exit(1);
       // TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
     }
@@ -133,9 +129,9 @@ class HangupTask : public SignalTask {
 
  public:
   bool handleSignal() {
-    LOG_INFO("hangup received, about to reopen logfile");
-    TRI_ReopenLogging();
-    LOG_INFO("hangup received, reopened logfile");
+    LOG(INFO) << "hangup received, about to reopen logfile";
+    Logger::reopen();
+    LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
 };
@@ -147,10 +143,10 @@ class HangupTask : public SignalTask {
   HangupTask() : Task("Hangup"), SignalTask() { addSignal(SIGHUP); }
 
  public:
-  bool handleSignal() {
-    LOG_INFO("hangup received, about to reopen logfile");
-    TRI_ReopenLogging();
-    LOG_INFO("hangup received, reopened logfile");
+  bool handleSignal() override {
+    LOG(INFO) << "hangup received, about to reopen logfile";
+    Logger::reopen();
+    LOG(INFO) << "hangup received, reopened logfile";
     return true;
   }
 };
@@ -171,14 +167,13 @@ class Sigusr1Task : public SignalTask {
   }
 
  public:
-  bool handleSignal() {
+  bool handleSignal() override {
     Scheduler* scheduler = this->_scheduler->scheduler();
 
     if (scheduler != nullptr) {
       bool isActive = scheduler->isActive();
 
-      LOG_INFO("sigusr1 received - setting active flag to %d",
-               (int)(!isActive));
+      LOG(INFO) << "sigusr1 received - setting active flag to " << (!isActive);
 
       scheduler->setActive(!isActive);
     }
@@ -202,7 +197,7 @@ class SchedulerReporterTask : public PeriodicTask {
         _scheduler(scheduler) {}
 
  public:
-  bool handlePeriod() {
+  bool handlePeriod() override {
     _scheduler->reportStatus();
     return true;
   }
@@ -262,12 +257,12 @@ bool CtrlHandler(DWORD eventType) {
   }  // end of switch statement
 
   if (shutdown == false) {
-    LOG_ERROR("Invalid CTRL HANDLER event received - ignoring event");
+    LOG(ERR) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 
   if (ccTask->_seen == 0) {
-    LOG_INFO("%s, beginning shut down sequence", shutdownMessage.c_str());
+    LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
     ccTask->_server->beginShutdown();
     ++ccTask->_seen;
     return true;
@@ -277,16 +272,31 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_INFO("%s, terminating", shutdownMessage.c_str());
+  LOG(INFO) << "" << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
 
 #endif
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify an rlimit value
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_GETRLIMIT
+
+template<typename T>
+static std::string StringifyLimitValue(T value) {
+  auto max = std::numeric_limits<decltype(value)>::max();
+  if (value == max || value == max / 2) {
+    return "unlimited";
+  }
+  return std::to_string(value);
 }
 
+#endif
 
-
+} // namespace
 
 ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
     : ApplicationFeature("scheduler"),
@@ -300,12 +310,10 @@ ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
       _descriptorMinimum(1024),
       _disableControlCHandler(false) {}
 
-
 ApplicationScheduler::~ApplicationScheduler() {
   Scheduler::SCHEDULER.release();  // TODO(fc) XXX remove this
   delete _scheduler;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows a multi scheduler to be build
@@ -339,7 +347,7 @@ void ApplicationScheduler::setProcessorAffinity(
   for (uint32_t i = 0; i < _nrSchedulerThreads; ++i) {
     size_t c = cores[j];
 
-    LOG_DEBUG("using core %d for scheduler thread %d", (int)c, (int)i);
+    LOG(DEBUG) << "using core " << c << " for scheduler thread " << i;
 
     _scheduler->setProcessorAffinity(i, c);
 
@@ -359,8 +367,6 @@ void ApplicationScheduler::setProcessorAffinity(
 void ApplicationScheduler::disableControlCHandler() {
   _disableControlCHandler = true;
 }
-
-
 
 void ApplicationScheduler::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -401,13 +407,12 @@ void ApplicationScheduler::setupOptions(
   }
 }
 
-
 bool ApplicationScheduler::afterOptionParsing(
     arangodb::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     std::cout << "available io backends are: "
-              << SchedulerLibev::availableBackends() << endl;
+              << SchedulerLibev::availableBackends() << std::endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 
@@ -416,7 +421,6 @@ bool ApplicationScheduler::afterOptionParsing(
 
   return true;
 }
-
 
 bool ApplicationScheduler::prepare() {
   if (_disabled) {
@@ -427,7 +431,6 @@ bool ApplicationScheduler::prepare() {
 
   return true;
 }
-
 
 bool ApplicationScheduler::start() {
   if (_disabled) {
@@ -442,25 +445,24 @@ bool ApplicationScheduler::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    LOG_INFO("file-descriptors (nofiles) hard limit is %d, soft limit is %d",
-             (int)rlim.rlim_max, (int)rlim.rlim_cur);
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max) 
+              << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
   }
 #endif
 
   bool ok = _scheduler->start(nullptr);
 
   if (!ok) {
-    LOG_FATAL_AND_EXIT("the scheduler cannot be started");
+    LOG(FATAL) << "the scheduler cannot be started"; FATAL_ERROR_EXIT();
   }
 
   while (!_scheduler->isStarted()) {
-    LOG_DEBUG("waiting for scheduler to start");
+    LOG(DEBUG) << "waiting for scheduler to start";
     usleep(500 * 1000);
   }
 
   return true;
 }
-
 
 bool ApplicationScheduler::open() {
   if (_disabled) {
@@ -473,7 +475,6 @@ bool ApplicationScheduler::open() {
 
   return false;
 }
-
 
 void ApplicationScheduler::stop() {
   if (_disabled) {
@@ -495,7 +496,7 @@ void ApplicationScheduler::stop() {
 
     for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
          ++count) {
-      LOG_TRACE("waiting for scheduler to stop");
+      LOG(TRACE) << "waiting for scheduler to stop";
       usleep(100000);
     }
 
@@ -507,14 +508,13 @@ void ApplicationScheduler::stop() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::buildScheduler() {
   if (_scheduler != nullptr) {
-    LOG_FATAL_AND_EXIT("a scheduler has already been created");
+    LOG(FATAL) << "a scheduler has already been created"; FATAL_ERROR_EXIT();
   }
 
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
@@ -526,8 +526,7 @@ void ApplicationScheduler::buildScheduler() {
 
 void ApplicationScheduler::buildSchedulerReporter() {
   if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no scheduler is known, cannot create control-c handler");
+    LOG(FATAL) << "no scheduler is known, cannot create control-c handler"; FATAL_ERROR_EXIT();
   }
 
   if (0.0 < _reportInterval) {
@@ -547,8 +546,7 @@ void ApplicationScheduler::buildSchedulerReporter() {
 
 void ApplicationScheduler::buildControlCHandler() {
   if (_scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no scheduler is known, cannot create control-c handler");
+    LOG(FATAL) << "no scheduler is known, cannot create control-c handler"; FATAL_ERROR_EXIT();
   }
 
   if (!_disableControlCHandler) {
@@ -593,18 +591,16 @@ void ApplicationScheduler::adjustFileDescriptors() {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s",
-                         strerror(errno));
+      LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
     }
-
-    LOG_DEBUG("file-descriptors (nofiles) hard limit is %d, soft limit is %d",
-              (int)rlim.rlim_max, (int)rlim.rlim_cur);
+    
+    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
+               << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
 
     bool changed = false;
 
     if (rlim.rlim_max < _descriptorMinimum) {
-      LOG_DEBUG("hard limit %d is too small, trying to raise",
-                (int)rlim.rlim_max);
+      LOG(DEBUG) << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
 
       rlim.rlim_max = _descriptorMinimum;
       rlim.rlim_cur = _descriptorMinimum;
@@ -612,22 +608,19 @@ void ApplicationScheduler::adjustFileDescriptors() {
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s",
-                           (int)_descriptorMinimum, strerror(errno));
+        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       changed = true;
     } else if (rlim.rlim_cur < _descriptorMinimum) {
-      LOG_DEBUG("soft limit %d is too small, trying to raise",
-                (int)rlim.rlim_cur);
+      LOG(DEBUG) << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
 
       rlim.rlim_cur = _descriptorMinimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
-        LOG_FATAL_AND_EXIT("cannot raise the file descriptor limit to %d: %s",
-                           (int)_descriptorMinimum, strerror(errno));
+        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       changed = true;
@@ -637,28 +630,20 @@ void ApplicationScheduler::adjustFileDescriptors() {
       res = getrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res != 0) {
-        LOG_FATAL_AND_EXIT("cannot get the file descriptor limit: %s",
-                           strerror(errno));
+        LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
-      LOG_INFO(
-          "file-descriptors (nofiles) new hard limit is %d, new soft limit is "
-          "%d",
-          (int)rlim.rlim_max, (int)rlim.rlim_cur);
+      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << StringifyLimitValue(rlim.rlim_max) 
+                << ", new soft limit is " << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
     }
 
     // the select backend has more restrictions
     if (_backend == 1) {
       if (FD_SETSIZE < _descriptorMinimum) {
-        LOG_FATAL_AND_EXIT(
-            "i/o backend 'select' has been selected, which supports only %d "
-            "descriptors, but %d are required",
-            (int)FD_SETSIZE, (int)_descriptorMinimum);
+        LOG(FATAL) << "i/o backend 'select' has been selected, which supports only " << FD_SETSIZE << " descriptors, but " << _descriptorMinimum << " are required"; FATAL_ERROR_EXIT();
       }
     }
   }
 
 #endif
 }
-
-

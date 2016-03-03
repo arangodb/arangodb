@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Indian/Antananarivo) {
-    {-9223372036854775808 11404 0 LMT}
-    {-1846293004 10800 0 EAT}
-    {-499924800 14400 1 EAST}
-    {-492062400 10800 0 EAT}
-}

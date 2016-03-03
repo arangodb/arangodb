@@ -1,5 +1,0 @@
-/usr/bin/pod_cover
-/usr/lib/perl5/vendor_perl/5.10/Pod/Coverage.pm
-/usr/lib/perl5/vendor_perl/5.10/Pod/Coverage/CountParents.pm
-/usr/lib/perl5/vendor_perl/5.10/Pod/Coverage/ExportOnly.pm
-/usr/lib/perl5/vendor_perl/5.10/Pod/Coverage/Overloader.pm

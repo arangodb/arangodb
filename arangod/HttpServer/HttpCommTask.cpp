@@ -30,6 +30,7 @@
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/GeneralServer.h"
+#include "Basics/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
@@ -47,7 +48,32 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
                             GeneralRequest::HTTP_UNKNOWN, GeneralRequest::HTTP_REQUEST_ILLEGAL),
       _readPosition(0),
       _bodyPosition(0),
+// <<<<<<< HEAD
       _startPosition(0) {
+// =======
+//       _bodyLength(0),
+//       _requestPending(false),
+//       _closeRequested(false),
+//       _readRequestBody(false),
+//       _denyCredentials(false),
+//       _acceptDeflate(false),
+//       _newRequest(true),
+//       _isChunked(false),
+//       _request(nullptr),
+//       _httpVersion(HttpRequest::HTTP_UNKNOWN),
+//       _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
+//       _fullUrl(),
+//       _origin(),
+//       _startPosition(0),
+//       _sinceCompactification(0),
+//       _originalBodyLength(0),
+//       _setupDone(false) {
+//   LOG(TRACE) << "connection established, client " << TRI_get_fd_or_handle_of_socket(socket) << ", server ip " << _connectionInfo.serverAddress << ", server port " << _connectionInfo.serverPort << ", client ip " << _connectionInfo.clientAddress << ", client port " << _connectionInfo.clientPort;
+
+//   // acquire a statistics entry and set the type to HTTP
+//   ConnectionStatisticsAgent::acquire();
+//   connectionStatisticsAgentSetStart();
+// >>>>>>> upstream/devel
   connectionStatisticsAgentSetHttp();
 }
 
@@ -56,7 +82,11 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t socket,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask() {
-  // LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+// <<<<<<< HEAD
+//   // LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+// =======
+//   LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+// >>>>>>> upstream/devel
 
   // free write buffers and statistics
   for (auto& i : _writeBuffers) {
@@ -71,6 +101,25 @@ HttpCommTask::~HttpCommTask() {
   delete _request;
 }
 
+// <<<<<<< HEAD
+// =======
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief handles response
+// ////////////////////////////////////////////////////////////////////////////////
+
+// void HttpCommTask::handleResponse(HttpResponse* response) {
+//   if (response->isChunked()) {
+//     _requestPending = true;
+//     _isChunked = true;
+//   } else {
+//     _requestPending = false;
+//     _isChunked = false;
+//   }
+
+//   addResponse(response);
+// }
+
+// >>>>>>> upstream/devel
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,8 +172,7 @@ bool HttpCommTask::processRead() {
     size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG_WARNING("maximal header size is %d, request header size is %d",
-                  (int)MaximalHeaderSize, (int)headerLength);
+      LOG(WARN) << "maximal header size is " << MaximalHeaderSize << ", request header size is " << headerLength;
 
       // header is too large
       GeneralResponse response(GeneralResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -142,9 +190,8 @@ bool HttpCommTask::processRead() {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer->c_str() + 4;
 
-      LOG_TRACE("HTTP READ FOR %p: %s", (void*)this,
-                std::string(_readBuffer->c_str() + _startPosition,
-                            _readPosition - _startPosition).c_str());
+      LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": " << std::string(_readBuffer->c_str() + _startPosition,
+                            _readPosition - _startPosition);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
@@ -154,7 +201,7 @@ bool HttpCommTask::processRead() {
           _readPosition - _startPosition);
 
       if (_request == nullptr) {
-        LOG_ERROR("cannot generate request");
+        LOG(ERR) << "cannot generate request";
 
         // internal server error
         GeneralResponse response(GeneralResponse::SERVER_ERROR, getCompatibility());
@@ -204,9 +251,7 @@ bool HttpCommTask::processRead() {
       // and ports
       _request->setProtocol(_server->protocol());
 
-      LOG_TRACE("server port %d, client port %d",
-                (int)_connectionInfo.serverPort,
-                (int)_connectionInfo.clientPort);
+      LOG(TRACE) << "server port " << _connectionInfo.serverPort << ", client port " << _connectionInfo.clientPort;
 
       // set body start to current position
       _bodyPosition = _readPosition;
@@ -270,9 +315,7 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG_WARNING(
-              "got corrupted HTTP request '%s'",
-              std::string(_readBuffer->c_str() + _startPosition, l).c_str());
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l) << "'";
 
           // bad request, method not allowed
           GeneralResponse response(GeneralResponse::METHOD_NOT_ALLOWED,
@@ -302,7 +345,7 @@ bool HttpCommTask::processRead() {
 
       if (scheduler != nullptr && !scheduler->isActive()) {
         // server is inactive and will intentionally respond with HTTP 503
-        LOG_TRACE("cannot serve request - server is inactive");
+        LOG(TRACE) << "cannot serve request - server is inactive";
 
         GeneralResponse response(GeneralResponse::SERVICE_UNAVAILABLE,
                               getCompatibility());
@@ -321,7 +364,7 @@ bool HttpCommTask::processRead() {
         std::string const& expect = _request->header("expect", found);
 
         if (found && StringUtils::trim(expect) == "100-continue") {
-          LOG_TRACE("received a 100-continue request");
+          LOG(TRACE) << "received a 100-continue request";
 
           auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
           buffer->appendText(
@@ -356,8 +399,8 @@ bool HttpCommTask::processRead() {
     // read "bodyLength" from read buffer and add this body to "GeneralRequest"
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
-    LOG_TRACE("%s", std::string(_readBuffer->c_str() + _bodyPosition,
-                                _bodyLength).c_str());
+    LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
+                                _bodyLength);
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -394,17 +437,17 @@ bool HttpCommTask::processRead() {
   if (connectionType == "close") {
     // client has sent an explicit "Connection: Close" header. we should close
     // the connection
-    LOG_DEBUG("connection close requested by client");
+    LOG(DEBUG) << "connection close requested by client";
     _closeRequested = true;
   } else if (_request->isHttp10() && connectionType != "keep-alive") {
     // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
     // we should close the connection
-    LOG_DEBUG("no keep-alive, connection close requested by client");
+    LOG(DEBUG) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
   } else if (_keepAliveTimeout <= 0.0) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
-    LOG_DEBUG("keep-alive disabled by admin");
+    LOG(DEBUG) << "keep-alive disabled by admin";
     _closeRequested = true;
   }
 
@@ -494,7 +537,7 @@ void HttpCommTask::addResponse(GeneralResponse* response) {
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
-    LOG_TRACE("handling CORS response");
+    LOG(TRACE) << "handling CORS response";
 
     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
                         "etag, content-encoding, content-length, location, "
@@ -557,7 +600,7 @@ void HttpCommTask::addResponse(GeneralResponse* response) {
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
-  LOG_TRACE("HTTP WRITE FOR %p: %s", (void*)this, b->c_str());
+  LOG(TRACE) << "HTTP WRITE FOR " << (void*)this << ": " << b->c_str();
 
   // clear body
   response->body().clear();
@@ -566,15 +609,27 @@ void HttpCommTask::addResponse(GeneralResponse* response) {
 
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-  // disable the following statement to prevent excessive logging of incoming
-  // requests
-  LOG_USAGE(
-      ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
-      _connectionInfo.clientAddress.c_str(),
-      GeneralRequest::translateMethod(_requestType).c_str(),
-      GeneralRequest::translateVersion(_httpVersion).c_str(),
-      (int)response->responseCode(), (unsigned long long)_originalBodyLength,
-      (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+// <<<<<<< HEAD
+//   // disable the following statement to prevent excessive logging of incoming
+//   // requests
+//   LOG_USAGE(
+//       ",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
+//       _connectionInfo.clientAddress.c_str(),
+//       GeneralRequest::translateMethod(_requestType).c_str(),
+//       GeneralRequest::translateVersion(_httpVersion).c_str(),
+//       (int)response->responseCode(), (unsigned long long)_originalBodyLength,
+//       (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+// =======
+  LOG_TOPIC(INFO, Logger::REQUESTS) 
+      << "\"http-request\",\"" << _connectionInfo.clientAddress 
+      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
+      << HttpRequest::translateVersion(_httpVersion) << "\"," 
+      << static_cast<int>(response->responseCode()) << "," 
+      << _originalBodyLength << "," 
+      << responseBodyLength << ",\"" 
+      << _fullUrl << "\","
+      << Logger::DURATION(totalTime, 6);
+// >>>>>>> upstream/devel
 
   // start output
   fillWriteBuffer();
@@ -601,14 +656,11 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
     // content-length header was sent but the request method does not support
     // that
     // we'll warn but read the body anyway
-    LOG_WARNING(
-        "received HTTP GET/HEAD request with content-length, this should not "
-        "happen");
+    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG_WARNING("maximal body size is %d, request body size is %d",
-                (int)MaximalBodySize, (int)bodyLength);
+    LOG(WARN) << "maximal body size is " << MaximalBodySize << ", request body size is " << bodyLength;
 
     // request entity too large
     GeneralResponse response(GeneralResponse::REQUEST_ENTITY_TOO_LARGE,
@@ -645,7 +697,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
   response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
 
   if (!_origin.empty()) {
-    LOG_TRACE("got CORS preflight request");
+    LOG(TRACE) << "got CORS preflight request";
     std::string const allowHeaders =
         StringUtils::trim(_request->header("access-control-request-headers"));
 
@@ -661,8 +713,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
       // server. that's a client problem.
       response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
                          allowHeaders);
-      LOG_TRACE("client requested validation of the following headers: %s",
-                allowHeaders.c_str());
+      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders;
     }
 
     // set caching time (hard-coded value)
@@ -680,7 +731,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const& acceptEncoding =
+  std::string const acceptEncoding =
       _request->header("accept-encoding", found);
 
   if (found) {
@@ -690,14 +741,14 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   // check for an async request
-  std::string const& asyncExecution = _request->header("x-arango-async", found);
+  std::string const asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
   WorkItem::uptr<GeneralHandler> handler(
       _server->handlerFactory()->createHandler(_request));
 
   if (handler == nullptr) {
-    LOG_TRACE("no handler is known, giving up");
+    LOG(TRACE) << "no handler is known, giving up";
 
     GeneralResponse response(GeneralResponse::NOT_FOUND, compatibility);
 
@@ -811,9 +862,76 @@ int32_t HttpCommTask::getCompatibility() const {
     return _request->compatibility();
   }
 
+// <<<<<<< HEAD
   return GeneralRequest::MinCompatibility;
 }
 
+// =======
+//   return HttpRequest::MinCompatibility;
+// }
+
+// bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {
+//   bool ok = SocketTask::setup(scheduler, loop);
+
+//   if (!ok) {
+//     return false;
+//   }
+
+//   _scheduler = scheduler;
+//   _loop = loop;
+
+//   setupDone();
+
+//   return true;
+// }
+
+// void HttpCommTask::cleanup() { SocketTask::cleanup(); }
+
+// bool HttpCommTask::handleEvent(EventToken token, EventType events) {
+//   bool result = SocketTask::handleEvent(token, events);
+
+//   if (_clientClosed) {
+//     _scheduler->destroyTask(this);
+//   }
+
+//   return result;
+// }
+
+// void HttpCommTask::signalTask(TaskData* data) {
+//   // data response
+//   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
+//     data->transfer(this);
+//     handleResponse(data->_response.get());
+//     processRead();
+//   }
+
+//   // data chunk
+//   else if (data->_type == TaskData::TASK_DATA_CHUNK) {
+//     size_t len = data->_data.size();
+
+//     if (0 == len) {
+//       finishedChunked();
+//     } else {
+//       StringBuffer* buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
+
+//       TRI_ASSERT(buffer != nullptr);
+
+//       buffer->appendHex(len);
+//       buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+//       buffer->appendText(data->_data.c_str(), len);
+//       buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+
+//       sendChunk(buffer);
+//     }
+//   }
+
+//   // do not know, what to do - give up
+//   else {
+//     _scheduler->destroyTask(this);
+//   }
+// }
+
+// >>>>>>> upstream/devel
 bool HttpCommTask::handleRead() {
   bool res = true;
 
@@ -867,6 +985,7 @@ void HttpCommTask::completedWriteBuffer() {
   }
 }
 
+// <<<<<<< HEAD
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the write buffer
 ////////////////////////////////////////////////////////////////////////////////
@@ -917,4 +1036,9 @@ void HttpCommTask::signalTask(TaskData* data) {
   else {
     _scheduler->destroyTask(this);
   }
+// =======
+// void HttpCommTask::handleTimeout() {
+//   _clientClosed = true;
+//   _server->handleCommunicationClosed(this);
+// >>>>>>> upstream/devel
 }

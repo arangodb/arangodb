@@ -37,7 +37,6 @@
 namespace arangodb {
 namespace basics {
 
-
 template <typename Key, typename Value, typename Weight>
 class PriorityQueue {
   // This class implements a data structure that is a key/value
@@ -72,9 +71,7 @@ class PriorityQueue {
   // priority queue.
 
  public:
-
   PriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
-
 
   ~PriorityQueue() {
     for (Value* v : _heap) {
@@ -232,7 +229,6 @@ class PriorityQueue {
     return true;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief swap, two positions in the heap, adjusts the _lookup table
@@ -361,7 +357,6 @@ class PriorityQueue {
     repairDown();
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _popped, number of elements that have been popped from the
   /// beginning
@@ -405,10 +400,8 @@ class PriorityQueue {
   std::vector<Value*> _history;
 };
 
-
 template <typename VertexId, typename EdgeId, typename EdgeWeight>
 class PathFinder {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Path, type for the result
@@ -484,7 +477,6 @@ class PathFinder {
     std::mutex _mutex;
   };
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a Dijkstra searcher for the multi-threaded search
   //////////////////////////////////////////////////////////////////////////////
@@ -804,10 +796,8 @@ class PathFinder {
         _backwardExpander(backwardExpander),
         _bidirectional(bidirectional){};
 
-
   ~PathFinder(){};
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
   ///        Only edges having the given direction are followed.
@@ -1053,7 +1043,6 @@ class PathFinder {
    * algorithm is correct.
    */
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
   //////////////////////////////////////////////////////////////////////////////
@@ -1094,13 +1083,11 @@ class PathFinder {
   bool _intermediateSet;
   VertexId _intermediate;
 
-  
  private:
   ExpanderFunction _forwardExpander;
   ExpanderFunction _backwardExpander;
   bool _bidirectional;
 };
-
 
 template <typename edgeIdentifier, typename vertexIdentifier>
 struct EnumeratedPath {
@@ -1109,12 +1096,9 @@ struct EnumeratedPath {
   EnumeratedPath() {}
 };
 
-
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
 class PathEnumerator {
-  
  private:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief List of the last path is used to
   //////////////////////////////////////////////////////////////////////////////
@@ -1141,7 +1125,6 @@ class PathEnumerator {
 
   std::stack<size_t> _lastEdgesIdx;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to get the next edge from index.
   //////////////////////////////////////////////////////////////////////////////
@@ -1158,7 +1141,6 @@ class PathEnumerator {
                      vertexIdentifier&)> _getVertex;
 
  public:
-  
   PathEnumerator(
       std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&,
                          edgeItem*&, size_t&, bool&)> getEdge,
@@ -1177,7 +1159,6 @@ class PathEnumerator {
 
   ~PathEnumerator() {}
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   //////////////////////////////////////////////////////////////////////////////
@@ -1399,5 +1380,3 @@ class ConstDistanceFinder {
 }
 
 #endif
-
-

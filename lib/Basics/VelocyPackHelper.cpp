@@ -24,8 +24,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/files.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -36,10 +37,17 @@
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-struct AttributeSorter {
-  bool operator() (std::string const& l, std::string const& r) const {
-    return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
-  }
+bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
+                                                   std::string const& r) const {
+  return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
+}
+
+size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
+  return slice.hash();
+};
+
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+  return VelocyPackHelper::compare(lhs, rhs, false) == 0;
 };
 
 static int TypeWeight(VPackSlice const& slice) {
@@ -69,6 +77,10 @@ static int TypeWeight(VPackSlice const& slice) {
 
 bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
                                        char const* name, bool defaultValue) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
   VPackSlice const& sub = slice.get(name);
 
   if (sub.isBoolean()) {
@@ -86,13 +98,30 @@ bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
 std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
                                                      char const* name) {
   TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    std::string msg =
+        "The attribute '" + std::string(name) + "' was not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg = "The attribute '" + std::string(name) +
-                      "' was not found or is not a string.";
+    std::string msg =
+        "The attribute '" + std::string(name) + "' is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string value, or the default value if it is not a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+                                             std::string const& defaultValue) {
+  if (!slice.isString()) {
+    return defaultValue;
+  }
+  return slice.copyString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +134,9 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
                                              char const* name,
                                              std::string const& defaultValue) {
   TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
     return defaultValue;
@@ -114,8 +146,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 
 uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   if (slice.isString()) {
-    std::string tmp = slice.copyString();
-    return TRI_UInt64String(tmp.c_str()); 
+    return arangodb::basics::StringUtils::uint64(slice.copyString());
   }
   if (slice.isNumber()) {
     return slice.getNumericValue<uint64_t>();
@@ -223,7 +254,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot create json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
@@ -231,19 +262,19 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   if (!PrintVelocyPack(fd, slice, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
 
   if (syncFile) {
-    LOG_TRACE("syncing tmp file '%s'", tmp);
+    LOG(TRACE) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_ERROR("cannot sync saved json '%s': %s", tmp, TRI_LAST_ERROR_STR);
+      LOG(ERR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
       return false;
@@ -254,7 +285,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot close saved file '%s': %s", tmp, TRI_LAST_ERROR_STR);
+    LOG(ERR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
@@ -264,8 +295,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_ERROR("cannot rename saved file '%s' to '%s': %s", tmp, filename,
-              TRI_LAST_ERROR_STR);
+    LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
@@ -291,7 +321,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       return 1;
     }
 
-    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+    TRI_ASSERT(lWeight == rWeight);
   }
 
   // lhs and rhs have equal weights
@@ -383,8 +413,14 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       VPackCollection::keys(lhs, keys);
       VPackCollection::keys(rhs, keys);
       for (auto const& key : keys) {
-        VPackSlice lhsValue = lhs.get(key);
-        VPackSlice rhsValue = rhs.get(key);
+        VPackSlice lhsValue;
+        if (lhs.hasKey(key)) {
+          lhsValue = lhs.get(key);
+        }
+        VPackSlice rhsValue;
+        if (rhs.hasKey(key)) {
+          rhsValue = rhs.get(key);
+        }
 
         int result = compare(lhsValue, rhsValue, useUTF8);
         if (result != 0) {
@@ -400,4 +436,79 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       TRI_ASSERT(false);
       return 0;
   }
+}
+
+VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs,
+                                     VPackSlice const& rhs,
+                                     bool nullMeansRemove, bool mergeObjects) {
+  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
+}
+
+double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
+  TRI_ASSERT(!slice.isNone());
+
+  failed = false;
+  switch (slice.type()) {
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0.0;
+    case VPackValueType::Bool:
+      return (slice.getBoolean() ? 1.0 : 0.0);
+    case VPackValueType::Double:
+    case VPackValueType::Int:
+    case VPackValueType::UInt:
+    case VPackValueType::SmallInt:
+      return slice.getNumericValue<double>();
+    case VPackValueType::String:
+    {
+      std::string tmp = slice.copyString();
+      try {
+        // try converting string to number
+        return std::stod(tmp);
+      } catch (...) {
+        if (tmp.empty()) {
+          return 0.0;
+        }
+        // conversion failed
+      }
+      break;
+    }
+    case VPackValueType::Array:
+    {
+      VPackValueLength const n = slice.length();
+
+      if (n == 0) {
+        return 0.0;
+      } else if (n == 1) {
+        return VelocyPackHelper::toDouble(slice.at(0), failed);
+      }
+      break;
+    }
+    case VPackValueType::Object:
+    case VPackValueType::UTCDate:
+    case VPackValueType::External:
+    case VPackValueType::MinKey:
+    case VPackValueType::MaxKey:
+    case VPackValueType::Binary:
+    case VPackValueType::BCD:
+    case VPackValueType::Custom:
+      break;
+  }
+
+  failed = true;
+  return 0.0;
+}
+
+arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
+  VPackSlice const& slice) {
+  size_t const cutoff = 100;
+  std::string sliceStr(slice.toJson());
+  bool longer = sliceStr.size() > cutoff;
+  if (longer) {
+    logger << sliceStr.substr(cutoff) << "...";
+  }
+  else {
+    logger << sliceStr;
+  }
+  return logger;
 }

@@ -7,18 +7,18 @@
   window.ArangoQueries = Backbone.Collection.extend({
 
     initialize: function(models, options) {
-      var result;
-      $.ajax("whoAmI?_=" + Date.now(), {async:false}).done(
+      var self = this;
+
+      $.ajax("whoAmI?_=" + Date.now(), {async: true}).done(
         function(data) {
-          result = data.user;
+          if (this.activeUser === false) {
+            self.activeUser = "root";
+          }
+          else {
+            self.activeUser = data.user;
+          }
         }
       );
-
-      this.activeUser = result;
-
-      if (this.activeUser === false) {
-        this.activeUser = "root";
-      }
     },
 
     url: '/_api/user/',
@@ -29,6 +29,9 @@
 
     parse: function(response) {
       var self = this, toReturn;
+      if (this.activeUser === false) {
+        this.activeUser = "root";
+      }
 
       _.each(response.result, function(val) {
         if (val.user === self.activeUser) {
@@ -44,12 +47,14 @@
       return toReturn;
     },
 
-    saveCollectionQueries: function() {
+    saveCollectionQueries: function(callback) {
       if (this.activeUser === 0) {
         return false;
       }
+      if (this.activeUser === false) {
+        this.activeUser = "root";
+      }
 
-      var returnValue = false;
       var queries = [];
 
       this.each(function(query) {
@@ -64,7 +69,6 @@
       $.ajax({
         cache: false,
         type: "PATCH",
-        async: false,
         url: "/_api/user/" + encodeURIComponent(this.activeUser),
         data: JSON.stringify({
           extra: {
@@ -73,15 +77,13 @@
         }),
         contentType: "application/json",
         processData: false,
-        success: function() {
-          returnValue = true;
+        success: function(data) {
+          callback(false, data);
         },
         error: function() {
-          returnValue = false;
+          callback(true);
         }
       });
-
-      return returnValue;
     },
 
     saveImportQueries: function(file, callback) {
@@ -94,7 +96,6 @@
       $.ajax({
         cache: false,
         type: "POST",
-        async: false,
         url: "query/upload/" + encodeURIComponent(this.activeUser),
         data: file,
         contentType: "application/json",

@@ -26,11 +26,9 @@
 
 #include "fulltext-common.h"
 
-
 struct TRI_fulltext_query_s;
 struct TRI_fulltext_result_s;
 struct TRI_fulltext_wordlist_s;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of an indexed word in characters
@@ -44,7 +42,6 @@ struct TRI_fulltext_wordlist_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for index statistics
@@ -67,7 +64,6 @@ typedef struct TRI_fulltext_stats_s {
   bool _shouldCompact;
 } TRI_fulltext_stats_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +75,6 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t, uint32_t, uint32_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFtsIndex(TRI_fts_index_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
@@ -95,7 +90,6 @@ void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const,
 bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const,
                                   const TRI_fulltext_doc_t,
                                   struct TRI_fulltext_wordlist_s*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
@@ -124,7 +118,6 @@ struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* cons
 
 struct TRI_fulltext_result_s* TRI_QueryFulltextIndex(
     TRI_fts_index_t* const, struct TRI_fulltext_query_s*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
@@ -161,5 +154,3 @@ size_t TRI_MemoryFulltextIndex(const TRI_fts_index_t* const);
 bool TRI_CompactFulltextIndex(TRI_fts_index_t* const);
 
 #endif
-
-

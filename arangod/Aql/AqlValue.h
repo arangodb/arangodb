@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_H
 #define ARANGOD_AQL_AQL_VALUE_H 1
 
+
 #include "Basics/Common.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"
@@ -33,10 +34,20 @@
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
 
+#include <v8.h>
+
 namespace arangodb {
+
+namespace velocypack {
+template <typename T>
+class Buffer;
+}
 namespace aql {
 
 class AqlItemBlock;
+
+// Temporary Forward
+struct AqlValue$;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a struct to hold a value, registers hole AqlValue* during the
@@ -44,7 +55,6 @@ class AqlItemBlock;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct AqlValue {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AqlValueType, indicates what sort of value we have
   //////////////////////////////////////////////////////////////////////////////
@@ -57,7 +67,6 @@ struct AqlValue {
     RANGE    // a pointer to a range remembering lower and upper bound
   };
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructors for the various value types, note that they all take
   /// ownership of the corresponding pointers
@@ -82,6 +91,8 @@ struct AqlValue {
   AqlValue(int64_t low, int64_t high) : _range(nullptr), _type(RANGE) {
     _range = new Range(low, high);
   }
+
+  explicit AqlValue(AqlValue$ const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructor, doing nothing automatically!
@@ -133,7 +144,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_df_marker_t const* getMarker() const {
-    TRI_ASSERT_EXPENSIVE(isShaped());
+    TRI_ASSERT(isShaped());
     return _marker;
   }
 
@@ -222,7 +233,7 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool isNull(bool emptyIsNull) const;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the array member at position i
   //////////////////////////////////////////////////////////////////////////////
@@ -258,8 +269,7 @@ struct AqlValue {
   /// @brief construct a V8 value as input for the expression execution in V8
   //////////////////////////////////////////////////////////////////////////////
 
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             arangodb::AqlTransaction*,
+  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::AqlTransaction*,
                              TRI_document_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -279,6 +289,9 @@ struct AqlValue {
   arangodb::basics::Json toJson(arangodb::AqlTransaction*,
                                 TRI_document_collection_t const*, bool) const;
 
+  void toVelocyPack(arangodb::AqlTransaction*, TRI_document_collection_t const*,
+                    arangodb::velocypack::Builder&) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a hash value for the AqlValue
   //////////////////////////////////////////////////////////////////////////////
@@ -292,8 +305,8 @@ struct AqlValue {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::Json extractObjectMember(
-      arangodb::AqlTransaction*, TRI_document_collection_t const*,
-      char const*, bool, arangodb::basics::StringBuffer&) const;
+      arangodb::AqlTransaction*, TRI_document_collection_t const*, char const*,
+      bool, arangodb::basics::StringBuffer&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract a value from an array AqlValue
@@ -330,7 +343,7 @@ struct AqlValue {
   static int Compare(arangodb::AqlTransaction*, AqlValue const&,
                      TRI_document_collection_t const*, AqlValue const&,
                      TRI_document_collection_t const*, bool compareUtf8);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual data
   //////////////////////////////////////////////////////////////////////////////
@@ -349,9 +362,71 @@ struct AqlValue {
   AqlValueType _type;
 };
 
+struct AqlValue$ {
+ public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief AqlValueType, indicates what sort of value we have
+  //////////////////////////////////////////////////////////////////////////////
+
+  enum AqlValueType { INTERNAL, EXTERNAL };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Holds the actual data for this AqlValue it has the following
+  /// semantics:
+  ///
+  /// All values with a size less than 16 will be stored directly in this
+  /// AqlValue using the data.internal structure.
+  /// All values of a larger size will be store in data.external.
+  /// The last bit of this union will be used to identify if we have to use
+  /// internal or external.
+  /// Delete of the Buffer should free every structure that is not using the
+  /// VPack external value type.
+  //////////////////////////////////////////////////////////////////////////////
+
+ private:
+  union {
+    char internal[16];
+    arangodb::velocypack::Buffer<uint8_t>* external;
+  } _data;
+
+ public:
+  AqlValue$(arangodb::velocypack::Builder const&);
+  AqlValue$(arangodb::velocypack::Builder const*);
+  AqlValue$(arangodb::velocypack::Slice const&);
+
+  AqlValue$(AqlValue const&, arangodb::AqlTransaction*,
+            TRI_document_collection_t const*);
+
+  ~AqlValue$() {
+    if (type() && _data.external != nullptr) {
+      delete _data.external;
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Copy Constructor.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue$(AqlValue$ const& other);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the type of this value. If true it uses an external pointer
+  /// if false it uses the internal data structure
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Read last bit of the union
+  AqlValueType type() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns a slice to read this Value's data
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::velocypack::Slice slice() const;
+};
+
+static_assert(sizeof(AqlValue$) < 17, "invalid AqlValue size.");
+
 }  // closes namespace arangodb::aql
 }  // closes namespace arangodb
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function for AqlValue objects
@@ -422,4 +497,3 @@ struct equal_to<arangodb::aql::AqlValue> {
 }  // closes namespace std
 
 #endif
-

@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Antarctica/DumontDUrville) {
-    {-9223372036854775808 0 0 zzz}
-    {-725846400 36000 0 PMT}
-    {-566992800 0 0 zzz}
-    {-415497600 36000 0 DDUT}
-}

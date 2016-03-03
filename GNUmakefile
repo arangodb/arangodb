@@ -4,83 +4,74 @@
 ## --SECTION--                                                  COMMON VARIABLES
 ## -----------------------------------------------------------------------------
 
--include Makefile
+.PHONY: warning help
+
+warning:
+	@echo "ArangoDB has switch to CMAKE. In order to compile, use:"
+	@echo ""
+	@echo "  mkdir build"
+	@echo "  cd build"
+	@echo "  cmake .."
+	@echo "  make"
+	@echo ""
+	@echo "MacOS users:"
+	@echo "  Please use OPENSSL from homebrew and use"
+	@echo ""
+	@echo "    cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+	@echo ""
+	@echo "  Note that some versions of Apple's clang have severe performance"
+	@echo "  issues. Use GCC5 from homebrew in this case."
+	@echo ""
+	@echo "Use 'make help' to see more options."
+
+help:
+	@echo "The most common -D<options> are"
+	@echo ""
+	@echo "  -DCMAKE_CXX_COMPILER=/usr/local/bin/g++-5"
+	@echo "    sets the C++ compiler"
+	@echo "  -DCMAKE_C_COMPILER=/usr/local/bin/gcc-5"
+	@echo "    sets the C compiler"
+	@echo ""
+	@echo "ArangoDB supports:"
+	@echo ""
+	@echo "  -DUSE_BACKTRACE=off"
+	@echo "    if ON, enables backtraces in fatal errors"
+	@echo "  -DUSE_FAILURE_TESTS=off"
+	@echo "    if ON, add failure functions for testing"
+	@echo "  -DUSE_MAINTAINER_MODE=off"
+	@echo "    if ON, enable maintainer features"
+	@echo ""
+	@echo "BOOST supports:"
+	@echo ""
+	@echo "  -DUSE_BOOST_SYSTEM_LIBS=off"
+	@echo "    if ON, use the operating system Boost installation"
+	@echo "  -DUSE_BOOST_UNITTESTS=on"
+	@echo "    if ON, use Boost unittest framework if this available"
+	@echo ""
+	@echo "OPENSSL supports:"
+	@echo "  -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
+	@echo "    sets the location of the openssl includes and libraries"
+	@echo ""
+	@echo "BOOST supports:"
+	@echo ""
+	@echo "  -DUSE_TCMALLOC=on"
+	@echo "    if ON, link against TCMALLOC"
+	@echo ""
+	@echo "V8 supports:"
+	@echo "  -DUSE_PRECOMPILED_V8=off"
+	@echo "    if ON, use precompiled V8 libraries"
+	@echo ""
+	@echo "ZLIB supports:"
+	@echo "  -DASM686=on"
+	@echo "    if ON, enables building i686 assembly implementation"
+	@echo "  -DAMD64=on"
+	@echo "    if ON, enables building amd64 assembly implementation"
+
 
 VERSION_MAJOR := $(wordlist 1,1,$(subst ., ,$(VERSION)))
 VERSION_MINOR := $(wordlist 2,2,$(subst ., ,$(VERSION)))
 VERSION_PATCH := $(wordlist 3,3,$(subst ., ,$(VERSION)))
-
 VERSION_PATCH := $(wordlist 1,1,$(subst -, ,$(VERSION_PATCH)))
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                   SPECIAL TARGETS
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief setup
-################################################################################
-
-.PHONY: setup
-
-setup:
-	@echo ACLOCAL
-	@aclocal -I m4
-	@echo AUTOMAKE
-	@automake --add-missing --force-missing --copy
-	@echo AUTOCONF
-	@autoconf -I m4
-	@echo auto system configured, proceed with configure
-
-################################################################################
-### @brief add maintainer files
-################################################################################
-
-MAINTAINER = \
-	README \
-	arangod/Aql/tokens.cpp \
-	arangod/Aql/grammar.cpp \
-	arangod/Aql/grammar.h \
-	lib/JsonParser/json-parser.cpp \
-	lib/V8/v8-json.cpp \
-	lib/Basics/voc-errors.h \
-	lib/Basics/voc-errors.cpp \
-	js/common/bootstrap/errors.js
-
-AUTOMAGIC = \
-	Makefile.in \
-	aclocal.m4 \
-	configure \
-	config/compile \
-	config/config.guess \
-	config/config.sub \
-	config/depcomp \
-	config/install-sh \
-	config/missing
-
-.PHONY: add-maintainer add-automagic
-
-add-maintainer:
-	@echo adding generated files to GIT
-	git add -f $(MAINTAINER)
-
-remove-maintainer:
-	@echo removing generated files from GIT
-	git rm -f $(MAINTAINER)
-
-add-automagic:
-	@echo adding automagic files to GIT
-	git add -f $(AUTOMAGIC)
-
-remove-automagic:
-	@echo removing automagic files from GIT
-	git rm -f $(AUTOMAGIC)
-
-################################################################################
-### @brief make love
-################################################################################
-
-love:
-	@echo ArangoDB loves you
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     CMAKE & CPACK
@@ -378,36 +369,3 @@ packXX:
 	cd Build$(BITS) && cpack -G ZIP -D "BUILD_TARGET=RelWithDebInfo"
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
-
-checkcmake:
-	if test -z "`cmake --help |grep -i visual`"; then \
-		echo "Your cmake is not sufficient; it lacks support for visual studio." ; \
-		exit 1; \
-	fi
-
-
-################################################################################
-### @brief generates a tar archive
-################################################################################
-
-.PHONY: pack-tar pack-tar-config
-
-pack-tar-config:
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var
-
-pack-tar:
-	rm -rf /tmp/pack-arangodb
-	make install-strip DESTDIR=/tmp/pack-arangodb
-	tar -c -v -z -f arangodb-$(VERSION).tar.gz -C /tmp/pack-arangodb .
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "### @brief\\|## --SECTION--\\|# -\\*-"
-## End:

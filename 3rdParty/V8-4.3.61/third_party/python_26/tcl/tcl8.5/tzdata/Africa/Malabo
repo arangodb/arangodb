@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Malabo) {
-    {-9223372036854775808 2108 0 LMT}
-    {-1830386108 0 0 GMT}
-    {-190857600 3600 0 WAT}
-}

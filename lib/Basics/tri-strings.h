@@ -174,7 +174,7 @@ TRI_vector_string_t TRI_Split2String(char const* source, char const* delim);
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define TRI_FreeString(a, b) TRI_FreeStringZ((a), (b), __FILE__, __LINE__)
 void TRI_FreeStringZ(TRI_memory_zone_t*, char*, char const* file, int line);
 #else
@@ -211,7 +211,7 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
 
 char* TRI_EscapeControlsCString(TRI_memory_zone_t*, char const* in,
                                 size_t inLength, size_t* outLength,
-                                bool appendNewline);
+                                bool appendNewline, bool truncate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using unicode escapes
@@ -251,5 +251,3 @@ size_t TRI_CharLengthUtf8String(char const*);
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
 
 #endif
-
-

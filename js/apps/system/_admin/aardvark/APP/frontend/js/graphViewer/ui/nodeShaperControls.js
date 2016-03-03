@@ -73,12 +73,14 @@ function NodeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            toStore[graphName].viewer.nodeShaper[key] = value;
+            toStore[combinedGraphName].viewer.nodeShaper[key] = value;
           }
         });
 

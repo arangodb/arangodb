@@ -23,8 +23,6 @@
 
 #include "v8-query.h"
 #include "Aql/Query.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -37,6 +35,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
@@ -57,8 +56,6 @@ using namespace arangodb::basics;
 #define WRAP_SHAPED_JSON(...) \
   TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(isolate, __VA_ARGS__)
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo coordinate container, also containing the distance
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +70,6 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum { QUERY_EXAMPLE, QUERY_CONDITION } query_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an empty result set
@@ -161,192 +157,205 @@ static TRI_index_operator_t* SetupConditionsSkiplist(
     v8::Isolate* isolate,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> conditions) {
-  TRI_index_operator_t* lastOperator = nullptr;
   size_t numEq = 0;
   size_t lastNonEq = 0;
+  std::unique_ptr<TRI_index_operator_t> lastOperator;
 
-  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  VPackBuilder parameters;
+  try {
+    VPackArrayBuilder b(&parameters);
 
-  if (parameters == nullptr) {
+    size_t i = 0;
+    for (auto const& field : fields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString, true);
+      v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
+
+      if (!conditions->HasOwnProperty(key)) {
+        break;
+      }
+      v8::Handle<v8::Value> fieldConditions = conditions->Get(key);
+
+      if (!fieldConditions->IsArray()) {
+        // wrong data type for field conditions
+        break;
+      }
+
+      // iterator over all conditions
+      v8::Handle<v8::Array> values =
+          v8::Handle<v8::Array>::Cast(fieldConditions);
+      for (uint32_t j = 0; j < values->Length(); ++j) {
+        v8::Handle<v8::Value> fieldCondition = values->Get(j);
+
+        if (!fieldCondition->IsArray()) {
+          // wrong data type for single condition
+          return nullptr;
+        }
+
+        v8::Handle<v8::Array> condition =
+            v8::Handle<v8::Array>::Cast(fieldCondition);
+
+        if (condition->Length() != 2) {
+          // wrong number of values in single condition
+          return nullptr;
+        }
+
+        v8::Handle<v8::Value> op = condition->Get(0);
+        v8::Handle<v8::Value> value = condition->Get(1);
+
+        if (!op->IsString() && !op->IsStringObject()) {
+          // wrong operator type
+          return nullptr;
+        }
+
+        VPackBuilder element;
+        int res = TRI_V8ToVPack(isolate, element, value, false);
+        if (res != TRI_ERROR_NO_ERROR) {
+          // Failed to parse or Out of Memory
+          return nullptr;
+        }
+
+        std::string&& opValue = TRI_ObjectToString(op);
+        if (opValue == "==") {
+          // equality comparison
+
+          if (lastNonEq > 0) {
+            return nullptr;
+          }
+
+          parameters.add(element.slice());
+          // creation of equality operator is deferred until it is finally
+          // needed
+          ++numEq;
+          break;
+        } else {
+          if (lastNonEq > 0 && lastNonEq != i) {
+            // if we already had a range condition and a previous field, we
+            // cannot
+            // continue
+            // because the skiplist interface does not support such queries
+            return nullptr;
+          }
+
+          TRI_index_operator_type_e opType;
+          if (opValue == ">") {
+            opType = TRI_GT_INDEX_OPERATOR;
+          } else if (opValue == ">=") {
+            opType = TRI_GE_INDEX_OPERATOR;
+          } else if (opValue == "<") {
+            opType = TRI_LT_INDEX_OPERATOR;
+          } else if (opValue == "<=") {
+            opType = TRI_LE_INDEX_OPERATOR;
+          } else {
+            // wrong operator type
+            return nullptr;
+          }
+
+          lastNonEq = i;
+
+          if (numEq > 0) {
+            TRI_ASSERT(!parameters.isClosed());
+            // TODO, check if this actually worked
+            auto cloned = std::make_shared<VPackBuilder>(parameters);
+
+            if (cloned == nullptr) {
+              // Out of memory could not copy Builder
+              return nullptr;
+            }
+            TRI_ASSERT(!cloned->isClosed());
+            cloned->close();
+
+            // Assert that the buffer is actualy copied and we can work with
+            // both Builders
+            TRI_ASSERT(cloned->isClosed());
+            TRI_ASSERT(!parameters.isClosed());
+
+            VPackSlice tmp = cloned->slice();
+            lastOperator.reset(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR,
+                                                       nullptr, nullptr, cloned,
+                                                       shaper, tmp.length()));
+            numEq = 0;
+          }
+
+          std::unique_ptr<TRI_index_operator_t> current;
+
+          {
+            TRI_ASSERT(!parameters.isClosed());
+            // TODO, check if this actually worked
+            auto cloned = std::make_shared<VPackBuilder>(parameters);
+
+            if (cloned == nullptr) {
+              // Out of memory could not copy Builder
+              return nullptr;
+            }
+            TRI_ASSERT(!cloned->isClosed());
+
+            cloned->add(element.slice());
+
+            cloned->close();
+
+            // Assert that the buffer is actualy copied and we can work with
+            // both Builders
+            TRI_ASSERT(cloned->isClosed());
+            TRI_ASSERT(!parameters.isClosed());
+            VPackSlice tmp = cloned->slice();
+
+            current.reset(TRI_CreateIndexOperator(
+                opType, nullptr, nullptr, cloned, shaper, tmp.length()));
+
+            if (current == nullptr) {
+              return nullptr;
+            }
+          }
+
+          if (lastOperator == nullptr) {
+            lastOperator.swap(current);
+          } else {
+            // merge the current operator with previous operators using logical
+            // AND
+
+            std::unique_ptr<TRI_index_operator_t> newOperator(
+                TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                        lastOperator.get(), current.get(),
+                                        nullptr, shaper, 2));
+
+            if (newOperator == nullptr) {
+              // current and lastOperator are still responsible and will free
+              return nullptr;
+            } else {
+              // newOperator is now responsible for current and lastOperator.
+              // release them
+              current.release();
+              lastOperator.release();
+              lastOperator.swap(newOperator);
+            }
+          }
+        }
+      }
+      ++i;
+    }
+  } catch (...) {
+    // Out of Memory
     return nullptr;
   }
 
-  // iterate over all index fields
-  size_t i = 0;
-  for (auto const& field : fields) {
-    std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString, true);
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
-
-    if (!conditions->HasOwnProperty(key)) {
-      break;
-    }
-    v8::Handle<v8::Value> fieldConditions = conditions->Get(key);
-
-    if (!fieldConditions->IsArray()) {
-      // wrong data type for field conditions
-      break;
-    }
-
-    // iterator over all conditions
-    v8::Handle<v8::Array> values = v8::Handle<v8::Array>::Cast(fieldConditions);
-    for (uint32_t j = 0; j < values->Length(); ++j) {
-      v8::Handle<v8::Value> fieldCondition = values->Get(j);
-
-      if (!fieldCondition->IsArray()) {
-        // wrong data type for single condition
-        goto MEM_ERROR;
-      }
-
-      v8::Handle<v8::Array> condition =
-          v8::Handle<v8::Array>::Cast(fieldCondition);
-
-      if (condition->Length() != 2) {
-        // wrong number of values in single condition
-        goto MEM_ERROR;
-      }
-
-      v8::Handle<v8::Value> op = condition->Get(0);
-      v8::Handle<v8::Value> value = condition->Get(1);
-
-      if (!op->IsString() && !op->IsStringObject()) {
-        // wrong operator type
-        goto MEM_ERROR;
-      }
-
-      TRI_json_t* json = TRI_ObjectToJson(isolate, value);
-
-      if (json == nullptr) {
-        goto MEM_ERROR;
-      }
-
-      std::string&& opValue = TRI_ObjectToString(op);
-      if (opValue == "==") {
-        // equality comparison
-
-        if (lastNonEq > 0) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          goto MEM_ERROR;
-        }
-
-        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
-        // creation of equality operator is deferred until it is finally needed
-        ++numEq;
-        break;
-      } else {
-        if (lastNonEq > 0 && lastNonEq != i) {
-          // if we already had a range condition and a previous field, we cannot
-          // continue
-          // because the skiplist interface does not support such queries
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          goto MEM_ERROR;
-        }
-
-        TRI_index_operator_type_e opType;
-        if (opValue == ">") {
-          opType = TRI_GT_INDEX_OPERATOR;
-        } else if (opValue == ">=") {
-          opType = TRI_GE_INDEX_OPERATOR;
-        } else if (opValue == "<") {
-          opType = TRI_LT_INDEX_OPERATOR;
-        } else if (opValue == "<=") {
-          opType = TRI_LE_INDEX_OPERATOR;
-        } else {
-          // wrong operator type
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          goto MEM_ERROR;
-        }
-
-        lastNonEq = i;
-
-        TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-        if (cloned == nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          goto MEM_ERROR;
-        }
-
-        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, cloned, json);
-
-        if (numEq) {
-          // create equality operator if one is in queue
-          TRI_json_t* clonedParams =
-              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-          if (clonedParams == nullptr) {
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
-            goto MEM_ERROR;
-          }
-
-          lastOperator = TRI_CreateIndexOperator(
-              TRI_EQ_INDEX_OPERATOR, nullptr, nullptr, clonedParams, shaper,
-              TRI_LengthVector(&clonedParams->_value._objects));
-          numEq = 0;
-        }
-
-        TRI_index_operator_t* current;
-
-        // create the operator for the current condition
-        current =
-            TRI_CreateIndexOperator(opType, nullptr, nullptr, cloned, shaper,
-                                    TRI_LengthVector(&cloned->_value._objects));
-
-        if (current == nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
-          goto MEM_ERROR;
-        }
-
-        if (lastOperator == nullptr) {
-          lastOperator = current;
-        } else {
-          // merge the current operator with previous operators using logical
-          // AND
-          TRI_index_operator_t* newOperator =
-              TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lastOperator,
-                                      current, nullptr, shaper, 2);
-
-          if (newOperator == nullptr) {
-            delete current;
-            goto MEM_ERROR;
-          } else {
-            lastOperator = newOperator;
-          }
-        }
-      }
-    }
-
-    ++i;
-  }
-
-  if (numEq) {
+  if (numEq > 0) {
     // create equality operator if one is in queue
     TRI_ASSERT(lastOperator == nullptr);
     TRI_ASSERT(lastNonEq == 0);
 
-    TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+    auto clonedParams = std::make_shared<VPackBuilder>(parameters);
 
     if (clonedParams == nullptr) {
-      goto MEM_ERROR;
+      return nullptr;
     }
+    VPackSlice tmp = clonedParams->slice();
 
-    lastOperator = TRI_CreateIndexOperator(
-        TRI_EQ_INDEX_OPERATOR, nullptr, nullptr, clonedParams, shaper,
-        TRI_LengthVector(&clonedParams->_value._objects));
+    lastOperator.reset(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
+                                               nullptr, clonedParams, shaper,
+                                               tmp.length()));
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-  return lastOperator;
-
-MEM_ERROR:
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-  if (lastOperator != nullptr) {
-    delete lastOperator;
-    lastOperator = nullptr;
-  }
-
-  return nullptr;
+  return lastOperator.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,43 +369,39 @@ static TRI_index_operator_t* SetupExampleSkiplist(
     v8::Isolate* isolate,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     VocShaper* shaper, v8::Handle<v8::Object> example) {
-  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
 
-  if (parameters == nullptr) {
+    for (auto const& field : fields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString, true);
+      v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
+
+      if (!example->HasOwnProperty(key)) {
+        break;
+      }
+
+      v8::Handle<v8::Value> value = example->Get(key);
+
+      int res = TRI_V8ToVPack(isolate, *builder, value, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+    }
+
+  } catch (...) {
     return nullptr;
   }
-
-  for (auto const& field : fields) {
-    std::string fieldString;
-    TRI_AttributeNamesToString(field, fieldString, true);
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(fieldString);
-
-    if (!example->HasOwnProperty(key)) {
-      break;
-    }
-
-    v8::Handle<v8::Value> value = example->Get(key);
-
-    TRI_json_t* json = TRI_ObjectToJson(isolate, value);
-
-    if (json == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-
-      return nullptr;
-    }
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
-  }
-
-  if (TRI_LengthArrayJson(parameters) > 0) {
+  VPackSlice const slice = builder->slice();
+  size_t l = static_cast<size_t>(slice.length());
+  if (l > 0) {
     // example means equality comparisons only
     return TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr, nullptr,
-                                   parameters, shaper,
-                                   TRI_LengthArrayJson(parameters));
+                                   builder, shaper, l);
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   return nullptr;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,8 +700,6 @@ static int StoreGeoResult(v8::Isolate* isolate,
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges for given direction
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,9 +784,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
           TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid,
                                             key.get());
 
-      for (size_t j = 0; j < edges.size(); ++j) {
+      for (auto& edge : edges) {
         v8::Handle<v8::Value> doc =
-            WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+            WRAP_SHAPED_JSON(trx, col->_cid, edge.getDataPtr());
 
         if (doc.IsEmpty()) {
           // error
@@ -845,7 +848,6 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   TRI_V8_RETURN(documents);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all documents from a collection
@@ -1186,8 +1188,7 @@ static void ByExampleHashIndexQuery(
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<arangodb::HashIndex*>(idx)
-      ->lookup(&trx, &searchValue, list);
+  static_cast<arangodb::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
 
   // convert result
   size_t total = list.size();
@@ -1330,18 +1331,18 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_WAL_MARKER_DOCUMENT) {
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(
-        mptr));  // PROTECTED by trx in calling function
-                 // TRI_DocumentIteratorDocumentCollection
+    localCrc = TRI_Crc32HashString(
+        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
+    // TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
   } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
              marker->_type == TRI_WAL_MARKER_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(
-        mptr));  // PROTECTED by trx in calling function
-                 // TRI_DocumentIteratorDocumentCollection
+    localCrc = TRI_Crc32HashString(
+        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
+    // TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
@@ -2062,8 +2063,10 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                           TRI_ObjectToJson(isolate, args[0])));
 
+  std::string const collectionName(col->name());
+
   arangodb::aql::BindParameters::StripCollectionNames(
-      TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
+      TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
@@ -2140,18 +2143,20 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  VPackSlice stats = queryResult.stats.slice();
+  if (queryResult.stats != nullptr) {
+    VPackSlice stats = queryResult.stats->slice();
 
-  if (!stats.isNone()) {
-    TRI_ASSERT(stats.isObject());
-    VPackSlice found = stats.get("writesIgnored");
-    if (found.isNumber()) {
-      ignored = found.getNumericValue<size_t>();
-    }
+    if (!stats.isNone()) {
+      TRI_ASSERT(stats.isObject());
+      VPackSlice found = stats.get("writesIgnored");
+      if (found.isNumber()) {
+        ignored = found.getNumericValue<size_t>();
+      }
 
-    found = stats.get("writesExecuted");
-    if (found.isNumber()) {
-      removed = found.getNumericValue<size_t>();
+      found = stats.get("writesExecuted");
+      if (found.isNumber()) {
+        removed = found.getNumericValue<size_t>();
+      }
     }
   }
 
@@ -2164,8 +2169,6 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the query functions
@@ -2225,5 +2228,3 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys,
                        true);
 }
-
-

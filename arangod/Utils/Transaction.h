@@ -60,7 +60,6 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -114,7 +113,6 @@ class Transaction {
     delete _transactionContext;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return database of transaction
@@ -432,6 +430,8 @@ class Transaction {
   int create(TRI_transaction_collection_t* trxCollection,
              TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
              void const* data, bool forceSync) {
+    TRI_ASSERT(json != nullptr);
+
     TRI_voc_key_t key = nullptr;
     int res = DocumentHelper::getKey(json, &key);
 
@@ -463,6 +463,11 @@ class Transaction {
              void const* data, bool forceSync) {
     std::unique_ptr<TRI_json_t> json(
         arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
+
+    if (json == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
     return create(trxCollection, mptr, json.get(), data, forceSync);
   }
 
@@ -546,15 +551,13 @@ class Transaction {
     return isLocked(trxCollection, type);
   }
 
-  
- protected:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupState () { return _setupState; }
+  int setupState() { return _setupState; }
 
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
@@ -599,6 +602,21 @@ class Transaction {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection by id, with the name supplied
+  //////////////////////////////////////////////////////////////////////////////
+
+  int addCollection(TRI_voc_cid_t cid, std::string const& name,
+                    TRI_transaction_type_e type) {
+    int res = this->addCollection(cid, type);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      _errorData = name;
+    }
+
+    return res;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id
   //////////////////////////////////////////////////////////////////////////////
 
@@ -610,6 +628,10 @@ class Transaction {
     if (cid == 0) {
       // invalid cid
       return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    if (_setupState != TRI_ERROR_NO_ERROR) {
+      return _setupState;
     }
 
     const TRI_transaction_status_e status = getStatus();
@@ -636,6 +658,10 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int addCollection(std::string const& name, TRI_transaction_type_e type) {
+    if (_setupState != TRI_ERROR_NO_ERROR) {
+      return _setupState;
+    }
+
     if (!_isReal) {
       return addCollection(this->resolver()->getCollectionIdCluster(name),
                            name.c_str(), type);
@@ -874,7 +900,6 @@ class Transaction {
     return res;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
@@ -1007,7 +1032,6 @@ class Transaction {
     return TRI_ERROR_NO_ERROR;
   }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief external transaction id. used in replication only
@@ -1063,7 +1087,6 @@ class Transaction {
 
   bool _isReal;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the C transaction struct
@@ -1093,5 +1116,3 @@ class Transaction {
 }
 
 #endif
-
-

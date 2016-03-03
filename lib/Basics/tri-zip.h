@@ -31,7 +31,6 @@
 #include "Basics/Common.h"
 #include "Basics/vector.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,5 +46,3 @@ int TRI_UnzipFile(char const*, char const*, bool const, bool const, char const*,
                   std::string& errorMessage);
 
 #endif
-
-

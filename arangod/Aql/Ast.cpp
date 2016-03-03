@@ -34,7 +34,6 @@
 
 using namespace arangodb::aql;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a singleton no-op node instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +108,6 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
      NODE_TYPE_OPERATOR_BINARY_GE}};
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +134,6 @@ Ast::Ast(Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Ast::~Ast() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
@@ -498,8 +495,9 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 /// @brief create an AST collect node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
-                                AstNode const* into, AstNode const* intoExpression,
+AstNode* Ast::createNodeCollect(AstNode const* groups,
+                                AstNode const* aggregates, AstNode const* into,
+                                AstNode const* intoExpression,
                                 AstNode const* keepVariables,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
@@ -510,11 +508,11 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   }
 
   node->addMember(options);
-  node->addMember(groups); // may be an empty array
-  
+  node->addMember(groups);  // may be an empty array
+
   // wrap aggregates again
   auto agg = createNode(NODE_TYPE_AGGREGATIONS);
-  agg->addMember(aggregates); // may be an empty array
+  agg->addMember(aggregates);  // may be an empty array
   node->addMember(agg);
 
   node->addMember(into != nullptr ? into : &NopNode);
@@ -739,6 +737,17 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST quantifier node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeQuantifier(int64_t type) {
+  AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
+  node->setIntValue(type);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -762,6 +771,22 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
 
   // initialize sortedness information (currently used for the IN operator only)
   node->setBoolValue(false);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST binary array operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs,
+                                            AstNode const* rhs, AstNode const* quantifier) {
+  // re-use existing function
+  AstNode* node = createNodeBinaryOperator(type, lhs, rhs);
+  node->addMember(quantifier);
+  
+  TRI_ASSERT(node->isArrayComparisonOperator());
+  TRI_ASSERT(node->numMembers() == 3);
 
   return node;
 }
@@ -1105,6 +1130,31 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 
   return node;
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST with collections node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
+  AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
+
+  TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
+
+  for (size_t i = 0; i < collections->numMembers(); ++i) {
+    auto c = collections->getMember(i);
+
+    if (c->isStringValue()) {
+      _query->collections()->add(c->getStringValue(), TRI_TRANSACTION_READ);
+    }// else bindParameter use default for collection bindVar
+    // We do not need to propagate these members
+    node->addMember(c);
+  }
+  
+  AstNode* with = createNode(NODE_TYPE_WITH);
+  with->addMember(node);
+
+  return with;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collection list node
@@ -1116,10 +1166,17 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
+    // TODO Direction Parsing!
     auto eC = edgeCollections->getMember(i);
     if (eC->isStringValue()) {
       _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
-    }  // else bindParameter use default for collection bindVar
+    } else if (eC->type == NODE_TYPE_DIRECTION) {
+      TRI_ASSERT(eC->numMembers() == 2);
+      auto eCSub = eC->getMember(1);
+      if (eCSub->isStringValue()) {
+        _query->collections()->add(eCSub->getStringValue(), TRI_TRANSACTION_READ);
+      }
+    }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
     node->addMember(eC);
   }
@@ -1148,6 +1205,17 @@ AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
 
   node->addMember(dir);
   node->addMember(steps);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
+
+AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* collection) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+
+  node->addMember(dir);
+  node->addMember(collection);
 
   TRI_ASSERT(node->numMembers() == 2);
   return node;
@@ -1659,6 +1727,11 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return this->optimizeTernaryOperator(node);
     }
+    
+    // attribute access
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      return this->optimizeAttributeAccess(node);
+    }
 
     // passthru node
     if (node->type == NODE_TYPE_PASSTHRU) {
@@ -1872,8 +1945,12 @@ AstNode* Ast::clone(AstNode const* node) {
     copy->setData(node->getData());
   } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
     copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_QUANTIFIER) {
+    copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-             type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+             type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // copy sortedness information
     copy->setBoolValue(node->getBoolValue());
   } else if (type == NODE_TYPE_ARRAY) {
@@ -2009,7 +2086,6 @@ AstNodeType Ast::NaryOperatorType(AstNodeType old) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "invalid node type for n-ary operator");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make condition from example
@@ -2625,6 +2701,42 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes an attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeAttributeAccess(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* what = node->getMember(0);
+
+  if (!what->isConstant()) {
+    return node;
+  }
+
+  if (what->type == NODE_TYPE_OBJECT) {
+    // accessing an attribute from an object
+    char const* name = node->getStringValue();
+    size_t const length = node->getStringLength();
+
+    size_t const n = what->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* member = what->getMember(0);
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+          member->getStringLength() == length &&
+          memcmp(name, member->getStringValue(), length) == 0) {
+        // found matching member
+        return member->getMember(0); 
+      }
+    }
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes a call to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2919,7 +3031,7 @@ AstNode* Ast::traverseAndModify(
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
       if (result != node) {
-        TRI_ASSERT_EXPENSIVE(node != nullptr);
+        TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
     }
@@ -3054,5 +3166,3 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   return node;
 }
-
-

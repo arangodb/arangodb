@@ -29,7 +29,6 @@
 
 namespace arangodb {
 namespace wal {
-class Slots;
 
 struct SyncRegion {
   SyncRegion()
@@ -61,5 +60,3 @@ struct SyncRegion {
 }
 
 #endif
-
-

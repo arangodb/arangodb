@@ -151,16 +151,26 @@ function parseBodyForCreateCollection (req, res) {
     r.parameters.waitForSync = body.waitForSync;
   }
 
-  if (body.hasOwnProperty("shardKeys") && cluster.isCoordinator()) {
-    r.parameters.shardKeys = body.shardKeys || { };
-  }
+  if (cluster.isCoordinator()) {
+    if (body.hasOwnProperty("shardKeys")) {
+      r.parameters.shardKeys = body.shardKeys || { };
+    }
 
-  if (body.hasOwnProperty("numberOfShards") && cluster.isCoordinator()) {
-    r.parameters.numberOfShards = body.numberOfShards || 0;
-  }
+    if (body.hasOwnProperty("numberOfShards")) {
+      r.parameters.numberOfShards = body.numberOfShards || 0;
+    }
 
-  if (body.hasOwnProperty("distributeShardsLike") && cluster.isCoordinator()) {
-    r.parameters.distributeShardsLike = body.distributeShardsLike || "";
+    if (body.hasOwnProperty("distributeShardsLike")) {
+      r.parameters.distributeShardsLike = body.distributeShardsLike || "";
+    }
+
+    if (body.hasOwnProperty("replicationFactor")) {
+      r.parameters.replicationFactor = body.replicationFactor || "";
+    }
+
+    if (body.hasOwnProperty("replicationQuorum")) {
+      r.parameters.replicationQuorum = body.replicationQuorum || "";
+    }
   }
 
   return r;

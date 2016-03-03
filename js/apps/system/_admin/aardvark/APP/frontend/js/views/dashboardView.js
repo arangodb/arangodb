@@ -219,7 +219,7 @@
         }
         else {
           $("#" + a).html('<br/><span class="dashboard-figurePer" style="color: '
-            + "#000" +';">' + "data not ready yet" + '</span>');
+            + "#000" +';">' + '<p class="dataNotReadyYet">data not ready yet</p>' + '</span>');
         }
       });
     },
@@ -616,7 +616,7 @@
       if ($('.dataNotReadyYet').length === 0) {
         $('#dataTransferDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
         $('#totalTimeDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
-        $('.dashboard-bar-chart-title').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('.dashboard-bar-chart-title').append('<p class="dataNotReadyYet"> data not ready yet </p>');
       }
     },
 
@@ -873,23 +873,28 @@
       this.startUpdating();
     }.bind(this);
 
+    var callback2 = function(error, authorized) {
+      if (!error) {
+        if (!authorized) {
+          $('.contentDiv').remove();
+          $('.headerBar').remove();
+          $('.dashboard-headerbar').remove();
+          $('.dashboard-row').remove();
+          $('#content').append(
+            '<div style="color: red">You do not have permission to view this page.</div>'
+          );
+          $('#content').append(
+            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+          );
+        }
+        else {
+          this.getStatistics(callback);
+        }
+      }
+    }.bind(this);
+
     //check if user has _system permission
-    var authorized = this.options.database.hasSystemAccess();
-    if (!authorized) {
-      $('.contentDiv').remove();
-      $('.headerBar').remove();
-      $('.dashboard-headerbar').remove();
-      $('.dashboard-row').remove();
-      $('#content').append(
-        '<div style="color: red">You do not have permission to view this page.</div>'
-      );
-      $('#content').append(
-        '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-      );
-    }
-    else {
-      this.getStatistics(callback);
-    }
+    this.options.database.hasSystemAccess(callback2);
   }
 });
 }());

@@ -24,17 +24,13 @@
 
 #include "V8ClientConnection.h"
 
-#include <sstream>
-
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-json.h"
 #include "V8/v8-globals.h"
 
@@ -43,8 +39,6 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 using namespace arangodb::v8client;
 using namespace std;
-
-
 
 V8ClientConnection::V8ClientConnection(
     Endpoint* endpoint, std::string databaseName, std::string const& username,
@@ -66,7 +60,7 @@ V8ClientConnection::V8ClientConnection(
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
   if (_client == nullptr) {
-    LOG_FATAL_AND_EXIT("out of memory");
+    LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
   }
 
   _client->setLocationRewriter(this, &rewriteLocation);
@@ -126,20 +120,18 @@ V8ClientConnection::V8ClientConnection(
   }
 }
 
-
 V8ClientConnection::~V8ClientConnection() {
   delete _httpResult;
   delete _client;
   delete _connection;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string V8ClientConnection::rewriteLocation(void* data,
-                                           std::string const& location) {
+                                                std::string const& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   TRI_ASSERT(c != nullptr);
@@ -341,7 +333,6 @@ v8::Handle<v8::Value> V8ClientConnection::patchData(
   return requestData(isolate, GeneralRequest::HTTP_REQUEST_PATCH, location, body,
                      headerFields);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request
@@ -598,5 +589,3 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   // and returns
   return scope.Escape<v8::Value>(result);
 }
-
-

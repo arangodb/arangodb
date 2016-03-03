@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Antarctica/Casey) {
-    {-9223372036854775808 0 0 zzz}
-    {-31536000 28800 0 WST}
-}

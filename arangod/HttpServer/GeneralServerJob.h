@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/WorkMonitor.h"
 
-
 namespace arangodb {
 namespace rest {
 class GeneralHandler;
@@ -44,7 +43,6 @@ class GeneralServerJob : public Job {
   GeneralServerJob(GeneralServerJob const&) = delete;
   GeneralServerJob& operator=(GeneralServerJob const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new server job
@@ -59,7 +57,6 @@ class GeneralServerJob : public Job {
 
   ~GeneralServerJob();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the underlying handler
@@ -67,24 +64,17 @@ class GeneralServerJob : public Job {
 
   GeneralHandler* handler() const { return _handler.get(); }
 
-  
  public:
-
   size_t queue() const override;
-
 
   void work() override;
 
-
   bool cancel() override;
-
 
   void cleanup(DispatcherQueue*) override;
 
-
   void handleError(basics::Exception const&) override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief general server
@@ -114,5 +104,3 @@ class GeneralServerJob : public Job {
 }
 
 #endif
-
-

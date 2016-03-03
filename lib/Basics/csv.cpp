@@ -23,7 +23,6 @@
 
 #include "csv.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inits a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +83,6 @@ void TRI_DestroyCsvParser(TRI_csv_parser_t* parser) {
     TRI_Free(parser->_memoryZone, parser->_begin);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the separator
@@ -413,5 +411,3 @@ int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line,
 
   return TRI_ERROR_CORRUPTED_CSV;
 }
-
-

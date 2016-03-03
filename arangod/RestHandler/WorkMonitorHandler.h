@@ -31,15 +31,13 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class WorkMonitorHandler : public arangodb::admin::RestBaseHandler {
+class WorkMonitorHandler : public arangodb::RestBaseHandler {
  public:
 
   explicit WorkMonitorHandler(arangodb::rest::GeneralRequest*);
 
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 };

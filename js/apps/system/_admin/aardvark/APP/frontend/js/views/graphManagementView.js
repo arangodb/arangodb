@@ -46,34 +46,53 @@
       window.location = window.location + '/' + encodeURIComponent(name);
     },
 
-    loadGraphViewer: function(graphName) {
-      var edgeDefs = this.collection.get(graphName).get("edgeDefinitions");
-      if (!edgeDefs || edgeDefs.length === 0) {
-        // User Info
-        return;
-      }
-      var adapterConfig = {
-        type: "gharial",
-        graphName: graphName,
-        baseUrl: require("internal").arango.databasePrefix("/")
-      };
-      var width = $("#content").width() - 75;
-      $("#content").html("");
+    loadGraphViewer: function(graphName, refetch) {
 
-      var height = arangoHelper.calculateCenterDivHeight();
-
-      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
-        nodeShaper: {
-          label: "_key",
-          color: {
-            type: "attribute",
-            key: "_key"
-          }
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("","");
         }
+        else {
+          var edgeDefs = this.collection.get(graphName).get("edgeDefinitions");
+          if (!edgeDefs || edgeDefs.length === 0) {
+            // User Info
+            return;
+          }
+          var adapterConfig = {
+            type: "gharial",
+            graphName: graphName,
+            baseUrl: require("internal").arango.databasePrefix("/")
+          };
+          var width = $("#content").width() - 75;
+          $("#content").html("");
 
-      }, true);
+          var height = arangoHelper.calculateCenterDivHeight();
 
-      $('.contentDiv').height(height);
+          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
+            nodeShaper: {
+              label: "_key",
+              color: {
+                type: "attribute",
+                key: "_key"
+              }
+            }
+
+          }, true);
+
+          $('.contentDiv').height(height);
+        }
+      }.bind(this);
+
+      if (refetch) {
+        this.collection.fetch({
+          success: function() {
+            callback();
+          }
+        });
+      }
+      else {
+        callback();
+      }
 
     },
 
@@ -105,8 +124,9 @@
           }
           else {
             window.modalView.hide();
+            arangoHelper.arangoError("Graph", "Could not delete Graph.");
           }
-        };
+        }.bind(this);
 
         this.collection.dropAndDeleteGraph(name, callback);
       }
@@ -186,32 +206,47 @@
       });
     },
 
-    render: function() {
+    render: function(name, refetch) {
+
+      var self = this;
       this.collection.fetch({
-        async: false
+
+        success: function() {
+          self.collection.sort();
+
+          $(self.el).html(self.template.render({
+            graphs: self.collection,
+            searchString : ''
+          }));
+
+          if (self.dropdownVisible === true) {
+            $('#graphManagementDropdown2').show();
+            $('#graphSortDesc').attr('checked', self.collection.sortOptions.desc);
+            $('#graphManagementToggle').toggleClass('activated');
+            $('#graphManagementDropdown').show();
+          }
+
+          self.events["click .tableRow"] = self.showHideDefinition.bind(self);
+          self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
+          self.events["click .graphViewer-icon-button"] = self.addRemoveDefinition.bind(self);
+          self.events["click #graphTab a"] = self.toggleTab.bind(self);
+          self.events["click .createExampleGraphs"] = self.createExampleGraphs.bind(self);
+          self.events["focusout .select2-search-field input"] = function(e){
+            if ($('.select2-drop').is(':visible')) {
+              if (!$('#select2-search-field input').is(':focus')) {
+                window.setTimeout(function() { 
+                  $(e.currentTarget).parent().parent().parent().select2('close');
+                }, 80);
+              }
+            } 
+          }.bind(self);
+          arangoHelper.setCheckboxStatus("#graphManagementDropdown");
+        }
       });
 
-      this.collection.sort();
-
-      $(this.el).html(this.template.render({
-        graphs: this.collection,
-        searchString : ''
-      }));
-
-      if (this.dropdownVisible === true) {
-        $('#graphManagementDropdown2').show();
-        $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
-        $('#graphManagementToggle').toggleClass('activated');
-        $('#graphManagementDropdown').show();
+      if (name) {
+        this.loadGraphViewer(name, refetch);
       }
-
-      this.events["click .tableRow"] = this.showHideDefinition.bind(this);
-      this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
-      this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
-      this.events["click #graphTab a"] = this.toggleTab.bind(this);
-      this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
-      arangoHelper.setCheckboxStatus("#graphManagementDropdown");
-
       return this;
     },
 
@@ -306,9 +341,21 @@
           }
         }
       );
+
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0')
+        .parent()
+        .parent()
+        .next().find('.select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').
+          parent()
+          .parent()
+          .next()
+          .next()
+          .find('.select2-choices')
+          .css("border-color", "red");
         return;
       }
 
@@ -471,6 +518,22 @@
           }
         }
       );
+
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        $('#s2id_newEdgeDefinitions0').parent()
+        .parent()
+        .next()
+        .next()
+        .find('.select2-choices')
+        .css("border-color", "red");
+        return;
+      }
 
       this.collection.create({
         name: name,

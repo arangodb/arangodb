@@ -6,6 +6,7 @@ $c-lightgreen-2-bg: #f5f8f0;
 $c-lightgreen-transp-bg: #f5f8f0;
 $c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
+$c-pong-green: rgb(140, 219, 139);
 
 $c-positive: #8aa051;
 $c-positive-hover: #788f3d;
@@ -89,6 +90,7 @@ $c-notification-red: $c-negative;
 $c-invalid-red: rgba(234, 23, 23, .6);
 
 $c-info-blue: #5bc0de;
+$c-blue: #00f;
 
 $c-cluster-button-green: #617e2b;
 $c-cluster-button-green-hover: #8ba142;
@@ -147,6 +149,11 @@ $c-sh-string: #ce2f30;
 $c-sh-object: #00f;
 $c-sh-array: #00f;
 
+$c-spotlight-bg: rgb(61, 66, 70);
+$c-spotlight-header-bg: rgb(50, 55, 59);
+$c-spotlight-transp-bg: rgba(0, 0, 0, .25);
+
+$c-progress-bar: #5bc0de;
 $c-progress-shadow: #353c39;
 $c-progress-shadow-2: #8cdb8b;
 $c-progress-bg: #363c39;

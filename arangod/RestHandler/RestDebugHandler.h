@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Michaefl Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_REST_HANDLER_REST_DEBUG_HANDLER_H
@@ -38,9 +38,7 @@ class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
   explicit RestDebugHandler(arangodb::rest::GeneralRequest*);
 
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 };

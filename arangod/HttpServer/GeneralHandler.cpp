@@ -24,7 +24,7 @@
 #include "GeneralHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/GeneralServerJob.h"
 #include "Rest/GeneralRequest.h"
@@ -32,13 +32,10 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 namespace {
 std::atomic_uint_fast64_t NEXT_HANDLER_ID(
     static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler
@@ -59,7 +56,6 @@ GeneralHandler::~GeneralHandler() {
   delete _request;
   delete _response;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -171,15 +167,15 @@ GeneralHandler::status_t GeneralHandler::executeFull() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(ERR) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(ERR) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(ERR) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
@@ -291,7 +287,6 @@ GeneralResponse* GeneralHandler::stealResponse() {
   _response = nullptr;
   return tmp;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new HTTP response

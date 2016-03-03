@@ -37,42 +37,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a numeric value from an hierarchical JSON
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static T ExtractFigure(TRI_json_t const* json, char const* name) {
-  TRI_json_t const* value = TRI_LookupObjectJson(json, name);
-
-  if (!TRI_IsNumberJson(value)) {
-    return static_cast<T>(0);
-  }
-
-  return static_cast<T>(value->_value._number);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a numeric value from an hierarchical JSON
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-static T ExtractFigure(TRI_json_t const* json, char const* group,
-                       char const* name) {
-  TRI_json_t const* g = TRI_LookupObjectJson(json, group);
-
-  if (!TRI_IsObjectJson(g)) {
-    return static_cast<T>(0);
-  }
-
-  return ExtractFigure<T>(g, name);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
@@ -81,6 +49,7 @@ static T ExtractFigure(TRI_json_t const* json, char const* group,
 template <typename T>
 static T ExtractFigure(VPackSlice const& slice, char const* group,
                        char const* name) {
+  TRI_ASSERT(slice.isObject());
   VPackSlice g = slice.get(group);
 
   if (!g.isObject()) {
@@ -89,7 +58,12 @@ static T ExtractFigure(VPackSlice const& slice, char const* group,
   return arangodb::basics::VelocyPackHelper::getNumericValue<T>(g, name, 0);
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts answer from response into a VPackBuilder.
+///        If there was an error extracting the answer the builder will be
+///        empty.
+///        No Error can be thrown.
+////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<VPackBuilder> ExtractAnswer(
     ClusterCommResult const& res) {
@@ -199,6 +173,22 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   }
 
   return false;
+}
+
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      VPackSlice const& oldSlice, VPackSlice const& newSlice,
+                      bool isPatch) {
+  std::unique_ptr<TRI_json_t> tmpOld(
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(oldSlice));
+  if (tmpOld == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  std::unique_ptr<TRI_json_t> tmpNew(
+      arangodb::basics::VelocyPackHelper::velocyPackToJson(newSlice));
+  if (tmpNew == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return shardKeysChanged(dbname, collname, tmpOld.get(), tmpNew.get(), isPatch);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,7 +500,9 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 
         if (answer.isObject()) {
           // add to the total
-          result += arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(answer, "count", 0);
+          result +=
+              arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                  answer, "count", 0);
           nrok++;
         }
       }
@@ -532,8 +524,14 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     VPackSlice const& slice, std::map<std::string, std::string> const& headers,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return createDocumentOnCoordinator(dbname, collname, waitForSync, json,
@@ -645,11 +643,18 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -823,12 +828,18 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int getDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1110,8 +1121,14 @@ int getFilteredDocumentsOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int getAllDocumentsOnCoordinator(
+<<<<<<< HEAD
     std::string const& dbname, std::string const& collname, std::string const& returnType,
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
+=======
+    std::string const& dbname, std::string const& collname,
+    std::string const& returnType,
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+>>>>>>> upstream/devel
     std::string& contentType, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1336,15 +1353,21 @@ int getFilteredEdgesOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(
@@ -1357,15 +1380,21 @@ int modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch,
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1522,8 +1551,14 @@ int modifyDocumentOnCoordinator(
 int createEdgeOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
+<<<<<<< HEAD
     arangodb::rest::GeneralResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
+=======
+    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders,
+    std::string& resultBody) {
+>>>>>>> upstream/devel
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1617,8 +1652,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
-               (waitForSync ? "true" : "false") + "&waitForCollector=" +
-               (waitForCollector ? "true" : "false");
+                    (waitForSync ? "true" : "false") + "&waitForCollector=" +
+                    (waitForCollector ? "true" : "false");
   auto body = std::make_shared<std::string const>();
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     std::unique_ptr<std::map<std::string, std::string>> headers(
@@ -1649,5 +1684,3 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 }
 
 }  // namespace arangodb
-
-

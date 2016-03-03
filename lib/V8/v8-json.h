@@ -27,5 +27,3 @@
 
 v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
                                          char** error);
-
-

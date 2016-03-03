@@ -17,7 +17,36 @@
     height: 29px;
     margin-top: 1px;
   }
+
+  .footer-center {
+    p {
+      display: none;
+    }
+  }
+
+  #queryContent {
+    .styled-select,
+    #querySize,
+    #querySizeDiv {
+      width: 90px !important;
+    }
+  }
 }
+
+@media (max-width: 970px) {
+  #documentsDiv {
+    #totalDocuments {
+      display: none;
+    }
+  }
+
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute;
+  }
+}
+
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {

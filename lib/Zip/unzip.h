@@ -396,4 +396,3 @@ extern int ZEXPORT unzSetOffset(unzFile file, uLong pos);
 #endif
 
 #endif /* _unz64_H */
-

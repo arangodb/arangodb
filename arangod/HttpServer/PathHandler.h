@@ -78,12 +78,9 @@ class PathHandler : public GeneralHandler {
   PathHandler(GeneralRequest* request, Options const* options);
 
  public:
-
   bool isDirect() const override { return true; }
 
-
   status_t execute() override;
-
 
   void handleError(const basics::Exception&) override;
 
@@ -99,5 +96,3 @@ class PathHandler : public GeneralHandler {
 }
 
 #endif
-
-

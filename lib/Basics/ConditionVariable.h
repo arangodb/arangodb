@@ -26,12 +26,10 @@
 #define LIB_BASICS_CONDITION_VARIABLE_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/locks.h"
 
 namespace arangodb {
 namespace basics {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
@@ -67,7 +65,6 @@ class ConditionVariable {
   ConditionVariable(ConditionVariable const&) = delete;
   ConditionVariable& operator=(ConditionVariable const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a condition variable
@@ -81,7 +78,6 @@ class ConditionVariable {
 
   ~ConditionVariable();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief locks the condition variable
@@ -119,7 +115,6 @@ class ConditionVariable {
 
   void signal();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
@@ -131,4 +126,3 @@ class ConditionVariable {
 }
 
 #endif
-

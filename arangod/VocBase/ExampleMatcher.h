@@ -28,12 +28,14 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
-
 struct TRI_doc_mptr_t;
 class VocShaper;
 
-
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
 
 class ExampleMatcher {
   struct DocumentId {
@@ -58,10 +60,13 @@ class ExampleMatcher {
   VocShaper* _shaper;
   std::vector<ExampleDefinition> definitions;
 
-  void fillExampleDefinition(
-      TRI_json_t const* example,
-      arangodb::CollectionNameResolver const* resolver,
-      ExampleDefinition& def);
+  void fillExampleDefinition(TRI_json_t const* example,
+                             arangodb::CollectionNameResolver const* resolver,
+                             ExampleDefinition& def);
+
+  void fillExampleDefinition(arangodb::velocypack::Slice const& example,
+                             arangodb::CollectionNameResolver const* resolver,
+                             ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
                              v8::Handle<v8::Object> const& example,
@@ -78,6 +83,10 @@ class ExampleMatcher {
   ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
                  arangodb::CollectionNameResolver const* resolver);
 
+  ExampleMatcher(arangodb::velocypack::Slice const& example, VocShaper* shaper,
+                 arangodb::CollectionNameResolver const* resolver,
+                 bool allowStrings);
+
   ~ExampleMatcher() { cleanup(); }
 
   bool matches(TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const;
@@ -88,7 +97,6 @@ class ExampleMatcher {
 }
 
 #endif
-
 
 // Local Variables:
 // mode: outline-minor

@@ -23,7 +23,7 @@
 
 #include "RandomGenerator.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -32,7 +32,7 @@
 #include <random>
 #include <chrono>
 
-using namespace std;
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ namespace {
 /// @brief random version
 ////////////////////////////////////////////////////////////////////////////////
 
-Random::random_e version = Random::RAND_MERSENNE;
+Random::random_e random_version = Random::RAND_MERSENNE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random lock
@@ -67,15 +67,12 @@ class RandomDevice {
   static unsigned long getSeed() {
     unsigned long seed = (unsigned long)time(0);
 
-#ifdef TRI_HAVE_GETTIMEOFDAY
     struct timeval tv;
     int result = gettimeofday(&tv, 0);
 
     seed ^= static_cast<unsigned long>(tv.tv_sec);
     seed ^= static_cast<unsigned long>(tv.tv_usec);
     seed ^= static_cast<unsigned long>(result);
-#endif
-
     seed ^= static_cast<unsigned long>(Thread::currentProcessId());
 
     return seed;
@@ -120,9 +117,9 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: %s", strerror(errno));
+        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -196,13 +193,12 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
       } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        LOG_INFO("not enough entropy (got %d), switching to pseudo-random",
-                 (int)(sizeof(buffer) - n));
+        LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n) << "), switching to pseudo-random";
         break;
       } else if (r < 0) {
-        LOG_FATAL_AND_EXIT("read on random device failed: %s", strerror(errno));
+        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -210,7 +206,7 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TRACE("using seed %lu", (long unsigned int)rseed);
+      LOG(TRACE) << "using seed " << (long unsigned int)rseed;
     }
 
     if (0 < n) {
@@ -277,7 +273,7 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
+      LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
     }
     pos = 0;
   }
@@ -404,12 +400,12 @@ class UniformGenerator {
 
     while (r >= g) {
       if (++count >= MAX_COUNT) {
-        LOG_ERROR("cannot generate small random number after %d tries", count);
+        LOG(ERR) << "cannot generate small random number after " << count << " tries";
         r %= g;
         continue;
       }
 
-      LOG_DEBUG("random number too large, trying again");
+      LOG(DEBUG) << "random number too large, trying again";
       r = device->random();
     }
 
@@ -451,7 +447,7 @@ struct UniformIntegerMersenne : public UniformIntegerImpl {
     TRI_ASSERT(range > 0);
 
     uint32_t result = engine();
-    result = (int32_t)(abs((int64_t)result % range) + (int64_t)left);
+    result = (int32_t)(std::abs((int64_t)result % range) + (int64_t)left);
 
     return result;
   }
@@ -489,7 +485,7 @@ std::unique_ptr<UniformIntegerImpl> uniformInteger(new UniformIntegerMersenne);
 // -----------------------------------------------------------------------------
 
 int32_t UniformInteger::random() {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -539,12 +535,12 @@ std::string UniformCharacter::random(size_t length) {
 // -----------------------------------------------------------------------------
 
 random_e selectVersion(random_e newVersion) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
-  random_e oldVersion = version;
-  version = newVersion;
+  random_e oldVersion = random_version;
+  random_version = newVersion;
 
-  switch (version) {
+  switch (random_version) {
     case RAND_MERSENNE: {
       uniformInteger.reset(new UniformIntegerMersenne);
       break;
@@ -605,14 +601,14 @@ random_e selectVersion(random_e newVersion) {
   return oldVersion;
 }
 
-random_e currentVersion() { return version; }
+random_e currentVersion() { return random_version; }
 
 void shutdown() {}
 
-bool isBlocking() { return version == RAND_RANDOM; }
+bool isBlocking() { return random_version == RAND_RANDOM; }
 
 int32_t interval(int32_t left, int32_t right) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -623,7 +619,7 @@ int32_t interval(int32_t left, int32_t right) {
 }
 
 uint32_t interval(uint32_t left, uint32_t right) {
-  MUTEX_LOCKER(RandomLock);
+  MUTEX_LOCKER(mutexLocker, RandomLock);
 
   if (uniformInteger == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -638,5 +634,3 @@ uint32_t interval(uint32_t left, uint32_t right) {
 }
 }
 }
-
-

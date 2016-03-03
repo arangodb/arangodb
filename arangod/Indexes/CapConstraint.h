@@ -32,7 +32,6 @@
 namespace arangodb {
 
 class CapConstraint final : public Index {
-  
  public:
   CapConstraint() = delete;
 
@@ -41,7 +40,6 @@ class CapConstraint final : public Index {
 
   ~CapConstraint();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of documents in the collection
@@ -67,8 +65,8 @@ class CapConstraint final : public Index {
 
   size_t memory() const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  // Uses default toVelocyPackFigures
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
@@ -76,8 +74,7 @@ class CapConstraint final : public Index {
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
-  int postInsert(arangodb::Transaction*,
-                 struct TRI_transaction_collection_s*,
+  int postInsert(arangodb::Transaction*, struct TRI_transaction_collection_s*,
                  struct TRI_doc_mptr_t const*) override final;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -86,7 +83,6 @@ class CapConstraint final : public Index {
 
   int initialize(arangodb::Transaction*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply the cap constraint for the collection
@@ -95,7 +91,6 @@ class CapConstraint final : public Index {
   int apply(arangodb::Transaction*, TRI_document_collection_t*,
             struct TRI_transaction_collection_s*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of documents in the collection
@@ -109,7 +104,6 @@ class CapConstraint final : public Index {
 
   int64_t const _size;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum size
@@ -120,5 +114,3 @@ class CapConstraint final : public Index {
 }
 
 #endif
-
-

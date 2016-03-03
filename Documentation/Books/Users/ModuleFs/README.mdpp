@@ -227,20 +227,23 @@ the file contents will be returned as a string. Supported encodings are:
 If no `encoding` is specified, the file contents will be returned in a Buffer
 object.
 
-
-!SUBSUBSECTION save
-
-
-writes to a file
+!SUBSUBSECTION write
 `fs.write(filename, content)`
 
-Writes the content into a file. Content can be a string or a Buffer object.
-
+Writes the content into a file. Content can be a string or a Buffer
+object.  If the file already exists, it is truncated.
 
 !SUBSUBSECTION writeFileSync
 `fs.writeFileSync(filename, content)`
 
 This is an alias for `fs.write(filename, content)`.
+
+!SUBSUBSECTION append
+`fs.append(filename, content)`
+
+Writes the content into a file. Content can be a string or a Buffer
+object.  If the file already exists, the content is appended at the
+end.
 
 !SECTION Recursive Manipulation
 

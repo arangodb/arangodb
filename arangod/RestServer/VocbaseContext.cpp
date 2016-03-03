@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -35,12 +35,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static arangodb::basics::Mutex SidLock;
+static arangodb::Mutex SidLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid cache
@@ -57,14 +56,12 @@ typedef std::unordered_map<std::string, std::pair<std::string, double>>
 
 static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time-to-live for aardvark server sessions
 ////////////////////////////////////////////////////////////////////////////////
 
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 2;  // 2 hours session timeout
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a sid
@@ -73,7 +70,7 @@ double VocbaseContext::ServerSessionTtl =
 void VocbaseContext::createSid(std::string const& database,
                                std::string const& sid,
                                std::string const& username) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   // find entries for database first
   auto it = SidCache.find(database);
@@ -92,7 +89,7 @@ void VocbaseContext::createSid(std::string const& database,
 ////////////////////////////////////////////////////////////////////////////////
 
 void VocbaseContext::clearSid(std::string const& database) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   SidCache.erase(database);
 }
@@ -103,7 +100,7 @@ void VocbaseContext::clearSid(std::string const& database) {
 
 void VocbaseContext::clearSid(std::string const& database,
                               std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -121,7 +118,7 @@ void VocbaseContext::clearSid(std::string const& database,
 
 double VocbaseContext::accessSid(std::string const& database,
                                  std::string const& sid) {
-  MUTEX_LOCKER(SidLock);
+  MUTEX_LOCKER(mutexLocker, SidLock);
 
   auto it = SidCache.find(database);
 
@@ -140,9 +137,6 @@ double VocbaseContext::accessSid(std::string const& database,
   return (*it2).second.second;
 }
 
-
-
-
 VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_server_t* server,
                                TRI_vocbase_t* vocbase)
     : RequestContext(request), _server(server), _vocbase(vocbase) {
@@ -150,9 +144,7 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_server_t* server,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-
 VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -249,7 +241,7 @@ GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
   char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
-    MUTEX_LOCKER(SidLock);
+    MUTEX_LOCKER(mutexLocker, SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
 
@@ -302,9 +294,7 @@ GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
 
       return GeneralResponse::BAD;
     }
@@ -332,15 +322,13 @@ GeneralResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
       return GeneralResponse::BAD;
     }
 
     username = up.substr(0, n);
 
-    LOG_TRACE("checking authentication for user '%s'", username.c_str());
+    LOG(TRACE) << "checking authentication for user '" << username << "'";
     bool res =
         TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(),
                                         up.substr(n + 1).c_str(), &mustChange);
@@ -539,4 +527,3 @@ GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
 
   return GeneralResponse::VSTREAM_OK;
 }
-

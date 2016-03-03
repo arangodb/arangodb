@@ -280,12 +280,7 @@ actions.defineHttp({
       var name = body.name;
       var mount = body.mount;
       var options = body.options;
-      try {
-        var result = foxxManager.runScript(name, mount, options);
-        return result;
-      } catch (e) {
-        throw e.cause || e;
-      }
+      return foxxManager.runScript(name, mount, options);
     }
   })
 });

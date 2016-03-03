@@ -32,9 +32,7 @@
 namespace arangodb {
 namespace rest {
 
-
 class EndpointIp : public Endpoint {
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
   //////////////////////////////////////////////////////////////////////////////
@@ -50,7 +48,6 @@ class EndpointIp : public Endpoint {
  public:
   ~EndpointIp();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default port number if none specified
@@ -66,7 +63,6 @@ class EndpointIp : public Endpoint {
 
   static std::string const _defaultHost;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect the socket
@@ -74,7 +70,6 @@ class EndpointIp : public Endpoint {
 
   TRI_socket_t connectSocket(const struct addrinfo*, double, double);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect the endpoint
@@ -106,7 +101,6 @@ class EndpointIp : public Endpoint {
 
   std::string getHost() const { return _host; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief host name / address (IPv4 or IPv6)
@@ -130,5 +124,3 @@ class EndpointIp : public Endpoint {
 }
 
 #endif
-
-

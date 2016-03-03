@@ -19,22 +19,11 @@
         url: "/_api/gharial/" + encodeURIComponent(name) + "?dropCollections=true",
         contentType: "application/json",
         processData: true,
-        async: false,
         success: function() {
-          arangoHelper.arangoNotification("Graph deleted.");
           callback(true);
-          return true;
         },
-        error: function(data) {
-          try {
-            var errorMsg = JSON.parse(data.responseText).errorMessage;
-            arangoHelper.arangoError("Graph", errorMsg);
-          }
-          catch (e) {
-            arangoHelper.arangoError("Graph", "Could not delete Graph.");
-          }
+        error: function() {
           callback(false);
-          return false;
         }
       });
     },

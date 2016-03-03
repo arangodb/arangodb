@@ -61,26 +61,25 @@ Other features of ArangoDB include:
 For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
 
-Latest Release - ArangoDB 2.6
+Latest Release - ArangoDB 2.8
 -----------------
 
-The [What's new in ArangoDB 2.6](https://docs.arangodb.com/NewFeatures/NewFeatures26.html) can be found in the documentation.
+The [What's new in ArangoDB 2.8](https://docs.arangodb.com/NewFeatures/NewFeatures28.html) can be found in the documentation.
 
-**New collection export HTTP REST API**: ArangoDB now provides a dedicated collection export API, which can take snapshots of entire collections more efficiently than the general-purpose cursor API. The export API is useful to transfer the contents of an entire collection to a client application.
+**AQL Graph Traversals / Pattern Matching**: AQL offers a new feature to traverse over a graph without writing JavaScript functions but with all the other features you know from AQL. For this purpose, a special version of `FOR variable-name IN expression` has been introduced.
 
-Added **batch document removal and lookup** commands: The commands collection.lookupByKeys(keys) and collection.removeByKeys(keys) have been added for collection objects. These can be used to perform multi-document lookup and removal operations efficiently from the ArangoShell.
+The added **Array Indexes** are a major improvement to ArangoDB that you will love and never want to miss again. Hash indexes and skiplist indexes can now be defined for array values as well, so it’s freaking fast to access documents by individual array values.
 
-Added **AQL UPSERT command**: This adds an UPSERT statement to AQL that is a combination of both INSERT and UPDATE / REPLACE. The UPSERT will search for a matching document using a user-provided example. If no document matches the example, the insert part of the UPSERT statement will be executed. If there is a match, the update / replace part will be carried out.
+Additional, there is a cool new **aggregation feature** that was added after the beta releases. AQL introduces the keyword `AGGREGATE` for use in `AQL COLLECT` statements. Using `AGGREGATE` allows more efficient aggregation (incrementally while building the groups) than previous versions of AQL, which built group aggregates afterwards from the total of all group values
 
-We have **simplified the return value syntax** for data-modification AQL queries, added an **alternative implementation for AQL COLLECT** that uses a hash table for grouping and does not require its input elements to be sorted. 
+**Optimizer improvements**: The AQL query optimizer can now use indexes if multiple filter conditions on attributes of the same collection are combined with logical ORs, and if the usage of indexes would completely cover these conditions.
 
-Other **optimizations and speedups** in AQL relate to **subqueries**, **return values** and queries containing big **IN lists** for index lookups.
+ArangoDB 2.8 now has an automatic **deadlock detection** for transactions. A deadlock is a situation in which two or more concurrent operations (user transactions or AQL queries) try to access the same resources (collections, documents) and need to wait for the others to finish, but none of them can make any progress.
 
-**Arangoimp** can now optionally update or replace existing documents, provided the import data contains documents with _key attributes.
 
 **Foxx Improvements**
 
-Added **Configuration and Dependencies** so that manifests can now define configuration options, as well as dependencies on other Foxx apps. With the **Mocha Test** framework you can now [write tests for your Foxx apps](https://www.arangodb.com/2015/04/testing-foxx-mocha/). The API documentation has been updated to **Swagger 2**. 
+The module resolution used by `require` now behaves more like in node.js. The `org/arangodb/request` module now returns response bodies for error responses by default. The old behavior of not returning bodies for error responses can be re-enabled by explicitly setting the option `returnBodyOnError` to `false`.
 
 
 More Information

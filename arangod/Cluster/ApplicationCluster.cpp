@@ -26,7 +26,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -38,10 +39,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-
-
-
 
 ApplicationCluster::ApplicationCluster(
     TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
@@ -71,7 +68,6 @@ ApplicationCluster::ApplicationCluster(
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-
 ApplicationCluster::~ApplicationCluster() {
   delete _heartbeat;
 
@@ -79,8 +75,6 @@ ApplicationCluster::~ApplicationCluster() {
   auto cm = httpclient::ConnectionManager::instance();
   delete cm;
 }
-
-
 
 void ApplicationCluster::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
@@ -91,6 +85,7 @@ void ApplicationCluster::setupOptions(
       "cluster.my-local-info", &_myLocalInfo, "this server's local info")(
       "cluster.my-id", &_myId, "this server's id")(
       "cluster.my-address", &_myAddress, "this server's endpoint")(
+      "cluster.my-role", &_myRole, "this server's role")(
       "cluster.username", &_username,
       "username used for cluster-internal communication")(
       "cluster.password", &_password,
@@ -110,7 +105,6 @@ void ApplicationCluster::setupOptions(
       "disable the kickstarter functionality");
 }
 
-
 bool ApplicationCluster::prepare() {
   // set authentication data
   ServerState::instance()->setAuthentication(_username, _password);
@@ -128,6 +122,13 @@ bool ApplicationCluster::prepare() {
       _disableDispatcherFrontend);
   ServerState::instance()->setDisableDispatcherKickstarter(
       _disableDispatcherKickstarter);
+
+  // initialize ConnectionManager library
+  httpclient::ConnectionManager::initialize();
+
+  // initialize ClusterComm library
+  // must call initialize while still single-threaded
+  ClusterComm::initialize();
 
   if (_disabled) {
     // if ApplicationFeature is disabled
@@ -155,7 +156,7 @@ bool ApplicationCluster::prepare() {
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
 
   if (found != std::string::npos || _agencyPrefix.empty()) {
-    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.agency-prefix");
+    LOG(FATAL) << "invalid value specified for --cluster.agency-prefix"; FATAL_ERROR_EXIT();
   }
 
   // register the prefix with the communicator
@@ -163,8 +164,7 @@ bool ApplicationCluster::prepare() {
 
   // validate --cluster.agency-endpoint
   if (_agencyEndpoints.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "must at least specify one endpoint in --cluster.agency-endpoint");
+    LOG(FATAL) << "must at least specify one endpoint in --cluster.agency-endpoint"; FATAL_ERROR_EXIT();
   }
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
@@ -172,9 +172,7 @@ bool ApplicationCluster::prepare() {
         arangodb::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
-      LOG_FATAL_AND_EXIT(
-          "invalid endpoint '%s' specified for --cluster.agency-endpoint",
-          _agencyEndpoints[i].c_str());
+      LOG(FATAL) << "invalid endpoint '" << _agencyEndpoints[i] << "' specified for --cluster.agency-endpoint"; FATAL_ERROR_EXIT();
     }
 
     AgencyComm::addEndpoint(unified);
@@ -183,20 +181,18 @@ bool ApplicationCluster::prepare() {
   // validate --cluster.my-id
   if (_myId.empty()) {
     if (_myLocalInfo.empty()) {
-      LOG_FATAL_AND_EXIT(
-          "invalid value specified for --cluster.my-id and "
-          "--cluster.my-local-info");
+      LOG(FATAL) << "Need to specify a local cluster identifier via --cluster.my-local-info"; FATAL_ERROR_EXIT();
     }
+
     if (_myAddress.empty()) {
-      LOG_FATAL_AND_EXIT(
-          "must specify --cluster.my-address if --cluster.my-id is empty");
+      LOG(FATAL) << "must specify --cluster.my-address if --cluster.my-id is empty"; FATAL_ERROR_EXIT();
     }
   } else {
     size_t found = _myId.find_first_not_of(
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
 
     if (found != std::string::npos) {
-      LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
+      LOG(FATAL) << "invalid value specified for --cluster.my-id"; FATAL_ERROR_EXIT();
     }
   }
   // Now either _myId is set properly or _myId is empty and _myLocalInfo and
@@ -206,11 +202,11 @@ bool ApplicationCluster::prepare() {
   }
 
   // initialize ConnectionManager library
-  httpclient::ConnectionManager::initialize();
+  // httpclient::ConnectionManager::initialize();
 
   // initialize ClusterComm library
   // must call initialize while still single-threaded
-  ClusterComm::initialize();
+  // ClusterComm::initialize();
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
@@ -218,24 +214,31 @@ bool ApplicationCluster::prepare() {
   // perform an initial connect to the agency
   std::string const endpoints = AgencyComm::getEndpointsString();
 
-  if (!AgencyComm::tryConnect()) {
-    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)",
-                       endpoints.c_str());
+  if (!AgencyComm::initialize()) {
+    LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints << ")"; FATAL_ERROR_EXIT();
   }
-
+    
   ServerState::instance()->setLocalInfo(_myLocalInfo);
   if (!_myId.empty()) {
     ServerState::instance()->setId(_myId);
+  }
+  
+  if (!_myRole.empty()) {
+    ServerState::RoleEnum role = ServerState::stringToRole(_myRole);
+    if (role == ServerState::ROLE_SINGLE
+        || role == ServerState::ROLE_UNDEFINED) {
+      LOG(FATAL) << "Invalid role provided. Possible values: PRIMARY, SECONDARY, COORDINATOR";FATAL_ERROR_EXIT();
+    }
+    if (!ServerState::instance()->registerWithRole(role)) {
+      LOG(FATAL) << "Couldn't register at agency.";FATAL_ERROR_EXIT();
+    }
   }
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
-    LOG_FATAL_AND_EXIT(
-        "unable to determine unambiguous role for server '%s'. No role "
-        "configured in agency (%s)",
-        _myId.c_str(), endpoints.c_str());
+    LOG(FATAL) << "unable to determine unambiguous role for server '" << _myId << "'. No role configured in agency (" << endpoints << ")"; FATAL_ERROR_EXIT();
   }
 
   if (_myId.empty()) {
@@ -244,7 +247,7 @@ bool ApplicationCluster::prepare() {
 
   // check if my-address is set
   if (_myAddress.empty()) {
-    // no address given, now ask the agency for out address
+    // no address given, now ask the agency for our address
     _myAddress = ServerState::instance()->getAddress();
   }
   // if nonempty, it has already been set above
@@ -255,11 +258,11 @@ bool ApplicationCluster::prepare() {
   if (role == ServerState::ROLE_COORDINATOR) {
     ClusterInfo* ci = ClusterInfo::instance();
     do {
-      LOG_INFO("Waiting for a DBserver to show up...");
+      LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
       if (DBServers.size() > 0) {
-        LOG_INFO("Found a DBserver.");
+        LOG(INFO) << "Found a DBserver.";
         break;
       }
       sleep(1);
@@ -268,7 +271,6 @@ bool ApplicationCluster::prepare() {
 
   return true;
 }
-
 
 bool ApplicationCluster::start() {
   if (!enabled()) {
@@ -280,11 +282,7 @@ bool ApplicationCluster::start() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (_myAddress.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "unable to determine internal address for server '%s'. "
-        "Please specify --cluster.my-address or configure the address for this "
-        "server in the agency.",
-        _myId.c_str());
+    LOG(FATAL) << "unable to determine internal address for server '" << _myId << "'. Please specify --cluster.my-address or configure the address for this server in the agency."; FATAL_ERROR_EXIT();
   }
 
   // now we can validate --cluster.my-address
@@ -292,9 +290,7 @@ bool ApplicationCluster::start() {
       arangodb::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
-    LOG_FATAL_AND_EXIT(
-        "invalid endpoint '%s' specified for --cluster.my-address",
-        _myAddress.c_str());
+    LOG(FATAL) << "invalid endpoint '" << _myAddress << "' specified for --cluster.my-address"; FATAL_ERROR_EXIT();
   }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
@@ -307,12 +303,7 @@ bool ApplicationCluster::start() {
 
   ServerState::instance()->setInitialized();
 
-  LOG_INFO(
-      "Cluster feature is turned on. "
-      "Agency version: %s, Agency endpoints: %s, "
-      "server id: '%s', internal address: %s, role: %s",
-      version.c_str(), endpoints.c_str(), _myId.c_str(), _myAddress.c_str(),
-      ServerState::roleToString(role).c_str());
+  LOG(INFO) << "Cluster feature is turned on. Agency version: " << version << ", Agency endpoints: " << endpoints << ", server id: '" << _myId << "', internal address: " << _myAddress << ", role: " << ServerState::roleToString(role);
 
   if (!_disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
@@ -324,22 +315,19 @@ bool ApplicationCluster::start() {
           result._values.begin();
 
       if (it != result._values.end()) {
+        VPackSlice slice = (*it).second._vpack->slice();
         _heartbeatInterval =
-            arangodb::basics::JsonHelper::stringUInt64((*it).second._json);
+            arangodb::basics::VelocyPackHelper::stringUInt64(slice);
 
-        LOG_INFO("using heartbeat interval value '%llu ms' from agency",
-                 (unsigned long long)_heartbeatInterval);
+        LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval << " ms' from agency";
       }
     }
 
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
-      _heartbeatInterval = 1000;  // 1/s
+      _heartbeatInterval = 5000; // 1/s
 
-      LOG_WARNING(
-          "unable to read heartbeat interval from agency. Using default value "
-          "'%llu ms'",
-          (unsigned long long)_heartbeatInterval);
+      LOG(WARN) << "unable to read heartbeat interval from agency. Using default value '" << _heartbeatInterval << " ms'";
     }
 
     // start heartbeat thread
@@ -347,12 +335,11 @@ bool ApplicationCluster::start() {
                                      _heartbeatInterval * 1000, 5);
 
     if (_heartbeat == nullptr) {
-      LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
+      LOG(FATAL) << "unable to start cluster heartbeat thread"; FATAL_ERROR_EXIT();
     }
 
     if (!_heartbeat->init() || !_heartbeat->start()) {
-      LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)",
-                         endpoints.c_str());
+      LOG(FATAL) << "heartbeat could not connect to agency endpoints (" << endpoints << ")"; FATAL_ERROR_EXIT();
     }
 
     while (!_heartbeat->isReady()) {
@@ -363,7 +350,6 @@ bool ApplicationCluster::start() {
 
   return true;
 }
-
 
 bool ApplicationCluster::open() {
   if (!enabled()) {
@@ -380,94 +366,81 @@ bool ApplicationCluster::open() {
     AgencyCommLocker locker("Current", "WRITE");
 
     if (locker.successful()) {
-      TRI_json_t* ep = TRI_CreateStringCopyJson(
-          TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
-
-      if (ep == nullptr) {
+      VPackBuilder builder;
+      try {
+        VPackObjectBuilder b(&builder);
+        builder.add("endpoint", VPackValue(_myAddress));
+      } catch (...) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
       }
-      TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
-      if (json == nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
-        locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
-      }
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
-
-      result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      result = comm.setValue("Current/ServersRegistered/" + _myId, builder.slice(), 0.0);
     }
 
     if (!result.successful()) {
       locker.unlock();
-      LOG_FATAL_AND_EXIT(
-          "unable to register server in agency: http code: %d, body: %s",
-          (int)result.httpCode(), result.body().c_str());
+      LOG(FATAL) << "unable to register server in agency: http code: " << result.httpCode() << ", body: " << result.body(); FATAL_ERROR_EXIT();
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none",
-                                                  strlen("none"));
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
       }
 
       ServerState::instance()->setState(ServerState::STATE_SERVING);
 
       // register coordinator
       AgencyCommResult result =
-          comm.setValue("Current/Coordinators/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          comm.setValue("Current/Coordinators/" + _myId, builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("unable to register coordinator in agency");
+        LOG(FATAL) << "unable to register coordinator in agency"; FATAL_ERROR_EXIT();
       }
     } else if (role == ServerState::ROLE_PRIMARY) {
-      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none",
-                                                  strlen("none"));
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
       }
 
       ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
 
       // register server
       AgencyCommResult result =
-          comm.setValue("Current/DBServers/" + _myId, json, 0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          comm.setValue("Current/DBServers/" + _myId, builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("unable to register db server in agency");
+        LOG(FATAL) << "unable to register db server in agency"; FATAL_ERROR_EXIT();
       }
     } else if (role == ServerState::ROLE_SECONDARY) {
       std::string keyName = std::string("\"") + _myId + std::string("\"");
-      TRI_json_t* json = TRI_CreateStringCopyJson(
-          TRI_UNKNOWN_MEM_ZONE, keyName.c_str(), keyName.size());
-
-      if (json == nullptr) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue(keyName));
+      } catch (...) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("out of memory");
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
       }
 
       ServerState::instance()->setState(ServerState::STATE_SYNCING);
 
       // register server
       AgencyCommResult result = comm.setValue(
-          "Current/DBServers/" + ServerState::instance()->getPrimaryId(), json,
-          0.0);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          "Current/DBServers/" + ServerState::instance()->getPrimaryId(),
+          builder.slice(), 0.0);
 
       if (!result.successful()) {
         locker.unlock();
-        LOG_FATAL_AND_EXIT("unable to register secondary db server in agency");
+        LOG(FATAL) << "unable to register secondary db server in agency"; FATAL_ERROR_EXIT();
       }
     }
   }
@@ -475,14 +448,13 @@ bool ApplicationCluster::open() {
   return true;
 }
 
-
 void ApplicationCluster::close() {
   if (!enabled()) {
     return;
   }
 
   if (_heartbeat != nullptr) {
-    _heartbeat->stop();
+    _heartbeat->beginShutdown();
   }
 
   // change into shutdown state
@@ -492,8 +464,8 @@ void ApplicationCluster::close() {
   comm.sendServerState(0.0);
 }
 
-
 void ApplicationCluster::stop() {
+  ClusterComm::cleanup();
   if (!enabled()) {
     return;
   }
@@ -505,7 +477,7 @@ void ApplicationCluster::stop() {
   comm.sendServerState(0.0);
 
   if (_heartbeat != nullptr) {
-    _heartbeat->stop();
+    _heartbeat->beginShutdown();
   }
 
   {
@@ -526,8 +498,6 @@ void ApplicationCluster::stop() {
     }
   }
 
-  ClusterComm::cleanup();
+  // ClusterComm::cleanup();
   AgencyComm::cleanup();
 }
-
-

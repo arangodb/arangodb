@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #include <openssl/err.h>
 
 using namespace arangodb::basics;
-using namespace std;
 
+
+extern "C" const SSL_METHOD *SSLv3_method(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
@@ -58,7 +59,7 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
       break;
 
     default:
-      LOG_ERROR("unknown SSL protocol method");
+      LOG(ERR) << "unknown SSL protocol method";
       return nullptr;
   }
 
@@ -66,14 +67,12 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(),
-              arangodb::basics::lastSSLError().c_str());
+    LOG(ERR) << "cannot read certificate from '" << keyfile << "': " << arangodb::basics::lastSSLError();
     return nullptr;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(),
-              arangodb::basics::lastSSLError().c_str());
+    LOG(ERR) << "cannot read key from '" << keyfile << "': " << arangodb::basics::lastSSLError();
     return nullptr;
   }
 
@@ -120,5 +119,3 @@ std::string arangodb::basics::lastSSLError() {
 
   return std::string(buf);
 }
-
-

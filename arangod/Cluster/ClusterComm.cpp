@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterComm.h"
-#include "Basics/logging.h"
-#include "Basics/WriteLocker.h"
+
+#include "Basics/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "SimpleHttpClient/ConnectionManager.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 
@@ -42,6 +45,74 @@ void arangodb::ClusterCommRestCallback(
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routine to set the destination
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommResult::setDestination(std::string const& dest,
+                                       bool logConnectionErrors) {
+  // This sets result.shardId, result.serverId and result.endpoint,
+  // depending on what dest is. Note that if a shardID is given, the
+  // responsible server is looked up, if a serverID is given, the endpoint
+  // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
+  // state.
+  if (dest.substr(0, 6) == "shard:") {
+    shardID = dest.substr(6);
+    {
+      std::shared_ptr<std::vector<ServerID>> resp =
+          ClusterInfo::instance()->getResponsibleServer(shardID);
+      if (!resp->empty()) {
+        serverID = (*resp)[0];
+      } else {
+        serverID = "";
+        status = CL_COMM_ERROR;
+        if (logConnectionErrors) {
+          LOG(ERR) << "cannot find responsible server for shard '"
+                   << shardID << "'";
+        } else {
+          LOG(INFO) << "cannot find responsible server for shard '"
+                    << shardID << "'";
+        }
+        return;
+      }
+    }
+    LOG(DEBUG) << "Responsible server: " << serverID;
+  } else if (dest.substr(0, 7) == "server:") {
+    shardID = "";
+    serverID = dest.substr(7);
+  } else if (dest.substr(0, 6) == "tcp://" || dest.substr(0, 6) == "ssl://") {
+    shardID = "";
+    serverID = "";
+    endpoint = dest;
+    return;  // all good
+  } else {
+    shardID = "";
+    serverID = "";
+    endpoint = "";
+    status = CL_COMM_ERROR;
+    errorMessage = "did not understand destination'" + dest + "'";
+    if (logConnectionErrors) {
+      LOG(ERR) << "did not understand destination '" << dest << "'";
+    } else {
+      LOG(INFO) << "did not understand destination '" << dest << "'";
+    }
+    return;
+  }
+  // Now look up the actual endpoint:
+  auto ci = ClusterInfo::instance();
+  endpoint = ci->getServerEndpoint(serverID);
+  if (endpoint.empty()) {
+    status = CL_COMM_ERROR;
+    errorMessage = "did not find endpoint of server '" + serverID + "'";
+    if (logConnectionErrors) {
+      LOG(ERR) << "did not find endpoint of server '" << serverID
+               << "'";
+    } else {
+      LOG(INFO) << "did not find endpoint of server '" << serverID
+                << "'";
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm constructor
@@ -56,8 +127,7 @@ ClusterComm::ClusterComm()
 
 ClusterComm::~ClusterComm() {
   if (_backgroundThread != nullptr) {
-    _backgroundThread->stop();
-    _backgroundThread->shutdown();
+    _backgroundThread->beginShutdown();
     delete _backgroundThread;
     _backgroundThread = nullptr;
   }
@@ -102,11 +172,13 @@ void ClusterComm::startBackgroundThread() {
   _backgroundThread = new ClusterCommThread();
 
   if (nullptr == _backgroundThread) {
-    LOG_FATAL_AND_EXIT("unable to start ClusterComm background thread");
+    LOG(FATAL) << "unable to start ClusterComm background thread";
+    FATAL_ERROR_EXIT();
   }
 
-  if (!_backgroundThread->init() || !_backgroundThread->start()) {
-    LOG_FATAL_AND_EXIT("ClusterComm background thread does not work");
+  if (!_backgroundThread->start()) {
+    LOG(FATAL) << "ClusterComm background thread does not work";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -119,21 +191,26 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit an HTTP request to a shard asynchronously.
 ///
-/// This function is only called when arangod is in coordinator mode. It
-/// queues a single HTTP request to one of the DBServers to be sent by
-/// ClusterComm in the background thread. This request actually orders
-/// an answer, which is an HTTP request sent from the target DBServer
-/// back to us. Therefore ClusterComm also creates an entry in a list of
-/// expected answers. One either has to use a callback for the answer,
-/// or poll for it, or drop it to prevent memory leaks. The result of
-/// this call is just a record that the initial HTTP request has been
-/// queued (`status` is CL_COMM_SUBMITTED). Use @ref enquire below to get
-/// information about the progress. The actual answer is then delivered
-/// either in the callback or via poll. The ClusterCommResult is returned
-/// by value.
+/// This function queues a single HTTP request, usually to one of the
+/// DBServers to be sent by ClusterComm in the background thread. If
+/// `singleRequest` is false, as is the default, this request actually
+/// orders an answer, which is an HTTP request sent from the target
+/// DBServer back to us. Therefore ClusterComm also creates an entry in
+/// a list of expected answers. One either has to use a callback for
+/// the answer, or poll for it, or drop it to prevent memory leaks.
+/// The result of this call is just a record that the initial HTTP
+/// request has been queued (`status` is CL_COMM_SUBMITTED). Use @ref
+/// enquire below to get information about the progress. The actual
+/// answer is then delivered either in the callback or via poll. The
+/// ClusterCommResult is returned by value.
+/// If `singleRequest` is set to `true`, then the destination can be
+/// an arbitrary server, the functionality can also be used in single-Server
+/// mode, and the operation is complete when the single request is sent
+/// and the corresponding answer has been received. We use this functionality
+/// for the agency mode of ArangoDB.
 /// The library takes ownerships of the pointer `headerFields` by moving
 /// the unique_ptr to its own storage, this is necessary since this
-/// method has to add its own headers. The library retains shared
+/// method sometimes has to add its own headers. The library retains shared
 /// ownership of `callback`. We use a shared_ptr for the body string
 /// such that it is possible to use the same body in multiple requests.
 ///
@@ -144,7 +221,9 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// with "shard:" followed by a shardID identifying the shard this
 /// request is sent to, actually, this is internally translated into a
 /// server ID. It is also possible to specify a DB server ID directly
-/// here in the form of "server:" followed by a serverID.
+/// here in the form of "server:" followed by a serverID. Furthermore,
+/// it is possible to specify the target endpoint directly using
+/// "tcp://..." or "ssl://..." endpoints, if `singleRequest` is true.
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::asyncRequest(
@@ -153,66 +232,16 @@ ClusterCommResult const ClusterComm::asyncRequest(
     arangodb::rest::GeneralRequest::RequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
-    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout) {
+    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+    bool singleRequest) {
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
   op->result.coordTransactionID = coordTransactionID;
   do {
     op->result.operationID = getOperationID();
   } while (op->result.operationID == 0);  // just to make sure
-
-  if (destination.substr(0, 6) == "shard:") {
-    op->result.shardID = destination.substr(6);
-    {
-      std::shared_ptr<std::vector<ServerID>> resp =
-          ClusterInfo::instance()->getResponsibleServer(op->result.shardID);
-      if (!resp->empty()) {
-        op->result.serverID = (*resp)[0];
-      } else {
-        op->result.serverID = "";
-      }
-    }
-    LOG_DEBUG("Responsible server: %s", op->result.serverID.c_str());
-    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-      // LOCKING-DEBUG
-      // std::cout << "Found Nolock header\n";
-      auto it = arangodb::Transaction::_makeNolockHeaders->find(
-          op->result.shardID);
-      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-        // LOCKING-DEBUG
-        // std::cout << "Found our shard\n";
-        (*headerFields)["X-Arango-Nolock"] = op->result.shardID;
-      }
-    }
-  } else if (destination.substr(0, 7) == "server:") {
-    op->result.shardID = "";
-    op->result.serverID = destination.substr(7);
-  } else {
-    op->result.shardID = "";
-    op->result.serverID = "";
-  }
-
-  // Add the header fields for asynchronous mode:
-  (*headerFields)["X-Arango-Async"] = "store";
-  (*headerFields)["X-Arango-Coordinator"] =
-      ServerState::instance()->getId() + ":" +
-      basics::StringUtils::itoa(op->result.operationID) + ":" +
-      clientTransactionID + ":" + basics::StringUtils::itoa(coordTransactionID);
-  (*headerFields)["Authorization"] =
-      ServerState::instance()->getAuthentication();
-
-#ifdef DEBUG_CLUSTER_COMM
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
-  (*headerFields)["X-Arango-BT-A-SYNC"] = bt;
-#endif
-#endif
-#endif
-
   op->result.status = CL_COMM_SUBMITTED;
+  op->result.single = singleRequest;
   op->reqtype = reqtype;
   op->path = path;
   op->body = body;
@@ -220,6 +249,61 @@ ClusterCommResult const ClusterComm::asyncRequest(
   op->callback = callback;
   op->endTime = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
                                : TRI_microtime() + timeout;
+
+  op->result.setDestination(destination, logConnectionErrors());
+  if (op->result.status == CL_COMM_ERROR) {
+    // In the non-singleRequest mode we want to put it into the received
+    // queue right away for backward compatibility:
+    ClusterCommResult const resCopy(op->result);
+    if (!singleRequest) {
+      LOG(DEBUG) << "In asyncRequest, putting failed request "
+                 << resCopy.operationID << " directly into received queue.";
+      CONDITION_LOCKER(locker, somethingReceived);
+      received.push_back(op.get());
+      op.release();
+      auto q = received.end();
+      receivedByOpID[resCopy.operationID] = --q;
+      somethingReceived.broadcast();
+    }
+    return resCopy;
+  }
+
+  if (destination.substr(0, 6) == "shard:") {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
+      auto it =
+          arangodb::Transaction::_makeNolockHeaders->find(op->result.shardID);
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found our shard\n";
+        (*op->headerFields)["X-Arango-Nolock"] = op->result.shardID;
+      }
+    }
+  }
+
+  if (singleRequest == false) {
+    // Add the header fields for asynchronous mode:
+    (*op->headerFields)["X-Arango-Async"] = "store";
+    (*op->headerFields)["X-Arango-Coordinator"] =
+        ServerState::instance()->getId() + ":" +
+        basics::StringUtils::itoa(op->result.operationID) + ":" +
+        clientTransactionID + ":" +
+        basics::StringUtils::itoa(coordTransactionID);
+    (*op->headerFields)["Authorization"] =
+        ServerState::instance()->getAuthentication();
+  }
+
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
+  (*op->headerFields)["X-Arango-BT-A-SYNC"] = bt;
+#endif
+#endif
+#endif
 
   // LOCKING-DEBUG
   // std::cout << "asyncRequest: sending " <<
@@ -236,12 +320,11 @@ ClusterCommResult const ClusterComm::asyncRequest(
     CONDITION_LOCKER(locker, somethingToSend);
     toSend.push_back(op.get());
     TRI_ASSERT(nullptr != op.get());
+    op.release();
     std::list<ClusterCommOperation*>::iterator i = toSend.end();
-    toSendByOpID[op->result.operationID] = --i;
+    toSendByOpID[res.operationID] = --i;
   }
-  LOG_DEBUG("In asyncRequest, put into queue %llu",
-            (unsigned long long)op->result.operationID);
-  op.release();
+  LOG(DEBUG) << "In asyncRequest, put into queue " << res.operationID;
   somethingToSend.signal();
 
   return res;
@@ -287,117 +370,91 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   double endTime =
       timeout == 0.0 ? currentTime + 24 * 60 * 60.0 : currentTime + timeout;
 
-  if (destination.substr(0, 6) == "shard:") {
-    res->shardID = destination.substr(6);
-    {
-      std::shared_ptr<std::vector<ServerID>> resp =
-          ClusterInfo::instance()->getResponsibleServer(res->shardID);
-      if (!resp->empty()) {
-        res->serverID = (*resp)[0];
-      } else {
-        res->serverID = "";
-      }
-    }
-    LOG_DEBUG("Responsible server: %s", res->serverID.c_str());
-    if (res->serverID.empty()) {
-      res->status = CL_COMM_ERROR;
-      return res;
-    }
-    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-      // LOCKING-DEBUG
-      // std::cout << "Found Nolock header\n";
-      auto it =
-          arangodb::Transaction::_makeNolockHeaders->find(res->shardID);
-      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-        // LOCKING-DEBUG
-        // std::cout << "Found this shard: " << res->shardID << std::endl;
-        headersCopy["X-Arango-Nolock"] = res->shardID;
-      }
-    }
-  } else if (destination.substr(0, 7) == "server:") {
-    res->shardID = "";
-    res->serverID = destination.substr(7);
-  } else {
-    res->status = CL_COMM_ERROR;
+  res->setDestination(destination, logConnectionErrors());
+
+  if (res->status == CL_COMM_ERROR) {
     return res;
   }
 
-  // We need a connection to this server:
-  std::string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
-  if (endpoint.empty()) {
+  if (destination.substr(0, 6) == "shard:") {
+    if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
+      auto it = arangodb::Transaction::_makeNolockHeaders->find(res->shardID);
+      if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found our shard\n";
+        headersCopy["X-Arango-Nolock"] = res->shardID;
+      }
+    }
+  }
+
+  httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
+  httpclient::ConnectionManager::SingleServerConnection* connection =
+      cm->leaseConnection(res->endpoint);
+
+  if (nullptr == connection) {
     res->status = CL_COMM_ERROR;
+    res->errorMessage =
+        "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
-      LOG_ERROR("cannot find endpoint of server '%s'", res->serverID.c_str());
+      LOG(ERR) << "cannot create connection to server '"
+               << res->serverID << "'";
     } else {
-      LOG_INFO("cannot find endpoint of server '%s'", res->serverID.c_str());
+      LOG(INFO) << "cannot create connection to server '"
+                << res->serverID << "'";
     }
   } else {
-    httpclient::ConnectionManager* cm =
-        httpclient::ConnectionManager::instance();
-    httpclient::ConnectionManager::SingleServerConnection* connection =
-        cm->leaseConnection(endpoint);
+    LOG(DEBUG) << "sending "
+               << arangodb::rest::HttpRequest::translateMethod(reqtype)
+               << " request to DB server '" << res->serverID
+               << "': " << body;
+    // LOCKING-DEBUG
+    // std::cout << "syncRequest: sending " <<
+    // arangodb::rest::HttpRequest::translateMethod(reqtype) << " request to
+    // DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
+    // for (auto& h : headersCopy) {
+    //   std::cout << h.first << ":" << h.second << std::endl;
+    // }
+    // std::cout << std::endl;
+    auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
+        connection->_connection, endTime - currentTime, false);
+    client->keepConnectionOnDestruction(true);
 
-    if (nullptr == connection) {
-      res->status = CL_COMM_ERROR;
-      if (logConnectionErrors()) {
-        LOG_ERROR("cannot create connection to server '%s'",
-                  res->serverID.c_str());
-      } else {
-        LOG_INFO("cannot create connection to server '%s'",
-                 res->serverID.c_str());
-      }
-    } else {
-      LOG_DEBUG("sending %s request to DB server '%s': %s",
-                arangodb::rest::GeneralRequest::translateMethod(reqtype).c_str(),
-                res->serverID.c_str(), body.c_str());
-      // LOCKING-DEBUG
-      // std::cout << "syncRequest: sending " <<
-      // arangodb::rest::GeneralRequest::translateMethod(reqtype) << " request to
-      // DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
-      // for (auto& h : headersCopy) {
-      //   std::cout << h.first << ":" << h.second << std::endl;
-      // }
-      // std::cout << std::endl;
-      auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
-          connection->_connection, endTime - currentTime, false);
-      client->keepConnectionOnDestruction(true);
-
-      headersCopy["Authorization"] =
-          ServerState::instance()->getAuthentication();
+    headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
 #ifdef DEBUG_CLUSTER_COMM
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
-      std::string bt;
-      TRI_GetBacktrace(bt);
-      std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
-      headersCopy["X-Arango-BT-SYNC"] = bt;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
+    std::string bt;
+    TRI_GetBacktrace(bt);
+    std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
+    headersCopy["X-Arango-BT-SYNC"] = bt;
 #endif
 #endif
 #endif
-      res->result.reset(client->request(reqtype, path, body.c_str(),
-                                        body.size(), headersCopy));
+    res->result.reset(
+        client->request(reqtype, path, body.c_str(), body.size(), headersCopy));
 
-      if (res->result == nullptr || !res->result->isComplete()) {
-        res->errorMessage = client->getErrorMessage();
-        if (res->errorMessage == "Request timeout reached") {
-          res->status = CL_COMM_TIMEOUT;
-        } else {
-          res->status = CL_COMM_ERROR;
-        }
-        cm->brokenConnection(connection);
-        client->invalidateConnection();
+    if (res->result == nullptr || !res->result->isComplete()) {
+      res->errorMessage = client->getErrorMessage();
+      if (res->errorMessage == "Request timeout reached") {
+        res->status = CL_COMM_TIMEOUT;
       } else {
-        cm->returnConnection(connection);
-        if (res->result->wasHttpError()) {
-          res->status = CL_COMM_ERROR;
-          res->errorMessage = client->getErrorMessage();
-        }
+        res->status = CL_COMM_ERROR;
+      }
+      cm->brokenConnection(connection);
+      client->invalidateConnection();
+    } else {
+      cm->returnConnection(connection);
+      if (res->result->wasHttpError()) {
+        res->status = CL_COMM_ERROR;
+        res->errorMessage = client->getErrorMessage();
       }
     }
-    if (res->status == CL_COMM_SENDING) {
-      // Everything was OK
-      res->status = CL_COMM_SENT;
-    }
+  }
+  if (res->status == CL_COMM_SENDING) {
+    // Everything was OK
+    res->status = CL_COMM_SENT;
   }
   return res;
 }
@@ -500,8 +557,10 @@ ClusterCommResult const ClusterComm::wait(
   }
 
   // tell Dispatcher that we are waiting:
-  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->block();
+  auto dt = arangodb::rest::DispatcherThread::current();
+
+  if (dt != nullptr) {
+    dt->block();
   }
 
   if (0 != operationID) {
@@ -521,26 +580,28 @@ ClusterCommResult const ClusterComm::wait(
           res.operationID = operationID;
           res.status = CL_COMM_DROPPED;
           // tell Dispatcher that we are back in business
-          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-              nullptr) {
-            arangodb::rest::DispatcherThread::currentDispatcherThread
-                ->unblock();
+          if (dt != nullptr) {
+            dt->unblock();
           }
           return res;
         }
       } else {
         // It is in the receive queue, now look at the status:
         q = i->second;
-        if ((*q)->result.status >= CL_COMM_TIMEOUT) {
+        if ((*q)->result.status >= CL_COMM_TIMEOUT ||
+            ((*q)->result.single && (*q)->result.status == CL_COMM_SENT)) {
           std::unique_ptr<ClusterCommOperation> op(*q);
           // It is done, let's remove it from the queue and return it:
-          receivedByOpID.erase(i);
-          received.erase(q);
+          try {
+            receivedByOpID.erase(i);
+            received.erase(q);
+          } catch (...) {
+            op.release();
+            throw;
+          }
           // tell Dispatcher that we are back in business
-          if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-              nullptr) {
-            arangodb::rest::DispatcherThread::currentDispatcherThread
-                ->unblock();
+          if (dt != nullptr) {
+            dt->unblock();
           }
           return op->result;
         }
@@ -565,7 +626,8 @@ ClusterCommResult const ClusterComm::wait(
       for (q = received.begin(); q != received.end(); q++) {
         if (match(clientTransactionID, coordTransactionID, shardID, *q)) {
           found = true;
-          if ((*q)->result.status >= CL_COMM_TIMEOUT) {
+          if ((*q)->result.status >= CL_COMM_TIMEOUT ||
+              ((*q)->result.single && (*q)->result.status == CL_COMM_SENT)) {
             ClusterCommOperation* op = *q;
             // It is done, let's remove it from the queue and return it:
             i = receivedByOpID.find(op->result.operationID);  // cannot fail!
@@ -573,13 +635,11 @@ ClusterCommResult const ClusterComm::wait(
             TRI_ASSERT(i->second == q);
             receivedByOpID.erase(i);
             received.erase(q);
+            std::unique_ptr<ClusterCommOperation> opPtr(op);
             ClusterCommResult res = op->result;
-            delete op;
             // tell Dispatcher that we are back in business
-            if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-                nullptr) {
-              arangodb::rest::DispatcherThread::currentDispatcherThread
-                  ->unblock();
+            if (dt != nullptr) {
+              dt->unblock();
             }
             return res;
           }
@@ -605,9 +665,8 @@ ClusterCommResult const ClusterComm::wait(
         res.shardID = shardID;
         res.status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
-        if (arangodb::rest::DispatcherThread::currentDispatcherThread !=
-            nullptr) {
-          arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+        if (dt != nullptr) {
+          dt->unblock();
         }
         return res;
       }
@@ -628,8 +687,8 @@ ClusterCommResult const ClusterComm::wait(
   res.shardID = shardID;
   res.status = CL_COMM_TIMEOUT;
   // tell Dispatcher that we are back in business
-  if (arangodb::rest::DispatcherThread::currentDispatcherThread != nullptr) {
-    arangodb::rest::DispatcherThread::currentDispatcherThread->unblock();
+  if (dt != nullptr) {
+    dt->unblock();
   }
   return res;
 }
@@ -692,10 +751,11 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
         nextq = q;
         nextq++;
         i = receivedByOpID.find(op->result.operationID);  // cannot fail
-        TRI_ASSERT(i != receivedByOpID.end());
-        TRI_ASSERT(q == i->second);
-        receivedByOpID.erase(i);
+        if (i != receivedByOpID.end() && q == i->second) {
+          receivedByOpID.erase(i);
+        }
         received.erase(q);
+        delete op;
         q = nextq;
       } else {
         q++;
@@ -718,24 +778,25 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_DEBUG("In asyncAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG(DEBUG) << "In asyncAnswer, seeing " << coordinatorHeader;
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
-    LOG_ERROR("Could not find coordinator ID in X-Arango-Coordinator");
+    LOG(ERR) << "Could not find coordinator ID in X-Arango-Coordinator";
     return;
   }
   coordinatorID = coordinatorHeader.substr(start, pos - start);
 
   // Now find the connection to which the request goes from the coordinatorID:
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
-  std::string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+  std::string endpoint =
+      ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
-      LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'",
-                coordinatorID.c_str());
+      LOG(ERR) << "asyncAnswer: cannot find endpoint for server '"
+               << coordinatorID << "'";
     } else {
-      LOG_INFO("asyncAnswer: cannot find endpoint for server '%s'",
-               coordinatorID.c_str());
+      LOG(INFO) << "asyncAnswer: cannot find endpoint for server '"
+                << coordinatorID << "'";
     }
     return;
   }
@@ -743,8 +804,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   httpclient::ConnectionManager::SingleServerConnection* connection =
       cm->leaseConnection(endpoint);
   if (nullptr == connection) {
-    LOG_ERROR("asyncAnswer: cannot create connection to server '%s'",
-              coordinatorID.c_str());
+    LOG(ERR) << "asyncAnswer: cannot create connection to server '"
+             << coordinatorID << "'";
     return;
   }
 
@@ -757,8 +818,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   char const* body = responseToSend->body().c_str();
   size_t len = responseToSend->body().length();
 
-  LOG_DEBUG("asyncAnswer: sending PUT request to DB server '%s'",
-            coordinatorID.c_str());
+  LOG(DEBUG) << "asyncAnswer: sending PUT request to DB server '"
+             << coordinatorID << "'";
 
   auto client = std::make_unique<arangodb::httpclient::SimpleHttpClient>(
       connection->_connection, 3600.0, false);
@@ -766,17 +827,16 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
-  httpclient::SimpleHttpResult* result =
+  std::unique_ptr<httpclient::SimpleHttpResult> result(
       client->request(rest::GeneralRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
-                      body, len, headers);
-  if (result == nullptr || !result->isComplete()) {
+                      body, len, headers));
+  if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
     client->invalidateConnection();
   } else {
     cm->returnConnection(connection);
   }
   // We cannot deal with a bad result here, so forget about it in any case.
-  delete result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -795,11 +855,12 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
   size_t start = 0;
   size_t pos;
 
-  LOG_DEBUG("In processAnswer, seeing %s", coordinatorHeader.c_str());
+  LOG(DEBUG) << "In processAnswer, seeing " << coordinatorHeader;
 
   pos = coordinatorHeader.find(":", start);
   if (pos == std::string::npos) {
-    return std::string("could not find coordinator ID in 'X-Arango-Coordinator'");
+    return std::string(
+        "could not find coordinator ID in 'X-Arango-Coordinator'");
   }
   // coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos + 1;
@@ -871,7 +932,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
-  LOG_DEBUG("In moveFromSendToReceived %llu", (unsigned long long)operationID);
+  LOG(DEBUG) << "In moveFromSendToReceived " << operationID;
 
   CONDITION_LOCKER(locker, somethingReceived);
   CONDITION_LOCKER(sendLocker, somethingToSend);
@@ -929,23 +990,24 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
+ClusterCommThread::ClusterCommThread() : Thread("ClusterComm") {}
 
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a ClusterCommThread
+/// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommThread::ClusterCommThread()
-    : Thread("ClusterComm"), _agency(), _condition(), _stop(0) {
-  allowAsynchronousCancelation();
+void ClusterCommThread::beginShutdown() {
+  Thread::beginShutdown();
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  if (cc != nullptr) {
+    CONDITION_LOCKER(guard, cc->somethingToSend);
+    guard.signal();
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a ClusterCommThread
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterCommThread::~ClusterCommThread() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
@@ -957,13 +1019,13 @@ void ClusterCommThread::run() {
   ClusterCommOperation* op;
   ClusterComm* cc = ClusterComm::instance();
 
-  LOG_DEBUG("starting ClusterComm thread");
+  LOG(DEBUG) << "starting ClusterComm thread";
 
-  while (0 == _stop) {
+  while (!isStopping()) {
     // First check the sending queue, as long as it is not empty, we send
     // a request via SimpleHttpClient:
     while (true) {  // left via break when there is no job in send queue
-      if (0 != _stop) {
+      if (isStopping()) {
         break;
       }
 
@@ -973,7 +1035,7 @@ void ClusterCommThread::run() {
         if (cc->toSend.empty()) {
           break;
         } else {
-          LOG_DEBUG("Noticed something to send");
+          LOG(DEBUG) << "Noticed something to send";
           op = cc->toSend.front();
           TRI_ASSERT(op->result.status == CL_COMM_SUBMITTED);
           op->result.status = CL_COMM_SENDING;
@@ -989,92 +1051,138 @@ void ClusterCommThread::run() {
       if (op->endTime <= currentTime) {
         op->result.status = CL_COMM_TIMEOUT;
       } else {
-        if (op->result.serverID == "") {
+        // We know that op->result.endpoint is nonempty here, otherwise
+        // the operation would not have been in the send queue!
+        httpclient::ConnectionManager* cm =
+            httpclient::ConnectionManager::instance();
+        httpclient::ConnectionManager::SingleServerConnection* connection =
+            cm->leaseConnection(op->result.endpoint);
+        if (nullptr == connection) {
           op->result.status = CL_COMM_ERROR;
-          op->result.errorMessage = "serverID was empty";
-        } else {
-          // We need a connection to this server:
-          std::string endpoint =
-              ClusterInfo::instance()->getServerEndpoint(op->result.serverID);
-          if (endpoint == "") {
-            op->result.status = CL_COMM_ERROR;
-            op->result.errorMessage = "getServerEndpoint was empty, serverID: ";
-            op->result.errorMessage += op->result.serverID;
-
-            if (cc->logConnectionErrors()) {
-              LOG_ERROR("cannot find endpoint for server '%s'",
-                        op->result.serverID.c_str());
-            } else {
-              LOG_INFO("cannot find endpoint for server '%s'",
-                       op->result.serverID.c_str());
-            }
+          op->result.errorMessage = "cannot create connection to server: ";
+          op->result.errorMessage += op->result.serverID;
+          if (cc->logConnectionErrors()) {
+            LOG(ERR) << "cannot create connection to server '"
+                     << op->result.serverID << "'";
           } else {
-            httpclient::ConnectionManager* cm =
-                httpclient::ConnectionManager::instance();
-            httpclient::ConnectionManager::SingleServerConnection* connection =
-                cm->leaseConnection(endpoint);
-            if (nullptr == connection) {
-              op->result.status = CL_COMM_ERROR;
-              op->result.errorMessage = "cannot create connection to server: ";
-              op->result.errorMessage += op->result.serverID;
-              if (cc->logConnectionErrors()) {
-                LOG_ERROR("cannot create connection to server '%s'",
-                          op->result.serverID.c_str());
-              } else {
-                LOG_INFO("cannot create connection to server '%s'",
-                         op->result.serverID.c_str());
-              }
+            LOG(INFO) << "cannot create connection to server '"
+                      << op->result.serverID << "'";
+          }
+        } else {
+          if (nullptr != op->body.get()) {
+            LOG(DEBUG) << "sending "
+                       << arangodb::rest::HttpRequest::translateMethod(
+                              op->reqtype)
+                              .c_str()
+                       << " request to DB server '"
+                       << op->result.serverID
+                       << "': " << op->body->c_str();
+          } else {
+            LOG(DEBUG) << "sending "
+                       << arangodb::rest::HttpRequest::translateMethod(
+                              op->reqtype)
+                              .c_str()
+                       << " request to DB server '"
+                       << op->result.serverID << "'";
+          }
+
+          auto client =
+              std::make_unique<arangodb::httpclient::SimpleHttpClient>(
+                  connection->_connection, op->endTime - currentTime, false);
+          client->keepConnectionOnDestruction(true);
+
+          // We add this result to the operation struct without acquiring
+          // a lock, since we know that only we do such a thing:
+          if (nullptr != op->body.get()) {
+            op->result.result.reset(
+                client->request(op->reqtype, op->path, op->body->c_str(),
+                                op->body->size(), *(op->headerFields)));
+          } else {
+            op->result.result.reset(client->request(
+                op->reqtype, op->path, nullptr, 0, *(op->headerFields)));
+          }
+
+          if (op->result.result.get() == nullptr ||
+              !op->result.result->isComplete()) {
+            if (client->getErrorMessage() == "Request timeout reached") {
+              op->result.status = CL_COMM_TIMEOUT;
+              op->result.errorMessage = "timeout";
             } else {
-              if (nullptr != op->body.get()) {
-                LOG_DEBUG("sending %s request to DB server '%s': %s",
-                          arangodb::rest::GeneralRequest::translateMethod(
-                              op->reqtype).c_str(),
-                          op->result.serverID.c_str(), op->body->c_str());
-              } else {
-                LOG_DEBUG("sending %s request to DB server '%s'",
-                          arangodb::rest::GeneralRequest::translateMethod(
-                              op->reqtype).c_str(),
-                          op->result.serverID.c_str());
-              }
+              op->result.status = CL_COMM_ERROR;
+              op->result.errorMessage = client->getErrorMessage();
+            }
+            cm->brokenConnection(connection);
+            client->invalidateConnection();
+          } else {
+            cm->returnConnection(connection);
+            if (op->result.result->wasHttpError()) {
+              op->result.status = CL_COMM_ERROR;
+// <<<<<<< HEAD
+//               op->result.errorMessage = "cannot create connection to server: ";
+//               op->result.errorMessage += op->result.serverID;
+//               if (cc->logConnectionErrors()) {
+//                 LOG_ERROR("cannot create connection to server '%s'",
+//                           op->result.serverID.c_str());
+//               } else {
+//                 LOG_INFO("cannot create connection to server '%s'",
+//                          op->result.serverID.c_str());
+//               }
+//             } else {
+//               if (nullptr != op->body.get()) {
+//                 LOG_DEBUG("sending %s request to DB server '%s': %s",
+//                           arangodb::rest::GeneralRequest::translateMethod(
+//                               op->reqtype).c_str(),
+//                           op->result.serverID.c_str(), op->body->c_str());
+//               } else {
+//                 LOG_DEBUG("sending %s request to DB server '%s'",
+//                           arangodb::rest::GeneralRequest::translateMethod(
+//                               op->reqtype).c_str(),
+//                           op->result.serverID.c_str());
+//               }
 
-              auto client =
-                  std::make_unique<arangodb::httpclient::SimpleHttpClient>(
-                      connection->_connection, op->endTime - currentTime,
-                      false);
-              client->keepConnectionOnDestruction(true);
+//               auto client =
+//                   std::make_unique<arangodb::httpclient::SimpleHttpClient>(
+//                       connection->_connection, op->endTime - currentTime,
+//                       false);
+//               client->keepConnectionOnDestruction(true);
 
-              // We add this result to the operation struct without acquiring
-              // a lock, since we know that only we do such a thing:
-              if (nullptr != op->body.get()) {
-                op->result.result.reset(
-                    client->request(op->reqtype, op->path, op->body->c_str(),
-                                    op->body->size(), *(op->headerFields)));
-              } else {
-                op->result.result.reset(client->request(
-                    op->reqtype, op->path, nullptr, 0, *(op->headerFields)));
-              }
+//               // We add this result to the operation struct without acquiring
+//               // a lock, since we know that only we do such a thing:
+//               if (nullptr != op->body.get()) {
+//                 op->result.result.reset(
+//                     client->request(op->reqtype, op->path, op->body->c_str(),
+//                                     op->body->size(), *(op->headerFields)));
+//               } else {
+//                 op->result.result.reset(client->request(
+//                     op->reqtype, op->path, nullptr, 0, *(op->headerFields)));
+//               }
 
-              if (op->result.result.get() == nullptr ||
-                  !op->result.result->isComplete()) {
-                if (client->getErrorMessage() == "Request timeout reached") {
-                  op->result.status = CL_COMM_TIMEOUT;
-                  op->result.errorMessage = "timeout";
-                } else {
-                  op->result.status = CL_COMM_ERROR;
-                  op->result.errorMessage = client->getErrorMessage();
-                }
-                cm->brokenConnection(connection);
-                client->invalidateConnection();
-              } else {
-                cm->returnConnection(connection);
-                if (op->result.result->wasHttpError()) {
-                  op->result.status = CL_COMM_ERROR;
-                  op->result.errorMessage = "HTTP error, status ";
-                  op->result.errorMessage +=
-                      arangodb::basics::StringUtils::itoa(
-                          op->result.result->getHttpReturnCode());
-                }
-              }
+//               if (op->result.result.get() == nullptr ||
+//                   !op->result.result->isComplete()) {
+//                 if (client->getErrorMessage() == "Request timeout reached") {
+//                   op->result.status = CL_COMM_TIMEOUT;
+//                   op->result.errorMessage = "timeout";
+//                 } else {
+//                   op->result.status = CL_COMM_ERROR;
+//                   op->result.errorMessage = client->getErrorMessage();
+//                 }
+//                 cm->brokenConnection(connection);
+//                 client->invalidateConnection();
+//               } else {
+//                 cm->returnConnection(connection);
+//                 if (op->result.result->wasHttpError()) {
+//                   op->result.status = CL_COMM_ERROR;
+//                   op->result.errorMessage = "HTTP error, status ";
+//                   op->result.errorMessage +=
+//                       arangodb::basics::StringUtils::itoa(
+//                           op->result.result->getHttpReturnCode());
+//                 }
+//               }
+// =======
+              op->result.errorMessage = "HTTP error, status ";
+              op->result.errorMessage += arangodb::basics::StringUtils::itoa(
+                  op->result.result->getHttpReturnCode());
+// >>>>>>> upstream/devel
             }
           }
         }
@@ -1110,17 +1218,5 @@ void ClusterCommThread::run() {
     }
   }
 
-  // another thread is waiting for this value to shut down properly
-  _stop = 2;
-
-  LOG_DEBUG("stopped ClusterComm thread");
+  LOG(DEBUG) << "stopped ClusterComm thread";
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the cluster comm background thread
-////////////////////////////////////////////////////////////////////////////////
-
-bool ClusterCommThread::init() { return true; }
-
-

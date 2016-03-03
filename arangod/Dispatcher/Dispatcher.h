@@ -27,16 +27,12 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
-
-
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class DispatcherThread;
 class Job;
 class Scheduler;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface of a job dispatcher
@@ -46,7 +42,6 @@ class Dispatcher {
   Dispatcher(Dispatcher const&) = delete;
   Dispatcher& operator=(Dispatcher const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief standard queue
@@ -66,7 +61,6 @@ class Dispatcher {
 
   static size_t const SYSTEM_QUEUE_SIZE = 2;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queue thread creator
@@ -74,15 +68,11 @@ class Dispatcher {
 
   typedef DispatcherThread* (*newDispatcherThread_fptr)(DispatcherQueue*);
 
-  
  public:
-
   explicit Dispatcher(Scheduler*);
-
 
   virtual ~Dispatcher();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a new queue
@@ -143,7 +133,7 @@ class Dispatcher {
   //////////////////////////////////////////////////////////////////////////////
 
   void setProcessorAffinity(size_t id, std::vector<size_t> const& cores);
-  
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler
@@ -167,5 +157,3 @@ class Dispatcher {
 }
 
 #endif
-
-

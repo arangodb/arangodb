@@ -41,9 +41,7 @@ class CalculationNode;
 class CollectNode;
 class ExecutionNode;
 
-
 class ExecutionPlan {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the plan
@@ -57,7 +55,6 @@ class ExecutionPlan {
 
   ~ExecutionPlan();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create an execution plan from an AST
@@ -185,7 +182,7 @@ class ExecutionPlan {
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void show();
 #endif
 
@@ -312,7 +309,6 @@ class ExecutionPlan {
 
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a calculation node
@@ -399,11 +395,12 @@ class ExecutionPlan {
   //////////////////////////////////////////////////////////////////////////////
 
   ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-  
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an execution plan element from an AST COLLECT node, AGGREGATE
+  /// @brief create an execution plan element from an AST COLLECT node,
+  /// AGGREGATE
   //////////////////////////////////////////////////////////////////////////////
-  
+
   ExecutionNode* fromNodeCollectAggregate(ExecutionNode*, AstNode const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -460,7 +457,6 @@ class ExecutionPlan {
 
   ExecutionNode* fromJson(arangodb::basics::Json const& Json);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief map from node id to the actual node
@@ -521,5 +517,3 @@ class ExecutionPlan {
 }
 
 #endif
-
-

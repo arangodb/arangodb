@@ -210,7 +210,8 @@
     <div id="installedList" class="tileList">
       <div class="tile">
         <div class="fullBorderBox">
-          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+          <a href="#" id="addApp" class="add"><span class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+</span> Add Service</a>
         </div>
       </div>
     </div>
@@ -241,7 +242,14 @@
 
     <% if (content.rows.length === 0) { %>
       <tr>
-        <td>No content.</td><td></td><td></td>
+        <% var xcounter = 0; %>
+        <% _.each(content.titles, function(y) {%>
+          <% if (xcounter === 0) { %>
+            <td>No content.</td>
+          <% } else { %>
+            <td></td>
+          <% } %>
+        <% xcounter++; });%>
       </tr>
     <% }; %>
   </tbody>
@@ -259,12 +267,34 @@
 <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
 <div class="tileBadge">
   <span>
-    <div class="corneredBadge <%= model.get('status') %>">
-      <%= model.get('status') %>
+  <% if(model.get('desc')) { %>
+    <div class="corneredBadge inProgress">
+      <%= model.get('desc') %>
     </div>
+  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+    <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('status') %>
+      </div>
+    <% } else { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('status') %>
+      </div>
+    <% } %>
+  <% } %>
   </span>
 </div>
-<h5 class="collectionName"><%= model.get('name') %></h5></script><script id="collectionsView.ejs" type="text/template"><div class="headerBar">
+
+<% if(model.get('lockType') === "index") { %>
+  <!-- <progress max="100" value="80"></progress>-->
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } else { %>
+  <h5 class="collectionName"><%= model.get('name') %></h5>
+<% } %></script><script id="collectionsView.ejs" type="text/template"><div class="headerBar">
     <div class="search-field">
       <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
       <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
@@ -374,7 +404,8 @@
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
           <div class="fullBorderBox">
-            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
+</span> Add Collection</a>
           </div>
         </div>
       </div>
@@ -639,7 +670,7 @@
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createDatabase" class="add">
-            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newDatabase" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add Database
           </a>
         </div>
@@ -774,7 +805,7 @@ if (list.length > 0) {
       </a>
     <li class="enabled">
       <a id="markDocuments" class="headerButton">
-        <span class="icon_arangodb_edit" title="Edit documents"></span>
+        <span title="Edit documents"><i class="fa fa-hand-pointer-o"></i></span>
       </a>
     </li>
     <li class="enabled">
@@ -784,17 +815,12 @@ if (list.length > 0) {
     </li>
     <li class="enabled">
       <a id="exportCollection" class="headerButton">
-        <span title="Download documents as JSON file"><i class="fa fa-download"></i></span>
-      </a>
-    </li>
-    <li class="enabled">
-      <a id="indexCollection" class="headerButton">
-        <span class="icon_arangodb_checklist" title="Index collection"></span>
+        <span title="Download documents as JSON file"><i class="fa fa-download" style="margin-top: 1px;"></i></span>
       </a>
     </li>
     <li class="enabled" style="margin-right: 15px">
       <a id="filterCollection" class="headerButton">
-        <span class="icon_arangodb_filter" title="Filter collection"></span>
+        <span title="Filter collection"><i class="fa fa-filter"></i></span>
       </a>
     </li>
   </ul>
@@ -812,12 +838,14 @@ if (list.length > 0) {
            <option value="&lt;=">&lt;=</option>
            <option value="&gt;">&gt;</option>
            <option value="&gt;=">&gt;=</option>
+           <option value="LIKE">LIKE</option>
+           <option value="IN">IN</option>
+           <option value="NOT IN">NOT IN</option>
        </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
        <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
        <button id="resetView" class="button-warning btn-old-padding">Reset</button>
        <button id="filterSend" class="button-success btn-old-padding">Filter</button>
-       <input type="text" id="docsSort" placeholder="_key" style="float: right"></input>
-       <div class="textDiv" style="float: right">Sort by:</div>
+       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
     </div>
   </div>
 
@@ -843,247 +871,6 @@ if (list.length > 0) {
       <div style="float:left; margin-top:5px"><div style="float:left" class="selectedCount">0</div> &nbsp; document(s) selected</div>
       <button id="deleteSelected" class="button-neutral btn-old-padding" style="float:right">Delete</button>
       <button id="moveSelected" class="button-neutral btn-old-padding" style="float:right">Move</button>
-    </div>
-  </div>
-
-  <div id="indexHeader" class="headerDropdown">
-    <div class="contentIn" id="indexHeaderContent">
-        <div id="indexEditView">
-          <span class="arangoHeader">Indexes:</span>
-          <table id="collectionEditIndexTable" class="edit-index-table">
-            <thead>
-              <tr class="figuresHeader">
-                <th class="collectionInfoTh">ID</th>
-                <th class="collectionInfoTh">Type</th>
-                <th class="collectionInfoTh">Unique</th>
-                <th class="collectionInfoTh">Sparse</th>
-                <th class="collectionInfoTh">Selectivity Est.</th>
-                <th class="collectionInfoTh">Fields</th>
-                <th class="collectionInfoTh">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-            </tbody>
-          </table>
-          <div class="index-button-bar">
-            <button id="addIndex" class="button-success">Add Index</button>
-          </div>
-      </div>
-
-        <div id="newIndexView" class="new-index-view" style="display:none">
-          <span id="newIndexHeader" class="arangoHeader">Add Index:</span>
-          <table>
-            <tr>
-              <th class="collectionTh">Type:</th>
-              <th class="">
-                <select id="newIndexType">
-                  <option value="Cap">Cap Constraint</option>
-                  <option value="Geo">Geo Index</option>
-                  <option value="Hash">Hash Index</option>
-                  <option value="Fulltext">Fulltext Index</option>
-                  <option value="Skiplist">Skip-List Index</option>
-                </select>
-              </th>
-              <th class="" style="width: 18px"/>
-            </tr>
-          </table>
-
-          <div id="newIndexTypeCap" class="newIndexClass">
-            <table>
-              <tr>
-                <th class="collectionTh">Size:</th>
-                <th><input type="text" id="newCapSize" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Bytesize:</th>
-                <th><input type="text" id="newCapByteSize" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection. (min = 16384)">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-            </table>
-          </div>
-          <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
-            <table>
-              <tr>
-                <th class="collectionTh">Fields:</th>
-                <th><input type="text" id="newGeoFields" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list with one or two attribute paths.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Geo JSON:</th>
-                <th>
-                  <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Constraint:</th>
-                <th>
-                  <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If constraint is true, then a geo-spatial constraint is created.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Ignore Null:</th>
-                <th>
-                  <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-            </table>
-          </div>
-
-          <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
-            <table>
-              <tr>
-                <th class="collectionTh">Fields:</th>
-                <th><input type="text" id="newHashFields" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Unique:</th>
-                <th>
-                  <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Sparse:</th>
-                <th>
-                  <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-            </table>
-          </div>
-          <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
-            <table>
-              <tr>
-                <th class="collectionTh">Fields:</th>
-                <th><input type="text" id="newFulltextFields" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title='A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].'>
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Min. length:</th>
-                <th><input type="text" id="newFulltextMinLength" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-            </table>
-
-          </div>
-
-          <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
-            <table>
-              <tr>
-                <th class="collectionTh">Fields:</th>
-                <th><input type="text" id="newSkiplistFields" value=""/></th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Unique:</th>
-                <th>
-                  <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-              <tr>
-                <th class="collectionTh">Sparse:</th>
-                <th>
-                  <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
-                </th>
-                <th class="tooltipInfoTh">
-                  <div>
-                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
-                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
-                    </a>
-                  </div>
-                </th>
-              </tr>
-            </table>
-          </div>
-          <div class="index-button-bar">
-            <button id="createIndex" class="button-success">Save</button>
-            <button id="cancelIndex" class="button-danger">Cancel</button>
-          </div>
-      </div>
     </div>
   </div>
 
@@ -1113,21 +900,6 @@ if (list.length > 0) {
   <div class="modal-footer">
     <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
     <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
-  </div>
-</div>
-
-<!-- Delete Index Modal -->
-<div id="indexDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <a class="arangoHeader">Delete Index?</a>
-  </div>
-  <div class="modal-body" id="deleteIndex">
-    <p>There is no way back…</p>
-  </div>
-  <div class="modal-footer">
-    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
   </div>
 </div></script><script id="edgeDefinitionTable.ejs" type="text/template"><tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
     <th class="collectionTh">Edge definitions*:</th>
@@ -1202,19 +974,6 @@ if (list.length > 0) {
   <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
 </div></script><script id="foxxActiveView.ejs" type="text/template"><div class="borderBox"></div>
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
-    <% if (model.needsAttention()) { %>
-      <span class="warning-icons">
-        <% if (model.isBroken()) { %>
-          <span class="fa fa-warning" title="Mount error"></span>
-        <% } %>
-        <% if (model.needsConfiguration()) { %>
-          <span class="fa fa-cog" title="Needs configuration"></span>
-        <% } %>
-        <% if (model.hasUnconfiguredDependencies()) { %>
-          <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
-        <% } %>
-      </span>
-    <% } %>
   <% if(model.isDevelopment()) { %>
     <div class="tileBadge">
       <span>
@@ -1371,7 +1130,7 @@ if (list.length > 0) {
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createGraph" class="add">
-            <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newGraph" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add Graph
           </a>
         </div>
@@ -1402,7 +1161,249 @@ if (list.length > 0) {
     <input id="<%=type %>_<%=id%>" type="text" name="<%=type %>_<%=id%>" placeholder="Attribute" maxlength="75" class="input-xlarge">
     <button id="remove_<%=type %>_<%=id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete" />
   </div>
-</div></script><script id="lineChartDetailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+</div></script><script id="indicesView.ejs" type="text/template"><div class="contentIn" id="indexHeaderContent">
+      <div id="indexEditView">
+        <table id="collectionEditIndexTable" class="edit-index-table">
+          <thead>
+            <tr class="figuresHeader">
+              <th class="collectionInfoTh">ID</th>
+              <th class="collectionInfoTh">Type</th>
+              <th class="collectionInfoTh">Unique</th>
+              <th class="collectionInfoTh">Sparse</th>
+              <th class="collectionInfoTh">Selectivity Est.</th>
+              <th class="collectionInfoTh">Fields</th>
+              <th class="collectionInfoTh">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td><i class="fa fa-plus-circle" id="addIndex"></i></td>
+            </tr>
+          </tfoot>
+        </table>
+    </div>
+
+      <div id="newIndexView" class="new-index-view" style="display:none">
+        <table>
+          <tr>
+            <th class="collectionTh">Type:</th>
+            <th class="">
+              <select id="newIndexType">
+                <option value="Cap">Cap Constraint</option>
+                <option value="Geo">Geo Index</option>
+                <option value="Hash">Hash Index</option>
+                <option value="Fulltext">Fulltext Index</option>
+                <option value="Skiplist">Skip-List Index</option>
+              </select>
+            </th>
+            <th class="" style="width: 18px"/>
+          </tr>
+        </table>
+        <div id="newIndexTypeCap" class="newIndexClass">
+          <table>
+            <tr>
+              <th class="collectionTh">Size:</th>
+              <th><input type="text" id="newCapSize" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Bytesize:</th>
+              <th><input type="text" id="newCapByteSize" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection. (min = 16384)">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+        </div>
+        <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+          <table>
+            <tr>
+              <th class="collectionTh">Fields:</th>
+              <th><input type="text" id="newGeoFields" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list with one or two attribute paths.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Geo JSON:</th>
+              <th>
+                <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Constraint:</th>
+              <th>
+                <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If constraint is true, then a geo-spatial constraint is created.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Ignore Null:</th>
+              <th>
+                <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+        </div>
+        <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+          <table>
+            <tr>
+              <th class="collectionTh">Fields:</th>
+              <th><input type="text" id="newHashFields" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Unique:</th>
+              <th>
+                <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Sparse:</th>
+              <th>
+                <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+        </div>
+        <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+          <table>
+            <tr>
+              <th class="collectionTh">Fields:</th>
+              <th><input type="text" id="newFulltextFields" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title='A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].'>
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Min. length:</th>
+              <th><input type="text" id="newFulltextMinLength" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+
+        </div>
+        <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+          <table>
+            <tr>
+              <th class="collectionTh">Fields:</th>
+              <th><input type="text" id="newSkiplistFields" value=""/></th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Unique:</th>
+              <th>
+                <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="collectionTh">Sparse:</th>
+              <th>
+                <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                    <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                  </a>
+                </div>
+              </th>
+            </tr>
+          </table>
+        </div>
+        <div class="index-button-bar index-button-bar2">
+          <button id="createIndex" class="button-success" style="margin-left: 15px;">Create</button>
+          <button id="cancelIndex" class="button-close" style="margin-left: 0;"><i class="fa fa-arrow-left"></i>
+            <span style="margin-left: 5px;">Back</span>
+          </button>
+        </div>
+    </div>
+  </div></script><script id="lineChartDetailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
 		<div class="modal-header">
 			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
 			<a class="arangoHeader"><%=figure%></a>
@@ -1587,8 +1588,42 @@ if (list.length > 0) {
    </div>
    <%}%>
 
+    <% if (tabBar) { %>
+      <div class="modal-tabbar">
+        <ul id="infoTab" class="nav nav-tabs">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <li class="active"><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <%} else {%>
+              <li><a href="#<%=value%>" data-toggle="tab"><%=value%></a></li>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </ul>
+      </div>
+    <%}%>
+
     <div class="modal-body">
+
+      <% if (tabBar) { %>
+        <div class="tab-content">
+          <% var counter = 0; %>
+          <% _.each(tabBar, function(value) { %>
+            <% if (counter === 0) { %>
+              <div class="tab-pane tab-pane-modal active" id="<%=value%>">
+              </div>
+            <%} else {%>
+              <div class="tab-pane tab-pane-modal" id="<%=value%>">
+              </div>
+            <% } %>
+            <% counter++; %>
+          <% }); %>
+        </div>
+      <%}%>
+
     </div>
+
     <% if (!hideFooter) { %>
     <div class="modal-footer">
       <%
@@ -1610,15 +1645,13 @@ if (list.length > 0) {
       <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
     </div>
   </div></script><script id="modalCollectionInfo.ejs" type="text/template"><%
-    var figuresData = content.getFigures();
-    var revision    = content.getRevision();
-    var index       = content.getIndex();
+    var figuresData = content.figures;
+    var revision    = content.revision;
 %>
 
     <ul id="infoTab" class="nav nav-tabs">
       <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
       <li><a href="#figures" data-toggle="tab">Figures</a></li>
-      <li><a href="#index" data-toggle="tab">Indexes</a></li>
     </ul>
 
     <div class="tab-content" id="tab-content-collection-info">
@@ -1630,7 +1663,7 @@ if (list.length > 0) {
             <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=filesize(figuresData.journalSize)%>
+                <%=prettyBytes(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -1661,7 +1694,7 @@ if (list.length > 0) {
             <th class="collectionInfoTh2">ID:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-id" class="modal-text">
-                <%=content.get("id")%>
+                <%=content.model.get("id")%>
               </div>
             <th>
           </tr>
@@ -1678,14 +1711,14 @@ if (list.length > 0) {
           <tr>
             <th class="collectionInfoTh2">Type:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=content.get("type")%></div>
+              <div class="modal-text"><%=content.model.get("type")%></div>
             </th>
           </tr>
 
           <tr>
             <th class="collectionInfoTh2">Status:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=content.get("status")%></div>
+              <div class="modal-text"><%=content.model.get("status")%></div>
             </th>
           </tr>
           
@@ -1721,9 +1754,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
-            <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.datafiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -1735,9 +1768,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Journals</th>
-            <th class="modal-text"><%=figuresData.figures.journals.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.journals.fileSize)%>
+            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -1746,9 +1779,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Compactors</th>
-            <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.compactors.fileSize)%>
+            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -1757,9 +1790,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
+            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -1768,9 +1801,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Indexes</th>
-            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.indexes.size)%>
+            <%=prettyBytes(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -1787,7 +1820,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of shapes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1795,7 +1828,7 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of attributes in the collection">
                 <span class="arangoicon icon_arangodb_info"></span></a>
@@ -1829,9 +1862,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Alive</th>
-            <th class="modal-text"><%=figuresData.figures.alive.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.alive.size)%>
+            <%=prettyBytes(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -1842,9 +1875,9 @@ if (list.length > 0) {
           </tr>
           <tr>
             <th class="modal-text">Dead</th>
-            <th class="modal-text"><%=figuresData.figures.dead.count%></th>
+            <th class="modal-text"><%=numeral(figuresData.figures.dead.count).format('0,0')%></th>
             <th class="modal-text">
-            <%=filesize(figuresData.figures.dead.size)%>
+            <%=prettyBytes(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
@@ -1860,49 +1893,6 @@ if (list.length > 0) {
           <tr><th><div> </div></th></tr>
         </table>
       </div>
-
-			<div class="tab-pane" id="index">
-        <table id="collectionIndexTable">
-          <tr class="figuresHeader">
-            <th class="collectionInfoTh">ID</th>
-            <th class="collectionInfoTh">Type</th>
-            <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Sparse</th>
-            <th class="collectionInfoTh">Selectivity Est.</th>
-            <th class="collectionInfoTh">Fields</th>
-          </tr>
-          <%
-          if (index) {
-            var fieldString = '';
-            $.each(index.indexes, function(k, v) {
-              if (v.fields !== undefined) {
-                fieldString = v.fields.join(", ");
-              }
-
-              //cut index id
-              var position = v.id.indexOf('/');
-              var indexId = v.id.substr(position+1, v.id.length);
-              var selectivity = (
-                v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-                "n/a"
-              );
-              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-          %>
-          <tr>
-            <th class="collectionInfoTh modal-text"><%=indexId%></th>
-            <th class="collectionInfoTh modal-text"><%=v.type%></th>
-            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
-            <th class="collectionInfoTh modal-text"><%=sparse%></th>
-            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
-            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
-          </tr>
-          <%
-            });
-          }
-          %>
-        </table>
-			</div>
 
 	  </div></script><script id="modalDownloadFoxx.ejs" type="text/template"><div>
     Your new Foxx Service is ready for download.
@@ -2273,7 +2263,7 @@ if (list.length > 0) {
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
-    <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
+    <li class="graph-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Services</a>
     </li>
@@ -2298,6 +2288,9 @@ if (list.length > 0) {
         </li>
         <li class="dropdown-item">
           <a id="queryManagement" class="tab" href="#queryManagement">Query Management</a>
+        </li>
+        <li class="dropdown-item">
+          <a id="workMonitor" class="tab" href="#workMonitor">Work Monitor</a>
         </li>
       </ul>
     </li>
@@ -2332,11 +2325,13 @@ if (list.length > 0) {
     <% } %>
 
     <option value="#collections">Collections</option>
-    <option value="#demo">Demo</option>
     <option value="#applications">Services</option>
     <option value="#graph">Graph</option>
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
+    <option value="#userManagement">User Management</option>
+    <option value="#queryManagement">Query Management</option>
+    <option value="#workMonitor">Work Monitor</option>
 
     <% if(currentDB.get('isSystem')) { %>
 
@@ -2372,13 +2367,10 @@ if (list.length > 0) {
 
 </ul></script><script id="progressBase.ejs" type="text/template"><div class="progress-view">
     <div class="progress-content">
-      <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
-      <div class="pong-loader">
-        Loading…
-      </div>
+      <div class="progress-text"></div>
+      <div class="pong-spinner"><i /></div>
     </div>
     <div class="progress-message">
-      <div class="progress-text"></div>
       <div class="progress-action"></div>
     </div>
   </div></script><script id="queryManagementViewActive.ejs" type="text/template"><div class="headerBar">
@@ -2409,8 +2401,8 @@ if (list.length > 0) {
     <div class="tab-content" id="tabContentCustoms">
       <div class="tab-pane" id="customs">
         <div id="editorToolbar" class="query-toolbar editor-toolbar">
-          <span class="icon_arangodb" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
-          <span class="icon_arangodb" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
+          <span class="queryTooltips" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
+          <span class="queryTooltips" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
         </div>
         <div id="customsDiv" class="query-div">
         </div>
@@ -2420,11 +2412,11 @@ if (list.length > 0) {
       <div class="tab-pane active" id="query">
         <div id="queryDiv" class="query-div">
           <div id="editorToolbar" class="query-toolbar editor-toolbar">
-            <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
-            <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
-            <span class="queryTooltips tooltip-margin" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
-            <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips tooltip-margin" title="Redo" id="redoText"/>
-            <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips tooltip-margin" title="Undo" id="undoText"/>
+            <span class="queryTooltips" title="Clear" id="clearInput"><i class="fa fa-trash-o"></i></span>
+            <span class="queryTooltips" title="Save current query" id="addAQL"><i class="fa fa-save"></i></span>
+            <span class="queryTooltips" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
+            <span class="queryTooltips" title="Redo" id="redoText"><i class="fa fa-undo fa-flip-horizontal"></i></span>
+            <span class="queryTooltips" title="Undo" id="undoText"><i class="fa fa-undo"></i></span>
           </div>
 
           <div id="aqlEditor" class='aql-editor'></div>
@@ -2477,7 +2469,7 @@ if (list.length > 0) {
       <div class="tab-pane" id="result">
         <div id="outputToolbar" class="query-toolbar output-toolbar">
           <!--
-          <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
+          <span class="icon_arangodb icon_arangodb_trash queryTooltips " title="Clear" id="clearOutput"></span>
           <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
           -->
         </div>
@@ -2491,6 +2483,63 @@ if (list.length > 0) {
 
     </div>
 
+  </div></script><script id="queryView2.ejs" type="text/template"><div class="headerBar">
+    <a class="arangoHeader">AQL Editor 2</a>
+  </div>
+
+
+  <div id="queryContent" class="queryContent">
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
+      </div>
+
+      <div class="pull-right">
+        <span id="querySpotlight"><i class="fa fa-search"></i></span>
+        <div class="styled-select">
+          <select id="querySize" class="query-size"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
+        <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
+      </div>
+
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
+        <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
+          </div>
+          <div id="queryPreview"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-success query-button">Explain</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="outputEditors" class="outputEditors">
   </div>
 
   <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
@@ -2527,7 +2576,42 @@ if (list.length > 0) {
     <div class="modal-footer">
       <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
       <button id="closeQueryModal" class="button-close">Cancel</button>
+    </div></script><script id="queryViewOutput.ejs" type="text/template"><div id="outputEditorWrapper<%= counter %>" class="outputEditorWrapper">
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <span class="toolbarType"><%=type%></span>
+          <span id="spinner"><i class="fa fa-spinner fa-spin"></i><i>Query is operating ...</i></span>
+      </div>
+      <div class="pull-right">
+        <span class="action"><i class="fa fa-close" element="outputEditor<%= counter %>" style="display: none"></i></span>
+      </div>
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <span class="switchAce" counter="<%=counter%>" style="display: none">Result</span>
+        <% } else { %>
+          <span class="switchAce" counter="<%=counter%>">AQL</span>
+        <% } %>
+      </div>
     </div>
+    <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
+    <div id="sentWrapper<%= counter %>" class="sentWrapper" style="display: none">
+      <div class="pull-left">
+        <div id="sentQueryEditor<%= counter %>"></div>
+      </div>
+      <div class="pull-right">
+        <div id="sentBindParamEditor<%= counter %>"></div>
+      </div>
+    </div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Download</button>
+          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 5px;" class="button-success">Copy to editor</button>
+          <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
 
   </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">JS Shell</a>
@@ -2535,6 +2619,10 @@ if (list.length > 0) {
   <div id="shell_workspace_header"/>
   <div id="shell_workspace" class="shell_workspace">
     <div id="replShell" class="replShell"/>
+  </div></script><script id="spotlightView.ejs" type="text/template"><div class="spotlightWrapper">
+    <div id="spotlight">
+      <input class="typeahead" type="text" placeholder="Search... ">
+    </div>
   </div></script><script id="statisticBarView.ejs" type="text/template"><div class="navlogo display-none">
     <a href="#dashboard" style="padding-left: 15px;">
       <img class="svg stat_cpu"
@@ -2567,7 +2655,7 @@ var cutByResolution = function (str) {
     <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
     <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
     <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
-      <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
+      <a id="addDocumentButton" class="pull-right addButton"><span title="Add a document"><i class="fa fa-plus-circle"></i></span></a>
     </th>
   </tr>
 </thead>
@@ -2598,19 +2686,20 @@ var cutByResolution = function (str) {
     </td>
     <td class="docsThirdCol">
       <a class="deleteButton">
-      <span class="icon_arangodb_roundminus" data-original-title="Delete document" title="Delete document"></span></a>
+      <span data-original-title="Delete document" title="Delete document"><i class="fa fa-minus-circle"></i></i></span></a>
     </td>
   </tr>
   <% 
     odd = !odd;
     });
   %>
-</tbody></script><script id="testView.ejs" type="text/template"><h1>Text File Reader</h1>
-    <div>
-          Select a text file: 
-                <input type="file" id="fileInput">
-                    </div>
-                        <pre id="fileDisplayArea"><pre></script><script id="userBarView.ejs" type="text/template"><ul class="navlist" id="userBarUl">
+</tbody></script><script id="testView.ejs" type="text/template"><div class="headerBar">
+    <a class="arangoHeader">Test</a>
+  </div>
+
+  <div id="testContent" class="test-content-id innerContent">
+    <div id="graph-container"></div>
+  </div></script><script id="userBarView.ejs" type="text/template"><ul class="navlist" id="userBarUl">
 
   <li class="dropdown user-menu userImg">
     <a href="#" class="tab userImg" id="user" >
@@ -2693,7 +2782,7 @@ var cutByResolution = function (str) {
       <div class="tile">
         <div class="fullBorderBox">
           <a href="#" id="createUser" class="add">
-            <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            <span id="newUser" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
             Add User
           </a>
         </div>
@@ -2755,4 +2844,9 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1452528228639"></script><script src="libs.js?version=1452528228639"></script><script src="app.js?version=1452528228639"></script></body></html>
+  <% } %></script><script id="workMonitorView.ejs" type="text/template"><div class="headerBar">
+    <a class="arangoHeader">Work Monitor</a>
+  </div>
+
+  <div id="workMonitorContent" class="innerContent">
+  </div></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1456859061898"></script><script src="libs.js?version=1456859061898"></script><script src="app.js?version=1456859061898"></script></body></html>

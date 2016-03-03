@@ -29,12 +29,11 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/levenshtein.h"
-#include "Basics/logging.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace std;
-
+using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a double
@@ -138,9 +137,7 @@ typedef struct po_visit_functions_s {
                                 void* output);
 } po_visit_functions_t;
 
-
 static bool HasPrintedError = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints out an error message about an unrecognized option
@@ -305,7 +302,7 @@ static char* FillVariables(char const* value) {
 static struct option* InitOptionStructure(struct option* option,
                                           char const* name, int hasArg,
                                           int* flag, int val) {
-  option->name = name;
+  option->name = const_cast<char*>(name);
   option->has_arg = hasArg;
   option->flag = flag;
   option->val = 256 + val;
@@ -521,7 +518,7 @@ static int ParseInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_int64_t* desc = static_cast<po_int64_t*>(value);
-  int64_t tmp = TRI_Int64String(userarg);
+  int64_t tmp = StringUtils::int64(userarg);
 
   int res = TRI_errno();
 
@@ -713,14 +710,17 @@ static int ParseUInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint64_t* desc = static_cast<po_uint64_t*>(value);
-  uint64_t tmp = TRI_UInt64String(userarg);
 
-  int res = TRI_errno();
-
-  if (res == TRI_ERROR_NO_ERROR) {
+  int res = TRI_ERROR_NO_ERROR;
+  
+  try {
+    uint64_t tmp = StringUtils::uint64_check(userarg);
     *desc->_value = tmp;
   }
-
+  catch (...) {
+    res = TRI_ERROR_ILLEGAL_NUMBER;
+  }
+  
   return res;
 }
 
@@ -903,7 +903,6 @@ static bool HandleOption(TRI_program_options_t* options,
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new program options description
 ////////////////////////////////////////////////////////////////////////////////
@@ -1020,7 +1019,6 @@ void TRI_FreeProgramOptions(TRI_program_options_t* options) {
   TRI_DestroyProgramOptions(options);
   TRI_Free(TRI_CORE_MEM_ZONE, options);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a flag option
@@ -1323,7 +1321,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
       section = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                     matches[1].rm_eo - matches[1].rm_so);
+                                    matches[1].rm_eo - matches[1].rm_so);
       TRI_SystemFree(buffer);
       buffer = nullptr;
 
@@ -1336,9 +1334,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       option = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                    matches[1].rm_eo - matches[1].rm_so);
+                                   matches[1].rm_eo - matches[1].rm_so);
       raw = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                 matches[2].rm_eo - matches[2].rm_so);
+                                matches[2].rm_eo - matches[2].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
@@ -1371,7 +1369,7 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       option = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                    matches[1].rm_eo - matches[1].rm_so);
+                                   matches[1].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);
       buffer = nullptr;
@@ -1400,11 +1398,11 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                        matches[1].rm_eo - matches[1].rm_so);
+                                       matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                    matches[2].rm_eo - matches[2].rm_so);
+                                   matches[2].rm_eo - matches[2].rm_so);
       raw = TRI_DuplicateString(buffer + matches[3].rm_so,
-                                 matches[3].rm_eo - matches[3].rm_so);
+                                matches[3].rm_eo - matches[3].rm_so);
       value = FillVariables(raw);
       TRI_FreeString(TRI_CORE_MEM_ZONE, raw);
 
@@ -1435,9 +1433,9 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
     if (res == 0) {
       tmpSection = TRI_DuplicateString(buffer + matches[1].rm_so,
-                                        matches[1].rm_eo - matches[1].rm_so);
+                                       matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString(buffer + matches[2].rm_so,
-                                    matches[2].rm_eo - matches[1].rm_so);
+                                   matches[2].rm_eo - matches[1].rm_so);
 
       TRI_SystemFree(buffer);
       buffer = nullptr;
@@ -1484,5 +1482,3 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
   return ok;
 }
-
-

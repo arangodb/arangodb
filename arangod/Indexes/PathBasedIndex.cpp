@@ -23,7 +23,7 @@
 
 #include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb;
 
@@ -41,7 +41,6 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
   TRI_ASSERT(false);
   return nullptr;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
@@ -73,8 +72,8 @@ PathBasedIndex::PathBasedIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PathBasedIndex::PathBasedIndex(TRI_json_t const* json, bool allowPartialIndex)
-    : Index(json),
+PathBasedIndex::PathBasedIndex(VPackSlice const& slice, bool allowPartialIndex)
+    : Index(slice),
       _shaper(nullptr),
       _paths(),
       _useExpansion(false),
@@ -95,7 +94,6 @@ PathBasedIndex::PathBasedIndex(TRI_json_t const* json, bool allowPartialIndex)
 
 PathBasedIndex::~PathBasedIndex() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +101,7 @@ PathBasedIndex::~PathBasedIndex() {}
 int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
                                 TRI_doc_mptr_t const* document) {
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT_EXPENSIVE(document->getDataPtr() !=
+  TRI_ASSERT(document->getDataPtr() !=
                        nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shaped_json_t shapedJson;
@@ -113,7 +111,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
       document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
-    LOG_WARNING("encountered invalid marker with shape id 0");
+    LOG(WARN) << "encountered invalid marker with shape id 0";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -141,7 +139,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
       }
       TRI_IF_FAILURE("FillElementOOM") {
         // clean up manually
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -159,7 +157,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
         elements.emplace_back(element);
       } catch (...) {
-        TRI_index_element_t::free(element);
+        TRI_index_element_t::freeElement(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -184,7 +182,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
         }
         TRI_IF_FAILURE("FillElementOOM") {
           // clean up manually
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
@@ -202,7 +200,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
           elements.emplace_back(element);
         } catch (...) {
-          TRI_index_element_t::free(element);
+          TRI_index_element_t::freeElement(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }
@@ -211,7 +209,6 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create the sole index value insert
@@ -450,5 +447,3 @@ PathBasedIndex::fillPidPaths() {
 
   return result;
 }
-
-

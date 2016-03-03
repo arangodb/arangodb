@@ -27,7 +27,6 @@
 
 #include "Scheduler/ListenTask.h"
 
-
 namespace arangodb {
 namespace rest {
 class GeneralServer;
@@ -41,7 +40,6 @@ class HttpListenTask : public ListenTask {
   HttpListenTask(HttpListenTask const&) = delete;
   HttpListenTask& operator=(HttpListenTask const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief listen to given port
@@ -49,12 +47,10 @@ class HttpListenTask : public ListenTask {
 
   HttpListenTask(GeneralServer* server, Endpoint* endpoint);
 
-  
  protected:
 
   bool handleConnected(TRI_socket_t s, ConnectionInfo const& info, bool _isHttp);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying general server
@@ -66,5 +62,3 @@ class HttpListenTask : public ListenTask {
 }
 
 #endif
-
-

@@ -28,8 +28,12 @@
 #include "Basics/fasthash.h"
 #include "Basics/json.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShapedJson JSON Shapes
@@ -158,11 +162,9 @@
 /// @copydetails TRI_homogeneous_sized_list_shape_t
 ////////////////////////////////////////////////////////////////////////////////
 
-
 struct TRI_memory_zone_s;
 struct TRI_string_buffer_s;
 class VocShaper;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of short strings
@@ -175,8 +177,6 @@ class VocShaper;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SHAPE_SIZE_VARIABLE ((TRI_shape_size_t)-1)
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of a shape identifier
@@ -846,8 +846,6 @@ typedef struct TRI_shaped_sub_s {
   } _value;
 } TRI_shaped_sub_t;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of an attribute path
 ////////////////////////////////////////////////////////////////////////////////
@@ -866,7 +864,6 @@ typedef struct TRI_shape_path_s {
   // char _name[];
 } TRI_shape_path_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,7 +876,6 @@ void TRI_DestroyShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
 void TRI_FreeShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,7 +886,8 @@ void TRI_SortShapeValues(TRI_shape_value_t* values, size_t n);
 /// @brief converts a VelocyPack object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper*, VPackSlice const&,
+TRI_shaped_json_t* TRI_ShapedJsonVelocyPack(VocShaper*,
+                                            arangodb::velocypack::Slice const&,
                                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,6 +901,14 @@ TRI_shaped_json_t* TRI_ShapedJsonJson(VocShaper*, TRI_json_t const*, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonShapedJson(VocShaper*, TRI_shaped_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a shaped json object into a VelocyPack Object
+///        NOTE: Transforms via TRI_json_t.
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<arangodb::velocypack::Builder> TRI_VelocyPackShapedJson(
+    VocShaper*, TRI_shaped_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces
@@ -967,7 +972,6 @@ size_t TRI_LengthHomogeneousSizedListShapedJson(
 bool TRI_AtHomogeneousSizedListShapedJson(
     TRI_homogeneous_sized_list_shape_t const* shape, TRI_shaped_json_t const*,
     size_t position, TRI_shaped_json_t*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -1078,5 +1082,3 @@ class default_delete<TRI_shaped_json_t> {
 }  // closes namespace std
 
 #endif
-
-

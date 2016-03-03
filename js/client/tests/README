@@ -1,15 +1,17 @@
 Conventions for testing framework:
 ==================================
 
-All files in this directory whose name starts with "shell-"
-and ends with ".js" automatically take part in client
-shell tests (target "shell_client").
+All files in the directory "shell" that end with ".js" automatically
+take part in client shell tests (target "shell_client").
 
-If the filename contains the string "-cluster", then it is
-only executed when testing in cluster mode. If the filename
-contains the string "-noncluster", then it is only executed
-when testing in single instance mode.
+All files in the directory "agency" that end with ".js" automatically
+take part in agency tests (target "agency").
 
-If the filename contains the string "-disabled", then it is
-not executed at all. This is for tests that cannot be run from the
+If the filename contains the string "-cluster", then it is only
+executed when testing in cluster mode. If the filename contains the
+string "-noncluster", then it is only executed when testing in single
+instance mode.
+
+If the filename contains the string "-disabled", then it is not
+executed at all. This is for tests that cannot be run from the
 JavaScript test framework and have to be run from the Makefile.

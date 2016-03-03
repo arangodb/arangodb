@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
@@ -41,7 +41,6 @@
 
 namespace arangodb {
 namespace basics {
-
 
 struct BucketPosition {
   size_t bucketId;
@@ -58,7 +57,6 @@ struct BucketPosition {
     return position == other.position && bucketId == other.bucketId;
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -98,8 +96,6 @@ class AssocUnique {
   IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
   std::function<std::string()> _contextCallback;
-
-  
 
  public:
   AssocUnique(HashKeyFuncType hashKey, HashElementFuncType hashElement,
@@ -151,7 +147,6 @@ class AssocUnique {
     }
   }
 
-
   ~AssocUnique() {
     for (auto& b : _buckets) {
       delete[] b._table;
@@ -189,14 +184,18 @@ class AssocUnique {
       return;
     }
 
+    std::string const cb(_contextCallback());
+
     // only log performance infos for indexes with more than this number of
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
+    LOG(TRACE) << "resizing index " << cb << ", target size: " << targetSize;
+
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_ACTION("index-resize %s, target size: %llu",
-                 _contextCallback().c_str(), (unsigned long long)targetSize);
+      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+          "index-resize " << cb << ", target size: " << targetSize;
     }
 
     Element** oldTable = b._table;
@@ -250,8 +249,9 @@ class AssocUnique {
 
     delete[] oldTable;
 
-    LOG_TIMER((TRI_microtime() - start), "index-resize %s, target size: %llu",
-              _contextCallback().c_str(), (unsigned long long)targetSize);
+    LOG(TRACE) << "resizing index " << cb << " done";
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -329,7 +329,6 @@ class AssocUnique {
     return TRI_ERROR_NO_ERROR;
   }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
@@ -412,17 +411,17 @@ class AssocUnique {
   /// @brief Appends information about statistics in the given VPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  void appendToVelocyPack(std::shared_ptr<VPackBuilder> builder) {
-    builder->add("buckets", VPackValue(VPackValueType::Array));
+  void appendToVelocyPack(VPackBuilder& builder) {
+    builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
-      builder->add(VPackValue(VPackValueType::Object));
-      builder->add("nrAlloc", VPackValue(b._nrAlloc));
-      builder->add("nrUsed", VPackValue(b._nrUsed));
-      builder->close();
+      builder.openObject();
+      builder.add("nrAlloc", VPackValue(b._nrAlloc));
+      builder.add("nrUsed", VPackValue(b._nrUsed));
+      builder.close();
     }
-    builder->close();  // buckets
-    builder->add("nrBuckets", VPackValue(_buckets.size()));
-    builder->add("totalUsed", VPackValue(size()));
+    builder.close();  // buckets
+    builder.add("nrBuckets", VPackValue(_buckets.size()));
+    builder.add("totalUsed", VPackValue(size()));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -594,7 +593,7 @@ class AssocUnique {
     size_t const chunkSize = elements.size() / numThreads;
 
     typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
-    arangodb::basics::Mutex bucketMapLocker;
+    arangodb::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
@@ -618,7 +617,7 @@ class AssocUnique {
           }
 
           // transfer ownership to the central map
-          MUTEX_LOCKER(bucketMapLocker);
+          MUTEX_LOCKER(mutexLocker, bucketMapLocker);
 
           for (auto& it : partitions) {
             auto it2 = allBuckets.find(it.first);
@@ -903,7 +902,7 @@ class AssocUnique {
       if (position.position != n) {
         // found an element
         auto found = b._table[position.position];
-        TRI_ASSERT_EXPENSIVE(found != nullptr);
+        TRI_ASSERT(found != nullptr);
 
         // move forward the position indicator one more time
         if (++position.position == n) {
@@ -1029,5 +1028,3 @@ class AssocUnique {
 }  // namespace arangodb
 
 #endif
-
-

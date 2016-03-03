@@ -29,7 +29,6 @@
 #include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-
 namespace arangodb {
 namespace aql {
 class Query;
@@ -43,22 +42,20 @@ class ApplicationV8;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestSimpleHandler : public RestVocbaseBaseHandler {
-  
  public:
+  RestSimpleHandler(
+      rest::HttpRequest*,
+      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
-  RestSimpleHandler(rest::GeneralRequest*,
-                    std::pair<arangodb::ApplicationV8*,
-                              arangodb::aql::QueryRegistry*>*);
+  RestSimpleHandler(
+      rest::GeneralRequest*,
+      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
-  
  public:
-
   status_t execute() override final;
-
 
   bool cancel() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
@@ -96,7 +93,6 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
   void lookupByKeys(VPackSlice const&);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _applicationV8
@@ -114,7 +110,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _queryLock;
+  Mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently running query
@@ -131,4 +127,3 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-

@@ -31,23 +31,13 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
-
-
 namespace arangodb {
-namespace aql {
-class SortCondition;
-}
-namespace basics {
-struct AttributeName;
-}
 
 class Transaction;
 
 class PrimaryIndexIterator final : public IndexIterator {
  public:
-  PrimaryIndexIterator(arangodb::Transaction* trx,
-                       PrimaryIndex const* index,
+  PrimaryIndexIterator(arangodb::Transaction* trx, PrimaryIndex const* index,
                        std::vector<char const*>& keys)
       : _trx(trx), _index(index), _keys(std::move(keys)), _position(0) {}
 
@@ -65,22 +55,19 @@ class PrimaryIndexIterator final : public IndexIterator {
 };
 
 class PrimaryIndex final : public Index {
-  
  public:
   PrimaryIndex() = delete;
 
   explicit PrimaryIndex(struct TRI_document_collection_t*);
 
-  explicit PrimaryIndex(struct TRI_json_t const*);
+  explicit PrimaryIndex(VPackSlice const&);
 
   ~PrimaryIndex();
 
-  
  private:
   typedef arangodb::basics::AssocUnique<char const, TRI_doc_mptr_t>
       TRI_PrimaryIndex_t;
 
-  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
@@ -98,11 +85,8 @@ class PrimaryIndex final : public Index {
 
   size_t memory() const override final;
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
-  arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
-
-  std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
-  std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPackFigures(VPackBuilder&) const override final;
 
   int insert(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
@@ -129,8 +113,7 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupRandom(
-      arangodb::Transaction*,
-      arangodb::basics::BucketPosition& initialPosition,
+      arangodb::Transaction*, arangodb::basics::BucketPosition& initialPosition,
       arangodb::basics::BucketPosition& position, uint64_t& step,
       uint64_t& total);
 
@@ -153,8 +136,7 @@ class PrimaryIndex final : public Index {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequentialReverse(
-      arangodb::Transaction*,
-      arangodb::basics::BucketPosition& position);
+      arangodb::Transaction*, arangodb::basics::BucketPosition& position);
 
   int insertKey(arangodb::Transaction*, TRI_doc_mptr_t*, void const**);
 
@@ -173,8 +155,7 @@ class PrimaryIndex final : public Index {
 
   static uint64_t calculateHash(arangodb::Transaction*, char const*);
 
-  static uint64_t calculateHash(arangodb::Transaction*, char const*,
-                                size_t);
+  static uint64_t calculateHash(arangodb::Transaction*, char const*, size_t);
 
   void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
 
@@ -192,7 +173,6 @@ class PrimaryIndex final : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
@@ -203,7 +183,6 @@ class PrimaryIndex final : public Index {
       arangodb::aql::AstNode const*,
       std::vector<arangodb::aql::AstNode const*> const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual index
@@ -214,5 +193,3 @@ class PrimaryIndex final : public Index {
 }
 
 #endif
-
-

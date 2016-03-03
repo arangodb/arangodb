@@ -31,7 +31,6 @@
 namespace arangodb {
 namespace aql {
 
-
 template <typename T>
 class NodeFinder final : public WalkerWorker<ExecutionNode> {
   T _lookingFor;
@@ -49,7 +48,6 @@ class NodeFinder final : public WalkerWorker<ExecutionNode> {
     return _enterSubqueries;
   }
 };
-
 
 class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
   std::vector<ExecutionNode*>& _out;
@@ -76,5 +74,3 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
 }
 
 #endif
-
-

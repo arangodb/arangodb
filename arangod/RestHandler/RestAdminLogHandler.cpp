@@ -23,45 +23,19 @@
 
 #include "RestAdminLogHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
 #include "Rest/GeneralRequest.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort ascending
-////////////////////////////////////////////////////////////////////////////////
-
-static int LidCompareAsc(void const* l, void const* r) {
-  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
-  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
-
-  return (int)(((int64_t)left->_lid) - ((int64_t)right->_lid));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort descending
-////////////////////////////////////////////////////////////////////////////////
-
-static int LidCompareDesc(void const* l, void const* r) {
-  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
-  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
-
-  return (int)(((int64_t)right->_lid) - ((int64_t)left->_lid));
-}
-
-
 
 RestAdminLogHandler::RestAdminLogHandler(rest::GeneralRequest* request)
     : RestBaseHandler(request) {}
-
-
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 
@@ -77,17 +51,14 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
     return status_t(HANDLER_DONE);
   }
 
-  // .............................................................................
   // check the maximal log level to report
-  // .............................................................................
-
   bool found1;
   std::string upto = StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
   std::string lvl = StringUtils::tolower(_request->value("level", found2));
 
-  TRI_log_level_e ul = TRI_LOG_LEVEL_INFO;
+  LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
   std::string logLevel;
 
@@ -102,17 +73,17 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
 
   if (found1 || found2) {
     if (logLevel == "fatal" || logLevel == "0") {
-      ul = TRI_LOG_LEVEL_FATAL;
+      ul = LogLevel::FATAL;
     } else if (logLevel == "error" || logLevel == "1") {
-      ul = TRI_LOG_LEVEL_ERROR;
+      ul = LogLevel::ERR;
     } else if (logLevel == "warning" || logLevel == "2") {
-      ul = TRI_LOG_LEVEL_WARNING;
+      ul = LogLevel::WARN;
     } else if (logLevel == "info" || logLevel == "3") {
-      ul = TRI_LOG_LEVEL_INFO;
+      ul = LogLevel::INFO;
     } else if (logLevel == "debug" || logLevel == "4") {
-      ul = TRI_LOG_LEVEL_DEBUG;
+      ul = LogLevel::DEBUG;
     } else if (logLevel == "trace" || logLevel == "5") {
-      ul = TRI_LOG_LEVEL_TRACE;
+      ul = LogLevel::TRACE;
     } else {
       generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
@@ -121,10 +92,7 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
     }
   }
 
-  // .............................................................................
   // check the starting position
-  // .............................................................................
-
   uint64_t start = 0;
 
   bool found;
@@ -134,22 +102,16 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
     start = StringUtils::uint64(s);
   }
 
-  // .............................................................................
   // check the offset
-  // .............................................................................
-
-  uint64_t offset = 0;
+  int64_t offset = 0;
 
   s = _request->value("offset", found);
 
   if (found) {
-    offset = StringUtils::uint64(s);
+    offset = StringUtils::int64(s);
   }
 
-  // .............................................................................
   // check the size
-  // .............................................................................
-
   uint64_t size = (uint64_t)-1;
 
   s = _request->value("size", found);
@@ -158,10 +120,7 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
     size = StringUtils::uint64(s);
   }
 
-  // .............................................................................
   // check the sort direction
-  // .............................................................................
-
   bool sortAscending = true;
 
   std::string sortdir = StringUtils::tolower(_request->value("sort", found));
@@ -172,44 +131,59 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
     }
   }
 
-  // .............................................................................
   // check the search criteria
-  // .............................................................................
-
   bool search = false;
-  std::string searchString = StringUtils::tolower(_request->value("search", search));
+  std::string searchString =
+      StringUtils::tolower(_request->value("search", search));
 
-  // .............................................................................
   // generate result
-  // .............................................................................
+  std::vector<LogBuffer> entries = Logger::bufferedEntries(ul, start, useUpto);
+  std::vector<LogBuffer> clean;
 
-  TRI_vector_t* logs = TRI_BufferLogging(ul, start, useUpto);
+  if (search) {
+    for (auto entry : entries) {
+      std::string text = StringUtils::tolower(entry._message);
 
-  if (logs == nullptr) {
-    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return status_t(HANDLER_DONE);
-  }
+// <<<<<<< HEAD
+//   if (logs == nullptr) {
+//     generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+//     return status_t(HANDLER_DONE);
+//   }
 
-  std::vector<TRI_log_buffer_t*> clean;
-  for (size_t i = 0; i < TRI_LengthVector(logs); ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
+//   std::vector<TRI_log_buffer_t*> clean;
+//   for (size_t i = 0; i < TRI_LengthVector(logs); ++i) {
+//     TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
 
-    if (search) {
-      std::string text = StringUtils::tolower(buf->_text);
+//     if (search) {
+//       std::string text = StringUtils::tolower(buf->_text);
 
-      if (text.find(searchString) == string::npos) {
+//       if (text.find(searchString) == string::npos) {
+// =======
+      if (text.find(searchString) == std::string::npos) {
+// >>>>>>> upstream/devel
         continue;
       }
+
+      clean.emplace_back(entry);
     }
-    clean.emplace_back(buf);
+  } else {
+    clean.swap(entries);
   }
+
+  if (!sortAscending) {
+    std::reverse(clean.begin(), clean.end());
+  }
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   size_t length = clean.size();
+
   try {
     result.add("totalAmount", VPackValue(length));
 
-    if (offset >= length) {
+    if (offset < 0) {
+      offset = 0;
+    } else if (offset >= static_cast<int64_t>(length)) {
       length = 0;
       offset = 0;
     } else if (offset > 0) {
@@ -221,67 +195,71 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
       length = static_cast<size_t>(size);
     }
 
-    std::sort(clean.begin() + offset, clean.begin() + offset + length,
-              (sortAscending ? LidCompareAsc : LidCompareDesc));
-
-    // For now we build the arrays one ofter the other
-    // first lid
+    // For now we build the arrays one ofter the other first id
     result.add("lid", VPackValue(VPackValueType::Array));
+
     for (size_t i = 0; i < length; ++i) {
-      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf->_lid));
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(buf._id));
     }
+
     result.close();
 
     // second level
     result.add("level", VPackValue(VPackValueType::Array));
+
     for (size_t i = 0; i < length; ++i) {
-      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
       uint32_t l = 0;
 
-      switch (buf->_level) {
-        case TRI_LOG_LEVEL_FATAL:
+      switch (buf._level) {
+        case LogLevel::FATAL:
           l = 0;
           break;
-        case TRI_LOG_LEVEL_ERROR:
+        case LogLevel::ERR:
           l = 1;
           break;
-        case TRI_LOG_LEVEL_WARNING:
+        case LogLevel::WARN:
           l = 2;
           break;
-        case TRI_LOG_LEVEL_INFO:
+        case LogLevel::DEFAULT:
+        case LogLevel::INFO:
           l = 3;
           break;
-        case TRI_LOG_LEVEL_DEBUG:
+        case LogLevel::DEBUG:
           l = 4;
           break;
-        case TRI_LOG_LEVEL_TRACE:
+        case LogLevel::TRACE:
           l = 5;
           break;
       }
+
       result.add(VPackValue(l));
     }
+
     result.close();
 
     // third timestamp
     result.add("timestamp", VPackValue(VPackValueType::Array));
+
     for (size_t i = 0; i < length; ++i) {
-      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(static_cast<size_t>(buf->_timestamp)));
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
     }
+
     result.close();
 
     // fourth text
     result.add("text", VPackValue(VPackValueType::Array));
+
     for (size_t i = 0; i < length; ++i) {
-      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf->_text));
+      auto& buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(buf._message));
     }
+
     result.close();
 
     result.close();  // Close the result object
-
-    TRI_FreeBufferLogging(logs);
 
     VPackSlice slice = result.slice();
     generateResult(slice);
@@ -293,5 +271,3 @@ GeneralHandler::status_t RestAdminLogHandler::execute() {
 
   return status_t(HANDLER_DONE);
 }
-
-

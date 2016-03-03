@@ -33,17 +33,21 @@
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_json_t;
-struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
 namespace arangodb {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Forward Declarations
+////////////////////////////////////////////////////////////////////////////////
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace aql {
 class Ast;
@@ -54,7 +58,6 @@ struct Variable;
 
 class Transaction;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Unified index element. Do not directly construct it.
@@ -114,10 +117,10 @@ struct TRI_index_element_t {
   /// @brief Free the index element.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void free(TRI_index_element_t* el) {
-    TRI_ASSERT_EXPENSIVE(el != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
-    TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);
+  static void freeElement(TRI_index_element_t* el) {
+    TRI_ASSERT(el != nullptr);
+    TRI_ASSERT(el->document() != nullptr);
+    TRI_ASSERT(el->subObjects() != nullptr);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
   }
@@ -127,9 +130,7 @@ namespace arangodb {
 class IndexIterator;
 struct IndexIteratorContext;
 
-
 class Index {
-  
  public:
   Index() = delete;
   Index(Index const&) = delete;
@@ -139,7 +140,7 @@ class Index {
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
-  explicit Index(struct TRI_json_t const*);
+  explicit Index(arangodb::velocypack::Slice const&);
 
   virtual ~Index();
 
@@ -162,7 +163,6 @@ class Index {
     TRI_IDX_TYPE_CAP_CONSTRAINT
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the index id
@@ -318,8 +318,7 @@ class Index {
   /// contents are the same
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool Compare(struct TRI_json_t const* lhs,
-                      struct TRI_json_t const* rhs);
+  static bool Compare(VPackSlice const& lhs, VPackSlice const& rhs);
 
   virtual IndexType type() const = 0;
 
@@ -332,18 +331,19 @@ class Index {
   virtual bool hasSelectivityEstimate() const = 0;
   virtual double selectivityEstimate() const;
   virtual size_t memory() const = 0;
-  virtual arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-  virtual arangodb::basics::Json toJsonFigures(TRI_memory_zone_t*) const;
 
-  virtual std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const;
-  virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+
+  virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
   virtual bool dumpFields() const = 0;
 
-  virtual int insert(arangodb::Transaction*,
-                     struct TRI_doc_mptr_t const*, bool) = 0;
-  virtual int remove(arangodb::Transaction*,
-                     struct TRI_doc_mptr_t const*, bool) = 0;
+  virtual int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
+                     bool) = 0;
+  virtual int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
+                     bool) = 0;
   virtual int postInsert(arangodb::Transaction*,
                          struct TRI_transaction_collection_s*,
                          struct TRI_doc_mptr_t const*);
@@ -382,7 +382,6 @@ class Index {
                            arangodb::aql::Variable const* reference,
                            bool) const;
 
-  
  protected:
   TRI_idx_iid_t const _iid;
 
@@ -402,5 +401,3 @@ std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
 
 #endif
-
-

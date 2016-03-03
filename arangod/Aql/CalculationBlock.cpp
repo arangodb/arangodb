@@ -29,7 +29,6 @@
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
@@ -225,4 +224,3 @@ AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   clearRegisters(res.get());
   return res.release();
 }
-

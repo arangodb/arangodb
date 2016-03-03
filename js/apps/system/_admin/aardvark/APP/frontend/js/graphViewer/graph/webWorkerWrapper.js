@@ -99,7 +99,7 @@ function WebWorkerWrapper(Class, callback) {
         return new window.Blob(code.split());
       },
       worker,
-      url = window.webkitURL || window.URL,
+      url = window.URL,
       blobPointer = new BlobObject(Class);
     worker = new window.Worker(url.createObjectURL(blobPointer));
     worker.onmessage = callback;

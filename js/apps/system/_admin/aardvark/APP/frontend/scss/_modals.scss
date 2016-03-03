@@ -38,6 +38,10 @@
   z-index: 9999999;
 }
 
+.modal-tabbar {
+  border-bottom: 1px solid $c-darker-grey;
+}
+
 .modal-body {
   color: $c-btn-inverse;
   font-family: 'Open Sans', sans-serif !important;
@@ -261,15 +265,15 @@
   }
 
   input {
-    width: 384px;
+    width: 436px;
   }
 
   select {
-    width: 398px;
+    width: 450px;
   }
 
   .collectionTh {
-    height: 55px;
+    height: 50px;
   }
 
   .tab-content {
@@ -281,6 +285,10 @@
       padding-top: 10px;
     }
 
+    .tab-pane-modal {
+      border-top: none !important;
+    }
+
     #appstore {
       max-height: 290px;
     }
@@ -288,7 +296,6 @@
   }
 
   .errorMessage {
-    background-color: $c-white;
     color: $c-negative;
     font-size: 9pt;
     font-weight: 400;
@@ -316,11 +323,21 @@
   opacity: .4;
 }
 
+.fade {
+  opacity: 0;
+  -moz-transition: opacity .03s linear;
+  -ms-transition: opacity .03s linear;
+  -o-transition: opacity .03s linear;
+  -webkit-transition: opacity .03s linear;
+  transition: opacity .03s linear;
+}
+
 .modal {
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: 0;
-  width: 580px;
+  margin-left: -325px !important;
+  width: 650px;
   z-index: 9999999;
 
   .fade.in {
@@ -368,6 +385,11 @@
 .modal-footer {
   border-top: 0 !important;
   padding-right: 17px;
+
+  .button-close {
+    margin-left: 20px;
+    margin-right: 10px;
+  }
 }
 
 .modal-header {
@@ -432,7 +454,7 @@
   .figures1,
   .figures2 {
     margin-bottom: 20px;
-    width: 255px;
+    width: 300px;
   }
 
   .figures2 {

@@ -31,14 +31,12 @@
 namespace arangodb {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestUploadHandler(rest::GeneralRequest*);
 
   ~RestUploadHandler();
 
-  
  public:
 
   GeneralHandler::status_t execute();
@@ -53,5 +51,3 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

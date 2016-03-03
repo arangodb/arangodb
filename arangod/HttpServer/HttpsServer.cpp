@@ -27,8 +27,6 @@
 
 using namespace arangodb::rest;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,12 +41,10 @@ HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(0) {}
 
-
 HttpsServer::~HttpsServer() {
   // don't free context here but in dtor of ApplicationEndpointServer
   // SSL_CTX_free(ctx);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the verification mode
@@ -63,8 +59,6 @@ void HttpsServer::setVerificationMode(int mode) { _verificationMode = mode; }
 void HttpsServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
   _verificationCallback = func;
 }
-
-
 
 ArangoTask* HttpsServer::createCommTask(TRI_socket_t s,
                                           const ConnectionInfo& info) {

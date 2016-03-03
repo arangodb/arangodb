@@ -59,12 +59,19 @@ GeneralHandler::status_t RestEdgesHandler::execute() {
       generateNotImplemented("ILLEGAL " + EDGES_PATH);
       break;
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (std::exception const& ex) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
   // this handler is done
   return status_t(HANDLER_DONE);
 }
-
 
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
@@ -80,6 +87,10 @@ bool RestEdgesHandler::getEdgesForVertex(
   }
   TRI_document_collection_t* docCol =
       trx.trxCollection()->_collection->_collection;
+
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
       &trx, docCol, direction, start.cid, const_cast<char*>(start.key));
@@ -113,7 +124,6 @@ bool RestEdgesHandler::getEdgesForVertex(
   }
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock API_EDGE_READINOUTBOUND

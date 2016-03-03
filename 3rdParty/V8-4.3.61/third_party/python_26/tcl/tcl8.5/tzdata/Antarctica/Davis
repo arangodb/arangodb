@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Antarctica/Davis) {
-    {-9223372036854775808 0 0 zzz}
-    {-409190400 25200 0 DAVT}
-    {-163062000 0 0 zzz}
-    {-28857600 25200 0 DAVT}
-}

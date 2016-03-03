@@ -32,9 +32,7 @@ namespace arangodb {
 namespace aql {
 struct AstNode;
 
-
 class SortCondition {
-  
  public:
   SortCondition(SortCondition const&) = delete;
   SortCondition& operator=(SortCondition const&) = delete;
@@ -49,13 +47,8 @@ class SortCondition {
   /// @brief create the sort condition
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit SortCondition(std::vector<std::pair<AstNode const*, bool>> const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the sort condition
-  //////////////////////////////////////////////////////////////////////////////
-
   SortCondition(std::vector<std::pair<VariableId, bool>> const&,
+                std::vector<std::vector<arangodb::basics::AttributeName>> const&,
                 std::unordered_map<VariableId, AstNode const*> const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -64,7 +57,6 @@ class SortCondition {
 
   ~SortCondition();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the condition consists only of attribute accesses
@@ -117,13 +109,7 @@ class SortCondition {
       Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
-  
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sort expressions
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<std::pair<AstNode const*, bool>> _expressions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fields used in the sort conditions
@@ -131,6 +117,12 @@ class SortCondition {
 
   std::vector<std::pair<Variable const*,
                         std::vector<arangodb::basics::AttributeName>>> _fields;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief const attributes
+  //////////////////////////////////////////////////////////////////////////////
+                
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the sort is unidirectional
@@ -155,5 +147,3 @@ class SortCondition {
 }
 
 #endif
-
-

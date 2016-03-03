@@ -52,6 +52,15 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     size_t len = onePath.size();
     bool isEdgeAccess = false;
 
+    for (auto const & node : onePath) {
+      if (node->type == NODE_TYPE_FCALL) {
+        //
+        // we currently don't know how to execute functions in the
+        // traversal (-> TraverserExpression::recursiveCheck
+        return false;
+      }
+    }
+
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
 
@@ -76,8 +85,10 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
           (indexAccessNode->value.value._int < 0)) {
         return false;
       }
+
       conditionIsImpossible =
           !tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
+
     } else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
                (onePath[len - 4]->type == NODE_TYPE_EXPANSION)) {
       // we now need to check for p.edges[*] which becomes a fancy structure
@@ -105,6 +116,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
     bool isEdgeAccess = false;
     size_t attrAccessTo = 0;
 
+    TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
     }
@@ -154,7 +166,10 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
         filterByNode = compareNode->getMember(0);
       }
 
-      if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
+      // Hacki: I do not think that the nullptr check can ever fail because of
+      // the structure of onePath
+      if (accessNodeBranch != nullptr && accessNodeBranch->isSimple() &&
+          filterByNode->isDeterministic()) {
         currentPath.clear();
         clonePath.clear();
         filterByNode->findVariableAccess(currentPath, clonePath,
@@ -163,7 +178,6 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
           // Path variable access on the RHS? can't do that.
           continue;
         }
-
         AstNode* newNode = pathAccessNode->clone(ast);
 
         // since we just copied one path, we should only find one.
@@ -377,4 +391,3 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
-

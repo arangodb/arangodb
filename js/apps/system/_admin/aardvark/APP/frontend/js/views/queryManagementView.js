@@ -14,11 +14,29 @@
     templateSlow: templateEngine.createTemplate("queryManagementViewSlow.ejs"),
     table: templateEngine.createTemplate("arangoTable.ejs"),
     tabbar: templateEngine.createTemplate("arangoTabbar.ejs"),
+    active: true,
+    shouldRender: true,
+    timer: 0,
+    refreshRate: 2000,
 
     initialize: function () {
+      var self = this; 
       this.activeCollection = new window.QueryManagementActive();
       this.slowCollection = new window.QueryManagementSlow();
       this.convertModelToJSON(true);
+
+      window.setInterval(function() {
+        if (window.location.hash === '#queryManagement' && window.VISIBLE && self.shouldRender) {
+          if (self.active) {
+            self.convertModelToJSON(true);
+            self.renderActive();
+          }
+          else {
+            self.convertModelToJSON(false);
+            self.renderSlow();
+          }
+        }
+      }, self.refreshRate);
     },
 
     events: {
@@ -44,9 +62,11 @@
 
     switchTab: function(e) {
       if (e.currentTarget.id === 'activequeries') {
+        this.active = true;
         this.convertModelToJSON(true);
       }
       else if (e.currentTarget.id === 'slowqueries') {
+        this.active = false;
         this.convertModelToJSON(false);
       }
     },
@@ -133,11 +153,25 @@
       this.convertModelToJSON(true);
     },
 
+    addEvents: function() {
+      var self = this;
+      $('#queryManagementContent tbody').on('mousedown', function() {
+        clearTimeout(self.timer);
+        self.shouldRender = false;
+      });
+      $('#queryManagementContent tbody').on('mouseup', function() {
+        self.timer = window.setTimeout(function() {
+          self.shouldRender = true;
+        }, 3000);
+      });
+    },
+
     renderActive: function() {
       this.$el.html(this.templateActive.render({}));
       $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
       $('#activequeries').addClass("arango-active-tab");
+      this.addEvents();
     },
 
     renderSlow: function() {
@@ -147,6 +181,7 @@
         content: this.tableDescription,
       }));
       $('#slowqueries').addClass("arango-active-tab");
+      this.addEvents();
     },
 
     convertModelToJSON: function (active) {
@@ -185,6 +220,7 @@
           if (rowsArray.length === 0) {
             rowsArray.push([
               message,
+              "",
               "",
               "",
               ""

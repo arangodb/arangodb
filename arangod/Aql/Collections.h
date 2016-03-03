@@ -33,7 +33,6 @@ namespace arangodb {
 namespace aql {
 struct Collection;
 
-
 class Collections {
  public:
   Collections& operator=(Collections const& other) = delete;
@@ -64,5 +63,3 @@ class Collections {
 }
 
 #endif
-
-

@@ -23,29 +23,26 @@
 
 #include "RestDebugHandler.h"
 
-#include "Rest/AnyServer.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/ArangoServer.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern AnyServer* ArangoInstance;
-
+extern ArangoServer* ArangoInstance;
 
 RestDebugHandler::RestDebugHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-
 bool RestDebugHandler::isDirect() const { return false; }
-
 
 GeneralHandler::status_t RestDebugHandler::execute() {
   // extract the sub-request type

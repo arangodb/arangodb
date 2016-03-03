@@ -40,7 +40,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementKey(void* userData, TRI_edge_header_t const* data) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
   char const* key = h->_key;
@@ -57,7 +57,7 @@ static uint64_t HashElementKey(void* userData, TRI_edge_header_t const* data) {
 
 static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
                                     bool byKey) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   uint64_t hash;
 
@@ -74,8 +74,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetFromKey;
 
-      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_fromCid, key);
+      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
 
       hash = edge->_fromCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -85,8 +84,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetFromKey;
 
-      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_fromCid, key);
+      // LOG(TRACE) << "HASH FROM: COLLECTION: " << // edge->_fromCid << ", KEY: " << key;
 
       hash = edge->_fromCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -102,7 +100,7 @@ static uint64_t HashElementEdgeFrom(void* userData, TRI_doc_mptr_t const* data,
 
 static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
                                   bool byKey) {
-  TRI_ASSERT_EXPENSIVE(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   uint64_t hash;
 
@@ -119,8 +117,7 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetToKey;
 
-      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_toCid, key);
+      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
 
       hash = edge->_toCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -130,8 +127,7 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
               marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*)edge + edge->_offsetToKey;
 
-      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long)
-      // edge->_toCid, key);
+      // LOG(TRACE) << "HASH TO: COLLECTION: " << // edge->_toCid << ", KEY: " << key;
 
       hash = edge->_toCid;
       hash ^= (uint64_t)fasthash64(key, strlen(key), 0x87654321);
@@ -147,8 +143,8 @@ static uint64_t HashElementEdgeTo(void* userData, TRI_doc_mptr_t const* data,
 
 static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
                                TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
@@ -165,9 +161,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
 
-    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_fromCid, rKey);
+    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
+    // RKEY: " << rKey;
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     arangodb::wal::edge_marker_t const* rEdge =
@@ -175,9 +170,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetFromKey;
 
-    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_fromCid, rKey);
+    // LOG(TRACE) << "ISEQUAL FROM: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_fromCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -191,8 +185,8 @@ static bool IsEqualKeyEdgeFrom(void* userData, TRI_edge_header_t const* left,
 
 static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
                              TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   // left is a key
   // right is an element, that is a master pointer
@@ -209,9 +203,8 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
 
-    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_toCid, rKey);
+    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
@@ -220,9 +213,8 @@ static bool IsEqualKeyEdgeTo(void* userData, TRI_edge_header_t const* left,
             marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*)rEdge + rEdge->_offsetToKey;
 
-    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu,
-    // RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long)
-    // rEdge->_toCid, rKey);
+    // LOG(TRACE) << "ISEQUAL TO: LCOLLECTION: " << l->_cid << ", LKEY: " << lKey << ", RCOLLECTION: " << // rEdge->_toCid << ",
+    // RKEY: " << rKey;
 
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -246,8 +238,8 @@ static bool IsEqualElementEdge(void* userData, TRI_doc_mptr_t const* left,
 static bool IsEqualElementEdgeFromByKey(void* userData,
                                         TRI_doc_mptr_t const* left,
                                         TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   char const* lKey = nullptr;
   char const* rKey = nullptr;
@@ -297,9 +289,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
     return false;
   }
 
-  // LOG_TRACE("ISEQUALELEMENT FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION:
-  // %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long)
-  // rCid, rKey);
+  // LOG(TRACE) << "ISEQUALELEMENT FROM: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
+  // " << // rCid << ", RKEY: " << rKey;
 
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
@@ -311,8 +302,8 @@ static bool IsEqualElementEdgeFromByKey(void* userData,
 static bool IsEqualElementEdgeToByKey(void* userData,
                                       TRI_doc_mptr_t const* left,
                                       TRI_doc_mptr_t const* right) {
-  TRI_ASSERT_EXPENSIVE(left != nullptr);
-  TRI_ASSERT_EXPENSIVE(right != nullptr);
+  TRI_ASSERT(left != nullptr);
+  TRI_ASSERT(right != nullptr);
 
   char const* lKey = nullptr;
   char const* rKey = nullptr;
@@ -362,14 +353,11 @@ static bool IsEqualElementEdgeToByKey(void* userData,
     return false;
   }
 
-  // LOG_TRACE("ISEQUALELEMENT TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION:
-  // %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long)
-  // rCid, rKey);
+  // LOG(TRACE) << "ISEQUALELEMENT TO: LCOLLECTION: " << lCid << ", LKEY: " << lKey << ", RCOLLECTION:
+  // " << // rCid << ", RKEY: " << rKey;
 
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
-
-
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
   while (true) {
@@ -420,7 +408,6 @@ void EdgeIndexIterator::reset() {
   _buffer = nullptr;
 }
 
-
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -454,14 +441,13 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-EdgeIndex::EdgeIndex(TRI_json_t const* json)
-    : Index(json), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
+EdgeIndex::EdgeIndex(VPackSlice const& slice)
+    : Index(slice), _edgesFrom(nullptr), _edgesTo(nullptr), _numBuckets(1) {}
 
 EdgeIndex::~EdgeIndex() {
   delete _edgesTo;
   delete _edgesFrom;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
@@ -494,66 +480,25 @@ size_t EdgeIndex::memory() const {
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPack(
-    bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder =
-      Index::toVelocyPack(withFigures, false);
+void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
 
   // hard-coded
-  builder->add("unique", VPackValue(false));
-  builder->add("sparse", VPackValue(false));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPackFigures(
-    bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
-  builder->add("buckets", VPackValue(_numBuckets));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  Index::toVelocyPackFigures(builder);
+  builder.add("buckets", VPackValue(_numBuckets));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json EdgeIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  // hard-coded
-  json("unique", arangodb::basics::Json(false))("sparse",
-                                                arangodb::basics::Json(false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json EdgeIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-  json("buckets", arangodb::basics::Json(static_cast<double>(_numBuckets)));
-
-  return json;
-}
-
-int EdgeIndex::insert(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool isRollback) {
+int EdgeIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(trx, element, true, isRollback);
 
@@ -567,8 +512,8 @@ int EdgeIndex::insert(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-int EdgeIndex::remove(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool) {
+int EdgeIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool) {
   _edgesFrom->remove(trx, doc);
   _edgesTo->remove(trx, doc);
 
@@ -596,7 +541,7 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
 void EdgeIndex::lookup(arangodb::Transaction* trx,
                        TRI_edge_index_iterator_t const* edgeIndexIterator,
                        std::vector<TRI_doc_mptr_copy_t>& result,
-                       TRI_doc_mptr_copy_t*& next, size_t batchSize) {
+                       TRI_doc_mptr_t*& next, size_t batchSize) {
   auto callback =
       [&result](TRI_doc_mptr_t* data) -> void { result.emplace_back(*(data)); };
 
@@ -612,7 +557,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+      next = found->back();
     }
   } else {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
@@ -623,7 +568,7 @@ void EdgeIndex::lookup(arangodb::Transaction* trx,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+      next = found->back();
     } else {
       next = nullptr;
     }
@@ -752,7 +697,6 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
@@ -792,22 +736,14 @@ IndexIterator* EdgeIndex::createIterator(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-  
-  // _from or _to?
-  bool const isFrom =
-      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
-
-
-  if (keys.empty()) {
-    // nothing to do. still need to return an empty iterator
-    return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
-  }
 
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  // _from or _to?
+  bool const isFrom =
+      (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
+
   return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }
-
-
