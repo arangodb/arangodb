@@ -15,7 +15,7 @@ if (CPACK_GENERATOR STREQUAL "DEB")
 ")
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
-    "${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/arangodb.postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/arangodb.preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/arangodb.postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/arangodb.prerm;")
+    "${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/prerm;")
   set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
   set(CPACK_PACKAGE_FILE_NAME "arangodb_${CPACK_PACKAGE_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}")
   
