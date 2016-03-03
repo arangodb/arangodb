@@ -53,13 +53,6 @@ class RestEdgeHandler : public RestDocumentHandler {
 
   bool createDocument() override final;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a document (an edge), coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool createDocumentCoordinator(std::string const& collname, bool waitForSync,
-                                 VPackSlice const& document, char const* from,
-                                 char const* to);
 };
 }
 

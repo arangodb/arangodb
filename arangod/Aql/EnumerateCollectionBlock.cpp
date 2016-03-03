@@ -38,6 +38,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
       _scanner(nullptr),
+      _documentsSize(0),
       _posInDocuments(0),
       _random(ep->_random),
       _mustStoreResult(true) {

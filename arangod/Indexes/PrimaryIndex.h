@@ -240,8 +240,8 @@ class PrimaryIndex final : public Index {
   static uint64_t calculateHash(arangodb::Transaction*, VPackSlice const&);
   static uint64_t calculateHash(arangodb::Transaction*, uint8_t const*);
 
-  void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
-  void invokeOnAllElementsForRemoval(std::function<void(TRI_doc_mptr_t*)>);
+  void invokeOnAllElements(std::function<bool(TRI_doc_mptr_t*)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(TRI_doc_mptr_t*)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

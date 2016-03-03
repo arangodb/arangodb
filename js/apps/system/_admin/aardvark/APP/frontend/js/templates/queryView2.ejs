@@ -118,11 +118,19 @@
       </div>
     </div>
     <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
-    <div id="sentQueryEditor<%= counter %>" style="display: none"></div>
+    <div id="sentWrapper<%= counter %>" class="sentWrapper" style="display: none">
+      <div class="pull-left">
+        <div id="sentQueryEditor<%= counter %>"></div>
+      </div>
+      <div class="pull-right">
+        <div id="sentBindParamEditor<%= counter %>"></div>
+      </div>
+    </div>
     <div class="arangoToolbar arangoToolbarBottom">
       <div class="pull-right">
         <% if (type === 'Query') { %>
-          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none" class="button-success">Download</button>
+          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Download</button>
+          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 5px;" class="button-success">Copy to editor</button>
           <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
         <% } %>
       </div>

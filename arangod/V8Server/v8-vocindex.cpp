@@ -1308,7 +1308,7 @@ static void JS_GetIndexesVocbaseCol(
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto&& indexes = TRI_IndexesDocumentCollection(document, withFigures);
+  auto indexes(TRI_IndexesDocumentCollection(document, withFigures));
 
   trx.finish(res);
   // READ-LOCK end

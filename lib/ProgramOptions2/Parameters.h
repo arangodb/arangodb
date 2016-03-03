@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <limits>
 #include <numeric>
 #include <type_traits>
 

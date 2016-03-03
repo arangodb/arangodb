@@ -1098,17 +1098,23 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  std::string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const queryString(TRI_ObjectToString(args[0]));
 
   // bind parameters
-  std::unique_ptr<TRI_json_t> parameters;
+  std::shared_ptr<VPackBuilder> bindVars;
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
     }
     if (args[1]->IsObject()) {
-      parameters.reset(TRI_ObjectToJson(isolate, args[1]));
+      bindVars.reset(new VPackBuilder);
+
+      int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION(res);
+      }
     }
   }
 
@@ -1127,7 +1133,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(),
-                             parameters.release(), options.release(),
+                             bindVars, options.release(),
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
@@ -1277,10 +1283,10 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  std::string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const queryString(TRI_ObjectToString(args[0]));
 
   // bind parameters
-  std::unique_ptr<TRI_json_t> parameters;
+  std::shared_ptr<VPackBuilder> bindVars;
 
   // options
   std::unique_ptr<TRI_json_t> options;
@@ -1290,7 +1296,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
     }
     if (args[1]->IsObject()) {
-      parameters.reset(TRI_ObjectToJson(isolate, args[1]));
+      bindVars.reset(new VPackBuilder);
+      int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION(res);
+      }
     }
   }
 
@@ -1307,11 +1318,10 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(),
-                             parameters.get(), options.get(),
+                             bindVars, options.get(),
                              arangodb::aql::PART_MAIN);
 
   options.release();
-  parameters.release();
 
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));

@@ -49,6 +49,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -61,21 +62,12 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> AqlQuery(v8::Isolate* isolate, TRI_vocbase_col_t const* col, 
-                                      std::string const& aql, VPackSlice const& slice) {
+                                      std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
-
-  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
-
-  VPackObjectIterator it(slice);
-  while (it.valid()) {
-    bindVars(it.key().copyString().c_str(), arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, VelocyPackHelper::velocyPackToJson(it.value())));
-    it.next();
-  }
-
 
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
-                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+                             aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
@@ -542,17 +534,17 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
   
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("@collection", VPackValue(col->name()));
-  builder.add(VPackValue("value"));
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("@collection", VPackValue(col->name()));
+  bindVars->add(VPackValue("value"));
+  int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
+  bindVars->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  builder.close();
 
   std::string filter;
   // argument is a list of vertices
@@ -577,7 +569,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   trx.lockRead();
-  v8::Handle<v8::Value> result = AqlQuery(isolate, col, "FOR doc IN @@collection " + filter + " RETURN doc", builder.slice());
+  v8::Handle<v8::Value> result = AqlQuery(isolate, col, "FOR doc IN @@collection " + filter + " RETURN doc", bindVars);
   trx.finish(res);
     
   TRI_V8_RETURN(result);
@@ -766,9 +758,6 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
   v8::Handle<v8::Object> example = args[0]->ToObject();
 
   // extract skip and limit
@@ -785,7 +774,7 @@ static void JS_ByExampleQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string errorMessage;
   std::unique_ptr<ExampleMatcher> matcher;
   try {
-    matcher.reset(new ExampleMatcher(isolate, example, shaper, errorMessage));
+    matcher.reset(new ExampleMatcher(isolate, example, errorMessage));
   } catch (Exception& e) {
     if (e.code() == TRI_RESULT_ELEMENT_NOT_FOUND) {
       // empty result
@@ -1287,7 +1276,7 @@ static void FulltextQuery(SingleCollectionTransaction& trx,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  std::string const&& queryString = TRI_ObjectToString(args[1]);
+  std::string queryString(TRI_ObjectToString(args[1]));
   bool isSubstringQuery = false;
   size_t maxResults = 0;  // 0 means "all results"
 
@@ -1628,22 +1617,29 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("documents(<keys>)");
   }
 
-  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
-  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
-  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
-                                          TRI_ObjectToJson(isolate, args[0])));
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("@collection", VPackValue(std::string(col->_name)));
 
-  std::string const collectionName(col->name());
+  VPackBuilder keys;
+  int res = TRI_V8ToVPack(isolate, keys, args[0], false);
 
-  arangodb::aql::BindParameters::StripCollectionNames(
-      TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackBuilder strippedBuilder =
+      arangodb::aql::BindParameters::StripCollectionNames(keys.slice(), col->_name.c_str());
+
+  bindVars->add("keys", strippedBuilder.slice());
+  bindVars->close();
 
   std::string const aql(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
-                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+                             aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
@@ -1684,10 +1680,16 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("removeByKeys(<keys>)");
   }
 
-  arangodb::basics::Json bindVars(arangodb::basics::Json::Object, 2);
-  bindVars("@collection", arangodb::basics::Json(std::string(col->_name)));
-  bindVars("keys", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
-                                          TRI_ObjectToJson(isolate, args[0])));
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("@collection", VPackValue(col->_name));
+  bindVars->add(VPackValue("keys"));
+
+  int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  bindVars->close();
 
   std::string const aql(
       "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
@@ -1695,7 +1697,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
-                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+                             aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(

@@ -372,12 +372,12 @@ uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
 }
 
 void PrimaryIndex::invokeOnAllElements(
-    std::function<void(TRI_doc_mptr_t*)> work) {
+    std::function<bool(TRI_doc_mptr_t*)> work) {
   _primaryIndex->invokeOnAllElements(work);
 }
 
 void PrimaryIndex::invokeOnAllElementsForRemoval(
-    std::function<void(TRI_doc_mptr_t*)> work) {
+    std::function<bool(TRI_doc_mptr_t*)> work) {
   _primaryIndex->invokeOnAllElementsForRemoval(work);
 }
 

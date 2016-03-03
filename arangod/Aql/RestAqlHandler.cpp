@@ -157,7 +157,7 @@ void RestAqlHandler::parseQuery() {
   }
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
-                         queryString.size(), nullptr, nullptr, PART_MAIN);
+                         queryString.size(), std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
@@ -212,14 +212,22 @@ void RestAqlHandler::explainQuery() {
     return;
   }
 
-  arangodb::basics::Json parameters;
-  parameters = queryJson.get("parameters").copy();  // cannot throw
+  auto bindVars = std::make_shared<VPackBuilder>();
+  {
+    int res = arangodb::basics::JsonHelper::toVelocyPack(queryJson.get("parameters").json(), *(bindVars.get()));
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+                    "could not convert parameters to vpack");
+      return;
+    }
+  }
+
   arangodb::basics::Json options;
   options = queryJson.get("options").copy();  // cannot throw
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
-                         queryString.size(), parameters.steal(),
-                         options.steal(), PART_MAIN);
+                         queryString.size(), bindVars, options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
@@ -277,14 +285,23 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  arangodb::basics::Json parameters;
-  parameters = queryJson.get("parameters").copy();  // cannot throw
+  auto bindVars = std::make_shared<VPackBuilder>();
+  {
+    int res = arangodb::basics::JsonHelper::toVelocyPack(queryJson.get("parameters").json(), *(bindVars.get()));
+   
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+                    "could not convert parameters to vpack");
+      return;
+    }
+  }
+  
   arangodb::basics::Json options;
   options = queryJson.get("options").copy();  // cannot throw
 
   auto query =
       new Query(_applicationV8, false, _vocbase, queryString.c_str(),
-                queryString.size(), parameters.steal(), options.steal(),
+                queryString.size(), bindVars, options.steal(),
                 (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {

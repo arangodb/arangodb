@@ -85,11 +85,9 @@ class IndexIterator {
 class MultiIndexIterator : public IndexIterator {
 
   public:
-   MultiIndexIterator(std::vector<IndexIterator*> iterators)
-     : _iterators(iterators), _currentIdx(0) {
-       if (_iterators.empty()) {
-         _current = nullptr;
-       } else {
+   explicit MultiIndexIterator(std::vector<IndexIterator*> const& iterators)
+     : _iterators(iterators), _currentIdx(0), _current(nullptr) {
+       if (!_iterators.empty()) {
          _current = _iterators.at(0);
        }
      };

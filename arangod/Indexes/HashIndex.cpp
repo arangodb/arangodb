@@ -38,8 +38,9 @@ using namespace arangodb;
 /// @brief Frees an index element
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeElement(TRI_index_element_t* element) {
+static inline bool FreeElement(TRI_index_element_t* element) {
   TRI_index_element_t::freeElement(element);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -833,9 +834,15 @@ IndexIterator* HashIndex::iteratorForCondition(
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
-    for (auto const& val : VPackArrayIterator(expandedSlice)) {
-      auto iterator = iteratorForSlice(trx, nullptr, val, false);
-      iterators.push_back(iterator);
+    try {
+      for (auto const& val : VPackArrayIterator(expandedSlice)) {
+        iterators.emplace_back(iteratorForSlice(trx, nullptr, val, false));
+      }
+    } catch (...) {
+      for (auto& it : iterators) {
+        delete it;
+      }
+      throw;
     }
     return new MultiIndexIterator(iterators);
   }

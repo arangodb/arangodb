@@ -296,6 +296,7 @@ target_link_libraries(${BIN_ARANGOD}
   ${LIBEV_LIBS}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
+  ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 
@@ -304,6 +305,8 @@ install(
   RUNTIME DESTINATION ${ARANGODB_INSTALL_SBIN})
 
 install_config(arangod)
+
+add_dependencies(arangod ev zlibstatic v8_build)
 
 ################################################################################
 ## arango-dfdb

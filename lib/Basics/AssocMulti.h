@@ -130,7 +130,7 @@ class AssocMulti {
       IsEqualKeyElementFuncType;
   typedef std::function<bool(UserData*, Element const*, Element const*)>
       IsEqualElementElementFuncType;
-  typedef std::function<void(Element*)> CallbackElementFuncType;
+  typedef std::function<bool(Element*)> CallbackElementFuncType;
 
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
@@ -534,7 +534,9 @@ class AssocMulti {
         if (b._table[i].ptr == nullptr) {
           continue;
         }
-        callback(b._table[i].ptr);
+        if (!callback(b._table[i].ptr)) {
+          return;
+        }
       }
     }
   }

@@ -27,7 +27,10 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
 #include "Basics/MutexLocker.h"
+
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <deque>
 
 namespace arangodb {
@@ -53,26 +56,6 @@ class Optimizer {
         result->add("plansCreated", VPackValue(plansCreated));
       }
       return result;
-    }
-
-    TRI_json_t* toJson(TRI_memory_zone_t* zone) const {
-      TRI_json_t* stats = TRI_CreateObjectJson(zone, 3);
-
-      if (stats == nullptr) {
-        return nullptr;
-      }
-
-      TRI_Insert3ObjectJson(
-          zone, stats, "rulesExecuted",
-          TRI_CreateNumberJson(zone, static_cast<double>(rulesExecuted)));
-      TRI_Insert3ObjectJson(
-          zone, stats, "rulesSkipped",
-          TRI_CreateNumberJson(zone, static_cast<double>(rulesSkipped)));
-      TRI_Insert3ObjectJson(
-          zone, stats, "plansCreated",
-          TRI_CreateNumberJson(zone, static_cast<double>(plansCreated)));
-
-      return stats;
     }
   };
 

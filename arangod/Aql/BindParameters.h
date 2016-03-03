@@ -25,17 +25,15 @@
 #define ARANGOD_AQL_BIND_PARAMETERS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-class Slice;
-}
 namespace aql {
 
-typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>>
-    BindParametersType;
+typedef std::unordered_map<std::string, std::pair<arangodb::velocypack::Slice, bool>> BindParametersType;
 
 class BindParameters {
  public:
@@ -47,20 +45,21 @@ class BindParameters {
   /// @brief create the parameters
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit BindParameters(TRI_json_t*);
+  explicit BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder) 
+    : _builder(builder), _parameters(), _processed(false) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the parameters
   //////////////////////////////////////////////////////////////////////////////
 
-  ~BindParameters();
+  ~BindParameters() = default;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return all parameters
   //////////////////////////////////////////////////////////////////////////////
 
-  BindParametersType const& operator()() {
+  BindParametersType& get() {
     process();
     return _parameters;
   }
@@ -79,13 +78,6 @@ class BindParameters {
   static arangodb::velocypack::Builder StripCollectionNames(
       arangodb::velocypack::Slice const&, char const*);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief strip collection name prefixes from the parameters
-  /// the values must be a JSON array. the array is modified in place
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void StripCollectionNames(TRI_json_t*, char const*);
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process the parameters
@@ -98,7 +90,7 @@ class BindParameters {
   /// @brief the parameter json
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* _json;
+  std::shared_ptr<arangodb::velocypack::Builder> _builder;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to collection parameters

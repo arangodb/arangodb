@@ -433,6 +433,46 @@ TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName)
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Iterate over all elements of the collection.
+//////////////////////////////////////////////////////////////////////////////
+
+void Transaction::invokeOnAllElements(std::string const& collectionName,
+                                      std::function<bool(TRI_doc_mptr_t const*)> callback) {
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  if (ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  TRI_transaction_collection_t* trxCol = trxCollection(cid);
+
+  TRI_document_collection_t* document = documentCollection(trxCol);
+
+  if (orderDitch(trxCol) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  int res = lock(trxCol, TRI_TRANSACTION_READ);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto primaryIndex = document->primaryIndex();
+  primaryIndex->invokeOnAllElements(callback);
+  
+  res = unlock(trxCol, TRI_TRANSACTION_READ);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief return one or multiple documents from a collection
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1573,7 +1613,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   VPackBuilder keyBuilder;
   auto primaryIndex = document->primaryIndex();
 
-  std::function<void(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
+  std::function<bool(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
     VPackSlice slice(mptr->vpack());
     VPackSlice keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
 
@@ -1589,6 +1629,8 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
+    return true;
   };
 
   try {

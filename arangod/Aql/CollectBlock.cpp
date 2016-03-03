@@ -237,7 +237,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
 
     // iterate over all our variables
     if (en->_keepVariables.empty()) {
-      auto&& usedVariableIds = en->getVariableIdsUsedHere();
+      auto usedVariableIds(en->getVariableIdsUsedHere());
 
       for (auto const& vi : registerPlan) {
         if (vi.second.depth > 0 || en->getDepth() == 1) {

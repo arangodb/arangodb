@@ -101,6 +101,12 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       return;
     }
   }
+  
+  std::shared_ptr<VPackBuilder> bindVarsBuilder;
+  if (!bindVars.isNone()) {
+    bindVarsBuilder.reset(new VPackBuilder);
+    bindVarsBuilder->add(bindVars);
+  }
 
   VPackBuilder optionsBuilder = buildOptions(slice);
   VPackSlice options = optionsBuilder.slice();
@@ -109,9 +115,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   arangodb::aql::Query query(
       _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
-      (!bindVars.isNone()
-           ? arangodb::basics::VelocyPackHelper::velocyPackToJson(bindVars)
-           : nullptr),
+      bindVarsBuilder,
       arangodb::basics::VelocyPackHelper::velocyPackToJson(options),
       arangodb::aql::PART_MAIN);
 

@@ -191,12 +191,11 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       }
     }
 
-    VPackBuilder bindVars;
-    bindVars.openObject();
-    bindVars.add("@collection", VPackValue(collectionName));
-    bindVars.add("keys", keys);
-    bindVars.close();
-    VPackSlice varsSlice = bindVars.slice();
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->add("@collection", VPackValue(collectionName));
+    bindVars->add("keys", keys);
+    bindVars->close();
 
     std::string aql(
         "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
@@ -206,8 +205,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
     arangodb::aql::Query query(
         _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-        nullptr, arangodb::aql::PART_MAIN);
+        bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -304,25 +302,22 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       return;
     }
 
-    VPackBuilder bindVars;
-    bindVars.add(VPackValue(VPackValueType::Object));
-    bindVars.add("@collection", VPackValue(collectionName));
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->add("@collection", VPackValue(collectionName));
     VPackBuilder strippedBuilder =
         arangodb::aql::BindParameters::StripCollectionNames(
             keys, collectionName.c_str());
-    VPackSlice stripped = strippedBuilder.slice();
 
-    bindVars.add("keys", stripped);
-    bindVars.close();
-    VPackSlice varsSlice = bindVars.slice();
+    bindVars->add("keys", strippedBuilder.slice());
+    bindVars->close();
 
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
     arangodb::aql::Query query(
         _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
-        nullptr, arangodb::aql::PART_MAIN);
+        bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);

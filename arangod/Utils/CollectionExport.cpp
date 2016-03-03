@@ -107,9 +107,8 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
-    auto idx = _document->primaryIndex();
-    size_t maxDocuments = idx->size();
+    
+    size_t maxDocuments = _document->primaryIndex()->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -117,22 +116,16 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     }
     _documents->reserve(maxDocuments);
 
-    if (maxDocuments > 0) {
-      arangodb::basics::BucketPosition position;
-      uint64_t total = 0;
-      while (limit > 0) {
-        auto ptr = idx->lookupSequential(&trx, position, total);
-
-        if (ptr == nullptr) {
-          break;
-        }
-
-        if (!ptr->pointsToWal()) {
-          _documents->emplace_back(ptr->getMarkerPtr());
-          --limit;
-        }
+    trx.invokeOnAllElements(_document->_info.name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
+      if (limit == 0) {
+        return false;
       }
-    }
+      if (!mptr->pointsToWal()) {
+        _documents->emplace_back(mptr->getMarkerPtr());
+        --limit;
+      }
+      return true;
+    });
 
     trx.finish(res);
   }

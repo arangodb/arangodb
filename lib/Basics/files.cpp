@@ -1076,7 +1076,7 @@ int TRI_CreateLockFile(char const* filename) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  pid = TRI_CurrentProcessId();
+  pid = Thread::currentProcessId();
   buf = TRI_StringUInt32(pid);
 
   r = WriteFile(fd, buf, (unsigned int)strlen(buf), &len, NULL);
