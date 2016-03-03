@@ -1,3 +1,10 @@
+v2.8.5 (2016-03-xx)
+-------------------
+
+* Windows: the unhandled exception handler now calls the windows logging
+  facilities directly without locks. 
+  This fixes lockups on crashes from the logging framework.
+
 v2.8.4 (2016-03-01)
 -------------------
 
