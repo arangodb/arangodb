@@ -24,6 +24,9 @@
 #include "Agent.h"
 #include "Basics/ConditionLocker.h"
 
+#include <velocypack/Iterator.h>    
+#include <velocypack/velocypack-aliases.h> 
+
 #include <chrono>
 
 using namespace arangodb::velocypack;
@@ -56,9 +59,23 @@ inline size_t Agent::size() const {
 }
 
 priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
-                           index_t lastLogTerm) {
+                                  index_t lastLogTerm, query_t const& query) {
+
+  if (query != nullptr) {
+    if (query->slice().isArray() || query->slice().isObject()) {
+      size_t j = 0;
+      for (auto const& i : VPackObjectIterator(query->slice())) {
+        std::string const key(i.key.copyString());
+        std::string const value(i.value.copyString());
+        if (key == "endpoint")
+          _config.end_points[j] = value;
+        j++;
+      }
+    }
+  }
+    
   return priv_rpc_ret_t(
-    _constituent.vote(id, t, lastLogIndex, lastLogTerm),this->term());
+    _constituent.vote(id, t, lastLogIndex, lastLogTerm), this->term());
 }
 
 Config<double> const& Agent::config () const {

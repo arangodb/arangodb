@@ -86,7 +86,6 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
     } else if (_request->suffix().size() > 1) { // request too long
       return reportTooManySuffices();
     } else {
-      LOG(WARN) << _request->suffix()[0];
       term_t term, prevLogTerm;
       id_t id; // leaderId for appendEntries, cadidateId for requestVote
       index_t prevLogIndex, leaderCommit;
@@ -116,8 +115,8 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
             readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
-          priv_rpc_ret_t ret = _agent->requestVote (term, id, prevLogIndex,
-                                                    prevLogTerm);
+          priv_rpc_ret_t ret = _agent->requestVote (
+            term, id, prevLogIndex, prevLogTerm, nullptr);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -125,9 +124,12 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
         if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST)
           return reportMethodNotAllowed();
         if (readValue("term", term) && readValue("agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote (term, id, 0, 0);
+          priv_rpc_ret_t ret = _agent->requestVote (
+            term, id, 0, 0, _request->toVelocyPack(&opts));
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
+        } else {
+          return reportBadQuery(); // bad query
         }
       } else {
         generateError(HttpResponse::NOT_FOUND,404); // nothing else here
@@ -135,6 +137,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       }
     }
     result.close();
+    LOG(WARN) << result.toJson();
     VPackSlice s = result.slice();
     generateResult(s);
   } catch (...) {

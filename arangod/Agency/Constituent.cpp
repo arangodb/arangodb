@@ -23,9 +23,13 @@
 
 #include "Cluster/ClusterComm.h"
 #include "Basics/Logger.h"
+#include "Basics/ConditionLocker.h"
 
 #include "Constituent.h"
 #include "Agent.h"
+
+#include <velocypack/Iterator.h>    
+#include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
 #include <thread>
@@ -39,7 +43,7 @@ void Constituent::configure(Agent* agent) {
   _votes.resize(size());
   _id = _agent->config().id;
   LOG(WARN) << " +++ my id is " << _id << "agency size is " << size();
-  if (_id == (size()-1)) // Last will (notify everyone)
+  if (_agent->config().notify) // Last will (notify everyone)
     notifyAll(); 
 }
 
@@ -55,6 +59,11 @@ duration_t Constituent::sleepFor (double min_t, double max_t) {
   return duration_t(dis(_gen));
 }
 
+double Constituent::sleepFord (double min_t, double max_t) {
+  dist_t dis(min_t, max_t);
+  return dis(_gen);
+}
+
 term_t Constituent::term() const {
   return _term;
 }
@@ -64,17 +73,23 @@ role_t Constituent::role () const {
 }
 
 void Constituent::follow(term_t term) {
+  if (_role > FOLLOWER)
+    LOG(WARN) << "Converted to follower in term " << _term ;
   _term = term;
   _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
 void Constituent::lead() {
+  if (_role < LEADER)
+    LOG(WARN) << "Converted to leader in term " << _term ;
   _role = LEADER;
   _agent->lead(); // We need to rebuild spear_head and read_db;
 }
 
 void Constituent::candidate() {
+  if (_role != CANDIDATE)
+    LOG(WARN) << "Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
@@ -135,29 +150,25 @@ size_t Constituent::notifyAll () {
         0.0, true);
     }
 	}
+
+  return size()-1;
 }
 
 bool Constituent::vote (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
+
+  LOG(WARN) << "term (" << term << "," << _term << ")" ;
+  
  	if (leaderId == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
 	} else {
-	  if (term > _term) {  // Candidate with higher term: ALWAYS turn follower if not already
-      switch(_role) {
-      case(LEADER):      // I was leading. What happened?
-        LOG(WARN) << "Cadidate with higher term. Becoming follower.";
-        _agent->report(RESIGNED_LEADERSHIP_FOR_HIGHER_TERM);
-        break;
-      case(CANDIDATE):   // I was candidate. What happened?
-        LOG(WARN) << "Cadidate with higher term. Becoming follower. Something bad has happened?";
-        _agent->report(RETRACTED_CANDIDACY_FOR_HIGHER_TERM);
-        break;
-      default:
-        break;
-      }
+	  if (term > _term || (_term==term&&_leader_id==leaderId)) {
+      _term = term;
       _cast = true;      // Note that I voted this time around.
       _leader_id = leaderId;   // The guy I voted for I assume leader.
-      follow (term);     
+      if (_role>FOLLOWER)
+        follow (term);
+      _cv.signal();
 			return true;
 		} else {             // Myself running or leading
 			return false;
@@ -177,7 +188,9 @@ const constituency_t& Constituent::gossip () {
 void Constituent::callElection() {
 
   _votes[_id] = true; // vote for myself
-  _term++;            // raise my term
+  _cast = true;
+  if(_role == CANDIDATE)
+    _term++;            // raise my term
   
   std::string body;
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -199,7 +212,11 @@ void Constituent::callElection() {
     }
 	}
 
-	std::this_thread::sleep_for(sleepFor(0., .9*_agent->config().min_ping)); // Wait timeout
+  if (_role == CANDIDATE) {
+    std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, 1.*_agent->config().min_ping)); // Wait timeout
+  } else {
+    std::this_thread::sleep_for(sleepFor(.7*_agent->config().min_ping, .75*_agent->config().min_ping)); // Wait timeout
+  }
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {
@@ -212,18 +229,43 @@ void Constituent::callElection() {
         if (body->isEmpty()) {
           continue;
         } else {
-          if (!body->slice().hasKey("vote")) { // Answer has no vote. What happened?
-            _votes[i] = false;
-            continue;
-          } else {
-            _votes[i] = (body->slice().get("vote").isEqualString("TRUE")); // Record vote
+          if (body->slice().isArray() || body->slice().isObject()) {
+            for (auto const& it : VPackObjectIterator(body->slice())) {
+              std::string const key(it.key.copyString());
+              if (key == "term") {
+                LOG(WARN) << key << " " <<it.value.getUInt();
+                if (it.value.isUInt()) {
+                  if (it.value.getUInt() > _term) { // follow?
+                    follow(it.value.getUInt());
+                    break;
+                  }
+                }
+              } else if (key == "voteGranted") {
+                if (it.value.isBool()) {
+                  _votes[i] = it.value.getBool();
+                }
+              }
+            }
           }
+          LOG(WARN) << body->toJson();
         }
-        LOG(WARN) << body->toString();
       } else { // Request failed
         _votes[i] = false;
       }
     }
+  }
+
+  size_t yea = 0;
+  for (size_t i = 0; i < size(); ++i) {
+    if (_votes[i]){
+      yea++;
+    }    
+  }
+  LOG(WARN) << "votes for me" << yea;
+  if (yea > size()/2){
+    lead();
+  } else {
+    candidate();
   }
 }
 
@@ -235,12 +277,18 @@ void Constituent::run() {
 
   // Always start off as follower
   while (!this->isStopping()) { 
-    if (_role == FOLLOWER) { 
-      _cast = false;                           // New round set not cast vote
-      std::this_thread::sleep_for(             // Sleep for random time
-        sleepFor(_agent->config().min_ping, _agent->config().max_ping));
-      if (!_cast)
+    if (_role == FOLLOWER) {
+      bool cast;
+      {
+        CONDITION_LOCKER (guard, _cv);
+        _cast = false;                           // New round set not cast vote
+        _cv.wait(             // Sleep for random time
+          sleepFord(_agent->config().min_ping, _agent->config().max_ping)*1000000);
+        cast = _cast;
+      }
+      if (!cast) {
         candidate();                           // Next round, we are running
+      }
     } else {
       callElection();                          // Run for office
     }

@@ -110,6 +110,7 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   double   _max_election_timeout; /**< @brief: max election timeout */
   double   _election_call_rate_mul; /**< @brief: */
   double   _append_entries_retry_interval;
+  bool     _notify;
                /**< @brief interval between retry to slaves*/
   std::vector<std::string> _agency_endpoints; /**< @brief agency adresses */
   std::unique_ptr<agent_t> _agent;

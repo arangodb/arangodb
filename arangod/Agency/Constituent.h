@@ -139,9 +139,10 @@ private:
    * @brief Sleep for how long
    */
   duration_t sleepFor(double, double);
+  double sleepFord(double, double);
 
   // mission critical
-  std::atomic<term_t>  _term;         /**< @brief term number */
+  term_t  _term;         /**< @brief term number */
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
@@ -154,6 +155,7 @@ private:
   std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
   
+  arangodb::basics::ConditionVariable _cv;      // agency callbacks
 
 };
   

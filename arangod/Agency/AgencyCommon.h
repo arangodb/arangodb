@@ -62,18 +62,12 @@ template<class T> struct Config {
   T    election_timeout;
   T    append_entries_retry_interval;
   std::vector<std::string> end_points;
+  bool notify;
   Config () : min_ping(.15), max_ping(.3) {};
   Config (uint32_t i, T min_p, T max_p, T appent_i,
-          std::vector<std::string> const& end_p) :
+          std::vector<std::string> const& end_p, bool n = false) :
     id(i), min_ping(min_p), max_ping(max_p),
-    append_entries_retry_interval(appent_i), end_points(end_p) {}
-/*    void print (arangodb::LoggerStream& l) const {
-      l << "Config: "
-      << "min_ping(" << min_ping << ")"
-      << "max_ping(" << max_ping << ")"
-      << "size(" << end_points.size() << ")"
-      << end_points;
-      }*/
+    append_entries_retry_interval(appent_i), end_points(end_p) , notify(n){}
   inline size_t size() const {return end_points.size();}
 };
 

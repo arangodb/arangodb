@@ -21,6 +21,8 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     if (builder->hasKey("agent_id")) {
       agent_id = builder->getKey("agent_id").getUInt();
+    } else {
+      return true;
     }
     if (builder->hasKey("indices")) {
       builder->getKey("indices");

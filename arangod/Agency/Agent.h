@@ -65,7 +65,7 @@ public:
   /**
    * @brief Vote request
    */
-  priv_rpc_ret_t requestVote(term_t , id_t, index_t, index_t);
+  priv_rpc_ret_t requestVote(term_t , id_t, index_t, index_t, query_t const&);
   
   /**
    * @brief Provide configuration

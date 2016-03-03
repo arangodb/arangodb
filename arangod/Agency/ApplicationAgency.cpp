@@ -36,7 +36,7 @@ using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
   : ApplicationFeature("agency"), _size(1), _min_election_timeout(.5),
-	  _max_election_timeout(1.), _election_call_rate_mul(.75),
+	  _max_election_timeout(5.), _election_call_rate_mul(2.5),
     _append_entries_retry_interval(1.0),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
   
@@ -64,7 +64,8 @@ void ApplicationAgency::setupOptions(
      "to the minumum election timeout")
     ("agency.append_entries_retry_interval [s]", &_append_entries_retry_interval,
      "Interval at which appendEntries are attempted on unresponsive slaves"
-     "in seconds");
+     "in seconds")
+    ("agency.notify", &_notify, "Notify others [beta :)]");
 }
 
 
@@ -103,7 +104,7 @@ bool ApplicationAgency::prepare() {
   _agent = std::unique_ptr<agent_t>(
     new agent_t(config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
-                  _append_entries_retry_interval, _agency_endpoints)));
+                  _append_entries_retry_interval, _agency_endpoints, _notify)));
   
   return true;
   
