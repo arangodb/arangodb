@@ -8,14 +8,14 @@ cmake_minimum_required(VERSION 2.6)
 ## BOOST
 ################################################################################
 
-option(USE_BOOST_SYSTEM_LIBS "use libraries provided by the system" OFF)
+option(USE_SYSTEM_BOOST "use libraries provided by the system" OFF)
 
 set(BOOST_MINIMUM_VERSION 1.58)
 
 set(Boost_USE_MULTITHREADED ON)
 
-if (USE_BOOST_SYSTEM_LIBS)
-  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
+if (USE_SYSTEM_BOOST)
+  find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED COMPONENTS unit_test_framework)
 else ()
   set(BOOST_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/boost/${BOOST_MINIMUM_VERSION}.0 CACHE path "BOOST include path")
   set(Boost_INCLUDE_DIR ${BOOST_INCLUDE})
@@ -23,9 +23,7 @@ else ()
   find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED)
 endif ()
 
-find_package(Boost ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION} EXACT COMPONENTS unit_test_framework)
-
-if (DEFINED ${Boost_UNIT_TEST_FRAMEWORK_FOUND} AND ${Boost_UNIT_TEST_FRAMEWORK_FOUND} STREQUAL "ON")
+if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
   try_compile(
     HAVE_USABLE_BOOT_LIBRARIES
       "${CMAKE_BINARY_DIR}/temp"
@@ -39,7 +37,7 @@ if (DEFINED ${Boost_UNIT_TEST_FRAMEWORK_FOUND} AND ${Boost_UNIT_TEST_FRAMEWORK_F
   if (HAVE_USABLE_BOOT_LIBRARIES)
     option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
   else ()
-    message("cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
+    message(STATUS "cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
     option(USE_BOOST_UNITTESTS "use boost unit-tests" OFF)
   endif ()
 else ()
@@ -47,7 +45,7 @@ else ()
 endif ()
 
 if (NOT USE_BOOST_UNITTESTS)
-  message("BOOST unit tests are disabled")
+  message(STATUS "BOOST unit-tests are disabled")
 endif ()
 
 set(BOOST_VERSION
@@ -61,12 +59,10 @@ set(BOOST_INCLUDE_DIR
   "${Boost_INCLUDE_DIR}"
   CACHE INTERNAL
   "Boost: Include Directory"
-  FORCE
 )
 
 set(BOOST_LIBS
   "${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}"
   CACHE INTERNAL
   "Boost: Libraries"
-  FORCE
 )

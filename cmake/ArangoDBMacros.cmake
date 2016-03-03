@@ -169,7 +169,7 @@ endif ()
 
 if (NOT WINDOWS)
   install(
-    PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
+    PROGRAMS ${PROJECT_BINARY_DIR}/bin/etcd-arango
     DESTINATION ${ARANGODB_INSTALL_BIN}
   )
 endif ()
@@ -302,25 +302,10 @@ else ()
 endif ()
 
 # Build package ----------------------------------------------------------------
-# Posible options are:
-# - dmg-cli: Mac OS X shell client application
-# - debian: debian package
-set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
-
-# OSX
-if (BUILD_PACKAGE STREQUAL "dmg-cli")
-  option(DARWIN "Building for MacOS" ON)
-else ()
-  option(DARWIN "Building for MacOS" OFF)
-endif ()
-
-# Windows
-if (MSVC)
-else ()
-  set(CPACK_SET_DESTDIR ON)
-endif ()
+set(CPACK_SET_DESTDIR ON)
 
 # General
+set(CPACK_PACKAGE_NAME "arangodb")
 set(CPACK_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
@@ -329,38 +314,10 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 
 set(CPACK_STRIP_FILES "ON")
 
-if (DARWIN)
-  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-elseif (BUILD_PACKAGE STREQUAL "debian")
-  set(CPACK_PACKAGE_NAME "arangodb")
-elseif (MSVC)
-  set(CPACK_PACKAGE_NAME "ArangoDB")
-endif ()
-
-# debian
-if (BUILD_PACKAGE STREQUAL "debian")
-
-  set(CPACK_DEBIAN_PACKAGE_SECTION "database")
-  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
-    "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
-  
-  install(
-    FILES ${PROJECT_SOURCE_DIR}/Installation/Debian/rc.arangodb
-    PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    DESTINATION /etc/init.d
-    RENAME arangodb)
-  
-  install(
-    CODE
-    "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E make_directory \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/share/arangodb/js/apps)")
-  
-  install(
-    CODE
-    "EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink /var/lib/arangodb-apps \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/share/arangodb/js/apps/databases)")
-endif ()
 
 # OSX bundle 
-if (DARWIN)
+if (CPACK_GENERATOR STREQUAL "Bundle")
+  set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
   set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
   set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
   set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
@@ -369,6 +326,7 @@ endif ()
 
 # MS installer
 if (MSVC)
+  set(CPACK_PACKAGE_NAME "ArangoDB")
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL 1)
   set(BITS 64)
@@ -425,6 +383,19 @@ if (MSVC)
 
 endif ()
 
+configure_file("${CMAKE_SOURCE_DIR}/CMakeCPackOptions.cmake.in"
+    "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
+set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
+
+# components
+install(
+  FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
+  PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  DESTINATION /etc/init.d
+  RENAME arangodb
+  COMPONENT debian-extras
+)
+
 
 # Custom targets ----------------------------------------------------------------
 
@@ -474,7 +445,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/js
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js
   DESTINATION share/arangodb)
 
 ################################################################################

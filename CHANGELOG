@@ -1,18 +1,18 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
-* The order of AQL functions VALUES and KEYS has never been guaranteed and
-by accident it had the "correct" ordering when iteratoring over Objects that
+* The result order of the AQL functions VALUES and KEYS has never been guaranteed
+and it only had the "correct" ordering by accident when iterating over objects that
 were not loaded from the database. This behaviour is now changed by
 introduction of VelocyPack and no ordering is guaranteed unless you specify
-the do sort parameter.
+the sort parameter.
 
 * removed configure option `--enable-logger`
 
 * added AQL array comparison operators 
 
-  All AQL comparison operators now lso exist in an array variant. In the 
-  array variant, the operator is prefixed with one of the keywords *ALL*, *ANY*
+  All AQL comparison operators now also exist in an array variant. In the 
+  array variant, the operator is preceded with one of the keywords *ALL*, *ANY*
   or *NONE*. Using one of these keywords changes the operator behavior to
   execute the comparison operation for all, any, or none of its left hand 
   argument values. It is therefore expected that the left hand argument
@@ -20,31 +20,32 @@ the do sort parameter.
 
   Examples:
 
-      [ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
-      [ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
       [ 1, 2, 3 ] ALL IN [ 2, 3, 4 ]   // false
       [ 1, 2, 3 ] ALL IN [ 1, 2, 3 ]   // true
       [ 1, 2, 3 ] NONE IN [ 3 ]        // false
       [ 1, 2, 3 ] NONE IN [ 23, 42 ]   // true
+      [ 1, 2, 3 ] ANY IN [ 4, 5, 6 ]   // false
+      [ 1, 2, 3 ] ANY IN [ 1, 42 ]     // true
       [ 1, 2, 3 ] ANY == 2             // true
       [ 1, 2, 3 ] ANY == 4             // false
       [ 1, 2, 3 ] ANY > 0              // true
       [ 1, 2, 3 ] ANY <= 1             // true
+      [ 1, 2, 3 ] NONE < 99            // false
+      [ 1, 2, 3 ] NONE > 10            // true
       [ 1, 2, 3 ] ALL > 2              // false
       [ 1, 2, 3 ] ALL > 0              // true
       [ 1, 2, 3 ] ALL >= 3             // false
-      [ 1, 2, 3 ] NONE < 99            // false
-      [ 1, 2, 3 ] NONE > 10            // true
       ["foo", "bar"] ALL != "moo"      // true
       ["foo", "bar"] NONE == "bar"     // false
+      ["foo", "bar"] ANY == "foo"      // true
 
 * improved AQL optimizer to remove unnecessary sort operations in more cases
 
 * allow enclosing AQL identifiers in forward ticks in addition to using
   backward ticks
 
-  This allows convenient writing of AQL queries in JavaScript template strings 
-  (that is itself delimited with backticks), e.g.
+  This allows for convenient writing of AQL queries in JavaScript template strings 
+  (which are delimited with backticks themselves), e.g.
 
       var q = `FOR doc IN ´collection´ RETURN doc.´name´`;
 
@@ -107,8 +108,8 @@ the do sort parameter.
 
 * removed mostly unused internal spin-lock implementation
 
-* removed support for pre-Windows 7-style locks. This removes compatibility with
-  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) or
+* removed support for pre-Windows 7-style locks. This removes compatibility for
+  Windows versions older than Windows 7 (e.g. Windows Vista, Windows XP) and
   Windows 2008R2 (e.g. Windows 2008).
 
 * changed names of sub-threads started by arangod

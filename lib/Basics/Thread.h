@@ -64,6 +64,8 @@ class Thread {
 
   enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED, DETACHED };
 
+  static std::string stringify(ThreadState); 
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current work description as thread local variable

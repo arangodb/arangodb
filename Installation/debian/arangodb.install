@@ -1,0 +1,6 @@
+etc/arangodb
+usr/bin
+usr/sbin
+usr/lib
+usr/share/arangodb
+usr/share/man

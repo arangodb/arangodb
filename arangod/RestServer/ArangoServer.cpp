@@ -451,6 +451,7 @@ int ArangoServer::start() {
   } else if (_daemonMode) {
     return startupDaemon();
   } else {
+    InitializeWorkMonitor();
     _applicationServer->setupLogging(true, false, false);
 
     if (!_pidFile.empty()) {
@@ -1381,7 +1382,6 @@ void ArangoServer::buildApplicationServer() {
 }
 
 int ArangoServer::startupServer() {
-  InitializeWorkMonitor();
   TRI_InitializeStatistics();
 
   OperationMode::server_operation_mode_e mode =

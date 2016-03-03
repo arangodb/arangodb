@@ -36,18 +36,22 @@ using namespace arangodb::velocypack;
 
 void Constituent::configure(Agent* agent) {
   _agent = agent;
-  _votes.resize(_agent->config().end_points.size());
-  if (_agent->config().id == (_votes.size()-1)) // Last will (notify everyone)
+  _votes.resize(size());
+  _id = _agent->config().id;
+  LOG(WARN) << " +++ my id is " << _id << "agency size is " << size();
+  if (_id == (size()-1)) // Last will (notify everyone)
     notifyAll(); 
 }
 
 Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
   _gen(std::random_device()()), _role(FOLLOWER), _agent(0) {}
 
-Constituent::~Constituent() {}
+Constituent::~Constituent() {
+  shutdown();
+}
 
-duration_t Constituent::sleepFor () {
-  dist_t dis(_agent->config().min_ping, _agent->config().max_ping);
+duration_t Constituent::sleepFor (double min_t, double max_t) {
+  dist_t dis(min_t, max_t);
   return duration_t(dis(_gen));
 }
 
@@ -103,32 +107,35 @@ std::vector<std::string> const& Constituent::end_points() const {
 }
 
 size_t Constituent::notifyAll () {
+
   // Last process notifies everyone 
-	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
   
-  path << "/_api/agency/notifyAll?term=" << _term << "&agencyId=" << _id;
+  path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
 
-  // Body contains ids and endpoints
-  Builder builder;
-  for (auto const& i : end_points())
-    builder.add("endpoint", Value(i));
-  builder.close();
+  // Body contains endpoints
+  Builder body;
+  body.add(VPackValue(VPackValueType::Object));
+  for (auto const& i : end_points()) {
+    body.add("endpoint", Value(i));
+  }
+  body.close();
+  LOG(INFO) << body.toString();
 
   // Send request to all but myself
 	for (size_t i = 0; i < size(); ++i) {
     if (i != _id) {
+      std::unique_ptr<std::map<std::string, std::string>> headerFields =
+        std::make_unique<std::map<std::string, std::string> >();
+      LOG(INFO) << i << " notify " << end_point(i) << path.str() ;
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, _agent->config().end_points[i],
-        rest::HttpRequest::HTTP_REQUEST_GET, path.str(),
-        std::make_shared<std::string>(builder.toString()), headerFields, nullptr,
+        "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
+        std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
     }
 	}
 }
-
 
 bool Constituent::vote (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
@@ -173,29 +180,29 @@ void Constituent::callElection() {
   _term++;            // raise my term
   
   std::string body;
-	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
 
-  path << "/_api/agency/requestVote?term=" << _term << "&candidateId=" << _id
-       << "&lastLogIndex=" << _agent->lastLog().index << "&lastLogTerm="
+  path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId=" << _id
+       << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
-    
+  
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
-    if (i != _id) {
-      results[i] = arangodb::ClusterComm::instance()->asyncRequest("1", 1,
-        _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
+    if (i != _id && end_point(i) != "") {
+      std::unique_ptr<std::map<std::string, std::string>> headerFields =
+        std::make_unique<std::map<std::string, std::string> >();
+      results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
         _agent->config().min_ping, true);
       LOG(INFO) << _agent->config().end_points[i];
     }
 	}
 
-	std::this_thread::sleep_for(duration_t(.9*_agent->config().min_ping)); // Wait timeout
+	std::this_thread::sleep_for(sleepFor(0., .9*_agent->config().min_ping)); // Wait timeout
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
-    if (i != _id) {
+    if (i != _id && end_point(i) != "") {
       ClusterCommResult res = arangodb::ClusterComm::instance()->
 	      enquire(results[i].operationID);
       
@@ -220,13 +227,18 @@ void Constituent::callElection() {
   }
 }
 
+void Constituent::beginShutdown() {
+  Thread::beginShutdown();
+}
+
 void Constituent::run() {
 
   // Always start off as follower
-  while (!isStopping()) { 
+  while (!this->isStopping()) { 
     if (_role == FOLLOWER) { 
       _cast = false;                           // New round set not cast vote
-      std::this_thread::sleep_for(sleepFor()); // Sleep for random time
+      std::this_thread::sleep_for(             // Sleep for random time
+        sleepFor(_agent->config().min_ping, _agent->config().max_ping));
       if (!_cast)
         candidate();                           // Next round, we are running
     } else {

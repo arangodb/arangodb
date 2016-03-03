@@ -35,9 +35,10 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(5), _min_election_timeout(.5),
+  : ApplicationFeature("agency"), _size(1), _min_election_timeout(.5),
 	  _max_election_timeout(1.), _election_call_rate_mul(.75),
-    _append_entries_retry_interval(1.0) {
+    _append_entries_retry_interval(1.0),
+    _agent_id(std::numeric_limits<uint32_t>::max()) {
   
 }
 
@@ -74,6 +75,12 @@ bool ApplicationAgency::prepare() {
     return true;
   }
 
+  if (_size < 1)
+    LOG(FATAL) << "agency must have size greater 0";
+
+  if (_agent_id == std::numeric_limits<uint32_t>::max())
+    LOG(FATAL) << "agency.id must be specified";
+
   if (_min_election_timeout <= 0.) {
     LOG(FATAL) << "agency.election-timeout-min must not be negative!";
   } else if (_min_election_timeout < .15) {
@@ -88,10 +95,15 @@ bool ApplicationAgency::prepare() {
   if (_max_election_timeout <= 2*_min_election_timeout) {
     LOG(WARN)  << "agency.election-timeout-max should probably be chosen longer!";
   }
-    
-  _agent = std::unique_ptr<agent_t>(new agent_t(config_t
-     (_agent_id, _min_election_timeout, _max_election_timeout,
-      _append_entries_retry_interval, _agency_endpoints)));
+  
+  _agency_endpoints.resize(_size);
+  std::iter_swap(_agency_endpoints.begin(),
+                 _agency_endpoints.begin() + _agent_id);
+  
+  _agent = std::unique_ptr<agent_t>(
+    new agent_t(config_t(
+                  _agent_id, _min_election_timeout, _max_election_timeout,
+                  _append_entries_retry_interval, _agency_endpoints)));
   
   return true;
   
@@ -121,6 +133,7 @@ void ApplicationAgency::stop() {
   if (_disabled) {
     return;
   }
+  _agent->beginShutdown();
 }
 
 agent_t* ApplicationAgency::agent () const {

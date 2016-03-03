@@ -251,4 +251,13 @@
       background: $c-white !important;
     }
   }
+
+  .sentWrapper {
+
+    .pull-right,
+    .pull-left {
+      width: 50%;
+    }
+  }
+
 }

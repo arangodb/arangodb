@@ -33,13 +33,15 @@ namespace consensus {
 
 Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
-Agent::Agent (config_t const& config) : _config(config), Thread ("Agent") {
+Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
   _constituent.configure(this);
 }
 
 id_t Agent::id() const { return _config.id;}
 
-Agent::~Agent () {}
+Agent::~Agent () {
+//  shutdown();
+}
 
 void Agent::start() {
   _constituent.start();
@@ -168,6 +170,9 @@ append_entries_t Agent::sendAppendEntriesRPC (
      path.str(), std::make_shared<std::string>(builder.toString()), headerFields,
      std::make_shared<AgentCallback>(this),
      1.0, true);
+
+  return append_entries_t(this->term(), true);
+  
 }
 
 //query_ret_t
@@ -203,8 +208,8 @@ void Agent::run() {
   
   while (!this->isStopping()) {
     
-    _cv.wait();
-    auto dur = std::chrono::system_clock::now();
+    _cv.wait(100000);
+
     std::vector<collect_ret_t> work(size());
     
     // Collect all unacknowledged
@@ -229,15 +234,17 @@ void Agent::run() {
 
 void Agent::beginShutdown() {
   Thread::beginShutdown();
+  _constituent.beginShutdown();
   // Stop callbacks
-  _agent_callback.shutdown();
+  //_agent_callback.shutdown();
   // wake up all blocked rest handlers
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
+  //CONDITION_LOCKER(guard, _cv);
+  //guard.broadcast();
 }
 
 bool Agent::lead () {
   rebuildDBs();
+  return true;
 }
 
 bool Agent::rebuildDBs() {

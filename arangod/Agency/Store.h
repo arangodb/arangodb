@@ -81,19 +81,19 @@ struct Any {
   template<class S> operator S() {
     return as<Type<S>>();
   }
-
+  
   Any() : _base_ptr(nullptr) {}
   
   Any(Any& that) : _base_ptr(that.clone()) {}
-
+  
   Any(Any&& that) : _base_ptr(that._base_ptr) {
     that._base_ptr = nullptr;
   }
-
+  
   Any(const Any& that) : _base_ptr(that.clone()) {}
-
+  
   Any(const Any&& that) : _base_ptr(that.clone()) {}
-
+  
   Any& operator=(const Any& a) {
     if (_base_ptr == a._base_ptr)
       return *this;
@@ -103,19 +103,19 @@ struct Any {
       delete old__base_ptr;
     return *this;
   }
-
+  
   Any& operator=(Any&& a) {
     if (_base_ptr == a._base_ptr)
       return *this;
     std::swap(_base_ptr, a._base_ptr);
     return *this;
   }
-
+  
   ~Any() {
     if (_base_ptr)
       delete _base_ptr;
   }
-
+  
   friend std::ostream& operator<<(std::ostream& os, const Any& a) {
     try {
       os << a.as<double>();
@@ -134,7 +134,7 @@ struct Any {
   }
   
 private:
-
+  
   struct Base {
     virtual ~Base() {}
     virtual Base* clone() const = 0;    
@@ -160,8 +160,6 @@ private:
 static inline std::vector<std::string>
 split (std::string str, const std::string& dlm) {
 	std::vector<std::string> sv;
-  std::regex slashes("/+");
-  str = std::regex_replace (str, slashes, "/");
 	size_t  start = (str.find('/') == 0) ? 1:0, end = 0;
 	while (end != std::string::npos) {
 		end = str.find (dlm, start);
@@ -191,7 +189,7 @@ public:
   typedef std::vector<std::string> PathType;
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
 
-  Node (std::string const& name) : _name(name), _parent(nullptr), _value("") {}
+  Node (std::string const& name) : _parent(nullptr), _name(name), _value("") {}
 
   ~Node () {}
 

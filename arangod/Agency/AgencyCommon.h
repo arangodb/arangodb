@@ -56,11 +56,11 @@ enum role_t {                                      // Role
  * @brief Agent configuration
  */
 template<class T> struct Config {               
-  T min_ping;
-  T max_ping;
-  T election_timeout;
-  T append_entries_retry_interval;
   id_t id;
+  T    min_ping;
+  T    max_ping;
+  T    election_timeout;
+  T    append_entries_retry_interval;
   std::vector<std::string> end_points;
   Config () : min_ping(.15), max_ping(.3) {};
   Config (uint32_t i, T min_p, T max_p, T appent_i,

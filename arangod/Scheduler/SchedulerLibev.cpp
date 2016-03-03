@@ -26,10 +26,9 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
-#include <evwrap.h>
-#else
-#include <ev.h>
 #endif
+
+#include <ev.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"

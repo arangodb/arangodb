@@ -101,6 +101,8 @@ public:
    */
   size_t size() const;
 
+  void beginShutdown () override;
+
 private:
   
   std::vector<std::string> const& end_points() const;
@@ -136,7 +138,7 @@ private:
   /**
    * @brief Sleep for how long
    */
-  duration_t sleepFor();
+  duration_t sleepFor(double, double);
 
   // mission critical
   std::atomic<term_t>  _term;         /**< @brief term number */
@@ -151,6 +153,7 @@ private:
   role_t               _role;         /**< @brief My role */
   std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
+  
 
 };
   

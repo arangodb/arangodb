@@ -6046,7 +6046,7 @@ div.headerBar {
   padding: 5px 8px;
   position: relative;
   top: 5px; }
-  .arangoToolbar span:hover {
+  .arangoToolbar span.action:hover {
     background-color: #8aa051;
     border-radius: 3px;
     color: #fff;
@@ -6061,6 +6061,12 @@ div.headerBar {
   .arangoToolbar .pull-left {
     height: 30px;
     margin-top: 5px; }
+    .arangoToolbar .pull-right i.positive,
+    .arangoToolbar .pull-left i.positive {
+      color: #8aa051; }
+    .arangoToolbar .pull-right i.warning,
+    .arangoToolbar .pull-left i.warning {
+      color: #faa732; }
   .arangoToolbar .pull-left button {
     margin-left: 5px; }
   .arangoToolbar .pull-right select:first-child,
@@ -6070,20 +6076,15 @@ div.headerBar {
     font-weight: 100;
     margin-left: 10px; }
   .arangoToolbar i {
-    cursor: pointer;
     font-size: 11pt;
     font-style: normal; }
     .arangoToolbar i.fa {
       margin-right: 5px; }
-    .arangoToolbar i.fa-close {
-      color: #666;
-      cursor: pointer; }
-      .arangoToolbar i.fa-close:hover {
-        color: #000; }
   .arangoToolbar .toolbarType {
     background: #5bc0de;
     border-radius: 3px;
-    color: #fff; }
+    color: #fff;
+    margin-left: 5px; }
   .arangoToolbar .styled-select {
     width: auto; }
 
@@ -6093,7 +6094,8 @@ div.headerBar {
 
 .arangoToolbarBottom {
   border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px; }
+  border-bottom-right-radius: 3px;
+  clear: both; }
   .arangoToolbarBottom #executeQuery {
     margin-right: 5px; }
   .arangoToolbarBottom .button-close:last-child {
@@ -6973,6 +6975,9 @@ toolbar {
     width: 100%; }
     .outputEditorWrapper .ace_editor .ace_active-line {
       background: #fff !important; }
+  .outputEditorWrapper .sentWrapper .pull-right,
+  .outputEditorWrapper .sentWrapper .pull-left {
+    width: 50%; }
 
 .display-none {
   display: none; }

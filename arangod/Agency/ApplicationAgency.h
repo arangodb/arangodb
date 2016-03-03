@@ -88,6 +88,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
 
   void setProcessorAffinity(std::vector<size_t> const& cores);
 
+  void stop () override;
+
   
  public:
 
@@ -98,7 +100,6 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   bool start();
   bool open();
   void close();
-  void stop();
 
   agent_t* agent() const;
   

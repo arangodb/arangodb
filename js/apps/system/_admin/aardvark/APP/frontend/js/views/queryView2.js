@@ -35,7 +35,7 @@
 
     myQueriesTableDesc: {
       id: "arangoMyQueriesTable",
-      titles: ["Name", "Query", "Actions"],
+      titles: ["Name", "Actions"],
       rows: []
     },
 
@@ -208,6 +208,15 @@
           $('#bindParamAceEditor').hide();
           $('#bindParamEditor').show();
           $('#switchTypes').text('JSON');
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
+          this.queryPreview.setValue("No query selected.");
+          this.deselect(this.queryPreview);
+          
+          this.resize();
+        }
+        else {
+          $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
+          this.resize();
         }
       }
 
@@ -238,7 +247,7 @@
         name = $(e.currentTarget).children().first().text();
       }
       else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().prev().text();
+        name = $(e.currentTarget).parent().parent().prev().text();
       }
       return name;
     },
@@ -286,6 +295,7 @@
         this.toggleQueries();
       }
 
+      $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
       this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
@@ -321,7 +331,10 @@
         $(e.currentTarget).text('Result');
       }
       $('#outputEditor' + count).toggle();
-      $('#sentQueryEditor' + count).toggle();
+      $('#sentWrapper' + count).toggle();
+      this.deselect(ace.edit("outputEditor" + count));
+      this.deselect(ace.edit("sentQueryEditor" + count));
+      this.deselect(ace.edit("sentBindParamEditor" + count));
     },
 
     downloadQueryResult: function(e) {
@@ -330,7 +343,15 @@
       query = editor.getValue();
 
       if (query !== '' || query !== undefined || query !== null) {
-        window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
+        if (Object.keys(this.bindParamTableObj).length === 0) {
+          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
+        }
+        else {
+          window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({
+            query: query,
+            bindVars: this.bindParamTableObj
+          }))));
+        }
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");
@@ -377,13 +398,24 @@
 
       var counter = this.outputCounter,
       outputEditor = ace.edit("outputEditor" + counter),
-      sentQueryEditor = ace.edit("sentQueryEditor" + counter);
+      sentQueryEditor = ace.edit("sentQueryEditor" + counter),
+      sentBindParamEditor = ace.edit("sentBindParamEditor" + counter);
+
       sentQueryEditor.getSession().setMode("ace/mode/aql");
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentQueryEditor);
+
+      outputEditor.setReadOnly(true);
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
-      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
-      outputEditor.setReadOnly(true);
-      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(outputEditor);
+
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentBindParamEditor.getSession().setMode("ace/mode/json");
+      sentBindParamEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentBindParamEditor);
 
       this.fillExplain(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -398,9 +430,13 @@
       this.execPending = false;
 
       if (queryData) {
-        window.progressView.show(
-          "Explain is operating..."
-        );
+
+        var afterResult = function() {
+          $('#outputEditorWrapper' + counter + ' #spinner').remove();
+          $('#outputEditor' + counter).css('opacity', '1');
+          $('#outputEditorWrapper' + counter + ' .fa-close').show();
+          $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        };
 
         $.ajax({
           type: "POST",
@@ -412,7 +448,6 @@
             if (data.msg.includes('errorMessage')) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError("Explain error", data.msg);
-              window.progressView.hide();
             }
             else {
               outputEditor.setValue(data.msg);
@@ -421,6 +456,7 @@
               $.noty.closeAll();
               self.handleResult(counter);
             }
+            afterResult();
           },
           error: function (data) {
             try {
@@ -430,9 +466,9 @@
             catch (e) {
               arangoHelper.arangoError("Explain error", "ERROR");
             }
-            window.progressView.hide();
             self.handleResult(counter);
-            this.removeOutputEditor(counter);
+            self.removeOutputEditor(counter);
+            afterResult();
           }
         });
       }
@@ -559,7 +595,6 @@
     resizeFunction: function() {
       if ($('#toggleQueries1').is(':visible')) {
         this.aqlEditor.resize();
-        //fix bind table resizing issues
         $('#arangoBindParamTable thead').css('width', $('#bindParamEditor').width());
         $('#arangoBindParamTable thead th').css('width', $('#bindParamEditor').width() / 2);
         $('#arangoBindParamTable tr').css('width', $('#bindParamEditor').width());
@@ -570,15 +605,12 @@
       }
       else {
         this.queryPreview.resize();
-        //fix my queries preview table resizing issues TODO
         $('#arangoMyQueriesTable thead').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable thead th').css('width', $('#queryTable').width() / 2);
         $('#arangoMyQueriesTable tr').css('width', $('#queryTable').width());
         $('#arangoMyQueriesTable tbody').css('height', $('#queryTable').height() - 18);
         $('#arangoMyQueriesTable tbody').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody tr').css('width', $('#queryTable').width());
-        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 3);
-        $('#arangoMyQueriesTable tbody td .truncate').css('width', $('#queryTable').width() / 3);
+        $('#arangoMyQueriesTable tbody td').css('width', $('#queryTable').width() / 2);
       }
     },
 
@@ -650,6 +682,11 @@
         });
       }
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
+
+      //fire execute if return was pressed
+      if (e.ctrlKey && e.keyCode === 13) {
+        this.executeQuery();
+      }
     },
 
     checkForNewBindParams: function() {
@@ -842,11 +879,7 @@
 
       this.myQueriesTableDesc.rows = this.customQueries;
       _.each(this.myQueriesTableDesc.rows, function(k) {
-        k.secondRow = '<div class="truncate">' +
-          JSON.stringify(self.collection.findWhere({name: k.name}).get('value')) +
-        '</div>';
-
-        k.thirdRow = '<span class="spanWrapper">' + 
+        k.secondRow = '<span class="spanWrapper">' + 
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
           '<span id="explQuery" title="Explain query"><i class="fa fa-comments"></i></i></span>' +
           '<span id="runQuery" title="Run query"><i class="fa fa-play-circle-o"></i></i></span>' +
@@ -878,7 +911,6 @@
         }
         self.myQueriesTableDesc.rows.push({
           name: val.name,
-          secondRow: '<div class="truncate">' + val.value + '</div>',
           thirdRow: '<span class="spanWrapper">' + 
             '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>' 
         });
@@ -1067,15 +1099,26 @@
 
       var counter = this.outputCounter,
       outputEditor = ace.edit("outputEditor" + counter),
-      sentQueryEditor = ace.edit("sentQueryEditor" + counter);
+      sentQueryEditor = ace.edit("sentQueryEditor" + counter),
+      sentBindParamEditor = ace.edit("sentBindParamEditor" + counter);
+
       sentQueryEditor.getSession().setMode("ace/mode/aql");
+      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentQueryEditor.setFontSize("13px");
+      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentQueryEditor);
+
+      outputEditor.setFontSize("13px");
       outputEditor.getSession().setMode("ace/mode/json");
       outputEditor.setReadOnly(true);
       outputEditor.setOption("vScrollBarAlwaysVisible", true);
-      sentQueryEditor.setOption("vScrollBarAlwaysVisible", true);
-      outputEditor.setFontSize("13px");
-      sentQueryEditor.setFontSize("13px");
-      sentQueryEditor.setReadOnly(true);
+      this.setEditorAutoHeight(outputEditor);
+
+      sentBindParamEditor.setValue(JSON.stringify(this.bindParamTableObj));
+      sentBindParamEditor.setOption("vScrollBarAlwaysVisible", true);
+      sentBindParamEditor.getSession().setMode("ace/mode/json");
+      sentBindParamEditor.setReadOnly(true);
+      this.setEditorAutoHeight(sentBindParamEditor);
 
       this.fillResult(outputEditor, sentQueryEditor, counter);
       this.outputCounter++;
@@ -1159,7 +1202,8 @@
 
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
-        maxLines: Infinity
+        maxLines: 100,
+        minLines: 3
       }); 
     },
 
@@ -1186,25 +1230,43 @@
 
       var self = this;
 
-      var cancelRunningQuery = function() {
+
+      var cancelRunningQuery = function(id, counter) {
 
         $.ajax({
-          url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+          url: '/_api/job/'+ encodeURIComponent(id) + "/cancel",
           type: 'PUT',
           success: function() {
             window.clearTimeout(self.checkQueryTimer);
+            $('#outputEditorWrapper' + counter).remove();
             arangoHelper.arangoNotification("Query", "Query canceled.");
-            window.progressView.hide();
-            //TODO REMOVE OUTPUT BOX
           }
         });
       };
 
-      window.progressView.show(
-        "Query is operating...",
-        cancelRunningQuery,
-        "Cancel Query"
-      );
+      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').bind('click', function() {
+        cancelRunningQuery(queryID, counter);
+      });
+
+      $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function() {
+        var aql = ace.edit("sentQueryEditor" + counter).getValue();
+        var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
+        self.aqlEditor.setValue(aql);
+        self.deselect(self.aqlEditor);
+        if (Object.keys(bindParam).length > 0) {
+          self.bindParamTableObj = bindParam;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+
+          if ($('#bindParamEditor').is(':visible')) {
+            self.renderBindParamTable();
+          }
+          else {
+            self.bindParamAceEditor.setValue(JSON.stringify(bindParam));
+            self.deselect(self.bindParamAceEditor);
+          }
+        }
+        $("html, body").animate({ scrollTop: 0 }, "fast");
+      });
 
       self.timer.start();
       this.execPending = false;
@@ -1227,8 +1289,52 @@
         warningsFunc(data);
         window.progressView.hide();
 
-        var time = self.timer.getTimeAndReset()/1000 + " s";
-        $('#outputEditorWrapper' + counter + ' .queryExecutionTime2').text(time);
+        var appendSpan = function(value, icon) {
+          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
+            '<span><i class="fa ' + icon + '"></i><i>' + value + '</i></span>'
+          );
+        };
+
+        $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
+        var time = self.timer.getTimeAndReset() / 1000 + " s";
+        appendSpan(time, 'fa-clock-o');
+
+        if (data.extra) {
+          if (data.extra.stats) {
+            if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
+              appendSpan(
+                data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
+              );
+              if (data.extra.stats.writesIgnored === 0) {
+                appendSpan(
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive'
+                );
+              }
+              else {
+                appendSpan(
+                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning'
+                );
+              }
+            }
+            if (data.extra.stats.scannedFull > 0) {
+              appendSpan(
+                data.extra.stats.scannedFull + ' full collection scan', 'fa-exclamation-circle warning'
+              );
+            }
+            else {
+              appendSpan(
+                data.extra.stats.scannedFull + ' full collection scan', 'fa-check-circle positive'
+              );
+            }
+          }
+        }
+
+        $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        $('#outputEditorWrapper' + counter + ' .fa-close').show();
+        $('#outputEditor' + counter).css('opacity', '1');
+        $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
+        $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').show();
+        $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
 
         self.setEditorAutoHeight(outputEditor);
         self.deselect(outputEditor);
@@ -1274,6 +1380,7 @@
               }
             }
             catch (e) {
+              console.log(e);
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
             }
@@ -1390,7 +1497,7 @@
               }
             }.bind(self);
             self.collection.saveCollectionQueries(callback);
-          }//TODO
+          }
           self.updateLocalQueries();
 
           if (originCallback) {

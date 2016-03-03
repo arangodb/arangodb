@@ -91,15 +91,14 @@ inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
     generateResult(ret.result->slice());
   }
 
-  /*
   if (!accepted) { // We accepted the request
     //ret.result->close();
     //generateResult(ret.result->slice());
   } else {            // We redirect the request
-    _response->setHeader("Location", _agent->config().endpoints[ret.redirect]);
+    //_response->setHeader("Location", _agent->config().endpoints[ret.redirect]);
     generateError(HttpResponse::TEMPORARY_REDIRECT,307);
   }
-  */
+
   return HttpHandler::status_t(HANDLER_DONE);
 }
 

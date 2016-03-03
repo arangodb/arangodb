@@ -1,13 +1,15 @@
-%toolbarSpan {
+%toolbarspan {
   padding: 5px 8px;
   position: relative;
   top: 5px;
 
-  &:hover {
-    background-color: $c-positive;
-    border-radius: 3px;
-    color: $c-white;
-    cursor: pointer;
+  &.action {
+    &:hover {
+      background-color: $c-positive;
+      border-radius: 3px;
+      color: $c-white;
+      cursor: pointer;
+    }
   }
 }
 
@@ -21,6 +23,16 @@
   .pull-left {
     height: 30px;
     margin-top: 5px;
+
+    i {
+      &.positive {
+        color: $c-positive;
+      }
+
+      &.warning {
+        color: $c-warning;
+      }
+    }
   }
 
   .pull-left {
@@ -37,27 +49,17 @@
   }
 
   span {
-    @extend %toolbarSpan;
+    @extend %toolbarspan;
     font-weight: 100;
     margin-left: 10px;
   }
 
   i {
-    cursor: pointer;
     font-size: 11pt;
     font-style: normal;
 
     &.fa {
       margin-right: 5px;
-    }
-
-    &.fa-close {
-      color: $c-darker-grey;
-      cursor: pointer;
-
-      &:hover {
-        color: $c-black;
-      }
     }
   }
 
@@ -81,6 +83,7 @@
 .arangoToolbarBottom {
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  clear: both;
 
   #executeQuery {
     margin-right: 5px;
