@@ -76,18 +76,18 @@ endif ()
 set(LIBEV_DIR libev-${libev_VERSION})
 
 if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
-  foreach (flag in
-      CMAKE_C_FLAGS
-      CMAKE_C_FLAGS_DEBUG
-      CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_MINSIZEREL
-      CMAKE_C_FLAGS_RELWITHDEBINFO
-      CMAKE_CXX_FLAGS
-      CMAKE_CXX_FLAGS_DEBUG
-      CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_MINSIZEREL
-      CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    set(${flag} "${${flag}} -Wno-unused-function -Wno-unused-parameter -Wno-sign-compare -Wno-old-style-declaration")
+  foreach (flag in 
+             CMAKE_C_FLAGS
+             CMAKE_C_FLAGS_DEBUG
+             CMAKE_C_FLAGS_RELEASE
+             CMAKE_C_FLAGS_MINSIZEREL
+             CMAKE_C_FLAGS_RELWITHDEBINFO
+             CMAKE_CXX_FLAGS
+             CMAKE_CXX_FLAGS_DEBUG
+             CMAKE_CXX_FLAGS_RELEASE
+             CMAKE_CXX_FLAGS_MINSIZEREL
+             CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    set(${flag} "${${flag}} -Wno-all")
   endforeach()
 endif ()
 
