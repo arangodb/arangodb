@@ -25,7 +25,6 @@
 #define ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
 #include "Rest/GeneralResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"

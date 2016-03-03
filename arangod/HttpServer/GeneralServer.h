@@ -27,7 +27,7 @@
 #define ARANGOD_GENERAL_SERVER_GENERAL_SERVER_H 1
 
 #include "Basics/Mutex.h"
-#include "Basics/SpinLock.h"
+// #include "Basics/SpinLock.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/ConnectionInfo.h"
 

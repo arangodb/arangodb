@@ -228,15 +228,15 @@ GeneralHandler::status_t GeneralHandler::executeFullVstream() {
   } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+    LOG(TRACE) << "caught exception: " << DIAGNOSTIC_INFORMATION(ex);
   } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception: %s", ex.what());
+    LOG(TRACE) << "caught exception: " << ex.what();
   } catch (...) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
-    LOG_ERROR("caught exception");
+    LOG(TRACE) << "caught exception";
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {

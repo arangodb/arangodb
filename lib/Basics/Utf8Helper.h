@@ -27,9 +27,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
-#include <unicode/coll.h>
-#include <unicode/regex.h>
-#include <unicode/ustring.h>
+#include "unicode/coll.h"
+#include "unicode/regex.h"
+#include "unicode/ustring.h"
 
 namespace arangodb {
 namespace basics {

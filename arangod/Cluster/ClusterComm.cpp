@@ -406,7 +406,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     }
   } else {
     LOG(DEBUG) << "sending "
-               << arangodb::rest::HttpRequest::translateMethod(reqtype)
+               << arangodb::rest::GeneralRequest::translateMethod(reqtype)
                << " request to DB server '" << res->serverID
                << "': " << body;
     // LOCKING-DEBUG
@@ -1071,7 +1071,7 @@ void ClusterCommThread::run() {
         } else {
           if (nullptr != op->body.get()) {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::rest::GeneralRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
@@ -1079,7 +1079,7 @@ void ClusterCommThread::run() {
                        << "': " << op->body->c_str();
           } else {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::rest::GeneralRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"

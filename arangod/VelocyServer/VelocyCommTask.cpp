@@ -25,7 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 // #include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "HttpServer/ArangoTask.h" 
 #include "VelocyServer/VelocyCommTask.h"
 #include "HttpServer/GeneralHandlerFactory.h"
@@ -172,8 +172,7 @@ bool VelocyCommTask::processRead() {
         requestStatisticsAgentSetReadStart();
 
         if (isFirstChunk && sizeof(_header) > MaximalHeaderSize) {
-          LOG_WARNING("maximal header size is %d, request header size is %d",
-                      (int)MaximalHeaderSize, (int)sizeof(_header));
+          LOG(WARN) << "maximal header size is " << (int)MaximalHeaderSize << ", request header size is " << (int)sizeof(_header);
 
           // header is too large
           GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -190,7 +189,7 @@ bool VelocyCommTask::processRead() {
         _request = _server->handlerFactory()->createRequestVpack( _connectionInfo, _header, sizeof(_header), isFirstChunk, message_id);
 
         if (_request == nullptr) {
-          LOG_ERROR("cannot generate request");
+          LOG(ERR) << "cannot generate request";
 
           // internal server error
           GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_SERVER_ERROR, getCompatibility());
@@ -240,9 +239,7 @@ bool VelocyCommTask::processRead() {
         // and ports
         _request->setProtocol(_server->protocol());
 
-        LOG_TRACE("server port %d, client port %d",
-                  (int)_connectionInfo.serverPort,
-                  (int)_connectionInfo.clientPort);
+        LOG(TRACE) << "server port " << (int)_connectionInfo.serverPort <<", client port " << (int)_connectionInfo.clientPort;
 
         // keep track of the original value of the "origin" request header (if
         // any)
@@ -301,7 +298,7 @@ bool VelocyCommTask::processRead() {
 
           default: {
 
-            LOG_WARNING( "got corrupted VELOCYSTREAM request ");
+            LOG(WARN) << "got corrupted VELOCYSTREAM request ";
 
             // bad request, method not allowed
             GeneralResponse response(GeneralResponse::VstreamResponseCode::VSTREAM_METHOD_NOT_ALLOWED,
@@ -330,7 +327,7 @@ bool VelocyCommTask::processRead() {
             _server->scheduler(); 
 
         if (scheduler != nullptr && !scheduler->isActive()) {
-          LOG_TRACE("cannot serve request - server is inactive");
+          LOG(TRACE) << "cannot serve request - server is inactive";
 
           GeneralResponse response(GeneralResponse::VSTREAM_SERVICE_UNAVAILABLE,
                                 getCompatibility());
@@ -349,7 +346,7 @@ bool VelocyCommTask::processRead() {
           std::string const& expect = _request->header("expect", found);
 
           if (found && StringUtils::trim(expect) == "100-continue") {
-            LOG_TRACE("received a 100-continue request");
+            LOG(TRACE) << "received a 100-continue request";
 
             // auto buffer = std::make_unique<arangodb::velocypack::Builder>(TRI_UNKNOWN_MEM_ZONE);
             arangodb::velocypack::Builder* buffer;
@@ -388,7 +385,7 @@ bool VelocyCommTask::processRead() {
       // read "bodyLength" from read buffer and add this body to "GeneralRequest"
       _request->setBody(_body.c_str(), sizeof(_body));
 
-      LOG_TRACE("%d", (int)sizeof(_body));
+      LOG(TRACE) << (int)sizeof(_body);
 
       // remove body from read buffer and reset read position
       _readRequestBody = false;
@@ -414,13 +411,13 @@ bool VelocyCommTask::processRead() {
         StringUtils::tolower(_request->header("connection"));
 
     if (connectionType == "close") {
-      LOG_DEBUG("connection close requested by client");
+      LOG(DEBUG) << "connection close requested by client";
       _closeRequested = true;
     } else if (connectionType != "keep-alive") {
-      LOG_DEBUG("no keep-alive, connection close requested by client");
+      LOG(DEBUG) << "no keep-alive, connection close requested by client";
       _closeRequested = true;
     } else if (_keepAliveTimeout <= 0.0) {
-      LOG_DEBUG("keep-alive disabled by admin");
+      LOG(DEBUG) << "keep-alive disabled by admin";
       _closeRequested = true;
     }
 
@@ -515,7 +512,7 @@ void VelocyCommTask::addResponse(GeneralResponse* response) {
   arangodb::velocypack::Builder* bhj;
   if (!_origin.empty()) {
 
-    LOG_TRACE("handling CORS response");
+    LOG(TRACE) << "handling CORS response";
 
     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
                         "etag, content-encoding, content-length, location, "
@@ -591,13 +588,7 @@ void VelocyCommTask::addResponse(GeneralResponse* response) {
 
   // disable the following statement to prevent excessive logging of incoming
   // requests
-  LOG_USAGE(
-      ",\"velocystream-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
-      _connectionInfo.clientAddress.c_str(),
-      GeneralRequest::translateMethod(_requestType).c_str(),
-      GeneralRequest::translateVersion(_httpVersion).c_str(),
-      (int)response->responseCode(), (unsigned long long)_originalBodyLength,
-      (unsigned long long)responseBodyLength, _fullUrl.c_str(), totalTime);
+  LOG(INFO) << "velocystream-request" << _connectionInfo.clientAddress.c_str() << ","<< GeneralRequest::translateMethod(_requestType).c_str()<< ","<< GeneralRequest::translateVersion(_httpVersion).c_str()<<"," << (int)response->responseCode() <<"," << (unsigned long long)_originalBodyLength << ","<< (unsigned long long)responseBodyLength <<"," << _fullUrl.c_str() << "," << totalTime; 
 
   // start output
   fillWriteBuffer();
@@ -615,7 +606,7 @@ void VelocyCommTask::processCorsOptions(uint32_t compatibility) {
   response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
 
   if (!_origin.empty()) {
-    LOG_TRACE("got CORS preflight request");
+    LOG(TRACE) << "got CORS preflight request";
     std::string const allowHeaders =
         StringUtils::trim(_request->header("access-control-request-headers"));
 
@@ -627,8 +618,7 @@ void VelocyCommTask::processCorsOptions(uint32_t compatibility) {
     if (!allowHeaders.empty()) {
       response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
                          allowHeaders);
-      LOG_TRACE("client requested validation of the following headers: %s",
-                allowHeaders.c_str());
+      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders.c_str();
     }
     response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-max-age"), "1800");
   }
@@ -671,7 +661,7 @@ void VelocyCommTask::processRequest(uint32_t compatibility) {
       _server->handlerFactory()->createHandler(_request));
 
   if (handler == nullptr) {
-    LOG_TRACE("no handler is known, giving up");
+    LOG(TRACE) << "no handler is known, giving up";
 
     GeneralResponse response(GeneralResponse::VSTREAM_NOT_FOUND, compatibility);
 

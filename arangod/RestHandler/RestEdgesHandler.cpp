@@ -40,34 +40,36 @@ GeneralHandler::status_t RestEdgesHandler::execute() {
   GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
-  switch (type) {
-    case GeneralRequest::HTTP_REQUEST_GET: {
-      std::vector<traverser::TraverserExpression*> empty;
-      readEdges(empty);
-      break;
-    }
-    case GeneralRequest::HTTP_REQUEST_PUT:
-      readFilteredEdges();
-      break;
-    case GeneralRequest::HTTP_REQUEST_POST:
-      readEdgesForMultipleVertices();
-      break;
-    case GeneralRequest::HTTP_REQUEST_HEAD:
-    case GeneralRequest::HTTP_REQUEST_DELETE:
-    case GeneralRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
-      generateNotImplemented("ILLEGAL " + EDGES_PATH);
-      break;
+  try{
+    switch (type) {
+      case GeneralRequest::HTTP_REQUEST_GET: {
+        std::vector<traverser::TraverserExpression*> empty;
+        readEdges(empty);
+        break;
+      }
+      case GeneralRequest::HTTP_REQUEST_PUT:
+        readFilteredEdges();
+        break;
+      case GeneralRequest::HTTP_REQUEST_POST:
+        readEdgesForMultipleVertices();
+        break;
+      case GeneralRequest::HTTP_REQUEST_HEAD:
+      case GeneralRequest::HTTP_REQUEST_DELETE:
+      case GeneralRequest::HTTP_REQUEST_ILLEGAL:
+      default: {
+        generateNotImplemented("ILLEGAL " + EDGES_PATH);
+        break;
+      }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   }
-  catch (std::exception const& ex) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
-  }
+  // catch (std::exception const& ex) {
+  //   generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  // }
+  // catch (...) {
+  //   generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  // }
 
   // this handler is done
   return status_t(HANDLER_DONE);

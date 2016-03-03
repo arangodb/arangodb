@@ -148,27 +148,23 @@ void GeneralServer::stop() {
   while (true) {
     if(_isHttp){
       ArangoTask* task = nullptr;
-      {
-          MUTEX_LOCKER(_commTasksLock);
 
 // <<<<<<< HEAD:arangod/HttpServer/GeneralServer.cpp
 //         if (_commTasks.empty()) {
 //           break;
 //         }
 // =======
-    {
       MUTEX_LOCKER(mutexLocker, _commTasksLock);
 // >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
 
-        task = *_commTasks.begin();
-        _commTasks.erase(task);
-      }
+      task = *_commTasks.begin();
+      _commTasks.erase(task);
 
       _scheduler->destroyTask(task);
     }else{
       VelocyCommTask* task_v = nullptr;
       {
-          MUTEX_LOCKER(_commTasksLock);
+        MUTEX_LOCKER(mutexLocker, _commTasksLock);
 
         if (_commTasksVstream.empty()) {
           break;
@@ -192,7 +188,7 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
   if(_isHttp){
     ArangoTask* task = createCommTask(s, info);
     try {
-      MUTEX_LOCKER(_commTasksLock);
+      MUTEX_LOCKER(mutexLocker, _commTasksLock);
       _commTasks.emplace(task);
     } catch (...) {
       // destroy the task to prevent a leak
@@ -218,7 +214,7 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
   } else{
     VelocyCommTask* task_v = createCommTask(s, info, _isHttp);
     try {
-      MUTEX_LOCKER(_commTasksLock);
+      MUTEX_LOCKER(mutexLocker, _commTasksLock);
       _commTasksVstream.emplace(task_v);
     } catch (...) {
       // destroy the task to prevent a leak

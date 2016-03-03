@@ -157,16 +157,24 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-wordlist.cpp
   GeoIndex/GeoIndex.cpp
   HttpServer/ApplicationEndpointServer.cpp
+  HttpServer/ArangoTask.cpp
+  HttpServer/ArangosCommTask.cpp
   HttpServer/AsyncJobManager.cpp
   HttpServer/HttpCommTask.cpp
-  HttpServer/HttpHandler.cpp
-  HttpServer/HttpHandlerFactory.cpp
+  HttpServer/GeneralHandler.cpp
+  HttpServer/GeneralHandlerFactory.cpp
   HttpServer/HttpListenTask.cpp
-  HttpServer/HttpServer.cpp
-  HttpServer/HttpServerJob.cpp
+  HttpServer/GeneralServer.cpp
+  HttpServer/GeneralsServer.cpp
+  HttpServer/GeneralServerJob.cpp
   HttpServer/HttpsCommTask.cpp
   HttpServer/HttpsServer.cpp
   HttpServer/PathHandler.cpp
+  VelocyServer/ApplicationVelocyServer.cpp
+  VelocyServer/VelocyCommTask.cpp
+  VelocyServer/VelocyListenTask.cpp
+  VelocyServer/VelocysCommTask.cpp
+  VelocyServer/VelocysCommTask.cpp
   IndexOperators/index-operator.cpp
   Indexes/CapConstraint.cpp
   Indexes/EdgeIndex.cpp

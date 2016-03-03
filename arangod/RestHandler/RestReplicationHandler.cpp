@@ -119,7 +119,7 @@ GeneralHandler::status_t RestReplicationHandler::execute() {
       }
     } else if (command == "barrier") {
       if (isCoordinatorError()) {
-        return status_t(HttpHandler::HANDLER_DONE);
+        return status_t(GeneralHandler::HANDLER_DONE);
       }
       handleCommandBarrier();
     } else if (command == "inventory") {
@@ -258,11 +258,11 @@ GeneralHandler::status_t RestReplicationHandler::execute() {
         handleCommandClusterInventory();
       }
     } else if (command == "addFollower") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+      if (type != GeneralRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isDBServer()) {
-        generateError(HttpResponse::FORBIDDEN,
+        generateError(GeneralResponse::FORBIDDEN,
                       TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         handleCommandAddFollower();
@@ -617,19 +617,19 @@ void RestReplicationHandler::handleCommandBatch() {
 
 void RestReplicationHandler::handleCommandBarrier() {
   // extract the request type
-  HttpRequest::HttpRequestType const type = _request->requestType();
+  GeneralRequest::RequestType const type = _request->requestType();
   std::vector<std::string> const& suffix = _request->suffix();
   size_t const len = suffix.size();
 
   TRI_ASSERT(len >= 1);
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::HTTP_REQUEST_POST) {
     // create a new barrier
 
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -648,7 +648,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     }
 
     if (minTick == 0) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid tick value");
       return;
     }
@@ -666,19 +666,19 @@ void RestReplicationHandler::handleCommandBarrier() {
       VPackSlice s = b.slice();
       generateResult(s);
     } catch (...) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT && len >= 2) {
+  if (type == GeneralRequest::HTTP_REQUEST_PUT && len >= 2) {
     // extend an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     std::unique_ptr<TRI_json_t> input(_request->toJson(nullptr));
 
     if (input == nullptr) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
       return;
     }
@@ -698,28 +698,28 @@ void RestReplicationHandler::handleCommandBarrier() {
 
     if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
             id, ttl, minTick)) {
-      createResponse(HttpResponse::NO_CONTENT);
+      createResponse(GeneralResponse::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
     }
     return;
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE && len >= 2) {
+  if (type == GeneralRequest::HTTP_REQUEST_DELETE && len >= 2) {
     // delete an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
-      createResponse(HttpResponse::NO_CONTENT);
+      createResponse(GeneralResponse::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-      generateError(HttpResponse::responseCode(res), res);
+      generateError(GeneralResponse::responseCode(res), res);
     }
     return;
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_GET) {
+  if (type == GeneralRequest::HTTP_REQUEST_GET) {
     // fetch all barriers
     auto ids = arangodb::wal::LogfileManager::instance()->getLogfileBarriers();
 
@@ -733,13 +733,13 @@ void RestReplicationHandler::handleCommandBarrier() {
       VPackSlice s = b.slice();
       generateResult(s);
     } catch (...) {
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+      generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
     return;
   }
 
   // we get here if anything above is invalid
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
@@ -907,7 +907,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, value);
 
     if (c == nullptr) {
-      generateError(HttpResponse::NOT_FOUND,
+      generateError(GeneralResponse::NOT_FOUND,
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return;
     }
@@ -3597,20 +3597,20 @@ void RestReplicationHandler::handleCommandAddFollower() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(
-        HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "body needs to be an object with attributes 'followerId' and 'shard'");
     return;
   }
   VPackSlice const followerId = body.get("followerId");
   VPackSlice const shard = body.get("shard");
   if (!followerId.isString() || !shard.isString()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'followerId' and 'shard' attributes must be strings");
     return;
   }
@@ -3620,7 +3620,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                                           _vocbase, shard.copyString());
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+    generateError(GeneralResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "could not start transaction");
     return;
   }
@@ -3635,5 +3635,5 @@ void RestReplicationHandler::handleCommandAddFollower() {
     b.add("error", VPackValue(false));
   }
 
-  generateResult(HttpResponse::OK, b.slice());
+  generateResult(GeneralResponse::OK, b.slice());
 }

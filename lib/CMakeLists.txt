@@ -126,7 +126,7 @@ set(LIB_ARANGO_VPACK
 )
 
 add_library(
-  ${LIB_ARANGO} 
+  ${LIB_ARANGO}
   STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}

@@ -229,7 +229,7 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_defaultApiCompatibility < GeneralRequest::MinCompatibility) {
-    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << HttpRequest::MinCompatibility; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << GeneralRequest::MinCompatibility; FATAL_ERROR_EXIT();
   }
 
   // and return

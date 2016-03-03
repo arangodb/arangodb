@@ -166,7 +166,7 @@ bool SocketTask::fillVelocyStream() {
   }
 
   if (nr == 0) {
-    LOG_TRACE("read returned 0");
+    LOG(TRACE) << "read returned 0";
     _clientClosed = true;
 
     return false;
@@ -180,8 +180,7 @@ bool SocketTask::fillVelocyStream() {
   }
 
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {
-    LOG_DEBUG("read from socket failed with %d: %s", (int)myerrno,
-              strerror(myerrno));
+    LOG(DEBUG) << "read from socket failed with " << (int)myerrno <<": " << strerror(myerrno);
 
     return false;
   }
@@ -195,7 +194,7 @@ bool SocketTask::fillVelocyStream() {
   // either error to be returned for this case, and does not require these
   // constants to have the same value,
   // so a  portable  application  should check for both possibilities.
-  LOG_TRACE("read would block with %d: %s", (int)myerrno, strerror(myerrno));
+  LOG(TRACE) << "read would block with " << (int)myerrno <<": " << strerror(myerrno);
 
   return true;
 }

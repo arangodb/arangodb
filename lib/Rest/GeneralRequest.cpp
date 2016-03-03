@@ -41,12 +41,7 @@ using namespace arangodb::rest;
 
 static char const* EMPTY_STR = "";
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 int32_t const GeneralRequest::MinCompatibility = 10300L;
-=======
-int32_t const HttpRequest::MinCompatibility = 10300L;
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
 
 std::string const GeneralRequest::BatchContentType 
                       = "application/x-arango-batchpart";
@@ -93,7 +88,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
+// <<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief VelocyStream(VStream) request constructor @TODO: _freeables for vpack
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,9 +127,9 @@ GeneralRequest::GeneralRequest( ConnectionInfo const& info, velocypack::Builder 
 }
 
 GeneralRequest::~GeneralRequest() {
-=======
-HttpRequest::~HttpRequest() {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
+// =======
+// HttpRequest::~HttpRequest() {
+// >>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
   for (_arrayValues.range(begin, end); begin < end; ++begin) {
@@ -158,18 +153,10 @@ HttpRequest::~HttpRequest() {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 
 char const* GeneralRequest::requestPath() const { return _requestPath; }
 
-
 void GeneralRequest::write(TRI_string_buffer_t* buffer) const {
-=======
-char const* HttpRequest::requestPath() const { return _requestPath; }
-
-void HttpRequest::write(TRI_string_buffer_t* buffer) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   std::string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
@@ -263,17 +250,10 @@ void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 int64_t GeneralRequest::contentLength() const { return _contentLength; }
 
-
 char const* GeneralRequest::header(char const* key) const {
-=======
-int64_t HttpRequest::contentLength() const { return _contentLength; }
 
-char const* HttpRequest::header(char const* key) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -283,12 +263,7 @@ char const* HttpRequest::header(char const* key) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 char const* GeneralRequest::header(char const* key, bool& found) const {
-=======
-char const* HttpRequest::header(char const* key, bool& found) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -300,12 +275,8 @@ char const* HttpRequest::header(char const* key, bool& found) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 std::map<std::string, std::string> GeneralRequest::headers() const {
-=======
-std::map<std::string, std::string> HttpRequest::headers() const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
+
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -326,12 +297,7 @@ std::map<std::string, std::string> HttpRequest::headers() const {
   return result;
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 char const* GeneralRequest::value(char const* key) const {
-=======
-char const* HttpRequest::value(char const* key) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -341,12 +307,7 @@ char const* HttpRequest::value(char const* key) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 char const* GeneralRequest::value(char const* key, bool& found) const {
-=======
-char const* HttpRequest::value(char const* key, bool& found) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -358,12 +319,7 @@ char const* HttpRequest::value(char const* key, bool& found) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 std::map<std::string, std::string> GeneralRequest::values() const {
-=======
-std::map<std::string, std::string> HttpRequest::values() const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -382,13 +338,8 @@ std::map<std::string, std::string> HttpRequest::values() const {
   return result;
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
-std::map<std::string, std::vector<char const*>*> GeneralRequest::arrayValues() const {
-=======
-std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues()
+std::map<std::string, std::vector<char const*>*> GeneralRequest::arrayValues() 
     const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
 
@@ -407,12 +358,7 @@ std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues()
   return result;
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 char const* GeneralRequest::cookieValue(char const* key) const {
-=======
-char const* HttpRequest::cookieValue(char const* key) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -422,12 +368,7 @@ char const* HttpRequest::cookieValue(char const* key) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 char const* GeneralRequest::cookieValue(char const* key, bool& found) const {
-=======
-char const* HttpRequest::cookieValue(char const* key, bool& found) const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -439,12 +380,7 @@ char const* HttpRequest::cookieValue(char const* key, bool& found) const {
   }
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-
 std::map<std::string, std::string> GeneralRequest::cookieValues() const {
-=======
-std::map<std::string, std::string> HttpRequest::cookieValues() const {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -463,7 +399,7 @@ std::map<std::string, std::string> HttpRequest::cookieValues() const {
   return result;
 }
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
+// <<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
@@ -474,15 +410,15 @@ size_t GeneralRequest::bodySize() const { return _bodySize; }
 
 
 int GeneralRequest::setBody(char const* newBody, size_t length) {
-=======
-char const* HttpRequest::body() const {
-  return _body == nullptr ? EMPTY_STR : _body;
-}
+// =======
+// char const* HttpRequest::body() const {
+//   return _body == nullptr ? EMPTY_STR : _body;
+// }
 
-size_t HttpRequest::bodySize() const { return _bodySize; }
+// size_t HttpRequest::bodySize() const { return _bodySize; }
 
-int HttpRequest::setBody(char const* newBody, size_t length) {
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
+// int HttpRequest::setBody(char const* newBody, size_t length) {
+// >>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
@@ -627,13 +563,9 @@ std::string const& GeneralRequest::protocol() const { return _protocol; }
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
-void GeneralRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
-=======
-void HttpRequest::setProtocol(std::string const& protocol) {
-  _protocol = protocol;
+void GeneralRequest::setProtocol(std::string const& protocol) { 
+  _protocol = protocol; 
 }
->>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
@@ -816,7 +748,7 @@ void GeneralRequest::parseHeader(velocypack::Builder ptr, size_t length) {
         for (auto const& it : velocypack::ObjectIterator(s.get("parameter"))) { 
           if( it.value.isArray()){
 
-            for(int i = 0; i < it.value.length(); i++){
+            for(int i = 0; i < sizeof(it.value); i++){
               setArrayValue((char *)it.key.copyString().c_str(), it.key.byteSize(), getValueVstream(it.value).c_str());
             } 
 
@@ -1180,43 +1112,43 @@ void GeneralRequest::parseHeader(char* ptr, size_t length) {
 /// @brief retrieve object from Slice(VPack) and return as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
-  string result;
+std::string GeneralRequest::getValueVstream(arangodb::velocypack::Slice s) {
+  std::string result;
   // arangodb::velocypack::ValueLength len;
   switch(s.type()) {
     case arangodb::velocypack::ValueType::String  :try{
                                                     arangodb::velocypack::ValueLength len = 0;
                                                     result = s.getString(len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("String Parse error: '%s'", e.what());
+                                                  }catch(velocypack::Exception const& e){
+                                                    LOG(TRACE) << "String Parse error: " <<  e.what();
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Double :try{
                                                     arangodb::velocypack::ValueLength len = 0;
                                                     result = std::string(s.getDouble(), len);
-                                                  }catch(Exception const& e){
-                                                    LOG_ERROR("Double Parse error: '%s'", e.what());
+                                                  }catch(velocypack::Exception const& e){
+                                                    LOG(TRACE) << "Double Parse error: " <<  e.what();
                                                   }
                                                  break;
     case arangodb::velocypack::ValueType::Int  : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Int Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  LOG(TRACE) << "Int Parse error: " <<  e.what();
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::UInt : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getUInt(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Unsigned Integer Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  LOG(TRACE) << "Unsigned Integer Parse error: " <<  e.what();
                                                  }
                                                  break;
     case arangodb::velocypack::ValueType::Bool : try{
                                                   arangodb::velocypack::ValueLength len = 0;
                                                   result = std::string(s.getBool(), len);
-                                                 }catch(Exception const& e){
-                                                  LOG_ERROR("Boolean Parse error: '%s'", e.what());
+                                                 }catch(velocypack::Exception const& e){
+                                                  LOG(TRACE) << "Boolean Parse error: " <<  e.what();
                                                  }
                                                  break;
     default : result = "";

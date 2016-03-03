@@ -688,7 +688,7 @@ bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
         // mop: forbidden will be thrown if directory already exists
         // need ability to recover in a case where the agency was half
         // initialized
-        if (result.httpCode() != arangodb::rest::HttpResponse::FORBIDDEN) {
+        if (result.httpCode() != arangodb::rest::GeneralResponse::FORBIDDEN) {
           ret = false;
           return ret;
         }
@@ -1845,7 +1845,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
 
   result._connected = false;
   result._statusCode = 0;
-  LOG(TRACE) << "sending " << arangodb::rest::HttpRequest::translateMethod(method) << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification() << "', url '" << url << "': " << body;
+  LOG(TRACE) << "sending " << arangodb::rest::GeneralRequest::translateMethod(method) << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification() << "', url '" << url << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 

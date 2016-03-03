@@ -72,7 +72,7 @@ class RestBaseHandler : public rest::GeneralHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(rest::GeneralResponse::HttpResponseCode,
                               arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////

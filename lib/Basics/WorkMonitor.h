@@ -29,56 +29,56 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-<<<<<<< HEAD
+// <<<<<<< HEAD
 namespace arangodb {
 namespace rest {
 class GeneralHandler;
 }
 }
-=======
+// =======
 #include "Basics/WorkDescription.h"
 #include "Basics/WorkItem.h"
->>>>>>> upstream/devel
+// >>>>>>> upstream/devel
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
-/// @brief type of the current work
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// <<<<<<< HEAD
+// /// @brief type of the current work
+// ////////////////////////////////////////////////////////////////////////////////
 
-enum class WorkType { THREAD, HANDLER, CUSTOM };
+// enum class WorkType { THREAD, HANDLER, CUSTOM };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief description of the current work
-////////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief description of the current work
+// ////////////////////////////////////////////////////////////////////////////////
 
-struct WorkDescription {
-  WorkDescription(WorkType, WorkDescription*);
+// struct WorkDescription {
+//   WorkDescription(WorkType, WorkDescription*);
 
-  WorkType _type;
-  bool _destroy;
+//   WorkType _type;
+//   bool _destroy;
 
-  char _customType[16];
+//   char _customType[16];
 
-  union data {
-    data() {}
-    ~data() {}
+//   union data {
+//     data() {}
+//     ~data() {}
 
-    char text[256];
-    arangodb::basics::Thread* thread;
-    arangodb::rest::GeneralHandler* handler;
-  } _data;
+//     char text[256];
+//     arangodb::basics::Thread* thread;
+//     arangodb::rest::GeneralHandler* handler;
+//   } _data;
 
-  WorkDescription* _prev;
-};
+//   WorkDescription* _prev;
+// };
 
-////////////////////////////////////////////////////////////////////////////////
-=======
->>>>>>> upstream/devel
+// ////////////////////////////////////////////////////////////////////////////////
+// =======
+// >>>>>>> upstream/devel
 /// @brief work monitor class
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,17 +194,17 @@ class HandlerWorkStack {
   HandlerWorkStack& operator=(const HandlerWorkStack&) = delete;
 
  public:
-<<<<<<< HEAD
+// <<<<<<< HEAD
 
   explicit HandlerWorkStack(arangodb::rest::GeneralHandler*);
 
 
   explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::GeneralHandler>&);
-=======
-  explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
+// =======
+//   explicit HandlerWorkStack(arangodb::rest::HttpHandler*);
 
-  explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
->>>>>>> upstream/devel
+//   explicit HandlerWorkStack(WorkItem::uptr<arangodb::rest::HttpHandler>&);
+// >>>>>>> upstream/devel
 
   ~HandlerWorkStack();
 

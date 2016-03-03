@@ -36,7 +36,6 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-<<<<<<< HEAD
     GeneralRequest* request, 
     std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
     : RestCursorHandler(request, pair) {}

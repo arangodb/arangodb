@@ -457,7 +457,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         if (arangodb::rest::GeneralRequest::BatchContentType == value) {
           hasTypeHeader = true;
         } else {
-          LOG(WARN) << "unexpected content-type '" << value << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType << "'";
+          LOG(WARN) << "unexpected content-type '" << value << "' for multipart-message. expected: '" << arangodb::rest::GeneralRequest::BatchContentType << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

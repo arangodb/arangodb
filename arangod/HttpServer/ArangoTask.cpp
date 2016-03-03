@@ -23,8 +23,8 @@
 #include "ArangoTask.h"
 
 #include "Basics/MutexLocker.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/GeneralServer.h"
@@ -67,12 +67,7 @@ ArangoTask::ArangoTask(GeneralServer* server, TRI_socket_t socket,
 	      _sinceCompactification(0),
 	      _originalBodyLength(0),
 	      _setupDone(false) {
-  LOG_TRACE(
-      "connection established, client %d, server ip %s, server port %d, client "
-      "ip %s, client port %d",
-      (int)TRI_get_fd_or_handle_of_socket(socket),
-      _connectionInfo.serverAddress.c_str(), (int)_connectionInfo.serverPort,
-      _connectionInfo.clientAddress.c_str(), (int)_connectionInfo.clientPort);
+  LOG(TRACE) << "connection established, client " << (int)TRI_get_fd_or_handle_of_socket(socket) <<", server ip " << _connectionInfo.serverAddress.c_str() <<", server port " << _connectionInfo.serverAddress.c_str() << ", client " << (int)_connectionInfo.serverPort << "ip " <<  _connectionInfo.clientAddress.c_str()  << "Client Port: "<<(int)_connectionInfo.clientPort;
 
   // acquire a statistics entry and set the type to HTTP/VStream
   ConnectionStatisticsAgent::acquire();
@@ -85,8 +80,7 @@ ArangoTask::ArangoTask(GeneralServer* server, TRI_socket_t socket,
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTask::~ArangoTask() {
-  LOG_TRACE("connection closed, client %d",
-            (int)TRI_get_fd_or_handle_of_socket(_commSocket));
+  LOG(DEBUG) << "connection closed, client " << (int)TRI_get_fd_or_handle_of_socket(_commSocket);
 
   // free write buffers and statistics
   for (auto& i : _writeBuffers) {

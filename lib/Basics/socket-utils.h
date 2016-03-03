@@ -41,15 +41,11 @@
 #include <WS2tcpip.h>
 #endif
 
-<<<<<<< HEAD
 // For reading and wiriting velocypack bytes
 #include <velocypack/Builder.h>
 
 // using namespace arangodb::basics;
 // using namespace arangodb::rest;
-
-=======
->>>>>>> upstream/devel
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////

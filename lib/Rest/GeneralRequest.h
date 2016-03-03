@@ -33,7 +33,6 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.h
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
@@ -41,8 +40,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-=======
->>>>>>> upstream/devel:lib/Rest/HttpRequest.h
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -165,7 +162,6 @@ class GeneralRequest {
 
   GeneralRequest(ConnectionInfo const&, char const*, size_t, int32_t, bool);
 
-<<<<<<< HEAD:lib/Rest/GeneralRequest.h
   //////////////////////////////////////////////////////////////////////////////
   /// @brief velocystream(vstream) request constructor
   ///
@@ -177,9 +173,6 @@ class GeneralRequest {
                         uint32_t , uint32_t, uint64_t , int32_t, bool);
 
   ~GeneralRequest();
-=======
-  ~HttpRequest();
->>>>>>> upstream/devel:lib/Rest/HttpRequest.h
 
  public:
   //////////////////////////////////////////////////////////////////////////////

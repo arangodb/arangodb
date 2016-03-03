@@ -40,17 +40,17 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-<<<<<<< HEAD
-#include "Basics/logging.h"
-#include "Basics/InitializeBasics.h"
-#include "Basics/threads.h"
+// <<<<<<< HEAD
+// #include "Basics/logging.h"
+// #include "Basics/InitializeBasics.h"
+// #include "Basics/threads.h"
 #include "Rest/GeneralResponse.h"
-=======
+// =======
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
 #include "Basics/Thread.h"
->>>>>>> upstream/devel
+// >>>>>>> upstream/devel
 #include "Rest/Version.h"
 
 using namespace arangodb;
@@ -154,10 +154,6 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 namespace rest {
-<<<<<<< HEAD
-  void InitializeRest(int argc, char* argv[]) {
-    TRIAGENS_BASICS_INITIALIZE(argc, argv);
-=======
 void InitializeRest(int argc, char* argv[]) {
   TRI_InitializeMemory();
   TRI_InitializeDebugging();
@@ -181,7 +177,7 @@ void InitializeRest(int argc, char* argv[]) {
   pthread_cond_init(&cond, 0);
   pthread_cond_broadcast(&cond);
 #endif
->>>>>>> upstream/devel
+// >>>>>>> upstream/devel
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -196,17 +192,17 @@ void InitializeRest(int argc, char* argv[]) {
   void arangodb::rest::ShutdownRest() {
     opensslCleanup();
 
-<<<<<<< HEAD
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
+// <<<<<<< HEAD
+//     ERR_free_strings();
+//     EVP_cleanup();
+//     CRYPTO_cleanup_all_ex_data();
 
-    TRIAGENS_BASICS_SHUTDOWN;
-  }
+//     TRIAGENS_BASICS_SHUTDOWN;
+//   }
 
-}
-}
-=======
+// }
+// }
+// =======
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
@@ -219,4 +215,4 @@ void InitializeRest(int argc, char* argv[]) {
 }
 }
 }
->>>>>>> upstream/devel
+// >>>>>>> upstream/devel

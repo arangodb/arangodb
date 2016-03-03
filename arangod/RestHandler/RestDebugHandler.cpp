@@ -25,7 +25,7 @@
 
 #include "Rest/GeneralRequest.h"
 #include "RestServer/ArangoServer.h"
-#include "Rest/HttpRequest.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;

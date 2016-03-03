@@ -24,7 +24,6 @@
 #include "GeneralHandlerFactory.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralRequest.h"

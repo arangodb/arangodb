@@ -26,7 +26,6 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/logging.h"
 #include "HttpServer/GeneralHandler.h"
 #include "HttpServer/GeneralHandlerFactory.h"
 #include "HttpServer/GeneralServer.h"
@@ -622,8 +621,8 @@ void HttpCommTask::addResponse(GeneralResponse* response) {
 // =======
   LOG_TOPIC(INFO, Logger::REQUESTS) 
       << "\"http-request\",\"" << _connectionInfo.clientAddress 
-      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_httpVersion) << "\"," 
+      << "\",\"" << GeneralRequest::translateMethod(_requestType) << "\",\""
+      << GeneralRequest::translateVersion(_httpVersion) << "\"," 
       << static_cast<int>(response->responseCode()) << "," 
       << _originalBodyLength << "," 
       << responseBodyLength << ",\"" 

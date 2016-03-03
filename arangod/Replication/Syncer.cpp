@@ -174,7 +174,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      HttpRequest::HTTP_REQUEST_POST, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +
@@ -238,7 +238,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -272,7 +272,7 @@ int Syncer::sendRemoveBarrier() {
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        HttpRequest::HTTP_REQUEST_DELETE, url, nullptr, 0));
+        GeneralRequest::HTTP_REQUEST_DELETE, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;

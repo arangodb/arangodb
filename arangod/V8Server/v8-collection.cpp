@@ -712,16 +712,16 @@ static void ModifyVocbaseColCoordinator(
 
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
-<<<<<<< HEAD
-  json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= arangodb::rest::GeneralResponse::BAD) {
-    if (!TRI_IsObjectJson(json.get())) {
-=======
+// <<<<<<< HEAD
+//   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
+//   if (responseCode >= arangodb::rest::GeneralResponse::BAD) {
+//     if (!TRI_IsObjectJson(json.get())) {
+// =======
   std::shared_ptr<VPackBuilder> resBuilder = VPackParser::fromJson(resultBody);
   VPackSlice resSlice = resBuilder->slice();
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if (responseCode >= arangodb::rest::GeneralResponse::BAD) {
     if (!resSlice.isObject()) {
->>>>>>> upstream/devel
+// >>>>>>> upstream/devel
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(

@@ -29,7 +29,7 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ssl-helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -149,8 +149,8 @@ bool ApplicationVelocyServer::buildServers() {
   if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
     if (_sslContext == nullptr) {
-      LOG_INFO("please use the --server.keyfile option");
-      LOG_FATAL_AND_EXIT("no ssl context is known, cannot create velocys server");
+      LOG(INFO) << "please use the --server.keyfile option";
+      LOG(FATAL) <<"no ssl context is known, cannot create velocys server";
     }
 
     // velocys
@@ -212,15 +212,11 @@ bool ApplicationVelocyServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --server.backlog-size. expecting a positive value");
+    LOG(FATAL) << "invalid value for --server.backlog-size. expecting a positive value";
   }
 
   if (_backlogSize > SOMAXCONN) {
-    LOG_WARNING(
-        "value for --server.backlog-size exceeds default system header "
-        "SOMAXCONN value %d. trying to use %d anyway",
-        (int)SOMAXCONN, (int)SOMAXCONN);
+    LOG(WARN) << "value for --server.backlog-size exceeds default system header SOMAXCONN value " << (int)SOMAXCONN <<". trying to use "<< (int)SOMAXCONN <<" anyway";
   }
 
   if (!_velocyPort.empty()) {
@@ -236,15 +232,12 @@ bool ApplicationVelocyServer::afterOptionParsing(ProgramOptions& options) {
     bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize, _reuseAddress);
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
+      LOG(FATAL) << "invalid endpoint " << (*i).c_str();
     }
   }
 
   if (_defaultApiCompatibility < GeneralRequest::MinCompatibility) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for --server.default-api-compatibility. minimum allowed "
-        "value is %d",
-        (int)GeneralRequest::MinCompatibility);
+    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << (int)GeneralRequest::MinCompatibility;
   }
 
   // and return
@@ -279,7 +272,7 @@ bool ApplicationVelocyServer::loadEndpoints() {
     return false;
   }
 
-  LOG_TRACE("loading endpoint list from file '%s'", filename.c_str());
+  LOG(TRACE) << "loading endpoint list from file " << filename.c_str();
 
   std::shared_ptr<VPackBuilder> builder;
   try {
@@ -291,8 +284,9 @@ bool ApplicationVelocyServer::loadEndpoints() {
   VPackSlice const slice = builder->slice();
 
   if (!slice.isObject()) {
-    LOG_WARNING("error loading ENDPOINTS file '%s'", filename.c_str());
+    LOG(WARN) << "error loading ENDPOINTS file " << filename.c_str();
     return false;
+
   }
 
   std::map<std::string, std::vector<std::string>> endpoints;
@@ -346,8 +340,8 @@ bool ApplicationVelocyServer::prepare() {
   loadEndpoints();
 
   if (_endpointList.empty()) {
-    LOG_INFO("please use the '--server.endpoint' option");
-    LOG_FATAL_AND_EXIT("no endpoints have been specified, giving up");
+    LOG(INFO) << "please use the '--server.endpoint' option";
+    LOG(FATAL) << "no endpoints have been specified, giving up";
   }
 
   // dump all endpoints for user information
@@ -357,8 +351,7 @@ bool ApplicationVelocyServer::prepare() {
       new GeneralHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
-  LOG_DEBUG("using default API compatibility: %ld",
-            (long int)_defaultApiCompatibility);
+  LOG(DEBUG) << "using default API compatibility: " << (long int)_defaultApiCompatibility;
 
   return true;
 }
@@ -412,25 +405,21 @@ bool ApplicationVelocyServer::createSslContext() {
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG_ERROR(
-        "invalid SSL protocol version specified. Please use a valid value for "
-        "--server.ssl-protocol.");
+    LOG(ERR) << "invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.";
     return false;
   }
 
-  LOG_DEBUG("using SSL protocol version '%s'",
-            protocolName((protocol_e)_sslProtocol).c_str());
+  LOG(DEBUG) << "using SSL protocol version " << protocolName((protocol_e)_sslProtocol).c_str();
 
   if (!FileUtils::exists(_velocysKeyfile)) {
-    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'",
-                       _velocysKeyfile.c_str());
+    LOG(FATAL) << "unable to find SSL keyfile " << _velocysKeyfile.c_str();
   }
 
   // create context
   _sslContext = sslContext(protocol_e(_sslProtocol), _velocysKeyfile);
 
   if (_sslContext == nullptr) {
-    LOG_ERROR("failed to create SSL context, cannot create VELOCYS server");
+    LOG(ERR) << "failed to create SSL context, cannot create VELOCYS server";
     return false;
   }
 
@@ -439,21 +428,20 @@ bool ApplicationVelocyServer::createSslContext() {
       _sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
 
   if (_sslCache) {
-    LOG_TRACE("using SSL session caching");
+    LOG(TRACE)<< "using SSL session caching";
   }
 
   // set options
   SSL_CTX_set_options(_sslContext, (long)_sslOptions);
 
-  LOG_INFO("using SSL options: %ld", (long)_sslOptions);
+  LOG(INFO) <<"using SSL options: "<< (long)_sslOptions;
 
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
-      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'",
-                         _sslCipherList.c_str());
+      // LOG(ERR) << "SSL error: " < lastSSLError();
+      LOG(FATAL) << "cannot set SSL cipher list " << _sslCipherList.c_str();
     } else {
-      LOG_INFO("using SSL cipher-list '%s'", _sslCipherList.c_str());
+      LOG(INFO) << "using SSL cipher-list " << _sslCipherList.c_str();
     }
   }
 
@@ -466,20 +454,19 @@ bool ApplicationVelocyServer::createSslContext() {
       _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG_ERROR("SSL error: %s", lastSSLError().c_str());
-    LOG_FATAL_AND_EXIT("cannot set SSL session id context '%s'", _rctx.c_str());
+    LOG(ERR) << "SSL error: " << lastSSLError();
+    LOG(FATAL) << "cannot set SSL session id context '" << _rctx << "'"; FATAL_ERROR_EXIT();
   }
 
   // check CA
   if (!_cafile.empty()) {
-    LOG_TRACE("trying to load CA certificates from '%s'", _cafile.c_str());
+    LOG(TRACE) << "trying to load CA certificates from '" << _cafile << "'";
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG_ERROR("SSL error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
-                         _cafile.c_str());
+      LOG(ERR) << "SSL error: " << lastSSLError();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -487,12 +474,11 @@ bool ApplicationVelocyServer::createSslContext() {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG_ERROR("ssl error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
-                         _cafile.c_str());
+      LOG(ERR) << "ssl error: " << lastSSLError();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
     }
 
-    if (TRI_IsTraceLogging(__FILE__)) {
+    if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
       for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
         X509_NAME* cert = sk_X509_NAME_value(certNames, i);
 
@@ -504,12 +490,10 @@ bool ApplicationVelocyServer::createSslContext() {
                               ASN1_STRFLGS_UTF8_CONVERT) &
                                  ~ASN1_STRFLGS_ESC_MSB);
 
-#ifdef TRI_ENABLE_LOGGER
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOG_TRACE("name: %s", std::string(r, len).c_str());
-#endif
+          LOG(TRACE) << "name: " << std::string(r, len);
         }
       }
     }

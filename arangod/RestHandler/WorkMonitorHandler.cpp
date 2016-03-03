@@ -39,14 +39,31 @@ WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request)
 
 bool WorkMonitorHandler::isDirect() const { return true; }
 
-HttpHandler::status_t WorkMonitorHandler::execute() {
+// GeneralHandler::status_t WorkMonitorHandler::execute() {
+//   auto suffix = _request->suffix();
+//   size_t const len = suffix.size();
+//   GeneralRequest::RequestType type = _request->requestType();
+
+//   if (type == GeneralRequest::HTTP_REQUEST_GET) {
+//     if (len != 0) {
+//       generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+//                     "expecting GET /_admin/work-monitor");
+//       return status_t(HANDLER_DONE);
+//     }
+
+//     WorkMonitor::requestWorkOverview(_taskId);
+//     return status_t(HANDLER_ASYNC);
+//   }
+// }
+
+GeneralHandler::status_t WorkMonitorHandler::execute() {
   auto suffix = _request->suffix();
   size_t const len = suffix.size();
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_GET) {
+  if (type == GeneralRequest::HTTP_REQUEST_GET) {
     if (len != 0) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
       return status_t(HANDLER_DONE);
     }
@@ -55,14 +72,9 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
     return status_t(HANDLER_ASYNC);
   }
 
-<<<<<<< HEAD
-GeneralHandler::status_t WorkMonitorHandler::execute() {
-  WorkMonitor::requestWorkOverview(_taskId);
-  return status_t(HANDLER_ASYNC);
-=======
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
     if (len != 1) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
       return status_t(HANDLER_DONE);
@@ -78,12 +90,44 @@ GeneralHandler::status_t WorkMonitorHandler::execute() {
 
     VPackSlice s(b.start());
 
-    generateResult(HttpResponse::OK, s);
+    generateResult(GeneralResponse::OK, s);
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                 "expecting GET or DELETE");
   return status_t(HANDLER_DONE);
->>>>>>> upstream/devel
 }
+// <<<<<<< HEAD
+// int WorkMonitorHandler::execute() {
+//   WorkMonitor::requestWorkOverview(_taskId);
+//   return status_t(HANDLER_ASYNC);
+// }  
+// =======
+//   if (type == GeneralRequest::HTTP_REQUEST_DELETE) {
+//     if (len != 1) {
+//       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+//                     "expecting DELETE /_admin/work-monitor/<id>");
+
+//       return status_t(HANDLER_DONE);
+//     }
+
+//     uint64_t id = StringUtils::uint64(suffix[0]);
+//     WorkMonitor::cancelWork(id);
+
+//     VPackBuilder b;
+//     b.add(VPackValue(VPackValueType::Object));
+//     b.add("canceled", VPackValue(true));
+//     b.close();
+
+//     VPackSlice s(b.start());
+
+//     generateResult(HttpResponse::OK, s);
+//     return status_t(HANDLER_DONE);
+//   }
+
+//   generateError(HttpResponse::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+//                 "expecting GET or DELETE");
+//   return status_t(HANDLER_DONE);
+// >>>>>>> upstream/devel
+// }

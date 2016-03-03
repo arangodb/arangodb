@@ -44,12 +44,12 @@ class ApplicationV8;
 class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
   RestSimpleHandler(
-      rest::HttpRequest*,
-      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
-
-  RestSimpleHandler(
       rest::GeneralRequest*,
       std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
+
+  // RestSimpleHandler(
+  //     rest::GeneralRequest*,
+  //     std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
 
  public:
   status_t execute() override final;

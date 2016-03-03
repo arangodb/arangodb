@@ -671,7 +671,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     v8::Handle<v8::Function> callback, GeneralRequest* request) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
-  v8::TryCatch tryCatch;
+  // v8::TryCatch tryCatch;
 
   TRI_GET_GLOBALS();
 

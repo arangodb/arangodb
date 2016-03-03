@@ -26,15 +26,9 @@
 #define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/StringBuffer.h"
-<<<<<<< HEAD
-#include "Basics/logging.h"
 #include "Rest/GeneralRequest.h"
-=======
 #include "Basics/Logger.h"
-#include "Rest/HttpRequest.h"
->>>>>>> upstream/devel
 
 namespace arangodb {
 namespace httpclient {

@@ -411,7 +411,7 @@ GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
   char const* sid = _request->cookieValue(cn, found);
 
   if (found) {
-    MUTEX_LOCKER(SidLock);
+    MUTEX_LOCKER(mutexLocker, SidLock);
 
     auto it = SidCache.find(_vocbase->_name);
 
@@ -464,9 +464,7 @@ GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
 
       return GeneralResponse::VSTREAM_BAD;
     }
@@ -494,15 +492,13 @@ GeneralResponse::VstreamResponseCode VocbaseContext::authenticateVstream() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG_TRACE(
-          "invalid authentication data found, cannot extract "
-          "username/password");
+      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
       return GeneralResponse::VSTREAM_BAD;
     }
 
     username = up.substr(0, n);
 
-    LOG_TRACE("checking authentication for user '%s'", username.c_str());
+    LOG(TRACE) << "checking authentication for user " << username.c_str();
     bool res =
         TRI_CheckAuthenticationAuthInfo(_vocbase, auth, username.c_str(),
                                         up.substr(n + 1).c_str(), &mustChange);
