@@ -26,9 +26,15 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -161,15 +167,12 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_json_t* json =
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, dump._buffer->_buffer);
+  VPackParser parser;
+  parser.parse(dump._buffer->_buffer);
+ 
+  std::shared_ptr<VPackBuilder> builder = parser.steal();
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -405,13 +408,9 @@ static void JS_ConfigureApplierReplication(
       config.update(&vocbase->_replicationApplier->_configuration);
     }
 
-    std::unique_ptr<TRI_json_t> json(config.toJson());
+    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
 
-    if (json == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
     TRI_V8_RETURN(result);
   }
@@ -653,13 +652,9 @@ static void JS_ConfigureApplierReplication(
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    std::unique_ptr<TRI_json_t> json(config.toJson());
+    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
 
-    if (json == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
     TRI_V8_RETURN(result);
   }
@@ -768,14 +763,9 @@ static void JS_StateApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
+  std::shared_ptr<VPackBuilder> builder = vocbase->_replicationApplier->toVelocyPack();
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
