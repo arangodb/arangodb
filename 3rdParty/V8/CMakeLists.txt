@@ -47,6 +47,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
+  -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
   -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
