@@ -230,7 +230,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
                  response->getHttpReturnMessage();
     } else {
       std::shared_ptr<VPackBuilder> builder;
-      int res = parseResponse(builder, response.get());
+      res = parseResponse(builder, response.get());
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "got invalid response from master at " +
