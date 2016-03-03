@@ -5,6 +5,8 @@ v2.8.5 (2016-03-xx)
   facilities directly without locks. 
   This fixes lockups on crashes from the logging framework.
 
+* improve nullptr handling in logger.
+
 v2.8.4 (2016-03-01)
 -------------------
 

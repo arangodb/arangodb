@@ -84,22 +84,21 @@ struct log_message_t {
     : _level(level),
       _severity(severity),
       _message(message),
-      _length(length),
-      _freeMessage(false) {
+      _freeMessage(false),
+      _length(length) {
 
     TRI_ASSERT(message != nullptr);
 
-    if (! claimOwnership) {
+    if ((! claimOwnership) && (message != nullptr)) {
       // need to copy the message before it is invalidated
       _message = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, message, length);
+      _freeMessage = true;
     }
     
     if (_message == nullptr) {
       _message = (char*) "out-of-memory";
+      _length = sizeof("out-of-memory") - 1;
       _freeMessage = false;
-    }
-    else {
-      _freeMessage = true;
     }
   }
 
@@ -111,11 +110,14 @@ struct log_message_t {
     }
   }
 
+  size_t getLength() { return _length; }
+  
   TRI_log_level_e const    _level;
   TRI_log_severity_e const _severity;
   char*                    _message;
-  size_t const             _length;
   bool                     _freeMessage;
+private:
+  size_t                   _length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -748,7 +750,7 @@ static void MessageQueueWorker (void* data) {
               }
             }
 
-            it->logMessage(msg->_level, msg->_severity, msg->_message, msg->_length);
+            it->logMessage(msg->_level, msg->_severity, msg->_message, msg->getLength());
 
             if (it->_consume) {
               break;
