@@ -1,6 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global numeral */
 
 (function() {
   "use strict";
@@ -42,24 +43,40 @@
       this.tableView.setRemoveClick(this.remove.bind(this));
     },
 
-    setCollectionId : function (colid, pageid) {
+    setCollectionId : function (colid, page) {
       this.collection.setCollection(colid);
-      var type = arangoHelper.collectionApiType(colid);
-      this.pageid = pageid;
-      this.type = type;
+      this.collection.setPage(page);
+      this.page = page;
 
-      this.checkCollectionState();
+      var callback = function(error, type) {
+        if (error) {
+          arangoHelper.arangoError("Error", "Could not get collection properties.");
+        }
+        else {
+          this.type = type;
+          this.collection.getDocuments(this.getDocsCallback.bind(this));
+          this.collectionModel = this.collectionsStore.get(colid);
+        }
+      }.bind(this);
 
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      this.collectionModel = this.collectionsStore.get(colid);
+      arangoHelper.collectionApiType(colid, null, callback);
     },
 
-    getDocsCallback: function() {
+    getDocsCallback: function(error) {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
-      this.drawTable();
-      this.renderPaginationElements();
+
+      if (error) {
+        window.progressView.hide();
+        arangoHelper.arangoError("Document error", "Could not fetch requested documents.");
+      }
+      else if (!error || error !== undefined){
+        window.progressView.hide();
+        this.drawTable();
+        this.renderPaginationElements();
+      }
+
     },
 
     events: {
@@ -67,7 +84,6 @@
       "click #collectionNext"      : "nextCollection",
       "click #filterCollection"    : "filterCollection",
       "click #markDocuments"       : "editDocuments",
-      "click #indexCollection"     : "indexCollection",
       "click #importCollection"    : "importCollection",
       "click #exportCollection"    : "exportCollection",
       "click #filterSend"          : "sendFilter",
@@ -88,13 +104,6 @@
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
       "click #exportDocuments"     : "startDownload",
-      "change #newIndexType"       : "selectIndexType",
-      "click #createIndex"         : "createIndex",
-      "click .deleteIndex"         : "prepDeleteIndex",
-      "click #confirmDeleteIndexBtn"    : "deleteIndex",
-      "click #documentsToolbar ul"      : "resetIndexForms",
-      "click #indexHeader #addIndex"    : "toggleNewIndexView",
-      "click #indexHeader #cancelIndex" : "toggleNewIndexView",
       "change #documentSize"            : "setPagesize",
       "change #docsSort"                : "setSorting"
     },
@@ -141,16 +150,19 @@
         }
       }
     },
-    toggleNewIndexView: function () {
-      $('#indexEditView').toggle("fast");
-      $('#newIndexView').toggle("fast");
-      this.resetIndexForms();
-    },
+
     nop: function(event) {
       event.stopPropagation();
     },
 
     resetView: function () {
+
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Document", "Could not fetch documents count");
+        }
+      }.bind(this);
+
       //clear all input/select - fields
       $('input').val('');
       $('select').val('==');
@@ -161,7 +173,7 @@
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
-      this.collection.loadTotal();
+      this.collection.loadTotal(callback);
       this.restoredFilters = [];
 
       //for resetting json upload
@@ -186,21 +198,22 @@
     },
 
     startUpload: function () {
-      var result;
-      if (this.allowUpload === true) {
-          this.showSpinner();
-        result = this.collection.uploadDocuments(this.file);
-        if (result !== true) {
+
+      var callback = function(error, msg) {
+        if (error) {
+          arangoHelper.arangoError("Upload", msg);
+          this.hideSpinner();
+        }
+        else {
           this.hideSpinner();
           this.hideImportModal();
           this.resetView();
-          arangoHelper.arangoError(result);
-          return;
         }
-        this.hideSpinner();
-        this.hideImportModal();
-        this.resetView();
-        return;
+      }.bind(this);
+
+      if (this.allowUpload === true) {
+        this.showSpinner();
+        this.collection.uploadDocuments(this.file, callback);
       }
     },
 
@@ -265,7 +278,6 @@
     //need to make following functions automatically!
 
     editDocuments: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       this.markFilterToggle();
@@ -273,13 +285,11 @@
       this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').slideToggle(200);
       $('#exportHeader').hide();
     },
 
     filterCollection : function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -287,7 +297,6 @@
       this.markFilterToggle();
       this.activeFilter = true;
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
       $('#exportHeader').hide();
       $('#filterHeader').slideToggle(200);
@@ -302,7 +311,6 @@
     },
 
     exportCollection: function () {
-      $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#filterHeader').removeClass('activated');
       $('#markDocuments').removeClass('activated');
@@ -311,38 +319,19 @@
       this.markFilterToggle();
       $('#exportHeader').slideToggle(200);
       $('#importHeader').hide();
-      $('#indexHeader').hide();
       $('#filterHeader').hide();
       $('#editHeader').hide();
     },
 
     importCollection: function () {
       this.markFilterToggle();
-      $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated');
       this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
-      $('#indexHeader').hide();
       $('#editHeader').hide();
-      $('#exportHeader').hide();
-    },
-
-    indexCollection: function () {
-      this.markFilterToggle();
-      $('#importCollection').removeClass('activated');
-      $('#exportCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated');
-      this.changeEditMode(false);
-      $('#indexCollection').toggleClass('activated');
-      $('#newIndexView').hide();
-      $('#indexEditView').show();
-      $('#indexHeader').slideToggle(200);
-      $('#importHeader').hide();
-      $('#editHeader').hide();
-      $('#filterHeader').hide();
       $('#exportHeader').hide();
     },
 
@@ -367,11 +356,11 @@
 
     getFilterContent: function () {
       var filters = [ ];
-      var i;
+      var i, value;
 
       for (i in this.filters) {
         if (this.filters.hasOwnProperty(i)) {
-          var value = $('#attribute_value' + i).val();
+          value = $('#attribute_value' + i).val();
 
           try {
             value = JSON.parse(value);
@@ -486,104 +475,109 @@
 
     addDocumentModal: function () {
       var collid  = window.location.hash.split("/")[1],
-      buttons = [], tableContent = [],
+      buttons = [], tableContent = [];
       // second parameter is "true" to disable caching of collection type
-      doctype = arangoHelper.collectionApiType(collid, true);
-      if (doctype === 'edge') {
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-from-attr',
-            '_from',
-            '',
-            "document _id: document handle of the linked vertex (incoming relation)",
-            undefined,
-            false,
-            [
-              {
-                rule: Joi.string().required(),
-                msg: "No _from attribute given."
-              }
-            ]
-          )
-        );
+      var callback = function(error, type) {
+        if (error) {
+          arangoHelper.arangoError("Error", "Could not fetch collection type");
+        }
+        else {
+          if (type === 'edge') {
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-to',
-            '_to',
-            '',
-            "document _id: document handle of the linked vertex (outgoing relation)",
-            undefined,
-            false,
-            [
-              {
-                rule: Joi.string().required(),
-                msg: "No _to attribute given."
-              }
-            ]
-          )
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-from-attr',
+                '_from',
+                '',
+                "document _id: document handle of the linked vertex (incoming relation)",
+                undefined,
+                false,
+                [
+                  {
+                    rule: Joi.string().required(),
+                    msg: "No _from attribute given."
+                  }
+                ]
+              )
+            );
 
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-edge-key-attr',
-            '_key',
-            undefined,
-            "the edges unique key(optional attribute, leave empty for autogenerated key",
-            'is optional: leave empty for autogenerated key',
-            false,
-            [
-              {
-                rule: Joi.string().allow('').optional(),
-                msg: ""
-              }
-            ]
-          )
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-to',
+                '_to',
+                '',
+                "document _id: document handle of the linked vertex (outgoing relation)",
+                undefined,
+                false,
+                [
+                  {
+                    rule: Joi.string().required(),
+                    msg: "No _to attribute given."
+                  }
+                ]
+              )
+            );
 
-        buttons.push(
-          window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
-        );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-edge-key-attr',
+                '_key',
+                undefined,
+                "the edges unique key(optional attribute, leave empty for autogenerated key",
+                'is optional: leave empty for autogenerated key',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional(),
+                    msg: ""
+                  }
+                ]
+              )
+            );
+            buttons.push(
+              window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
+            );
 
-        window.modalView.show(
-          'modalTable.ejs',
-          'Create edge',
-          buttons,
-          tableContent
-        );
+            window.modalView.show(
+              'modalTable.ejs',
+              'Create edge',
+              buttons,
+              tableContent
+            );
+          }
+          else {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-document-key-attr',
+                '_key',
+                undefined,
+                "the documents unique key(optional attribute, leave empty for autogenerated key",
+                'is optional: leave empty for autogenerated key',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional(),
+                    msg: ""
+                  }
+                ]
+              )
+            );
 
-        return;
-      }
-      else {
-        tableContent.push(
-          window.modalView.createTextEntry(
-            'new-document-key-attr',
-            '_key',
-            undefined,
-            "the documents unique key(optional attribute, leave empty for autogenerated key",
-            'is optional: leave empty for autogenerated key',
-            false,
-            [
-              {
-                rule: Joi.string().allow('').optional(),
-                msg: ""
-              }
-            ]
-          )
-        );
+            buttons.push(
+              window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
+            );
 
-        buttons.push(
-          window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
-        );
-
-        window.modalView.show(
-          'modalTable.ejs',
-          'Create document',
-          buttons,
-          tableContent
-        );
-      }
+            window.modalView.show(
+              'modalTable.ejs',
+              'Create document',
+              buttons,
+              tableContent
+            );
+          }
+        }
+      }.bind(this);
+      arangoHelper.collectionApiType(collid, true, callback);
     },
 
     addEdge: function () {
@@ -592,42 +586,44 @@
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var result;
-      if (key !== '' || key !== undefined) {
-        result = this.documentStore.createTypeEdge(collid, from, to, key);
-      }
-      else {
-        result = this.documentStore.createTypeEdge(collid, from, to);
-      }
 
-      if (result !== false) {
-        //$('#edgeCreateModal').modal('hide');
-        window.modalView.hide();
-        window.location.hash = "collection/"+result;
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not create edge');
+        }
+        else {
+          window.modalView.hide();
+          window.location.hash = "collection/" + data;
+        }
+      }.bind(this);
+
+      if (key !== '' || key !== undefined) {
+        this.documentStore.createTypeEdge(collid, from, to, key, callback);
       }
-      //Error
       else {
-        arangoHelper.arangoError('Edge error', 'Creation failed.');
+        this.documentStore.createTypeEdge(collid, from, to, null, callback);
       }
     },
 
     addDocument: function() {
       var collid = window.location.hash.split("/")[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
-      var result;
+
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not create document');
+        }
+        else {
+          window.modalView.hide();
+          window.location.hash = "collection/" + data;
+        }
+      }.bind(this);
+
       if (key !== '' || key !== undefined) {
-        result = this.documentStore.createTypeDocument(collid, key);
+        this.documentStore.createTypeDocument(collid, key, callback);
       }
       else {
-        result = this.documentStore.createTypeDocument(collid);
-      }
-      //Success
-      if (result !== false) {
-        window.modalView.hide();
-        window.location.hash = "collection/" + result;
-      }
-      else {
-        arangoHelper.arangoError('Document error', 'Creation failed.');
+        this.documentStore.createTypeDocument(collid, null, callback);
       }
     },
 
@@ -729,37 +725,42 @@
       var deleted = [], self = this;
 
       _.each(toDelete, function(key) {
-        var result = false;
         if (self.type === 'document') {
-          result = self.documentStore.deleteDocument(
-            self.collection.collectionID, key
-          );
-          if (result) {
-            //on success
-            deleted.push(true);
-            self.collection.setTotalMinusOne();
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Document error', 'Could not delete document.');
-          }
+          var callback = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Document error', 'Could not delete document.');
+            }
+            else {
+              deleted.push(true);
+              self.collection.setTotalMinusOne();
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+          self.documentStore.deleteDocument(self.collection.collectionID, key, callback);
         }
         else if (self.type === 'edge') {
-          result = self.documentStore.deleteEdge(self.collection.collectionID, key);
-          if (result === true) {
-            //on success
-            self.collection.setTotalMinusOne();
-            deleted.push(true);
-          }
-          else {
-            deleted.push(false);
-            arangoHelper.arangoError('Edge error', 'Could not delete edge');
-          }
+
+          var callback2 = function(error) {
+            if (error) {
+              deleted.push(false);
+              arangoHelper.arangoError('Edge error', 'Could not delete edge');
+            }
+            else {
+              self.collection.setTotalMinusOne();
+              deleted.push(true);
+              self.collection.getDocuments(this.getDocsCallback.bind(this));
+              $('#markDocuments').click();
+              window.modalView.hide();
+            }
+          }.bind(self);
+
+          self.documentStore.deleteEdge(self.collection.collectionID, key, callback2);
         }
       });
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      $('#markDocuments').click();
-      window.modalView.hide();
+
     },
 
     getSelectedDocs: function() {
@@ -789,41 +790,36 @@
     },
 
     reallyDelete: function () {
-      var self = this;
-      var row = $(self.target).closest("tr").get(0);
-
-      var deleted = false;
-      var result;
       if (this.type === 'document') {
-        result = this.documentStore.deleteDocument(
-          this.collection.collectionID, this.docid
-        );
-        if (result) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Doc error');
-        }
+
+        var callback = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not delete document');
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
+
+        this.documentStore.deleteDocument(this.collection.collectionID, this.docid, callback);
       }
       else if (this.type === 'edge') {
-        result = this.documentStore.deleteEdge(this.collection.collectionID, this.docid);
-        if (result === true) {
-          //on success
-          this.collection.setTotalMinusOne();
-          deleted = true;
-        }
-        else {
-          arangoHelper.arangoError('Edge error');
-        }
-      }
 
-      if (deleted === true) {
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        $('#docDeleteModal').modal('hide');
-      }
+        var callback2 = function(error) {
+          if (error) {
+            arangoHelper.arangoError('Edge error', "Could not delete edge");
+          }
+          else {
+            this.collection.setTotalMinusOne();
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            $('#docDeleteModal').modal('hide');
+          }
+        }.bind(this);
 
+        this.documentStore.deleteEdge(this.collection.collectionID, this.docid, callback2);
+      }
     },
 
     editModeClick: function(event) {
@@ -894,7 +890,7 @@
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
-          this.collection.setSort('_key');
+          this.collection.setSort('');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
@@ -909,7 +905,6 @@
         this.collection.collectionID
       );
 
-      this.getIndex();
       this.breadcrumb();
 
       this.checkCollectionState();
@@ -938,7 +933,7 @@
       return this;
     },
 
-    rerender : function () {
+    rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -956,10 +951,10 @@
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        total.html(this.collection.getTotal() + " document(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
-        total.html(this.collection.getTotal() + " edge(s)");
+        total.html(numeral(this.collection.getTotal()).format('0,0') + " edge(s)");
       }
     },
 
@@ -972,182 +967,7 @@
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );
-    },
-
-    resetIndexForms: function () {
-      $('#indexHeader input').val('').prop("checked", false);
-      $('#newIndexType').val('Cap').prop('selected',true);
-      this.selectIndexType();
-    },
-    stringToArray: function (fieldString) {
-      var fields = [];
-      fieldString.split(',').forEach(function(field){
-        field = field.replace(/(^\s+|\s+$)/g,'');
-        if (field !== '') {
-          fields.push(field);
-        }
-      });
-      return fields;
-    },
-    createIndex: function () {
-      //e.preventDefault();
-      var self = this;
-      var indexType = $('#newIndexType').val();
-      var result;
-      var postParameter = {};
-      var fields;
-      var unique;
-      var sparse;
-
-      switch (indexType) {
-        case 'Cap':
-          var size = parseInt($('#newCapSize').val(), 10) || 0;
-          var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
-          postParameter = {
-            type: 'cap',
-            size: size,
-            byteSize: byteSize
-          };
-          break;
-        case 'Geo':
-          //HANDLE ARRAY building
-          fields = $('#newGeoFields').val();
-          var geoJson = self.checkboxToValue('#newGeoJson');
-          var constraint = self.checkboxToValue('#newGeoConstraint');
-          var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
-          postParameter = {
-            type: 'geo',
-            fields: self.stringToArray(fields),
-            geoJson: geoJson,
-            constraint: constraint,
-            ignoreNull: ignoreNull
-          };
-          break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-        case 'Fulltext':
-          fields = ($('#newFulltextFields').val());
-          var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
-          postParameter = {
-            type: 'fulltext',
-            fields: self.stringToArray(fields),
-            minLength: minLength
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse
-          };
-          break;
-      }
-      result = self.collectionModel.createIndex(postParameter);
-      if (result === true) {
-        $('#collectionEditIndexTable tbody tr').remove();
-        self.getIndex();
-        self.toggleNewIndexView();
-        self.resetIndexForms();
-      }
-      else {
-        if (result.responseText) {
-          var message = JSON.parse(result.responseText);
-          arangoHelper.arangoError("Document error", message.errorMessage);
-        }
-        else {
-          arangoHelper.arangoError("Document error", "Could not create index.");
-        }
-      }
-    },
-
-    prepDeleteIndex: function (e) {
-      this.lastTarget = e;
-      this.lastId = $(this.lastTarget.currentTarget).
-                    parent().
-                    parent().
-                    first().
-                    children().
-                    first().
-                    text();
-      $("#indexDeleteModal").modal('show');
-    },
-    deleteIndex: function () {
-      var result = this.collectionModel.deleteIndex(this.lastId);
-      if (result === true) {
-        $(this.lastTarget.currentTarget).parent().parent().remove();
-      }
-      else {
-        arangoHelper.arangoError("Could not delete index");
-      }
-      $("#indexDeleteModal").modal('hide');
-    },
-    selectIndexType: function () {
-      $('.newIndexClass').hide();
-      var type = $('#newIndexType').val();
-      $('#newIndexType'+type).show();
-    },
-    checkboxToValue: function (id) {
-      return $(id).prop('checked');
-    },
-    getIndex: function () {
-      this.index = this.collectionModel.getIndex();
-      var cssClass = 'collectionInfoTh modal-text';
-      if (this.index) {
-        var fieldString = '';
-        var actionString = '';
-
-        $.each(this.index.indexes, function(k, v) {
-          if (v.type === 'primary' || v.type === 'edge') {
-            actionString = '<span class="icon_arangodb_locked" ' +
-              'data-original-title="No action"></span>';
-          }
-          else {
-            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
-              'data-original-title="Delete index" title="Delete index"></span>';
-          }
-
-          if (v.fields !== undefined) {
-            fieldString = v.fields.join(", ");
-          }
-
-          //cut index id
-          var position = v.id.indexOf('/');
-          var indexId = v.id.substr(position + 1, v.id.length);
-          var selectivity = (
-            v.hasOwnProperty("selectivityEstimate") ? 
-            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
-            "n/a"
-          );
-          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
-
-          $('#collectionEditIndexTable').append(
-            '<tr>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
-            '</tr>'
-          );
-        });
-
-        arangoHelper.fixTooltips("deleteIndex", "left");
-      }
     }
+
   });
 }());

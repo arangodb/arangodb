@@ -39,7 +39,6 @@ namespace wal {
 
 static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal attribute marker
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +273,6 @@ struct remove_marker_t : TRI_df_marker_t {
   // char* key
 };
 
-
 class Marker {
  protected:
   Marker& operator=(Marker const&) = delete;
@@ -293,7 +291,6 @@ class Marker {
 
   Marker(TRI_df_marker_type_e, size_t);
 
-  
  public:
   virtual ~Marker();
 
@@ -349,7 +346,6 @@ class Marker {
 
   void dumpBinary() const;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store a null-terminated string inside the marker
@@ -363,7 +359,6 @@ class Marker {
 
   void storeSizedString(size_t, char const*, size_t);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to marker data
@@ -390,14 +385,12 @@ class Marker {
   TRI_voc_fid_t _fid;
 };
 
-
 class EnvelopeMarker : public Marker {
  public:
-  explicit EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
+  EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
 
   ~EnvelopeMarker();
 };
-
 
 class AttributeMarker : public Marker {
  public:
@@ -417,7 +410,6 @@ class AttributeMarker : public Marker {
   void dump() const;
 };
 
-
 class ShapeMarker : public Marker {
  public:
   ShapeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_shape_t const*);
@@ -434,7 +426,6 @@ class ShapeMarker : public Marker {
   void dump() const;
 };
 
-
 class CreateDatabaseMarker : public Marker {
  public:
   CreateDatabaseMarker(TRI_voc_tick_t, std::string const&);
@@ -449,7 +440,6 @@ class CreateDatabaseMarker : public Marker {
   void dump() const;
 };
 
-
 class DropDatabaseMarker : public Marker {
  public:
   explicit DropDatabaseMarker(TRI_voc_tick_t);
@@ -459,7 +449,6 @@ class DropDatabaseMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class CreateCollectionMarker : public Marker {
  public:
@@ -475,7 +464,6 @@ class CreateCollectionMarker : public Marker {
   void dump() const;
 };
 
-
 class DropCollectionMarker : public Marker {
  public:
   DropCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t);
@@ -485,7 +473,6 @@ class DropCollectionMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class RenameCollectionMarker : public Marker {
  public:
@@ -501,7 +488,6 @@ class RenameCollectionMarker : public Marker {
   void dump() const;
 };
 
-
 class ChangeCollectionMarker : public Marker {
  public:
   ChangeCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
@@ -515,7 +501,6 @@ class ChangeCollectionMarker : public Marker {
 
   void dump() const;
 };
-
 
 class CreateIndexMarker : public Marker {
  public:
@@ -532,7 +517,6 @@ class CreateIndexMarker : public Marker {
   void dump() const;
 };
 
-
 class DropIndexMarker : public Marker {
  public:
   DropIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
@@ -542,7 +526,6 @@ class DropIndexMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class BeginTransactionMarker : public Marker {
  public:
@@ -554,7 +537,6 @@ class BeginTransactionMarker : public Marker {
   void dump() const;
 };
 
-
 class CommitTransactionMarker : public Marker {
  public:
   CommitTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
@@ -564,7 +546,6 @@ class CommitTransactionMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class AbortTransactionMarker : public Marker {
  public:
@@ -576,7 +557,6 @@ class AbortTransactionMarker : public Marker {
   void dump() const;
 };
 
-
 class BeginRemoteTransactionMarker : public Marker {
  public:
   BeginRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
@@ -586,7 +566,6 @@ class BeginRemoteTransactionMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class CommitRemoteTransactionMarker : public Marker {
  public:
@@ -598,7 +577,6 @@ class CommitRemoteTransactionMarker : public Marker {
   void dump() const;
 };
 
-
 class AbortRemoteTransactionMarker : public Marker {
  public:
   AbortRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
@@ -608,7 +586,6 @@ class AbortRemoteTransactionMarker : public Marker {
  public:
   void dump() const;
 };
-
 
 class VPackDocumentMarker : public Marker {
  public:
@@ -635,7 +612,6 @@ class VPackDocumentMarker : public Marker {
   }
 };
 
-
 class VPackRemoveMarker : public Marker {
  public:
   VPackRemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
@@ -659,7 +635,6 @@ class VPackRemoveMarker : public Marker {
     return slice.byteSize();
   }
 };
-
 
 class DocumentMarker : public Marker {
  public:
@@ -720,7 +695,6 @@ class DocumentMarker : public Marker {
                                TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
                                size_t, TRI_shaped_json_t const*);
 };
-
 
 class EdgeMarker : public Marker {
  public:
@@ -788,7 +762,6 @@ class EdgeMarker : public Marker {
                            TRI_shaped_json_t const*);
 };
 
-
 class RemoveMarker : public Marker {
  public:
   RemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
@@ -820,5 +793,3 @@ class RemoveMarker : public Marker {
 }
 
 #endif
-
-

@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 
-
 namespace arangodb {
 namespace basics {
 namespace Nonce {
@@ -85,5 +84,3 @@ std::vector<Statistics> statistics();
 }
 }
 #endif
-
-

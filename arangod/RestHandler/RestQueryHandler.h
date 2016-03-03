@@ -35,20 +35,15 @@ class ApplicationV8;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   RestQueryHandler(rest::GeneralRequest*, ApplicationV8*);
 
-  
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of properties
@@ -98,7 +93,6 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   bool parseQuery();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application V8
@@ -109,5 +103,3 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

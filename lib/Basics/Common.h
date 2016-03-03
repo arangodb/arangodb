@@ -24,17 +24,20 @@
 #ifndef LIB_BASICS_COMMON_H
 #define LIB_BASICS_COMMON_H 1
 
+#ifdef _WIN32
+
+// debug malloc for Windows (only used when DEBUG is set)
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
+#endif
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
-#ifdef _WIN32
-#include "Basics/local-configuration-win.h"
-#else
-#include "Basics/local-configuration.h"
-#endif
 #include "Basics/application-exit.h"
 
-#include "build.h"
+#include "Basics/build.h"
 
 #ifdef _DEBUG
 #define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "-DEBUG]"
@@ -43,7 +46,6 @@
 #endif
 
 #undef TRI_WITHIN_COMMON
-
 
 #include <assert.h>
 #include <ctype.h>
@@ -113,8 +115,8 @@
 typedef long suseconds_t;
 #endif
 
-
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -124,7 +126,6 @@ typedef long suseconds_t;
 #include <unordered_set>
 #include <memory>
 #include <atomic>
-
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/voc-errors.h"
@@ -136,7 +137,6 @@ typedef long suseconds_t;
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementing a uint64_t modulo a number with wraparound
@@ -167,13 +167,6 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Memory prefetch, gives a hint to the CPU that some memory location
-/// (cache line) will be needed soon.
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void TRI_MemoryPrefetch(void* p) {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,57 +174,52 @@ static inline void TRI_MemoryPrefetch(void* p) {}
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fake spinlocks
-/// spin locks seem to have issues when used under Valgrind
-/// we thus mimic spinlocks using ordinary mutexes when in maintainer mode
+/// @brief asserts
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
-#define TRI_FAKE_SPIN_LOCKS 1
-
 #ifndef TRI_ASSERT
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
 #define TRI_ASSERT(expr)    \
-  {                         \
+  do {                      \
     if (!(expr)) {          \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace(); \
-      assert(expr);         \
+      std::abort();         \
     }                       \
-  }
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  {                                \
-    if (!(expr)) {                 \
-      TRI_PrintBacktrace();        \
-      assert(expr);                \
-    }                              \
-  }
-#endif
+  } while (0)
 
 #else
 
-#undef TRI_FAKE_SPIN_LOCKS
-
-#ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) \
-  do {                   \
-    (void)0;             \
-  } while (0)
-#define TRI_ASSERT_EXPENSIVE(expr) \
-  do {                             \
-    (void)0;                       \
-  } while (0)
+#define TRI_ASSERT(expr) do { } while (0)
 
 #endif
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts program execution
+///
+/// if backtraces are enabled, a backtrace will be printed before
+////////////////////////////////////////////////////////////////////////////////
+
+#define FATAL_ERROR_EXIT(...)                 \
+  do {                                        \
+    std::string bt;                           \
+    TRI_GetBacktrace(bt);                     \
+    if (!bt.empty()) {                        \
+      LOG(WARN) << bt;                        \
+    }                                         \
+    arangodb::Logger::flush();                \
+    arangodb::Logger::shutdown(true);         \
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
+    exit(EXIT_FAILURE);                       \
+  } while (0)
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                                          alignas
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct alignas(x) ... does not work in Visual Studio 2013
@@ -295,5 +283,3 @@ typedef TRI_seconds_t seconds_t;
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
 #endif
-
-

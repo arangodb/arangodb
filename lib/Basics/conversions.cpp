@@ -23,10 +23,7 @@
 
 #include "conversions.h"
 
-#include "Basics/fpconv.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
-
 
 static char const* const HEX = "0123456789ABCDEF";
 
@@ -163,129 +160,6 @@ uint32_t TRI_UInt32String(char const* str) {
 
   return result;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int64 from string
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_Int64String(char const* str) {
-  int64_t result;
-  char* endptr;
-
-#if defined(TRI_HAVE_STRTOLL_R)
-  struct reent buffer;
-#elif defined(TRI_HAVE__STRTOLL_R)
-  struct reent buffer;
-#endif
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
-#if defined(TRI_HAVE_STRTOLL_R)
-  result = strtoll_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE__STRTOLL_R)
-  result = _strtoll_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOI64)
-  result = _strtoi64(str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOLL)
-  result = strtoll(str, &endptr, 10);
-#else
-#error cannot convert string to int64
-#endif
-
-  while (isspace(*endptr)) {
-    ++endptr;
-  }
-
-  if (*endptr != '\0') {
-    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE && (result == INT64_MIN || result == INT64_MAX)) {
-    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int64 from string with given length
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_Int64String2(char const* str, size_t length) {
-  char tmp[1024];
-
-  if (str[length] != '\0') {
-    if (length >= sizeof(tmp)) {
-      length = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, str, length);
-    tmp[length] = '\0';
-    str = tmp;
-  }
-
-  return TRI_Int64String(str);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to uint64 from string
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_UInt64String(char const* str) {
-  uint64_t result;
-  char* endptr;
-
-#if defined(TRI_HAVE_STRTOULL_R)
-  struct reent buffer;
-#elif defined(TRI_HAVE__STRTOULL_R)
-  struct reent buffer;
-#endif
-
-  TRI_set_errno(TRI_ERROR_NO_ERROR);
-
-#if defined(TRI_HAVE_STRTOULL_R)
-  result = strtoull_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE__STRTOULL_R)
-  result = _strtoull_r(&buffer, str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOUI64)
-  result = _strtoui64(str, &endptr, 10);
-#elif defined(TRI_HAVE_STRTOULL)
-  result = strtoull(str, &endptr, 10);
-#else
-#error cannot convert string to int64
-#endif
-
-  while (isspace(*endptr)) {
-    ++endptr;
-  }
-
-  if (*endptr != '\0') {
-    TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE && (result == 0 || result == UINT64_MAX)) {
-    TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to uint64 from string with given length
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_UInt64String2(char const* str, size_t length) {
-  char tmp[1024];
-
-  if (str[length] != '\0') {
-    if (length >= sizeof(tmp)) {
-      length = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, str, length);
-    tmp[length] = '\0';
-    str = tmp;
-  }
-
-  return TRI_UInt64String(str);
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int8, using the specified buffer.
@@ -1100,5 +974,3 @@ std::string TRI_StringTimeStamp(double stamp) {
 
   return std::string(buffer, len);
 }
-
-

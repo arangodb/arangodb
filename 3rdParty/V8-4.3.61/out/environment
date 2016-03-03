@@ -1,0 +1,1 @@
+GYPFLAGS= -Dv8_enable_backtrace=1 -Dv8_use_snapshot='false' -Dwerror='' -Dv8_no_strict_aliasing=1 -Darm_fpu=default -Darm_float_abi=default -Dtarget_arch=x64

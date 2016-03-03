@@ -26,25 +26,22 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
-#include <evwrap.h>
-#else
-#include <ev.h>
 #endif
 
+#include <ev.h>
+
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 /* EV_TIMER is an alias for EV_TIMEOUT */
 #ifndef EV_TIMER
 #define EV_TIMER EV_TIMEOUT
 #endif
-
 
 namespace {
 
@@ -93,7 +90,7 @@ void socketCallback(struct ev_loop*, ev_io* w, int revents) {
     // note: task may have been destroyed by here, so it's not safe to access it
     // anymore
   } else {
-    LOG_WARNING("socketCallback called for unknown task");
+    LOG(WARN) << "socketCallback called for unknown task";
     // TODO: given that the task is unknown, is it safe to stop to I/O here?
     // ev_io_stop(watcher->loop, w);
   }
@@ -176,14 +173,11 @@ void timerCallback(struct ev_loop*, ev_timer* w, int revents) {
 }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the allocator was switched
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SchedulerLibev::SwitchedAllocator = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the available backends
@@ -210,7 +204,6 @@ void SchedulerLibev::switchAllocator() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a scheduler
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,10 +218,10 @@ SchedulerLibev::SchedulerLibev(size_t concurrency, int backend)
   //_backend = 1;
 
   // report status
-  LOG_TRACE("supported backends: %d", (int)ev_supported_backends());
-  LOG_TRACE("recommended backends: %d", (int)ev_recommended_backends());
-  LOG_TRACE("embeddable backends: %d", (int)ev_embeddable_backends());
-  LOG_TRACE("backend flags: %d", (int)backend);
+  LOG(TRACE) << "supported backends: " << ev_supported_backends();
+  LOG(TRACE) << "recommended backends: " << ev_recommended_backends();
+  LOG(TRACE) << "embeddable backends: " << ev_embeddable_backends();
+  LOG(TRACE) << "backend flags: " << backend;
 
   // construct the loops
   _loops = new struct ev_loop* [nrThreads];
@@ -267,7 +260,7 @@ SchedulerLibev::~SchedulerLibev() {
 
   // force threads to shutdown
   for (size_t i = 0; i < nrThreads; ++i) {
-    threads[i]->stop();
+    threads[i]->beginShutdown();
   }
 
   for (size_t i = 0; i < 100 && isRunning(); ++i) {
@@ -297,14 +290,11 @@ SchedulerLibev::~SchedulerLibev() {
   delete[](ev_async**)_wakers;
 }
 
-
-
 void SchedulerLibev::eventLoop(EventLoop loop) {
   struct ev_loop* l = (struct ev_loop*)lookupLoop(loop);
 
   ev_loop(l, 0);
 }
-
 
 void SchedulerLibev::wakeupLoop(EventLoop loop) {
   if (size_t(loop) >= nrThreads) {
@@ -313,7 +303,6 @@ void SchedulerLibev::wakeupLoop(EventLoop loop) {
 
   ev_async_send(((struct ev_loop**)_loops)[loop], ((ev_async**)_wakers)[loop]);
 }
-
 
 void SchedulerLibev::uninstallEvent(EventToken watcher) {
   if (watcher == nullptr) {
@@ -357,7 +346,6 @@ void SchedulerLibev::uninstallEvent(EventToken watcher) {
   }
 }
 
-
 EventToken SchedulerLibev::installPeriodicEvent(EventLoop loop, Task* task,
                                                 double offset,
                                                 double interval) {
@@ -370,7 +358,6 @@ EventToken SchedulerLibev::installPeriodicEvent(EventLoop loop, Task* task,
 
   return watcher;
 }
-
 
 void SchedulerLibev::rearmPeriodic(EventToken token, double offset,
                                    double interval) {
@@ -385,7 +372,6 @@ void SchedulerLibev::rearmPeriodic(EventToken token, double offset,
   ev_periodic_again(watcher->loop, w);
 }
 
-
 EventToken SchedulerLibev::installSignalEvent(EventLoop loop, Task* task,
                                               int signal) {
   SignalWatcher* watcher =
@@ -397,7 +383,6 @@ EventToken SchedulerLibev::installSignalEvent(EventLoop loop, Task* task,
 
   return watcher;
 }
-
 
 // ..........................................................................
 // Windows likes to operate on SOCKET types (sort of handles) while libev
@@ -430,7 +415,6 @@ EventToken SchedulerLibev::installSocketEvent(EventLoop loop, EventType type,
   return watcher;
 }
 
-
 void SchedulerLibev::startSocketEvents(EventToken token) {
   SocketWatcher* watcher = (SocketWatcher*)token;
 
@@ -444,7 +428,6 @@ void SchedulerLibev::startSocketEvents(EventToken token) {
     ev_io_start(watcher->loop, w);
   }
 }
-
 
 void SchedulerLibev::stopSocketEvents(EventToken token) {
   SocketWatcher* watcher = (SocketWatcher*)token;
@@ -460,7 +443,6 @@ void SchedulerLibev::stopSocketEvents(EventToken token) {
   }
 }
 
-
 EventToken SchedulerLibev::installTimerEvent(EventLoop loop, Task* task,
                                              double timeout) {
   TimerWatcher* watcher =
@@ -473,7 +455,6 @@ EventToken SchedulerLibev::installTimerEvent(EventLoop loop, Task* task,
   return watcher;
 }
 
-
 void SchedulerLibev::clearTimer(EventToken token) {
   TimerWatcher* watcher = (TimerWatcher*)token;
 
@@ -484,7 +465,6 @@ void SchedulerLibev::clearTimer(EventToken token) {
   ev_timer* w = (ev_timer*)watcher;
   ev_timer_stop(watcher->loop, w);
 }
-
 
 void SchedulerLibev::rearmTimer(EventToken token, double timeout) {
   TimerWatcher* watcher = (TimerWatcher*)token;
@@ -498,7 +478,6 @@ void SchedulerLibev::rearmTimer(EventToken token, double timeout) {
   ev_timer_again(watcher->loop, w);
 }
 
-
 void SchedulerLibev::signalTask(std::unique_ptr<TaskData>& data) {
   size_t loop = size_t(data->_loop);
 
@@ -508,7 +487,6 @@ void SchedulerLibev::signalTask(std::unique_ptr<TaskData>& data) {
 
   threads[loop]->signalTask(data);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an event lookup
@@ -521,5 +499,3 @@ void* SchedulerLibev::lookupLoop(EventLoop loop) {
 
   return ((struct ev_loop**)_loops)[loop];
 }
-
-

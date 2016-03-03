@@ -22,29 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/files.h"
-#include "Basics/logging.h"
-#include "Basics/messages.h"
+
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
-#include "Statistics/statistics.h"
 #include <signal.h>
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-AnyServer* ArangoInstance = nullptr;
-
+ArangoServer* ArangoInstance = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
@@ -76,7 +70,6 @@ static void AbortHandler(int signum) {
   kill(getpid(), signum);
 #endif
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an application server
@@ -114,8 +107,8 @@ int main(int argc, char* argv[]) {
       // caught an error during shutdown
       res = EXIT_FAILURE;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      std::cerr << "Caught an exception during shutdown";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      std::cerr << "Caught an exception during shutdown" << std::endl;
 #endif
     }
     ArangoInstance = nullptr;
@@ -127,5 +120,3 @@ int main(int argc, char* argv[]) {
 
   return res;
 }
-
-

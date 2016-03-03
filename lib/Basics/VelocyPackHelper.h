@@ -38,6 +38,36 @@ class VelocyPackHelper {
   ~VelocyPackHelper() = delete;
 
  public:
+
+  struct VPackHash {
+    size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief equality comparator for VelocyPack values
+////////////////////////////////////////////////////////////////////////////////
+
+  struct VPackEqual {
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief less comparator for VelocyPack values
+////////////////////////////////////////////////////////////////////////////////
+
+  template <bool useUtf8>
+  struct VPackLess {
+    inline bool operator()(arangodb::velocypack::Slice const& lhs,
+                           arangodb::velocypack::Slice const& rhs) const {
+      return VelocyPackHelper::compare(lhs, rhs, useUtf8) < 0;
+    }
+  };
+
+  struct AttributeSorter {
+    bool operator()(std::string const& l, std::string const& r) const;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a numeric value
   //////////////////////////////////////////////////////////////////////////////
@@ -57,6 +87,10 @@ class VelocyPackHelper {
   template <typename T>
   static T getNumericValue(VPackSlice const& slice, char const* name,
                            T defaultValue) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      return defaultValue;
+    }
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
       return sub.getNumber<T>();
@@ -78,6 +112,12 @@ class VelocyPackHelper {
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string value, or the default value if it is not a string
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string getStringValue(VPackSlice const&, std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist
   /// or it is not a string
@@ -85,7 +125,6 @@ class VelocyPackHelper {
 
   static std::string getStringValue(VPackSlice const&, char const*,
                                     std::string const&);
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert a Object sub value into a uint64
@@ -116,9 +155,31 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static int compare(VPackSlice const&, VPackSlice const&, bool);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Merges two VelocyPack Slices
+  //////////////////////////////////////////////////////////////////////////////
+
+  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
+                                             arangodb::velocypack::Slice const&,
+                                             bool, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Transforms any VelocyPack to a double value. The second parameter
+  ///        indicates if the transformation was successful.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double toDouble(VPackSlice const&, bool&);
 };
 }
 }
 
-#endif
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Simple and limited logging of VelocyPack slices
+//////////////////////////////////////////////////////////////////////////////
+#include "Basics/Logger.h"
+arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
+  arangodb::velocypack::Slice const&);
 
+#endif

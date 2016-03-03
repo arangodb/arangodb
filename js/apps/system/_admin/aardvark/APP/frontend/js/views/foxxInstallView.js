@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global $, Joi, _, alert, templateEngine*/
+/*global $, Joi, _, arangoHelper, templateEngine, window*/
 (function() {
   "use strict";
 
@@ -11,10 +11,16 @@
   };
 
   var installCallback = function(result) {
+    var self = this;
+
     if (result.error === false) {
-      this.collection.fetch({ async: false });
-      window.modalView.hide();
-      this.reload();
+      this.collection.fetch({
+        success: function() {
+          window.modalView.hide();
+          self.reload();
+        }
+      });
+                           
     } else {
       var res = result;
       if (result.hasOwnProperty("responseJSON")) {
@@ -22,10 +28,10 @@
       } 
       switch(res.errorNum) {
         case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
-          alert("Unable to download application from the given repository.");
+          arangoHelper.arangoError("Services", "Unable to download application from the given repository.");
           break;
         default:
-          alert("Error: " + res.errorNum + ". " + res.errorMessage);
+          arangoHelper.arangoError("Services", res.errorNum + ". " + res.errorMessage);
       }
     }
   };
@@ -310,6 +316,34 @@
       showSearchBox: false,
       minimumResultsForSearch: -1,
       width: "336px"
+    });
+
+    var checkButton = function() {
+      var button = $("#modalButton1");
+        if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+          button.prop("disabled", true);
+        }
+        else {
+          button.prop("disabled", false);
+        }
+    };
+
+    $('.select2-search-field input').focusout(function() {
+      checkButton();
+      window.setTimeout(function() {
+        if ($('.select2-drop').is(':visible')) {
+          if (!$('#select2-search-field input').is(':focus')) {
+            $('#s2id_new-app-collections').select2('close');
+            checkButton();
+          }
+        }
+      }, 80);
+    });
+    $('.select2-search-field input').focusin(function() {
+      if ($('.select2-drop').is(':visible')) {
+        var button = $("#modalButton1");
+        button.prop("disabled", true);
+      }
     });
     $("#upload-foxx-zip").uploadFile({
       url: "/_api/upload?multipart=true",

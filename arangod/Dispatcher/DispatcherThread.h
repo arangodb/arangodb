@@ -27,51 +27,36 @@
 
 #include "Basics/Thread.h"
 
-
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;
 class Job;
-class Scheduler;
-
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job dispatcher thread
 /////////////////////////////////////////////////////////////////////////////
 
-class DispatcherThread : public basics::Thread {
+class DispatcherThread : public Thread {
   DispatcherThread(DispatcherThread const&) = delete;
   DispatcherThread& operator=(DispatcherThread const&) = delete;
 
   friend class Dispatcher;
   friend class DispatcherQueue;
 
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a global, but thread-local place to hold the current dispatcher
-  /// thread. If we are not in a dispatcher thread this is set to nullptr.
-  //////////////////////////////////////////////////////////////////////////////
+  static DispatcherThread* current() {
+    return dynamic_cast<DispatcherThread*>(Thread::CURRENT_THREAD);
+  }
 
-  static thread_local DispatcherThread* currentDispatcherThread;
-
-  
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a dispatcher thread
-  //////////////////////////////////////////////////////////////////////////////
-
   explicit DispatcherThread(DispatcherQueue*);
+  ~DispatcherThread() {shutdown();}
 
-  
  protected:
-
   void run();
-
 
   void addStatus(arangodb::velocypack::Builder* b);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief indicates that thread is doing a blocking operation
@@ -85,14 +70,12 @@ class DispatcherThread : public basics::Thread {
 
   void unblock();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief do the real work
   //////////////////////////////////////////////////////////////////////////////
 
   void handleJob(Job* job);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the dispatcher queue
@@ -104,5 +87,3 @@ class DispatcherThread : public basics::Thread {
 }
 
 #endif
-
-

@@ -27,7 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
                                   bool nullMeansRemove, bool mergeObjects) {
@@ -66,10 +65,19 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
           TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &empty);
           TRI_json_t* merged = MergeRecursive(zone, &empty, value,
                                               nullMeansRemove, mergeObjects);
+
+          if (merged == nullptr) {
+            return nullptr;
+          }
           TRI_Insert3ObjectJson(zone, r, key->_value._string.data, merged);
         } else {
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data,
-                                TRI_CopyJson(zone, value));
+          TRI_json_t* copy = TRI_CopyJson(zone, value);
+
+          if (copy == nullptr) {
+            return nullptr;
+          }
+
+          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, copy);
         }
       } else {
         // existing array already has the attribute => replace attribute
@@ -77,6 +85,9 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
             value->_type == TRI_JSON_OBJECT && mergeObjects) {
           TRI_json_t* merged = MergeRecursive(zone, lhsValue, value,
                                               nullMeansRemove, mergeObjects);
+          if (merged == nullptr) {
+            return nullptr;
+          }
           TRI_ReplaceObjectJson(zone, r, key->_value._string.data, merged);
           TRI_FreeJson(zone, merged);
         } else {
@@ -194,7 +205,7 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
       return 1;
     }
 
-    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
+    TRI_ASSERT(lWeight == rWeight);
   }
 
   // lhs and rhs have equal weights
@@ -677,5 +688,3 @@ static uint64_t FastHashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
 uint64_t TRI_FastHashJson(TRI_json_t const* json) {
   return FastHashJsonRecursive(0x012345678, json);
 }
-
-

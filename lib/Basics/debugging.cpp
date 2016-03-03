@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
 #include <sstream>
 #ifdef _WIN32
 #include <DbgHelp.h>
@@ -39,6 +39,7 @@
 #endif
 #endif
 
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
@@ -53,8 +54,7 @@ static char* FailurePoints = nullptr;
 
 arangodb::basics::ReadWriteLock FailurePointsLock;
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
@@ -71,8 +71,8 @@ static char* MakeValue(char const* value) {
     return nullptr;
   }
 
-  char* delimited = static_cast<char*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
+  char* delimited =
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, len);
@@ -84,16 +84,15 @@ static char* MakeValue(char const* value) {
   return delimited;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging(char const* message) {
-  LOG_WARNING("%s: summon Baal!", message);
+  LOG(WARN) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
-  TRI_ShutdownLogging(true);
+  Logger::shutdown(true);
 
 // and now crash
 #ifndef __APPLE__
@@ -117,7 +116,7 @@ bool TRI_ShouldFailDebugging(char const* value) {
     return false;
   }
 
-  READ_LOCKER(FailurePointsLock);
+  READ_LOCKER(readLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
@@ -142,7 +141,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
     return;
   }
 
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   char* found;
   if (FailurePoints == nullptr) {
@@ -155,13 +154,12 @@ void TRI_AddFailurePointDebugging(char const* value) {
     // not yet found. so add it
     char* copy;
 
-    LOG_WARNING(
-        "activating intentional failure point '%s'. the server will misbehave!",
-        value);
+    LOG(WARN) << "activating intentional failure point '" << value << "'. the server will misbehave!";
     size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
-      copy = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
+      copy =
+          static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
 
       if (copy == nullptr) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -197,7 +195,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints == nullptr) {
     return;
@@ -255,7 +253,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(FailurePointsLock);
+  WRITE_LOCKER(writeLocker, FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, FailurePoints);
@@ -289,8 +287,8 @@ void TRI_ShutdownDebugging() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GetBacktrace(std::string& btstr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
 #ifdef _WIN32
   void* stack[100];
   unsigned short frames;
@@ -385,13 +383,36 @@ void TRI_GetBacktrace(std::string& btstr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PrintBacktrace() {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-#if HAVE_BACKTRACE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if ARANGODB_ENABLE_BACKTRACE
   std::string out;
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());
 #endif
+#if TRI_HAVE_PSTACK
+  char buf[64];
+  snprintf(buf, 64, "/usr/bin/pstack %i", getpid());
+  system(buf);
+#endif
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the logger and shuts it down
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FlushDebugging() {
+  Logger::flush();
+  Logger::shutdown(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the logger and shuts it down
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FlushDebugging(char const* file, int line, char const* message) {
+  LOG(FATAL) << "assertion failed in " << file << ":" << line << ": " << message;
+  Logger::flush();
+  Logger::shutdown(true);
+}
 

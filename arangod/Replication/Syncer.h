@@ -25,15 +25,10 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/logging.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-master.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
@@ -43,10 +38,13 @@ class TRI_vocbase_col_t;
 
 namespace arangodb {
 
+namespace velocypack {
+class Slice;
+}
+
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-class SimpleHttpResult;
 }
 
 namespace rest {
@@ -56,18 +54,14 @@ class Endpoint;
 class Transaction;
 
 class Syncer {
-  
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
-
 
   virtual ~Syncer();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
   //////////////////////////////////////////////////////////////////////////////
@@ -86,8 +80,31 @@ class Syncer {
 
   static std::string rewriteLocation(void*, std::string const&);
 
-  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the barrier id from the syncer
+////////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_tick_t stealBarrier();
+
  protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief send a "create barrier" command
+  //////////////////////////////////////////////////////////////////////////////
+   
+  int sendCreateBarrier(std::string&, TRI_voc_tick_t);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief send an "extend barrier" command
+  //////////////////////////////////////////////////////////////////////////////
+
+  int sendExtendBarrier(TRI_voc_tick_t = 0);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief send a "remove barrier" command
+  //////////////////////////////////////////////////////////////////////////////
+
+  int sendRemoveBarrier();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from JSON
@@ -99,7 +116,7 @@ class Syncer {
   /// @brief extract the collection id from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_cid_t getCid(VPackSlice const&) const;
+  TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection name from JSON
@@ -111,7 +128,7 @@ class Syncer {
   /// @brief extract the collection name from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getCName(VPackSlice const&) const;
+  std::string getCName(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the collection dump
@@ -145,7 +162,7 @@ class Syncer {
   /// @brief creates an index, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createIndex(VPackSlice const&);
+  int createIndex(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drops an index, based on the JSON provided
@@ -165,7 +182,6 @@ class Syncer {
 
   int handleStateResponse(struct TRI_json_t const*, std::string&);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -183,7 +199,15 @@ class Syncer {
   /// @brief information about the master state
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_replication_master_info_t _masterInfo;
+  struct {
+    std::string _endpoint;
+    TRI_server_id_t _serverId;
+    int _majorVersion;
+    int _minorVersion;
+    TRI_voc_tick_t _lastLogTick;
+    bool _active;
+  }
+  _masterInfo;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the update policy object (will be the same for all actions)
@@ -226,6 +250,24 @@ class Syncer {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_server_id_t _localServerId;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief WAL barrier id
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t _barrierId;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief WAL barrier last update time
+  //////////////////////////////////////////////////////////////////////////////
+
+  double _barrierUpdateTime;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ttl for WAL barrier
+  //////////////////////////////////////////////////////////////////////////////
+
+  int _barrierTtl;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief base url of the replication API
@@ -236,5 +278,3 @@ class Syncer {
 }
 
 #endif
-
-

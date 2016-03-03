@@ -25,16 +25,16 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 
 #define BUSY_LOCK_DELAY (10 * 1000)
-
 
 #ifdef TRI_TRACE_LOCKS
 
 #include <iostream>
 
-static thread_local std::unordered_map<TRI_read_write_lock_t*, int> _threadLocks;
+static thread_local std::unordered_map<TRI_read_write_lock_t*, int>
+    _threadLocks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief busy wait delay (in microseconds)
@@ -44,12 +44,12 @@ static thread_local std::unordered_map<TRI_read_write_lock_t*, int> _threadLocks
 /// loop until we can acquire the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LockError (TRI_read_write_lock_t* lock, int mode) {
+static void LockError(TRI_read_write_lock_t* lock, int mode) {
   auto it = _threadLocks.find(lock);
   auto m = (*it).second;
-  std::cerr << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE") 
-            << " LOCK WHILE ALREADY HOLDING IT IN " << (m == 1 ? "READ" : "WRITE") << " MODE" 
-            << std::endl;
+  std::cerr << "ERROR. TRYING TO ACQUIRE " << (mode == 1 ? "READ" : "WRITE")
+            << " LOCK WHILE ALREADY HOLDING IT IN "
+            << (m == 1 ? "READ" : "WRITE") << " MODE" << std::endl;
   TRI_ASSERT(false);
 }
 
@@ -71,7 +71,6 @@ int TRI_DestroyMutex(TRI_mutex_t* mutex) {
   return pthread_mutex_destroy(mutex);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks mutex
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,9 +80,9 @@ void TRI_LockMutex(TRI_mutex_t* mutex) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("mutex deadlock detected");
+      LOG(ERR) << "mutex deadlock detected";
     }
-    LOG_FATAL_AND_EXIT("could not lock the mutex: %s", strerror(rc));
+    LOG(FATAL) << "could not lock the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -95,62 +94,9 @@ void TRI_UnlockMutex(TRI_mutex_t* mutex) {
   int rc = pthread_mutex_unlock(mutex);
 
   if (rc != 0) {
-    LOG_FATAL_AND_EXIT("could not release the mutex: %s", strerror(rc));
+    LOG(FATAL) << "could not release the mutex: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
-
-#ifndef TRI_FAKE_SPIN_LOCKS
-
-#ifdef TRI_HAVE_POSIX_SPIN
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a new spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitSpin(TRI_spin_t* spinLock) { pthread_spin_init(spinLock, 0); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroySpin(TRI_spin_t* spinLock) { pthread_spin_destroy(spinLock); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LockSpin(TRI_spin_t* spinLock) {
-  int rc = pthread_spin_lock(spinLock);
-
-  if (rc != 0) {
-    if (rc == EDEADLK) {
-      LOG_ERROR("spinlock deadlock detected");
-    }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-    LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks spin-lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_UnlockSpin(TRI_spin_t* spinLock) {
-  int rc = pthread_spin_unlock(spinLock);
-
-  if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-    LOG_FATAL_AND_EXIT("could not release the spin-lock: %s", strerror(rc));
-  }
-}
-
-#endif
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a new read-write lock
@@ -168,7 +114,6 @@ void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
   pthread_rwlock_destroy(lock);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,12 +121,12 @@ void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
 bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 1); 
+    LockError(lock, 1);
   }
-#endif  
+#endif
   int rc = pthread_rwlock_tryrdlock(lock);
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (rc == 0) {
     _threadLocks.emplace(lock, 1);
   }
@@ -199,9 +144,9 @@ void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 
 #ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 1); 
+    LockError(lock, 1);
   }
-#endif  
+#endif
 
 again:
   int rc = pthread_rwlock_rdlock(lock);
@@ -212,7 +157,7 @@ again:
       // concurrent read locks ("resource temporarily unavailable").
       // in this case we'll wait in a busy loop until we can acquire the lock
       if (!complained) {
-        LOG_WARNING("too many read-locks on read-write lock");
+        LOG(WARN) << "too many read-locks on read-write lock";
         complained = true;
       }
       usleep(BUSY_LOCK_DELAY);
@@ -226,19 +171,19 @@ again:
     }
 
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected");
+      LOG(ERR) << "rw-lock deadlock detected";
     }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s",
-                       strerror(rc));
+    LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 
 #ifdef TRI_TRACE_LOCKS
   _threadLocks.emplace(lock, 1);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,16 +194,16 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not read-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s",
-                       strerror(rc));
+    LOG(FATAL) << "could not read-unlock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.erase(lock);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,19 +211,19 @@ void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 2); 
+    LockError(lock, 2);
   }
 #endif
 
   int rc = pthread_rwlock_trywrlock(lock);
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (rc == 0) {
     _threadLocks.emplace(lock, 2);
   }
-#endif  
+#endif
 
   return (rc == 0);
 }
@@ -288,9 +233,9 @@ bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
-    LockError(lock, 2); 
+    LockError(lock, 2);
   }
 #endif
 
@@ -298,16 +243,16 @@ void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_ERROR("rw-lock deadlock detected");
+      LOG(ERR) << "rw-lock deadlock detected";
     }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not write-lock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s",
-                       strerror(rc));
+    LOG(FATAL) << "could not write-lock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.emplace(lock, 2);
 #endif
 }
@@ -320,16 +265,16 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not write-unlock the read-write lock: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not write-unlock the read-write lock: %s",
-                       strerror(rc));
+    LOG(FATAL) << "could not write-unlock the read-write lock: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 
-#ifdef TRI_TRACE_LOCKS  
+#ifdef TRI_TRACE_LOCKS
   _threadLocks.erase(lock);
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,16 +283,7 @@ void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 
 void TRI_InitCondition(TRI_condition_t* cond) {
   pthread_cond_init(&cond->_cond, nullptr);
-
-  cond->_mutex = static_cast<pthread_mutex_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
-
-  if (cond->_mutex == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "could not allocate memory for condition variable mutex");
-  }
-
-  pthread_mutex_init(cond->_mutex, nullptr);
+  pthread_mutex_init(&cond->_mutex, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,10 +292,8 @@ void TRI_InitCondition(TRI_condition_t* cond) {
 
 void TRI_DestroyCondition(TRI_condition_t* cond) {
   pthread_cond_destroy(&cond->_cond);
-  pthread_mutex_destroy(cond->_mutex);
-  TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
+  pthread_mutex_destroy(&cond->_mutex);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signals a condition variable
@@ -371,10 +305,11 @@ void TRI_SignalCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not signal the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not signal the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not signal the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -388,10 +323,11 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not broadcast the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not broadcast the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not broadcast the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -402,13 +338,14 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WaitCondition(TRI_condition_t* cond) {
-  int rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
+  int rc = pthread_cond_wait(&cond->_cond, &cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not wait for the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -424,7 +361,7 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   uint64_t x, y;
 
   if (gettimeofday(&tp, nullptr) != 0) {
-    LOG_FATAL_AND_EXIT("could not get time of day");
+    LOG(FATAL) << "could not get time of day"; FATAL_ERROR_EXIT();
   }
 
   // Convert from timeval to timespec
@@ -435,17 +372,18 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   ts.tv_sec = ts.tv_sec + ((x - y) / 1000000000);
 
   // and wait
-  int rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
+  int rc = pthread_cond_timedwait(&cond->_cond, &cond->_mutex, &ts);
 
   if (rc != 0) {
     if (rc == ETIMEDOUT) {
       return false;
     }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not wait for the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not wait for the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 
   return true;
@@ -456,13 +394,14 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockCondition(TRI_condition_t* cond) {
-  int rc = pthread_mutex_lock(cond->_mutex);
+  int rc = pthread_mutex_lock(&cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not lock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not lock the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not lock the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
@@ -471,16 +410,15 @@ void TRI_LockCondition(TRI_condition_t* cond) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition(TRI_condition_t* cond) {
-  int rc = pthread_mutex_unlock(cond->_mutex);
+  int rc = pthread_mutex_unlock(&cond->_mutex);
 
   if (rc != 0) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(ERR) << "could not unlock the condition: " << strerror(rc);
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not unlock the condition: %s", strerror(rc));
+    LOG(FATAL) << "could not unlock the condition: " << strerror(rc); FATAL_ERROR_EXIT();
   }
 }
 
 #endif
-
-

@@ -23,7 +23,6 @@
 
 #include "Legends.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -333,4 +332,3 @@ void JsonLegend::dump(void* buf) {
     memset(c + shapeDataLength, 0, static_cast<size_t>(i) - shapeDataLength);
   }
 }
-

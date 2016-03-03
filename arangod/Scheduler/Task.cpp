@@ -27,8 +27,10 @@
 #include "Basics/json.h"
 #include "Scheduler/Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::rest;
-using namespace std;
 
 namespace {
 std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
@@ -41,7 +43,7 @@ std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
 
 Task::Task(std::string const& id, std::string const& name)
     : _scheduler(nullptr),
-      _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
+      _taskId(NEXT_TASK_ID.fetch_add(1, std::memory_order_seq_cst)),
       _loop(0),  // TODO(fc) XXX this should be an "invalid" marker!
       _id(id),
       _name(name) {}
@@ -59,26 +61,31 @@ Task::Task(std::string const& name) : Task("", name) {}
 Task::~Task() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a JSON representation of the task
+/// @brief get a VelocyPack representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Task::toJson() const {  // TODO(fc) XXX this should be VPack
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, json, "id",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->id().c_str(),
-                                 this->id().size()));
-    TRI_Insert3ObjectJson(
-        TRI_UNKNOWN_MEM_ZONE, json, "name",
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->name().c_str(),
-                                 this->name().size()));
-
-    this->getDescription(json);
+std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {
+  try {
+    auto builder = std::make_shared<VPackBuilder>();
+    {
+      VPackObjectBuilder b(builder.get());
+      toVelocyPack(*builder);
+    }
+    return builder;
+  } catch (...) {
+    return std::make_shared<VPackBuilder>();
   }
+}
 
-  return json;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation of the task
+////////////////////////////////////////////////////////////////////////////////
+
+void Task::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("id", VPackValue(id()));
+  builder.add("name", VPackValue(name()));
+  getDescription(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,4 +106,4 @@ bool Task::needsMainEventLoop() const { return false; }
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 
-void Task::getDescription(TRI_json_t* json) const {}
+void Task::getDescription(VPackBuilder&) const {}

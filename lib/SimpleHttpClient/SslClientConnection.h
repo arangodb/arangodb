@@ -33,7 +33,6 @@
 #include "openssl/ssl.h"
 #include "openssl/err.h"
 
-
 namespace arangodb {
 namespace httpclient {
 
@@ -42,7 +41,6 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SslClientConnection final : public GeneralClientConnection {
-  
  private:
   SslClientConnection(SslClientConnection const&);
   SslClientConnection& operator=(SslClientConnection const&);
@@ -61,7 +59,6 @@ class SslClientConnection final : public GeneralClientConnection {
 
   ~SslClientConnection();
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -100,7 +97,6 @@ class SslClientConnection final : public GeneralClientConnection {
 
   bool readable() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the socket is still workable
@@ -108,7 +104,6 @@ class SslClientConnection final : public GeneralClientConnection {
 
   bool checkSocket();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
@@ -132,4 +127,3 @@ class SslClientConnection final : public GeneralClientConnection {
 }
 
 #endif
-

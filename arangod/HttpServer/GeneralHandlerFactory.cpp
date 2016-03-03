@@ -29,16 +29,14 @@
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/SslInterface.h"
+#include "Basics/Logger.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
-
 
 namespace {
 sig_atomic_t MaintenanceMode = 0;
 }
-
 
 namespace {
 class MaintenanceHandler : public GeneralHandler {
@@ -58,7 +56,6 @@ class MaintenanceHandler : public GeneralHandler {
   };
 };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
@@ -118,7 +115,6 @@ GeneralHandlerFactory& GeneralHandlerFactory::operator=(
 
 GeneralHandlerFactory::~GeneralHandlerFactory() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +122,6 @@ GeneralHandlerFactory::~GeneralHandlerFactory() {}
 void GeneralHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
@@ -185,7 +180,8 @@ bool GeneralHandlerFactory::setRequestContext(GeneralRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string GeneralHandlerFactory::authenticationRealm(GeneralRequest* request) const {
+std::string GeneralHandlerFactory::authenticationRealm(
+    GeneralRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -244,7 +240,7 @@ GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
-    LOG_TRACE("no direct handler found, trying prefixes");
+    LOG(TRACE) << "no direct handler found, trying prefixes";
 
     // find longest match
     std::string prefix;
@@ -263,16 +259,16 @@ GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
     }
 
     if (prefix.empty()) {
-      LOG_TRACE("no prefix handler found, trying catch all");
+      LOG(TRACE) << "no prefix handler found, trying catch all";
 
       i = ii.find("/");
       if (i != ii.end()) {
-        LOG_TRACE("found catch all handler '/'");
+        LOG(TRACE) << "found catch all handler '/'";
 
         size_t l = 1;
         size_t n = path.find_first_of('/', l);
 
-        while (n != string::npos) {
+        while (n != std::string::npos) {
           request->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
@@ -288,12 +284,12 @@ GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
     }
 
     else {
-      LOG_TRACE("found prefix match '%s'", prefix.c_str());
+      LOG(TRACE) << "found prefix match '" << prefix << "'";
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
 
-      while (n != string::npos) {
+      while (n != std::string::npos) {
         request->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);
@@ -318,7 +314,7 @@ GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
 
       return notFoundHandler;
     } else {
-      LOG_TRACE("no not-found handler, giving up");
+      LOG(TRACE) << "no not-found handler, giving up";
       return nullptr;
     }
   }
@@ -332,7 +328,7 @@ GeneralHandler* GeneralHandlerFactory::createHandler(GeneralRequest* request) {
     }
   }
 
-  LOG_TRACE("found handler for path '%s'", path.c_str());
+  LOG(TRACE) << "found handler for path '" << path << "'";
   GeneralHandler* handler = i->second(request, data);
 
   handler->setServer(this);
@@ -354,8 +350,8 @@ void GeneralHandlerFactory::addHandler(std::string const& path, create_fptr func
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
-                                          void* data) {
+void GeneralHandlerFactory::addPrefixHandler(std::string const& path, 
+                                             create_fptr func, void* data) {
   _constructors[path] = func;
   _datas[path] = data;
   _prefixes.emplace_back(path);
@@ -368,5 +364,3 @@ void GeneralHandlerFactory::addPrefixHandler(std::string const& path, create_fpt
 void GeneralHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }
-
-

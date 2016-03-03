@@ -35,7 +35,6 @@ struct TRI_document_collection_t;
 namespace arangodb {
 namespace aql {
 
-
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
 // Entries in a given column (i.e. all the values of a given register
@@ -56,7 +55,7 @@ namespace aql {
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
-  
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the block
@@ -75,14 +74,13 @@ class AqlItemBlock {
  private:
   void destroy();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief getValue, get the value of a register
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
@@ -91,7 +89,7 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
@@ -100,8 +98,8 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
@@ -113,7 +111,7 @@ class AqlItemBlock {
         }
         _valueCount.emplace(value, 1);
       } else {
-        TRI_ASSERT_EXPENSIVE(it->second > 0);
+        TRI_ASSERT(it->second > 0);
         ++(it->second);
       }
     }
@@ -128,8 +126,8 @@ class AqlItemBlock {
 
   void setShaped(size_t index, RegisterId varNr,
                  TRI_df_marker_t const* marker) {
-    TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT_EXPENSIVE(!_data[index * _nrRegs + varNr].requiresDestruction());
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(!_data[index * _nrRegs + varNr].requiresDestruction());
 
     auto& v = _data[index * _nrRegs + varNr];
     v._marker = marker;
@@ -334,7 +332,6 @@ class AqlItemBlock {
 
   arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -378,4 +375,3 @@ class AqlItemBlock {
 }  // namespace arangodb
 
 #endif
-

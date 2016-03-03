@@ -23,9 +23,8 @@
 
 #include "Endpoint.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/socket-utils.h"
-#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 
 #if TRI_HAVE_LINUX_SOCKETS
@@ -34,19 +33,16 @@
 #include "Rest/EndpointIpV4.h"
 #include "Rest/EndpointIpV6.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint::Endpoint(const Endpoint::EndpointType type,
-                   const Endpoint::DomainType domainType,
-                   const Endpoint::EncryptionType encryption,
+Endpoint::Endpoint(Endpoint::EndpointType type,
+                   Endpoint::DomainType domainType,
+                   Endpoint::EncryptionType encryption,
                    std::string const& specification, int listenBacklog)
     : _connected(false),
       _type(type),
@@ -62,7 +58,6 @@ Endpoint::Endpoint(const Endpoint::EndpointType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint::~Endpoint() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint specification in a unified form
@@ -127,13 +122,13 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
-    if (found != string::npos && found > 2 && found + 2 < temp.size()) {
+    if (found != std::string::npos && found > 2 && found + 2 < temp.size()) {
       // hostname and port (e.g. [address]:port)
       return copy;
     }
 
     found = temp.find("]", 1);
-    if (found != string::npos && found > 2 && found + 1 == temp.size()) {
+    if (found != std::string::npos && found > 2 && found + 1 == temp.size()) {
       // hostname only (e.g. [address])
       if(_detectProtocol == 1){
         return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVstream);
@@ -150,7 +145,7 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   // ipv4
   found = temp.find(':');
 
-  if (found != string::npos && found + 1 < temp.size()) {
+  if (found != std::string::npos && found + 1 < temp.size()) {
     // hostname and port
     return copy;
   }
@@ -213,7 +208,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
   // read protocol from string
   size_t found = copy.find('@');
-  if (found != string::npos) {
+  if (found != std::string::npos) {
     std::string protoString = StringUtils::tolower(copy.substr(0, found));
     if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
@@ -259,7 +254,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   if (copy[0] == '[') {
     // ipv6
     found = copy.find("]:", 1);
-    if (found != string::npos && found > 2 && found + 2 < copy.size()) {
+    if (found != std::string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 2));
       std::string portStr = copy.substr(1, found - 1);
@@ -268,7 +263,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     }
 
     found = copy.find("]", 1);
-    if (found != string::npos && found > 2 && found + 1 == copy.size()) {
+    if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
       std::string portStr = copy.substr(1, found - 1);
 
@@ -289,7 +284,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   // ipv4
   found = copy.find(':');
 
-  if (found != string::npos && found + 1 < copy.size()) {
+  if (found != std::string::npos && found + 1 < copy.size()) {
     // hostname and port
     uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 1));
     std::string portStr = copy.substr(0, found);
@@ -346,7 +341,7 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG_ERROR("cannot switch to non-blocking: %d (%s)", errno, strerror(errno));
+    LOG(ERR) << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }
@@ -355,12 +350,10 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   ok = TRI_SetCloseOnExecSocket(s);
 
   if (!ok) {
-    LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));
+    LOG(ERR) << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }
 
   return true;
 }
-
-

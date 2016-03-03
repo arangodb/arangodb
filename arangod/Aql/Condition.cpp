@@ -46,9 +46,7 @@ struct PermutationState {
       : value(value), current(0), n(n) {}
 
   arangodb::aql::AstNode const* getValue() const {
-    if (value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND ||
-        value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
-        value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND ||
+    if (value->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR ||
         value->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR) {
       TRI_ASSERT(current < n);
       return value->getMember(current);
@@ -146,7 +144,6 @@ ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
      {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
       OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
-
 
 ConditionPart::ConditionPart(Variable const* variable,
                              std::string const& attributeName,
@@ -269,8 +266,6 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,6 +282,18 @@ Condition::~Condition() {
   // all nodes belong to the AST
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief export the condition as VelocyPack
+//////////////////////////////////////////////////////////////////////////////
+
+void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
+                             bool verbose) const {
+  if (_root == nullptr) {
+    VPackObjectBuilder guard(&builder);
+  } else {
+    _root->toVelocyPack(builder, verbose);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a condition from JSON
@@ -419,7 +426,13 @@ std::pair<bool, bool> Condition::findIndexes(
         usedIndexes.emplace_back(sortIndex);
       }
 
-      return std::make_pair(false, true);
+      TRI_ASSERT(usedIndexes.size() == 1);
+
+      if (usedIndexes.back()->sparse) {
+        // cannot use a sparse index for sorting alone
+        usedIndexes.clear();
+      }
+      return std::make_pair(false, !usedIndexes.empty());
     }
 
     canUseForFilter &= canUseIndex.first;
@@ -453,6 +466,55 @@ bool Condition::indexSupportsSort(Index const* idx, Variable const* reference,
     estimatedCost = 0.0;
   }
   return false;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the attributes for a sub-condition that are const
+/// (i.e. compared with equality)
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes (Variable const* reference,
+                                                                                         bool includeNull) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+
+  if (_root == nullptr) {
+    return result;
+  }
+
+  size_t n = _root->numMembers();
+
+  if (n != 1) {
+    return result;
+  }
+
+  AstNode const* node = _root->getMember(0);
+  n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> parts;
+
+      auto lhs = member->getMember(0);
+      auto rhs = member->getMember(1);
+
+      if (lhs->isAttributeAccessForVariable(parts) &&
+          parts.first == reference) {
+        if (includeNull || (rhs->isConstant() && !rhs->isNullValue())) {
+          result.emplace_back(std::move(parts.second));
+        }
+      }
+      else if (rhs->isAttributeAccessForVariable(parts) &&
+               parts.first == reference) {
+        if (includeNull || (lhs->isConstant() && !lhs->isNullValue())) {
+          result.emplace_back(std::move(parts.second));
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -521,7 +583,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode(
       // now check if the index fields are the same as the sort condition fields
       // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
       size_t coveredFields =
-          sortCondition->coveredAttributes(reference, idx->fields);
+          sortCondition->coveredAttributes(reference, idx->fields); 
 
       if (coveredFields == sortCondition->numAttributes() &&
           (idx->isSorted() ||
@@ -576,7 +638,7 @@ void Condition::normalize(ExecutionPlan* plan) {
 
   optimize(plan);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
     validateAst(_root, 0);
@@ -600,7 +662,7 @@ void Condition::normalize() {
   _root = transformNode(_root);
   _root = fixRoot(_root, 0);
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
     validateAst(_root, 0);
@@ -755,7 +817,6 @@ bool Condition::removeInvalidVariables(
 
   return isEmpty;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -1306,15 +1367,17 @@ void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
 /// @brief validate the condition's AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Condition::validateAst(AstNode const* node, int level) {
   if (level == 0) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
   }
 
   size_t const n = node->numMembers();
+
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
+
     if (level == 0) {
       TRI_ASSERT(sub->type == NODE_TYPE_OPERATOR_NARY_AND);
     } else {
@@ -1454,7 +1517,11 @@ AstNode* Condition::collapse(AstNode const* node) {
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
 
-    if (sub->type == node->type) {
+    bool const isSame = (node->type == sub->type) || 
+      (node->type == NODE_TYPE_OPERATOR_NARY_OR && sub->type == NODE_TYPE_OPERATOR_BINARY_OR) ||
+      (node->type == NODE_TYPE_OPERATOR_NARY_AND && sub->type == NODE_TYPE_OPERATOR_BINARY_AND);
+
+    if (isSame) {
       // merge
       for (size_t j = 0; j < sub->numMembers(); ++j) {
         newOperator->addMember(sub->getMemberUnchecked(j));
@@ -1475,7 +1542,7 @@ AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
   }
-
+  
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
       node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     // convert binary AND/OR into n-ary AND/OR
@@ -1495,7 +1562,7 @@ AstNode* Condition::transformNode(AstNode* node) {
     bool processChildren = false;
     bool mustCollapse = false;
     size_t const n = node->numMembers();
-
+  
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
       auto sub = transformNode(node->getMemberUnchecked(i));
@@ -1504,11 +1571,12 @@ AstNode* Condition::transformNode(AstNode* node) {
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
           sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
-      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+                 sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         mustCollapse = true;
       }
     }
-
+  
     if (processChildren) {
       // we found an AND with at least one OR child, e.g.
       //        AND
@@ -1526,9 +1594,7 @@ AstNode* Condition::transformNode(AstNode* node) {
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
-        if (sub->type ==
-            NODE_TYPE_OPERATOR_NARY_OR) {  // || sub->type ==
-                                           // NODE_TYPE_OPERATOR_NARY_AND) {
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {  
           permutationStates.emplace_back(
               PermutationState(sub, sub->numMembers()));
         } else {
@@ -1569,7 +1635,7 @@ AstNode* Condition::transformNode(AstNode* node) {
         }
       }
 
-      node = newOperator;
+      node = transformNode(newOperator);
     }
 
     if (mustCollapse) {
@@ -1582,7 +1648,7 @@ AstNode* Condition::transformNode(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     size_t const n = node->numMembers();
     bool mustCollapse = false;
-
+  
     for (size_t i = 0; i < n; ++i) {
       auto sub = transformNode(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
@@ -1591,7 +1657,7 @@ AstNode* Condition::transformNode(AstNode* node) {
         mustCollapse = true;
       }
     }
-
+  
     if (mustCollapse) {
       node = collapse(node);
     }
@@ -1687,5 +1753,3 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
 
   return node;
 }
-
-

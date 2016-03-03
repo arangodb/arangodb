@@ -26,7 +26,6 @@
 
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request
 /// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
@@ -333,5 +332,3 @@ int Transaction::readSlice(TRI_transaction_collection_t* trxCollection,
   this->unlock(trxCollection, TRI_TRANSACTION_READ);
   return TRI_ERROR_NO_ERROR;
 }
-
-

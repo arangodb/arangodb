@@ -79,5 +79,3 @@
 #define TRI_MADVISE_DONTNEED 0
 
 #endif
-
-

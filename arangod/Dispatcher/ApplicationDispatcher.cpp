@@ -27,15 +27,13 @@
 
 #include "ApplicationDispatcher.h"
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 namespace {
 
@@ -51,7 +49,7 @@ class DispatcherReporterTask : public PeriodicTask {
         _dispatcher(dispatcher) {}
 
  public:
-  bool handlePeriod() {
+  bool handlePeriod() override {
     _dispatcher->reportStatus();
     return true;
   }
@@ -61,9 +59,6 @@ class DispatcherReporterTask : public PeriodicTask {
 };
 }
 
-
-
-
 ApplicationDispatcher::ApplicationDispatcher()
     : ApplicationFeature("dispatcher"),
       _applicationScheduler(nullptr),
@@ -72,9 +67,7 @@ ApplicationDispatcher::ApplicationDispatcher()
       _nrStandardThreads(0),
       _nrAQLThreads(0) {}
 
-
 ApplicationDispatcher::~ApplicationDispatcher() { delete _dispatcher; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the scheduler
@@ -98,11 +91,10 @@ Dispatcher* ApplicationDispatcher::dispatcher() const { return _dispatcher; }
 void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
                                                size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
+  LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addStandardQueue(nrThreads, maxSize);
@@ -116,12 +108,10 @@ void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
 
 void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
-  LOG_TRACE("setting up the AQL standard queue with %d threads",
-            (int)nrThreads);
+  LOG(TRACE) << "setting up the AQL standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addAQLQueue(nrThreads, maxSize);
@@ -136,11 +126,10 @@ void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
 void ApplicationDispatcher::buildExtraQueue(size_t identifier, size_t nrThreads,
                                             size_t maxSize) {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher queue");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue"; FATAL_ERROR_EXIT();
   }
 
-  LOG_TRACE("setting up a standard queue with %d threads", (int)nrThreads);
+  LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
 
   TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addExtraQueue(identifier, nrThreads, maxSize);
@@ -160,13 +149,12 @@ size_t ApplicationDispatcher::numberOfThreads() {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity(std::vector<size_t> const& cores) {
+void ApplicationDispatcher::setProcessorAffinity(
+    std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
-
-
 
 void ApplicationDispatcher::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
@@ -174,7 +162,6 @@ void ApplicationDispatcher::setupOptions(
                                        &_reportInterval,
                                        "dispatcher report interval");
 }
-
 
 bool ApplicationDispatcher::prepare() {
   if (_disabled) {
@@ -186,7 +173,6 @@ bool ApplicationDispatcher::prepare() {
   return true;
 }
 
-
 bool ApplicationDispatcher::start() {
   if (_disabled) {
     return true;
@@ -197,9 +183,7 @@ bool ApplicationDispatcher::start() {
   return true;
 }
 
-
 bool ApplicationDispatcher::open() { return true; }
-
 
 void ApplicationDispatcher::close() {
   if (_disabled) {
@@ -210,7 +194,6 @@ void ApplicationDispatcher::close() {
     _dispatcher->beginShutdown();
   }
 }
-
 
 void ApplicationDispatcher::stop() {
   if (_disabled) {
@@ -224,14 +207,13 @@ void ApplicationDispatcher::stop() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
   if (_dispatcher != nullptr) {
-    LOG_FATAL_AND_EXIT("a dispatcher has already been created");
+    LOG(FATAL) << "a dispatcher has already been created"; FATAL_ERROR_EXIT();
   }
 
   _dispatcher = new Dispatcher(scheduler);
@@ -243,8 +225,7 @@ void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
 
 void ApplicationDispatcher::buildDispatcherReporter() {
   if (_dispatcher == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "no dispatcher is known, cannot create dispatcher reporter");
+    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher reporter"; FATAL_ERROR_EXIT();
   }
 
   if (0.0 < _reportInterval) {
@@ -254,5 +235,3 @@ void ApplicationDispatcher::buildDispatcherReporter() {
     _applicationScheduler->scheduler()->registerTask(dispatcherReporterTask);
   }
 }
-
-

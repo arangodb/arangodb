@@ -23,14 +23,17 @@
 
 #include "Basics/WorkMonitor.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Aql/QueryList.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "HttpServer/GeneralHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/Task.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -73,10 +76,41 @@ WorkDescription* WorkMonitor::popHandler(GeneralHandler* handler, bool free) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief thread deleter
+/// @brief cancels a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
+bool WorkMonitor::cancelAql(WorkDescription* desc) {
+  auto type = desc->_type;
+  
+  if (type != WorkType::AQL_STRING && type != WorkType::AQL_ID) {
+    return true;
+  }
+
+  TRI_vocbase_t* vocbase = desc->_vocbase;
+
+  if (vocbase != nullptr) {
+    uint64_t id = desc->_identifier._id;
+
+    LOG(WARN) << "cancel query " << id << " in " << vocbase;
+
+    auto queryList = static_cast<arangodb::aql::QueryList*>(vocbase->_queries);
+    auto res = queryList->kill(id);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(DEBUG) << "cannot kill query " << id;
+    }
+  }
+
+  desc->_canceled.store(true);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handler deleter
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::deleteHandler(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
   WorkItem::deleter()((WorkItem*)desc->_data.handler);
@@ -86,9 +120,10 @@ void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
 /// @brief thread description
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
+void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   GeneralHandler* handler = desc->_data.handler;
   const GeneralRequest* request = handler->getRequest();
+
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
@@ -126,7 +161,7 @@ void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
 /// @brief sends the overview
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::SEND_WORK_OVERVIEW(uint64_t taskId, std::string const& data) {
+void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
   auto response = std::make_unique<GeneralResponse>(GeneralResponse::OK,
                                                  GeneralRequest::MinCompatibility);
 

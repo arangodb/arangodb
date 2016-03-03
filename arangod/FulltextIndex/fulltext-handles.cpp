@@ -23,14 +23,12 @@
 
 #include "fulltext-handles.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief at what percentage of deleted documents should the handle list be
 /// cleaned?
 ////////////////////////////////////////////////////////////////////////////////
 
 #define CLEANUP_THRESHOLD 0.25
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a handle slot
@@ -145,13 +143,11 @@ static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a handles instance
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(
-    uint32_t slotSize) {
+TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(uint32_t slotSize) {
   TRI_fulltext_handles_t* handles =
       static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
@@ -194,7 +190,6 @@ void TRI_FreeHandlesFulltextIndex(TRI_fulltext_handles_t* handles) {
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of documents (including deleted)
@@ -273,6 +268,7 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex(
     }
 
     originalSlot = original->_slots[i];
+
     for (j = start; j < originalSlot->_numUsed; ++j) {
       if (originalSlot->_deleted[j] == 1) {
         // printf("- setting map at #%lu to 0\n", (unsigned long) j);
@@ -325,10 +321,13 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex(
 
   if (!AllocateSlot(handles, slotNumber)) {
     // out of memory
+    handles->_numSlots--;
     return 0;
   }
 
   slot = handles->_slots[slotNumber];
+
+  TRI_ASSERT(slot != nullptr);
 
   // fill in document
   slot->_documents[slotPosition] = document;
@@ -365,6 +364,7 @@ bool TRI_DeleteDocumentHandleFulltextIndex(
     uint32_t j;
 
     slot = handles->_slots[i];
+    TRI_ASSERT(slot != nullptr);
     lastPosition = slot->_numUsed;
 
     if (slot->_min > document || slot->_max < document ||
@@ -408,6 +408,8 @@ TRI_fulltext_doc_t TRI_GetDocumentFulltextIndex(
 #endif
 
   slot = handles->_slots[slotNumber];
+  TRI_ASSERT(slot != nullptr);
+
   slotPosition = handle % handles->_slotSize;
   if (slot->_deleted[slotPosition]) {
     // document was deleted
@@ -426,16 +428,18 @@ void TRI_DumpHandleFulltextIndex(TRI_fulltext_handles_t* const handles) {
   uint32_t i;
 
   for (i = 0; i < handles->_numSlots; ++i) {
-    TRI_fulltext_handle_slot_t* slot;
-    uint32_t j;
+    TRI_fulltext_handle_slot_t* slot = handles->_slots[i];
 
-    slot = handles->_slots[i];
+    if (slot == nullptr) {
+      continue;
+    }
+    TRI_ASSERT(slot != nullptr);
 
     printf("- slot %lu (%lu used, %lu deleted)\n", (unsigned long)i,
            (unsigned long)slot->_numUsed, (unsigned long)slot->_numDeleted);
 
     // we're in a relevant slot. now check its documents
-    for (j = 0; j < slot->_numUsed; ++j) {
+    for (uint32_t j = 0; j < slot->_numUsed; ++j) {
       printf("  - #%lu  %d  %llu\n",
              (unsigned long)(i * handles->_slotSize + j),
              (int)slot->_deleted[j], (unsigned long long)slot->_documents[j]);
@@ -466,5 +470,3 @@ size_t TRI_MemoryHandleFulltextIndex(
 
   return memory;
 }
-
-

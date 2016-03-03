@@ -14,19 +14,18 @@
   color: $c-nav-bg;
   height: 188px;
   left: 50%;
-  margin: -100px 0 0 -150px;
+  margin: -150px 0 0 -125px;
   position: absolute;
-  top: 50%;
-  width: 300px;
+  top: 38%;
+  width: 250px;
 
   .progress-content {
-    margin-left: 90px;
-    margin-top: 10px;
+    border: 5px solid $c-white;
+    border-radius: 3px;
 
     .fa-spinner {
       font-size: 100pt;
     }
-
   }
 
   .progress-message {
@@ -35,16 +34,23 @@
     color: $c-white;
     font-weight: 200;
     height: 44px;
-    margin-top: 33px;
+    margin-top: -25px;
     padding-top: 3px;
     text-align: center;
   }
 
   .progress-text {
+    background: $c-white;
     color: $c-black;
     float: left;
+    font-weight: 100;
+    height: 25px;
+    left: -5px;
     margin-left: 5px;
     margin-top: 10px;
+    position: relative;
+    top: -10px;
+    width: 100%;
   }
 
   .progress-action {
@@ -65,326 +71,71 @@
   margin-top: 7px;
 }
 
-.pong-loader {
-  margin-left: 17px;
-  margin-top: 35px;
-}
-
-@-moz-keyframes pong-loader {
-  0% {
-    left: 5px;
-    top: 0;
-  }
-
-  25% {
-    left: 65px;
-    top: 20px;
-  }
-
-  50% {
-    left: 5px;
-  }
-
-  62.5% {
-    top: 50px;
-  }
-
-  75% {
-    left: 65px;
-    top: 70%;
-  }
-
-  100% {
-    left: 5px;
-    top: 0%;
-  }
-}
-@-webkit-keyframes pong-loader {
-  0% {
-    left: 5px;
-    top: 0;
-  }
-
-  25% {
-    left: 65px;
-    top: 20px;
-  }
-
-  50% {
-    left: 5px;
-  }
-
-  62.5% {
-    top: 50px;
-  }
-
-  75% {
-    left: 65px;
-    top: 70%;
-  }
-
-  100% {
-    left: 5px;
-    top: 0%;
-  }
-}
-@keyframes pong-loader {
-  0% {
-    left: 5px;
-    top: 0;
-  }
-
-  25% {
-    left: 65px;
-    top: 20px;
-  }
-
-  50% {
-    left: 5px;
-  }
-
-  62.5% {
-    top: 50px;
-  }
-
-  75% {
-    left: 65px;
-    top: 70%;
-  }
-
-  100% {
-    left: 5px;
-    top: 0%;
-  }
-}
-@-moz-keyframes pong-loader-paddle-1 {
-  0% {
-    -moz-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  25% {
-    -moz-box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -moz-box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -moz-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -moz-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-@-webkit-keyframes pong-loader-paddle-1 {
-  0% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  25% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-@keyframes pong-loader-paddle-1 {
-  0% {
-    -moz-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  25% {
-    -moz-box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 15px 0 0, inset $c-progress-shadow 0 -25px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -moz-box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 10px 0 0, inset $c-progress-shadow 0 -30px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -moz-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -moz-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 5px 0 0, inset $c-progress-shadow 0 -35px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-@-moz-keyframes pong-loader-paddle-2 {
-  0% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -moz-box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -moz-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -moz-box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-@-webkit-keyframes pong-loader-paddle-2 {
-  0% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-@keyframes pong-loader-paddle-2 {
-  0% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  50% {
-    -moz-box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 30px 0 0, inset $c-progress-shadow 0 -10px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  62.5% {
-    -moz-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 40px 0 0, inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  75% {
-    -moz-box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 20px 0 0, inset $c-progress-shadow 0 -20px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-
-  100% {
-    -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-    box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow 3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  }
-}
-
-.pong-loader:not(:required) {
-  -moz-animation: pong-loader-paddle-1 1500ms infinite linear;
-  -webkit-animation: pong-loader-paddle-1 1500ms infinite linear;
-  animation: pong-loader-paddle-1 1500ms infinite linear;
-  background: $c-progress-shadow;
-  -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  display: inline-block;
-  height: 60px;
-  overflow: hidden;
+.pong-spinner {
+  height: 100px;
+  margin: 50px auto;
   position: relative;
-  text-indent: 100%;
-  width: 80px;
+  width: 200px;
+
+  i {
+    animation: ball 2s infinite linear;
+    background: $c-pong-green;
+    border-radius: 10px;
+    height: 10px;
+    position: absolute;
+    width: 10px;
+  }
 }
 
-.pong-loader:not(:required):before {
-  -moz-animation: pong-loader-paddle-2 1500ms infinite linear;
-  -webkit-animation: pong-loader-paddle-2 1500ms infinite linear;
-  animation: pong-loader-paddle-2 1500ms infinite linear;
-  -moz-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  -webkit-box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
-  box-shadow: inset $c-progress-shadow 0 0 0 0, inset $c-progress-shadow 0 -40px 0 0, inset $c-progress-shadow -3px 0 0 0, inset $c-progress-shadow-2 -10px 0 0 0;
+.pong-spinner:before,
+.pong-spinner:after {
+  animation: left-player 2s infinite linear;
+  background: $c-pong-green;
   content: '';
-  display: block;
-  height: 100%;
-  left: 0;
+  height: 30px;
   position: absolute;
-  top: 0;
-  width: 10px;
+  width: 5px;
 }
 
-.pong-loader:not(:required):after {
-  -moz-animation: pong-loader 1500ms infinite linear;
-  -webkit-animation: pong-loader 1500ms infinite linear;
-  animation: pong-loader 1500ms infinite linear;
-  background: $c-progress-shadow-2;
-  -moz-border-radius: 50%;
-  -webkit-border-radius: 50%;
-  border-radius: 50%;
-  content: '';
-  display: block;
-  height: 10px;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 10px;
+.pong-spinner:after {
+  animation: right-player 2s infinite linear;
+  right: 0;
+}
+
+@keyframes left-player {
+  0% { top: 0; }
+  50% { top: 70px; }
+  100% { top: 0; }
+}
+@keyframes right-player {
+  0% { top: 70px; }
+  50% { top: 0; }
+  100% { top: 70px; }
+}
+@keyframes ball {
+  0% {
+    left: 5px;
+    top: 20px;
+  }
+
+  25% {
+    left: 190px;
+    top: 50px;
+  }
+
+  50% {
+    left: 5px;
+    top: 80px;
+  }
+
+  75% {
+    left: 190px;
+    top: 50px;
+  }
+
+  100% {
+    left: 5px;
+    top: 20px;
+  }
+
 }

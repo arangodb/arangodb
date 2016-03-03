@@ -1,4 +1,4 @@
-.TH arangob 1 "Do 23. Jan 09:57:20 CET 2014" "" "ArangoDB"
+.TH arangob 1 "3.0.0-devel" "ArangoDB" "ArangoDB"
 .SH NAME
 arangob - the ArangoDB benchmark and test tool
 .SH SYNOPSIS
@@ -7,68 +7,10 @@ arangob [options]
 The arangob binary can be used to issue test requests to the 
 ArangoDB database. It can be used for benchmarks or server function
 testing. It supports parallel querying and batch requests.
-arangob currently only supports a few common test cases out of the box.
-More test cases might be added later.
 .SH OPTIONS
 For a complete list of options, please refer to the ArangoDB
-online manual, available at http://www.arangodb.org/
-
-The most important startup options are:
-
-.IP "--configuration <string>"
-read configuration from file <string> 
-.IP "--batch-size <int32>"
-number of operations to send per batch (use 0 to disable batching)
-.IP "--collection <string>"
-name of collection to use in test (only relevant for tests that invoke collections)
-.IP "--concurrency <int32>"
-number of parallel threads that will issue requests (default is 1 thread)
-.IP "--requests <int32>"
-total number of requests to perform
-.IP "--test-case <string>"
-name of test case to perform (possible values: "version" and "document")
-.IP "--complexity <int32>"
-complexity value for test case (meaning depends on test case)
-.IP "--server.endpoint <string>"
-server endpoint to connect to, consisting of protocol, ip address and port 
-.IP "--server.database <string>"
-database name to use when connection (default: "_system") 
-.IP "--server.username <string>"
-username to use when connecting (default "root") 
-.IP "--server.password <string>"
-password to use when connecting. Don't specify this option to get a password prompt 
-.IP "--server.disable-authentication <boolean>"
-disable the password prompt and authentication when connecting to the server 
-.SH EXAMPLES
-.EX
-shell> arangob 
-starts arangob with the default user and server endpoint 
-.EE
-
-
-.EX
-shell> arangob --test-case version --requests 1000 --concurrency 1
-runs the 'version' test case with 1000 requests, without concurrency 
-.EE
-
-
-.EX
-shell> arangob --test-case document --requests 1000 --concurrency 2
-runs the 'document' test case with 2000 requests, with concurrency 2 
-.EE
-
-
-.EX
-shell> arangob --test-case document --requests 1000 --concurrency 2 --async true
-runs the 'document' test case with 2000 requests, with concurrency 2, with async requests 
-.EE
-
-
-.EX
-shell> arangob --test-case document --requests 1000 --concurrency 2 --batch-size 10
-runs the 'document' test case with 2000 requests, with concurrency 2, using batch requests 
-.EE
-
+online manual, available at https://www.arangodb.com/
 
 .SH AUTHOR
-	    Copyright triAGENS GmbH, Cologne, Germany
+Copyright ArangoDB GmbH, Cologne, Germany
+

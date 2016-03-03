@@ -31,9 +31,11 @@
 #include "lib/Rest/GeneralResponse.h"
 #include "Statistics/StatisticsAgent.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rest {
 class Scheduler;
 class GeneralResponse;
@@ -118,10 +120,16 @@ class Task {
   uint64_t taskId() const { return _taskId; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a JSON representation of the task
+  /// @brief get a VelocyPack representation of the task
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* toJson() const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a VelocyPack representation of the task
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the task is a user task
@@ -155,7 +163,7 @@ class Task {
   /// @brief get a task specific description in JSON format
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void getDescription(struct TRI_json_t*) const;
+  virtual void getDescription(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called to set up the callback information

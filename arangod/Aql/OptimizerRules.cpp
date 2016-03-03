@@ -38,12 +38,12 @@
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/json-utilities.h"
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using EN = arangodb::aql::ExecutionNode;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -72,7 +72,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
     // expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto inNode = filterExpression->nodeForModification();
+    auto const* inNode = filterExpression->node();
 
     TRI_ASSERT(inNode != nullptr);
 
@@ -205,10 +205,12 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
     }
 
-    // finally adjust the variable inside the IN calculation
-    inNode->changeMember(1, ast->createNodeReference(outVar));
+    AstNode* clone = ast->clone(inNode);
     // set sortedness bit for the IN operator
-    inNode->setBoolValue(true);
+    clone->setBoolValue(true);
+    // finally adjust the variable inside the IN calculation
+    clone->changeMember(1, ast->createNodeReference(outVar));
+    filterExpression->replaceNode(clone);
 
     modified = true;
   }
@@ -438,7 +440,8 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 /// additionally remove all unused aggregate calculations from a COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* plan,
+void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
+                                               ExecutionPlan* plan,
                                                Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
@@ -457,19 +460,22 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt, ExecutionPlan* pl
       modified = true;
     }
 
-    collectNode->clearAggregates([&varsUsedLater, &modified] (std::pair<Variable const*, std::pair<Variable const*, std::string>> const& aggregate) -> bool {
-      if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
-        // result of aggregate function not used later
-        modified = true;
-        return true;
-      }
-      return false;
-    });
+    collectNode->clearAggregates(
+        [&varsUsedLater, &modified](
+            std::pair<Variable const*,
+                      std::pair<Variable const*, std::string>> const& aggregate)
+            -> bool {
+              if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
+                // result of aggregate function not used later
+                modified = true;
+                return true;
+              }
+              return false;
+            });
   }
 
   opt->addPlan(plan, rule, modified);
 }
-
 
 class PropagateConstantAttributesHelper {
  public:
@@ -898,6 +904,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt, ExecutionPlan* plan,
 
       // first, unlink the calculation from the plan
       plan->unlinkNode(n);
+
       // and re-insert into before the current node
       plan->insertDependency(current, n);
       modified = true;
@@ -1050,7 +1057,7 @@ void arangodb::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
             otherExpression->canRunOnDBServer() ==
                 nn->expression()->canRunOnDBServer()) {
           // found another calculation node
-          auto varsSet(std::move(current->getVariablesSetHere()));
+          auto varsSet(current->getVariablesSetHere());
           if (varsSet.size() == 1) {
             // check if it is a calculation for a variable that we are looking
             // for
@@ -1227,7 +1234,7 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt, ExecutionPlan* plan,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto inVars(std::move(n->getVariablesUsedHere()));
+    auto inVars(n->getVariablesUsedHere());
     TRI_ASSERT(inVars.size() == 1);
     auto setter = plan->getVarSetBy(inVars[0]->id);
 
@@ -1419,6 +1426,9 @@ class arangodb::aql::RedundantCalculationsReplacer final
         auto node = static_cast<CollectNode*>(en);
         for (auto& variable : node->_groupVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
+        }
+        for (auto& variable : node->_aggregateVariables) {
+          variable.second.first = Variable::replace(variable.second.first, _replacements);
         }
         break;
       }
@@ -1696,7 +1706,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(), _variableDefinitions);
 
     if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
@@ -1716,8 +1726,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           continue;
         }
 
-        auto numCovered =
-            sortCondition.coveredAttributes(outVariable, index->fields);
+        size_t const numCovered =
+            sortCondition.coveredAttributes(outVariable, index->fields); 
 
         if (numCovered == 0) {
           continue;
@@ -1725,14 +1735,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         double estimatedCost = 0.0;
         if (!index->supportsSortCondition(
-                &sortCondition, outVariable,
+                &sortCondition, 
+                outVariable,
                 enumerateCollectionNode->collection()->count(),
                 estimatedCost)) {
           // should never happen
           TRI_ASSERT(false);
           continue;
         }
-
+ 
         if (bestIndex == nullptr || estimatedCost < bestCost) {
           bestIndex = index;
           bestCost = estimatedCost;
@@ -1781,6 +1792,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
+    TRI_ASSERT(cond != nullptr);
+          
+    Variable const* outVariable = indexNode->outVariable();
+    TRI_ASSERT(outVariable != nullptr);
 
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
@@ -1815,7 +1830,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     auto index = indexes[0];
     bool handled = false;
 
-    SortCondition sortCondition(_sorts, _variableDefinitions);
+    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !index->sparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
@@ -1826,11 +1841,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
-      Variable const* outVariable = indexNode->outVariable();
-      auto numCovered =
-          sortCondition.coveredAttributes(outVariable, index->fields);
+      size_t const numCovered =
+          sortCondition.coveredAttributes(outVariable, index->fields); 
 
-      if (numCovered == sortCondition.numAttributes()) {
+      if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
@@ -1853,11 +1867,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // now check if the index fields are the same as the sort condition
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-          Variable const* outVariable = indexNode->outVariable();
-          size_t coveredFields =
-              sortCondition.coveredAttributes(outVariable, index->fields);
+          size_t const numCovered = 
+              sortCondition.coveredAttributes(outVariable, index->fields); 
 
-          if (coveredFields == sortCondition.numAttributes() &&
+          if (numCovered == sortCondition.numAttributes() &&
+              sortCondition.isUnidirectional() &&
               (index->isSorted() ||
                index->fields.size() == sortCondition.numAttributes())) {
             // no need to sort
@@ -3096,80 +3110,154 @@ struct CommonNodeFinder {
 /// @brief auxilliary struct for the OR-to-IN conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-struct OrToInConverter {
-  std::vector<AstNode const*> valueNodes;
-  CommonNodeFinder finder;
-  AstNode const* commonNode = nullptr;
-  std::string commonName;
+struct OrSimplifier {
+  Ast* ast;
 
-  AstNode* buildInExpression(Ast* ast) {
-    // the list of comparison values
-    auto list = ast->createNodeArray();
-    for (auto& x : valueNodes) {
-      list->addMember(x);
+  explicit OrSimplifier(Ast* ast) : ast(ast) {}
+  
+  std::string stringifyNode(AstNode const* node) const {
+    try {
+      return node->toString();
     }
-
-    // return a new IN operator node
-    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
-                                         commonNode->clone(ast), list);
+    catch (...) {
+    }
+    return "";
   }
 
-  bool canConvertExpression(AstNode const* node) {
-    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode,
-                    commonName)) {
-      return canConvertExpressionWalker(node);
-    } else if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_IN, commonNode,
-                           commonName)) {
-      return canConvertExpressionWalker(node);
+  bool qualifies(AstNode const* node, std::string& attributeName) const {
+    if (node->isConstant()) {
+      return false;
     }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        node->type == NODE_TYPE_INDEXED_ACCESS ||
+        node->type == NODE_TYPE_REFERENCE) {
+      attributeName = stringifyNode(node);
+      return true;
+    }
+
     return false;
   }
 
-  bool canConvertExpressionWalker(AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (canConvertExpressionWalker(node->getMember(0)) &&
-              canConvertExpressionWalker(node->getMember(1)));
-    }
+  bool detect(AstNode const* node, bool preferRight, std::string& attributeName, AstNode const*& attr, AstNode const*& value) const {
+    attributeName.clear();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(rhs) && !canConvertExpressionWalker(lhs)) {
-        valueNodes.emplace_back(lhs);
-        return true;
+      if (!preferRight && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
+        }
       }
 
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs)) {
-        valueNodes.emplace_back(rhs);
-        return true;
+      if (qualifies(rhs, attributeName)) {
+        if (lhs->isDeterministic() && !lhs->canThrow()) {
+          attr = rhs;
+          value = lhs;
+          return true;
+        }
       }
-      // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs),
-      // then one of
-      // the equalities in the OR statement is of the form x == x
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      // fallthrough intentional
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-
-      if (canConvertExpressionWalker(lhs) && !canConvertExpressionWalker(rhs) &&
-          rhs->isArray()) {
-        size_t const n = rhs->numMembers();
-
-        for (size_t i = 0; i < n; ++i) {
-          valueNodes.emplace_back(rhs->getMemberUnchecked(i));
+      if (rhs->isArray() && qualifies(lhs, attributeName)) {
+        if (rhs->isDeterministic() && !rhs->canThrow()) {
+          attr = lhs;
+          value = rhs;
+          return true;
         }
-        return true;
       }
-      // fall-through intentional
-    } else if (node->type == NODE_TYPE_REFERENCE ||
-               node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-               node->type == NODE_TYPE_INDEXED_ACCESS) {
-      // get a string representation of the node for comparisons
-      return (node->toString() == commonName);
+      // fallthrough intentional
     }
 
     return false;
+  }
+
+  AstNode* buildValues(AstNode const* attr, AstNode const* lhs, bool leftIsArray, AstNode const* rhs, bool rightIsArray) const {
+    auto values = ast->createNodeArray();
+    if (leftIsArray) {
+      size_t const n = lhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(lhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(lhs);
+    }
+    
+    if (rightIsArray) {
+      size_t const n = rhs->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        values->addMember(rhs->getMemberUnchecked(i));
+      }
+    }
+    else {
+      values->addMember(rhs);
+    }
+
+    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, attr, values);
+  }
+
+  AstNode* simplify(AstNode const* node) const {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+      
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // create a modified node
+        node = ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      if ((lhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) && 
+          (rhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN)) {
+        std::string leftName;
+        std::string rightName;
+        AstNode const* leftAttr = nullptr;
+        AstNode const* rightAttr = nullptr;
+        AstNode const* leftValue = nullptr;
+        AstNode const* rightValue = nullptr;
+
+        for (size_t i = 0; i < 4; ++i) {
+          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) && 
+              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) && 
+              leftName == rightName) {
+            return buildValues(leftAttr, leftValue, lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN, rightValue, rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN);
+          }
+        }
+      }
+
+      // return node as is
+      return const_cast<AstNode*>(node);
+    }
+    
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      auto lhsNew = simplify(lhs);
+      auto rhsNew = simplify(rhs);
+
+      if (lhs != lhsNew || rhs != rhsNew) {
+        // return a modified node
+        return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
+      }
+
+      // fallthrough intentional
+    }
+      
+    return const_cast<AstNode*>(node);
   }
 };
 
@@ -3205,17 +3293,16 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
-    if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
-      continue;
-    }
+    
+    auto root = cn->expression()->node();
 
-    OrToInConverter converter;
-    if (converter.canConvertExpression(cn->expression()->node())) {
+    OrSimplifier simplifier(plan->getAst());
+    auto newRoot = simplifier.simplify(root);
+
+    if (newRoot != root) {
       ExecutionNode* newNode = nullptr;
-      auto inNode = converter.buildInExpression(plan->getAst());
-
-      Expression* expr = new Expression(plan->getAst(), inNode);
-
+      Expression* expr = new Expression(plan->getAst(), newRoot);
+      
       try {
         TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3535,12 +3622,136 @@ void arangodb::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
   // These are all the end nodes where we start
   std::vector<ExecutionNode*> nodes(plan->findEndNodes(true));
 
-  bool planAltered = false;
+  bool modified = false;
   for (auto const& n : nodes) {
-    TraversalConditionFinder finder(plan, &planAltered);
+    TraversalConditionFinder finder(plan, &modified);
     n->walk(&finder);
   }
 
-  opt->addPlan(plan, rule, planAltered);
+  opt->addPlan(plan, rule, modified);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pulls out simple subqueries and merges them with the level above
+///
+/// For example, if we have the input query
+///
+/// FOR x IN (
+///     FOR y IN collection FILTER y.value >= 5 RETURN y.test
+///   ) 
+///   RETURN x.a
+///
+/// then this rule will transform it into:
+/// 
+/// FOR tmp IN collection
+///   FILTER tmp.value >= 5 
+///   LET x = tmp.test
+///   RETURN x.a
+////////////////////////////////////////////////////////////////////////////////
+
+void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         Optimizer::Rule const* rule) {
+
+  std::vector<ExecutionNode*> nodes(
+      plan->findNodesOfType(EN::SUBQUERY, true));
+
+  if (nodes.empty()) {
+    opt->addPlan(plan, rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  for (auto const& n : nodes) {
+    auto subqueryNode = static_cast<SubqueryNode const*>(n);
+  
+    if (subqueryNode->isModificationQuery()) {
+      // can't modify modifying subqueries
+      continue;
+    }
+
+    Variable const* out = subqueryNode->outVariable();
+    TRI_ASSERT(out != nullptr);
+
+    auto current = n;
+    // now check where the subquery is used
+    while (current->hasParent()) {
+      if (current->getType() == EN::ENUMERATE_LIST) {
+        // we're only interested in FOR loops...
+        auto listNode = static_cast<EnumerateListNode*>(current);
+
+        // ...that use our subquery as its input
+        if (listNode->inVariable() == out) {
+          // bingo!
+          auto queryVariables = plan->getAst()->variables();
+          std::vector<ExecutionNode*> subNodes(subqueryNode->getSubquery()->getDependencyChain(true));
+
+          TRI_ASSERT(! subNodes.empty());
+          auto returnNode = static_cast<ReturnNode*>(subNodes[0]);
+          TRI_ASSERT(returnNode->getType() == EN::RETURN);
+
+          modified = true;
+          auto previous = n->getFirstDependency();
+          auto insert = n->getFirstParent();
+          TRI_ASSERT(insert != nullptr);
+  
+          // unlink the original SubqueryNode
+          plan->unlinkNode(n, false);
+           
+          for (auto& it : subNodes) {
+            // first unlink them all
+            plan->unlinkNode(it, true);
+
+            if (it->getType() == EN::SINGLETON) {
+              // reached the singleton node already. that means we can stop
+              break;
+            }
+
+            // and now insert them one level up
+            if (it != returnNode) {
+              // we skip over the subquery's return node. we don't need it anymore
+              insert->removeDependencies();
+              insert->addDependency(it);
+              insert = it;
+
+              // additionally rename the variables from the subquery so they cannot
+              // conflict with the ones from the top query
+              for (auto const& variable : it->getVariablesSetHere()) {
+                queryVariables->renameVariable(variable->id);
+              }
+            }
+          } 
+
+          // link the top node in the subquery with the original plan
+          if (previous != nullptr) {
+            insert->addDependency(previous);
+          }
+
+          // remove the list node from the plan
+          plan->unlinkNode(listNode, false);
+
+          queryVariables->renameVariable(returnNode->inVariable()->id, listNode->outVariable()->name);
+
+          // finally replace the variables
+          std::unordered_map<VariableId, Variable const*> replacements;
+          replacements.emplace(listNode->outVariable()->id, returnNode->inVariable());
+          RedundantCalculationsReplacer finder(replacements);
+          plan->root()->walk(&finder);
+    
+          current = nullptr;
+        }
+      }
+
+      if (current == nullptr) {
+        break;
+      }
+
+      auto const& parents = current->getParents();
+      current = parents[0];
+    }
+  }
+
+  opt->addPlan(plan, rule, modified);
 }
 

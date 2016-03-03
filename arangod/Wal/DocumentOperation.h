@@ -8,8 +8,6 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
-struct TRI_transaction_collection_s;
-
 namespace arangodb {
 class Transaction;
 
@@ -25,8 +23,8 @@ struct DocumentOperation {
     REVERTED
   };
 
-  DocumentOperation(arangodb::Transaction* trx, Marker* marker,
-                    bool freeMarker, TRI_document_collection_t* document,
+  DocumentOperation(arangodb::Transaction* trx, Marker* marker, bool freeMarker,
+                    TRI_document_collection_t* document,
                     TRI_voc_document_operation_e type, TRI_voc_rid_t rid)
       : trx(trx),
         marker(marker),
@@ -113,7 +111,9 @@ struct DocumentOperation {
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
       document->_headersPtr->release(header, true);  // PROTECTED by trx
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-      document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx
+      if (status != StatusType::CREATED && status != StatusType::INDEXED) {
+        document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx in trxCollection
+      }
       header->copy(oldHeader);
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       if (status != StatusType::CREATED) {
@@ -139,5 +139,3 @@ struct DocumentOperation {
 }
 
 #endif
-
-

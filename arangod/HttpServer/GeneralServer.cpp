@@ -24,10 +24,9 @@
 
 #include "GeneralServer.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
@@ -117,18 +116,14 @@ void GeneralServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
   for (auto&& i : endpoints) {
-    LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());
+    LOG(TRACE) << "trying to bind to endpoint '" << i.first << "' for requests";
 
     bool ok = openEndpoint(i.second);
 
     if (ok) {
-      LOG_DEBUG("bound to endpoint '%s'", i.first.c_str());
+      LOG(DEBUG) << "bound to endpoint '" << i.first << "'";
     } else {
-      LOG_FATAL_AND_EXIT(
-          "failed to bind to endpoint '%s'. Please check "
-          "whether another instance is already running or "
-          "review your endpoints configuration.",
-          i.first.c_str());
+      LOG(FATAL) << "failed to bind to endpoint '" << i.first << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
     }
   }
 }
@@ -156,9 +151,14 @@ void GeneralServer::stop() {
       {
           MUTEX_LOCKER(_commTasksLock);
 
-        if (_commTasks.empty()) {
-          break;
-        }
+// <<<<<<< HEAD:arangod/HttpServer/GeneralServer.cpp
+//         if (_commTasks.empty()) {
+//           break;
+//         }
+// =======
+    {
+      MUTEX_LOCKER(mutexLocker, _commTasksLock);
+// >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
 
         task = *_commTasks.begin();
         _commTasks.erase(task);
@@ -200,9 +200,20 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
       throw;
     }
 
-    // registers the task and get the number of the scheduler thread
-    ssize_t n;
-    _scheduler->registerTask(task, &n);
+// <<<<<<< HEAD:arangod/HttpServer/GeneralServer.cpp
+//     // registers the task and get the number of the scheduler thread
+//     ssize_t n;
+//     _scheduler->registerTask(task, &n);
+// =======
+  try {
+    MUTEX_LOCKER(mutexLocker, _commTasksLock);
+    _commTasks.emplace(task);
+  } catch (...) {
+    // destroy the task to prevent a leak
+    deleteTask(task);
+    throw;
+  }
+// >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
 
   } else{
     VelocyCommTask* task_v = createCommTask(s, info, _isHttp);
@@ -225,8 +236,13 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
+// <<<<<<< HEAD:arangod/HttpServer/GeneralServer.cpp
 void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
+  // MUTEX_LOCKER(_commTasksLock);
+// =======
+// void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
+  MUTEX_LOCKER(mutexLocker, _commTasksLock);
+// >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
   _commTasks.erase(task);
 }
 
@@ -234,8 +250,13 @@ void GeneralServer::handleCommunicationClosed(ArangoTask* task) {
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
+// <<<<<<< HEAD:arangod/HttpServer/GeneralServer.cpp
 void GeneralServer::handleCommunicationFailure(ArangoTask* task) {
-  MUTEX_LOCKER(_commTasksLock);
+  // MUTEX_LOCKER(_commTasksLock);
+// =======
+// void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
+  MUTEX_LOCKER(mutexLocker, _commTasksLock);
+// >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
   _commTasks.erase(task);
 }
 
@@ -270,8 +291,7 @@ bool GeneralServer::handleRequestAsync(WorkItem::uptr<GeneralHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    LOG_WARNING("unable to add job to the job queue: %s",
-                TRI_errno_string(res));
+    LOG(WARN) << "unable to add job to the job queue: " << TRI_errno_string(res);
     // todo send info to async work manager?
     return false;
   }
@@ -296,6 +316,8 @@ bool GeneralServer::handleRequest(ArangoTask* task,
 
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<GeneralServerJob>(this, handler);
+
+  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob " << (void*)job.get();
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);

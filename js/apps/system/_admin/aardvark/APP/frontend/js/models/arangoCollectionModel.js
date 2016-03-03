@@ -2,8 +2,6 @@
 (function() {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
-    initialize: function () {
-    },
 
     idAttribute: "name",
 
@@ -14,207 +12,206 @@
       status: "",
       type: "",
       isSystem: false,
-      picture: ""
+      picture: "",
+      locked: false,
+      desc: undefined
     },
 
-    getProperties: function () {
-      var data2;
+    getProperties: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + encodeURIComponent(this.get("id")) + "/properties",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
-    getFigures: function () {
-      var data2;
+    getFigures: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/figures",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
-    getRevision: function () {
-      var data2;
+    getRevision: function (callback, figures) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/collection/" + this.get("id") + "/revision",
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data, figures);
         },
-        error: function(data) {
-          data2 = data;
+        error: function() {
+          callback(true);
         }
       });
-      return data2;
     },
 
-    getIndex: function () {
-      var data2;
+    getIndex: function (callback) {
       $.ajax({
         type: "GET",
         cache: false,
         url: "/_api/index/?collection=" + this.get("id"),
         contentType: "application/json",
         processData: false,
-        async: false,
         success: function(data) {
-          data2 = data;
+          callback(false, data);
         },
         error: function(data) {
-          data2 = data;
+          callback(true, data);
         }
       });
-      return data2;
     },
 
-  createIndex: function (postParameter) {
-      var returnVal = false;
+    createIndex: function (postParameter, callback) {
+
+      var self = this;
 
       $.ajax({
           cache: false,
           type: "POST",
-          url: "/_api/index?collection="+ this.get("id"),
+          url: "/_api/index?collection="+ self.get("id"),
+          headers: {
+            'x-arango-async': 'store' 
+          },
           data: JSON.stringify(postParameter),
           contentType: "application/json",
           processData: false,
-          async: false,
-          success: function() {
-            returnVal = true;
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Creating Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
           },
           error: function(data) {
-            returnVal = data;
+            callback(true, data);
           }
       });
-      return returnVal;
-  },
+      callback();
+    },
 
-      deleteIndex: function (id) {
-          var returnval = false;
-          $.ajax({
-              cache: false,
-              type: 'DELETE',
-              url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
-              async: false,
-              success: function () {
-                returnval = true;
-              },
-              error: function () {
-                returnval = false;
-              }
-          });
-          return returnval;
-      },
+    deleteIndex: function (id, callback) {
+
+      var self = this;
+
+      $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
+          headers: {
+            'x-arango-async': 'store' 
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get("id")
+              });
+              callback(false, data);
+            }
+            else {
+              callback(true, data);
+            }
+          },
+          error: function (data) {
+            callback(true, data);
+          }
+        });
+      callback();
+    },
 
     truncateCollection: function () {
       $.ajax({
-        async: false,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/truncate",
         success: function () {
-          arangoHelper.arangoNotification('Collection truncated');
+          arangoHelper.arangoNotification('Collection truncated.');
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          arangoHelper.arangoError('Collection error.');
         }
       });
     },
 
-    loadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Loading collection...");
+    loadCollection: function (callback) {
+
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
         success: function () {
-          self.set("status", "loaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
-    unloadCollection: function () {
-      var self = this;
-      window.progressView.showWithDelay(500, "Unloading collection...");
+    unloadCollection: function (callback) {
       $.ajax({
-        async: true,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
         success: function () {
-          self.set("status", "unloaded");
-          if (window.location.hash === "#collections") {
-            window.App.collectionsView.render();
-          }
-          window.progressView.hide();
+          callback(false);
         },
         error: function () {
-          arangoHelper.arangoError('Collection error');
+          callback(true);
         }
       });
+      callback();
     },
 
-    renameCollection: function (name) {
-      var self = this,
-        result = false;
+    renameCollection: function (name, callback) {
+      var self = this;
+
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/rename",
         data: JSON.stringify({ name: name }),
         contentType: "application/json",
         processData: false,
         success: function() {
           self.set("name", name);
-          result = true;
+          callback(false);
         },
         error: function(data) {
-          try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+          callback(true, data);
         }
       });
-      return result;
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets) {
+    changeCollection: function (wfs, journalSize, indexBuckets, callback) {
       var result = false;
       if (wfs === "true") {
         wfs = true;
@@ -231,22 +228,15 @@
       $.ajax({
         cache: false,
         type: "PUT",
-        async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/properties",
         data: JSON.stringify(data),
         contentType: "application/json",
         processData: false,
         success: function() {
-          result = true;
+          callback(false);
         },
         error: function(data) {
-          try {
-            var parsed = JSON.parse(data.responseText);
-            result = parsed.errorMessage;
-          }
-          catch (e) {
-            result = false;
-          }
+          callback(false, data);
         }
       });
       return result;

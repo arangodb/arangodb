@@ -61,8 +61,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -133,7 +131,6 @@ SslClientConnection::~SslClientConnection() {
     SSL_CTX_free(_ctx);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
@@ -563,5 +560,3 @@ bool SslClientConnection::checkSocket() {
 
   return false;
 }
-
-

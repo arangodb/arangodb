@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb::aql;
 
 SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
@@ -39,7 +38,6 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
   _outReg = it->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
-
 
 SubqueryBlock::~SubqueryBlock() {}
 
@@ -181,4 +179,3 @@ void SubqueryBlock::destroySubqueryResults(
   }
   delete results;
 }
-

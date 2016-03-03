@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CapConstraint.h"
+#include "Basics/Logger.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -34,7 +35,6 @@ using namespace arangodb;
 
 int64_t const CapConstraint::MinSize = 16384;
 
-
 CapConstraint::CapConstraint(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
                              size_t count, int64_t size)
@@ -46,38 +46,22 @@ CapConstraint::CapConstraint(TRI_idx_iid_t iid,
 
 CapConstraint::~CapConstraint() {}
 
-
 size_t CapConstraint::memory() const { return 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json CapConstraint::toJson(TRI_memory_zone_t* zone,
-                                             bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("size", arangodb::basics::Json(zone, static_cast<double>(_count)))(
-      "byteSize", arangodb::basics::Json(zone, static_cast<double>(_size)))(
-      "unique", arangodb::basics::Json(zone, false));
-
-  return json;
+void CapConstraint::toVelocyPack(VPackBuilder& builder,
+                                 bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("size", VPackValue(_count));
+  builder.add("byteSize", VPackValue(_size));
+  builder.add("unique", VPackValue(false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json CapConstraint::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-
-  return json;
-}
-
-int CapConstraint::insert(arangodb::Transaction*,
-                          TRI_doc_mptr_t const* doc, bool) {
+int CapConstraint::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
+                          bool) {
   if (_size > 0) {
     // there is a size restriction
     auto marker = static_cast<TRI_df_marker_t const*>(
@@ -92,8 +76,7 @@ int CapConstraint::insert(arangodb::Transaction*,
   return TRI_ERROR_NO_ERROR;
 }
 
-int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                          bool) {
+int CapConstraint::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -148,7 +131,6 @@ int CapConstraint::initialize(arangodb::Transaction* trx) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +163,7 @@ int CapConstraint::apply(arangodb::Transaction* trx,
                                                    oldest);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));
+          LOG(WARN) << "cannot cap collection: " << TRI_errno_string(res);
           break;
         }
       } else {
@@ -192,12 +174,10 @@ int CapConstraint::apply(arangodb::Transaction* trx,
       currentSize -= (int64_t)oldSize;
     } else {
       // we should not get here
-      LOG_WARNING("logic error in %s", __FUNCTION__);
+      LOG(WARN) << "logic error in " << __FUNCTION__;
       break;
     }
   }
 
   return res;
 }
-
-

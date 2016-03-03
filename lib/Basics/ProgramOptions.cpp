@@ -22,17 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ProgramOptions.h"
-
-#include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "ProgramOptions/program-options.h"
+#include "Basics/StringUtils.h"
 
-using namespace std;
 using namespace arangodb::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global JSON-ified program options value
@@ -40,12 +37,12 @@ using namespace arangodb::basics;
 
 static std::unique_ptr<TRI_json_t> ProgramOptionsJson;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a key in a map, returns empty if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string const& lookup(std::map<std::string, std::string> const& m, std::string const& key) {
+static std::string const& lookup(std::map<std::string, std::string> const& m,
+                                 std::string const& key) {
   static std::string empty = "";
 
   std::map<std::string, std::string>::const_iterator i = m.find(key);
@@ -66,7 +63,7 @@ static T lookup(std::map<std::string, T> const& m, std::string const& key) {
   typename std::map<std::string, T>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
-    return (T) 0;
+    return (T)0;
   } else {
     return i->second;
   }
@@ -177,7 +174,7 @@ static void ExtractVectorInt32(char const* name, TRI_vector_string_t* ptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractInt64(char const* name, char const* ptr, int64_t* value) {
-  *value = TRI_Int64String(ptr);
+  *value = StringUtils::int64(ptr);
 
   // add to global JSON object
   auto json =
@@ -199,7 +196,7 @@ static void ExtractVectorInt64(char const* name, TRI_vector_string_t* ptr,
 
   for (size_t i = 0; i < ptr->_length; ++i) {
     char const* elem = ptr->_buffer[i];
-    int64_t e = TRI_Int64String(elem);
+    int64_t e = StringUtils::int64(elem);
 
     value->emplace_back(e);
     if (json != nullptr) {
@@ -219,7 +216,8 @@ static void ExtractVectorInt64(char const* name, TRI_vector_string_t* ptr,
 /// @brief extracts a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractString(char const* name, char const* ptr, std::string* value) {
+static void ExtractString(char const* name, char const* ptr,
+                          std::string* value) {
   *value = ptr;
 
   // add to global JSON object
@@ -304,7 +302,7 @@ static void ExtractVectorUInt32(char const* name, TRI_vector_string_t* ptr,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractUInt64(char const* name, char const* ptr, uint64_t* value) {
-  *value = TRI_UInt64String(ptr);
+  *value = StringUtils::uint64(ptr);
 
   // add to global JSON object
   auto json =
@@ -326,7 +324,7 @@ static void ExtractVectorUInt64(char const* name, TRI_vector_string_t* ptr,
 
   for (size_t i = 0; i < ptr->_length; ++i) {
     char const* elem = ptr->_buffer[i];
-    uint64_t e = TRI_UInt64String(elem);
+    uint64_t e = StringUtils::uint64(elem);
 
     value->emplace_back(e);
     if (json != nullptr) {
@@ -342,9 +340,6 @@ static void ExtractVectorUInt64(char const* name, TRI_vector_string_t* ptr,
   }
 }
 
-
-
-
 ProgramOptions::ProgramOptions()
     : _valuesBool(),
       _valuesString(),
@@ -355,7 +350,6 @@ ProgramOptions::ProgramOptions()
       _flags(),
       _seen(),
       _programName() {}
-
 
 ProgramOptions::~ProgramOptions() {
   for (std::map<std::string, char**>::iterator i = _valuesString.begin();
@@ -369,7 +363,8 @@ ProgramOptions::~ProgramOptions() {
     TRI_Free(TRI_CORE_MEM_ZONE, ptr);
   }
 
-  for (std::map<std::string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();
+  for (std::map<std::string, TRI_vector_string_t*>::iterator i =
+           _valuesVector.begin();
        i != _valuesVector.end(); ++i) {
     if ((*i).second != nullptr) {
       TRI_FreeVectorString(TRI_CORE_MEM_ZONE, (*i).second);
@@ -383,7 +378,6 @@ ProgramOptions::~ProgramOptions() {
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse command line
@@ -508,7 +502,6 @@ std::string ProgramOptions::lastError() { return _errorMessage; }
 
 TRI_json_t const* ProgramOptions::getJson() { return ProgramOptionsJson.get(); }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates description for the main section
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,7 +519,8 @@ TRI_PO_section_t* ProgramOptions::setupDescription(
   // generate help options
   std::set<std::string> ho = description.helpOptions();
 
-  for (std::set<std::string>::const_iterator i = ho.begin(); i != ho.end(); ++i) {
+  for (std::set<std::string>::const_iterator i = ho.begin(); i != ho.end();
+       ++i) {
     std::string const& option = *i;
 
     TRI_AddFlagPODescription(desc, option.c_str(), 0, "more help", 0);
@@ -546,7 +540,8 @@ TRI_PO_section_t* ProgramOptions::setupDescription(
 
 void ProgramOptions::setupSubDescription(
     ProgramOptionsDescription const& description, TRI_PO_section_t* desc) {
-  for (std::vector<std::string>::const_iterator i = description._optionNames.begin();
+  for (std::vector<std::string>::const_iterator i =
+           description._optionNames.begin();
        i != description._optionNames.end(); ++i) {
     std::string const& name = *i;
     std::string const& help = lookup(description._helpTexts, name);
@@ -565,7 +560,8 @@ void ProgramOptions::setupSubDescription(
     _options.push_back(option);
 
     // either a string or an vector
-    std::map<std::string, ProgramOptionsDescription::option_type_e>::const_iterator j =
+    std::map<std::string,
+             ProgramOptionsDescription::option_type_e>::const_iterator j =
         description._optionTypes.find(name);
 
     if (j != description._optionTypes.end()) {
@@ -846,5 +842,3 @@ bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
 
   return true;
 }
-
-

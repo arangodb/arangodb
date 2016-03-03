@@ -36,17 +36,13 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestExportHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestExportHandler(rest::GeneralRequest*);
 
-  
  public:
-
   status_t execute() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
@@ -72,7 +68,6 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   void deleteCursor();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restrictions for export
@@ -83,5 +78,3 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

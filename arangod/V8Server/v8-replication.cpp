@@ -22,18 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
-#include "v8-vocbaseprivate.h"
 #include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "Wal/LogfileManager.h"
+#include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
@@ -151,7 +150,7 @@ static void JS_LastLoggerReplication(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
 
-  TRI_replication_dump_t dump(vocbase, 0, true);
+  TRI_replication_dump_t dump(vocbase, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
@@ -262,15 +261,10 @@ static void JS_SynchronizeReplication(
   }
 
   TRI_replication_applier_configuration_t config;
-  TRI_InitConfigurationReplicationApplier(&config);
-  config._endpoint = TRI_DuplicateString(TRI_CORE_MEM_ZONE, endpoint.c_str(),
-                                           endpoint.size());
-  config._database = TRI_DuplicateString(TRI_CORE_MEM_ZONE, database.c_str(),
-                                           database.size());
-  config._username = TRI_DuplicateString(TRI_CORE_MEM_ZONE, username.c_str(),
-                                           username.size());
-  config._password = TRI_DuplicateString(TRI_CORE_MEM_ZONE, password.c_str(),
-                                           password.size());
+  config._endpoint = endpoint;
+  config._database = database;
+  config._username = username;
+  config._password = password;
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
     if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
@@ -300,6 +294,19 @@ static void JS_SynchronizeReplication(
           TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("incremental")));
     }
   }
+ 
+  bool keepBarrier = false;
+  if (object->Has(TRI_V8_ASCII_STRING("keepBarrier"))) {
+    keepBarrier = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
+  }
+
+  std::string shardFollower;
+  if (object->Has(TRI_V8_ASCII_STRING("shardFollower"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("shardFollower"))->IsString()) {
+      shardFollower =
+          TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("shardFollower")));
+    }
+  }
 
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
@@ -311,11 +318,17 @@ static void JS_SynchronizeReplication(
   try {
     res = syncer.run(errorMsg, incremental);
 
+    if (keepBarrier) {
+      result->Set(TRI_V8_ASCII_STRING("barrierId"),
+                  V8TickId(isolate, syncer.stealBarrier()));
+    }
+
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"),
                 V8TickId(isolate, syncer.getLastLogTick()));
 
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string> const& c =
+        syncer.getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
@@ -341,6 +354,9 @@ static void JS_SynchronizeReplication(
           res, "cannot sync from remote endpoint: " + errorMsg);
     }
   }
+
+  // Now check forSynchronousReplication flag and tell ClusterInfo
+  // about a new follower.
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -383,22 +399,19 @@ static void JS_ConfigureApplierReplication(
     // no argument: return the current configuration
 
     TRI_replication_applier_configuration_t config;
-    TRI_InitConfigurationReplicationApplier(&config);
 
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
-      TRI_CopyConfigurationReplicationApplier(
-          &vocbase->_replicationApplier->_configuration, &config);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
+      config.update(&vocbase->_replicationApplier->_configuration);
     }
 
-    TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+    std::unique_ptr<TRI_json_t> json(config.toJson());
 
     if (json == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
     TRI_V8_RETURN(result);
   }
@@ -412,13 +425,11 @@ static void JS_ConfigureApplierReplication(
     }
 
     TRI_replication_applier_configuration_t config;
-    TRI_InitConfigurationReplicationApplier(&config);
 
     // fill with previous configuration
     {
-      READ_LOCKER(vocbase->_replicationApplier->_statusLock);
-      TRI_CopyConfigurationReplicationApplier(
-          &vocbase->_replicationApplier->_configuration, &config);
+      READ_LOCKER(readLocker, vocbase->_replicationApplier->_statusLock);
+      config.update(&vocbase->_replicationApplier->_configuration);
     }
 
     // treat the argument as an object from now on
@@ -426,61 +437,34 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
       if (object->Get(TRI_V8_ASCII_STRING("endpoint"))->IsString()) {
-        std::string endpoint =
+        config._endpoint =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
-
-        if (config._endpoint != nullptr) {
-          TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
-        }
-        config._endpoint = TRI_DuplicateString(
-            TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING("database"))) {
       if (object->Get(TRI_V8_ASCII_STRING("database"))->IsString()) {
-        std::string database =
+        config._database =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
-
-        if (config._database != nullptr) {
-          TRI_Free(TRI_CORE_MEM_ZONE, config._database);
-        }
-        config._database = TRI_DuplicateString(
-            TRI_CORE_MEM_ZONE, database.c_str(), database.size());
       }
     } else {
-      if (config._database == nullptr) {
+      if (config._database.empty()) {
         // no database set, use current
-        config._database =
-            TRI_DuplicateString(TRI_CORE_MEM_ZONE, vocbase->_name);
+        config._database = std::string(vocbase->_name);
       }
     }
 
-    TRI_ASSERT(config._database != nullptr);
-
     if (object->Has(TRI_V8_ASCII_STRING("username"))) {
       if (object->Get(TRI_V8_ASCII_STRING("username"))->IsString()) {
-        std::string username =
+        config._username =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
-
-        if (config._username != nullptr) {
-          TRI_Free(TRI_CORE_MEM_ZONE, config._username);
-        }
-        config._username = TRI_DuplicateString(
-            TRI_CORE_MEM_ZONE, username.c_str(), username.size());
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING("password"))) {
       if (object->Get(TRI_V8_ASCII_STRING("password"))->IsString()) {
-        std::string password =
+        config._password =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
-
-        if (config._password != nullptr) {
-          TRI_Free(TRI_CORE_MEM_ZONE, config._password);
-        }
-        config._password = TRI_DuplicateString(
-            TRI_CORE_MEM_ZONE, password.c_str(), password.size());
       }
     }
 
@@ -558,6 +542,13 @@ static void JS_ConfigureApplierReplication(
       if (object->Get(TRI_V8_ASCII_STRING("requireFromPresent"))->IsBoolean()) {
         config._requireFromPresent = TRI_ObjectToBoolean(
             object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("incremental"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("incremental"))->IsBoolean()) {
+        config._incremental = TRI_ObjectToBoolean(
+            object->Get(TRI_V8_ASCII_STRING("incremental")));
       }
     }
 
@@ -662,14 +653,13 @@ static void JS_ConfigureApplierReplication(
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
+    std::unique_ptr<TRI_json_t> json(config.toJson());
 
     if (json == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
 
     TRI_V8_RETURN(result);
   }
@@ -695,19 +685,24 @@ static void JS_StartApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (args.Length() > 1) {
+  if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_START(<from>)");
   }
 
   TRI_voc_tick_t initialTick = 0;
   bool useTick = false;
 
-  if (args.Length() == 1) {
+  if (args.Length() >= 1) {
     initialTick = TRI_ObjectToUInt64(args[0], true);
     useTick = true;
   }
 
-  int res = vocbase->_replicationApplier->start(initialTick, useTick);
+  TRI_voc_tick_t barrierId = 0;
+  if (args.Length() >= 2) {
+    barrierId = TRI_ObjectToUInt64(args[1], true);
+  }
+
+  int res = vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");

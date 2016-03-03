@@ -41,12 +41,9 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-
 class GatherBlock : public ExecutionBlock {
  public:
-
   GatherBlock(ExecutionEngine*, GatherNode const*);
-
 
   ~GatherBlock();
 
@@ -170,7 +167,6 @@ class GatherBlock : public ExecutionBlock {
   };
 };
 
-
 class BlockWithClients : public ExecutionBlock {
  public:
   BlockWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
@@ -178,7 +174,6 @@ class BlockWithClients : public ExecutionBlock {
 
   virtual ~BlockWithClients() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializeCursor
@@ -261,7 +256,6 @@ class BlockWithClients : public ExecutionBlock {
   virtual int64_t remainingForShard(std::string const& shardId) = 0;
 
  protected:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief getOrSkipSomeForShard
   //////////////////////////////////////////////////////////////////////////////
@@ -278,7 +272,6 @@ class BlockWithClients : public ExecutionBlock {
 
   size_t getClientId(std::string const& shardId);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _shardIdMap: map from shardIds to clientNrs
   //////////////////////////////////////////////////////////////////////////////
@@ -299,14 +292,11 @@ class BlockWithClients : public ExecutionBlock {
   std::vector<bool> _doneForClient;
 };
 
-
 class ScatterBlock : public BlockWithClients {
  public:
-
   ScatterBlock(ExecutionEngine* engine, ScatterNode const* ep,
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
-
 
   ~ScatterBlock() {}
 
@@ -350,14 +340,11 @@ class ScatterBlock : public BlockWithClients {
   std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
-
 class DistributeBlock : public BlockWithClients {
  public:
-
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
-
 
   ~DistributeBlock() {}
 
@@ -460,7 +447,6 @@ class DistributeBlock : public BlockWithClients {
 
   bool _usesDefaultSharding;
 };
-
 
 class RemoteBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
@@ -574,4 +560,3 @@ class RemoteBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

@@ -2,7 +2,7 @@
   "name": "minimal-working-manifest",
   "version": "0.0.0",
   "engines": {
-    "arangodb": "^2.8.0"
+    "arangodb": "^3.0.0"
   },
   "scripts": {
     "setup": "setup.js",

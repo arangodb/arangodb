@@ -23,24 +23,20 @@
 
 #include "V8LineEditor.h"
 
-#include "Basics/StringUtils.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utilities/Completer.h"
 #include "Utilities/ShellBase.h"
 #include "V8/v8-utils.h"
 
-using namespace std;
 using namespace arangodb;
 using namespace arangodb;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the active instance of the editor
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::atomic<V8LineEditor*> SINGLETON(nullptr);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal handler for CTRL-C
@@ -97,24 +93,18 @@ static void SignalHandler(int signal) {
 
 #endif
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8Completer
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
 class V8Completer : public Completer {
-  
  public:
-
   V8Completer() {}
-
 
   ~V8Completer() {}
 
-  
  public:
-
   bool isComplete(std::string const& source, size_t lineno) override final {
     int openParen = 0;
     int openBrackets = 0;
@@ -270,7 +260,6 @@ class V8Completer : public Completer {
             openStrings <= 0 && openComments <= 0);
   }
 
-
   std::vector<std::string> alternatives(char const* text) override final {
     std::vector<std::string> result;
 
@@ -374,8 +363,6 @@ class V8Completer : public Completer {
 };
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +386,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG_ERROR("unable to install signal handler");
+    LOG(ERR) << "unable to install signal handler";
   }
 
 #else
@@ -411,7 +398,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   int res = sigaction(SIGINT, &sa, 0);
 
   if (res != 0) {
-    LOG_ERROR("unable to install signal handler");
+    LOG(ERR) << "unable to install signal handler";
   }
 #endif
 }
@@ -425,5 +412,3 @@ V8LineEditor::~V8LineEditor() {
   TRI_ASSERT(SINGLETON.load() != nullptr);
   SINGLETON.store(nullptr);
 }
-
-

@@ -1,6 +1,6 @@
 !CHAPTER Fulltext functions
 
-AQL offers the following functions to filter data based on [fulltext indexes](../Glossary/README.md#fulltext-index):
+AQL offers the following functions to filter data based on [fulltext indexes](../IndexHandling/Fulltext.md):
 
 - *FULLTEXT(collection, attribute, query, limit)*: 
   Returns all documents from collection *collection* for which the attribute *attribute*

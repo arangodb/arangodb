@@ -29,9 +29,7 @@
 namespace arangodb {
 namespace rest {
 
-
 class RequestUser {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the request user
@@ -48,5 +46,3 @@ class RequestUser {
 }
 
 #endif
-
-

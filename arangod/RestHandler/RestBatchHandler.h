@@ -66,20 +66,16 @@ struct SearchHelper {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestBatchHandler(rest::GeneralRequest*);
 
-
   ~RestBatchHandler();
 
-  
  public:
 
   GeneralHandler::status_t execute();
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the boundary from the body of a multipart message
@@ -108,5 +104,3 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

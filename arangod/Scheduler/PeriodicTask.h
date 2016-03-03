@@ -28,9 +28,11 @@
 #include "Basics/Common.h"
 #include "Scheduler/Task.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,15 +56,14 @@ class PeriodicTask : virtual public Task {
   virtual bool handlePeriod() = 0;
 
  protected:
-
   ~PeriodicTask();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a task specific description in JSON format
+  /// @brief get a task specific description in VelocyPack format
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void getDescription(struct TRI_json_t*) const override;
+  virtual void getDescription(arangodb::velocypack::Builder&) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resets the timer
@@ -71,12 +72,9 @@ class PeriodicTask : virtual public Task {
   void resetTimer(double offset, double interval);
 
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
 
-
   void cleanup() override;
-
 
   bool handleEvent(EventToken, EventType) override;
 
@@ -94,4 +92,3 @@ class PeriodicTask : virtual public Task {
 }
 
 #endif
-

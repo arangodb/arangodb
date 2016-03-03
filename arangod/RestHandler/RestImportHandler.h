@@ -60,17 +60,13 @@ struct RestImportResult {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestImportHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestImportHandler(rest::GeneralRequest*);
 
-  
  public:
-
   status_t execute() override final;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine the collection type from the request
@@ -169,7 +165,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   bool checkKeys(VPackSlice const&) const;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief enumeration for unique constraint handling
@@ -193,5 +188,3 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

@@ -31,8 +31,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VPack value into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,5 +45,3 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
 
 #endif
-
-

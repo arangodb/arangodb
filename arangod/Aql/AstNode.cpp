@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Executor.h"
 #include "Aql/Function.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
@@ -34,16 +35,17 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 #include <array>
 
 using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 using Json = arangodb::basics::Json;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quick translation array from an AST node value type to a JSON type
@@ -86,7 +88,15 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), ">"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), ">="},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "IN"},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "NOT IN"}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), "NOT IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "array =="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "array !="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "array <"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "array <="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array >"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array >="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array IN"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type names for AST nodes
@@ -158,7 +168,17 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_COLLECTION_LIST), "collection list"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND), "n-ary and"},
     {static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR), "n-ary or"},
-    {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"}};
+    {static_cast<int>(NODE_TYPE_AGGREGATIONS), "aggregations array"},
+    {static_cast<int>(NODE_TYPE_WITH), "with collections"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ), "array compare =="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE), "array compare !="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT), "array compare <"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE), "array compare <="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT), "array compare >"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE), "array compare >="},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array compare in"},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array compare not in"},
+    {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"}};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief names for AST node value types
@@ -267,8 +287,8 @@ static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
 
 int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
-  TRI_ASSERT_EXPENSIVE(lhs != nullptr);
-  TRI_ASSERT_EXPENSIVE(rhs != nullptr);
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(rhs != nullptr);
 
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     lhs = ResolveAttribute(lhs);
@@ -283,7 +303,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   if (lType != rType) {
     int diff = static_cast<int>(lType) - static_cast<int>(rType);
 
-    TRI_ASSERT_EXPENSIVE(diff != 0);
+    TRI_ASSERT(diff != 0);
 
     if (diff < 0) {
       return -1;
@@ -407,7 +427,6 @@ static bool IsEmptyString(char const* p, size_t length) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,8 +440,8 @@ AstNode::AstNode(AstNodeType type)
 
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,8 +452,8 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,8 +464,8 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,8 +476,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   setStringValue(v, length);
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,8 +486,8 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   auto query = ast->query();
 
@@ -546,7 +565,9 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
-    case NODE_TYPE_OPERATOR_BINARY_NIN: {
+    case NODE_TYPE_OPERATOR_BINARY_NIN: 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN: 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
       setBoolValue(JsonHelper::getBooleanValue(json.json(), "sorted", false));
       break;
     }
@@ -555,6 +576,11 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       if (sorted) {
         setFlag(DETERMINED_SORTED, VALUE_SORTED);
       }
+      break;
+    }
+    case NODE_TYPE_QUANTIFIER: {
+      std::string const quantifier(JsonHelper::getStringValue(json.json(), "quantifier", ""));
+      setIntValue(Quantifier::FromString(quantifier));
       break;
     }
     case NODE_TYPE_OBJECT:
@@ -591,6 +617,12 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_OPERATOR_BINARY_LE:
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: 
     case NODE_TYPE_OPERATOR_TERNARY:
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
@@ -608,6 +640,7 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_WITH:
       break;
   }
 
@@ -640,8 +673,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
                  arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
-  TRI_ASSERT_EXPENSIVE(flags == 0);
-  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -731,7 +764,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
-    case NODE_TYPE_PASSTHRU: {
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_WITH: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -764,6 +798,15 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_ARRAY_LIMIT:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
 
@@ -790,7 +833,6 @@ AstNode::~AstNode() {
     computedJson = nullptr;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all members of a node are equality comparisons
@@ -869,7 +911,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const {
 /// @brief dump the node (for debugging purposes)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void AstNode::dump(int level) const {
   for (int i = 0; i < level; ++i) {
     std::cout << "  ";
@@ -916,7 +958,7 @@ TRI_json_t* AstNode::computeJson() const {
 
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
-  TRI_ASSERT_EXPENSIVE(isConstant());
+  TRI_ASSERT(isConstant());
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
@@ -1173,10 +1215,19 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     TRI_Insert3ObjectJson(
         zone, node, "sorted",
         TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, getBoolValue()));
+  }
+
+  if (type == NODE_TYPE_QUANTIFIER) {
+    std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+    TRI_Insert3ObjectJson(
+        zone, node, "quantifier",
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, quantifier.c_str(), quantifier.size()));
   }
 
   if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
@@ -1230,6 +1281,189 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   return node;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node value
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
+  auto builder = std::make_shared<VPackBuilder>();
+  if (builder == nullptr) {
+    return nullptr;
+  }
+  toVelocyPackValue(*builder);
+  return builder;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief build a VelocyPack representation of the node value
+///        Can throw Out of Memory Error
+//////////////////////////////////////////////////////////////////////////////
+
+void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        builder.add(VPackValue(VPackValueType::Null));
+        break;
+      case VALUE_TYPE_BOOL:
+        builder.add(VPackValue(value.value._bool));
+        break;
+      case VALUE_TYPE_INT:
+        builder.add(VPackValue(static_cast<double>(value.value._int)));
+        break;
+      case VALUE_TYPE_DOUBLE:
+        builder.add(VPackValue(value.value._double));
+        break;
+      case VALUE_TYPE_STRING:
+        builder.add(VPackValue(std::string(value.value._string, value.length)));
+        break;
+    }
+    return;
+  }
+  if (type == NODE_TYPE_ARRAY) {
+    {
+      VPackArrayBuilder guard(&builder);
+      size_t const n = numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          member->toVelocyPackValue(builder);
+        }
+      }
+    }
+    return;
+  }
+
+  if (type == NODE_TYPE_OBJECT) {
+    {
+      size_t const n = numMembers();
+      VPackObjectBuilder guard(&builder);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          builder.add(VPackValue(member->getStringValue()));
+          member->getMember(0)->toVelocyPackValue(builder);
+        }
+      }
+    }
+    return;
+  }
+
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // TODO Could this be done more efficiently in the builder in place?
+    auto tmp = getMember(0)->toVelocyPackValue();
+    if (tmp != nullptr) {
+      VPackSlice slice = tmp->slice();
+      if (slice.isObject()) {
+        slice = slice.get(getStringValue());
+        if (!slice.isNone()) {
+          builder.add(slice);
+          return;
+        }
+      }
+      builder.add(VPackValue(VPackValueType::Null));
+    }
+  }
+
+  // Do not add anything.
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the node
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  if (builder == nullptr) {
+    return nullptr;
+  }
+  toVelocyPack(*builder, verbose);
+  return builder;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Create a VelocyPack representation of the node
+//////////////////////////////////////////////////////////////////////////////
+
+void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
+  try {
+    VPackObjectBuilder guard(&builder);
+
+    // dump node type
+    builder.add("type", VPackValue(getTypeString()));
+    if (verbose) {
+      builder.add("typeID", VPackValue(static_cast<int>(type)));
+    }
+    if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
+        type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
+      // dump "name" of node
+      builder.add("name", VPackValue(getStringValue()));
+    }
+    if (type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(getData());
+      builder.add("name", VPackValue(func->externalName));
+      // arguments are exported via node members
+    }
+
+    if (type == NODE_TYPE_ARRAY && hasFlag(DETERMINED_SORTED)) {
+      // transport information about a node's sortedness
+      builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
+    }
+ 
+    if (type == NODE_TYPE_VALUE) {
+      // dump value of "value" node
+      builder.add(VPackValue("value"));
+      toVelocyPackValue(builder);
+
+      if (verbose) {
+        builder.add("vType", VPackValue(getValueTypeString()));
+        builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
+      }
+    }
+
+    if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+      builder.add("sorted", VPackValue(getBoolValue()));
+    }
+    if (type == NODE_TYPE_QUANTIFIER) {
+      std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+      builder.add("quantifier", VPackValue(quantifier));
+    }
+
+    if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(getData());
+
+      TRI_ASSERT(variable != nullptr);
+      builder.add("name", VPackValue(variable->name));
+      builder.add("id", VPackValue(static_cast<double>(variable->id)));
+    }
+
+    if (type == NODE_TYPE_EXPANSION) {
+      builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
+    }
+
+    // dump sub-nodes
+    size_t const n = members.size();
+    if (n > 0) {
+      builder.add(VPackValue("subNodes"));
+      VPackArrayBuilder guard(&builder);
+      for (size_t i = 0; i < n; ++i) {
+        AstNode* member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          member->toVelocyPack(builder, verbose);
+        }
+      }
+    }
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1717,7 +1951,16 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN || type == NODE_TYPE_RANGE ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN || 
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN ||
+      type == NODE_TYPE_RANGE ||
       type == NODE_TYPE_INDEXED_ACCESS || type == NODE_TYPE_PASSTHRU) {
     // a logical operator is simple if its operands are simple
     // a comparison operator is simple if both bounds are simple
@@ -1828,6 +2071,21 @@ bool AstNode::isComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_GE ||
           type == NODE_TYPE_OPERATOR_BINARY_IN ||
           type == NODE_TYPE_OPERATOR_BINARY_NIN);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is an array comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isArrayComparisonOperator() const {
+  return (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+          type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2306,6 +2564,29 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
+  if (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // not used by V8
+    TRI_ASSERT(numMembers() == 3);
+    auto it = Operators.find(type);
+    TRI_ASSERT(it != Operators.end());
+
+    getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(' ');
+    buffer->appendText(Quantifier::Stringify(getMember(2)->getIntValue(true)));
+    buffer->appendChar(' ');
+    buffer->appendText((*it).second);
+    buffer->appendChar(' ');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
@@ -2442,6 +2723,16 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_WITH:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
 
@@ -2585,11 +2876,20 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_WITH:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_QUANTIFIER:
       break;
   }
   return ret;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
@@ -2635,7 +2935,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
 ////////////////////////////////////////////////////////////////////////////////
@@ -2657,5 +2956,3 @@ std::ostream& operator<<(std::ostream& stream,
   stream << arangodb::aql::AstNode::toString(&node);
   return stream;
 }
-
-

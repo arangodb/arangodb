@@ -29,7 +29,7 @@
 #include <sys/prctl.h>
 #endif
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,18 +82,6 @@ void TRI_InitThread(TRI_thread_t* thread) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current process identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_pid_t TRI_CurrentProcessId() { return getpid(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current thread identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_tid_t TRI_CurrentThreadId() { return pthread_self(); }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,7 +98,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   if (rc != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("could not start thread: %s", strerror(errno));
+    LOG(ERR) << "could not start thread: " << strerror(errno);
 
     TRI_Free(TRI_CORE_MEM_ZONE, d);
     return false;
@@ -124,22 +112,10 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief trys to stops a thread
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StopThread(TRI_thread_t* thread) { return pthread_cancel(*thread); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief detaches a thread
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_DetachThread(TRI_thread_t* thread) { return pthread_detach(*thread); }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a thread to finish
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, 0); }
+int TRI_JoinThread(TRI_thread_t* thread) { return pthread_join(*thread, nullptr); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we are the thread
@@ -172,7 +148,7 @@ void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {
   int s = pthread_setaffinity_np(*thread, sizeof(cpu_set_t), &cpuset);
 
   if (s != 0) {
-    LOG_ERROR("cannot set affinity to core %d: %s", (int)core, strerror(errno));
+    LOG(ERR) << "cannot set affinity to core " << core << ": " << strerror(errno);
   }
 
 #endif

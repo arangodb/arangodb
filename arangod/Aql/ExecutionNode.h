@@ -35,6 +35,10 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 class Ast;
 struct Collection;
@@ -91,7 +95,6 @@ class ExecutionNode {
     INDEX = 23
   };
 
-  
   ExecutionNode() = delete;
   ExecutionNode(ExecutionNode const&) = delete;
   ExecutionNode& operator=(ExecutionNode const&) = delete;
@@ -121,7 +124,6 @@ class ExecutionNode {
 
   virtual ~ExecutionNode() {}
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory from json.
@@ -219,6 +221,17 @@ class ExecutionNode {
   bool hasParent() const { return (_parents.size() == 1); }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the first parent, or a nullptr if none present
+  //////////////////////////////////////////////////////////////////////////////
+
+  ExecutionNode* getFirstParent() const {
+    if (_parents.empty()) {
+      return nullptr;
+    }
+    return _parents[0];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief add the node parents to a vector
   //////////////////////////////////////////////////////////////////////////////
 
@@ -226,6 +239,27 @@ class ExecutionNode {
     for (auto const& it : _parents) {
       result.emplace_back(it);
     }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the node and its dependencies as a vector
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ExecutionNode*> getDependencyChain(bool includeSelf) {
+    std::vector<ExecutionNode*> result;
+
+    auto current = this;
+    while (current != nullptr) {
+      if (includeSelf || current != this) {
+        result.emplace_back(current);
+      }
+      if (! current->hasDependency()) {
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+
+    return result;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -418,18 +452,18 @@ class ExecutionNode {
 
   bool walk(WalkerWorker<ExecutionNode>* worker);
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
+  ///////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON, returns an AUTOFREE Json object
+  /// @brief toVelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief toJson
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                            bool) const = 0;
+  virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                                  bool) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief getVariablesUsedHere, returning a vector
@@ -461,7 +495,7 @@ class ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_set<VariableId> getVariableIdsUsedHere() const {
-    auto v(std::move(getVariablesUsedHere()));
+    auto v(getVariablesUsedHere());
 
     std::unordered_set<VariableId> ids;
     ids.reserve(v.size());
@@ -652,7 +686,6 @@ class ExecutionNode {
 
   ExecutionNode const* getLoop() const;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for (optional) variables from json.
@@ -670,11 +703,10 @@ class ExecutionNode {
                               char const* which);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief toJsonHelper, for a generic node
+  /// @brief toVelocyPackHelper, for a generic node
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJsonHelperGeneric(arangodb::basics::Json&,
-                                             TRI_memory_zone_t*, bool) const;
+  void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set regs to be deleted
@@ -684,7 +716,6 @@ class ExecutionNode {
     _regsToClear = toClear;
   }
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief node id
@@ -762,7 +793,6 @@ class ExecutionNode {
 
   std::unordered_set<RegisterId> _regsToClear;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief NodeType to string mapping
@@ -777,7 +807,6 @@ class ExecutionNode {
 
   static RegisterId const MaxRegisterId;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SingletonNode
@@ -803,11 +832,11 @@ class SingletonNode : public ExecutionNode {
   NodeType getType() const override final { return SINGLETON; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -828,7 +857,6 @@ class SingletonNode : public ExecutionNode {
 
   double estimateCost(size_t&) const override final;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class EnumerateCollectionNode
@@ -867,11 +895,11 @@ class EnumerateCollectionNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -920,7 +948,6 @@ class EnumerateCollectionNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the database
@@ -947,7 +974,6 @@ class EnumerateCollectionNode : public ExecutionNode {
   bool _random;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -957,7 +983,6 @@ class EnumerateListNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
-
 
  public:
   EnumerateListNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
@@ -978,11 +1003,11 @@ class EnumerateListNode : public ExecutionNode {
   NodeType getType() const override final { return ENUMERATE_LIST; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1023,12 +1048,17 @@ class EnumerateListNode : public ExecutionNode {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return in variable
+  //////////////////////////////////////////////////////////////////////////////
+
+  Variable const* inVariable() const { return _inVariable; }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return out variable
   //////////////////////////////////////////////////////////////////////////////
 
   Variable const* outVariable() const { return _outVariable; }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief input variable to read from
@@ -1042,7 +1072,6 @@ class EnumerateListNode : public ExecutionNode {
 
   Variable const* _outVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class LimitNode
@@ -1075,11 +1104,11 @@ class LimitNode : public ExecutionNode {
   NodeType getType() const override final { return LIMIT; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1142,7 +1171,6 @@ class LimitNode : public ExecutionNode {
   bool _fullCount;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1154,7 +1182,6 @@ class CalculationNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-
   CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
                   Variable const* conditionVariable,
                   Variable const* outVariable)
@@ -1167,13 +1194,11 @@ class CalculationNode : public ExecutionNode {
     TRI_ASSERT(_outVariable != nullptr);
   }
 
-
   CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
                   Variable const* outVariable)
       : CalculationNode(plan, id, expr, nullptr, outVariable) {}
 
   CalculationNode(ExecutionPlan*, arangodb::basics::Json const& base);
-
 
   ~CalculationNode() { delete _expression; }
 
@@ -1184,11 +1209,11 @@ class CalculationNode : public ExecutionNode {
   NodeType getType() const override final { return CALCULATION; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1281,7 +1306,6 @@ class CalculationNode : public ExecutionNode {
 
   bool canThrow() override { return _expression->canThrow(); }
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an optional condition variable for the calculation
@@ -1310,7 +1334,6 @@ class CalculationNode : public ExecutionNode {
   bool _canRemoveIfThrows;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1319,7 +1342,6 @@ class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class SubqueryBlock;
-
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::basics::Json const& base);
@@ -1346,11 +1368,11 @@ class SubqueryNode : public ExecutionNode {
   Variable const* outVariable() const { return _outVariable; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1423,7 +1445,6 @@ class SubqueryNode : public ExecutionNode {
 
   bool canThrow() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief we need to have an expression and where to write the result
@@ -1437,7 +1458,6 @@ class SubqueryNode : public ExecutionNode {
 
   Variable const* _outVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class FilterNode
@@ -1467,11 +1487,11 @@ class FilterNode : public ExecutionNode {
   NodeType getType() const override final { return FILTER; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1510,7 +1530,6 @@ class FilterNode : public ExecutionNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is an auxilliary struct for processed sort criteria information
@@ -1569,7 +1588,6 @@ struct SortInformation {
   }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1598,11 +1616,11 @@ class ReturnNode : public ExecutionNode {
   NodeType getType() const override final { return RETURN; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1634,7 +1652,8 @@ class ReturnNode : public ExecutionNode {
     vars.emplace(_inVariable);
   }
 
-  
+  Variable const* inVariable() const { return _inVariable; }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief we need to know the offset and limit
@@ -1642,7 +1661,6 @@ class ReturnNode : public ExecutionNode {
 
   Variable const* _inVariable;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class NoResultsNode
@@ -1669,11 +1687,12 @@ class NoResultsNode : public ExecutionNode {
   NodeType getType() const override final { return NORESULTS; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief export to JSON
+  /// @brief export to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void toJsonHelper(arangodb::basics::Json&, TRI_memory_zone_t*,
-                    bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone ExecutionNode recursively
@@ -1699,4 +1718,3 @@ class NoResultsNode : public ExecutionNode {
 }  // namespace arangodb
 
 #endif
-

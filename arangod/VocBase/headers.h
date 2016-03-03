@@ -27,9 +27,10 @@
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
 
+// turn this on to get some (slow) debugging and asserts for master pointers
+#undef VALIDATE_MASTER_POINTERS
 
 class TRI_headers_t {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the headers
@@ -43,7 +44,6 @@ class TRI_headers_t {
 
   ~TRI_headers_t();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the number of allocated headers
@@ -61,7 +61,7 @@ class TRI_headers_t {
   /// @brief move an existing header to the end of the linked list
   //////////////////////////////////////////////////////////////////////////////
 
-  void moveBack(TRI_doc_mptr_t*, TRI_doc_mptr_t*);
+  void moveBack(TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink an existing header from the linked list, without freeing it
@@ -73,14 +73,14 @@ class TRI_headers_t {
   /// @brief move an existing header to another position in the linked list
   //////////////////////////////////////////////////////////////////////////////
 
-  void move(TRI_doc_mptr_t*, TRI_doc_mptr_t*);
+  void move(TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief relink an existing header into the linked list, at its original
   /// position
   //////////////////////////////////////////////////////////////////////////////
 
-  void relink(TRI_doc_mptr_t*, TRI_doc_mptr_t*);
+  void relink(TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request a new header
@@ -129,7 +129,18 @@ class TRI_headers_t {
 
   inline int64_t size() const { return _totalSize; }
 
-  
+ private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief validates the linked list
+  //////////////////////////////////////////////////////////////////////////////
+
+#ifdef VALIDATE_MASTER_POINTERS
+  void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*);
+#else
+  inline void validate (char const*, TRI_doc_mptr_t const*, TRI_doc_mptr_t const*) {}
+#endif
+
  private:
   TRI_doc_mptr_t const* _freelist;  // free headers
 
@@ -143,5 +154,3 @@ class TRI_headers_t {
 };
 
 #endif
-
-

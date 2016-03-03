@@ -31,7 +31,7 @@
 
 struct TRI_document_collection_t;
 struct TRI_collection_t;
-struct TRI_datafile_s;
+struct TRI_datafile_t;
 
 namespace arangodb {
 
@@ -40,7 +40,6 @@ class Ditches;
 class Ditch {
   friend class Ditches;
 
-  
  protected:
   Ditch(Ditch const&) = delete;
   Ditch& operator=(Ditch const&) = delete;
@@ -50,7 +49,6 @@ class Ditch {
  public:
   virtual ~Ditch();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ditch type
@@ -66,7 +64,6 @@ class Ditch {
     TRI_DITCH_COLLECTION_DROP
   };
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the ditch type
@@ -110,18 +107,15 @@ class Ditch {
 
   struct TRI_document_collection_t* collection() const;
 
-  
  protected:
   Ditches* _ditches;
 
-  
  private:
   Ditch* _prev;
   Ditch* _next;
   char const* _filename;
   int _line;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document ditch
@@ -149,7 +143,6 @@ class DocumentDitch : public Ditch {
   bool _usedByTransaction;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication ditch
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +158,6 @@ class ReplicationDitch : public Ditch {
 
   char const* typeName() const override final { return "replication"; }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction ditch
@@ -183,16 +175,15 @@ class CompactionDitch : public Ditch {
   char const* typeName() const override final { return "compaction"; }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile removal ditch
 ////////////////////////////////////////////////////////////////////////////////
 
 class DropDatafileDitch : public Ditch {
  public:
-  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                     void* data,
-                    std::function<void(struct TRI_datafile_s*, void*)>,
+                    std::function<void(struct TRI_datafile_t*, void*)>,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -205,11 +196,10 @@ class DropDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile rename ditch
@@ -217,9 +207,9 @@ class DropDatafileDitch : public Ditch {
 
 class RenameDatafileDitch : public Ditch {
  public:
-  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_s* datafile,
+  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                       void* data,
-                      std::function<void(struct TRI_datafile_s*, void*)>,
+                      std::function<void(struct TRI_datafile_t*, void*)>,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -232,11 +222,10 @@ class RenameDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_s* _datafile;
+  struct TRI_datafile_t* _datafile;
   void* _data;
-  std::function<void(struct TRI_datafile_s*, void*)> _callback;
+  std::function<void(struct TRI_datafile_t*, void*)> _callback;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection unload ditch
@@ -288,13 +277,11 @@ class DropCollectionDitch : public Ditch {
   std::function<bool(struct TRI_collection_t*, void*)> _callback;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doubly linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
 class Ditches {
-  
  public:
   Ditches(Ditches const&) = delete;
   Ditches& operator=(Ditches const&) = delete;
@@ -303,7 +290,6 @@ class Ditches {
   explicit Ditches(struct TRI_document_collection_t*);
   ~Ditches();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the ditches - to be called on shutdown only
@@ -388,8 +374,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropDatafileDitch* createDropDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -397,8 +383,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   RenameDatafileDitch* createRenameDatafileDitch(
-      struct TRI_datafile_s* datafile, void* data,
-      std::function<void(struct TRI_datafile_s*, void*)> callback,
+      struct TRI_datafile_t* datafile, void* data,
+      std::function<void(struct TRI_datafile_t*, void*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -419,7 +405,6 @@ class Ditches {
       std::function<bool(struct TRI_collection_t*, void*)> callback,
       char const* filename, int line);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief inserts the ditch into the linked list of ditches
@@ -433,11 +418,10 @@ class Ditches {
 
   void unlink(Ditch*);
 
-  
  private:
   struct TRI_document_collection_t* _collection;
 
-  arangodb::basics::Mutex _lock;
+  arangodb::Mutex _lock;
   Ditch* _begin;
   Ditch* _end;
   uint64_t _numDocumentDitches;
@@ -445,5 +429,3 @@ class Ditches {
 }
 
 #endif
-
-

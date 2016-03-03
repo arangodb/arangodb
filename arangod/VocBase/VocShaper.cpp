@@ -32,12 +32,11 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts an attribute id from a marker
@@ -298,8 +297,6 @@ static bool EqualNameKeyAttributePath(TRI_associative_pointer_t*,
                                 ee->_aidLength * sizeof(TRI_shape_aid_t));
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a shaper
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +375,6 @@ VocShaper::~VocShaper() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shape by identifier
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +383,7 @@ TRI_shape_t const* VocShaper::lookupShapeId(TRI_shape_sid_t sid) {
   TRI_shape_t const* shape = Shaper::lookupSidBasicShape(sid);
 
   if (shape == nullptr) {
-    READ_LOCKER(_shapeIdsLock);
+    READ_LOCKER(readLocker, _shapeIdsLock);
 
     shape = static_cast<TRI_shape_t const*>(
         TRI_LookupByKeyAssociativePointer(&_shapeIds, &sid));
@@ -402,7 +398,7 @@ TRI_shape_t const* VocShaper::lookupShapeId(TRI_shape_sid_t sid) {
 
 char const* VocShaper::lookupAttributeId(TRI_shape_aid_t aid) {
   {
-    READ_LOCKER(_attributeIdsLock);
+    READ_LOCKER(readLocker, _attributeIdsLock);
 
     auto element = static_cast<void const*>(
         TRI_LookupByKeyAssociativePointer(&_attributeIds, &aid));
@@ -421,7 +417,7 @@ char const* VocShaper::lookupAttributeId(TRI_shape_aid_t aid) {
 
 TRI_shape_path_t const* VocShaper::lookupAttributePathByPid(
     TRI_shape_pid_t pid) {
-  READ_LOCKER(_attributePathsByPidLock);
+  READ_LOCKER(readLocker, _attributePathsByPidLock);
 
   return static_cast<TRI_shape_path_t const*>(
       TRI_LookupByKeyAssociativePointer(&_attributePathsByPid, &pid));
@@ -453,6 +449,11 @@ TRI_shape_pid_t VocShaper::lookupAttributePathByName(char const* name) {
 
 char const* VocShaper::attributeNameShapePid(TRI_shape_pid_t pid) {
   TRI_shape_path_t const* path = lookupAttributePathByPid(pid);
+
+  if (path == nullptr) {
+    return nullptr;
+  }
+
   char const* e = (char const*)path;
 
   return e + sizeof(TRI_shape_path_t) +
@@ -467,7 +468,7 @@ TRI_shape_aid_t VocShaper::lookupAttributeByName(char const* name) {
   TRI_ASSERT(name != nullptr);
 
   {
-    READ_LOCKER(_attributeNamesLock);
+    READ_LOCKER(readLocker, _attributeNamesLock);
 
     auto element = static_cast<void const*>(
         TRI_LookupByKeyAssociativePointer(&_attributeNames, name));
@@ -505,11 +506,11 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 
     // lock the index and check that the element is still missing
     {
-      MUTEX_LOCKER(_attributeCreateLock);
+      MUTEX_LOCKER(mutexLocker, _attributeCreateLock);
 
       void const* p;
       {
-        READ_LOCKER(_attributeNamesLock);
+        READ_LOCKER(readLocker, _attributeNamesLock);
         p = TRI_LookupByKeyAssociativePointer(&_attributeNames, name);
       }
 
@@ -520,6 +521,22 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 
       TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      {
+        // make room for one more element
+        WRITE_LOCKER(writeLocker, _attributeIdsLock);
+        if (!TRI_ReserveAssociativePointer(&_attributeIds, 1)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+      }
+
+      {
+        // make room for one more element
+        WRITE_LOCKER(writeLocker, _attributeNamesLock);
+        if (!TRI_ReserveAssociativePointer(&_attributeNames, 1)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
       }
 
       // write marker into wal
@@ -534,7 +551,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 
       void* TRI_UNUSED f;
       {
-        WRITE_LOCKER(_attributeIdsLock);
+        WRITE_LOCKER(writeLocker, _attributeIdsLock);
         f = TRI_InsertKeyAssociativePointer(
             &_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
       }
@@ -542,7 +559,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 
       // enter into the dictionaries
       {
-        WRITE_LOCKER(_attributeNamesLock);
+        WRITE_LOCKER(writeLocker, _attributeNamesLock);
         f = TRI_InsertKeyAssociativePointer(
             &_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
       }
@@ -556,8 +573,8 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG_WARNING("could not save attribute marker in log: %s",
-              TRI_errno_string(res));
+  LOG(WARN) << "could not save attribute marker in log: "
+            << TRI_errno_string(res);
 
   return 0;
 }
@@ -574,7 +591,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
   TRI_shape_t const* found = Shaper::lookupBasicShape(shape);
 
   if (found == nullptr) {
-    READ_LOCKER(_shapeDictionaryLock);
+    READ_LOCKER(readLocker, _shapeDictionaryLock);
     found = static_cast<TRI_shape_t const*>(
         TRI_LookupByElementAssociativePointer(&_shapeDictionary, shape));
   }
@@ -604,10 +621,10 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
                                       document->_info.id(), shape);
 
     // lock the index and check the element is still missing
-    MUTEX_LOCKER(_shapeCreateLock);
+    MUTEX_LOCKER(mutexLocker, _shapeCreateLock);
 
     {
-      READ_LOCKER(_shapeDictionaryLock);
+      READ_LOCKER(readLocker, _shapeDictionaryLock);
       found = static_cast<TRI_shape_t const*>(
           TRI_LookupByElementAssociativePointer(&_shapeDictionary, shape));
     }
@@ -620,6 +637,22 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
 
     TRI_IF_FAILURE("ShaperWriteShapeMarker") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    {
+      // make room for one more element
+      WRITE_LOCKER(writeLocker, _shapeIdsLock);
+      if (!TRI_ReserveAssociativePointer(&_shapeIds, 1)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+
+    {
+      // make room for one more element
+      WRITE_LOCKER(writeLocker, _shapeDictionaryLock);
+      if (!TRI_ReserveAssociativePointer(&_shapeDictionary, 1)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
     }
 
     // write marker into wal
@@ -638,24 +671,24 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
     {
-      WRITE_LOCKER(_shapeIdsLock);
+      WRITE_LOCKER(writeLocker, _shapeIdsLock);
       void* f =
           TRI_InsertKeyAssociativePointer(&_shapeIds, &sid, (void*)m, false);
 
       if (f != nullptr) {
-        LOG_ERROR("logic error when inserting shape into id dictionary");
+        LOG(ERR) << "logic error when inserting shape into id dictionary";
       }
 
       TRI_ASSERT(f == nullptr);  // will abort here
     }
 
     {
-      WRITE_LOCKER(_shapeDictionaryLock);
+      WRITE_LOCKER(writeLocker, _shapeDictionaryLock);
       void* f = TRI_InsertElementAssociativePointer(&_shapeDictionary, (void*)m,
                                                     false);
 
       if (f != nullptr) {
-        LOG_ERROR("logic error when inserting shape into dictionary");
+        LOG(ERR) << "logic error when inserting shape into dictionary";
       }
 
       TRI_ASSERT(f == nullptr);  // will abort here
@@ -669,7 +702,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(res));
+  LOG(WARN) << "could not save shape marker in log: " << TRI_errno_string(res);
 
   // must not free the shape here, as the caller is going to free it...
 
@@ -685,20 +718,20 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     char* p = ((char*)marker) + sizeof(TRI_df_shape_marker_t);
     TRI_shape_t* l = (TRI_shape_t*)p;
 
-    MUTEX_LOCKER(_shapeCreateLock);
+    MUTEX_LOCKER(mutexLocker, _shapeCreateLock);
 
     if (expectedOldPosition != nullptr) {
       char* old = static_cast<char*>(expectedOldPosition);
       void const* found;
       {
-        READ_LOCKER(_shapeIdsLock);
+        READ_LOCKER(readLocker, _shapeIdsLock);
         found = TRI_LookupByKeyAssociativePointer(&_shapeIds, &l->_sid);
       }
 
       if (found != nullptr) {
         if (old + sizeof(TRI_df_shape_marker_t) != found &&
             old + sizeof(arangodb::wal::shape_marker_t) != found) {
-          LOG_TRACE("got unexpected shape position");
+          LOG(TRACE) << "got unexpected shape position";
           // do not insert if position doesn't match the expectation
           // this is done to ensure that the WAL collector doesn't insert a
           // shape pointer
@@ -712,7 +745,7 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // and re-insert the marker with the new pointer
     void* f;
     {
-      WRITE_LOCKER(_shapeIdsLock);
+      WRITE_LOCKER(writeLocker, _shapeIdsLock);
       f = TRI_InsertKeyAssociativePointer(&_shapeIds, &l->_sid, l, true);
     }
 
@@ -721,13 +754,13 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
     if (f != nullptr) {
-      LOG_TRACE("shape already existed in shape ids array");
+      LOG(TRACE) << "shape already existed in shape ids array";
     }
 
     // same for the shape dictionary
     // delete and re-insert
     {
-      WRITE_LOCKER(_shapeDictionaryLock);
+      WRITE_LOCKER(writeLocker, _shapeDictionaryLock);
       f = TRI_InsertElementAssociativePointer(&_shapeDictionary, l, true);
     }
 
@@ -736,18 +769,18 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
     if (f != nullptr) {
-      LOG_TRACE("shape already existed in shape dictionary");
+      LOG(TRACE) << "shape already existed in shape dictionary";
     }
   } else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*)marker;
     char* p = ((char*)m) + sizeof(TRI_df_attribute_marker_t);
 
-    MUTEX_LOCKER(_attributeCreateLock);
+    MUTEX_LOCKER(mutexLocker, _attributeCreateLock);
 
     if (expectedOldPosition != nullptr) {
       void const* found;
       {
-        READ_LOCKER(_attributeNamesLock);
+        READ_LOCKER(readLocker, _attributeNamesLock);
         found = TRI_LookupByKeyAssociativePointer(&_attributeNames, p);
       }
 
@@ -756,7 +789,7 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
         // this is done to ensure that the WAL collector doesn't insert a shape
         // pointer
         // that has already been garbage collected by the compactor thread
-        LOG_TRACE("got unexpected attribute position");
+        LOG(TRACE) << "got unexpected attribute position";
         return TRI_ERROR_NO_ERROR;
       }
     }
@@ -766,7 +799,7 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // and re-insert same attribute with adjusted pointer
     void* f;
     {
-      WRITE_LOCKER(_attributeNamesLock);
+      WRITE_LOCKER(writeLocker, _attributeNamesLock);
       f = TRI_InsertKeyAssociativePointer(&_attributeNames, p, m, true);
     }
 
@@ -775,13 +808,13 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
     if (f != nullptr) {
-      LOG_TRACE("attribute already existed in attribute names dictionary");
+      LOG(TRACE) << "attribute already existed in attribute names dictionary";
     }
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
     {
-      WRITE_LOCKER(_attributeIdsLock);
+      WRITE_LOCKER(writeLocker, _attributeIdsLock);
       f = TRI_InsertKeyAssociativePointer(&_attributeIds, &m->_aid, m, true);
     }
 
@@ -790,7 +823,7 @@ int VocShaper::moveMarker(TRI_df_marker_t* marker, void* expectedOldPosition) {
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
     if (f != nullptr) {
-      LOG_TRACE("attribute already existed in attribute ids dictionary");
+      LOG(TRACE) << "attribute already existed in attribute ids dictionary";
     }
   }
 
@@ -815,13 +848,13 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
 
   TRI_shape_t* l = (TRI_shape_t*)p;
 
-  LOG_TRACE("found shape %lu", (unsigned long)l->_sid);
+  LOG(TRACE) << "found shape " << l->_sid;
 
-  MUTEX_LOCKER(_shapeCreateLock);
+  MUTEX_LOCKER(mutexLocker, _shapeCreateLock);
 
   void* f;
   {
-    WRITE_LOCKER(_shapeDictionaryLock);
+    WRITE_LOCKER(writeLocker, _shapeDictionaryLock);
     f = TRI_InsertElementAssociativePointer(&_shapeDictionary, l, false);
   }
 
@@ -830,23 +863,19 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
     bool const isIdentical = EqualElementShape(nullptr, f, l);
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG_TRACE(
-          "found duplicate shape markers for id %llu in collection '%s' in "
-          "shape dictionary",
-          (unsigned long long)l->_sid, name.c_str());
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid
+                 << " in collection '" << name << "' in shape dictionary";
     } else {
-      LOG_ERROR(
-          "found heterogenous shape markers for id %llu in collection '%s' in "
-          "shape dictionary",
-          (unsigned long long)l->_sid, name.c_str());
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid
+               << " in collection '" << name << "' in shape dictionary";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
     }
   }
 
   {
-    WRITE_LOCKER(_shapeIdsLock);
+    WRITE_LOCKER(writeLocker, _shapeIdsLock);
     f = TRI_InsertKeyAssociativePointer(&_shapeIds, &l->_sid, l, false);
   }
 
@@ -856,16 +885,12 @@ int VocShaper::insertShape(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG_TRACE(
-          "found duplicate shape markers for id %llu in collection '%s' in "
-          "shape ids table",
-          (unsigned long long)l->_sid, name.c_str());
+      LOG(TRACE) << "found duplicate shape markers for id " << l->_sid
+                 << " in collection '" << name << "' in shape ids table";
     } else {
-      LOG_ERROR(
-          "found heterogenous shape markers for id %llu in collection '%s' in "
-          "shape ids table",
-          (unsigned long long)l->_sid, name.c_str());
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+      LOG(ERR) << "found heterogenous shape markers for id " << l->_sid
+               << " in collection '" << name << "' in shape ids table";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
     }
@@ -901,14 +926,14 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
   }
 
   TRI_ASSERT(aid != 0);
-  LOG_TRACE("found attribute '%s', aid: %lu", name, (unsigned long)aid);
+  LOG(TRACE) << "found attribute '" << name << "', aid: " << aid;
 
   // remove an existing temporary attribute if present
-  MUTEX_LOCKER(_attributeCreateLock);
+  MUTEX_LOCKER(mutexLocker, _attributeCreateLock);
 
   void* found;
   {
-    WRITE_LOCKER(_attributeNamesLock);
+    WRITE_LOCKER(writeLocker, _attributeNamesLock);
     found = TRI_InsertKeyAssociativePointer(&_attributeNames, name,
                                             (void*)marker, false);
   }
@@ -920,16 +945,16 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name,
-                cname.c_str());
+      LOG(TRACE) << "found duplicate attribute name '" << name
+                 << "' in collection '" << cname << "'";
     } else {
-      LOG_ERROR("found heterogenous attribute name '%s' in collection '%s'",
-                name, cname.c_str());
+      LOG(ERR) << "found heterogenous attribute name '" << name
+               << "' in collection '" << cname << "'";
     }
   }
 
   {
-    WRITE_LOCKER(_attributeIdsLock);
+    WRITE_LOCKER(writeLocker, _attributeIdsLock);
     found = TRI_InsertKeyAssociativePointer(&_attributeIds, &aid, (void*)marker,
                                             false);
   }
@@ -940,11 +965,11 @@ int VocShaper::insertAttribute(TRI_df_marker_t const* marker,
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'",
-                (unsigned long long)aid, cname.c_str());
+      LOG(TRACE) << "found duplicate attribute id '" << aid
+                 << "' in collection '" << cname << "'";
     } else {
-      LOG_ERROR("found heterogenous attribute id '%llu' in collection '%s'",
-                (unsigned long long)aid, cname.c_str());
+      LOG(ERR) << "found heterogenous attribute id '" << aid
+               << "' in collection '" << cname << "'";
     }
   }
 
@@ -972,7 +997,7 @@ TRI_shape_access_t const* VocShaper::findAccessor(TRI_shape_sid_t sid,
 
   TRI_shape_access_t const* found = nullptr;
   {
-    READ_LOCKER(_accessorLock[i]);
+    READ_LOCKER(readLocker, _accessorLock[i]);
 
     found = static_cast<TRI_shape_access_t const*>(
         TRI_LookupByElementAssociativePointer(&_accessors[i], &search));
@@ -993,7 +1018,7 @@ TRI_shape_access_t const* VocShaper::findAccessor(TRI_shape_sid_t sid,
   // acquire the write-lock and try to insert our own accessor
 
   {
-    WRITE_LOCKER(_accessorLock[i]);
+    WRITE_LOCKER(writeLocker, _accessorLock[i]);
     found = static_cast<TRI_shape_access_t const*>(
         TRI_InsertElementAssociativePointer(
             &_accessors[i],
@@ -1024,17 +1049,16 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   TRI_shape_access_t const* accessor = findAccessor(document->_sid, pid);
 
   if (accessor == nullptr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_TRACE("failed to get accessor for sid %llu and path %llu",
-              (unsigned long long)document->_sid, (unsigned long long)pid);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(TRACE) << "failed to get accessor for sid " << document->_sid
+               << " and path " << pid;
 #endif
     return false;
   }
 
   if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_TRACE("expecting any object for path %llu, got nothing",
-              (unsigned long long)pid);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(TRACE) << "expecting any object for path " << pid << ", got nothing";
 #endif
     *shape = nullptr;
 
@@ -1044,10 +1068,9 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   *shape = lookupShapeId(accessor->_resultSid);
 
   if (*shape == nullptr) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_TRACE("expecting any object for path %llu, got unknown shape id %llu",
-              (unsigned long long)pid,
-              (unsigned long long)accessor->_resultSid);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(TRACE) << "expecting any object for path " << pid
+               << ", got unknown shape id " << accessor->_resultSid;
 #endif
     *shape = nullptr;
 
@@ -1055,10 +1078,9 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   }
 
   if (sid != 0 && sid != accessor->_resultSid) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_TRACE("expecting sid %llu for path %llu, got sid %llu",
-              (unsigned long long)sid, (unsigned long long)pid,
-              (unsigned long long)accessor->_resultSid);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(TRACE) << "expecting sid " << sid << " for path " << pid << ", got sid "
+               << accessor->_resultSid;
 #endif
     return false;
   }
@@ -1066,16 +1088,15 @@ bool VocShaper::extractShapedJson(TRI_shaped_json_t const* document,
   bool ok = TRI_ExecuteShapeAccessor(accessor, document, result);
 
   if (!ok) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_TRACE("failed to get accessor for sid %llu and path %llu",
-              (unsigned long long)document->_sid, (unsigned long long)pid);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG(TRACE) << "failed to get accessor for sid " << document->_sid
+               << " and path " << pid;
 #endif
     return false;
   }
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a shape path by identifier
@@ -1092,7 +1113,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
 
   void const* p;
   {
-    READ_LOCKER(_attributePathsByNameLock);
+    READ_LOCKER(readLocker, _attributePathsByNameLock);
     p = TRI_LookupByKeyAssociativePointer(&_attributePathsByName, name);
   }
 
@@ -1104,11 +1125,11 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   size_t len = strlen(name);
 
   // lock the index and check that the element is still missing
-  MUTEX_LOCKER(_attributePathsCreateLock);
+  MUTEX_LOCKER(mutexLocker, _attributePathsCreateLock);
 
   // if the element appeared, return the pid
   {
-    READ_LOCKER(_attributePathsByNameLock);
+    READ_LOCKER(readLocker, _attributePathsByNameLock);
     p = TRI_LookupByKeyAssociativePointer(&_attributePathsByName, name);
   }
 
@@ -1122,7 +1143,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
       TRI_Allocate(_memoryZone, len * sizeof(TRI_shape_aid_t), false));
 
   if (aids == nullptr) {
-    LOG_ERROR("out of memory in shaper");
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1130,7 +1151,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
 
   if (buffer == nullptr) {
     TRI_Free(_memoryZone, aids);
-    LOG_ERROR("out of memory in shaper");
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1171,7 +1192,7 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
 
   if (result == nullptr) {
     TRI_Free(_memoryZone, aids);
-    LOG_ERROR("out of memory in shaper");
+    LOG(ERR) << "out of memory in shaper";
     return nullptr;
   }
 
@@ -1188,24 +1209,42 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   TRI_Free(_memoryZone, aids);
 
   {
-    WRITE_LOCKER(_attributePathsByNameLock);
+    // make room for one more element
+    WRITE_LOCKER(writeLocker, _attributePathsByNameLock);
+    if (!TRI_ReserveAssociativePointer(&_attributePathsByName, 1)) {
+      TRI_Free(_memoryZone, result);
+      return nullptr;
+    }
+  }
+
+  {
+    // make room for one more element
+    WRITE_LOCKER(writeLocker, _attributePathsByPidLock);
+    if (!TRI_ReserveAssociativePointer(&_attributePathsByPid, 1)) {
+      TRI_Free(_memoryZone, result);
+      return nullptr;
+    }
+  }
+
+  {
+    WRITE_LOCKER(writeLocker, _attributePathsByNameLock);
     void const* f = TRI_InsertKeyAssociativePointer(&_attributePathsByName,
                                                     name, result, false);
 
     if (f != nullptr) {
-      LOG_WARNING("duplicate shape path %lu", (unsigned long)result->_pid);
+      LOG(WARN) << "duplicate shape path " << result->_pid;
     }
 
     TRI_ASSERT(f == nullptr);  // will abort here
   }
 
   {
-    WRITE_LOCKER(_attributePathsByPidLock);
+    WRITE_LOCKER(writeLocker, _attributePathsByPidLock);
     void const* f = TRI_InsertKeyAssociativePointer(
         &_attributePathsByPid, &result->_pid, result, false);
 
     if (f != nullptr) {
-      LOG_WARNING("duplicate shape path %lu", (unsigned long)result->_pid);
+      LOG(WARN) << "duplicate shape path " << result->_pid;
     }
 
     TRI_ASSERT(f == nullptr);  // will abort here
@@ -1214,7 +1253,6 @@ TRI_shape_path_t const* VocShaper::findShapePathByName(char const* name,
   // return pid
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief temporary structure for attributes
@@ -1423,7 +1461,7 @@ int TRI_CompareShapeTypes(char const* leftDocument,
   }
 
   if (leftShape == nullptr || rightShape == nullptr) {
-    LOG_ERROR("shape not found");
+    LOG(ERR) << "shape not found";
     TRI_ASSERT(false);
     return -1;
   }
@@ -1836,13 +1874,13 @@ void TRI_FillShapedSub(TRI_shaped_sub_t* element,
   element->_sid = shapedObject->_sid;
 
   if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    memcpy((char*)&element->_value._data, shapedObject->_data.data,
-           BasicShapes::TypeLengths[element->_sid]);
+    if (shapedObject->_data.data != nullptr) {
+      memcpy((char*)&element->_value._data, shapedObject->_data.data,
+             BasicShapes::TypeLengths[element->_sid]);
+    }
   } else {
     element->_value._position._length = shapedObject->_data.length;
     element->_value._position._offset =
         static_cast<uint32_t>(((char const*)shapedObject->_data.data) - ptr);
   }
 }
-
-

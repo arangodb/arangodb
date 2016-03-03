@@ -1,31 +1,15 @@
 # -*- mode: CMAKE; -*-
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                   COMMON INCLUDES
-## -----------------------------------------------------------------------------
-
 include_directories(.)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       EXECUTABLES
-## -----------------------------------------------------------------------------
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
-### @brief output directory
+## arangob
 ################################################################################
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-
-################################################################################
-### @brief arangob
-################################################################################
-
-include_directories(../3rdParty/velocypack/include)
 
 if (MSVC)
-  generate_product_version(
-    ProductVersionFiles_arangob
+  generate_product_version(ProductVersionFiles_arangob
     NAME arangob
     FILE_DESCRIPTION ${ARANGOB_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
@@ -33,50 +17,37 @@ if (MSVC)
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
     VERSION_REVISION ${BUILD_ID}
-    )
+  )
 endif ()
 
-add_executable(
-    ${BIN_ARANGOB}
-    ${ProductVersionFiles_arangob}
-    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-    ArangoShell/ArangoClient.cpp
-    Benchmark/arangob.cpp
+add_executable(${BIN_ARANGOB}
+  ${ProductVersionFiles_arangob}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  ArangoShell/ArangoClient.cpp
+  Benchmark/arangob.cpp
 )
 
-target_link_libraries(
-    ${BIN_ARANGOB}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${BT_LIBS}
-    ${ZLIB_LIBS}
-    ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
-    ${MSVC_LIBS}
+target_link_libraries(${BIN_ARANGOB}
+  ${LIB_ARANGO}
+  ${LINENOISE_LIBS}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
-
-################################################################################
-### @brief install arangob binary
-################################################################################
 
 install(
   TARGETS ${BIN_ARANGOB}
-  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
-
-################################################################################
-### @brief install arangob config
-################################################################################
+  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
 
 install_config(arangob)
 
+add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+
 ################################################################################
-### @brief arangodump
+## arangodump
 ################################################################################
 
 if (MSVC)
-  generate_product_version(
-    ProductVersionFiles_arangodump
+  generate_product_version(ProductVersionFiles_arangodump
     NAME arangodump
     FILE_DESCRIPTION ${ARANGO_DUMP_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
@@ -84,50 +55,37 @@ if (MSVC)
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
     VERSION_REVISION ${BUILD_ID}
-    )
+  )
 endif ()
 
-add_executable(
-    ${BIN_ARANGODUMP}
-    ${ProductVersionFiles_arangodump}
-    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-    ArangoShell/ArangoClient.cpp
-    V8Client/arangodump.cpp
+add_executable(${BIN_ARANGODUMP}
+  ${ProductVersionFiles_arangodump}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  ArangoShell/ArangoClient.cpp
+  V8Client/arangodump.cpp
 )
 
-target_link_libraries(
-    ${BIN_ARANGODUMP}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${BT_LIBS}
-    ${ZLIB_LIBS}
-    ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
-    ${MSVC_LIBS}
+target_link_libraries(${BIN_ARANGODUMP}
+  ${LIB_ARANGO}
+  ${LINENOISE_LIBS}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
-
-################################################################################
-### @brief install arangodump binary
-################################################################################
 
 install(
   TARGETS ${BIN_ARANGODUMP}
-  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
-
-################################################################################
-### @brief install arangodump config
-################################################################################
+  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
 
 install_config(arangodump)
 
+add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+
 ################################################################################
-### @brief arangoimp
+## arangoimp
 ################################################################################
 
 if (MSVC)
-  generate_product_version(
-    ProductVersionFiles_arangoimp
+  generate_product_version(ProductVersionFiles_arangoimp
     NAME arangoimp
     FILE_DESCRIPTION ${ARANGO_IMP_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
@@ -135,177 +93,117 @@ if (MSVC)
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
     VERSION_REVISION ${BUILD_ID}
-    )
+  )
 endif ()
 
-add_executable(
-    ${BIN_ARANGOIMP}
-    ${ProductVersionFiles_arangoimp}
-    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-    ArangoShell/ArangoClient.cpp
-    V8Client/ImportHelper.cpp
-    V8Client/arangoimp.cpp
+add_executable(${BIN_ARANGOIMP}
+  ${ProductVersionFiles_arangoimp}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  ArangoShell/ArangoClient.cpp
+  V8Client/ImportHelper.cpp
+  V8Client/arangoimp.cpp
 )
-
-target_link_libraries(
-    ${BIN_ARANGOIMP}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${BT_LIBS}
-    ${ZLIB_LIBS}
-    ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
-    ${MSVC_LIBS}
+target_link_libraries(${BIN_ARANGOIMP}
+  ${LIB_ARANGO}
+  ${LINENOISE_LIBS}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
-
-################################################################################
-### @brief install arangoimp binary
-################################################################################
 
 install(
   TARGETS ${BIN_ARANGOIMP}
-  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
-
-################################################################################
-### @brief install arangoimp config
-################################################################################
+  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
 
 install_config(arangoimp)
 
+add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+
 ################################################################################
-### @brief arangorestore
+## arangorestore
 ################################################################################
 
 if (MSVC)
-  generate_product_version(
-    ProductVersionFiles_arangorestore
+  generate_product_version(ProductVersionFiles_arangorestore
     NAME arangorestore
-    FILE_DESCRIPTION ${ARANGO_RESTORE_HELP_LINK}
+    FILE_DESCRIPTION ${ARANGO_RESTORE_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
     VERSION_REVISION ${BUILD_ID}
-    )
+  )
 endif ()
-add_executable(
-    ${BIN_ARANGORESTORE}
-    ${ProductVersionFiles_arangorestore}
-    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-    ArangoShell/ArangoClient.cpp
-    V8Client/arangorestore.cpp
+
+add_executable(${BIN_ARANGORESTORE}
+  ${ProductVersionFiles_arangorestore}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  ArangoShell/ArangoClient.cpp
+  V8Client/arangorestore.cpp
 )
 
-target_link_libraries(
-    ${BIN_ARANGORESTORE}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${ICU_LIBS}
-    ${BT_LIBS}
-    ${ZLIB_LIBS}
-    ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
-    ${MSVC_LIBS}
+target_link_libraries(${BIN_ARANGORESTORE}
+  ${LIB_ARANGO}
+  ${LINENOISE_LIBS}
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
-
-################################################################################
-### @brief install arangorestore binary
-################################################################################
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
-  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
-
-################################################################################
-### @brief install arangorestore config
-################################################################################
+  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
 
 install_config(arangorestore)
 
+add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+
 ################################################################################
-### @brief arangosh
+## arangosh
 ################################################################################
 
 if (MSVC)
-  generate_product_version(
-    ProductVersionFiles_arangosh
+  generate_product_version(ProductVersionFiles_arangosh
     NAME arangosh
-    FILE_DESCRIPTION ${ARANGOSH_HELP_LINK}
+    FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
     VERSION_REVISION ${BUILD_ID}
-    )
+  )
 endif ()
-add_executable(
-    ${BIN_ARANGOSH}
-    ${ProductVersionFiles_arangosh}
-    ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-    ArangoShell/ArangoClient.cpp
-    V8Client/ImportHelper.cpp
-    V8Client/V8ClientConnection.cpp
-    V8Client/arangosh.cpp
+
+add_executable(${BIN_ARANGOSH}
+  ${ProductVersionFiles_arangosh}
+  ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  ArangoShell/ArangoClient.cpp
+  V8Client/ImportHelper.cpp
+  V8Client/V8ClientConnection.cpp
+  V8Client/arangosh.cpp
 )
 
-target_link_libraries(
-    ${BIN_ARANGOSH}
-    ${LIB_ARANGO_V8}
-    ${LIB_ARANGO_CLIENT}
-    ${LIB_ARANGO}
-    ${V8_LIBS}
-    ${BT_LIBS}
-    ${ICU_LIBS}
-    ${ZLIB_LIBS}
-    ${LINENOISE_LIBS}
-    ${OPENSSL_LIBS}
-    ${MSVC_LIBS}
+target_link_libraries(${BIN_ARANGOSH}
+  ${LIB_ARANGO_V8}
+  ${LIB_ARANGO}
+  ${LINENOISE_LIBS}
+  ${MSVC_LIBS}
+  ${V8_LIBS}
+  ${SYSTEM_LIBRARIES}
 )
-
-################################################################################
-### @brief install arangosh binary
-################################################################################
 
 install(
   TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION ${TRI_BINDIR_INSTALL})
-
-################################################################################
-### @brief install arangosh config
-################################################################################
+  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
 
 install_config(arangosh)
 
-################################################################################
-### @brief install foxx-manager binary
-################################################################################
-
-install_command_alias(${BIN_ARANGOSH} ${TRI_BINDIR_INSTALL} foxx-manager)
+add_dependencies(arangosh zlibstatic v8_build)
 
 ################################################################################
-### @brief install foxx-manager config
+## foxx-manager
 ################################################################################
+
+install_command_alias(${BIN_ARANGOSH}
+  ${ARANGODB_INSTALL_BIN}
+  foxx-manager)
 
 install_config(foxx-manager)
-
-################################################################################
-### @brief install client-side JavaScript files
-################################################################################
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
-  DESTINATION share/arangodb/js
-  FILES_MATCHING PATTERN "*.js"
-  REGEX "^.*/common/test-data$" EXCLUDE
-  REGEX "^.*/common/tests$" EXCLUDE
-  REGEX "^.*/client/tests$" EXCLUDE)
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:

@@ -30,22 +30,17 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace admin {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestShutdownHandler : public RestBaseHandler {
-  
  public:
 
   RestShutdownHandler(rest::GeneralRequest*, void* applicationServer);
 
-  
  public:
-
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -54,7 +49,6 @@ class RestShutdownHandler : public RestBaseHandler {
 
   status_t execute() override;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -63,8 +57,5 @@ class RestShutdownHandler : public RestBaseHandler {
   arangodb::rest::ApplicationServer* _applicationServer;
 };
 }
-}
 
 #endif
-
-

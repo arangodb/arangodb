@@ -32,12 +32,11 @@
 #include <malloc.h>
 #include <crtdbg.h>
 
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
-using namespace std;
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -95,7 +94,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_FATAL_AND_EXIT("internal error in TRI_usleep()");
+    LOG(FATAL) << "internal error in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   // Set timer to wait for indicated micro seconds.
@@ -110,7 +109,7 @@ void TRI_usleep(unsigned long waitTime) {
 
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    LOG_FATAL_AND_EXIT("couldn't wait for timer in TRI_usleep()");
+    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()"; FATAL_ERROR_EXIT();
   }
 
   CloseHandle(hTimer);
@@ -131,7 +130,7 @@ static void InvalidParameterHandler(
     const wchar_t* file,        // file where code resides - NULL
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
-  LOG_ERROR("Invalid handle parameter passed");
+  LOG(ERR) << "Invalid handle parameter passed";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,16 +215,12 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup returned an "
-            "error.");
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_ERROR(
-            "Could not find a usable Winsock DLL. WSAStartup did not return "
-            "version 2.2.");
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -233,7 +228,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG_ERROR("Invalid windows initialization called");
+      LOG(ERR) << "Invalid windows initialization called";
       return -1;
     }
   }
@@ -321,7 +316,7 @@ void TRI_FixIcuDataEnv() {
     putenv(e.c_str());
   } else {
 #ifdef _SYSCONFDIR_
-    std::string e = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
+    std::string e = "ICU_DATA=" + std::string(_SYSCONFDIR_) + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
@@ -506,6 +501,22 @@ int TRI_MapSystemError(DWORD error) {
   }
 }
 
+static HANDLE hEventLog = INVALID_HANDLE_VALUE;
+
+bool TRI_InitWindowsEventLog(void) {
+  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  if (NULL == hEventLog) {
+    // well, fail then.
+    return false;
+  }
+  return true;
+}
+
+void TRI_CloseWindowsEventlog(void) {
+  DeregisterEventSource(hEventLog);
+  hEventLog = INVALID_HANDLE_VALUE;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -516,19 +527,33 @@ int TRI_MapSystemError(DWORD error) {
 // No clue why there is no header for these...
 #define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
 #define UI_CATEGORY ((WORD)0x00000003L)
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const& message) {
+  char buf[1024];
+  char linebuf[32];
+  LPCSTR logBuffers[] = { buf, file, func, linebuf, NULL };
+
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
+
+  snprintf(linebuf, sizeof(linebuf), "%d", line);
+
+  DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
+  buf[sizeof(buf) - 1] = '\0';
+
+  // Try to get messages through to windows syslog...
+  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+    MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
+    NULL)) {
+    // well, fail then...
+  }
+}
+
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap) {
   char buf[1024];
   char linebuf[32];
   LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
-  HANDLE hEventLog = NULL;
-
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
-  if (NULL == hEventLog) {
-    // well, fail then.
-    return;
-  }
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
   snprintf(linebuf, sizeof(linebuf), "%d", line);
 
@@ -541,7 +566,13 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                    NULL)) {
     // well, fail then...
   }
-  DeregisterEventSource(hEventLog);
 }
 
+void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
+                             char const* fmt, ...) {
+  va_list ap;
 
+  va_start(ap, fmt);
+  TRI_LogWindowsEventlog(func, file, line, fmt, ap);
+  va_end(ap);
+}

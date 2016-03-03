@@ -45,7 +45,6 @@ RestExportHandler::RestExportHandler(GeneralRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
 
 
-
 GeneralHandler::status_t RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(GeneralResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
@@ -75,7 +74,6 @@ GeneralHandler::status_t RestExportHandler::execute() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief build options for the query as JSON
@@ -266,8 +264,8 @@ void RestExportHandler::createCursor() {
       createResponse(GeneralResponse::CREATED);
       _response->setContentType("application/json; charset=utf-8");
 
-      auto cursors = static_cast<arangodb::CursorRepository*>(
-          _vocbase->_cursorRepository);
+      auto cursors =
+          static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
       TRI_ASSERT(cursors != nullptr);
 
       // create a cursor from the result
@@ -307,8 +305,8 @@ void RestExportHandler::modifyCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      _vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -361,8 +359,8 @@ void RestExportHandler::deleteCursor() {
 
   std::string const& id = suffix[0];
 
-  auto cursors = static_cast<arangodb::CursorRepository*>(
-      _vocbase->_cursorRepository);
+  auto cursors =
+      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -388,5 +386,3 @@ void RestExportHandler::deleteCursor() {
   VPackDumper dumper(&buffer);
   dumper.dump(s);
 }
-
-

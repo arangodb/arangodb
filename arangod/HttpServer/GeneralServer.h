@@ -35,7 +35,6 @@
 #include "Scheduler/TaskManager.h"
 #include "VelocyServer/VelocyCommTask.h"
 
-
 namespace arangodb {
 namespace rest {
 
@@ -58,7 +57,6 @@ class GeneralServer : protected TaskManager {
   GeneralServer(GeneralServer const&) = delete;
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint server
@@ -66,7 +64,6 @@ class GeneralServer : protected TaskManager {
 
   static int sendChunk(uint64_t, std::string const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new general server with dispatcher and job manager
@@ -81,7 +78,6 @@ class GeneralServer : protected TaskManager {
 
   virtual ~GeneralServer();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the protocol @TODO: Change it to conditional argument
@@ -113,7 +109,6 @@ class GeneralServer : protected TaskManager {
   virtual ArangoTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
   virtual VelocyCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&, bool);
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the scheduler
@@ -210,10 +205,7 @@ class GeneralServer : protected TaskManager {
 
   bool handleRequest(ArangoTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
 
-  // Overloading for VelocyStream
 
-  // bool handleRequest(VelocyCommTask*, arangodb::WorkItem::uptr<GeneralHandler>&);
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Handler, Job, and Task tuple
@@ -225,7 +217,6 @@ class GeneralServer : protected TaskManager {
     GeneralServerJob* _job;
   };
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens a listen port
@@ -249,7 +240,6 @@ class GeneralServer : protected TaskManager {
 
   void registerHandler(GeneralHandler* handler, ArangoTask* task);
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the scheduler
@@ -291,7 +281,7 @@ class GeneralServer : protected TaskManager {
   /// @brief mutex for comm tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Mutex _commTasksLock;
+  arangodb::Mutex _commTasksLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief active comm tasks(Http)
@@ -321,5 +311,3 @@ class GeneralServer : protected TaskManager {
 }
 
 #endif
-
-

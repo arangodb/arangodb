@@ -24,7 +24,7 @@
 
 #include "GeneralRequest.h"
 #include "Basics/conversions.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -36,21 +36,22 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 static char const* EMPTY_STR = "";
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 int32_t const GeneralRequest::MinCompatibility = 10300L;
+=======
+int32_t const HttpRequest::MinCompatibility = 10300L;
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
 
 std::string const GeneralRequest::BatchContentType 
                       = "application/x-arango-batchpart";
 
 std::string const GeneralRequest::MultiPartContentType = "multipart/form-data";
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http request constructor
@@ -92,6 +93,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& info, char const* header,
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief VelocyStream(VStream) request constructor @TODO: _freeables for vpack
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +132,9 @@ GeneralRequest::GeneralRequest( ConnectionInfo const& info, velocypack::Builder 
 }
 
 GeneralRequest::~GeneralRequest() {
+=======
+HttpRequest::~HttpRequest() {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
   for (_arrayValues.range(begin, end); begin < end; ++begin) {
@@ -153,12 +158,18 @@ GeneralRequest::~GeneralRequest() {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 
 char const* GeneralRequest::requestPath() const { return _requestPath; }
 
 
 void GeneralRequest::write(TRI_string_buffer_t* buffer) const {
+=======
+char const* HttpRequest::requestPath() const { return _requestPath; }
+
+void HttpRequest::write(TRI_string_buffer_t* buffer) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   std::string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
@@ -252,11 +263,17 @@ void GeneralRequest::write(TRI_string_buffer_t* buffer) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 int64_t GeneralRequest::contentLength() const { return _contentLength; }
 
 
 char const* GeneralRequest::header(char const* key) const {
+=======
+int64_t HttpRequest::contentLength() const { return _contentLength; }
+
+char const* HttpRequest::header(char const* key) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -266,8 +283,12 @@ char const* GeneralRequest::header(char const* key) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::header(char const* key, bool& found) const {
+=======
+char const* HttpRequest::header(char const* key, bool& found) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
@@ -279,8 +300,12 @@ char const* GeneralRequest::header(char const* key, bool& found) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 std::map<std::string, std::string> GeneralRequest::headers() const {
+=======
+std::map<std::string, std::string> HttpRequest::headers() const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -301,8 +326,12 @@ std::map<std::string, std::string> GeneralRequest::headers() const {
   return result;
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::value(char const* key) const {
+=======
+char const* HttpRequest::value(char const* key) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -312,8 +341,12 @@ char const* GeneralRequest::value(char const* key) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::value(char const* key, bool& found) const {
+=======
+char const* HttpRequest::value(char const* key, bool& found) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
@@ -325,8 +358,12 @@ char const* GeneralRequest::value(char const* key, bool& found) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 std::map<std::string, std::string> GeneralRequest::values() const {
+=======
+std::map<std::string, std::string> HttpRequest::values() const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -345,8 +382,13 @@ std::map<std::string, std::string> GeneralRequest::values() const {
   return result;
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 std::map<std::string, std::vector<char const*>*> GeneralRequest::arrayValues() const {
+=======
+std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues()
+    const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
   basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
 
@@ -365,8 +407,12 @@ std::map<std::string, std::vector<char const*>*> GeneralRequest::arrayValues() c
   return result;
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::cookieValue(char const* key) const {
+=======
+char const* HttpRequest::cookieValue(char const* key) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -376,8 +422,12 @@ char const* GeneralRequest::cookieValue(char const* key) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::cookieValue(char const* key, bool& found) const {
+=======
+char const* HttpRequest::cookieValue(char const* key, bool& found) const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
@@ -389,8 +439,12 @@ char const* GeneralRequest::cookieValue(char const* key, bool& found) const {
   }
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 std::map<std::string, std::string> GeneralRequest::cookieValues() const {
+=======
+std::map<std::string, std::string> HttpRequest::cookieValues() const {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
@@ -409,6 +463,7 @@ std::map<std::string, std::string> GeneralRequest::cookieValues() const {
   return result;
 }
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 
 char const* GeneralRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
@@ -419,6 +474,15 @@ size_t GeneralRequest::bodySize() const { return _bodySize; }
 
 
 int GeneralRequest::setBody(char const* newBody, size_t length) {
+=======
+char const* HttpRequest::body() const {
+  return _body == nullptr ? EMPTY_STR : _body;
+}
+
+size_t HttpRequest::bodySize() const { return _bodySize; }
+
+int HttpRequest::setBody(char const* newBody, size_t length) {
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
   _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
@@ -442,7 +506,7 @@ void GeneralRequest::setHeader(char const* key, size_t keyLength,
   if (keyLength == 14 &&
       memcmp(key, "content-length", keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = TRI_Int64String(value);
+    _contentLength = StringUtils::int64(value);
   } else if (keyLength == 6 &&
              memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value);
@@ -563,7 +627,13 @@ std::string const& GeneralRequest::protocol() const { return _protocol; }
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.cpp
 void GeneralRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
+=======
+void HttpRequest::setProtocol(std::string const& protocol) {
+  _protocol = protocol;
+}
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.cpp
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
@@ -628,7 +698,6 @@ uint64_t GeneralRequest::clientTaskId() const { return _clientTaskId; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void GeneralRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the header type
@@ -1345,7 +1414,6 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate the HTTP/VSTREAM protocol version
 ////////////////////////////////////////////////////////////////////////////////
@@ -1408,7 +1476,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
     return "VSTREAM_PUT";
   }
 
-  LOG_WARNING("illegal http request method encountered in switch");
+  LOG(WARN) << "illegal http request method encountered in switch";
   return "UNKNOWN";
 }
 
@@ -1595,5 +1663,3 @@ void GeneralRequest::parseCookies(char const* buffer) {
     setCookie(keyBegin, key - keyBegin, valueBegin);
   }
 }
-
-

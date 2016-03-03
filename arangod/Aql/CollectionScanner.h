@@ -33,15 +33,11 @@
 namespace arangodb {
 namespace aql {
 
-
 struct CollectionScanner {
-  
-  CollectionScanner(arangodb::AqlTransaction*,
-                    TRI_transaction_collection_t*);
+  CollectionScanner(arangodb::AqlTransaction*, TRI_transaction_collection_t*);
 
   virtual ~CollectionScanner();
 
-  
   virtual int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
 
   virtual void reset() = 0;
@@ -61,9 +57,7 @@ struct CollectionScanner {
   arangodb::basics::BucketPosition position;
 };
 
-
 struct RandomCollectionScanner final : public CollectionScanner {
-  
   RandomCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
@@ -77,9 +71,7 @@ struct RandomCollectionScanner final : public CollectionScanner {
   uint64_t step;
 };
 
-
 struct LinearCollectionScanner final : public CollectionScanner {
-  
   LinearCollectionScanner(arangodb::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
@@ -93,5 +85,3 @@ struct LinearCollectionScanner final : public CollectionScanner {
 }
 
 #endif
-
-

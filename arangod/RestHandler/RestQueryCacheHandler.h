@@ -34,20 +34,15 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestQueryCacheHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestQueryCacheHandler(rest::GeneralRequest*);
 
-  
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of properties
@@ -70,5 +65,3 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

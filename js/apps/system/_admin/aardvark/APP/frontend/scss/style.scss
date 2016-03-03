@@ -16,6 +16,8 @@
 // Tooltips
 @import 'tooltips';
 // dbSelection
+@import 'toolbar';
+// dbSelection
 @import 'dbSelection';
 // new dashboard, will be the highlander
 @import 'newDashboard';
@@ -33,6 +35,8 @@
 @import 'login';
 // query view
 @import 'queryView';
+// query view2
+@import 'queryView2';
 // some general stuff
 @import 'general';
 // The views containing tabs
@@ -65,6 +69,8 @@
 @import 'documentView';
 // progress view
 @import 'progressView';
+// spotlight view
+@import 'spotlightView';
 // application detail view
 @import 'applicationDetailView';
 

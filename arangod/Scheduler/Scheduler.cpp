@@ -33,22 +33,21 @@
 #include "Basics/Thread.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 
-using namespace std;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler singleton
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<Scheduler> Scheduler::SCHEDULER;
-
-
 
 Scheduler::Scheduler(size_t nrThreads)
     : nrThreads(nrThreads),
@@ -65,10 +64,9 @@ Scheduler::Scheduler(size_t nrThreads)
 
   // report status
   if (multiThreading) {
-    LOG_TRACE("scheduler is multi-threaded, number of threads: %d",
-              (int)nrThreads);
+    LOG(TRACE) << "scheduler is multi-threaded, number of threads: " << nrThreads;
   } else {
-    LOG_TRACE("scheduler is single-threaded");
+    LOG(TRACE) << "scheduler is single-threaded";
   }
 
   // setup signal handlers
@@ -77,23 +75,21 @@ Scheduler::Scheduler(size_t nrThreads)
   SCHEDULER.reset(this);
 }
 
-
 Scheduler::~Scheduler() {}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts scheduler, keeps running
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::start(ConditionVariable* cv) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   // start the schedulers threads
   for (size_t i = 0; i < nrThreads; ++i) {
     bool ok = threads[i]->start(cv);
 
     if (!ok) {
-      LOG_FATAL_AND_EXIT("cannot start threads");
+      LOG(FATAL) << "cannot start threads"; FATAL_ERROR_EXIT();
     }
   }
 
@@ -108,12 +104,12 @@ bool Scheduler::start(ConditionVariable* cv) {
     for (size_t i = 0; i < nrThreads; ++i) {
       if (!threads[i]->isRunning()) {
         waiting = true;
-        LOG_TRACE("waiting for thread #%d to start", (int)i);
+        LOG(TRACE) << "waiting for thread #" << i << " to start";
       }
     }
   }
 
-  LOG_TRACE("all scheduler threads are up and running");
+  LOG(TRACE) << "all scheduler threads are up and running";
   return true;
 }
 
@@ -122,14 +118,6 @@ bool Scheduler::start(ConditionVariable* cv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isStarted() {
-  MUTEX_LOCKER(schedulerLock);
-
-  for (size_t i = 0; i < nrThreads; ++i) {
-    if (!threads[i]->isStarted()) {
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -138,14 +126,6 @@ bool Scheduler::isStarted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::open() {
-  MUTEX_LOCKER(schedulerLock);
-
-  for (size_t i = 0; i < nrThreads; ++i) {
-    if (!threads[i]->open()) {
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -154,7 +134,7 @@ bool Scheduler::open() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isRunning() {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (size_t i = 0; i < nrThreads; ++i) {
     if (threads[i]->isRunning()) {
@@ -174,9 +154,9 @@ void Scheduler::beginShutdown() {
     return;
   }
 
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
-  LOG_DEBUG("beginning shutdown sequence of scheduler");
+  LOG(DEBUG) << "beginning shutdown sequence of scheduler";
 
   for (size_t i = 0; i < nrThreads; ++i) {
     threads[i]->beginShutdown();
@@ -198,7 +178,8 @@ bool Scheduler::isShutdownInProgress() { return stopping != 0; }
 
 void Scheduler::shutdown() {
   for (auto& it : taskRegistered) {
-    LOG_DEBUG("forcefully removing task '%s'", it.second->name().c_str());
+    std::string const name = it.second->name();
+    LOG(DEBUG) << "forcefully removing task '" << name << "'";
 
     deleteTask(it.second);
   }
@@ -211,44 +192,37 @@ void Scheduler::shutdown() {
 /// @brief list user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Scheduler::getUserTasks() {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  {
-    MUTEX_LOCKER(schedulerLock);
-
+std::shared_ptr<VPackBuilder> Scheduler::getUserTasks() {
+  auto builder = std::make_shared<VPackBuilder>();
+  try {
+    VPackArrayBuilder b(builder.get());
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
     for (auto& it : task2thread) {
       auto const* task = it.first;
 
       if (task->isUserDefined()) {
-        TRI_json_t* obj = task->toJson();
-
-        if (obj != nullptr) {
-          TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json.get(), obj);
-        }
+        VPackObjectBuilder b2(builder.get());
+        task->toVelocyPack(*builder);
       }
     }
+  } catch (...) {
+    return std::make_shared<VPackBuilder>();
   }
-
-  return json.release();
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a single user task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Scheduler::getUserTask(std::string const& id) {
-  MUTEX_LOCKER(schedulerLock);
+std::shared_ptr<VPackBuilder> Scheduler::getUserTask(std::string const& id) {
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   for (auto& it : task2thread) {
     auto const* task = it.first;
 
     if (task->isUserDefined() && task->id() == id) {
-      return task->toJson();
+      return task->toVelocyPack();
     }
   }
 
@@ -267,7 +241,7 @@ int Scheduler::unregisterUserTask(std::string const& id) {
   Task* task = nullptr;
 
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     for (auto& it : task2thread) {
       auto const* t = it.first;
@@ -301,7 +275,7 @@ int Scheduler::unregisterUserTasks() {
     Task* task = nullptr;
 
     {
-      MUTEX_LOCKER(schedulerLock);
+      MUTEX_LOCKER(mutexLocker, schedulerLock);
 
       for (auto& it : task2thread) {
         auto const* t = it.first;
@@ -345,21 +319,21 @@ int Scheduler::registerTask(Task* task, ssize_t* tn) {
 int Scheduler::unregisterTask(Task* task) {
   SchedulerThread* thread = nullptr;
 
+  std::string const taskName(task->name());
+
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     auto it = task2thread.find(
         task);  // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
-      LOG_WARNING("unregisterTask called for an unknown task %p (%s)",
-                  (void*)task, task->name().c_str());
+      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("unregisterTask for task %p (%s)", (void*)task,
-              task->name().c_str());
+    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName << ")";
 
     thread = (*it).second;
 
@@ -378,21 +352,20 @@ int Scheduler::unregisterTask(Task* task) {
 
 int Scheduler::destroyTask(Task* task) {
   SchedulerThread* thread = nullptr;
+  std::string const taskName(task->name());
 
   {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     auto it = task2thread.find(task);
 
     if (it == task2thread.end()) {
-      LOG_WARNING("destroyTask called for an unknown task %p (%s)", (void*)task,
-                  task->name().c_str());
+      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task << " (" << taskName << ")";
 
       return TRI_ERROR_TASK_NOT_FOUND;
     }
 
-    LOG_TRACE("destroyTask for task %p (%s)", (void*)task,
-              task->name().c_str());
+    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName << ")";
 
     thread = (*it).second;
 
@@ -416,7 +389,7 @@ void Scheduler::reportStatus() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::setProcessorAffinity(size_t i, size_t c) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   threads[i]->setProcessorAffinity(c);
 }
@@ -426,7 +399,7 @@ void Scheduler::setProcessorAffinity(size_t i, size_t c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Task* Scheduler::lookupTaskById(uint64_t taskId) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);
 
@@ -442,7 +415,7 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
-  MUTEX_LOCKER(schedulerLock);
+  MUTEX_LOCKER(mutexLocker, schedulerLock);
 
   auto&& task = taskRegistered.find(taskId);
 
@@ -469,7 +442,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
   }
 
   std::string const& name = task->name();
-  LOG_TRACE("registerTask for task %p (%s)", (void*)task, name.c_str());
+  LOG(TRACE) << "registerTask for task " << (void*)task << " (" << name << ")";
 
   // determine thread
   SchedulerThread* thread = nullptr;
@@ -484,7 +457,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
   }
 
   try {
-    MUTEX_LOCKER(schedulerLock);
+    MUTEX_LOCKER(mutexLocker, schedulerLock);
 
     int res = checkInsertTask(task);
 
@@ -503,8 +476,7 @@ int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
 
     task2thread[task] = thread;
     taskRegistered[task->taskId()] = task;
-  }
-  catch (...) {
+  } catch (...) {
     destroyTask(task);
     throw;
   }
@@ -546,7 +518,6 @@ int Scheduler::checkInsertTask(Task const* task) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the signal handlers for the scheduler
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,9 +536,7 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG_ERROR("cannot initialize signal handlers for pipe");
+    LOG(ERR) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }
-
-

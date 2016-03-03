@@ -20,7 +20,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpResponse.h"
-#include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 
@@ -33,7 +32,6 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http response

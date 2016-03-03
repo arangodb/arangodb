@@ -32,15 +32,13 @@ namespace arangodb {
 /// @brief version request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestVersionHandler : public arangodb::admin::RestBaseHandler {
+class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
 
   explicit RestVersionHandler(arangodb::rest::GeneralRequest*);
 
  public:
-
   bool isDirect() const override;
-
 
   status_t execute() override;
 };

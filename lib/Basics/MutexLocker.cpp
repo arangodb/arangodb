@@ -25,11 +25,11 @@
 #include "MutexLocker.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #endif
 
+using namespace arangodb;
 using namespace arangodb::basics;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -61,9 +61,7 @@ MutexLocker::~MutexLocker() {
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG_WARNING("MutexLocker %s:%d took %f s", _file, _line, _time);
+    LOG(WARN) << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
   }
 #endif
 }
-
-

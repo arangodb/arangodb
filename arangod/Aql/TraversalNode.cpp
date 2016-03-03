@@ -29,6 +29,8 @@
 #include "Aql/Ast.h"
 #include "Aql/Index.h"
 
+#include <cmath>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
@@ -46,9 +48,8 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-
 SimpleTraverserExpression::SimpleTraverserExpression(arangodb::aql::Ast* ast,
-                                                     arangodb::basics::Json j)
+                                                     arangodb::basics::Json const& j)
     : TraverserExpression(), expression(nullptr) {
   isEdgeAccess =
       basics::JsonHelper::checkAndGetBooleanValue(j.json(), "isEdgeAccess");
@@ -86,6 +87,43 @@ void SimpleTraverserExpression::toJson(arangodb::basics::Json& json,
       "compareTo", compareToNode->toJson(zone, true));
 }
 
+void SimpleTraverserExpression::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  auto op = arangodb::aql::AstNode::Operators.find(comparisonType);
+
+  if (op == arangodb::aql::AstNode::Operators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "invalid operator for simpleTraverserExpression");
+  }
+  std::string const operatorStr = op->second;
+  builder.add("isEdgeAccess", VPackValue(isEdgeAccess));
+  builder.add("comparisonTypeStr", VPackValue(operatorStr));
+  builder.add("comparisonType", VPackValue(comparisonType));
+  builder.add(VPackValue("varAccess"));
+  varAccess->toVelocyPack(builder, true);
+  builder.add(VPackValue("compareTo"));
+  compareToNode->toVelocyPack(builder, true);
+}
+
+static TRI_edge_direction_e parseDirection (AstNode const* node) {
+  TRI_ASSERT(node->isIntValue());
+  auto dirNum = node->getIntValue();
+
+  switch (dirNum) {
+    case 0:
+      return TRI_EDGE_ANY;
+    case 1:
+      return TRI_EDGE_IN;
+    case 2:
+      return TRI_EDGE_OUT;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          "direction can only be INBOUND, OUTBOUND or ANY");
+  }
+}
+
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph)
@@ -94,6 +132,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _pathOutVariable(nullptr),
+      _inVariable(nullptr),
       _graphObj(nullptr),
       _condition(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -102,17 +141,57 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(graph != nullptr);
   auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
 
+  // Parse Steps and direction
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
+  // Member 0 is the direction. Already the correct Integer.
+  // Is not inserted by user but by enum.
+  TRI_edge_direction_e baseDirection = parseDirection(direction->getMember(0));
+
+  auto steps = direction->getMember(1);
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    _minDepth = checkTraversalDepthValue(steps);
+    _maxDepth = _minDepth;
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    _minDepth = checkTraversalDepthValue(steps->getMember(0));
+    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
+
+    if (_maxDepth < _minDepth) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "invalid traversal depth");
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array,
                                         edgeCollectionCount);
+    _edgeColls.reserve(edgeCollectionCount);
+    _directions.reserve(edgeCollectionCount);
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto eColName = graph->getMember(i)->getStringValue();
+      auto col = graph->getMember(i);
+      if (col->type == NODE_TYPE_DIRECTION) {
+        // We have a collection with special direction.
+        TRI_edge_direction_e dir = parseDirection(col->getMember(0));
+        _directions.emplace_back(dir);
+        col = col->getMember(1);
+      } else {
+        _directions.emplace_back(baseDirection);
+      }
+
+      std::string eColName = col->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
-        std::string msg(
-            "collection type invalid for collection '" + std::string(eColName) + ": expecting collection type 'edge'");
+        std::string msg("collection type invalid for collection '" +
+                        std::string(eColName) +
+                        ": expecting collection type 'edge'");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
@@ -131,8 +210,16 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         }
 
         auto eColls = _graphObj->edgeCollections();
+        size_t length = eColls.size();
+        if (length == 0) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
+        }
+        _edgeColls.reserve(length);
+        _directions.reserve(length);
+
         for (const auto& n : eColls) {
           _edgeColls.push_back(n);
+          _directions.emplace_back(baseDirection);
         }
       }
     }
@@ -160,51 +247,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                      "invalid start vertex. Must either be an "
                                      "_id string or an object with _id.");
   }
-
-  // Parse Steps and direction
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
-  // Member 0 is the direction. Already the correct Integer.
-  // Is not inserted by user but by enum.
-  auto dir = direction->getMember(0);
-  auto steps = direction->getMember(1);
-  TRI_ASSERT(dir->isIntValue());
-  auto dirNum = dir->getIntValue();
-
-  switch (dirNum) {
-    case 0:
-      _direction = TRI_EDGE_ANY;
-      break;
-    case 1:
-      _direction = TRI_EDGE_IN;
-      break;
-    case 2:
-      _direction = TRI_EDGE_OUT;
-      break;
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_PARSE,
-          "direction can only be INBOUND, OUTBOUND or ANY");
-      break;
-  }
-
-  if (steps->isNumericValue()) {
-    // Check if a double value is integer
-    _minDepth = checkTraversalDepthValue(steps);
-    _maxDepth = _minDepth;
-  } else if (steps->type == NODE_TYPE_RANGE) {
-    // Range depth
-    _minDepth = checkTraversalDepthValue(steps->getMember(0));
-    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
-
-    if (_maxDepth < _minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
 }
 
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
@@ -212,7 +254,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              std::vector<std::string> const& edgeColls,
                              Variable const* inVariable,
                              std::string const& vertexId,
-                             TRI_edge_direction_e direction, uint64_t minDepth,
+                             std::vector<TRI_edge_direction_e> directions, uint64_t minDepth,
                              uint64_t maxDepth)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
@@ -223,10 +265,15 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _vertexId(vertexId),
       _minDepth(minDepth),
       _maxDepth(maxDepth),
-      _direction(direction),
+      _directions(directions),
+      _graphObj(nullptr),
       _condition(nullptr) {
+
+  _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
+
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
+    _graphJson.add(arangodb::basics::Json(it));
   }
 }
 
@@ -238,27 +285,34 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _edgeOutVariable(nullptr),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
+      _graphObj(nullptr),
       _condition(nullptr) {
   _minDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
   _maxDepth =
       arangodb::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
-  uint64_t dir =
-      arangodb::basics::JsonHelper::stringUInt64(base.json(), "direction");
-  switch (dir) {
-    case 0:
-      _direction = TRI_EDGE_ANY;
-      break;
-    case 1:
-      _direction = TRI_EDGE_IN;
-      break;
-    case 2:
-      _direction = TRI_EDGE_OUT;
-      break;
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "Invalid direction value");
-      break;
+  auto dirList = base.get("directions");
+  TRI_ASSERT(dirList.json() != nullptr);
+  for (size_t i = 0; i < dirList.size(); ++i) {
+    auto dirJson = dirList.at(i);
+    uint64_t dir = arangodb::basics::JsonHelper::stringUInt64(dirJson.json());
+    TRI_edge_direction_e d;
+    switch (dir) {
+      case 0:
+        d = TRI_EDGE_ANY;
+        break;
+      case 1:
+        d = TRI_EDGE_IN;
+        break;
+      case 2:
+        d = TRI_EDGE_OUT;
+        break;
+      default:
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "Invalid direction value");
+        break;
+    }
+    _directions.emplace_back(d);
   }
 
   // In Vertex
@@ -364,8 +418,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
             "simpleExpressions one expression set has to be an array.");
       }
 
-      std::vector<arangodb::traverser::TraverserExpression*>
-          oneExpressionSet;
+      std::vector<arangodb::traverser::TraverserExpression*> oneExpressionSet;
       oneExpressionSet.reserve(oneSetLength);
       size_t n = std::stoull(k);
       _expressions.emplace(n, oneExpressionSet);
@@ -411,70 +464,81 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for TraversalNode
+/// @brief toVelocyPack, for TraversalNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraversalNode::toJsonHelper(arangodb::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone, bool verbose) const {
-  arangodb::basics::Json json(ExecutionNode::toJsonHelperGeneric(
-      nodes, zone, verbose));  // call base class method
+void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
+                                       bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
 
-  if (json.isEmpty()) {
-    return;
+  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("minDepth", VPackValue(_minDepth));
+  nodes.add("maxDepth", VPackValue(_maxDepth));
+
+  {
+    // TODO Remove _graphJson
+    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(_graphJson.json());
+    nodes.add("graph", tmp->slice());
   }
-
-  json("database", arangodb::basics::Json(_vocbase->_name))(
-      "minDepth", arangodb::basics::Json(static_cast<double>(_minDepth)))(
-      "maxDepth", arangodb::basics::Json(static_cast<double>(_maxDepth)))(
-      "direction", arangodb::basics::Json(static_cast<int32_t>(_direction)))(
-      "graph", _graphJson.copy());
+  nodes.add(VPackValue("directions"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& d : _directions) {
+      nodes.add(VPackValue(d));
+    }
+  }
 
   // In variable
   if (usesInVariable()) {
-    json("inVariable", inVariable()->toJson());
+    nodes.add(VPackValue("inVariable"));
+    inVariable()->toVelocyPack(nodes);
   } else {
-    json("vertexId", arangodb::basics::Json(_vertexId));
+    nodes.add("vertexId", VPackValue(_vertexId));
   }
 
   if (_condition != nullptr) {
-    json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
+    nodes.add(VPackValue("condition"));
+    _condition->toVelocyPack(nodes, verbose);
   }
 
   if (_graphObj != nullptr) {
-    json("graphDefinition", _graphObj->toJson(TRI_UNKNOWN_MEM_ZONE, verbose));
+    nodes.add(VPackValue("graphDefinition"));
+    _graphObj->toVelocyPack(nodes, verbose);
   }
 
   // Out variables
   if (usesVertexOutVariable()) {
-    json("vertexOutVariable", vertexOutVariable()->toJson());
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
   }
   if (usesEdgeOutVariable()) {
-    json("edgeOutVariable", edgeOutVariable()->toJson());
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
   }
   if (usesPathOutVariable()) {
-    json("pathOutVariable", pathOutVariable()->toJson());
+    nodes.add(VPackValue("pathOutVariable"));
+    pathOutVariable()->toVelocyPack(nodes);
   }
 
   if (!_expressions.empty()) {
-    arangodb::basics::Json expressionObject = arangodb::basics::Json(
-        arangodb::basics::Json::Object, _expressions.size());
+    nodes.add(VPackValue("simpleExpressions"));
+    VPackObjectBuilder guard(&nodes);
     for (auto const& map : _expressions) {
-      arangodb::basics::Json expressionArray = arangodb::basics::Json(
-          arangodb::basics::Json::Array, map.second.size());
+      nodes.add(VPackValue(std::to_string(map.first)));
+      VPackArrayBuilder guard2(&nodes);
       for (auto const& x : map.second) {
-        arangodb::basics::Json exp(zone, arangodb::basics::Json::Object);
+        VPackObjectBuilder guard3(&nodes);
         auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
         if (tmp != nullptr) {
-          tmp->toJson(exp, zone);
+          tmp->toVelocyPack(nodes);
         }
-        expressionArray(exp);
       }
-      expressionObject.set(std::to_string(map.first), expressionArray);
     }
-    json("simpleExpressions", expressionObject);
   }
-  // And add it:
-  nodes(json);
+
+  // And close it:
+  nodes.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +548,7 @@ void TraversalNode::toJsonHelper(arangodb::basics::Json& nodes,
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                             _vertexId, _direction, _minDepth, _maxDepth);
+                             _vertexId, _directions, _minDepth, _maxDepth);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -528,23 +592,23 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 double TraversalNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  double expectedEdgesPerDepth = 0;
+  double expectedEdgesPerDepth = 0.0;
   auto collections = _plan->getAst()->query()->collections();
 
   TRI_ASSERT(collections != nullptr);
 
   for (auto const& it : _edgeColls) {
     auto collection = collections->get(it);
-    
+
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected pointer for collection");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unexpected pointer for collection");
     }
 
     TRI_ASSERT(collection != nullptr);
 
     for (auto const& index : collection->getIndexes()) {
-      if (index->type ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      if (index->type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
         if (index->hasSelectivityEstimate()) {
           expectedEdgesPerDepth += 1 / index->selectivityEstimate();
@@ -556,7 +620,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
     }
   }
   nrItems =
-      static_cast<size_t>(incoming * pow(expectedEdgesPerDepth, _maxDepth));
+      static_cast<size_t>(incoming * std::pow(expectedEdgesPerDepth, static_cast<double>(_maxDepth)));
   if (nrItems == 0 && incoming > 0) {
     nrItems = 1;  // min value
   }
@@ -565,9 +629,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 
 void TraversalNode::fillTraversalOptions(
     arangodb::traverser::TraverserOptions& opts) const {
-  opts.direction = _direction;
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;
+  opts.setCollections(_edgeColls, _directions);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,4 +673,3 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
   it->second.push_back(e.get());
   e.release();
 }
-

@@ -63,6 +63,7 @@ delete global.DEFINE_MODULE;
 const LOADING = [];
 
 const GLOBAL_PATHS = [];
+const ROOT_PATH = fs.normalize(fs.makeAbsolute(internal.startupPath));
 global.MODULES_PATH.forEach(function (p) {
   p = fs.normalize(fs.makeAbsolute(p));
   GLOBAL_PATHS.push(p);
@@ -302,6 +303,10 @@ Module._nodeModulePaths = function(from, root) {
   var paths = [];
   var parts = from.split(splitRe);
   var inRoot = root && from.indexOf(root) === 0;
+  if (!inRoot) {
+    root = ROOT_PATH;
+    inRoot = from.indexOf(root) === 0;
+  }
 
   for (var tip = parts.length - 1; tip >= 0; tip--) {
     // don't search in .../node_modules/node_modules
@@ -411,9 +416,11 @@ Module._load = function(request, parent, isMain) {
   if (match) {
     dbModule = Module._resolveDbModule(match[3]);
     if (!dbModule) {
-      var err = new Error("Cannot find module '" + request + "'");
-      err.code = 'MODULE_NOT_FOUND';
-      throw err;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
+        errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
+        + '\nFile: ' + request
+      });
     }
   } else {
     try {
@@ -495,9 +502,11 @@ Module._resolveFilename = function(request, parent) {
   // look up the filename first, since that's the cache key.
   var filename = Module._findPath(request, paths);
   if (!filename) {
-    var err = new Error("Cannot find module '" + request + "'");
-    err.code = 'MODULE_NOT_FOUND';
-    throw err;
+    throw new internal.ArangoError({
+      errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
+      errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
+      + '\nFile: ' + request
+    });
   }
   return filename;
 };
@@ -511,7 +520,23 @@ Module.prototype.load = function(filename) {
 
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
-  Module._extensions[extension](this, filename);
+
+  try {
+    Module._extensions[extension](this, filename);
+  } catch (e) {
+    if (e.errorNum !== internal.errors.ERROR_MODULE_FAILURE.code) {
+      const error = new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
+        errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
+        + '\nFile: ' + filename
+        + '\nCause: ' + e
+      });
+      error.cause = e;
+      throw error;
+    }
+    throw e;
+  }
+
   this.loaded = true;
 };
 
@@ -545,15 +570,6 @@ Module.prototype._compile = function(content, filename) {
     content = this.preprocess(content, filename);
   }
 
-  // test for parse errors first and fail early if a parse error detected
-  if (!internal.parse(content, filename)) {
-    throw new internal.ArangoError({
-      errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
-      errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message
-      + '\nFile: ' + filename
-    });
-  }
-
   this.filename = filename;
 
   var args = this.context;
@@ -561,38 +577,15 @@ Module.prototype._compile = function(content, filename) {
   // Do not use Function constructor or line numbers will be wrong
   var wrapper = `(function (${keys.join(', ')}) {${content}\n})`;
 
-  var fn;
-  try {
-    fn = internal.executeScript(wrapper, undefined, filename);
-  } catch (e) {
-    console.errorLines(e.stack || String(e));
-    let err = new internal.ArangoError({
-      errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
-      errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
-      + '\nFile: ' + filename
-    });
-    err.cause = e;
-    throw err;
-  }
+  var fn = internal.executeScript(wrapper, undefined, filename);
 
   if (typeof fn !== 'function') {
-    throw new TypeError('Expected internal.executeScript to return a function, not ' + typeof fn);
+    throw new TypeError(`Expected internal.executeScript to return a function, not ${typeof fn}`);
   }
 
-  try {
-    fn.apply(args.exports, keys.map(function (key) {
-      return args[key];
-    }));
-  } catch (e) {
-    console.errorLines(e.stack || String(e));
-    let err = new internal.ArangoError({
-      errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
-      errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
-      + '\nFile: ' + filename
-    });
-    err.cause = e;
-    throw err;
-  }
+  fn.apply(args.exports, keys.map(function (key) {
+    return args[key];
+  }));
 };
 
 

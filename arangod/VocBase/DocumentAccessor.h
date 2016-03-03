@@ -45,7 +45,6 @@ class CollectionNameResolver;
 
 class DocumentAccessor {
  public:
-  
   DocumentAccessor(DocumentAccessor const&);
   DocumentAccessor& operator=(DocumentAccessor const&);
 
@@ -58,7 +57,6 @@ class DocumentAccessor {
 
   ~DocumentAccessor();
 
-  
  public:
   bool hasKey(std::string const& attribute) const;
 
@@ -76,7 +74,6 @@ class DocumentAccessor {
 
   arangodb::basics::Json toJson();
 
-  
  private:
   void setToNull();
 
@@ -84,7 +81,6 @@ class DocumentAccessor {
 
   void lookupDocumentAttribute(char const* name, size_t nameLength);
 
-  
  private:
   arangodb::CollectionNameResolver const* _resolver;
 
@@ -110,7 +106,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
     return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -122,8 +118,8 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 /// @brief extracts the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline std::string TRI_EXTRACT_MARKER_KEY(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+static inline std::string TRI_EXTRACT_MARKER_KEY(arangodb::Transaction* trx,
+                                                 TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_KEY(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
@@ -142,7 +138,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     return arangodb::velocypack::readUInt64(value.start() + 1);
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // invalid marker type
   TRI_ASSERT(false);
 #endif
@@ -154,77 +150,10 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
 /// @brief extracts the revision id from a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    arangodb::Transaction* trx, TRI_doc_mptr_t const* mptr) {
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(arangodb::Transaction* trx,
+                                                   TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_RID(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares the key from a master pointer to the given key
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
-                                          TRI_doc_mptr_t const* mptr,
-                                          char const* key) {
-  auto marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto b = reinterpret_cast<char const*>(marker) +
-             sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
-    VPackValueLength len;
-    char const* p = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(len);
-    if (len != strlen(key)) {
-      return false;
-    }
-    return (memcmp(p, key, len) == 0);
-  }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  // invalid marker type
-  TRI_ASSERT(false);
 #endif
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares the key from a master pointer to the given key
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool TRI_MATCHES_MARKER_KEY(arangodb::Transaction* trx,
-                                          TRI_doc_mptr_t const* left,
-                                          TRI_doc_mptr_t const* right) {
-  auto lm = static_cast<TRI_df_marker_t const*>(left->getDataPtr());
-  auto rm = static_cast<TRI_df_marker_t const*>(right->getDataPtr());
-
-  if (lm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT &&
-      rm->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto lb = reinterpret_cast<char const*>(lm) +
-              sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice ls(reinterpret_cast<uint8_t const*>(lb), trx->vpackOptions());
-    VPackValueLength llen;
-    char const* p = ls.get(TRI_VOC_ATTRIBUTE_KEY).getString(llen);
-
-    auto rb = reinterpret_cast<char const*>(rm) +
-              sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice rs(reinterpret_cast<uint8_t const*>(rb), trx->vpackOptions());
-    VPackValueLength rlen;
-    char const* q = rs.get(TRI_VOC_ATTRIBUTE_KEY).getString(rlen);
-
-    if (llen != rlen) {
-      return false;
-    }
-    return (memcmp(p, q, llen) == 0);
-  }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  // invalid marker type
-  TRI_ASSERT(false);
-#endif
-  return false;
-}
-
-#endif
-
-

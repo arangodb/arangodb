@@ -48,12 +48,9 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
                                    ApplicationV8* applicationV8)
     : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
 
-
-
 bool RestQueryHandler::isDirect() const {
   return _request->requestType() != GeneralRequest::HTTP_REQUEST_POST;
 }
-
 
 GeneralHandler::status_t RestQueryHandler::execute() {
   // extract the sub-request type
@@ -98,11 +95,6 @@ GeneralHandler::status_t RestQueryHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock GetApiQueryProperties
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryHandler::readQueryProperties() {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
@@ -136,14 +128,6 @@ bool RestQueryHandler::readQueryProperties() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock GetApiQueryCurrent
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock GetApiQuerySlow
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryHandler::readQuery(bool slow) {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
@@ -152,15 +136,17 @@ bool RestQueryHandler::readQuery(bool slow) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Array));
 
-    for (auto const& it : queries) {
-      auto const& timeString = TRI_StringTimeStamp(it.started);
-      auto const& queryString = it.queryString;
+    for (auto const& q : queries) {
+      auto const& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryString = q.queryString;
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       result.add(VPackValue(VPackValueType::Object));
-      result.add("id", VPackValue(StringUtils::itoa(it.id)));
+      result.add("id", VPackValue(StringUtils::itoa(q.id)));
       result.add("query", VPackValue(queryString));
       result.add("started", VPackValue(timeString));
-      result.add("runTime", VPackValue(it.runTime));
+      result.add("runTime", VPackValue(q.runTime));
+      result.add("state", VPackValue(queryState));
       result.close();
     }
     result.close();
@@ -210,10 +196,6 @@ bool RestQueryHandler::readQuery() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock DeleteApiQuerySlow
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestQueryHandler::deleteQuerySlow() {
   auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
   queryList->clearSlow();
@@ -228,10 +210,6 @@ bool RestQueryHandler::deleteQuerySlow() {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock DeleteApiQueryKill
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
@@ -275,10 +253,6 @@ bool RestQueryHandler::deleteQuery() {
   }
   return deleteQuery(name);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock PutApiQueryProperties
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::replaceProperties() {
   const auto& suffix = _request->suffix();
@@ -359,10 +333,6 @@ bool RestQueryHandler::replaceProperties() {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock PostApiQueryProperties
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::parseQuery() {
   const auto& suffix = _request->suffix();
@@ -448,5 +418,3 @@ bool RestQueryHandler::parseQuery() {
 
   return true;
 }
-
-

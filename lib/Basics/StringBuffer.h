@@ -25,7 +25,7 @@
 #define LIB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
+
 #include "Zip/zip.h"
 
 #include <sstream>
@@ -373,7 +373,6 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 class StringBuffer {
- private:
   StringBuffer() = delete;
   StringBuffer(StringBuffer const&) = delete;
   StringBuffer& operator=(StringBuffer const&) = delete;
@@ -744,6 +743,15 @@ class StringBuffer {
     _buffer._buffer = other->_buffer;
     _buffer._current = other->_current;
     _buffer._len = other->_len;
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief make sure the buffer is null-terminated
+  //////////////////////////////////////////////////////////////////////////////
+
+  void ensureNullTerminated () {
+    TRI_AppendCharStringBuffer(&_buffer, '\0');
+    --_buffer._current;
   }
 
   //////////////////////////////////////////////////////////////////////////////

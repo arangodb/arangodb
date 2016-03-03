@@ -28,7 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
@@ -45,9 +45,7 @@
 namespace arangodb {
 namespace wal {
 
-
 class Logfile {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for logfile ids
@@ -69,7 +67,6 @@ class Logfile {
     COLLECTED = 6
   };
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Logfile
@@ -91,7 +88,6 @@ class Logfile {
 
   ~Logfile();
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new logfile
   //////////////////////////////////////////////////////////////////////////////
@@ -110,7 +106,6 @@ class Logfile {
 
   static int judge(std::string const&);
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the filename
   //////////////////////////////////////////////////////////////////////////////
@@ -299,9 +294,7 @@ class Logfile {
         break;
     }
 
-    LOG_TRACE("changing logfile status from %s to %s for logfile %llu",
-              statusText(_status).c_str(), statusText(status).c_str(),
-              (unsigned long long)id());
+    LOG(TRACE) << "changing logfile status from " << statusText(_status) << " to " << statusText(status) << " for logfile " << id();
     _status = status;
   }
 
@@ -348,7 +341,7 @@ class Logfile {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void release() {
-    TRI_ASSERT_EXPENSIVE(_users > 0);
+    TRI_ASSERT(_users > 0);
     --_users;
   }
 
@@ -361,7 +354,7 @@ class Logfile {
 
     size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
 
-    READ_LOCKER(_legendCacheLock[i]);
+    READ_LOCKER(readLocker, _legendCacheLock[i]);
 
     auto it = _legendCache[i].find(cs);
 
@@ -380,7 +373,7 @@ class Logfile {
 
     size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
 
-    WRITE_LOCKER(_legendCacheLock[i]);
+    WRITE_LOCKER(writeLocker, _legendCacheLock[i]);
 
     auto it = _legendCache[i].find(cs);
 
@@ -389,7 +382,6 @@ class Logfile {
     }
   }
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile id
   //////////////////////////////////////////////////////////////////////////////
@@ -420,7 +412,6 @@ class Logfile {
 
   std::atomic<int64_t> _collectQueueSize;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief legend cache, key type with hash function
@@ -470,5 +461,3 @@ class Logfile {
 }
 
 #endif
-
-

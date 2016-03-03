@@ -2077,7 +2077,7 @@ textarea,
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
 .navbar, footer.footer {
@@ -2095,10 +2095,10 @@ textarea,
   .button-danger:focus {
     background-color: #be342e; }
 
-.deleteButton, a.danger.coordinator, a.danger.dbserver {
+.deleteButton i, a.danger.coordinator, a.danger.dbserver {
   color: #da4f49; }
-  .deleteButton:hover,
-  a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
+  .deleteButton i:hover,
+  a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton i:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
     color: #be342e; }
 
 a.danger.coordinator, a.danger.dbserver {
@@ -2583,6 +2583,10 @@ div.footer-right {
   color: #fff;
   margin-left: 10px;
   padding: 5px 16px; }
+  .button-neutral:focus, .button-primary:focus, .button-notification:focus, .button-success:focus, .button-danger:focus, .button-warning:focus, .button-inactive:focus, .button-close:focus {
+    outline: none; }
+  .button-neutral i, .button-primary i, .button-notification i, .button-success i, .button-danger i, .button-warning i, .button-inactive i, .button-close i {
+    margin-left: -5px; }
 
 .button-header {
   margin-top: 5px; }
@@ -2593,13 +2597,13 @@ button.disabled,
   cursor: not-allowed; }
 
 .addButton {
-  font-size: 22px;
+  font-size: 16pt;
   margin-right: 7px;
   margin-top: 2px;
   position: relative; }
 
-.deleteButton {
-  font-size: 22px;
+.deleteButton i {
+  font-size: 16pt;
   padding-right: 3px;
   position: relative;
   top: 3px; }
@@ -2673,7 +2677,7 @@ button {
       background-color: #8aa051; }
   button.gv_dropdown_entry {
     height: 30px;
-    margin: 4px 4px 4px 30px;
+    margin: 4px 4px 4px 12px;
     width: 160px; }
   button.gv_context_button {
     width: 65px; }
@@ -2907,8 +2911,40 @@ div .tile, div .bigtile {
   position: relative;
   text-align: center;
   z-index: 1; }
+  div .tile progress[value], div .bigtile progress[value] {
+    color: #5bc0de; }
+  div .tile progress::-webkit-progress-bar-value, div .bigtile progress::-webkit-progress-bar-value {
+    background: #5bc0de; }
+  div .tile progress::-webkit-progress-value, div .bigtile progress::-webkit-progress-value {
+    background: #5bc0de; }
+  div .tile progress::-moz-progress-bar, div .bigtile progress::-moz-progress-bar {
+    background: #5bc0de; }
+  div .tile progress, div .bigtile progress {
+    -webkit-appearance: none;
+    border-radius: 0;
+    height: 2px;
+    margin-top: 16px;
+    position: relative;
+    width: 100%;
+    z-index: 10; }
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
+  div .locked.tile, div .locked.bigtile {
+    cursor: not-allowed; }
+    div .locked.tile .iconSet,
+    div .locked.bigtile .iconSet,
+    div .locked.tile .borderBox,
+    div .locked.bigtile .borderBox,
+    div .locked.tile .collection-type-icon,
+    div .locked.bigtile .collection-type-icon,
+    div .locked.tile .collectionName, div .locked.bigtile .collectionName {
+      opacity: .5; }
+    div .locked.tile .iconSet span:hover, div .locked.bigtile .iconSet span:hover {
+      background-color: #fff !important;
+      color: #000;
+      cursor: not-allowed !important; }
+    div .locked.tile .iconSet:hover, div .locked.bigtile .iconSet:hover {
+      cursor: not-allowed !important; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
     border-radius: 3px;
@@ -2940,13 +2976,11 @@ div .tile, div .bigtile {
     div .tile img:hover, div .bigtile img:hover {
       cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-left: 22px;
     margin-right: 10px;
-    margin-top: -5px;
     position: relative;
-    right: 4px;
-    top: 2px; }
+    top: 0; }
   div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
   div .tile a svg.icon, div .bigtile a svg.icon {
@@ -2980,6 +3014,8 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
+    div .tile h5.inProgress, div .bigtile h5.inProgress {
+      color: #5bc0de; }
   div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
@@ -2998,6 +3034,7 @@ div .tile, div .bigtile {
     width: 100%; }
   div .tile .borderBox, div .bigtile .borderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
+    border-bottom: 0;
     border-radius: 3px;
     height: 75px;
     position: absolute;
@@ -3059,6 +3096,8 @@ div .tile, div .bigtile {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
+        div .tile .tileBadge span .corneredBadge.inProgress, div .bigtile .tileBadge span .corneredBadge.inProgress {
+          border-bottom-color: #5bc0de; }
         div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
@@ -3100,7 +3139,21 @@ div .bigtile {
   #arangoCollectionSelect {
     display: inline-block;
     height: 29px;
-    margin-top: 1px; } }
+    margin-top: 1px; }
+  .footer-center p {
+    display: none; }
+  #queryContent .styled-select,
+  #queryContent #querySize,
+  #queryContent #querySizeDiv {
+    width: 90px !important; } }
+
+@media (max-width: 970px) {
+  #documentsDiv #totalDocuments {
+    display: none; }
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
@@ -5219,9 +5272,10 @@ div.dropdownInner {
     border-left: 1px solid rgba(140, 138, 137, 0.25);
     display: inline;
     list-style-type: none;
+    margin-left: 10px;
     margin-top: 10px;
     min-height: 105px;
-    width: 230px; }
+    width: 175px; }
     div.dropdownInner ul:first-of-type {
       border: 0; }
     div.dropdownInner ul label {
@@ -5247,6 +5301,8 @@ div.queryline {
   div.queryline select,
   div.queryline input {
     margin-bottom: 5px; }
+  div.queryline input {
+    width: 16%; }
   div.queryline input[type='file'] {
     border: 0; }
   div.queryline.querylineAdd span {
@@ -5261,6 +5317,8 @@ div.queryline {
     margin-left: 6px;
     margin-right: 6px;
     position: relative; }
+    div.queryline div.searchByAttribute input {
+      width: 140px; }
     div.queryline div.searchByAttribute > ul.gv-dropdown-menu {
       -moz-border-radius: 0;
       -webkit-border-radius: 0;
@@ -5288,9 +5346,10 @@ div.dropdownImport {
     margin-top: 5px; }
 
 select.filterSelect {
+  color: #00f;
   margin-left: 10px;
   margin-right: 10px;
-  width: 100px; }
+  width: 80px; }
 
 #filterHeader button {
   float: right;
@@ -5371,6 +5430,8 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
+  div.headerBar select:focus {
+    outline: none; }
   div.headerBar .infoField {
     background-color: #fff;
     border: 1px solid rgba(140, 138, 137, 0.25);
@@ -5421,7 +5482,7 @@ div.headerBar {
 
 .headerBar a.arangoHeader {
   color: #000;
-  font-size: 13pt;
+  font-size: 11.5pt;
   font-weight: 100;
   left: 0;
   position: relative;
@@ -5439,7 +5500,7 @@ div.headerBar {
   .breadcrumb .disabledBread {
     color: #666;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative; }
@@ -5449,8 +5510,19 @@ div.headerBar {
   .breadcrumb .activeBread {
     color: #8aa051;
     float: left;
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 100; }
+  .breadcrumb #app-development-path {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+    border-left: 1px solid rgba(140, 138, 137, 0.25);
+    border-radius: 3px;
+    border-right: 1px solid rgba(140, 138, 137, 0.25);
+    height: 24px;
+    margin-left: -6px;
+    margin-top: -10px;
+    padding-left: 5px;
+    width: 100%; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -5495,6 +5567,9 @@ div.headerBar {
 
 .select2-drop-active {
   z-index: 9999999; }
+
+.modal-tabbar {
+  border-bottom: 1px solid #666; }
 
 .modal-body {
   color: #736b68;
@@ -5617,21 +5692,22 @@ div.headerBar {
     -webkit-transform: rotate(90deg);
     transform: rotate(90deg); }
   .modal-body input {
-    width: 384px; }
+    width: 436px; }
   .modal-body select {
-    width: 398px; }
+    width: 450px; }
   .modal-body .collectionTh {
-    height: 55px; }
+    height: 50px; }
   .modal-body .tab-content {
     min-height: 200px; }
     .modal-body .tab-content .tab-pane {
       border-top: 1px solid #666 !important;
       margin-left: 0 !important;
       padding-top: 10px; }
+    .modal-body .tab-content .tab-pane-modal {
+      border-top: none !important; }
     .modal-body .tab-content #appstore {
       max-height: 290px; }
   .modal-body .errorMessage {
-    background-color: #fff;
     color: #da4f49;
     font-size: 9pt;
     font-weight: 400;
@@ -5652,11 +5728,20 @@ div.headerBar {
 .modal-backdrop.fade.in {
   opacity: .4; }
 
+.fade {
+  opacity: 0;
+  -moz-transition: opacity 0.03s linear;
+  -ms-transition: opacity 0.03s linear;
+  -o-transition: opacity 0.03s linear;
+  -webkit-transition: opacity 0.03s linear;
+  transition: opacity 0.03s linear; }
+
 .modal {
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: 0;
-  width: 580px;
+  margin-left: -325px !important;
+  width: 650px;
   z-index: 9999999; }
   .modal .fade.in {
     top: 12.1% !important; }
@@ -5690,6 +5775,9 @@ div.headerBar {
 .modal-footer {
   border-top: 0 !important;
   padding-right: 17px; }
+  .modal-footer .button-close {
+    margin-left: 20px;
+    margin-right: 10px; }
 
 .modal-header {
   margin-left: 5px;
@@ -5732,7 +5820,7 @@ div.headerBar {
 .createModalDialog .figures1,
 .createModalDialog .figures2 {
   margin-bottom: 20px;
-  width: 255px; }
+  width: 300px; }
 
 .createModalDialog .figures2 {
   margin-left: 20px !important; }
@@ -5917,8 +6005,40 @@ div .tile, div .bigtile {
   position: relative;
   text-align: center;
   z-index: 1; }
+  div .tile progress[value], div .bigtile progress[value] {
+    color: #5bc0de; }
+  div .tile progress::-webkit-progress-bar-value, div .bigtile progress::-webkit-progress-bar-value {
+    background: #5bc0de; }
+  div .tile progress::-webkit-progress-value, div .bigtile progress::-webkit-progress-value {
+    background: #5bc0de; }
+  div .tile progress::-moz-progress-bar, div .bigtile progress::-moz-progress-bar {
+    background: #5bc0de; }
+  div .tile progress, div .bigtile progress {
+    -webkit-appearance: none;
+    border-radius: 0;
+    height: 2px;
+    margin-top: 16px;
+    position: relative;
+    width: 100%;
+    z-index: 10; }
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
+  div .locked.tile, div .locked.bigtile {
+    cursor: not-allowed; }
+    div .locked.tile .iconSet,
+    div .locked.bigtile .iconSet,
+    div .locked.tile .borderBox,
+    div .locked.bigtile .borderBox,
+    div .locked.tile .collection-type-icon,
+    div .locked.bigtile .collection-type-icon,
+    div .locked.tile .collectionName, div .locked.bigtile .collectionName {
+      opacity: .5; }
+    div .locked.tile .iconSet span:hover, div .locked.bigtile .iconSet span:hover {
+      background-color: #fff !important;
+      color: #000;
+      cursor: not-allowed !important; }
+    div .locked.tile .iconSet:hover, div .locked.bigtile .iconSet:hover {
+      cursor: not-allowed !important; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
     border-radius: 3px;
@@ -5950,13 +6070,11 @@ div .tile, div .bigtile {
     div .tile img:hover, div .bigtile img:hover {
       cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
-    font-size: 22px;
+    font-size: 20px;
     margin-left: 22px;
     margin-right: 10px;
-    margin-top: -5px;
     position: relative;
-    right: 4px;
-    top: 2px; }
+    top: 0; }
   div .tile a span.icon, div .bigtile a span.icon {
     font-size: 50px; }
   div .tile a svg.icon, div .bigtile a svg.icon {
@@ -5990,6 +6108,8 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
+    div .tile h5.inProgress, div .bigtile h5.inProgress {
+      color: #5bc0de; }
   div .tile .tileSelects, div .bigtile .tileSelects {
     margin-left: 40px;
     position: relative;
@@ -6008,6 +6128,7 @@ div .tile, div .bigtile {
     width: 100%; }
   div .tile .borderBox, div .bigtile .borderBox {
     border: 1px solid rgba(140, 138, 137, 0.25);
+    border-bottom: 0;
     border-radius: 3px;
     height: 75px;
     position: absolute;
@@ -6069,6 +6190,8 @@ div .tile, div .bigtile {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.loaded, div .bigtile .tileBadge span .corneredBadge.loaded {
           border-bottom-color: #8aa051; }
+        div .tile .tileBadge span .corneredBadge.inProgress, div .bigtile .tileBadge span .corneredBadge.inProgress {
+          border-bottom-color: #5bc0de; }
         div .tile .tileBadge span .corneredBadge.unloaded, div .bigtile .tileBadge span .corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
         div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
@@ -6117,8 +6240,9 @@ div .bigtile {
   top: 6px; }
 
 .dataNotReadyYet {
+  color: #faa732;
   font-family: 'Open Sans', sans-serif;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 100;
   text-align: center; }
 
@@ -6342,7 +6466,21 @@ div .bigtile {
   #arangoCollectionSelect {
     display: inline-block;
     height: 29px;
-    margin-top: 1px; } }
+    margin-top: 1px; }
+  .footer-center p {
+    display: none; }
+  #queryContent .styled-select,
+  #queryContent #querySize,
+  #queryContent #querySizeDiv {
+    width: 90px !important; } }
+
+@media (max-width: 970px) {
+  #documentsDiv #totalDocuments {
+    display: none; }
+  .navmenu {
+    padding-left: 20px;
+    padding-top: 0;
+    position: absolute; } }
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {

@@ -50,5 +50,3 @@ arangodb::basics::Json TRI_ExpandShapedJson(
     TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr);
 
 #endif
-
-

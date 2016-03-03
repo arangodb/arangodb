@@ -81,15 +81,12 @@ class SignalTask : virtual public Task {
   ~SignalTask();
 
  protected:
-
   bool setup(Scheduler*, EventLoop) override;
 
-
+  // void cleanup() override;
   // void cleanup() override;
 
-
   bool handleEvent(EventToken, EventType) override;
-
 
   bool needsMainEventLoop() const override;
 
@@ -102,10 +99,9 @@ class SignalTask : virtual public Task {
 
  private:
   std::set<int> _signals;
-  basics::Mutex _changeLock;
+  Mutex _changeLock;
 };
 }
 }
 
 #endif
-

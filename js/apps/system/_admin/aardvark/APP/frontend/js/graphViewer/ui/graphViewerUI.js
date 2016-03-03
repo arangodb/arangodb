@@ -43,8 +43,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   }
 
   var graphViewer,
-    width = (optWidth + 20 || container.offsetWidth - 81 + 20),
-    height = optHeight || container.offsetHeight,
+    width = (optWidth + 20 || container.getBoundingClientRect().width - 81 + 20),
+    height = optHeight || container.getBoundingClientRect().height,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
     colourList,
@@ -88,7 +88,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB = function(res) {
@@ -197,7 +197,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         },
 
         alertError = function(msg) {
-          window.alert(msg);
+          arangoHelper.arangoError("Graph", msg);
         },
 
         resultCB2 = function(res) {
@@ -639,10 +639,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     this.graphSettings = {};
 
     this.loadLocalStorage = function() {
-      var graphName = adapterConfig.graphName;
+      //graph name not enough, need to set db name also
+      var dbName = adapterConfig.baseUrl.split('/')[2],
+      combinedGraphName = adapterConfig.graphName + dbName;
+      
       if (localStorage.getItem('graphSettings') === null || localStorage.getItem('graphSettings')  === 'null') {
         var obj = {};
-        obj[graphName] = {
+        obj[combinedGraphName] = {
           viewer: viewerConfig,
           adapter: adapterConfig
         };
@@ -653,16 +656,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           var settings = JSON.parse(localStorage.getItem('graphSettings'));
           this.graphSettings = settings;
 
-          if (settings[graphName].viewer !== undefined) {
-            viewerConfig = settings[graphName].viewer;  
+          if (settings[combinedGraphName].viewer !== undefined) {
+            viewerConfig = settings[combinedGraphName].viewer;  
           }
-          if (settings[graphName].adapter !== undefined) {
-            adapterConfig = settings[graphName].adapter;
+          if (settings[combinedGraphName].adapter !== undefined) {
+            adapterConfig = settings[combinedGraphName].adapter;
           }
         }
         catch (e) {
           console.log("Could not load graph settings, resetting graph settings.");
-          this.graphSettings[graphName] = {
+          this.graphSettings[combinedGraphName] = {
             viewer: viewerConfig,
             adapter: adapterConfig
           };
@@ -691,7 +694,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     var size = $('#graphSize').find(":selected").val();
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       }, size);
   });
@@ -702,7 +705,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     } else {
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          window.alert("Sorry your graph seems to be empty");
+          arangoHelper.arangoError("Graph", "Sorry your graph seems to be empty");
         }
       });
     }

@@ -31,8 +31,6 @@
 
 class VocShaper;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into an existing V8 object
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,5 +65,3 @@ int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
                                VocShaper*, bool);
 
 #endif
-
-

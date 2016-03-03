@@ -888,7 +888,6 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
-
   if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }

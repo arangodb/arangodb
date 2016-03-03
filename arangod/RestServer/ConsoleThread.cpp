@@ -26,7 +26,7 @@
 #include <iostream>
 
 #include "ApplicationServer/ApplicationServer.h"
-#include "Basics/logging.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/MutexLocker.h"
 #include "Rest/Version.h"
@@ -38,11 +38,7 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
 using namespace arangodb;
-using namespace std;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the line editor object for use in debugging
@@ -56,7 +52,6 @@ V8LineEditor* ConsoleThread::serverConsole = nullptr;
 
 Mutex ConsoleThread::serverConsoleMutex;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a console thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,17 +64,13 @@ ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
       _applicationV8(applicationV8),
       _context(nullptr),
       _vocbase(vocbase),
-      _done(0),
-      _userAborted(false) {
-  allowAsynchronousCancelation();
-}
+      _userAborted(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a console thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ConsoleThread::~ConsoleThread() {}
-
+ConsoleThread::~ConsoleThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the thread
@@ -97,7 +88,6 @@ void ConsoleThread::run() {
   } catch (char const*) {
   } catch (...) {
     _applicationV8->exitContext(_context);
-    _done = true;
     _applicationServer->beginShutdown();
 
     throw;
@@ -105,10 +95,8 @@ void ConsoleThread::run() {
 
   // exit context
   _applicationV8->exitContext(_context);
-  _done = true;
   _applicationServer->beginShutdown();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inner thread loop - this handles all the user inputs
@@ -168,7 +156,7 @@ start_pretty_print();
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG_ERROR("unable to install signal handler");
+      LOG(ERR) << "unable to install signal handler";
     }
 #endif
 
@@ -177,11 +165,11 @@ start_pretty_print();
     console.open(true);
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = &console;
     }
 
-    while (!_userAborted) {
+    while (!isStopping() && !_userAborted.load()) {
       if (nrCommands >= gcInterval) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
@@ -191,15 +179,15 @@ start_pretty_print();
       bool eof;
 
       {
-        MUTEX_LOCKER(serverConsoleMutex);
+        MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
       if (eof) {
-        _userAborted = true;
+        _userAborted.store(true);
       }
 
-      if (_userAborted) {
+      if (_userAborted.load()) {
         break;
       }
 
@@ -219,7 +207,7 @@ start_pretty_print();
                                     TRI_V8_STRING(input.c_str()), name, true);
         console.setExecutingCommand(false);
 
-        if (_userAborted) {
+        if (_userAborted.load()) {
           std::cout << "command aborted" << std::endl;
         } else if (tryCatch.HasCaught()) {
           if (!tryCatch.CanContinue() || tryCatch.HasTerminated()) {
@@ -232,7 +220,7 @@ start_pretty_print();
     }
 
     {
-      MUTEX_LOCKER(serverConsoleMutex);
+      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = nullptr;
     }
   }
@@ -240,5 +228,3 @@ start_pretty_print();
   localContext->Exit();
   throw "user aborted";
 }
-
-

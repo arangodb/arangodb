@@ -39,11 +39,10 @@ namespace aql {
 struct Aggregator;
 class AqlItemBlock;
 class ExecutionEngine;
-  
+
 typedef std::vector<Aggregator*> AggregateValuesType;
 
 class SortedCollectBlock : public ExecutionBlock {
-
  private:
   typedef std::vector<Aggregator*> AggregateValuesType;
 
@@ -81,7 +80,6 @@ class SortedCollectBlock : public ExecutionBlock {
     void addValues(AqlItemBlock const* src, RegisterId groupRegister);
   };
 
-
  public:
   SortedCollectBlock(ExecutionEngine*, CollectNode const*);
 
@@ -105,11 +103,11 @@ class SortedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -141,7 +139,6 @@ class SortedCollectBlock : public ExecutionBlock {
   std::vector<std::string> _variableNames;
 };
 
-
 class HashedCollectBlock : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
@@ -160,11 +157,11 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -213,4 +210,3 @@ class HashedCollectBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

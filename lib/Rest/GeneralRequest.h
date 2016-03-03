@@ -33,6 +33,7 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.h
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
@@ -40,7 +41,13 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+=======
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.h
 namespace arangodb {
+namespace velocypack {
+class Builder;
+struct Options;
+}
 namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +63,6 @@ class GeneralRequest {
   GeneralRequest(GeneralRequest const&);
   GeneralRequest& operator=(GeneralRequest const&);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Protocol (http/velocystream) request type
@@ -109,7 +115,6 @@ class GeneralRequest {
 
   static std::string const MultiPartContentType;
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief translate the HTTP protocol version
   //////////////////////////////////////////////////////////////////////////////
@@ -146,7 +151,6 @@ class GeneralRequest {
 
   static std::string const& getMultipartContentType();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief http request constructor
@@ -161,6 +165,7 @@ class GeneralRequest {
 
   GeneralRequest(ConnectionInfo const&, char const*, size_t, int32_t, bool);
 
+<<<<<<< HEAD:lib/Rest/GeneralRequest.h
   //////////////////////////////////////////////////////////////////////////////
   /// @brief velocystream(vstream) request constructor
   ///
@@ -172,8 +177,10 @@ class GeneralRequest {
                         uint32_t , uint32_t, uint64_t , int32_t, bool);
 
   ~GeneralRequest();
+=======
+  ~HttpRequest();
+>>>>>>> upstream/devel:lib/Rest/HttpRequest.h
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the protocol
@@ -296,7 +303,6 @@ class GeneralRequest {
 
   void setClientTaskId(uint64_t);
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the prefix path of the request
@@ -340,7 +346,6 @@ class GeneralRequest {
 
   RequestContext* getRequestContext() const { return _requestContext; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the content length
@@ -380,7 +385,6 @@ class GeneralRequest {
 
   std::map<std::string, std::string> headers() const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the value of a key
@@ -441,7 +445,6 @@ class GeneralRequest {
 
   std::map<std::string, std::string> cookieValues() const;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the body
@@ -477,7 +480,8 @@ class GeneralRequest {
   /// @brief gets the request body as VelocyPackBuilder
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> toVelocyPack(VPackOptions const*);
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+      arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the request body as TRI_json_t*
@@ -485,7 +489,6 @@ class GeneralRequest {
 
   TRI_json_t* toJson(char**);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine the header type
@@ -553,7 +556,6 @@ class GeneralRequest {
 
   void parseCookies(char const* buffer);
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief complete request path, without protocol, host, and parameters
@@ -737,5 +739,3 @@ class GeneralRequest {
 }
 
 #endif
-
-

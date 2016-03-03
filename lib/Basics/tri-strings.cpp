@@ -26,7 +26,6 @@
 #include "Basics/Utf8Helper.h"
 #include <openssl/sha.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hex values for all characters
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +68,6 @@ static uint8_t const HexDecodeLookup[256] = {
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F
@@ -342,7 +340,6 @@ static void DecodeSurrogatePair(char** dst, char const* src1,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,7 +610,8 @@ char* TRI_Concatenate3String(TRI_memory_zone_t* zone, char const* a,
   size_t nb = strlen(b);
   size_t nc = strlen(c);
 
-  char* result = static_cast<char*>(TRI_Allocate(zone, na + nb + nc + 1, false));
+  char* result =
+      static_cast<char*>(TRI_Allocate(zone, na + nb + nc + 1, false));
 
   if (result != nullptr) {
     memcpy(result, a, na);
@@ -768,7 +766,7 @@ TRI_vector_string_t TRI_Split2String(char const* source, char const* delim) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 void TRI_FreeStringZ(TRI_memory_zone_t* zone, char* value, char const* file,
                      int line) {
@@ -782,7 +780,6 @@ void TRI_FreeString(TRI_memory_zone_t* zone, char* value) {
 }
 
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation
@@ -879,11 +876,13 @@ char* TRI_DecodeHexString(char const* source, size_t sourceLen,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
-  unsigned char* dst;
-
-  dst = static_cast<unsigned char*>(
+  unsigned char* dst = static_cast<unsigned char*>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, SHA256_DIGEST_LENGTH, false));
   *dstLen = SHA256_DIGEST_LENGTH;
+
+  if (dst == nullptr) {
+    return nullptr;
+  }
 
   SHA256((unsigned char const*)source, sourceLen, dst);
 
@@ -896,20 +895,17 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
 
 char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
                                 size_t inLength, size_t* outLength,
-                                bool appendNewline) {
-  char* buffer;
-  char* qtr;
-  char const* ptr;
-  char const* end;
-
-  buffer = static_cast<char*>(
+                                bool appendNewline, bool truncate) {
+  char* buffer = static_cast<char*>(
       TRI_Allocate(zone, (4 * inLength) + 1 + (appendNewline ? 1 : 0), false));
 
   if (buffer == nullptr) {
     return nullptr;
   }
 
-  qtr = buffer;
+  char* qtr = buffer;
+  char const* ptr;
+  char const* end;
 
   for (ptr = in, end = ptr + inLength; ptr < end; ptr++, qtr++) {
     uint8_t n;
@@ -949,7 +945,11 @@ char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
   }
 
   *qtr = '\0';
-  *outLength = (size_t)(qtr - buffer);
+  *outLength = static_cast<size_t>(qtr - buffer);
+
+  if (!truncate) {
+    return buffer;
+  }
 
   qtr = static_cast<char*>(TRI_Allocate(zone, (*outLength) + 1, false));
 
@@ -1305,5 +1305,3 @@ char* TRI_PrefixUtf8String(char const* in, const uint32_t maximumLength) {
 
   return (char*)p;
 }
-
-

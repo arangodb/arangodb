@@ -48,13 +48,12 @@ extern int32_t const WRP_VOCBASE_TYPE;
 
 extern int32_t const WRP_VOCBASE_COL_TYPE;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION()                                  \
-  if (arangodb::V8TransactionContext::IsEmbedded()) {           \
+  if (arangodb::V8TransactionContext::IsEmbedded()) {                   \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION); \
   }
 

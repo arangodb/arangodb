@@ -34,17 +34,13 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
-  
  public:
 
   explicit RestDocumentHandler(rest::GeneralRequest*);
 
-  
  public:
-
   status_t execute() override final;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collection type
@@ -153,5 +149,3 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 }
 
 #endif
-
-

@@ -35,13 +35,11 @@ namespace aql {
 
 template <class T>
 class WalkerWorker {
-  
  public:
   WalkerWorker() {}
 
   virtual ~WalkerWorker() {}
 
-  
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process
   }
@@ -56,7 +54,7 @@ class WalkerWorker {
                              T*   // sub
                              ) {}
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
   bool done(T* en) {
     // make sure a node is only processed once
@@ -82,9 +80,8 @@ class WalkerWorker {
 
 #endif
 
-  
  private:
-#ifdef TRI_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   std::unordered_set<T*> _done;
 #endif
 };
@@ -92,4 +89,3 @@ class WalkerWorker {
 }
 
 #endif
-

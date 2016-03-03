@@ -37,7 +37,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeElement(TRI_index_element_t* element) {
-  TRI_index_element_t::free(element);
+  TRI_index_element_t::freeElement(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ static uint64_t HashKey(void* userData,
 static bool IsEqualKeyElement(void* userData,
                               TRI_hash_index_search_value_t const* left,
                               TRI_index_element_t const* right) {
-  TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+  TRI_ASSERT(right->document() != nullptr);
 
   for (size_t j = 0; j < left->_length; ++j) {
     TRI_shaped_json_t* leftJson = &left->_values[j];
@@ -109,8 +109,6 @@ static bool IsEqualKeyElementHash(
   return IsEqualKeyElement(userData, left, right);
 }
 
-
-
 TRI_doc_mptr_t* HashIndexIterator::next() {
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
@@ -143,7 +141,6 @@ void HashIndexIterator::reset() {
   _posInBuffer = 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the unique array
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +170,6 @@ HashIndex::UniqueArray::~UniqueArray() {
   delete _isEqualElElByKey;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the multi array
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +198,6 @@ HashIndex::MultiArray::~MultiArray() {
   delete _hashElement;
   delete _isEqualElElByKey;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index search value
@@ -235,8 +230,6 @@ void TRI_hash_index_search_value_t::destroy() {
     _values = nullptr;
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
@@ -290,8 +283,8 @@ HashIndex::HashIndex(
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndex::HashIndex(TRI_json_t const* json)
-    : PathBasedIndex(json, false), _uniqueArray(nullptr) {}
+HashIndex::HashIndex(VPackSlice const& slice)
+    : PathBasedIndex(slice, false), _uniqueArray(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index
@@ -304,7 +297,6 @@ HashIndex::~HashIndex() {
     delete _multiArray;
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a selectivity estimate for the index
@@ -342,37 +334,31 @@ size_t HashIndex::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
+/// @brief return a velocypack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json HashIndex::toJson(TRI_memory_zone_t* zone,
-                                         bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  json("unique", arangodb::basics::Json(zone, _unique))(
-      "sparse", arangodb::basics::Json(zone, _sparse));
-
-  return json;
+void HashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
+  builder.add("unique", VPackValue(_unique));
+  builder.add("sparse", VPackValue(_sparse));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
+/// @brief return a velocypack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json HashIndex::toJsonFigures(TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(zone, arangodb::basics::Json::Object);
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-
+void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
   if (_unique) {
-    _uniqueArray->_hashArray->appendToJson(zone, json);
+    _uniqueArray->_hashArray->appendToVelocyPack(builder);
   } else {
-    _multiArray->_hashArray->appendToJson(zone, json);
+    _multiArray->_hashArray->appendToVelocyPack(builder);
   }
-  return json;
 }
 
-int HashIndex::insert(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool isRollback) {
   if (_unique) {
     return insertUnique(trx, doc, isRollback);
   }
@@ -384,8 +370,8 @@ int HashIndex::insert(arangodb::Transaction* trx,
 /// @brief removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::remove(arangodb::Transaction* trx,
-                      TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
+                      bool isRollback) {
   if (_unique) {
     return removeUnique(trx, doc, isRollback);
   }
@@ -416,7 +402,7 @@ int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
 
   if (_unique) {
     return _uniqueArray->_hashArray->resize(trx, size);
-  } 
+  }
 
   return _multiArray->_hashArray->resize(trx, size);
 }
@@ -677,7 +663,7 @@ int HashIndex::removeUniqueElement(arangodb::Transaction* trx,
   if (old == nullptr) {
     if (isRollback) {
       return TRI_ERROR_NO_ERROR;
-    } 
+    }
     return TRI_ERROR_INTERNAL;
   }
 
@@ -723,7 +709,7 @@ int HashIndex::removeMultiElement(arangodb::Transaction* trx,
     // not found
     if (isRollback) {  // ignore in this case, because it can happen
       return TRI_ERROR_NO_ERROR;
-    } 
+    }
     return TRI_ERROR_INTERNAL;
   }
   FreeElement(old);
@@ -744,7 +730,7 @@ int HashIndex::removeMulti(arangodb::Transaction* trx,
 
   for (auto& hashElement : elements) {
     int result = removeMultiElement(trx, hashElement, isRollback);
-    
+
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (result != TRI_ERROR_NO_ERROR) {
@@ -875,15 +861,16 @@ IndexIterator* HashIndex::iteratorForCondition(
       bool valid = true;
       for (size_t i = 0; i < n; ++i) {
         auto& state = permutationStates[i];
-        std::unique_ptr<TRI_json_t> json(
-            state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+        std::shared_ptr<VPackBuilder> valBuilder =
+            state.getValue()->toVelocyPackValue();
 
-        if (json == nullptr) {
+        if (valBuilder == nullptr) {
           valid = false;
           break;
         }
 
-        auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+        auto shaped =
+            TRI_ShapedJsonVelocyPack(shaper, valBuilder->slice(), false);
 
         if (shaped == nullptr) {
           // no such shape exists. this means we won't find this value and can
@@ -948,5 +935,3 @@ arangodb::aql::AstNode* HashIndex::specializeCondition(
   SimpleAttributeEqualityMatcher matcher(fields());
   return matcher.specializeAll(this, node, reference);
 }
-
-

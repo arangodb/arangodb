@@ -37,7 +37,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-
 class SortBlock : public ExecutionBlock {
  public:
   SortBlock(ExecutionEngine*, SortNode const*);
@@ -98,4 +97,3 @@ class SortBlock : public ExecutionBlock {
 }  // namespace arangodb
 
 #endif
-

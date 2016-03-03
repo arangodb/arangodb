@@ -33,7 +33,6 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request)
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-
 GeneralHandler::status_t RestPleaseUpgradeHandler::execute() {
   createResponse(GeneralResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
@@ -52,7 +51,4 @@ GeneralHandler::status_t RestPleaseUpgradeHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}
-
-

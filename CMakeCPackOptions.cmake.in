@@ -1,0 +1,23 @@
+# debian
+if (CPACK_GENERATOR STREQUAL "DEB")
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "database")
+
+  set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "a multi-purpose NoSQL database
+ A distributed free and open-source database with a flexible data model for documents,
+ graphs, and key-values. Build high performance applications using a convenient
+ SQL-like query language or JavaScript extensions.
+ .
+ Copyright: 2012-2013 by triAGENS GmbH
+ Copyright: 2014-2015 by ArangoDB GmbH
+ ArangoDB Software
+ www.arangodb.com
+")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
+    "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Debian/arangodb.postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/Debian/arangodb.preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/Debian/arangodb.postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/Debian/arangodb.prerm;")
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
+  set(CPACK_PACKAGE_FILE_NAME "arangodb_${CPACK_PACKAGE_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}")
+  
+  set(CPACK_COMPONENTS_ALL debian-extras)
+endif ()

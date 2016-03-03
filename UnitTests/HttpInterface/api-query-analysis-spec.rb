@@ -12,7 +12,7 @@ describe ArangoDB do
     @current = "#{@api}/current"
     @slow = "#{@api}/slow"
     @properties = "#{@api}/properties"
-    @query = "FOR x IN 1..5 LET y = SLEEP(1) RETURN x"
+    @query = "FOR x IN 1..5 LET y = SLEEP(2) RETURN x"
     @queryBody = JSON.dump({query: @query})
     @fastQuery = "FOR x IN 1..1 LET y = SLEEP(0.2) RETURN x"
     @fastQueryBody = JSON.dump({query: @fastQuery})
@@ -163,6 +163,7 @@ describe ArangoDB do
 
     it "should be able to kill a running query" do
       send_queries
+      sleep 3
       doc = ArangoDB.log_get("#{@prefix}-current", @current)
       found = false
       res = JSON.parse doc.body
@@ -176,7 +177,7 @@ describe ArangoDB do
       found.should eq(true)
       doc = ArangoDB.log_delete(@prefix, "#{@api}/" + id)
       doc.code.should eq(200)
-      sleep 1
+      sleep 5
       doc = ArangoDB.log_get("#{@prefix}-current", @current)
       found = contains_query doc.body, @query
       found.should eq(false)

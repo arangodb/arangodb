@@ -23,12 +23,9 @@
 
 #include "PrimaryIndex.h"
 #include "Aql/AstNode.h"
-#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
-#include "Basics/logging.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -65,8 +62,6 @@ static bool IsEqualElementElement(void* userData, TRI_doc_mptr_t const* left,
              0;
 }
 
-
-
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   while (true) {
     if (_position >= _keys.size()) {
@@ -86,8 +81,6 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
 }
 
 void PrimaryIndexIterator::reset() { _position = 0; }
-
-
 
 PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
     : Index(0, collection,
@@ -113,11 +106,10 @@ PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PrimaryIndex::PrimaryIndex(TRI_json_t const* json)
-    : Index(json), _primaryIndex(nullptr) {}
+PrimaryIndex::PrimaryIndex(VPackSlice const& slice)
+    : Index(slice), _primaryIndex(nullptr) {}
 
 PrimaryIndex::~PrimaryIndex() { delete _primaryIndex; }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of documents from the index
@@ -135,68 +127,27 @@ size_t PrimaryIndex::memory() const { return _primaryIndex->memoryUsage(); }
 /// @brief return a VelocyPack representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPack(
-    bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder =
-      Index::toVelocyPack(withFigures, false);
-
+void PrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+  Index::toVelocyPack(builder, withFigures);
   // hard-coded
-  builder->add("unique", VPackValue(true));
-  builder->add("sparse", VPackValue(false));
-
-  if (closeToplevel) {
-    builder->close();
-  }
-  return builder;
+  builder.add("unique", VPackValue(true));
+  builder.add("sparse", VPackValue(false));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPackFigures(
-    bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
+void PrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  Index::toVelocyPackFigures(builder);
   _primaryIndex->appendToVelocyPack(builder);
-  return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json PrimaryIndex::toJson(TRI_memory_zone_t* zone,
-                                            bool withFigures) const {
-  auto json = Index::toJson(zone, withFigures);
-
-  // hard-coded
-  json("unique", arangodb::basics::Json(true))("sparse",
-                                               arangodb::basics::Json(false));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json PrimaryIndex::toJsonFigures(
-    TRI_memory_zone_t* zone) const {
-  arangodb::basics::Json json(zone, arangodb::basics::Json::Object);
-
-  json("memory", arangodb::basics::Json(static_cast<double>(memory())));
-  _primaryIndex->appendToJson(zone, json);
-
-  return json;
-}
-
-int PrimaryIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                         bool) {
+int PrimaryIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                         bool) {
+int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -244,8 +195,8 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
-    arangodb::Transaction* trx,
-    arangodb::basics::BucketPosition& position, uint64_t& total) {
+    arangodb::Transaction* trx, arangodb::basics::BucketPosition& position,
+    uint64_t& total) {
   return _primaryIndex->findSequential(trx, position, total);
 }
 
@@ -257,8 +208,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(
-    arangodb::Transaction* trx,
-    arangodb::basics::BucketPosition& position) {
+    arangodb::Transaction* trx, arangodb::basics::BucketPosition& position) {
   return _primaryIndex->findSequentialReverse(trx, position);
 }
 
@@ -267,8 +217,8 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey(arangodb::Transaction* trx,
-                            TRI_doc_mptr_t* header, void const** found) {
+int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_doc_mptr_t* header,
+                            void const** found) {
   *found = nullptr;
   int res = _primaryIndex->insert(trx, header);
 
@@ -285,8 +235,7 @@ int PrimaryIndex::insertKey(arangodb::Transaction* trx,
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey(arangodb::Transaction* trx,
-                            TRI_doc_mptr_t* header,
+int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_doc_mptr_t* header,
                             arangodb::basics::BucketPosition const& position) {
   return _primaryIndex->insertAtPosition(trx, header, position);
 }
@@ -304,8 +253,7 @@ TRI_doc_mptr_t* PrimaryIndex::removeKey(arangodb::Transaction* trx,
 /// @brief resizes the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::resize(arangodb::Transaction* trx,
-                         size_t targetSize) {
+int PrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
   return _primaryIndex->resize(trx, targetSize);
 }
 
@@ -411,7 +359,6 @@ arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,15 +419,8 @@ IndexIterator* PrimaryIndex::createIterator(
     }
   }
 
-  if (keys.empty()) {
-    // nothing to do: still new to return an empty iterator
-    return new PrimaryIndexIterator(trx, this, keys);
-  }
-
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return new PrimaryIndexIterator(trx, this, keys);
 }
-
-

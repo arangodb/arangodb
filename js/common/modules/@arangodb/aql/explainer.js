@@ -12,7 +12,6 @@ if (typeof internal.printBrowser === "function") {
 }
 
 var stringBuilder = {
-
   output: "",
 
   appendLine: function(line) {
@@ -47,6 +46,14 @@ function setColors (useSystemColors) {
 }
 
 /* colorizer and output helper functions */ 
+
+function bracketize (node, v) {
+  'use strict';
+  if (node && node.subNodes && node.subNodes.length > 1) {
+    return "(" + v + ")";
+  }
+  return v;
+}
 
 function attributeUncolored (v) {
   'use strict';
@@ -442,6 +449,19 @@ function processQuery (query, explain) {
   // };
 
   var buildExpression = function (node) {
+    var binaryOperator = function (node, name) {
+      var lhs = buildExpression(node.subNodes[0]);
+      var rhs = buildExpression(node.subNodes[1]);
+      if (node.subNodes.length === 3) {
+        // array operator node... prepend "all" | "any" | "none" to node type
+        name = node.subNodes[2].quantifier + " " + name;
+      }
+      if (node.sorted) {
+        return lhs + " " + name + " " + annotation("/* sorted */") + " " + rhs;
+      }
+      return lhs + " " + name + " " + rhs;
+    };
+
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
         
     if (node.type !== "attribute access" &&
@@ -550,51 +570,53 @@ function processQuery (query, explain) {
       case "function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")";
       case "plus":
-        return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "+") + ")";
       case "minus":
-        return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "-") + ")";
       case "times":
-        return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "*") + ")";
       case "division":
-        return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "/") + ")";
       case "modulus":
-        return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "%") + ")";
       case "compare not in":
-        if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
-        }
-        return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);
+      case "array compare not in":
+        return "(" + binaryOperator(node, "not in") + ")";
       case "compare in":
-        if (node.sorted) {
-          return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
-        }
-        return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);
+      case "array compare in":
+        return "(" + binaryOperator(node, "in") + ")";
       case "compare ==":
-        return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);
+      case "array compare ==":
+        return "(" + binaryOperator(node, "==") + ")";
       case "compare !=":
-        return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);
+      case "array compare !=":
+        return "(" + binaryOperator(node, "!=") + ")";
       case "compare >":
-        return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);
+      case "array compare >":
+        return "(" + binaryOperator(node, ">") + ")";
       case "compare >=":
-        return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);
+      case "array compare >=":
+        return "(" + binaryOperator(node, ">=") + ")";
       case "compare <":
-        return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);
+      case "array compare <":
+        return "(" + binaryOperator(node, "<") + ")";
       case "compare <=":
-        return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);
+      case "array compare <=":
+        return "(" + binaryOperator(node, "<=") + ")";
       case "logical or":
-        return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "||") + ")";
       case "logical and":
-        return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);
+        return "(" + binaryOperator(node, "&&") + ")";
       case "ternary":
-        return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
+        return "(" + buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]) + ")";
       case "n-ary or":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+          return bracketize(node, node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || "));
         }
         return "";
       case "n-ary and":
         if (node.hasOwnProperty("subNodes")) {
-          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+          return bracketize(node, node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && "));
         }
         return "";
       default: 
@@ -697,7 +719,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [ ];
         node.indexes.forEach(function (idx, i) {
-          var what = (idx.reverse ? "reverse " : "") + idx.type + " index scan";
+          var what = (node.reverse ? "reverse " : "") + idx.type + " index scan";
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
@@ -742,7 +764,8 @@ function processQuery (query, explain) {
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
 
         var translate = ["ANY", "INBOUND", "OUTBOUND"];
-        rc += keyword(translate[node.direction]);
+        var defaultDirection = node.directions[0];
+        rc += keyword(translate[defaultDirection]);
         if (node.hasOwnProperty("vertexId")) {
           rc += " '" + value(node.vertexId) + "' ";
         }
@@ -752,7 +775,14 @@ function processQuery (query, explain) {
         rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function(g) { return collection(g); }).join(", ");
+          rc += node.graph.map(function(g, index) { 
+            var tmp = "";
+            if (node.directions[index] !== defaultDirection) {
+              tmp += keyword(translate[node.directions[index]]);
+              tmp += " ";
+            }
+            return tmp + collection(g);
+          }).join(", ");
         }
         else {
           rc += keyword("GRAPH") +  " '" + value(node.graph) + "'";
@@ -779,7 +809,7 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
         }
         else {
-          var edgeCols = node.graph;
+          var edgeCols = node.graph || [ ];
           edgeCols.forEach(function(ecn) {
             e.push(collection(ecn));
           });
@@ -800,7 +830,7 @@ function processQuery (query, explain) {
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+                 "   " + annotation("/* " + node.aggregationOptions.method + " */");
       case "CollectNode":
         var collect = keyword("COLLECT") + " " + 
           node.groups.map(function(node) {

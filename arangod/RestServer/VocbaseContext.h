@@ -40,7 +40,6 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class VocbaseContext : public arangodb::rest::RequestContext {
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief defines a sid
@@ -67,15 +66,12 @@ class VocbaseContext : public arangodb::rest::RequestContext {
 
   static double accessSid(std::string const& database, std::string const& sid);
 
-  
  public:
 
   VocbaseContext(rest::GeneralRequest*, TRI_server_t*, TRI_vocbase_t*);
 
-
   ~VocbaseContext();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get vocbase of context
@@ -102,15 +98,14 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   rest::GeneralResponse::HttpResponseCode authenticate();
   
   rest::GeneralResponse::VstreamResponseCode authenticateVstream();
-  
+
  public:
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock SessionTimeout
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief was docuBlock SessionTimeout
+  ////////////////////////////////////////////////////////////////////////////////
 
   static double ServerSessionTtl;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the server
@@ -127,4 +122,3 @@ class VocbaseContext : public arangodb::rest::RequestContext {
 }
 
 #endif
-

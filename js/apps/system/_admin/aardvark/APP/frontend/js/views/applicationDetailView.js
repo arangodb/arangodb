@@ -186,35 +186,53 @@
 
     render: function(mode) {
 
-      var self = this;
+      var callback = function(error, db) {
+        var self = this;
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get current database");
+        }
+        else {
+          $(this.el).html(this.template.render({
+            app: this.model,
+            db: db,
+            mode: mode
+          }));
 
-      $(this.el).html(this.template.render({
-        app: this.model,
-        db: arangoHelper.currentDatabase(),
-        mode: mode
-      }));
+          $.get(this.appUrl(db)).success(function () {
+            $(".open", this.el).prop('disabled', false);
+          }.bind(this));
 
-      $.get(this.appUrl()).success(function () {
-        $(".open", this.el).prop('disabled', false);
-      }.bind(this));
+          this.updateConfig();
+          this.updateDeps();
 
-      this.updateConfig();
-      this.updateDeps();
-
-      if (mode === 'swagger') {
-        $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
-          if (Object.keys(data.paths).length < 1) {
-            self.render('readme');
-            $('#app-show-swagger').attr('disabled', 'true');
+          if (mode === 'swagger') {
+            $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
+              if (Object.keys(data.paths).length < 1) {
+                self.render('readme');
+                $('#app-show-swagger').attr('disabled', 'true');
+              }
+            });
           }
-        });
-      }
+        }
+      }.bind(this);
+
+      arangoHelper.currentDatabase(callback);
 
       return $(this.el);
     },
 
     openApp: function() {
-      window.open(this.appUrl(), this.model.get('title')).focus();
+
+      var callback = function(error, db) {
+        if (error) {
+          arangoHelper.arangoError("DB","Could not get current database");
+        }
+        else {
+          window.open(this.appUrl(db), this.model.get('title')).focus();
+        }
+      }.bind(this);
+
+      arangoHelper.currentDatabase(callback);
     },
 
     deleteApp: function() {
@@ -249,9 +267,9 @@
       );
     },
 
-    appUrl: function () {
+    appUrl: function (currentDB) {
       return window.location.origin + '/_db/'
-      + encodeURIComponent(arangoHelper.currentDatabase())
+      + encodeURIComponent(currentDB)
       + this.model.get('mount');
     },
 

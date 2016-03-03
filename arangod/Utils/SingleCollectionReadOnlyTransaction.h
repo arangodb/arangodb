@@ -35,8 +35,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
-  
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
@@ -69,4 +67,3 @@ class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
 }
 
 #endif
-

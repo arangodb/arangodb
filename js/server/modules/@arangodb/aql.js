@@ -1454,6 +1454,58 @@ function LOGICAL_NOT (lhs) {
   return ! AQL_TO_BOOL(lhs);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform equality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
+  'use strict';
+
+  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_ARRAY) {
+    return false;
+  }
+
+  var n = lhs.length, min, max;
+  if (quantifier === 1) {
+    // NONE
+    min = max = 0;
+  }
+  else if (quantifier === 2) {
+    // ALL
+    min = max = n;
+  }
+  else if (quantifier === 3) {
+    // ANY
+    min = (n === 0 ? 0 : 1);
+    max = n;
+  }
+
+  var left = n, matches = 0;
+  for (var i = 0; i < n; ++i) {
+    var result = func(lhs[i], rhs);
+    --left;
+
+    if (result) {
+      ++matches;
+      if (matches > max) {
+        // too many matches
+        return false;
+      }
+      if (matches >= min && matches + left <= max) {
+        // enough matches
+        return true;
+      }
+    }
+    else {
+      if (matches + left < min) {
+        // too few matches
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform equality check
@@ -1897,6 +1949,85 @@ function RELATIONAL_NOT_IN (lhs, rhs) {
   return ! RELATIONAL_IN(lhs, rhs);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform equality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_EQUAL (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_EQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform unequality check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_UNEQUAL (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_UNEQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform greater check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_GREATER (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATER);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform greater equal check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_GREATEREQUAL (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_GREATEREQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform less check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_LESS (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESS);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform less equal check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_LESSEQUAL (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_LESSEQUAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform in check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_IN (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_IN);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform in check for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_ARRAY_NOT_IN (lhs, rhs, quantifier) {
+  'use strict';
+
+  return RELATIONAL_ARRAY_FUNC(lhs, rhs, quantifier, RELATIONAL_NOT_IN);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary plus operation
@@ -2326,7 +2457,7 @@ function AQL_SPLIT (value, separator, limit) {
 function AQL_SUBSTITUTE (value, search, replace, limit) {
   'use strict';
 
-  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  var pattern = "", patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
@@ -2386,6 +2517,10 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     pattern = patterns.join('|');
   }
 
+  if (pattern === "") {
+    return value;
+  }
+  
   if (limit === null || limit === undefined) {
     limit = undefined;
   }
@@ -2949,10 +3084,10 @@ function AQL_REVERSE (value) {
 function AQL_RANGE (from, to, step) {
   'use strict';
 
-  from = AQL_TO_NUMBER(from);
-  to = AQL_TO_NUMBER(to);
+  from = AQL_TO_NUMBER(from) || 0;
+  to = AQL_TO_NUMBER(to) || 0;
   
-  if (step === undefined) {
+  if (step === undefined || step === null) {
     if (from <= to) {
       step = 1;
     }
@@ -2964,7 +3099,7 @@ function AQL_RANGE (from, to, step) {
   step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
-  if (step === 0) {
+  if (step === 0 || step === null) {
     WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -4242,6 +4377,31 @@ function AQL_PARSE_IDENTIFIER (value) {
   }
 
   WARN("PARSE_IDENTIFIER", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return null;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates if a document or object is from the specified collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_SAME_COLLECTION (collection, value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
+    if (value.hasOwnProperty('_id')) {
+      value = value._id;
+    }
+  }
+
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
+    var pos = value.indexOf('/');
+    if (pos !== -1) {
+      return value.substr(0, pos) === collection;
+    }
+    // fall through intentional
+  }
+
+  WARN("AQL_IS_SAME_COLLECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
@@ -8009,6 +8169,14 @@ exports.RELATIONAL_GREATER = RELATIONAL_GREATER;
 exports.RELATIONAL_GREATEREQUAL = RELATIONAL_GREATEREQUAL;
 exports.RELATIONAL_LESS = RELATIONAL_LESS;
 exports.RELATIONAL_LESSEQUAL = RELATIONAL_LESSEQUAL;
+exports.RELATIONAL_ARRAY_IN = RELATIONAL_ARRAY_IN;
+exports.RELATIONAL_ARRAY_NOT_IN = RELATIONAL_ARRAY_NOT_IN;
+exports.RELATIONAL_ARRAY_EQUAL = RELATIONAL_ARRAY_EQUAL;
+exports.RELATIONAL_ARRAY_UNEQUAL = RELATIONAL_ARRAY_UNEQUAL;
+exports.RELATIONAL_ARRAY_GREATER = RELATIONAL_ARRAY_GREATER;
+exports.RELATIONAL_ARRAY_GREATEREQUAL = RELATIONAL_ARRAY_GREATEREQUAL;
+exports.RELATIONAL_ARRAY_LESS = RELATIONAL_ARRAY_LESS;
+exports.RELATIONAL_ARRAY_LESSEQUAL = RELATIONAL_ARRAY_LESSEQUAL;
 exports.RELATIONAL_CMP = RELATIONAL_CMP;
 exports.RELATIONAL_IN = RELATIONAL_IN;
 exports.RELATIONAL_NOT_IN = RELATIONAL_NOT_IN;
@@ -8133,6 +8301,7 @@ exports.AQL_NOT_NULL = AQL_NOT_NULL;
 exports.AQL_FIRST_LIST = AQL_FIRST_LIST;
 exports.AQL_FIRST_DOCUMENT = AQL_FIRST_DOCUMENT;
 exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
+exports.AQL_IS_SAME_COLLECTION = AQL_IS_SAME_COLLECTION;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;

@@ -24,11 +24,9 @@
 
 #include "ImportHelper.h"
 
-#include <sstream>
-#include <iomanip>
-
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/GeneralRequest.h"
@@ -413,15 +411,14 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG_INFO("processed %lld bytes of input file", (long long)totalRead);
+      LOG(INFO) << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
   } else {
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG_INFO("processed %lld bytes (%0.1f%%) of input file",
-               (long long)totalRead, nextProgress);
+      LOG(INFO) << "processed " << totalRead << " bytes (" << (int) nextProgress << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }
   }
@@ -623,8 +620,8 @@ void ImportHelper::sendCsvBuffer() {
 
   std::map<std::string, std::string> headerFields;
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
-             StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
-             StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
+                  StringUtils::urlEncode(_onDuplicateAction));
   std::unique_ptr<SimpleHttpResult> result(_client->request(
       GeneralRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
@@ -677,7 +674,7 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
   if (details.isArray()) {
     for (VPackSlice const& detail : VPackArrayIterator(details)) {
       if (detail.isString()) {
-        LOG_WARNING("%s", detail.copyString().c_str());
+        LOG(WARN) << "" << detail.copyString();
       }
     }
   }
@@ -712,5 +709,3 @@ void ImportHelper::handleResult(SimpleHttpResult* result) {
 }
 }
 }
-
-

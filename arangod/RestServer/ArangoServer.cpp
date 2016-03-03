@@ -23,25 +23,35 @@
 
 #include "ArangoServer.h"
 
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 #include <v8.h>
 #include <iostream>
+#include <fstream>
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
+#include "ApplicationServer/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Logger.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/RandomGenerator.h"
+#include "Basics/ThreadPool.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
 #include "Basics/messages.h"
-#include "Basics/ThreadPool.h"
+#include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/ClusterComm.h"
@@ -84,22 +94,595 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
-#include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb::admin;
-
-using namespace std;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 bool IGNORE_DATAFILE_ERRORS;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a pid file
+////////////////////////////////////////////////////////////////////////////////
+
+static void WritePidFile(std::string const& pidFile, int pid) {
+  std::ofstream out(pidFile.c_str(), std::ios::trunc);
+
+  if (!out) {
+    LOG(FATAL) << "cannot write pid-file '" << pidFile << "'";
+    FATAL_ERROR_EXIT();
+  }
+
+  out << pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a pid file
+////////////////////////////////////////////////////////////////////////////////
+
+static void CheckPidFile(std::string const& pidFile) {
+  // check if the pid-file exists
+  if (!pidFile.empty()) {
+    if (FileUtils::isDirectory(pidFile)) {
+      LOG(FATAL) << "pid-file '" << pidFile << "' is a directory";
+      FATAL_ERROR_EXIT();
+    } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
+      LOG(INFO) << "pid-file '" << pidFile
+                << "' already exists, verifying pid";
+
+      std::ifstream f(pidFile.c_str());
+
+      // file can be opened
+      if (f) {
+        TRI_pid_t oldPid;
+
+        f >> oldPid;
+
+        if (oldPid == 0) {
+          LOG(FATAL) << "pid-file '" << pidFile << "' is unreadable";
+          FATAL_ERROR_EXIT();
+        }
+
+        LOG(DEBUG) << "found old pid: " << oldPid;
+
+#ifdef TRI_HAVE_FORK
+        int r = kill(oldPid, 0);
+#else
+        int r = 0;  // TODO for windows use TerminateProcess
+#endif
+
+        if (r == 0) {
+          LOG(FATAL) << "pid-file '" << pidFile
+                     << "' exists and process with pid " << oldPid
+                     << " is still running";
+          FATAL_ERROR_EXIT();
+        } else if (errno == EPERM) {
+          LOG(FATAL) << "pid-file '" << pidFile
+                     << "' exists and process with pid " << oldPid
+                     << " is still running";
+          FATAL_ERROR_EXIT();
+        } else if (errno == ESRCH) {
+          LOG(ERR) << "pid-file '" << pidFile
+                   << " exists, but no process with pid " << oldPid
+                   << " exists";
+
+          if (!FileUtils::remove(pidFile)) {
+            LOG(FATAL) << "pid-file '" << pidFile
+                       << "' exists, no process with pid " << oldPid
+                       << " exists, but pid-file cannot be removed";
+            FATAL_ERROR_EXIT();
+          }
+
+          LOG(INFO) << "removed stale pid-file '" << pidFile << "'";
+        } else {
+          LOG(FATAL) << "pid-file '" << pidFile << "' exists and kill "
+                     << oldPid << " failed";
+          FATAL_ERROR_EXIT();
+        }
+      }
+
+      // failed to open file
+      else {
+        LOG(FATAL) << "pid-file '" << pidFile
+                   << "' exists, but cannot be opened";
+        FATAL_ERROR_EXIT();
+      }
+    }
+
+    LOG(DEBUG) << "using pid-file '" << pidFile << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forks a new process
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_FORK
+
+static int ForkProcess(std::string const& workingDirectory,
+                       std::string& current) {
+  // fork off the parent process
+  TRI_pid_t pid = fork();
+
+  if (pid < 0) {
+    LOG(FATAL) << "cannot fork";
+    FATAL_ERROR_EXIT();
+  }
+
+  // Upon successful completion, fork() shall return 0 to the child process and
+  // shall return the process ID of the child process to the parent process.
+
+  // if we got a good PID, then we can exit the parent process
+  if (pid > 0) {
+    LOG(DEBUG) << "started child process with pid " << pid;
+    return pid;
+  }
+
+  // change the file mode mask
+  umask(0);
+
+  // create a new SID for the child process
+  TRI_pid_t sid = setsid();
+
+  if (sid < 0) {
+    LOG(FATAL) << "cannot create sid";
+    FATAL_ERROR_EXIT();
+  }
+
+  // store current working directory
+  int err = 0;
+  current = FileUtils::currentDirectory(&err);
+
+  if (err != 0) {
+    LOG(FATAL) << "cannot get current directory";
+    FATAL_ERROR_EXIT();
+  }
+
+  // change the current working directory
+  if (!workingDirectory.empty()) {
+    if (!FileUtils::changeDirectory(workingDirectory)) {
+      LOG(FATAL) << "cannot change into working directory '"
+                 << workingDirectory << "'";
+      FATAL_ERROR_EXIT();
+    } else {
+      LOG(INFO) << "changed working directory for child process to '"
+                << workingDirectory << "'";
+    }
+  }
+
+  // we're a daemon so there won't be a terminal attached
+  // close the standard file descriptors and re-open them mapped to /dev/null
+  int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
+
+  if (fd < 0) {
+    LOG(FATAL) << "cannot open /dev/null";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (dup2(fd, STDIN_FILENO) < 0) {
+    LOG(FATAL) << "cannot re-map stdin to /dev/null";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (dup2(fd, STDOUT_FILENO) < 0) {
+    LOG(FATAL) << "cannot re-map stdout to /dev/null";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (dup2(fd, STDERR_FILENO) < 0) {
+    LOG(FATAL) << "cannot re-map stderr to /dev/null";
+    FATAL_ERROR_EXIT();
+  }
+
+  close(fd);
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for the supervisor process with pid to return its exit status
+/// waits for at most 10 seconds. if the supervisor has not returned until then,
+/// we assume a successful start
+////////////////////////////////////////////////////////////////////////////////
+
+int WaitForSupervisor(int pid) {
+  if (!isatty(STDIN_FILENO)) {
+    // during system boot, we don't have a tty, and we don't want to delay
+    // the boot process
+    return EXIT_SUCCESS;
+  }
+
+  // in case a tty is present, this is probably a manual invocation of the start
+  // procedure
+  double const end = TRI_microtime() + 10.0;
+
+  while (TRI_microtime() < end) {
+    int status;
+    int res = waitpid(pid, &status, WNOHANG);
+
+    if (res == -1) {
+      // error in waitpid. don't know what to do
+      break;
+    }
+
+    if (res != 0 && WIFEXITED(status)) {
+      // give information about supervisor exit code
+      if (WEXITSTATUS(status) == 0) {
+        // exit code 0
+        return EXIT_SUCCESS;
+      } else if (WIFSIGNALED(status)) {
+        switch (WTERMSIG(status)) {
+          case 2:
+          case 9:
+          case 15:
+            // terminated normally
+            return EXIT_SUCCESS;
+          default:
+            break;
+        }
+      }
+
+      // failure!
+      LOG(ERR)
+          << "unable to start arangod. please check the logfiles for errors";
+      return EXIT_FAILURE;
+    }
+
+    // sleep a while and retry
+    usleep(500 * 1000);
+  }
+
+  // enough time has elapsed... we now abort our loop
+  return EXIT_SUCCESS;
+}
+
+#else
+
+// .............................................................................
+// TODO: use windows API CreateProcess & CreateThread to minic fork()
+// .............................................................................
+
+static int ForkProcess(std::string const& workingDirectory,
+                       std::string& current) {
+  // fork off the parent process
+  TRI_pid_t pid = -1;  // fork();
+
+  if (pid < 0) {
+    LOG(FATAL) << "cannot fork";
+    FATAL_ERROR_EXIT();
+  }
+
+  return 0;
+}
+
+#endif
+
+ArangoServer::ArangoServer(int argc, char** argv)
+    : _mode(ServerMode::MODE_STANDALONE),
+      _daemonMode(false),
+      _supervisorMode(false),
+      _pidFile(""),
+      _workingDirectory(""),
+      _applicationServer(nullptr),
+      _argc(argc),
+      _argv(argv),
+      _tempPath(),
+      _applicationScheduler(nullptr),
+      _applicationDispatcher(nullptr),
+      _applicationEndpointServer(nullptr),
+      _applicationCluster(nullptr),
+      _jobManager(nullptr),
+      _applicationV8(nullptr),
+      _authenticateSystemOnly(false),
+      _disableAuthentication(false),
+      _disableAuthenticationUnixSockets(false),
+      _dispatcherThreads(8),
+      _dispatcherQueueSize(16384),
+      _v8Contexts(8),
+      _indexThreads(2),
+      _databasePath(),
+      _queryCacheMode("off"),
+      _queryCacheMaxResults(128),
+      _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+      _defaultWaitForSync(false),
+      _forceSyncProperties(true),
+      _ignoreDatafileErrors(false),
+      _disableReplicationApplier(false),
+      _disableQueryTracking(false),
+      _throwCollectionNotLoadedError(false),
+      _foxxQueues(true),
+      _foxxQueuesPollInterval(1.0),
+      _server(nullptr),
+      _queryRegistry(nullptr),
+      _pairForAqlHandler(nullptr),
+      _pairForJobHandler(nullptr),
+      _indexPool(nullptr),
+      _threadAffinity(0) {
+  TRI_SetApplicationName("arangod");
+
+#ifndef TRI_HAVE_THREAD_AFFINITY
+  _threadAffinity = 0;
+#endif
+
+// set working directory and database directory
+#ifdef _WIN32
+  _workingDirectory = ".";
+#else
+  _workingDirectory = "/var/tmp";
+#endif
+
+  _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+
+  TRI_InitServerGlobals();
+
+  _server = new TRI_server_t;
+}
+
+ArangoServer::~ArangoServer() {
+  delete _indexPool;
+  delete _jobManager;
+  delete _server;
+
+  Nonce::destroy();
+
+  delete _applicationServer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the server
+////////////////////////////////////////////////////////////////////////////////
+
+int ArangoServer::start() {
+  if (_applicationServer == nullptr) {
+    buildApplicationServer();
+  }
+
+  if (_supervisorMode) {
+    return startupSupervisor();
+  } else if (_daemonMode) {
+    return startupDaemon();
+  } else {
+    InitializeWorkMonitor();
+    _applicationServer->setupLogging(true, false, false);
+
+    if (!_pidFile.empty()) {
+      CheckPidFile(_pidFile);
+      WritePidFile(_pidFile, Thread::currentProcessId());
+    }
+
+    int res = startupServer();
+
+    if (!_pidFile.empty()) {
+      if (!FileUtils::remove(_pidFile)) {
+        LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
+      }
+    }
+
+    return res;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begins shutdown sequence
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoServer::beginShutdown() {
+  if (_applicationServer != nullptr) {
+    _applicationServer->beginShutdown();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a supervisor
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_FORK
+
+int ArangoServer::startupSupervisor() {
+  static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
+
+  LOG(INFO) << "starting up in supervisor mode";
+
+  CheckPidFile(_pidFile);
+
+  _applicationServer->setupLogging(false, true, false);
+
+  std::string current;
+  int result = ForkProcess(_workingDirectory, current);
+
+  // main process
+  if (result != 0) {
+    // wait for a few seconds for the supervisor to return
+    // if it returns within a reasonable time, we can fetch its exit code
+    // and report it
+    return WaitForSupervisor(result);
+  }
+
+  // child process
+  else {
+    setMode(ServerMode::MODE_SERVICE);
+
+    time_t startTime = time(0);
+    time_t t;
+    bool done = false;
+    result = 0;
+
+    while (!done) {
+      // fork of the server
+      TRI_pid_t pid = fork();
+
+      if (pid < 0) {
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      }
+
+      // parent
+      if (0 < pid) {
+        _applicationServer->setupLogging(false, true, true);
+        TRI_SetProcessTitle("arangodb [supervisor]");
+        LOG(DEBUG) << "supervisor mode: within parent";
+
+        int status;
+        waitpid(pid, &status, 0);
+        bool horrible = true;
+
+        if (WIFEXITED(status)) {
+          // give information about cause of death
+          if (WEXITSTATUS(status) == 0) {
+            LOG(INFO) << "child " << pid << " died of natural causes";
+            done = true;
+            horrible = false;
+          } else {
+            t = time(0) - startTime;
+
+            LOG(ERR) << "child " << pid
+                     << " died a horrible death, exit status "
+                     << WEXITSTATUS(status);
+
+            if (t < MIN_TIME_ALIVE_IN_SEC) {
+              LOG(ERR) << "child only survived for " << t
+                       << " seconds, this will not work - please fix the error "
+                          "first";
+              done = true;
+            } else {
+              done = false;
+            }
+          }
+        } else if (WIFSIGNALED(status)) {
+          switch (WTERMSIG(status)) {
+            case 2:
+            case 9:
+            case 15:
+              LOG(INFO) << "child " << pid
+                        << " died of natural causes, exit status "
+                        << WTERMSIG(status);
+              done = true;
+              horrible = false;
+              break;
+
+            default:
+              t = time(0) - startTime;
+
+              LOG(ERR) << "child " << pid << " died a horrible death, signal "
+                       << WTERMSIG(status);
+
+              if (t < MIN_TIME_ALIVE_IN_SEC) {
+                LOG(ERR) << "child only survived for " << t
+                         << " seconds, this will not work - please fix the "
+                            "error first";
+                done = true;
+
+#ifdef WCOREDUMP
+                if (WCOREDUMP(status)) {
+                  LOG(WARN) << "child process " << pid
+                            << " produced a core dump";
+                }
+#endif
+              } else {
+                done = false;
+              }
+
+              break;
+          }
+        } else {
+          LOG(ERR) << "child " << pid
+                   << " died a horrible death, unknown cause";
+          done = false;
+        }
+
+        // remove pid file
+        if (horrible) {
+          if (!FileUtils::remove(_pidFile)) {
+            LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
+          }
+
+          result = EXIT_FAILURE;
+        }
+      }
+
+      // child
+      else {
+        _applicationServer->setupLogging(true, false, true);
+        LOG(DEBUG) << "supervisor mode: within child";
+
+        // write the pid file
+        WritePidFile(_pidFile, Thread::currentProcessId());
+
+// force child to stop if supervisor dies
+#ifdef TRI_HAVE_PRCTL
+        prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
+#endif
+
+        // startup server
+        result = startupServer();
+
+        // remove pid file
+        if (!FileUtils::remove(_pidFile)) {
+          LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
+        }
+
+        // and stop
+        TRI_EXIT_FUNCTION(result, NULL);
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a daemon
+////////////////////////////////////////////////////////////////////////////////
+
+int ArangoServer::startupDaemon() {
+  LOG(INFO) << "starting up in daemon mode";
+
+  CheckPidFile(_pidFile);
+
+  _applicationServer->setupLogging(false, true, false);
+
+  std::string current;
+  int result = ForkProcess(_workingDirectory, current);
+
+  // main process
+  if (result != 0) {
+    TRI_SetProcessTitle("arangodb [daemon]");
+    WritePidFile(_pidFile, result);
+
+    // issue #549: this is used as the exit code
+    result = 0;
+  }
+
+  // child process
+  else {
+    setMode(ServerMode::MODE_SERVICE);
+    _applicationServer->setupLogging(true, false, true);
+    LOG(DEBUG) << "daemon mode: within child";
+
+    // and startup server
+    result = startupServer();
+
+    // remove pid file
+    if (!FileUtils::remove(_pidFile)) {
+      LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
+    }
+  }
+
+  return result;
+}
+
+#else
+
+int ArangoServer::startupSupervisor() { return 0; }
+
+int ArangoServer::startupDaemon() { return 0; }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts list of size_t to string
@@ -218,51 +801,43 @@ void ArangoServer::defineHandlers(GeneralHandlerFactory* factory) {
 
   // And now some handlers which are registered in both /_api and /_admin
   factory->addPrefixHandler(
-      "/_api/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
-          std::pair<Dispatcher*, AsyncJobManager*>*>,
+      "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
+                       std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_api/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_api/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // And now the _admin handlers
   factory->addPrefixHandler(
-      "/_admin/job",
-      RestHandlerCreator<arangodb::admin::RestJobHandler>::createData<
-          std::pair<Dispatcher*, AsyncJobManager*>*>,
+      "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
+                         std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
-  factory->addHandler(
-      "/_admin/version",
-      RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+  factory->addHandler("/_admin/version",
+                      RestHandlerCreator<RestVersionHandler>::createNoData,
+                      nullptr);
 
   // further admin handlers
   factory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::admin::RestAdminLogHandler>::createNoData,
-      nullptr);
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, nullptr);
 
-  factory->addHandler(
+  factory->addPrefixHandler(
       "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData,
-      nullptr);
+      RestHandlerCreator<WorkMonitorHandler>::createNoData, nullptr);
 
 // This handler is to activate SYS_DEBUG_FAILAT on DB servers
-#ifdef TRI_ENABLE_FAILURE_TESTS
-  factory->addPrefixHandler(
-      "/_admin/debug",
-      RestHandlerCreator<RestDebugHandler>::createNoData,
-      nullptr);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  factory->addPrefixHandler("/_admin/debug",
+                            RestHandlerCreator<RestDebugHandler>::createNoData,
+                            nullptr);
 #endif
 
   factory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::admin::RestShutdownHandler>::createData<
-          void*>,
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createData<void*>,
       static_cast<void*>(_applicationServer));
 }
 
@@ -349,8 +924,7 @@ static bool SetRequestContext(arangodb::rest::GeneralRequest* request,
     return false;
   }
 
-  VocbaseContext* ctx =
-      new arangodb::VocbaseContext(request, server, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, server, vocbase);
 
   if (ctx == nullptr) {
     // out of memory
@@ -362,75 +936,6 @@ static bool SetRequestContext(arangodb::rest::GeneralRequest* request,
 
   return true;
 }
-
-
-
-
-ArangoServer::ArangoServer(int argc, char** argv)
-    : _argc(argc),
-      _argv(argv),
-      _tempPath(),
-      _applicationScheduler(nullptr),
-      _applicationDispatcher(nullptr),
-      _applicationEndpointServer(nullptr),
-      _applicationCluster(nullptr),
-      _jobManager(nullptr),
-      _applicationV8(nullptr),
-      _authenticateSystemOnly(false),
-      _disableAuthentication(false),
-      _disableAuthenticationUnixSockets(false),
-      _dispatcherThreads(8),
-      _dispatcherQueueSize(16384),
-      _v8Contexts(8),
-      _indexThreads(2),
-      _databasePath(),
-      _queryCacheMode("off"),
-      _queryCacheMaxResults(128),
-      _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-      _defaultWaitForSync(false),
-      _forceSyncProperties(true),
-      _ignoreDatafileErrors(false),
-      _disableReplicationApplier(false),
-      _disableQueryTracking(false),
-      _throwCollectionNotLoadedError(false),
-      _foxxQueues(true),
-      _foxxQueuesPollInterval(1.0),
-      _server(nullptr),
-      _queryRegistry(nullptr),
-      _pairForAqlHandler(nullptr),
-      _pairForJobHandler(nullptr),
-      _indexPool(nullptr),
-      _threadAffinity(0) {
-  TRI_SetApplicationName("arangod");
-
-#ifndef TRI_HAVE_THREAD_AFFINITY
-  _threadAffinity = 0;
-#endif
-
-// set working directory and database directory
-#ifdef _WIN32
-  _workingDirectory = ".";
-#else
-  _workingDirectory = "/var/tmp";
-#endif
-
-  _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-
-  TRI_InitServerGlobals();
-
-  _server = new TRI_server_t;
-}
-
-
-ArangoServer::~ArangoServer() {
-  delete _indexPool;
-  delete _jobManager;
-  delete _server;
-
-  Nonce::destroy();
-}
-
-
 
 void ArangoServer::buildApplicationServer() {
   _applicationServer =
@@ -444,7 +949,7 @@ void ArangoServer::buildApplicationServer() {
   // arangod allows defining a user-specific configuration file. arangosh and
   // the other binaries don't
   _applicationServer->setUserConfigFile(
-      ".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
+      ".arango" + std::string(1, TRI_DIR_SEPARATOR_CHAR) + std::string(conf));
 
   // initialize the server's write ahead log
   wal::LogfileManager::initialize(&_databasePath, _server);
@@ -670,7 +1175,8 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   if (!_applicationServer->parse(_argc, _argv, additional)) {
-    LOG_FATAL_AND_EXIT("cannot parse command line arguments");
+    LOG(FATAL) << "cannot parse command line arguments";
+    FATAL_ERROR_EXIT();
   }
 
   // set the temp-path
@@ -682,8 +1188,7 @@ void ArangoServer::buildApplicationServer() {
 
   // must be used after drop privileges and be called to set it to avoid raise
   // conditions
-  char* pp = TRI_GetTempPath();
-  TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
+  TRI_GetTempPath();
 
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
 
@@ -695,14 +1200,15 @@ void ArangoServer::buildApplicationServer() {
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'",
-                       (ICU_env) ? ICU_env : "");
+    LOG(FATAL) << "failed to initialize ICU; ICU_DATA='"
+               << (ICU_env != nullptr ? ICU_env : "") << "'";
+    FATAL_ERROR_EXIT();
   }
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-               Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   } else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
@@ -714,7 +1220,7 @@ void ArangoServer::buildApplicationServer() {
   uint32_t optionNonceHashSize = 0;
 
   if (optionNonceHashSize > 0) {
-    LOG_DEBUG("setting nonce hash size to %d", (int)optionNonceHashSize);
+    LOG(DEBUG) << "setting nonce hash size to " << optionNonceHashSize;
     Nonce::create(optionNonceHashSize);
   }
 
@@ -724,15 +1230,16 @@ void ArangoServer::buildApplicationServer() {
 
   // validate journal size
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_FATAL_AND_EXIT(
-        "invalid value for '--database.maximal-journal-size'. expected at "
-        "least %d",
-        (int)TRI_JOURNAL_MINIMAL_SIZE);
+    LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "
+                  "expected at least "
+               << TRI_JOURNAL_MINIMAL_SIZE;
+    FATAL_ERROR_EXIT();
   }
 
   // validate queue size
   if (_dispatcherQueueSize <= 128) {
-    LOG_FATAL_AND_EXIT("invalid value for `--server.maximal-queue-size'");
+    LOG(FATAL) << "invalid value for `--server.maximal-queue-size'";
+    FATAL_ERROR_EXIT();
   }
 
   // .............................................................................
@@ -742,15 +1249,17 @@ void ArangoServer::buildApplicationServer() {
   std::vector<std::string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
-    LOG_FATAL_AND_EXIT("expected at most one database directory, got %d",
-                       (int)arguments.size());
+    LOG(FATAL) << "expected at most one database directory, got "
+               << arguments.size();
+    FATAL_ERROR_EXIT();
   } else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
   if (_databasePath.empty()) {
-    LOG_INFO("please use the '--database.directory' option");
-    LOG_FATAL_AND_EXIT("no database path has been supplied, giving up");
+    LOG(INFO) << "please use the '--database.directory' option";
+    LOG(FATAL) << "no database path has been supplied, giving up";
+    FATAL_ERROR_EXIT();
   }
 
   runStartupChecks();
@@ -792,9 +1301,9 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   // dump version details
-  LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
+  LOG(INFO) << "" << rest::Version::getVerboseVersionString();
 
-  LOG_INFO("using default language '%s'", languageName.c_str());
+  LOG(INFO) << "using default language '" << languageName << "'";
 
   // if we got here, then we are in server mode
 
@@ -812,17 +1321,18 @@ void ArangoServer::buildApplicationServer() {
 
   if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      LOG_INFO("please use the '--pid-file' option");
-      LOG_FATAL_AND_EXIT(
-          "no pid-file defined, but daemon or supervisor mode was requested");
+      LOG(INFO) << "please use the '--pid-file' option";
+      LOG(FATAL)
+          << "no pid-file defined, but daemon or supervisor mode was requested";
+      FATAL_ERROR_EXIT();
     }
 
     OperationMode::server_operation_mode_e mode =
         OperationMode::determineMode(_applicationServer->programOptions());
     if (mode != OperationMode::MODE_SERVER) {
-      LOG_FATAL_AND_EXIT(
-          "invalid mode. must not specify --console together with --daemon or "
-          "--supervisor");
+      LOG(FATAL) << "invalid mode. must not specify --console together with "
+                    "--daemon or --supervisor";
+      FATAL_ERROR_EXIT();
     }
 
     // make the pid filename absolute
@@ -835,9 +1345,10 @@ void ArangoServer::buildApplicationServer() {
       _pidFile = std::string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
-      LOG_DEBUG("using absolute pid file '%s'", _pidFile.c_str());
+      LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
     } else {
-      LOG_FATAL_AND_EXIT("cannot determine current directory");
+      LOG(FATAL) << "cannot determine current directory";
+      FATAL_ERROR_EXIT();
     }
   }
 
@@ -848,7 +1359,6 @@ void ArangoServer::buildApplicationServer() {
     }
   }
 }
-
 
 int ArangoServer::startupServer() {
   TRI_InitializeStatistics();
@@ -897,12 +1407,13 @@ int ArangoServer::startupServer() {
 
   // special treatment for the write-ahead log
   // the log must exist before all other server operations can start
-  LOG_TRACE("starting WAL logfile manager");
+  LOG(TRACE) << "starting WAL logfile manager";
 
   if (!wal::LogfileManager::instance()->prepare() ||
       !wal::LogfileManager::instance()->start()) {
     // unable to initialize & start WAL logfile manager
-    LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
+    LOG(FATAL) << "unable to start WAL logfile manager";
+    FATAL_ERROR_EXIT();
   }
 
   // .............................................................................
@@ -915,8 +1426,6 @@ int ArangoServer::startupServer() {
     _dispatcherThreads = 1;
   }
 
-  startupProgress();
-
   // open all databases
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
@@ -925,24 +1434,22 @@ int ArangoServer::startupServer() {
 
   if (!checkVersion) {
     if (!wal::LogfileManager::instance()->open()) {
-      LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+      LOG(FATAL) << "Unable to finish WAL recovery procedure";
+      FATAL_ERROR_EXIT();
     }
   }
-
-  startupProgress();
 
   // fetch the system database
   TRI_vocbase_t* vocbase =
       TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == nullptr) {
-    LOG_FATAL_AND_EXIT(
-        "No _system database found in database directory. Cannot start!");
+    LOG(FATAL)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(vocbase != nullptr);
-
-  startupProgress();
 
   // initialize V8
   if (!_applicationServer->programOptions().has("javascript.v8-contexts")) {
@@ -970,8 +1477,6 @@ int ArangoServer::startupServer() {
     }
   }
 
-  startupProgress();
-
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(_v8Contexts);
   _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
@@ -980,8 +1485,6 @@ int ArangoServer::startupServer() {
   // .............................................................................
   // prepare everything
   // .............................................................................
-
-  startupProgress();
 
   if (!startServer) {
     _applicationScheduler->disable();
@@ -992,8 +1495,6 @@ int ArangoServer::startupServer() {
 
   // prepare scheduler and dispatcher
   _applicationServer->prepare();
-
-  startupProgress();
 
   auto const role = ServerState::instance()->getRole();
 
@@ -1023,30 +1524,20 @@ int ArangoServer::startupServer() {
     }
   }
 
-  startupProgress();
-
   // and finish prepare
   _applicationServer->prepare2();
-
-  startupProgress();
 
   // run version check (will exit!)
   if (checkVersion) {
     _applicationV8->versionCheck();
   }
 
-  startupProgress();
-
   _applicationV8->upgradeDatabase(skipUpgrade, performUpgrade);
-
-  startupProgress();
 
   // setup the V8 actions
   if (startServer) {
     _applicationV8->prepareServer();
   }
-
-  startupProgress();
 
   _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(
       _applicationV8, _queryRegistry);
@@ -1080,8 +1571,6 @@ int ArangoServer::startupServer() {
         (void*)&httpOptions);
   }
 
-  startupProgress();
-
   // .............................................................................
   // try to figure out the thread affinity
   // .............................................................................
@@ -1093,10 +1582,8 @@ int ArangoServer::startupServer() {
     size_t nd = _applicationDispatcher->numberOfThreads();
 
     if (ns != 0 && nd != 0) {
-      LOG_INFO(
-          "the server has %d (hyper) cores, using %d scheduler threads, %d "
-          "dispatcher threads",
-          (int)n, (int)ns, (int)nd);
+      LOG(INFO) << "the server has " << n << " (hyper) cores, using " << ns
+                << " scheduler threads, " << nd << " dispatcher threads";
     } else {
       _threadAffinity = 0;
     }
@@ -1186,21 +1673,20 @@ int ArangoServer::startupServer() {
       }
 
       if (0 < ns) {
-        LOG_INFO("scheduler cores: %s", ToString(ps).c_str());
+        LOG(INFO) << "scheduler cores: " << ToString(ps);
       }
       if (0 < nd) {
-        LOG_INFO("dispatcher cores: %s", ToString(pd).c_str());
+        LOG(INFO) << "dispatcher cores: " << ToString(pd);
       }
     } else {
-      LOG_INFO("the server has %d (hyper) cores", (int)n);
+      LOG(INFO) << "the server has " << n << " (hyper) cores";
     }
   }
 
-  // .............................................................................
-  // start the work monitor
-  // .............................................................................
-
-  InitializeWorkMonitor();
+  // active deadlock detection in case we're not running in cluster mode
+  if (!arangodb::ServerState::instance()->isRunningInCluster()) {
+    TRI_EnableDeadlockDetectionDatabasesServer(_server);
+  }
 
   // .............................................................................
   // start the main event loop
@@ -1218,18 +1704,17 @@ int ArangoServer::startupServer() {
     // turned on,
     // then we refuse to start
     if (!vocbase->_authInfoLoaded && !_disableAuthentication) {
-      LOG_FATAL_AND_EXIT("could not load required authentication information");
+      LOG(FATAL) << "could not load required authentication information";
+      FATAL_ERROR_EXIT();
     }
   }
 
   if (_disableAuthentication) {
-    LOG_INFO("Authentication is turned off");
+    LOG(INFO) << "Authentication is turned off";
   }
 
-  LOG_INFO("ArangoDB (version " TRI_VERSION_FULL
-           ") is ready for business. Have fun!");
-
-  startupFinished();
+  LOG(INFO) << "ArangoDB (version " << TRI_VERSION_FULL
+            << ") is ready for business. Have fun!";
 
   int res;
 
@@ -1242,8 +1727,6 @@ int ArangoServer::startupServer() {
   } else {
     res = runServer(vocbase);
   }
-
-  shutDownBegins();
 
   // stop the replication appliers so all replication transactions can end
   TRI_StopReplicationAppliersServer(_server);
@@ -1262,8 +1745,7 @@ int ArangoServer::startupServer() {
   closeDatabases();
 
   if (mode == OperationMode::MODE_CONSOLE) {
-    cout << endl
-         << TRI_BYE_MESSAGE << endl;
+    std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
   }
 
   TRI_ShutdownStatistics();
@@ -1271,7 +1753,6 @@ int ArangoServer::startupServer() {
 
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run arbitrary checks at startup
@@ -1327,11 +1808,12 @@ void ArangoServer::runStartupChecks() {
         int64_t alignment =
             std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG_FATAL_AND_EXIT(
-              "possibly incompatible CPU alignment settings found in '%s'. "
-              "this may cause arangod to abort with SIGBUS. please set the "
-              "value in '%s' to 2",
-              filename.c_str(), filename.c_str());
+          LOG(FATAL)
+              << "possibly incompatible CPU alignment settings found in '"
+              << filename << "'. this may cause arangod to abort with "
+                                     "SIGBUS. please set the value in '"
+              << filename << "' to 2";
+          FATAL_ERROR_EXIT();
         }
 
         alignmentDetected = true;
@@ -1339,18 +1821,18 @@ void ArangoServer::runStartupChecks() {
 
     } catch (...) {
       // ignore that we cannot detect the alignment
-      LOG_TRACE(
-          "unable to detect CPU alignment settings. could not process file "
-          "'%s'",
-          filename.c_str());
+      LOG(TRACE)
+          << "unable to detect CPU alignment settings. could not process file '"
+          << filename << "'";
     }
 
     if (!alignmentDetected) {
-      LOG_WARNING(
-          "unable to detect CPU alignment settings. could not process file "
-          "'%s'. this may cause arangod to abort with SIGBUS. it may be "
-          "necessary to set the value in '%s' to 2",
-          filename.c_str(), filename.c_str());
+      LOG(WARN)
+          << "unable to detect CPU alignment settings. could not process file '"
+          << filename
+          << "'. this may cause arangod to abort with SIGBUS. it may be "
+             "necessary to set the value in '"
+          << filename << "' to 2";
     }
   }
 #endif
@@ -1423,12 +1905,12 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   // .............................................................................
 
   console.userAbort();
-  console.stop();
+  console.beginShutdown();
 
   int iterations = 0;
 
-  while (!console.done() && ++iterations < 30) {
-    usleep(100000);  // spin while console is still needed
+  while (console.isRunning() && ++iterations < 30) {
+    usleep(100 * 1000);  // spin while console is still needed
   }
 
   return EXIT_SUCCESS;
@@ -1446,44 +1928,45 @@ int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
 
   bool ok = false;
   {
-    v8::TryCatch tryCatch;
     v8::HandleScope scope(isolate);
+    v8::TryCatch tryCatch;
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
+    {
+      v8::Context::Scope contextScope(localContext);
+      // set-up unit tests array
+      v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
 
-    v8::Context::Scope contextScope(localContext);
-    // set-up unit tests array
-    v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
-
-    for (size_t i = 0; i < _unitTests.size(); ++i) {
-      sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
-    }
-
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
-                                sysTestFiles);
-    localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
-                                v8::True(isolate));
-
-    v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
-
-    // run tests
-    auto input = TRI_V8_ASCII_STRING(
-        "require(\"@arangodb/testrunner\").runCommandLineTests();");
-    TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
-
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-      } else {
-        // will stop, so need for v8g->_canceled = true;
-        TRI_ASSERT(!ok);
+      for (size_t i = 0; i < _unitTests.size(); ++i) {
+        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
       }
-    } else {
-      ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-          TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
-    }
 
+      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
+                                  sysTestFiles);
+      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
+                                  v8::True(isolate));
+
+      v8::Local<v8::String> name(
+          TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
+
+      // run tests
+      auto input = TRI_V8_ASCII_STRING(
+          "require(\"@arangodb/testrunner\").runCommandLineTests();");
+      TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
+
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
+        } else {
+          // will stop, so need for v8g->_canceled = true;
+          TRI_ASSERT(!ok);
+        }
+      } else {
+        ok = TRI_ObjectToBoolean(localContext->Global()->Get(
+            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
+      }
+    }
     localContext->Exit();
   }
 
@@ -1508,18 +1991,19 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
     {
-      v8::TryCatch tryCatch;
       v8::Context::Scope contextScope(localContext);
       for (size_t i = 0; i < _scriptFile.size(); ++i) {
         bool r =
             TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
 
         if (!r) {
-          LOG_FATAL_AND_EXIT("cannot load script '%s', giving up",
-                             _scriptFile[i].c_str());
+          LOG(FATAL) << "cannot load script '" << _scriptFile[i]
+                     << "', giving up";
+          FATAL_ERROR_EXIT();
         }
       }
 
+      v8::TryCatch tryCatch;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 
@@ -1538,7 +2022,8 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
           localContext->Global()->Get(mainFuncName));
 
       if (main.IsEmpty() || main->IsUndefined()) {
-        LOG_FATAL_AND_EXIT("no main function defined, giving up");
+        LOG(FATAL) << "no main function defined, giving up";
+        FATAL_ERROR_EXIT();
       } else {
         v8::Handle<v8::Value> args[] = {params};
 
@@ -1556,15 +2041,15 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
             ok = TRI_ObjectToDouble(result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG_ERROR("caught exception %s: %s", TRI_errno_string(ex.code()),
-                    ex.what());
+          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": "
+                   << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG_ERROR("caught exception %s",
-                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+          LOG(ERR) << "caught exception "
+                   << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG_ERROR("caught unknown exception");
+          LOG(ERR) << "caught unknown exception";
           ok = false;
         }
       }
@@ -1607,7 +2092,8 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
                            _disableReplicationApplier, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
+    LOG(FATAL) << "cannot create server instance: out of memory";
+    FATAL_ERROR_EXIT();
   }
 
   res = TRI_StartServer(_server, checkVersion, performUpgrade);
@@ -1617,10 +2103,11 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
       TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
     }
 
-    LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
+    LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
   }
 
-  LOG_TRACE("found system database");
+  LOG(TRACE) << "found system database";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1641,7 +2128,5 @@ void ArangoServer::closeDatabases() {
 
   TRI_StopServer(_server);
 
-  LOG_INFO("ArangoDB has been shut down");
+  LOG(INFO) << "ArangoDB has been shut down";
 }
-
-

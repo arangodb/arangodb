@@ -21,27 +21,69 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkMonitorHandler.h"
-
 #include "HttpServer/GeneralHandler.h"
 #include "Rest/GeneralRequest.h"
+#include "Basics/StringUtils.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 using arangodb::rest::GeneralRequest;
 using arangodb::rest::GeneralHandler;
 
-
 WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request)
     : RestBaseHandler(request) {}
 
-
 bool WorkMonitorHandler::isDirect() const { return true; }
 
+HttpHandler::status_t WorkMonitorHandler::execute() {
+  auto suffix = _request->suffix();
+  size_t const len = suffix.size();
+  HttpRequest::HttpRequestType type = _request->requestType();
 
-#include <iostream>
+  if (type == HttpRequest::HTTP_REQUEST_GET) {
+    if (len != 0) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting GET /_admin/work-monitor");
+      return status_t(HANDLER_DONE);
+    }
 
+    WorkMonitor::requestWorkOverview(_taskId);
+    return status_t(HANDLER_ASYNC);
+  }
+
+<<<<<<< HEAD
 GeneralHandler::status_t WorkMonitorHandler::execute() {
   WorkMonitor::requestWorkOverview(_taskId);
   return status_t(HANDLER_ASYNC);
+=======
+  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+    if (len != 1) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting DELETE /_admin/work-monitor/<id>");
+
+      return status_t(HANDLER_DONE);
+    }
+
+    uint64_t id = StringUtils::uint64(suffix[0]);
+    WorkMonitor::cancelWork(id);
+
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Object));
+    b.add("canceled", VPackValue(true));
+    b.close();
+
+    VPackSlice s(b.start());
+
+    generateResult(HttpResponse::OK, s);
+    return status_t(HANDLER_DONE);
+  }
+
+  generateError(HttpResponse::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                "expecting GET or DELETE");
+  return status_t(HANDLER_DONE);
+>>>>>>> upstream/devel
 }

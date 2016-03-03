@@ -23,19 +23,13 @@
 
 #include "v8-conv.h"
 
-#include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
-#include "Basics/StringBuffer.h"
+#include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
-using namespace std;
 using namespace arangodb::basics;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NULL into a V8 object
@@ -173,7 +167,6 @@ static v8::Handle<v8::Value> ExtractObject(v8::Isolate* isolate,
   return scope.Escape<v8::Value>(result);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the keys of a TRI_json_t* object into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +283,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       auto next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJson(isolate, next, array->Get(i), seenHashes, seenObjects);
 
@@ -378,7 +371,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TRACE("found hash %d", hash);
+      // LOG(TRACE) << "found hash " << hash;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {
@@ -419,7 +412,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // this passes ownership for the utf8 string to the JSON object
       char* attributeName = str.steal();
@@ -428,7 +421,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       // process attribute value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJson(isolate, next, o->Get(key), seenHashes, seenObjects);
 
@@ -542,7 +535,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJsonSimple(isolate, next, array->Get(i));
 
@@ -617,7 +610,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       TRI_json_t* next =
           static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       // this passes ownership for the utf8 string to the JSON object
       char* attributeName = str.steal();
@@ -626,7 +619,7 @@ static int ObjectToJsonSimple(v8::Isolate* isolate, TRI_json_t* result,
       // process attribute value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
-      TRI_ASSERT_EXPENSIVE(next != nullptr);
+      TRI_ASSERT(next != nullptr);
 
       res = ObjectToJsonSimple(isolate, next, o->Get(key));
 
@@ -787,7 +780,6 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
@@ -795,5 +787,3 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
 void TRI_InitV8Conversions(v8::Handle<v8::Context> context) {
   // nothing special to do here
 }
-
-

@@ -34,24 +34,16 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestPleaseUpgradeHandler : public rest::GeneralHandler {
-  
  public:
-
   explicit RestPleaseUpgradeHandler(rest::GeneralRequest*);
 
-  
  public:
-
   bool isDirect() const override;
 
-
   status_t execute() override;
-
 
   void handleError(const basics::Exception&) override;
 };
 }
 
 #endif
-
-

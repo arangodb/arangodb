@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
@@ -77,7 +76,6 @@ CollectionKeys::~CollectionKeys() {
 
   delete _guard;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initially creates the list of keys
@@ -269,8 +267,8 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
     }
 
     // convert rid from uint64_t to string
-    std::string rid(std::move(
-        arangodb::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df))));
+    std::string rid(
+        arangodb::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df)));
     TRI_json_t* revJson =
         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
@@ -284,12 +282,12 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
     if (type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* marker =
           reinterpret_cast<TRI_doc_edge_key_marker_t const*>(df);
-      std::string from(std::move(DocumentHelper::assembleDocumentId(
+      std::string from(DocumentHelper::assembleDocumentId(
           resolver.getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey))));
-      std::string to(std::move(DocumentHelper::assembleDocumentId(
+          std::string((char*)marker + marker->_offsetFromKey)));
+      std::string to(DocumentHelper::assembleDocumentId(
           resolver.getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey))));
+          std::string((char*)marker + marker->_offsetToKey)));
 
       TRI_Insert3ObjectJson(
           TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM,
@@ -302,12 +300,12 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
       arangodb::wal::edge_marker_t const* marker =
           reinterpret_cast<arangodb::wal::edge_marker_t const*>(
               df);  // PROTECTED by trx passed from above
-      std::string from(std::move(DocumentHelper::assembleDocumentId(
+      std::string from(DocumentHelper::assembleDocumentId(
           resolver.getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey))));
-      std::string to(std::move(DocumentHelper::assembleDocumentId(
+          std::string((char*)marker + marker->_offsetFromKey)));
+      std::string to(DocumentHelper::assembleDocumentId(
           resolver.getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey))));
+          std::string((char*)marker + marker->_offsetToKey)));
 
       TRI_Insert3ObjectJson(
           TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM,
@@ -319,6 +317,7 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
     }
 
     json.transfer(doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
   }
 }
 
@@ -332,5 +331,3 @@ void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
       arangodb::basics::VelocyPackHelper::velocyPackToJson(ids));
   dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
-
-

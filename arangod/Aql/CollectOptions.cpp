@@ -24,6 +24,8 @@
 #include "Aql/CollectOptions.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
@@ -35,7 +37,8 @@ using JsonHelper = arangodb::basics::JsonHelper;
 CollectOptions::CollectOptions(Json const& json) {
   Json obj = json.get("collectOptions");
 
-  method = methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
+  method =
+      methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,9 +58,18 @@ bool CollectOptions::canUseHashMethod() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectOptions::toJson(arangodb::basics::Json& json,
-                                TRI_memory_zone_t* zone) const {
+                            TRI_memory_zone_t* zone) const {
   Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
   json("collectOptions", options);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the options to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+  builder.add("method", VPackValue(methodToString(method)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

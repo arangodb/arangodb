@@ -7,41 +7,35 @@ window.ArangoReplication = Backbone.Collection.extend({
 
   url: "../api/user",
 
-  getLogState: function () {
-    var returnVal;
+  getLogState: function (callback) {
     $.ajax({
       type: "GET",
       cache: false,
       url: "/_api/replication/logger-state",
       contentType: "application/json",
       processData: false,
-      async: false,
       success: function(data) {
-        returnVal = data;
+        callback(false, data);
       },
       error: function(data) {
-        returnVal = data;
+        callback(true, data);
       }
     });
-    return returnVal;
   },
-  getApplyState: function () {
-    var returnVal;
+  getApplyState: function (callback) {
     $.ajax({
       type: "GET",
       cache: false,
       url: "/_api/replication/applier-state",
       contentType: "application/json",
       processData: false,
-      async: false,
       success: function(data) {
-        returnVal = data;
+        callback(false, data);
       },
       error: function(data) {
-        returnVal = data;
+        callback(true, data);
       }
     });
-    return returnVal;
   }
 
 });

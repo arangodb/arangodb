@@ -31,7 +31,6 @@
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
 
-
 namespace arangodb {
 namespace basics {
 
@@ -55,9 +54,7 @@ class Utf8Helper {
 
   explicit Utf8Helper(std::string const& lang);
 
-
   Utf8Helper();
-
 
   ~Utf8Helper();
 
@@ -174,7 +171,6 @@ class Utf8Helper {
 }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,13 +200,6 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
                                  size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf16 strings (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf16(uint16_t const* left, size_t leftLength,
-                      uint16_t const* right, size_t rightLength);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -232,14 +221,6 @@ char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Uppercase the characters in a UTF-8 string (implemented in
-/// Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_toupper_utf8(TRI_memory_zone_t* zone, char const* src,
-                       int32_t srcLength, int32_t* dstLength);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,5 +237,3 @@ bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
                    size_t maximalWordLength, bool lowerCase);
 
 #endif
-
-

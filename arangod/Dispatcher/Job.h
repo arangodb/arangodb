@@ -29,12 +29,9 @@
 #include "Basics/Exceptions.h"
 #include "Statistics/StatisticsAgent.h"
 
-
 namespace arangodb {
 namespace rest {
 class DispatcherQueue;
-class DispatcherThread;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for jobs
@@ -44,7 +41,6 @@ class Job : public RequestStatisticsAgent {
   Job(Job const&) = delete;
   Job& operator=(Job const&) = delete;
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a job
@@ -52,10 +48,8 @@ class Job : public RequestStatisticsAgent {
 
   explicit Job(std::string const& name);
 
-
   virtual ~Job();
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief gets the name
@@ -82,7 +76,6 @@ class Job : public RequestStatisticsAgent {
 
   size_t queuePosition() const { return _queuePosition; }
 
-  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the queue name to use
@@ -114,7 +107,6 @@ class Job : public RequestStatisticsAgent {
 
   virtual void handleError(basics::Exception const&) = 0;
 
-  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief task id
@@ -122,7 +114,6 @@ class Job : public RequestStatisticsAgent {
 
   uint64_t const _jobId;
 
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief name of the job
@@ -140,5 +131,3 @@ class Job : public RequestStatisticsAgent {
 }
 
 #endif
-
-

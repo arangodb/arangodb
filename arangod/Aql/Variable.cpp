@@ -24,6 +24,8 @@
 #include "Variable.h"
 #include "Basics/JsonHelper.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 
@@ -45,7 +47,6 @@ char const* const Variable::NAME_NEW = "$NEW";
 
 char const* const Variable::NAME_CURRENT = "$CURRENT";
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,6 @@ Variable::Variable(arangodb::basics::Json const& json)
 
 Variable::~Variable() {}
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +75,16 @@ arangodb::basics::Json Variable::toJson() const {
       "name", arangodb::basics::Json(name));
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the variable
+////////////////////////////////////////////////////////////////////////////////
+
+void Variable::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder b(&builder);
+  builder.add("id", VPackValue(static_cast<double>(id)));
+  builder.add("name", VPackValue(name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,5 +105,3 @@ Variable const* Variable::replace(
 
   return variable;
 }
-
-

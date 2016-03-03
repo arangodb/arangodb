@@ -38,6 +38,7 @@ var cluster = require("@arangodb/cluster");
 var joi = require("joi");
 var util = require("util");
 var internal = require("internal");
+var contentDisposition = require('content-disposition');
 var notifications = require("@arangodb/configuration").notifications;
 var db = require("@arangodb").db;
 var foxxInstallKey = joi.string().required().description(
@@ -246,7 +247,7 @@ controller.get("/query/download/:user", function(req, res) {
   var result = db._users.byExample({"user": user}).toArray()[0];
 
   res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", "attachment; filename=queries.json");
+  res.set("Content-Disposition", contentDisposition('queries.json'));
 
   if (result === null || result === undefined) {
     res.json([]);
@@ -278,7 +279,7 @@ controller.get("/query/result/download/:query", function(req, res) {
 
   var result = db._query(parsedQuery.query, parsedQuery.bindVars).toArray();
   res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", "attachment; filename=results.json");
+  res.set("Content-Disposition", contentDisposition('results.json'));
   res.json(result);
 
 }).summary("Download the result of a query")
@@ -314,7 +315,86 @@ controller.post("/graph-examples/create/:name", function(req, res) {
 }).summary("Create a sample graph")
   .notes("This function executes the internal scripts to create one example graph.");
 
+ /** Store job id's in db
+ *
+ * Create a new job id entry in a specific system database with a given id.
+ *
+ */
 
+controller.post("/job", function(req, res) {
+
+  if (req.body().id && req.body().collection && req.body().type && req.body().desc) {
+
+    //store id in _system
+    db._frontend.save({
+      id: req.body().id,
+      collection: req.body().collection, 
+      type: req.body().type,
+      model: 'job',
+      desc: req.body().desc
+    });
+
+    res.json(true);
+  }
+  else {
+    res.json(false);
+  }
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Delete all jobs
+ *
+ * Delete an existing job id entry in a specific system database with a given id.
+ *
+ */
+
+controller.del("/job/", function(req, res) {
+
+  db._frontend.removeByExample({
+    model: 'job'
+  }, true);
+  res.json(true);
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Delete a job id
+ *
+ * Delete an existing job id entry in a specific system database with a given id.
+ *
+ */
+
+controller.del("/job/:id", function(req, res) {
+
+  var id = req.params("id");
+
+  if (id) {
+    db._frontend.removeByExample({
+      id: id
+    }, true);
+    res.json(true);
+  }
+  else {
+    res.json(false);
+  }
+
+}).summary("Store job id of a running job")
+  .notes("This function stores a job id into a system collection.");
+
+ /** Return all job id's
+ *
+ * Return all job id's which are stored in a system database.
+ *
+ */
+
+controller.get("/job", function(req, res) {
+
+  var result = db._frontend.all().toArray();
+  res.json(result);
+
+}).summary("Return all job ids.")
+  .notes("This function returns the job ids of all currently running jobs.");
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

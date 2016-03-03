@@ -54,8 +54,6 @@
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace std;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -71,7 +69,6 @@ ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClientConnection::~ClientConnection() { disconnect(); }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the socket is still alive
@@ -101,7 +98,6 @@ bool ClientConnection::checkSocket() {
 
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
@@ -331,6 +327,9 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
   int status = TRI_send(_socket, buffer, length, 0);
+#elif defined(__sun)
+  // MSG_NOSIGNAL not supported on solaris platform
+  int status = TRI_send(_socket, buffer, length, 0);
 #else
   int status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
@@ -404,5 +403,3 @@ bool ClientConnection::readable() {
 
   return false;
 }
-
-
