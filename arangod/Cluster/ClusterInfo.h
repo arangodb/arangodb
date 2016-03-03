@@ -34,8 +34,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <mutex>
-
 struct TRI_json_t;
 
 namespace arangodb {
@@ -295,7 +293,7 @@ class CollectionInfo {
   std::shared_ptr<ShardMap> shardIds() const {
     std::shared_ptr<ShardMap> res;
     {
-      std::lock_guard<std::mutex> locker(_mutex);
+      MUTEX_LOCKER(locker, _mutex);
       res = _shardMapCache;
     }
     if (res.get() != nullptr) {
@@ -322,7 +320,7 @@ class CollectionInfo {
       }
     }
     {
-      std::lock_guard<std::mutex> locker(_mutex);
+      MUTEX_LOCKER(locker, _mutex);
       _shardMapCache = res;
     }
     return res;
@@ -352,7 +350,7 @@ class CollectionInfo {
   TRI_json_t* _json;
 
   // Only to protect the cache:
-  mutable std::mutex _mutex;
+  mutable Mutex _mutex;
 
   // Just a cache
   mutable std::shared_ptr<ShardMap> _shardMapCache;
@@ -873,7 +871,7 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    arangodb::Mutex mutex;
+    Mutex mutex;
     std::atomic<uint64_t> version;
     arangodb::basics::ReadWriteLock lock;
 
@@ -942,7 +940,7 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _idLock;
+  Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
@@ -975,7 +973,7 @@ class ClusterInfo {
 
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  std::mutex                                   _mutex;
+  Mutex                                        _mutex;
   TRI_document_collection_t*                   _docColl;
 
  public:
