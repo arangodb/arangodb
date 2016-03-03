@@ -495,7 +495,6 @@ int InitialSyncer::applyCollectionDump(
     }
 
     TRI_ASSERT(q <= end);
-    // *q = '\0';
 
     std::shared_ptr<VPackBuilder> builder;
 

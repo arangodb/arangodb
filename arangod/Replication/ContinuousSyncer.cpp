@@ -911,7 +911,6 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     }
 
     TRI_ASSERT(q <= end);
-    // *q = '\0';
 
     processedMarkers++;
 
