@@ -313,15 +313,31 @@ set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 
 set(CPACK_STRIP_FILES "ON")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+set(CPACK_DEBIAN_PACKAGE_SECTION "database")
+
+set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "a multi-purpose NoSQL database
+ A distributed free and open-source database with a flexible data model for documents,
+ graphs, and key-values. Build high performance applications using a convenient
+ SQL-like query language or JavaScript extensions.
+ .
+ Copyright: 2012-2013 by triAGENS GmbH
+ Copyright: 2014-2015 by ArangoDB GmbH
+ ArangoDB Software
+ www.arangodb.com
+")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/prerm;")
+set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
+set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
+set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
 
 
 # OSX bundle 
 if (CPACK_GENERATOR STREQUAL "Bundle")
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-  set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
-  set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
-  set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
-  set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
 endif ()
 
 # MS installer

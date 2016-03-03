@@ -136,7 +136,7 @@ if __name__ == '__main__':
     for f in glob.glob(os.path.join(v8_root, 'out', 'Makefile.*')):
       os.unlink(f)
     # --generator-output defines where the Makefile goes.
-    gyp_args.append('--generator-output=out')
+    #gyp_args.append('--generator-output=out')
     # -Goutput_dir defines where the build output goes, relative to the
     # Makefile. Set it to . so that the build output doesn't end up in out/out.
     gyp_args.append('-Goutput_dir=.')

@@ -204,6 +204,14 @@ void SchedulerLibev::switchAllocator() {
   }
 }
 
+static void LibEvErrorLogger(const char *msg) {
+#if _WIN32
+  TRI_ERRORBUF;
+  TRI_SYSTEM_ERROR();
+#endif
+  LOG(WARN) << "LIBEV: " << msg << " - " << TRI_GET_ERRORBUF;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a scheduler
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +233,8 @@ SchedulerLibev::SchedulerLibev(size_t concurrency, int backend)
 
   // construct the loops
   _loops = new struct ev_loop* [nrThreads];
+
+  ev_set_syserr_cb(LibEvErrorLogger);
 
   ((struct ev_loop**)_loops)[0] = ev_default_loop(_backend);
 
