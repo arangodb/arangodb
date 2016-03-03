@@ -180,6 +180,9 @@ inline std::ostream& operator<< (std::ostream& os, std::vector<std::string> cons
   return os;
 }
 
+
+using namespace arangodb::velocypack;
+
 enum NODE_EXPECTION {PATH_NOT_FOUND};
 
 class Node {
@@ -303,13 +306,12 @@ private:
 };
 
 
-//using namespace arangodb::velocypack;
 class Store : public Node { // Root node
   
 public:
-  Store () : Node("root") {
-  }
-  ~Store () {}  
+  Store () : Node("root") {}
+  ~Store () {} 
+
 };
 
 }}

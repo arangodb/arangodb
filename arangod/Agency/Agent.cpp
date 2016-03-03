@@ -104,20 +104,19 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
 
 void Agent::reportIn (id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _confirmedLock);
-  if (index > _confirmed[id])
+  if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
-  // last commit index smaller?
-  // check if we can move forward
-  if(_last_commit_index < index) {
+
+  if(index > _last_commit_index) { // progress last commit?
     size_t n = 0;
     for (size_t i = 0; i < size(); ++i) {
       n += (_confirmed[i]>index);
     }
-    if (n>size()/2) {
+    if (n>size()/2) {              // enough confirms?
       _last_commit_index = index;
     }
   }
-  _rest_cv.broadcast();
+  _rest_cv.broadcast();            // wake up REST handlers
 }
 
 priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,

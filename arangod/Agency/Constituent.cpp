@@ -37,8 +37,8 @@ using namespace arangodb::velocypack;
 void Constituent::configure(Agent* agent) {
   _agent = agent;
   _votes.resize(_agent->config().end_points.size());
-  if (_agent->config().id == (_votes.size()-1)) // Last will notify eveyone
-    notifyAll();
+  if (_agent->config().id == (_votes.size()-1)) // Last will (notify everyone)
+    notifyAll(); 
 }
 
 Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
@@ -130,7 +130,7 @@ size_t Constituent::notifyAll () {
 }
 
 
-bool Constituent::vote(
+bool Constituent::vote (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
  	if (leaderId == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
