@@ -96,8 +96,16 @@ public:
    */
   void follow(term_t);
 
+  /**
+   * @brief Agency size
+   */
+  size_t size() const;
+
 private:
   
+  std::vector<std::string> const& end_points() const;
+  std::string const& end_point(id_t) const;
+
   /**
    * @brief Run for leadership
    */

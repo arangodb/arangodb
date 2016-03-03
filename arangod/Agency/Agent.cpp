@@ -75,11 +75,6 @@ id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
-arangodb::LoggerStream& operator<< (arangodb::LoggerStream& l, Agent const& a) {
-  a.print(l);
-  return l;
-}
-
 void Agent::catchUpReadDB() {}; // TODO
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
@@ -148,7 +143,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t 
 
 append_entries_t Agent::sendAppendEntriesRPC (
   id_t slave_id, collect_ret_t const& entries) {
-  
+
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
@@ -242,16 +237,16 @@ void Agent::beginShutdown() {
   guard.broadcast();
 }
 
-inline bool Agent::lead () {
+bool Agent::lead () {
   rebuildDBs();
 }
 
-inline bool Agent::rebuildDBs() {
+bool Agent::rebuildDBs() {
   MUTEX_LOCKER(mutexLocker, _dbLock);
   return true;
 }
 
-inline log_t const& Agent::lastLog() const {
+log_t const& Agent::lastLog() const {
   return _state.lastLog();
 }
 

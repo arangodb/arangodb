@@ -32,6 +32,7 @@
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
+using namespace arangodb::velocypack;
 
 void Constituent::configure(Agent* agent) {
   _agent = agent;
@@ -89,28 +90,48 @@ id_t Constituent::leaderID ()  const {
   return _leader_id;
 }
 
+size_t Constituent::size() const {
+  return _agent->config().size();
+}
+
+std::string const& Constituent::end_point(id_t id) const {
+  return _agent->config().end_points[id];
+}
+
+std::vector<std::string> const& Constituent::end_points() const {
+  return _agent->config().end_points;
+}
+
 size_t Constituent::notifyAll () {
   // Last process notifies everyone 
-  std::string body;
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
 	  std::make_unique<std::map<std::string, std::string> >();
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
-  path << "/_api/agency/notify?agency_size=" << _id << "&term=" << _term;
   
-	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) {
+  path << "/_api/agency/notifyAll?term=" << _term << "&agencyId=" << _id;
+
+  // Body contains ids and endpoints
+  Builder builder;
+  for (auto const& i : end_points())
+    builder.add("endpoint", Value(i));
+  builder.close();
+
+  // Send request to all but myself
+	for (size_t i = 0; i < size(); ++i) {
     if (i != _id) {
-      results[i] = arangodb::ClusterComm::instance()->asyncRequest("1", 1,
-        _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
-        path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
-        .75*_agent->config().min_ping, true);
-      LOG(WARN) << _agent->config().end_points[i];
+      results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, _agent->config().end_points[i],
+        rest::HttpRequest::HTTP_REQUEST_GET, path.str(),
+        std::make_shared<std::string>(builder.toString()), headerFields, nullptr,
+        0.0, true);
     }
 	}
 }
 
 
-bool Constituent::vote(term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
+bool Constituent::vote(
+  term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
  	if (leaderId == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
 	} else {
@@ -180,7 +201,7 @@ void Constituent::callElection() {
       
       if (res.status == CL_COMM_SENT) { // Request successfully sent 
         res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
-        std::shared_ptr< arangodb::velocypack::Builder > body = res.result->getBodyVelocyPack();
+        std::shared_ptr<Builder > body = res.result->getBodyVelocyPack();
         if (body->isEmpty()) {
           continue;
         } else {

@@ -49,7 +49,7 @@ extern ArangoServer* ArangoInstance;
 
 
 RestAgencyPrivHandler::RestAgencyPrivHandler(HttpRequest* request, Agent* agent)
-    : RestBaseHandler(request), _agent(agent) {
+  : RestBaseHandler(request), _agent(agent) {
 }
 
 bool RestAgencyPrivHandler::isDirect() const { return false; }
@@ -103,11 +103,18 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery(); // bad query
         }
-    	} else if (_request->suffix()[0] ==   "requestVote") {  // requestVote
+    	} else if (_request->suffix()[0] == "requestVote") { // requestVote
         if (readValue("term", term) &&
             readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
+          priv_rpc_ret_t ret = _agent->requestVote (term, id, prevLogIndex,
+                                                    prevLogTerm);
+          result.add("term", VPackValue(ret.term));
+          result.add("voteGranted", VPackValue(ret.success));
+        }
+      } else if (_request->suffix()[0] == "notifyAll") { // notify
+        if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote (term, id, prevLogIndex,
                                                     prevLogTerm);
           result.add("term", VPackValue(ret.term));
@@ -129,7 +136,3 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
 
 
 
-/*
-  term_t term, id_t leaderId, index_t prevIndex,
-    term_t prevTerm, index_t lastCommitIndex, query_t const& queries
- */

@@ -30,8 +30,6 @@
 #include "State.h"
 #include "Store.h"
 
-#include <boost/property_tree/ptree.hpp>
-
 namespace arangodb {
 namespace consensus {
     
@@ -172,9 +170,9 @@ private:
 
   arangodb::Mutex _uncommitedLock;
   
-  store<std::string> _spear_head;
-  store<std::string> _read_db;
-
+  Store _spear_head;
+  Store _read_db;
+  
   AgentCallback _agent_callback;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
@@ -189,12 +187,6 @@ private:
   
 };
 
-}
-
-LoggerStream& operator<< (LoggerStream&, arangodb::consensus::Agent const&);
-  
-}
-
-
+}}
 
 #endif
