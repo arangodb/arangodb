@@ -36,13 +36,27 @@ VelocysServer::VelocysServer(Scheduler* scheduler, Dispatcher* dispatcher,
                          GeneralHandlerFactory* handlerFactory,
                          AsyncJobManager* jobManager, double keepAliveTimeout,
                          SSL_CTX* ctx)
-    : GeneralsServer(scheduler, dispatcher, handlerFactory, jobManager,
+    : GeneralServer(scheduler, dispatcher, handlerFactory, jobManager,
                  keepAliveTimeout){}
 
 
 VelocysServer::~VelocysServer() {
   // don't free context here but in dtor of ApplicationEndpointServer
   // SSL_CTX_free(ctx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocysServer::setVerificationMode(int mode) { _verificationMode = mode; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+void VelocysServer::setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
+  _verificationCallback = func;
 }
 
 ArangoTask* VelocysServer::createCommTask(TRI_socket_t s,

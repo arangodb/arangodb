@@ -120,7 +120,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VelocyServer/VelocyCommTask.cpp \
 	arangod/VelocyServer/VelocyListenTask.cpp \
 	arangod/VelocyServer/VelocysCommTask.cpp \
-	arangod/VelocyServer/VelocysCommTask.cpp \
+	arangod/VelocyServer/VelocysServer.cpp \
 	arangod/Indexes/CapConstraint.cpp \
 	arangod/Indexes/EdgeIndex.cpp \
 	arangod/Indexes/FulltextIndex.cpp \

@@ -174,7 +174,7 @@ add_executable(${BIN_ARANGOD}
   VelocyServer/VelocyCommTask.cpp
   VelocyServer/VelocyListenTask.cpp
   VelocyServer/VelocysCommTask.cpp
-  VelocyServer/VelocysCommTask.cpp
+  VelocyServer/VelocysServer.cpp
   IndexOperators/index-operator.cpp
   Indexes/CapConstraint.cpp
   Indexes/EdgeIndex.cpp

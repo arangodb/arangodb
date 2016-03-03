@@ -102,7 +102,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     /// @brief fills the write buffer
     //////////////////////////////////////////////////////////////////////////////
 
-    virtual void fillWriteBuffer();
+    virtual void fillWriteBuffer() = 0;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief handles CORS options
@@ -144,7 +144,7 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
 
     virtual int32_t getCompatibility() const = 0;
 
-    virtual bool handleRead();
+    // virtual bool handleRead();
 
     bool setup(Scheduler* scheduler, EventLoop loop) override;
 
@@ -154,9 +154,9 @@ class ArangoTask : public SocketTask, public RequestStatisticsAgent {
     bool handleEvent(EventToken token, EventType events) override;
 
     // void signalTask(TaskData*) override final;
-    virtual void signalTask(TaskData*);
+    // virtual void signalTask(TaskData*);
 
-    virtual void completedWriteBuffer();
+    // virtual void completedWriteBuffer();
 
     void handleTimeout() override;
 

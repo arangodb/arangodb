@@ -154,8 +154,7 @@ bool ApplicationVelocyServer::buildServers() {
     }
 
     // velocys
-    server =
-        new VelocysServer(_applicationScheduler->scheduler(),
+    server = new VelocysServer(_applicationScheduler->scheduler(),
                         _applicationDispatcher->dispatcher(), _handlerFactory,
                         _jobManager, _keepAliveTimeout, _sslContext);
 
