@@ -28,7 +28,6 @@
 #include "Replication/Syncer.h"
 #include "VocBase/replication-applier.h"
 
-struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
@@ -36,6 +35,10 @@ namespace arangodb {
 
 namespace httpclient {
 class SimpleHttpResult;
+}
+
+namespace velocypack {
+class Slice;
 }
 
 class ReplicationTransaction;
@@ -92,7 +95,7 @@ class ContinuousSyncer : public Syncer {
   /// @brief whether or not a collection should be excluded
   //////////////////////////////////////////////////////////////////////////////
 
-  bool skipMarker(TRI_voc_tick_t, struct TRI_json_t const*) const;
+  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a collection should be excluded
@@ -107,47 +110,48 @@ class ContinuousSyncer : public Syncer {
   int getLocalState(std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief starts a transaction, based on the JSON provided
+  /// @brief starts a transaction, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int startTransaction(struct TRI_json_t const*);
+  int startTransaction(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief aborts a transaction, based on the JSON provided
+  /// @brief aborts a transaction, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int abortTransaction(struct TRI_json_t const*);
+  int abortTransaction(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief commits a transaction, based on the JSON provided
+  /// @brief commits a transaction, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int commitTransaction(struct TRI_json_t const*);
+  int commitTransaction(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief process a document operation, based on the JSON provided
+  /// @brief process a document operation, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int processDocument(TRI_replication_operation_e, struct TRI_json_t const*,
+  int processDocument(TRI_replication_operation_e, arangodb::velocypack::Slice const&,
                       std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief renames a collection, based on the JSON provided
+  /// @brief renames a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int renameCollection(struct TRI_json_t const*);
+  int renameCollection(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief changes the properties of a collection, based on the JSON provided
+  /// @brief changes the properties of a collection, based on the VelocyPack
+  /// provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int changeCollection(struct TRI_json_t const*);
+  int changeCollection(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the continuous log
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyLogMarker(struct TRI_json_t const*, TRI_voc_tick_t, std::string&);
+  int applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply the data from the continuous log

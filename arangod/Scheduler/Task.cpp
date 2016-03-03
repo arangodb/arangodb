@@ -23,8 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Task.h"
-
-#include "Basics/json.h"
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
@@ -102,7 +100,7 @@ bool Task::isUserDefined() const { return false; }
 bool Task::needsMainEventLoop() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a task specific description in JSON format
+/// @brief get a task specific description in VelocyPack format
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -25,7 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/JsonHelper.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {

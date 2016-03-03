@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "vocbase-defaults.h"
-#include "Basics/json.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

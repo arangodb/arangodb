@@ -25,7 +25,6 @@
 
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -38,7 +37,6 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"

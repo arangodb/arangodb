@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;

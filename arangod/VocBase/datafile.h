@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_datafile_t;
@@ -407,6 +406,7 @@ struct TRI_col_header_marker_t {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile marker with key
+/// TODO: remove
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_document_key_marker_t {
@@ -415,7 +415,7 @@ struct TRI_doc_document_key_marker_t {
   TRI_voc_rid_t _rid;  // this is the tick for a create and update
   TRI_voc_tid_t _tid;
 
-  TRI_shape_sid_t _shape;
+//  TRI_shape_sid_t _shape;
 
   uint16_t _offsetKey;
   uint16_t _offsetJson;
@@ -427,6 +427,7 @@ struct TRI_doc_document_key_marker_t {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge datafile marker with key
+/// TODO: remove
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_edge_key_marker_t {

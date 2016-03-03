@@ -68,6 +68,7 @@ struct transaction_remote_abort_marker_t : TRI_df_marker_t {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal document marker
+/// TODO: remove
 ////////////////////////////////////////////////////////////////////////////////
 
 struct document_marker_t : TRI_df_marker_t {
@@ -77,7 +78,7 @@ struct document_marker_t : TRI_df_marker_t {
   TRI_voc_rid_t _revisionId;  // this is the tick for a create and update
   TRI_voc_tid_t _transactionId;
 
-  TRI_shape_sid_t _shape;
+//  TRI_shape_sid_t _shape;
 
   uint16_t _offsetKey;
   uint16_t _offsetLegend;

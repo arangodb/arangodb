@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/BindParameters.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>

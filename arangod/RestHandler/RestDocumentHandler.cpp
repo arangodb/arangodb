@@ -22,15 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
-#include "Basics/conversions.h"
-#include "Basics/json-utilities.h"
+//#include "Basics/conversions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"

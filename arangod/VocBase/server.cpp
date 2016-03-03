@@ -31,15 +31,12 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-#include "Basics/json.h"
-#include "Basics/locks.h"
 #include "Basics/memory-map.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
@@ -299,29 +296,25 @@ static int CreateBaseApplicationDirectory(char const* basePath,
   }
 
   int res = TRI_ERROR_NO_ERROR;
-  char* path = TRI_Concatenate2File(basePath, type);
+  std::string path = arangodb::basics::FileUtils::buildFilename(basePath, type);
 
-  if (path != nullptr) {
-    if (!TRI_IsDirectory(path)) {
-      std::string errorMessage;
-      long systemError;
-      res = TRI_CreateDirectory(path, systemError, errorMessage);
+  if (!TRI_IsDirectory(path.c_str())) {
+    std::string errorMessage;
+    long systemError;
+    res = TRI_CreateDirectory(path.c_str(), systemError, errorMessage);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG(INFO) << "created base application directory '" << path << "'";
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG(INFO) << "created base application directory '" << path << "'";
+    } else {
+      if ((res != TRI_ERROR_FILE_EXISTS) || (!TRI_IsDirectory(path.c_str()))) {
+        LOG(ERR) << "unable to create base application directory "
+                 << errorMessage;
       } else {
-        if ((res != TRI_ERROR_FILE_EXISTS) || (!TRI_IsDirectory(path))) {
-          LOG(ERR) << "unable to create base application directory "
-                   << errorMessage;
-        } else {
-          LOG(INFO) << "otherone created base application directory '" << path
-                    << "'";
-          res = TRI_ERROR_NO_ERROR;
-        }
+        LOG(INFO) << "otherone created base application directory '" << path
+                  << "'";
+        res = TRI_ERROR_NO_ERROR;
       }
     }
-
-    TRI_Free(TRI_CORE_MEM_ZONE, path);
   }
 
   return res;
@@ -754,45 +747,26 @@ static int SaveDatabaseParameters(TRI_voc_tick_t id, char const* name,
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(directory != nullptr);
 
-  char* file = TRI_Concatenate2File(directory, TRI_VOC_PARAMETER_FILE);
+  std::string const file = arangodb::basics::FileUtils::buildFilename(directory, TRI_VOC_PARAMETER_FILE);
 
-  if (file == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  char* tickString = TRI_StringUInt64((uint64_t)id);
-
-  if (tickString == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
   // Build the VelocyPack to store
   VPackBuilder builder;
   try {
     builder.openObject();
-    builder.add("id", VPackValue(tickString));
+    builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
     builder.add("deleted", VPackValue(deleted));
     builder.close();
   } catch (...) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
   if (!arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          file, builder.slice(), true)) {
+          file.c_str(), builder.slice(), true)) {
     LOG(ERR) << "cannot save database information in file '" << file << "'";
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
     return TRI_ERROR_INTERNAL;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   return TRI_ERROR_NO_ERROR;
 }

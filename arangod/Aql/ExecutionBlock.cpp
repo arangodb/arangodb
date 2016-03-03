@@ -24,7 +24,6 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Basics/json-utilities.h"
 
 using namespace arangodb::aql;
 

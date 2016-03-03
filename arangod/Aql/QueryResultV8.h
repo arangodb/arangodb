@@ -25,8 +25,8 @@
 #define ARANGOD_AQL_QUERY_RESULT_V8_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "Aql/QueryResult.h"
+
 #include <v8.h>
 
 namespace arangodb {

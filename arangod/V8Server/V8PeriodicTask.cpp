@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8PeriodicTask.h"
-#include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "V8Server/V8Job.h"

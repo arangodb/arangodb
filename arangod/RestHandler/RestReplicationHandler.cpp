@@ -1925,7 +1925,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
     const TRI_voc_rid_t rid, VPackSlice const& slice, std::string& errorMsg) {
-  if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
+  if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(!slice.isNone());
@@ -1953,55 +1953,15 @@ int RestReplicationHandler::applyCollectionDumpMarker(
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
-        if (type == REPLICATION_MARKER_EDGE) {
-          // edge
-          if (document->_info.type() != TRI_COL_TYPE_EDGE) {
-            res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-            errorMsg = "expecting edge collection, got document collection";
-          } else {
-            res = TRI_ERROR_NO_ERROR;
-
-            std::string const from =
-                arangodb::basics::VelocyPackHelper::getStringValue(
-                    slice, TRI_VOC_ATTRIBUTE_FROM, "");
-            std::string const to =
-                arangodb::basics::VelocyPackHelper::getStringValue(
-                    slice, TRI_VOC_ATTRIBUTE_TO, "");
-
-            // parse _from
-            TRI_document_edge_t edge;
-            if (!DocumentHelper::parseDocumentId(
-                    resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
-              res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              errorMsg = std::string("handle bad or collection unknown '") +
-                         from.c_str() + "'";
-            }
-
-            // parse _to
-            if (!DocumentHelper::parseDocumentId(resolver, to.c_str(),
-                                                 edge._toCid, &edge._toKey)) {
-              res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              errorMsg = std::string("handle bad or collection unknown '") +
-                         to.c_str() + "'";
-            }
-
-            if (res == TRI_ERROR_NO_ERROR) {
-              res = TRI_InsertShapedJsonDocumentCollection(
-                  trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge,
-                  false, false, true);
-            }
-          }
+        // document
+        if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
+          res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+          errorMsg = std::string(TRI_errno_string(res)) +
+                      ": expecting document collection, got edge collection";
         } else {
-          // document
-          if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
-            res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-            errorMsg = std::string(TRI_errno_string(res)) +
-                       ": expecting document collection, got edge collection";
-          } else {
-            res = TRI_InsertShapedJsonDocumentCollection(
-                trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr,
-                false, false, true);
-          }
+          res = TRI_InsertShapedJsonDocumentCollection(
+              trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr,
+              false, false, true);
         }
       } else {
         // update

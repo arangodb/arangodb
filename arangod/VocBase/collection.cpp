@@ -28,14 +28,10 @@
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/hashes.h"
-#include "Basics/json.h"
 #include "Basics/memory-map.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterInfo.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -46,24 +42,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief jsonify a parameter info block
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* CreateJsonCollectionInfo(
-    arangodb::VocbaseCollectionInfo const& info) {
-  try {
-    VPackBuilder builder;
-    builder.openObject();
-    TRI_CreateVelocyPackCollectionInfo(info, builder);
-    builder.close();
-    return arangodb::basics::VelocyPackHelper::velocyPackToJson(
-        builder.slice());
-  } catch (...) {
-    return nullptr;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -981,30 +959,20 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     char const* path, TRI_vocbase_t* vocbase, char const* collectionName,
     bool versionWarning) {
   // find parameter file
-  char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
 
-  if (filename == nullptr) {
-    LOG(ERR) << "cannot load parameter info for collection '" << path
-             << "', out of memory";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (!TRI_ExistsFile(filename)) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  if (!TRI_ExistsFile(filename.c_str())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  std::string filePath(filename, strlen(filename));
   std::shared_ptr<VPackBuilder> content =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filePath);
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
   VPackSlice slice = content->slice();
   if (!slice.isObject()) {
     LOG(ERR) << "cannot open '" << filename
              << "', collection parameters are not readable";
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // fiddle "isSystem" value, which is not contained in the JSON file
   bool isSystemValue = false;
@@ -1119,27 +1087,21 @@ void VocbaseCollectionInfo::clearKeyOptions() { _keyOptions.reset(); }
 int VocbaseCollectionInfo::saveToFile(std::string const& path, bool forceSync) const {
   std::string filename = basics::FileUtils::buildFilename(path, TRI_VOC_PARAMETER_FILE);
 
-  std::unique_ptr<TRI_json_t> json(CreateJsonCollectionInfo(*this));
+  VPackBuilder builder;
+  builder.openObject();
+  TRI_CreateVelocyPackCollectionInfo(*this, builder);
+  builder.close();
 
-  if (json == nullptr) {
+  bool ok = VelocyPackHelper::velocyPackToFile(filename.c_str(), builder.slice(), forceSync);
+
+  if (!ok) {
+    int res = TRI_errno();
     LOG(ERR) << "cannot save collection properties file '" << filename
              << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return res;
   }
 
-  // save json info to file
-  bool ok = TRI_SaveJson(filename.c_str(), json.get(), forceSync);
-
-  int res;
-  if (!ok) {
-    res = TRI_errno();
-    LOG(ERR) << "cannot save collection properties file '" << filename
-             << "': " << TRI_last_error();
-  } else {
-    res = TRI_ERROR_NO_ERROR;
-  }
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,

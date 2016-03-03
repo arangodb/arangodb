@@ -29,7 +29,8 @@
 #include "Replication/Syncer.h"
 #include "Utils/transactions.h"
 
-struct TRI_json_t;
+#include <velocypack/Slice.h>
+
 class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
@@ -157,8 +158,8 @@ class InitialSyncer : public Syncer {
   /// @brief apply the data from a collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDump(arangodb::Transaction*,
-                          struct TRI_transaction_collection_s*,
+  int applyCollectionDump(arangodb::Transaction&,
+                          std::string const&,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);
 
@@ -190,23 +191,26 @@ class InitialSyncer : public Syncer {
                      std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief changes the properties of a collection, based on the JSON provided
+  /// @brief changes the properties of a collection, based on the VelocyPack
+  /// provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int changeCollection(TRI_vocbase_col_t*, struct TRI_json_t const*);
+  int changeCollection(TRI_vocbase_col_t*, arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the information about a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollection(struct TRI_json_t const*, struct TRI_json_t const*, bool,
+  int handleCollection(arangodb::velocypack::Slice const&, 
+                       arangodb::velocypack::Slice const&, bool,
                        std::string&, sync_phase_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the inventory response of the master
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleInventoryResponse(struct TRI_json_t const*, bool, std::string&);
+  int handleInventoryResponse(arangodb::velocypack::Slice const&, 
+                              bool, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief iterate over all collections from an array and apply an action
@@ -214,7 +218,7 @@ class InitialSyncer : public Syncer {
 
   int iterateCollections(
       std::vector<
-          std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
+          std::pair<arangodb::velocypack::Slice, arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
 
  private:

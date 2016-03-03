@@ -34,6 +34,7 @@
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/MasterPointers.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"

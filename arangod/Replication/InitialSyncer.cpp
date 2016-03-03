@@ -24,18 +24,18 @@
 #include "InitialSyncer.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
+//#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/transactions.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -66,9 +66,10 @@ static bool BinarySearch(std::vector<TRI_df_marker_t const*> const& markers,
     position = l + ((r - l) / 2);
 
     TRI_ASSERT(position < markers.size());
-    char const* other = TRI_EXTRACT_MARKER_KEY(markers.at(position));
+    VPackSlice const otherSlice(reinterpret_cast<char const*>(markers.at(position)) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice const otherKey = otherSlice.get(TRI_VOC_ATTRIBUTE_KEY);
 
-    int res = strcmp(key.c_str(), other);
+    int res = key.compare(otherKey.copyString());
 
     if (res == 0) {
       return true;
@@ -228,16 +229,26 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
                  StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                  response->getHttpReturnMessage();
     } else {
-      std::unique_ptr<TRI_json_t> json(
-          TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+      std::shared_ptr<VPackBuilder> builder;
+      int res = parseResponse(builder, response.get());
 
-      if (JsonHelper::isObject(json.get())) {
-        res = handleInventoryResponse(json.get(), incremental, errorMsg);
-      } else {
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "got invalid response from master at " +
+                   std::string(_masterInfo._endpoint) +
+                   ": invalid response type for initial data. expecting array";
+
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      VPackSlice const slice = builder->slice();
+      if (!slice.isObject()) {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
         errorMsg = "got invalid response from master at " +
                    _masterInfo._endpoint + ": invalid JSON";
+      }
+      else {
+        res = handleInventoryResponse(slice, incremental, errorMsg);
       }
     }
 
@@ -332,34 +343,31 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
 
   TRI_ASSERT(response != nullptr);
 
-  int res = TRI_ERROR_NO_ERROR;
-
   if (response->wasHttpError()) {
-    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  } 
+    
+  std::shared_ptr<VPackBuilder> builder;
+  int res = parseResponse(builder, response.get());
 
-    errorMsg = "got invalid response from master at " +
-               _masterInfo._endpoint + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-  } else {
-    std::unique_ptr<TRI_json_t> json(
-        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-
-    if (json == nullptr) {
-      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    } else {
-      std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
-
-      if (id.empty()) {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      } else {
-        _batchId = StringUtils::uint64(id);
-        _batchUpdateTime = TRI_microtime();
-      }
-    }
+  if (res != TRI_ERROR_NO_ERROR) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  } 
+      
+  VPackSlice const slice = builder->slice();
+  if (!slice.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+        
+  std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
+  if (id.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  } 
+  
+  _batchId = StringUtils::uint64(id);
+  _batchUpdateTime = TRI_microtime();
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -461,21 +469,21 @@ bool InitialSyncer::checkAborted() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::applyCollectionDump(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
+    arangodb::Transaction& trx, std::string const& collectionName,
     SimpleHttpResult* response, uint64_t& markersProcessed,
     std::string& errorMsg) {
   std::string const invalidMsg = "received invalid JSON data for collection " +
-                                 StringUtils::itoa(trxCollection->_cid);
+                                 collectionName;
 
   StringBuffer& data = response->getBody();
-  char* p = data.begin();
-  char* end = p + data.length();
+  char const* p = data.begin();
+  char const* end = p + data.length();
 
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
 
   while (p < end) {
-    char* q = strchr(p, '\n');
+    char const* q = strchr(p, '\n');
 
     if (q == nullptr) {
       q = end;
@@ -487,74 +495,82 @@ int InitialSyncer::applyCollectionDump(
     }
 
     TRI_ASSERT(q <= end);
-    *q = '\0';
+    // *q = '\0';
 
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, p));
+    std::shared_ptr<VPackBuilder> builder;
+
+    try {
+      VPackParser parser(builder);
+      parser.parse(p, static_cast<size_t>(q - p));
+    }
+    catch (...) {
+      // TODO: improve error reporting
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     p = q + 1;
 
-    if (!JsonHelper::isObject(json.get())) {
+    VPackSlice const slice = builder->slice();
+
+    if (!slice.isObject()) {
       errorMsg = invalidMsg;
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
     TRI_replication_operation_e type = REPLICATION_INVALID;
-    char const* key = nullptr;
-    TRI_json_t const* doc = nullptr;
-    TRI_voc_rid_t rid = 0;
+    std::string key;
+    std::string rev;
+    VPackSlice doc;
 
-    auto objects = &(json.get()->_value._objects);
-    size_t const n = TRI_LengthVector(objects);
+    for (auto const& it : VPackObjectIterator(slice)) {
+      std::string const attributeName(it.key.copyString());
 
-    for (size_t i = 0; i < n; i += 2) {
-      auto element = static_cast<TRI_json_t const*>(TRI_AtVector(objects, i));
-
-      if (!JsonHelper::isString(element)) {
-        errorMsg = invalidMsg;
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      }
-
-      char const* attributeName = element->_value._string.data;
-      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(objects, i + 1));
-
-      if (TRI_EqualString(attributeName, "type")) {
-        if (JsonHelper::isNumber(value)) {
-          type = (TRI_replication_operation_e)(int)value->_value._number;
+      if (attributeName == "type") {
+        if (it.value.isNumber()) {
+          type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
         }
       }
 
-      else if (TRI_EqualString(attributeName, "key")) {
-        if (JsonHelper::isString(value)) {
-          key = value->_value._string.data;
+      else if (attributeName == "key") {
+        if (it.value.isString()) {
+          key = it.value.copyString();
         }
       }
 
-      else if (TRI_EqualString(attributeName, "rev")) {
-        if (JsonHelper::isString(value)) {
-          rid = StringUtils::uint64(value->_value._string.data,
-                                    value->_value._string.length - 1);
+      else if (attributeName == "rev") {
+        if (it.value.isString()) {
+          rev = it.value.copyString();
         }
       }
 
-      else if (TRI_EqualString(attributeName, "data")) {
-        if (JsonHelper::isObject(value)) {
-          doc = value;
+      else if (attributeName == "data") {
+        if (it.value.isObject()) {
+          doc = it.value;
         }
       }
     }
 
-    // key must not be 0, but doc can be 0!
-    if (key == nullptr) {
+    // key must not be empty, but doc can be empty
+    if (key.empty()) {
       errorMsg = invalidMsg;
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
     ++markersProcessed;
-    int res = applyCollectionDumpMarker(
-        trx, trxCollection, type, (const TRI_voc_key_t)key, rid, doc, errorMsg);
+
+    VPackBuilder oldBuilder;
+    oldBuilder.openObject();
+    oldBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    if (!rev.empty()) {
+      oldBuilder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+    }
+    oldBuilder.close();
+
+    VPackSlice const old = oldBuilder.slice();
+
+    int res = applyCollectionDumpMarker(trx, collectionName, type, old, doc, errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -779,7 +795,7 @@ int InitialSyncer::handleCollectionDump(
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
-        res = applyCollectionDump(&trx, trxCollection, response.get(), markersProcessed, errorMsg);
+        res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
         res = trx.finish(res);
       }
     }
@@ -918,22 +934,28 @@ int InitialSyncer::handleCollectionSync(
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
 
-  StringBuffer& data = response->getBody();
+  std::shared_ptr<VPackBuilder> builder;
+  int res = parseResponse(builder, response.get());
 
-  // order collection keys
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "got invalid response from master at " +
+               std::string(_masterInfo._endpoint) +
+               ": response is no object";
 
-  if (!TRI_IsObjectJson(json.get())) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  VPackSlice const slice = builder->slice();
+  if (!slice.isObject()) {
     errorMsg = "got invalid response from master at " +
                _masterInfo._endpoint + ": response is no object";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_json_t const* idJson = TRI_LookupObjectJson(json.get(), "id");
+  VPackSlice const id = slice.get("id");
 
-  if (!TRI_IsStringJson(idJson)) {
+  if (!id.isString()) {
     errorMsg = "got invalid response from master at " +
                _masterInfo._endpoint +
                ": response does not contain valid 'id' attribute";
@@ -941,11 +963,8 @@ int InitialSyncer::handleCollectionSync(
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  std::string const id(idJson->_value._string.data,
-                       idJson->_value._string.length - 1);
-
   auto shutdown = [&]() -> void {
-    url = baseUrl + "/" + id;
+    url = baseUrl + "/" + id.copyString();
     std::string progress =
         "deleting remote collection keys object for collection '" +
         collectionName + "' from " + url;
@@ -958,9 +977,9 @@ int InitialSyncer::handleCollectionSync(
 
   TRI_DEFER(shutdown());
 
-  TRI_json_t const* countJson = TRI_LookupObjectJson(json.get(), "count");
+  VPackSlice const count = slice.get("count");
 
-  if (!TRI_IsNumberJson(countJson)) {
+  if (!count.isNumber()) {
     errorMsg = "got invalid response from master at " +
                _masterInfo._endpoint +
                ": response does not contain valid 'count' attribute";
@@ -968,7 +987,7 @@ int InitialSyncer::handleCollectionSync(
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (countJson->_value._number <= 0.0) {
+  if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
 
@@ -995,10 +1014,8 @@ int InitialSyncer::handleCollectionSync(
   }
 
   // now we can fetch the complete chunk information from the master
-  int res;
-
   try {
-    res = handleSyncKeys(col, id, cid, collectionName, maxTick, errorMsg);
+    res = handleSyncKeys(col, id.copyString(), cid, collectionName, maxTick, errorMsg);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -1016,10 +1033,6 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     std::string const& keysId, std::string const& cid,
     std::string const& collectionName, TRI_voc_tick_t maxTick,
     std::string& errorMsg) {
-  TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-
-  bool const isEdge =
-      (col->_type == TRI_COL_TYPE_EDGE);
 
   std::string progress =
       "collecting local keys for collection '" + collectionName + "'";
@@ -1066,35 +1079,20 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return res;
     }
     
-    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     auto idx = trx.documentCollection()->primaryIndex();
     markers.reserve(idx->size());
 
     uint64_t iterations = 0;
-    arangodb::basics::BucketPosition position;
-
-    uint64_t total = 0;
-    while (true) {
-      auto ptr = idx->lookupSequential(&trx, position, total);
-
-      if (ptr == nullptr) {
-        // done
-        break;
-      }
-
-      void const* marker = ptr->getDataPtr();
-      auto df = static_cast<TRI_df_marker_t const*>(marker);
-      markers.emplace_back(df);
-
+    trx.invokeOnAllElements(trx.name(), [this, &markers, &iterations](TRI_doc_mptr_t const* mptr) {
+      markers.emplace_back(mptr->getMarkerPtr());
+      
       if (++iterations % 100000 == 0) {
         if (checkAborted()) {
-          return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+          return false;
         }
       }
-    }
+      return true;
+    });
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1112,10 +1110,12 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     std::sort(
         markers.begin(), markers.end(),
         [](TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
-          int res =
-              strcmp(TRI_EXTRACT_MARKER_KEY(lhs), TRI_EXTRACT_MARKER_KEY(rhs));
+          VPackSlice const l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+          VPackSlice const r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
 
-          return res < 0;
+          std::string lkey(l.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+          std::string rkey(r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+          return (lkey < rkey);
         });
   }
 
@@ -1159,24 +1159,36 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  StringBuffer& data = response->getBody();
+  std::shared_ptr<VPackBuilder> builder;
+  int res = parseResponse(builder, response.get());
 
-  // parse chunks
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "got invalid response from master at " +
+               std::string(_masterInfo._endpoint) +
+               ": invalid response is no array";
 
-  if (!TRI_IsArrayJson(json.get())) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  VPackSlice const slice = builder->slice();
+
+  if (!slice.isArray()) {
     errorMsg = "got invalid response from master at " +
                _masterInfo._endpoint + ": response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  size_t const n = TRI_LengthArrayJson(json.get());
+  VPackBuilder keyBuilder;
+  size_t const n = slice.length();
 
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
+    OperationOptions options;
+    options.silent = true;
+    // TODO: ignore old revisions
+
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
@@ -1186,49 +1198,51 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return res;
     }
     
-    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+    VPackSlice chunk = slice.at(0);
 
-    auto chunk = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&(json.get()->_value._objects), 0));
+    TRI_ASSERT(chunk.isObject());
+    auto lowSlice = chunk.get("low");
+    TRI_ASSERT(lowSlice.isString());
 
-    TRI_ASSERT(TRI_IsObjectJson(chunk));
-    auto lowJson = TRI_LookupObjectJson(chunk, "low");
-    TRI_ASSERT(TRI_IsStringJson(lowJson));
-
-    char const* lowKey = lowJson->_value._string.data;
-
+    std::string const lowKey(lowSlice.copyString());
+      
     for (size_t i = 0; i < markers.size(); ++i) {
-      auto key = TRI_EXTRACT_MARKER_KEY(markers[i]);
-
-      if (strcmp(key, lowKey) >= 0) {
+      VPackSlice const k(reinterpret_cast<char const*>(markers[i]) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+     
+      if (k.copyString().compare(lowKey) >= 0) { 
         break;
       }
 
-      TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(),
-                                             (TRI_voc_key_t)key, 0, nullptr,
-                                             &policy, false, false);
+      keyBuilder.clear();
+      keyBuilder.openObject();
+      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, k);
+      keyBuilder.close();
+
+      trx.remove(collectionName, keyBuilder.slice(), options);
     }
 
     // last high
-    chunk = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&(json.get()->_value._objects), n - 1));
-    auto highJson = TRI_LookupObjectJson(chunk, "high");
-    TRI_ASSERT(TRI_IsStringJson(highJson));
+    chunk = slice.at(n - 1);
+    TRI_ASSERT(chunk.isObject());
 
-    char const* highKey = highJson->_value._string.data;
+    auto highSlice = chunk.get("high");
+    TRI_ASSERT(highSlice.isString());
+
+    std::string const highKey(highSlice.copyString());
 
     for (size_t i = markers.size(); i >= 1; --i) {
-      auto key = TRI_EXTRACT_MARKER_KEY(markers[i - 1]);
+      VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
 
-      if (strcmp(key, highKey) <= 0) {
+      if (k.copyString().compare(highKey) <= 0) { 
         break;
       }
+      
+      keyBuilder.clear();
+      keyBuilder.openObject();
+      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, k);
+      keyBuilder.close();
 
-      TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(),
-                                             (TRI_voc_key_t)key, 0, nullptr,
-                                             &policy, false, false);
+      trx.remove(collectionName, keyBuilder.slice(), options);
     }
 
     trx.commit();
@@ -1241,6 +1255,10 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
+    
+    OperationOptions options;
+    options.silent = true;
+    // TODO: ignore old revisions
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
@@ -1256,7 +1274,6 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     }
     
     auto idx = trx.documentCollection()->primaryIndex();
-    auto shaper = trx.documentCollection()->getShaper();
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
@@ -1267,26 +1284,21 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     sendExtendBarrier();
 
     // read remote chunk
-    auto chunk = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&(json.get()->_value._objects), i));
+    VPackSlice chunk = slice.at(i);
 
-    if (!TRI_IsObjectJson(chunk)) {
+    if (!chunk.isObject()) {
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint + ": chunk is no object";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    auto lowJson = TRI_LookupObjectJson(chunk, "low");
-    auto highJson = TRI_LookupObjectJson(chunk, "high");
-    auto hashJson = TRI_LookupObjectJson(chunk, "hash");
+    VPackSlice const lowSlice = chunk.get("low");
+    VPackSlice const highSlice = chunk.get("high");
+    VPackSlice const hashSlice = chunk.get("hash");
 
-    // std::cout << "i: " << i << ", RANGE LOW: " <<
-    // std::string(lowJson->_value._string.data) << ", HIGH: " <<
-    // std::string(highJson->_value._string.data) << ", HASH: " <<
-    // std::string(hashJson->_value._string.data) << "\n";
-    if (!TRI_IsStringJson(lowJson) || !TRI_IsStringJson(highJson) ||
-        !TRI_IsStringJson(hashJson)) {
+    if (!lowSlice.isString() || !highSlice.isString() ||
+        !hashSlice.isString()) {
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint +
                  ": chunks in response have an invalid format";
@@ -1297,10 +1309,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     size_t localFrom;
     size_t localTo;
     bool match =
-        FindRange(markers, std::string(lowJson->_value._string.data,
-                                       lowJson->_value._string.length - 1),
-                  std::string(highJson->_value._string.data,
-                              highJson->_value._string.length - 1),
+        FindRange(markers, lowSlice.copyString(), highSlice.copyString(),
                   localFrom, localTo);
 
     if (match) {
@@ -1309,16 +1318,12 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
-        auto marker = markers.at(i);
-        char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-
-        hash ^= TRI_FnvHashString(key);
-        hash ^= TRI_EXTRACT_MARKER_RID(marker);
+        VPackSlice const current(reinterpret_cast<char const*>(markers.at(i)) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+        hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
+        hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
       }
 
-      if (std::to_string(hash) !=
-          std::string(hashJson->_value._string.data,
-                      hashJson->_value._string.length - 1)) {
+      if (std::to_string(hash) != hashSlice.copyString()) {
         match = false;
       }
     }
@@ -1358,13 +1363,10 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         return TRI_ERROR_REPLICATION_MASTER_ERROR;
       }
 
-      StringBuffer& rangeKeys = response->getBody();
+      std::shared_ptr<VPackBuilder> builder;
+      int res = parseResponse(builder, response.get());
 
-      // parse keys
-      std::unique_ptr<TRI_json_t> rangeKeysJson(
-          TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, rangeKeys.c_str()));
-
-      if (!TRI_IsArrayJson(rangeKeysJson.get())) {
+      if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "got invalid response from master at " +
                    _masterInfo._endpoint +
                    ": response is no array";
@@ -1372,20 +1374,33 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
-      size_t const n = TRI_LengthArrayJson(rangeKeysJson.get());
+      VPackSlice const slice = builder->slice();
+      if (!slice.isArray()) {
+        errorMsg = "got invalid response from master at " +
+                   _masterInfo._endpoint +
+                   ": response is no array";
+
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      size_t const n = slice.length();
       TRI_ASSERT(n > 0);
 
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
-        auto df = markers[nextStart];
-        char const* localKey = TRI_EXTRACT_MARKER_KEY(df);
-        int res = strcmp(localKey, lowJson->_value._string.data);
+        VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+        std::string const localKey(keySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+
+        int res = localKey.compare(lowSlice.copyString());
 
         if (res < 0) {
           // we have a local key that is not present remotely
-          TRI_RemoveShapedJsonDocumentCollection(
-              &trx, trx.trxCollection(), (TRI_voc_key_t)localKey, 0, nullptr,
-              &policy, false, false);
+          keyBuilder.clear();
+          keyBuilder.openObject();
+          keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(localKey));
+          keyBuilder.close();
+
+          trx.remove(collectionName, keyBuilder.slice(), options);
           ++nextStart;
         } else {
           break;
@@ -1395,10 +1410,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       toFetch.clear();
 
       for (size_t i = 0; i < n; ++i) {
-        auto pair = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&(rangeKeysJson.get()->_value._objects), i));
+        VPackSlice const pair = slice.at(i);
 
-        if (!TRI_IsArrayJson(pair) || TRI_LengthArrayJson(pair) != 2) {
+        if (!pair.isArray() || pair.length() != 2) {
           errorMsg = "got invalid response from master at " +
                      _masterInfo._endpoint +
                      ": response key pair is no valid array";
@@ -1407,10 +1421,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         }
 
         // key
-        auto keyJson = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&pair->_value._objects, 0));
+        VPackSlice const keySlice = pair.at(0);
 
-        if (!TRI_IsStringJson(keyJson)) {
+        if (!keySlice.isString()) {
           errorMsg = "got invalid response from master at " +
                      _masterInfo._endpoint +
                      ": response key is no string";
@@ -1426,16 +1439,19 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         }
 
         while (nextStart < markers.size()) {
-          auto df = markers[nextStart];
-          char const* localKey = TRI_EXTRACT_MARKER_KEY(df);
+          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+          std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
-          int res = strcmp(localKey, keyJson->_value._string.data);
+          int res = localKey.compare(keySlice.copyString());
 
           if (res < 0) {
             // we have a local key that is not present remotely
-            TRI_RemoveShapedJsonDocumentCollection(
-                &trx, trx.trxCollection(), (TRI_voc_key_t)localKey, 0, nullptr,
-                &policy, false, false);
+            keyBuilder.clear();
+            keyBuilder.openObject();
+            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(localKey));
+            keyBuilder.close();
+
+            trx.remove(collectionName, keyBuilder.slice(), options);
             ++nextStart;
           } else if (res >= 0) {
             // key matches or key too high
@@ -1443,17 +1459,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           }
         }
 
-        auto ridJson = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&chunk->_value._objects, 1));
-        auto mptr = idx->lookupKey(&trx, keyJson->_value._string.data);
+        auto mptr = idx->lookupKey(&trx, keySlice);
 
         if (mptr == nullptr) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (std::to_string(mptr->revisionId()) !=
-                   std::string(ridJson->_value._string.data,
-                               ridJson->_value._string.length - 1)) {
-          // key found, but rid differs
+        } else if (std::to_string(mptr->revisionId()) != chunk.at(1).copyString()) {
+          // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
         } else {
@@ -1464,11 +1476,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       // calculate next starting point
       if (!markers.empty()) {
-        BinarySearch(markers, highJson->_value._string.data, nextStart);
+        BinarySearch(markers, highSlice.copyString(), nextStart);
 
         while (nextStart < markers.size()) {
-          char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
-          int res = strcmp(key, highJson->_value._string.data);
+          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+          std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+          
+          int res = localKey.compare(highSlice.copyString());
 
           if (res <= 0) {
             ++nextStart;
@@ -1478,21 +1492,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         }
       }
 
-      /*
-      if (nextStart < markers.size()) {
-        std::cout << "LOW: " << lowJson->_value._string.data << ", HIGH: " <<
-      highJson->_value._string.data << ", NEXT: " <<
-      TRI_EXTRACT_MARKER_KEY(markers.at(nextStart)) << "\n";
-      }
-      */
-
       if (!toFetch.empty()) {
-        arangodb::basics::Json keysJson(arangodb::basics::Json::Array,
-                                        toFetch.size());
-
+        VPackBuilder keysBuilder;
+        keysBuilder.openArray();
         for (auto& it : toFetch) {
-          keysJson.add(arangodb::basics::Json(static_cast<double>(it)));
+          keysBuilder.add(VPackValue(it));
         }
+        keysBuilder.close();
 
         std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
                           std::to_string(currentChunkId) + "&chunkSize=" +
@@ -1502,8 +1508,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
                    collectionName + "' from " + url;
         setProgress(progress);
 
-        auto const keyJsonString =
-            arangodb::basics::JsonHelper::toString(keysJson.json());
+        std::string const keyJsonString(keysBuilder.slice().toJson()); 
 
         std::unique_ptr<SimpleHttpResult> response(
             _client->retryRequest(HttpRequest::HTTP_REQUEST_PUT, url,
@@ -1528,13 +1533,19 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           return TRI_ERROR_REPLICATION_MASTER_ERROR;
         }
 
-        StringBuffer& documentsData = response->getBody();
+        std::shared_ptr<VPackBuilder> builder;
+        int res = parseResponse(builder, response.get());
 
-        // parse keys
-        std::unique_ptr<TRI_json_t> documentsJson(
-            TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, documentsData.c_str()));
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "got invalid response from master at " +
+                     std::string(_masterInfo._endpoint) +
+                     ": response is no array";
 
-        if (!TRI_IsArrayJson(documentsJson.get())) {
+          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        }
+ 
+        VPackSlice const slice = builder->slice();
+        if (!slice.isArray()) {
           errorMsg = "got invalid response from master at " +
                      _masterInfo._endpoint +
                      ": response is no array";
@@ -1542,13 +1553,8 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
 
-        size_t const n = TRI_LengthArrayJson(documentsJson.get());
-
-        for (size_t i = 0; i < n; ++i) {
-          auto documentJson = static_cast<TRI_json_t const*>(
-              TRI_AtVector(&(documentsJson.get()->_value._objects), i));
-
-          if (!TRI_IsObjectJson(documentJson)) {
+        for (auto const& it : VPackArrayIterator(slice)) {
+          if (!it.isObject()) {
             errorMsg = "got invalid response from master at " +
                        _masterInfo._endpoint +
                        ": document is no object";
@@ -1556,9 +1562,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          auto const keyJson = TRI_LookupObjectJson(documentJson, "_key");
+          VPackSlice const keySlice = it.get(TRI_VOC_ATTRIBUTE_KEY);
 
-          if (!TRI_IsStringJson(keyJson)) {
+          if (!keySlice.isString()) {
             errorMsg = "got invalid response from master at " +
                        _masterInfo._endpoint +
                        ": document key is invalid";
@@ -1566,9 +1572,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          auto const revJson = TRI_LookupObjectJson(documentJson, "_rev");
+          VPackSlice const revSlice = it.get(TRI_VOC_ATTRIBUTE_REV);
 
-          if (!TRI_IsStringJson(revJson)) {
+          if (!revSlice.isString()) {
             errorMsg = "got invalid response from master at " +
                        _masterInfo._endpoint +
                        ": document revision is invalid";
@@ -1576,75 +1582,17 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          std::string documentKey(keyJson->_value._string.data,
-                                  keyJson->_value._string.length - 1);
+          auto mptr = idx->lookupKey(&trx, keySlice);
 
-          TRI_voc_rid_t rid = static_cast<TRI_voc_rid_t>(
-              StringUtils::uint64(revJson->_value._string.data));
-
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(
-              shaper, documentJson, true);  // PROTECTED by trx
-
-          if (shaped == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          TRI_doc_mptr_t result;
-
-          int res = TRI_ERROR_NO_ERROR;
-          auto mptr = idx->lookupKey(&trx, documentKey.c_str());
-
-          if (mptr == nullptr || isEdge) {
-            // in case of an edge collection we must always update
-            TRI_document_edge_t* e = nullptr;
-            TRI_document_edge_t edge;
-            std::string from;
-            std::string to;
-
-            if (isEdge) {
-              from = JsonHelper::getStringValue(documentJson,
-                                                TRI_VOC_ATTRIBUTE_FROM, "");
-              to = JsonHelper::getStringValue(documentJson,
-                                              TRI_VOC_ATTRIBUTE_TO, "");
-
-              // parse _from
-              if (!DocumentHelper::parseDocumentId(*trx.resolver(),
-                                                   from.c_str(), edge._fromCid,
-                                                   &edge._fromKey)) {
-                res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              }
-
-              // parse _to
-              if (!DocumentHelper::parseDocumentId(*trx.resolver(), to.c_str(),
-                                                   edge._toCid, &edge._toKey)) {
-                res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              }
-
-              e = &edge;
-            }
-
+          if (mptr == nullptr) {
             // INSERT
-            if (res == TRI_ERROR_NO_ERROR) {
-              if (mptr != nullptr && isEdge) {
-                // must remove existing edge first
-                TRI_RemoveShapedJsonDocumentCollection(
-                    &trx, trx.trxCollection(),
-                    (TRI_voc_key_t)documentKey.c_str(), 0, nullptr, &policy,
-                    false, false);
-              }
-
-              res = TRI_InsertShapedJsonDocumentCollection(
-                  &trx, trx.trxCollection(), (TRI_voc_key_t)documentKey.c_str(),
-                  rid, nullptr, &result, shaped, e, false, false, true);
-            }
+            OperationResult opRes = trx.insert(collectionName, it, options);
+            res = opRes.code;
           } else {
             // UPDATE
-            res = TRI_UpdateShapedJsonDocumentCollection(
-                &trx, trx.trxCollection(), (TRI_voc_key_t)documentKey.c_str(),
-                rid, nullptr, &result, shaped, &policy, false, false);
+            OperationResult opRes = trx.update(collectionName, it, it, options);
+            res = opRes.code;
           }
-
-          TRI_FreeShapedJson(shaper->memoryZone(), shaped);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
@@ -1664,23 +1612,16 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the properties of a collection, based on the JSON provided
+/// @brief changes the properties of a collection, based on the VelocyPack
+/// provided
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::changeCollection(TRI_vocbase_col_t* col,
-                                    TRI_json_t const* json) {
-  try {
-    std::shared_ptr<VPackBuilder> tmp =
-        arangodb::basics::JsonHelper::toVelocyPack(json);
-    arangodb::CollectionGuard guard(_vocbase, col->_cid);
-    bool doSync = _vocbase->_settings.forceSyncProperties;
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
-                                    tmp->slice(), doSync);
-  } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
-  }
+                                    VPackSlice const& slice) {
+  arangodb::CollectionGuard guard(_vocbase, col->_cid);
+  bool doSync = _vocbase->_settings.forceSyncProperties;
+  return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
+                                  slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1703,45 +1644,44 @@ int64_t InitialSyncer::getSize(TRI_vocbase_col_t* col) {
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleCollection(TRI_json_t const* parameters,
-                                    TRI_json_t const* indexesJson,
+int InitialSyncer::handleCollection(VPackSlice const& parameters,
+                                    VPackSlice const& indexes,
                                     bool incremental, std::string& errorMsg,
                                     sync_phase_e phase) {
-  // Only Temporary indexesJson will be VPack soon
-  std::shared_ptr<VPackBuilder> builder =
-      arangodb::basics::JsonHelper::toVelocyPack(indexesJson);
-  VPackSlice indexes = builder->slice();
   if (checkAborted()) {
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+  }
+    
+  if (!parameters.isObject() || !indexes.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   sendExtendBatch();
   sendExtendBarrier();
 
   std::string const masterName =
-      JsonHelper::getStringValue(parameters, "name", "");
+      VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_json_t const* masterId = JsonHelper::getObjectElement(parameters, "cid");
+  VPackSlice const masterId = parameters.get("cid");
 
-  if (!JsonHelper::isString(masterId)) {
+  if (!masterId.isString()) {
     errorMsg = "collection id is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_json_t const* type = JsonHelper::getObjectElement(parameters, "type");
+  VPackSlice const type = parameters.get("type");
 
-  if (!JsonHelper::isNumber(type)) {
+  if (!type.isNumber()) {
     errorMsg = "collection type is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   std::string const typeString =
-      (type->_value._number == 3 ? "edge" : "document");
+      (type.getNumber<int>() == 3 ? "edge" : "document");
 
-  TRI_voc_cid_t const cid = StringUtils::uint64(
-      masterId->_value._string.data, masterId->_value._string.length - 1);
+  TRI_voc_cid_t const cid = StringUtils::uint64(masterId.copyString());
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
                                     StringUtils::itoa(cid);
@@ -1978,50 +1918,44 @@ int InitialSyncer::handleCollection(TRI_json_t const* parameters,
 /// @brief handle the inventory response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleInventoryResponse(TRI_json_t const* json,
+int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
                                            bool incremental,
                                            std::string& errorMsg) {
-  TRI_json_t const* data = JsonHelper::getObjectElement(json, "collections");
+  VPackSlice const data = slice.get("collections");
 
-  if (!JsonHelper::isArray(data)) {
+  if (!data.isArray()) {
     errorMsg = "collections section is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  std::vector<std::pair<TRI_json_t const*, TRI_json_t const*>> collections;
-  size_t const n = TRI_LengthVector(&data->_value._objects);
+  std::vector<std::pair<VPackSlice, VPackSlice>> collections;
 
-  for (size_t i = 0; i < n; ++i) {
-    auto collection =
-        static_cast<TRI_json_t const*>(TRI_AtVector(&data->_value._objects, i));
-
-    if (!JsonHelper::isObject(collection)) {
+  for (auto const& it : VPackArrayIterator(data)) {
+    if (!it.isObject()) {
       errorMsg = "collection declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    TRI_json_t const* parameters =
-        JsonHelper::getObjectElement(collection, "parameters");
+    VPackSlice const parameters = it.get("parameters");
 
-    if (!JsonHelper::isObject(parameters)) {
+    if (!parameters.isObject()) {
       errorMsg = "collection parameters declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    TRI_json_t const* indexes =
-        JsonHelper::getObjectElement(collection, "indexes");
+    VPackSlice const indexes = it.get("indexes");
 
-    if (!JsonHelper::isArray(indexes)) {
+    if (!indexes.isArray()) {
       errorMsg = "collection indexes declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
     std::string const masterName =
-        JsonHelper::getStringValue(parameters, "name", "");
+        VelocyPackHelper::getStringValue(parameters, "name", "");
 
     if (masterName.empty()) {
       errorMsg = "collection name is missing in response";
@@ -2033,7 +1967,7 @@ int InitialSyncer::handleInventoryResponse(TRI_json_t const* json,
       continue;
     }
 
-    if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
+    if (VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
       // we don't care about deleted collections
       continue;
     }
@@ -2089,7 +2023,7 @@ int InitialSyncer::handleInventoryResponse(TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::iterateCollections(
-    std::vector<std::pair<TRI_json_t const*, TRI_json_t const*>> const&
+    std::vector<std::pair<VPackSlice, VPackSlice>> const&
         collections,
     bool incremental, std::string& errorMsg, sync_phase_e phase) {
   std::string phaseMsg("starting phase " + translatePhase(phase) + " with " +
@@ -2097,11 +2031,8 @@ int InitialSyncer::iterateCollections(
   setProgress(phaseMsg);
 
   for (auto const& collection : collections) {
-    TRI_json_t const* parameters = collection.first;
-    TRI_json_t const* indexes = collection.second;
-
-    TRI_ASSERT(parameters != nullptr);
-    TRI_ASSERT(indexes != nullptr);
+    VPackSlice const parameters = collection.first;
+    VPackSlice const indexes = collection.second;
 
     errorMsg = "";
     int res =

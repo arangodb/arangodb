@@ -22,26 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/AgencyComm.h"
-#include "Basics/JsonHelper.h"
+#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/json.h"
-#include "Basics/Logger.h"
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include <velocypack/Iterator.h>
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/Sink.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
