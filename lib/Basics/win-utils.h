@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_C_WIN__UTILS_H 1
 
 #include <WinSock2.h>
+#include <string>
 
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
@@ -103,7 +104,13 @@ void TRI_FixIcuDataEnv ();
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MapSystemError (DWORD);
+int TRI_MapSystemError(DWORD);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief open/close the windows eventlog. Call on start / shutdown
+////////////////////////////////////////////////////////////////////////////////
+bool TRI_InitWindowsEventLog(void);
+void TRI_CloseWindowsEventlog(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
@@ -112,17 +119,26 @@ int TRI_MapSystemError (DWORD);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog (char const* func,
-                             char const* file,
-                             int line,
-                             char const* fmt,
-                             va_list ap);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
+
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            char const* fmt, va_list ap);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message to the windows event log.
+/// this wrapper (and the macro) are similar to regular log facilities.
+/// they should however only be used in panic situations.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
+                             char const* fmt, ...);
+
+#define LOG_FATAL_WINDOWS(...)                                              \
+  do {                                                                      \
+    TRI_WindowsEmergencyLog(__FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
+  } while (0)
 
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

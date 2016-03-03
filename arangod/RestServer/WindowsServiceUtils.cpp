@@ -5,8 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,6 +78,9 @@ static std::string FriendlyServiceName = "ArangoDB - the multi-model database";
 ////////////////////////////////////////////////////////////////////////////////
 
 static SERVICE_STATUS_HANDLE ServiceStatus;
+
+// So we have a valid minidump area during startup:
+static std::string miniDumpFilename = "c:\\arangodpanic.dmp";
 
 void TRI_GlobalEntryFunction ();
 void TRI_GlobalExitFunction (int, void*);
@@ -478,29 +481,23 @@ LONG CALLBACK unhandledExceptionHandler (EXCEPTION_POINTERS *e) {
 #if HAVE_BACKTRACE
 
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
-    LOG_ERROR("Unhandled exception: %d", (int) e->ExceptionRecord->ExceptionCode);
-  }
-  else {
-    LOG_ERROR("Unhandled exception witout ExceptionCode!");
+    LOG_FATAL_WINDOWS("Unhandled exception: %d",
+                      (int)e->ExceptionRecord->ExceptionCode);
+  } else {
+    LOG_FATAL_WINDOWS("Unhandled exception without ExceptionCode!");
   }
 
   std::string bt;
   TRI_GetBacktrace(bt);
   std::cout << bt << std::endl;
-  LOG_ERROR(bt.c_str());
+  LOG_FATAL_WINDOWS(bt.c_str());
 
-  std::string miniDumpFilename = TRI_GetTempPath();
+  HANDLE hFile =
+      CreateFile(miniDumpFilename.c_str(), GENERIC_WRITE, FILE_SHARE_READ, 0,
+                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
-  miniDumpFilename += "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-  LOG_ERROR("writing minidump: %s", miniDumpFilename.c_str());
-  HANDLE hFile = CreateFile(miniDumpFilename.c_str(),
-                            GENERIC_WRITE,
-                            FILE_SHARE_READ,
-                            0, CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL, 0);
-
-  if(hFile == INVALID_HANDLE_VALUE) {
-    LOG_ERROR("could not open minidump file : %lu", GetLastError());
+  if (hFile == INVALID_HANDLE_VALUE) {
+    LOG_FATAL_WINDOWS("could not open minidump file : %lu", GetLastError());
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
@@ -523,12 +520,14 @@ LONG CALLBACK unhandledExceptionHandler (EXCEPTION_POINTERS *e) {
     CloseHandle(hFile);
     hFile = nullptr;
   }
+  LOG_FATAL_WINDOWS("wrote minidump: %s", miniDumpFilename.c_str());
 #endif
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
-    LOG_ERROR("Unhandled exception: %d - will crash now.", (int) e->ExceptionRecord->ExceptionCode);
-  }
-  else {
-    LOG_ERROR("Unhandled exception without ExceptionCode - will crash now.!");
+    LOG_FATAL_WINDOWS("Unhandled exception: %d - will crash now.",
+                      (int)e->ExceptionRecord->ExceptionCode);
+  } else {
+    LOG_FATAL_WINDOWS(
+        "Unhandled exception without ExceptionCode - will crash now.!");
   }
   return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -633,6 +632,12 @@ public:
   WindowsArangoServer (int argc, char ** argv) 
     : ArangoServer(argc, argv) {
 
+    _progress = 2;
+    miniDumpFilename = TRI_GetTempPath();
+
+    miniDumpFilename +=
+        "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+
       _progress = 2;
   }
 
@@ -642,6 +647,9 @@ static int ARGC;
 static char** ARGV;
 
 static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
   // register the service ctrl handler,  lpszArgv[0] contains service name
   ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION) ServiceCtrl);
 
@@ -656,6 +664,7 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 
   // service has stopped
   SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+  TRI_CloseWindowsEventlog();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,6 +673,16 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 
 bool TRI_ParseMoreArgs (int argc, char* argv[]) {
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
+
+#if 0
+  /// this is slower than valgrind: 
+  _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_CHECK_ALWAYS_DF );
+#endif
+
+  if (!TRI_InitWindowsEventLog()) {
+    std::cout << "failed to open windows event log!" << std::endl;
+    exit(1);
+  }
 
   if (1 < argc) {
     if (TRI_EqualString(argv[1], "--install-service")) {

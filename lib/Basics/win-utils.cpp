@@ -137,29 +137,6 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
                                      unsigned int line,         // line within file - NULL
                                      uintptr_t pReserved) {     // in case microsoft forget something
   LOG_ERROR("Invalid handle parameter passed");
-/*
-  if (expression != 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = %s\n",expression);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = NULL\n");
-  }
-  if (function != 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = %s\n",function);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = NULL\n");
-  }
-  if (file!= 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FILE = %s\n",file);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
-  }
-*/
-  //abort();
-  // TODO: use the wcstombs_s function to convert wchar to char - since all the above
-  // wchar never will contain 2 byte chars
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -350,7 +327,7 @@ void TRI_FixIcuDataEnv () {
   }
   else {
 #ifdef _SYSCONFDIR_
-    string e  = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
+    std::string e = "ICU_DATA=" + std::string(_SYSCONFDIR_) + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
@@ -358,7 +335,7 @@ void TRI_FixIcuDataEnv () {
     p = TRI_LocateBinaryPath(nullptr);
 
     if (! p.empty()) {
-      string e = "ICU_DATA=" + p + "\\";
+      std::string e = "ICU_DATA=" + p + "\\";
       e = StringUtils::replace(e, "\\", "\\\\");
       putenv(e.c_str());
     }
@@ -457,6 +434,22 @@ int TRI_MapSystemError (DWORD error) {
   }
 }
 
+static HANDLE hEventLog = INVALID_HANDLE_VALUE;
+
+bool TRI_InitWindowsEventLog(void) {
+  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  if (NULL == hEventLog) {
+    // well, fail then.
+    return false;
+  }
+  return true;
+}
+
+void TRI_CloseWindowsEventlog(void) {
+  DeregisterEventSource(hEventLog);
+  hEventLog = INVALID_HANDLE_VALUE;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message to the windows event log.
 /// we rather are keen on logging something at all then on being able to work
@@ -465,14 +458,9 @@ int TRI_MapSystemError (DWORD error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // No clue why there is no header for these...
-#define MSG_INVALID_COMMAND              ((DWORD)0xC0020100L)
-#define UI_CATEGORY                      ((WORD)0x00000003L)
-void TRI_LogWindowsEventlog (char const* func,
-                             char const* file,
-                             int line,
-                             char const* fmt,
-                             va_list ap) {
-
+#define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
+#define UI_CATEGORY ((WORD)0x00000003L)
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const& message) {
   char buf[1024];
   char linebuf[32];
   LPCSTR logBuffers [] = {
@@ -483,13 +471,28 @@ void TRI_LogWindowsEventlog (char const* func,
     NULL
   };
 
-  HANDLE hEventLog = NULL;
-  
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
-  if (NULL == hEventLog) {
-      // well, fail then.
-      return;
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
+
+  snprintf(linebuf, sizeof(linebuf), "%d", line);
+
+  DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
+  buf[sizeof(buf) - 1] = '\0';
+
+  // Try to get messages through to windows syslog...
+  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+    MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
+    NULL)) {
+    // well, fail then...
   }
+}
+
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            char const* fmt, va_list ap) {
+  char buf[1024];
+  char linebuf[32];
+  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
+
+  TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
   snprintf(linebuf, sizeof(linebuf), "%d", line);
 
@@ -505,7 +508,15 @@ void TRI_LogWindowsEventlog (char const* func,
                    NULL)) {
     // well, fail then...
   }
-  DeregisterEventSource(hEventLog);
+}
+
+void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
+                             char const* fmt, ...) {
+  va_list ap;
+
+  va_start(ap, fmt);
+  TRI_LogWindowsEventlog(func, file, line, fmt, ap);
+  va_end(ap);
 }
 
 // -----------------------------------------------------------------------------
