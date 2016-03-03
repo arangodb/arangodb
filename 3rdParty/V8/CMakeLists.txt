@@ -42,9 +42,12 @@ endif () # TODO: ARM? Win32?
 
 # target architecture
 
+file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
+
 list(APPEND V8_GYP_ARGS
-  --generator-output=${V8_TARGET_DIR}
+  --generator-output=${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
+  -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
   -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
 )
@@ -78,11 +81,93 @@ set(V8_INCLUDE_DIR
   "${PROJECT_NAME}: include path"
 )
 
+
+if (${CMAKE_GENERATOR} MATCHES "Ninja")
+  message("NINJA!")
+
+  option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
+
+  if (USE_DEBUG_V8)
+    set(NINJA_TARGET "optDebug") # one of Debug|Release|Optdebug
+    set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
+  else ()
+    set(NINJA_TARGET "Release") # one of Debug|Release|Optdebug
+    set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
+  endif ()
+
+  if (USE_DEBUG_V8)
+    list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
+  endif ()
+
+  set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
+  set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
+
+  set(GYP_MAIN "${V8_DIR}/build/gyp_v8")
+
+  list(APPEND V8_GYP_ARGS ${V8_DIR}/build/all.gyp)
+  list(APPEND V8_GYP_ARGS --format ninja)
+  list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
+
+  if (LINUX)
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/tools/gyp")
+    set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
+  elseif (SOLARIS)
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/tools/gyp")
+    set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
+  endif ()
+
+  # Gyp wants to use its own clang if we don't set this:
+  list(APPEND V8_GYP_ARGS
+    -Dclang=0)
+#    -Dv8_use_snapshot=true
+  list(APPEND V8_GYP_ARGS
+    -I${V8_DIR}/build/standalone.gypi
+    --depth=.
+    -Dstandalone_static_library=1
+    -Dlinux_use_bundled_gold=0
+    -Dlinux_use_gold_flags=0
+    -Dv8_no_strict_aliasing=1
+    -Dwerror=
+  )
+
+  set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
+  ExternalProject_Add(v8_build
+    SOURCE_DIR
+      "${V8_DIR}"
+    CONFIGURE_COMMAND
+      ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+    BINARY_DIR
+      ${NINJA_BUILD_DIR}
+    BUILD_COMMAND
+      ${CMAKE_BUILD_TOOL} v8
+    STEP_TARGETS
+      v8_base v8_libbase v8_libplatform v8_nosnapshot icui18n icuuc icudata
+    INSTALL_COMMAND
+      "")
+
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/tools/gyp")
+
+  set(V8_LIBS
+    "v8_base;v8_libbase;v8_libplatform;v8_nosnapshot"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Libraries"
+  )
+
+  list(APPEND LINK_DIRECTORIES "${NINJA_BUILD_DIR}/obj/third_party/icu")
+
+  set(ICU_LIBS
+    "icui18n;icuuc;icudata"
+    CACHE INTERNAL
+    "ICU: Libraries"
+  )
+
+  set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+
 ################################################################################
 ## WINDOWS
 ################################################################################
 
-if (WIN32)
+elseif (WIN32)
   set(GYP_MAIN ${V8_DIR}/build/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
@@ -257,13 +342,17 @@ else ()
   list(APPEND V8_GYP_ARGS --format make)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
-  if (LINUX OR SOLARIS)
+  if (LINUX)
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/tools/gyp")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
+  elseif (SOLARIS)
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/tools/gyp")
+    set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
   endif ()
 
   list(APPEND V8_GYP_ARGS
     -Ibuild/standalone.gypi
+    -Dv8_use_snapshot=true
     --depth=.
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0

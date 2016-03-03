@@ -10,7 +10,7 @@ if (USE_MAINTAINER_MODE)
     man8/rcarangod.8
     man8/arangod.8
     man8/arango-dfdb.8
-    man8/foxx-manager.8 
+    man8/foxx-manager.8
   )
 
   set(MAN_FILES)
