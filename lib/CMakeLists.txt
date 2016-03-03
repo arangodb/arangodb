@@ -125,93 +125,9 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp 
 )
 
-<<<<<<< HEAD
 add_library(
-    ${LIB_ARANGO}
-    STATIC
-    ${LIB_ARANGO_APPLE}
-    ${LIB_ARANGO_MSVC}
-    ${LIB_ARANGO_POSIX}
-    ${LIB_ARANGO_CONSOLE}
-    ${LIB_ARANGO_VPACK}
-    Basics/application-exit.cpp
-    Basics/associative.cpp
-    Basics/AttributeNameParser.cpp
-    Basics/Barrier.cpp
-    Basics/ConditionLocker.cpp
-    Basics/ConditionVariable.cpp
-    Basics/conversions.cpp
-    Basics/csv.cpp
-    Basics/DataProtector.cpp
-    Basics/debugging.cpp
-    Basics/error.cpp
-    Basics/Exceptions.cpp
-    Basics/fasthash.cpp
-    Basics/files.cpp
-    Basics/FileUtils.cpp
-    Basics/fpconv.cpp
-    Basics/hashes.cpp
-    Basics/init.cpp
-    Basics/InitializeBasics.cpp
-    Basics/json.cpp
-    Basics/json-utilities.cpp
-    Basics/JsonHelper.cpp
-    Basics/levenshtein.cpp 
-    Basics/logging.cpp
-    Basics/memory.cpp
-    Basics/mimetypes.cpp
-    Basics/Mutex.cpp
-    Basics/MutexLocker.cpp
-    Basics/Nonce.cpp
-    Basics/prime-numbers.cpp
-    Basics/process-utils.cpp
-    Basics/ProgramOptions.cpp
-    Basics/ProgramOptionsDescription.cpp
-    Basics/random.cpp
-    Basics/RandomGenerator.cpp
-    Basics/ReadWriteLock.cpp
-    Basics/ReadWriteLockCPP11.cpp
-    Basics/socket-utils.cpp
-    Basics/SpinLock.cpp
-    Basics/SpinLocker.cpp
-    Basics/ssl-helper.cpp
-    Basics/StringBuffer.cpp
-    Basics/StringUtils.cpp
-    Basics/structures.cpp
-    Basics/system-functions.cpp
-    Basics/terminal-utils.cpp
-    Basics/Thread.cpp
-    Basics/ThreadPool.cpp
-    Basics/tri-strings.cpp
-    Basics/tri-zip.cpp
-    Basics/Utf8Helper.cpp
-    Basics/vector.cpp
-    Basics/VelocyPackHelper.cpp
-    Basics/voc-errors.cpp
-    Basics/voc-mimetypes.cpp
-    Basics/VPackStringBufferAdapter.cpp
-    Basics/WorkMonitor.cpp
-    JsonParser/json-parser.cpp
-    ProgramOptions/program-options.cpp
-    Rest/EndpointList.cpp
-    Rest/Endpoint.cpp
-    Rest/EndpointIp.cpp
-    Rest/EndpointIpV4.cpp
-    Rest/EndpointIpV6.cpp
-    Rest/GeneralRequest.cpp
-    Rest/GeneralResponse.cpp
-    Rest/InitializeRest.cpp
-    Rest/SslInterface.cpp
-    Rest/Version.cpp
-    Utilities/DummyShell.cpp
-    Utilities/LineEditor.cpp
-    Utilities/ScriptLoader.cpp
-    Utilities/ShellBase.cpp
-    Zip/ioapi.cpp
-    Zip/unzip.cpp
-    Zip/zip.cpp
-=======
-add_library(${LIB_ARANGO} STATIC
+  ${LIB_ARANGO} 
+  STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
@@ -280,8 +196,8 @@ add_library(${LIB_ARANGO} STATIC
   Rest/EndpointIpV4.cpp
   Rest/EndpointIpV6.cpp
   Rest/EndpointList.cpp
-  Rest/HttpRequest.cpp
-  Rest/HttpResponse.cpp
+  Rest/GeneralRequest.cpp
+  Rest/GeneralResponse.cpp
   Rest/InitializeRest.cpp
   Rest/SslInterface.cpp
   Rest/Version.cpp
@@ -297,7 +213,6 @@ add_library(${LIB_ARANGO} STATIC
   SimpleHttpClient/SslClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
->>>>>>> upstream/devel
 )
 
 ################################################################################
