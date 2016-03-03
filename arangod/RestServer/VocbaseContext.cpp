@@ -307,17 +307,10 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
 
   // look up the info in the cache first
   bool mustChange;
-  char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth, &mustChange);
-  std::string username;
+  std::string username = TRI_CheckCacheAuthInfo(_vocbase, auth, &mustChange);
 
-  // found a cached entry, access must be granted
-  if (cached != 0) {
-    username = std::string(cached);
-    TRI_Free(TRI_CORE_MEM_ZONE, cached);
-  }
-
-  // no entry found in cache, decode the basic auth info and look it up
-  else {
+  if (username.empty()) {
+    // no entry found in cache, decode the basic auth info and look it up
     std::string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
