@@ -2222,8 +2222,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_server_t* server, TRI_vocbase_type_e type,
   _collections.reserve(32);
   _deadCollections.reserve(32);
 
-  TRI_InitAuthInfo(this);
-
   TRI_CreateUserStructuresVocBase(this);
 
   TRI_InitCondition(&_compactorCondition);
