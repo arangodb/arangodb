@@ -25,8 +25,6 @@
 #define LIB_BASICS_JSON_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/associative.h"
 #include "Basics/vector.h"
 
 struct TRI_string_buffer_t;

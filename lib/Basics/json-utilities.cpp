@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json-utilities.h"
+#include "Basics/associative.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"

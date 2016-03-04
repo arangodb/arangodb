@@ -26,6 +26,7 @@
 #define ARANGOD_VOC_BASE_VOC_SHAPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/associative.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"
