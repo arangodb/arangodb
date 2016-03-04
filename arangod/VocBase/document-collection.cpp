@@ -3889,17 +3889,17 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
 /// @brief updates a document or edge in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
-                                      VPackSlice const* newSlice, 
+int TRI_document_collection_t::update(Transaction* trx,
+                                      VPackSlice const newSlice, 
                                       TRI_doc_mptr_t* mptr,
-                                      TRI_doc_update_policy_t const* policy,
                                       OperationOptions& options,
-                                      bool lock) {
+                                      bool lock,
+                                      TRI_voc_rid_t& prevRev) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(*newSlice);
+  TRI_voc_rid_t revisionId = TRI_NewTickServer();
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -3910,8 +3910,9 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
-    res = lookupDocument(trx, slice, policy, oldHeader);
-
+    VPackSlice key = newSlice.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_ASSERT(!key.isNone());
+    res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -3926,8 +3927,21 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    prevRev = oldHeader->revisionId();
+
+    // Check old revision:
+    if (!options.ignoreRevs) {
+      VPackSlice expectedRevSlice = newSlice.get(TRI_VOC_ATTRIBUTE_REV);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
     // merge old and new values 
-    VPackBuilder builder = mergeObjects(trx, false, VPackSlice(oldHeader->vpack()), *newSlice, options.mergeObjects, !options.keepNull);
+    VPackBuilder builder = mergeObjectsForUpdate(
+        trx, VPackSlice(oldHeader->vpack()), newSlice, 
+        std::to_string(revisionId), options.mergeObjects, options.keepNull);
  
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
@@ -3935,7 +3949,9 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
       marker.reset(createVPackInsertMarker(trx, builder.slice()));
     }
     
-    auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
+    auto actualMarker = (options.recoveryMarker == nullptr 
+                        ? marker.get() 
+                        : options.recoveryMarker);
     bool const freeMarker = (options.recoveryMarker == nullptr);
 
     arangodb::wal::DocumentOperation operation(
@@ -3975,17 +3991,17 @@ int TRI_document_collection_t::update(Transaction* trx, VPackSlice const* slice,
 /// @brief replaces a document or edge in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice,
-                                       VPackSlice const* newSlice, 
+int TRI_document_collection_t::replace(Transaction* trx,
+                                       VPackSlice const newSlice, 
                                        TRI_doc_mptr_t* mptr,
-                                       TRI_doc_update_policy_t const* policy,
                                        OperationOptions& options,
-                                       bool lock) {
+                                       bool lock,
+                                       TRI_voc_rid_t& prevRev) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = Transaction::extractRevisionId(*newSlice);
+  TRI_voc_rid_t revisionId = TRI_NewTickServer();
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -3996,8 +4012,9 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
-    res = lookupDocument(trx, slice, policy, oldHeader);
-
+    VPackSlice key = newSlice.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_ASSERT(!key.isNone());
+    res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -4012,8 +4029,21 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    prevRev = oldHeader->revisionId();
+
+    // Check old revision:
+    if (!options.ignoreRevs) {
+      VPackSlice expectedRevSlice = newSlice.get(TRI_VOC_ATTRIBUTE_REV);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+
     // merge old and new values 
-    VPackBuilder builder = mergeObjects(trx, true, VPackSlice(oldHeader->vpack()), *newSlice, false, true);
+    VPackBuilder builder = newObjectForReplace(
+        trx, VPackSlice(oldHeader->vpack()),
+        newSlice, std::to_string(revisionId));
  
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
@@ -4025,7 +4055,7 @@ int TRI_document_collection_t::replace(Transaction* trx, VPackSlice const* slice
     bool const freeMarker = (options.recoveryMarker == nullptr);
 
     arangodb::wal::DocumentOperation operation(
-        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+        trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
     
     marker.release();
     
@@ -4175,7 +4205,8 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
     _numberDocuments--;
 
     return TRI_ERROR_NO_ERROR;
-  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+  } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+             type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // copy the existing header's state
     TRI_doc_mptr_t copy = *header;
 
@@ -4231,6 +4262,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
+/// the slice contains _key and possibly _rev
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::lookupDocument(
@@ -4259,6 +4291,54 @@ int TRI_document_collection_t::lookupDocument(
     return policy->check(header->revisionId());
   }
 
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document by key, low level worker
+/// the caller must make sure the read lock on the collection is held
+/// the key must be a string slice, no revision check is performed
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::lookupDocument(
+    arangodb::Transaction* trx, VPackSlice const key,
+    TRI_doc_mptr_t*& header) {
+  
+  if (!key.isString()) {
+    return TRI_ERROR_INTERNAL;
+  }
+  VPackBuilder searchValue;
+  searchValue.openArray();
+  searchValue.openObject();
+  searchValue.add(TRI_SLICE_KEY_EQUAL, key);
+  searchValue.close();
+  searchValue.close();
+    
+  header = primaryIndex()->lookup(trx, searchValue.slice());
+
+  if (header == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the revision of a document
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::checkRevision(Transaction* trx,
+                                             VPackSlice const expected,
+                                             TRI_voc_rid_t found) {
+  TRI_voc_rid_t expectedRev = 0;
+  if (expected.isString()) {
+    expectedRev = arangodb::basics::VelocyPackHelper::stringUInt64(expected);
+  } else if (expected.isNumber()) {
+    expectedRev = expected.getNumber<TRI_voc_rid_t>();
+  }
+  if (expectedRev != 0 && found != expectedRev) {
+    return TRI_ERROR_ARANGO_CONFLICT;
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -4491,18 +4571,18 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two object slices
+/// @brief new object for replace, oldValue must have _key and _id correctly
+/// set.
 ////////////////////////////////////////////////////////////////////////////////
     
-VPackBuilder TRI_document_collection_t::mergeObjects(arangodb::Transaction* trx,
-                                                     bool isReplace,
-                                                     VPackSlice const& oldValue,
-                                                     VPackSlice const& newValue,
-                                                     bool mergeObjects, bool keepNull) {
-  if (isReplace) {
-    // replace
-    VPackBuilder builder;
-    builder.openObject();
+VPackBuilder TRI_document_collection_t::newObjectForReplace(
+    Transaction* trx,
+    VPackSlice const oldValue,
+    VPackSlice const newValue,
+    std::string const& rev) {
+  // replace
+  VPackBuilder builder;
+  { VPackObjectBuilder guard(&builder);
 
     VPackObjectIterator it(newValue);
     while (it.valid()) {
@@ -4510,33 +4590,101 @@ VPackBuilder TRI_document_collection_t::mergeObjects(arangodb::Transaction* trx,
       if (key[0] != '_' ||
           (key != TRI_VOC_ATTRIBUTE_ID &&
            key != TRI_VOC_ATTRIBUTE_KEY &&
-           key != TRI_VOC_ATTRIBUTE_REV &&
-           key != TRI_VOC_ATTRIBUTE_FROM &&
-           key != TRI_VOC_ATTRIBUTE_TO)) {
+           key != TRI_VOC_ATTRIBUTE_REV)) {
         builder.add(key, it.value());
       }
       it.next();
     }
+    VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_ID);
+    TRI_ASSERT(!s.isNone());
+    builder.add(TRI_VOC_ATTRIBUTE_ID, s);
+    s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_ASSERT(!s.isNone());
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+  }
+  return builder;
+} 
 
-    VPackObjectIterator it2(oldValue);
-    while (it2.valid()) {
-      std::string key(it2.key().copyString());
-      if (key[0] == '_' &&
-          (key == TRI_VOC_ATTRIBUTE_ID ||
-           key == TRI_VOC_ATTRIBUTE_KEY ||
-           key == TRI_VOC_ATTRIBUTE_REV ||
-           key == TRI_VOC_ATTRIBUTE_FROM ||
-           key == TRI_VOC_ATTRIBUTE_TO)) {
-        builder.add(key, it2.value());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two objects for update, oldValue must have correctly set
+/// _key and _id attributes
+////////////////////////////////////////////////////////////////////////////////
+    
+VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
+      arangodb::Transaction* trx,
+      VPackSlice const oldValue,
+      VPackSlice const newValue,
+      std::string const& rev,
+      bool mergeObjects, bool keepNull) {
+
+  VPackBuilder b;
+  { VPackObjectBuilder guard(&b);
+
+    // Find the attributes in the newValue object:
+    std::unordered_map<std::string, VPackSlice> newValues;
+    { VPackObjectIterator it(newValue);
+      while (it.valid()) {
+        std::string key = it.key().copyString();
+        if (key != TRI_VOC_ATTRIBUTE_KEY &&
+            key != TRI_VOC_ATTRIBUTE_ID &&
+            key != TRI_VOC_ATTRIBUTE_REV) {
+          newValues.emplace(it.key().copyString(), it.value());
+          it.next();
+        }
       }
-      it2.next();
     }
 
-    builder.close();
-    return builder;
-  } 
+    { VPackObjectIterator it(oldValue);
+      while (it.valid()) {
+        auto key = it.key().copyString();
+        if (key == TRI_VOC_ATTRIBUTE_REV) {
+          it.next();
+          continue;
+        }
+        auto found = newValues.find(key);
 
-  // update
-  return VPackCollection::merge(oldValue, newValue, mergeObjects, keepNull);
+        if (found == newValues.end()) {
+          // use old value
+          b.add(key, it.value());
+        } else if (mergeObjects && it.value().isObject() &&
+                   (*found).second.isObject()) {
+          // merge both values
+          auto& value = (*found).second;
+          if (keepNull || (!value.isNone() && !value.isNull())) {
+            VPackBuilder sub = VPackCollection::merge(it.value(), value, 
+                                                      true, !keepNull);
+            b.add(key, sub.slice());
+          }
+          // clear the value in the map so its not added again
+          (*found).second = VPackSlice();
+        } else {
+          // use new value
+          auto& value = (*found).second;
+          if (keepNull || (!value.isNone() && !value.isNull())) {
+            b.add(key, value);
+          }
+          // clear the value in the map so its not added again
+          (*found).second = VPackSlice();
+        }
+        it.next();
+      }
+    }
+
+    // add remaining values that were only in new object
+    for (auto& it : newValues) {
+      auto& s = it.second;
+      if (s.isNone()) {
+        continue;
+      }
+      if (!keepNull && s.isNull()) {
+        continue;
+      }
+      b.add(std::move(it.first), s);
+    }
+
+    // Finally, add the new revision:
+    b.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+  }
+  return b;
 }
-

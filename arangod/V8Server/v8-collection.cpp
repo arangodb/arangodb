@@ -72,12 +72,6 @@ struct LocalCollectionGuard {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief mode to distinguish replace and update, which share code
-////////////////////////////////////////////////////////////////////////////////
-
-enum ModifyMode { REPLACE, UPDATE };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the forceSync flag from the arguments
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
@@ -1365,7 +1359,7 @@ static void parseReplaceAndUpdateOptions(
     v8::Isolate* isolate,
     v8::FunctionCallbackInfo<v8::Value> const& args,
     OperationOptions& options,
-    ModifyMode mode) {
+    TRI_voc_document_operation_e operation) {
 
   TRI_GET_GLOBALS();
   TRI_ASSERT(args.Length() > 2);
@@ -1384,7 +1378,7 @@ static void parseReplaceAndUpdateOptions(
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
-    if (mode == UPDATE) {
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
       TRI_GET_GLOBAL_STRING(KeepNullKey);
       if (optionsObject->Has(KeepNullKey)) {
         options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(KeepNullKey));
@@ -1402,7 +1396,7 @@ static void parseReplaceAndUpdateOptions(
     //   update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>
     options.ignoreRevs = TRI_ObjectToBoolean(args[2]);
     if (args.Length() > 3) {
-      if (mode == REPLACE) {
+      if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
         options.waitForSync = TRI_ObjectToBoolean(args[3]);
       } else {  // UPDATE
         options.keepNull = TRI_ObjectToBoolean(args[3]);
@@ -1418,7 +1412,7 @@ static void parseReplaceAndUpdateOptions(
 /// @brief ModifyVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ModifyVocbaseCol(ModifyMode mode,
+static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
                              v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1426,8 +1420,9 @@ static void ModifyVocbaseCol(ModifyMode mode,
   // check the arguments
   uint32_t const argLength = args.Length();
 
-  if (argLength < 2 || argLength > (mode == REPLACE) ? 3 : 5) {
-    if (mode == REPLACE) {
+  if (argLength < 2 ||
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
           " waitForSync: booleanValue})");
@@ -1456,7 +1451,7 @@ static void ModifyVocbaseCol(ModifyMode mode,
 
   OperationOptions options;
   options.ignoreRevs = false;
-  parseReplaceAndUpdateOptions(isolate, args, options, mode);
+  parseReplaceAndUpdateOptions(isolate, args, options, operation);
 
   // Find collection and vocbase
   std::string collectionName;
@@ -1523,7 +1518,7 @@ static void ModifyVocbaseCol(ModifyMode mode,
   VPackSlice const update = updateBuilder.slice();
 
   OperationResult opResult;
-  if (mode == REPLACE) {
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     opResult = trx.replace(collectionName, update, options);
   } else {
     opResult = trx.update(collectionName, update, options);
@@ -1556,7 +1551,7 @@ static void ModifyVocbaseCol(ModifyMode mode,
 static void JS_ReplaceVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ModifyVocbaseCol(REPLACE, args);
+  ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1567,7 +1562,7 @@ static void JS_ReplaceVocbaseCol(
 static void JS_UpdateVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return ModifyVocbaseCol(UPDATE, args);
+  ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1575,7 +1570,7 @@ static void JS_UpdateVocbaseCol(
 /// @brief ModifyVocbase, database method, only single documents
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ModifyVocbase(ModifyMode mode,
+static void ModifyVocbase(TRI_voc_document_operation_e operation,
                           v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1583,8 +1578,9 @@ static void ModifyVocbase(ModifyMode mode,
   // check the arguments
   uint32_t const argLength = args.Length();
 
-  if (argLength < 2 || argLength > (mode == REPLACE) ? 3 : 5) {
-    if (mode == REPLACE) {
+  if (argLength < 2 ||
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
           "booleanValue})");
@@ -1604,7 +1600,7 @@ static void ModifyVocbase(ModifyMode mode,
   OperationOptions options;
   options.ignoreRevs = false;
   if (args.Length() > 2) {
-    parseReplaceAndUpdateOptions(isolate, args, options, mode);
+    parseReplaceAndUpdateOptions(isolate, args, options, operation);
   }
 
   TRI_vocbase_col_t const* col = nullptr;
@@ -1645,7 +1641,7 @@ static void ModifyVocbase(ModifyMode mode,
   VPackSlice const update = updateBuilder.slice();
 
   OperationResult opResult;
-  if (mode == REPLACE) {
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     opResult = trx.replace(collectionName, update, options);
   } else {
     opResult = trx.update(collectionName, update, options);
@@ -1677,7 +1673,7 @@ static void ModifyVocbase(ModifyMode mode,
 
 static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ModifyVocbase(REPLACE, args);
+  ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1687,7 +1683,7 @@ static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ModifyVocbase(UPDATE, args);
+  ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
   TRI_V8_TRY_CATCH_END
 }
 

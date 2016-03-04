@@ -70,6 +70,7 @@ struct DocumentOperation {
 
   void init() {
     if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // copy the old header into a safe area
       TRI_ASSERT(header != nullptr);
@@ -86,7 +87,8 @@ struct DocumentOperation {
     TRI_ASSERT(header != nullptr);
     TRI_ASSERT(status == StatusType::INDEXED);
 
-    if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       // move header to the end of the list
       document->_masterPointers.moveBack(header, &oldHeader);  // PROTECTED by trx
     }
@@ -108,7 +110,8 @@ struct DocumentOperation {
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
       document->_masterPointers.release(header, true);  // PROTECTED by trx
-    } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+               type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       if (status != StatusType::CREATED && status != StatusType::INDEXED) {
         document->_masterPointers.move(header, &oldHeader);  // PROTECTED by trx in trxCollection
       }

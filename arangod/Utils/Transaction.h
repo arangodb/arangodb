@@ -699,17 +699,14 @@ class Transaction {
                                     VPackSlice const newValue,
                                     OperationOptions& options);
 
-  OperationResult updateLocal(std::string const& collectionName,
-                              VPackSlice const newValue,
-                              OperationOptions& options);
-  
   OperationResult replaceCoordinator(std::string const& collectionName,
                                      VPackSlice const newValue,
                                      OperationOptions& options);
 
-  OperationResult replaceLocal(std::string const& collectionName,
-                               VPackSlice const newValue,
-                               OperationOptions& options);
+  OperationResult modifyLocal(std::string const& collectionName,
+                              VPackSlice const newValue,
+                              OperationOptions& options,
+                              TRI_voc_document_operation_e operation);
   
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,

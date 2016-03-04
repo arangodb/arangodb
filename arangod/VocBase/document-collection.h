@@ -308,12 +308,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
            TRI_doc_mptr_t*, bool);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
-  int update(arangodb::Transaction*, arangodb::velocypack::Slice const*,
-             arangodb::velocypack::Slice const*, TRI_doc_mptr_t*, 
-             TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
-  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const*,
-             arangodb::velocypack::Slice const*, TRI_doc_mptr_t*, 
-             TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
+  int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_voc_rid_t&);
+  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
+             TRI_voc_rid_t&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const*,
              TRI_doc_update_policy_t const*, arangodb::OperationOptions&, bool);
 
@@ -329,6 +329,10 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction*, arangodb::velocypack::Slice const*);
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const*,
                      TRI_doc_update_policy_t const*, TRI_doc_mptr_t*&);
+  int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
+                     TRI_doc_mptr_t*&);
+  int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
+                    TRI_voc_rid_t);
   int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
                      arangodb::wal::DocumentOperation&,
                      TRI_doc_mptr_t*, bool&);
@@ -345,14 +349,25 @@ struct TRI_document_collection_t : public TRI_collection_t {
                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge two object slices
+/// @brief new object for Replace
 ////////////////////////////////////////////////////////////////////////////////
     
-  arangodb::velocypack::Builder mergeObjects(arangodb::Transaction* trx,
-                                             bool isReplace,
-                                             arangodb::velocypack::Slice const& oldValue,
-                                             arangodb::velocypack::Slice const& newValue,
-                                             bool mergeObjects, bool keepNull);
+  arangodb::velocypack::Builder newObjectForReplace(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const oldValue,
+      arangodb::velocypack::Slice const newValue,
+      std::string const& rev);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two objects for update
+////////////////////////////////////////////////////////////////////////////////
+    
+  arangodb::velocypack::Builder mergeObjectsForUpdate(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const oldValue,
+      arangodb::velocypack::Slice const newValue,
+      std::string const& rev,
+      bool mergeObjects, bool keepNull);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
