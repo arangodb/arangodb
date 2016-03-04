@@ -296,8 +296,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
   switch (marker->getType()) {
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
       TRI_ASSERT(nullptr == document);
-      auto m = static_cast<wal::vpack_document_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_DOCUMENT;
@@ -309,8 +308,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 
     case TRI_DF_MARKER_VPACK_REMOVE: {
       TRI_ASSERT(nullptr == document);
-      auto m = static_cast<wal::vpack_remove_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
+      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_REMOVE;
@@ -429,7 +427,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
                                       TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<arangodb::wal::vpack_document_marker_t const*>(marker);
+  TRI_ASSERT(marker->getType() == TRI_DF_MARKER_VPACK_DOCUMENT);
 
 #if 0
   // TODO
@@ -443,7 +441,7 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
   VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)));
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
-  APPEND_UINT64(dump->_buffer, m->_transactionId);
+//  APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
@@ -466,7 +464,8 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
 
 static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
                                     TRI_df_marker_t const* marker) {
-  auto m = reinterpret_cast<arangodb::wal::vpack_remove_marker_t const*>(marker);
+  TRI_ASSERT(marker->getType() == TRI_DF_MARKER_VPACK_REMOVE);
+//  auto m = reinterpret_cast<arangodb::wal::vpack_remove_marker_t const*>(marker);
 
 #if 0
   // TODO
@@ -478,10 +477,10 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
 #endif  
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
-  APPEND_UINT64(dump->_buffer, m->_transactionId);
+//  APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
   
-  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)));
+  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE)));
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
 

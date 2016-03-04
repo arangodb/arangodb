@@ -168,44 +168,14 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_DF_MARKER_VPACK_DOCUMENT: {
-      TRI_voc_tick_t const databaseId = state->lastDatabaseId;
-      TRI_voc_cid_t const collectionId = state->lastCollectionId;
-      TRI_ASSERT(databaseId > 0);
-      TRI_ASSERT(collectionId > 0);
-
-      auto const* m =
-          reinterpret_cast<vpack_document_marker_t const*>(marker);
-      TRI_voc_tid_t transactionId = m->_transactionId;
-
-      state->collections[collectionId] = databaseId;
-
-      if (state->failedTransactions.find(transactionId) !=
-          state->failedTransactions.end()) {
-        // transaction had failed
-        state->operationsCount[collectionId]++;
-        break;
-      }
-
-      if (ShouldIgnoreCollection(state, collectionId)) {
-        break;
-      }
-
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(type));
-      state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
-      state->operationsCount[collectionId]++;
-      break;
-    }
-
+    case TRI_DF_MARKER_VPACK_DOCUMENT: 
     case TRI_DF_MARKER_VPACK_REMOVE: {
       TRI_voc_tick_t const databaseId = state->lastDatabaseId;
       TRI_voc_cid_t const collectionId = state->lastCollectionId;
       TRI_ASSERT(databaseId > 0);
       TRI_ASSERT(collectionId > 0);
 
-      auto const* m =
-          reinterpret_cast<vpack_remove_marker_t const*>(marker);
-      TRI_voc_tid_t transactionId = m->_transactionId;
+      TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
 
       state->collections[collectionId] = databaseId;
 
@@ -220,7 +190,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(type));
+      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
       state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;

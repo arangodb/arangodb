@@ -538,8 +538,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        auto const* m = reinterpret_cast<vpack_document_marker_t const*>(marker);
-        TRI_voc_tick_t transactionId = m->_transactionId;
+        TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
+
         if (state->ignoreTransaction(transactionId)) {
           // transaction was aborted
           return true;
@@ -596,8 +596,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(marker);
-        TRI_voc_tick_t transactionId = m->_transactionId;
+        TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
+        
         if (state->ignoreTransaction(transactionId)) {
           return true;
         }

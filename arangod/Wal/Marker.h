@@ -64,24 +64,6 @@ struct transaction_remote_abort_marker_t : TRI_df_marker_t {
   TRI_voc_tid_t _externalId;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal vpack document marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct vpack_document_marker_t : TRI_df_marker_t {
-  TRI_voc_tid_t _transactionId;
-  // uint8_t* vpack
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal vpack remove marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct vpack_remove_marker_t : TRI_df_marker_t {
-  TRI_voc_tid_t _transactionId;
-  // uint8_t* vpack
-};
-
 class Marker {
   Marker& operator=(Marker const&) = delete;
   Marker(Marker&&) = delete;

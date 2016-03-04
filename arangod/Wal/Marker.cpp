@@ -92,12 +92,11 @@ MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
 VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
                                          VPackSlice const& properties)
     : Marker(TRI_DF_MARKER_VPACK_DOCUMENT,
-             sizeof(vpack_document_marker_t) + properties.byteSize()) {
-  auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
-  m->_transactionId = transactionId;
+             sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t) + properties.byteSize()) {
+  *reinterpret_cast<TRI_voc_tid_t*>(begin() + sizeof(TRI_df_marker_t)) = transactionId;
 
   // store vpack
-  storeSlice(sizeof(vpack_document_marker_t), properties);
+  storeSlice(sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t), properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +106,12 @@ VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
 VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
                                      VPackSlice const& properties)
     : Marker(TRI_DF_MARKER_VPACK_REMOVE,
-             sizeof(vpack_remove_marker_t) + properties.byteSize()) {
-  auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
-  m->_transactionId = transactionId;
+             sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t) + properties.byteSize()) {
+  
+  *reinterpret_cast<TRI_voc_tid_t*>(begin() + sizeof(TRI_df_marker_t)) = transactionId;
 
   // store vpack
-  storeSlice(sizeof(vpack_remove_marker_t), properties);
+  storeSlice(sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t), properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
