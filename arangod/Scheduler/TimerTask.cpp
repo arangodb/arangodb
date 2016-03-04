@@ -23,8 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TimerTask.h"
-
-#include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Scheduler/Scheduler.h"
 

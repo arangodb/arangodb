@@ -65,11 +65,8 @@ BOOST_FIXTURE_TEST_SUITE(CStructureSizeTest, CStructureSizeSetup)
 
 BOOST_AUTO_TEST_CASE (tst_basic_elements) {
   BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_col_type_t));
-  BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_df_marker_type_t));
+  BOOST_CHECK_EQUAL(1, (int) sizeof(TRI_df_marker_type_t));
   BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_df_version_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_shape_aid_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_shape_sid_t));
-  BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_shape_size_t));
   BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_cid_t));
   BOOST_CHECK_EQUAL(4, (int) sizeof(TRI_voc_crc_t));
   BOOST_CHECK_EQUAL(8, (int) sizeof(TRI_voc_tid_t));
@@ -85,13 +82,13 @@ BOOST_AUTO_TEST_CASE (tst_basic_elements) {
 BOOST_AUTO_TEST_CASE (tst_df_marker) {
   size_t s = sizeof(TRI_df_marker_t);
 
-  BOOST_CHECK_EQUAL(24, (int) s);
+  TRI_df_marker_t m; 
+  BOOST_CHECK_EQUAL(16, (int) s);
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL( 0, (int) offsetOf(&TRI_df_marker_t::_size));
-  BOOST_CHECK_EQUAL( 4, (int) offsetOf(&TRI_df_marker_t::_crc));
-  BOOST_CHECK_EQUAL( 8, (int) offsetOf(&TRI_df_marker_t::_type));
-  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_marker_t::_tick));
+  BOOST_CHECK_EQUAL(0, (int) m.offsetOfSize());
+  BOOST_CHECK_EQUAL(4, (int) m.offsetOfCrc());
+  BOOST_CHECK_EQUAL(8, (int) m.offsetOfTypeAndTick());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,12 +98,12 @@ BOOST_AUTO_TEST_CASE (tst_df_marker) {
 BOOST_AUTO_TEST_CASE (tst_df_header_marker) {
   size_t s = sizeof(TRI_df_header_marker_t);
 
-  BOOST_CHECK_EQUAL(24 + 16, (int) s);
+  BOOST_CHECK_EQUAL(16 + 16, (int) s);
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_header_marker_t::_version));
-  BOOST_CHECK_EQUAL(28, (int) offsetOf(&TRI_df_header_marker_t::_maximalSize));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&TRI_df_header_marker_t::_fid));
+  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_header_marker_t::_version));
+  BOOST_CHECK_EQUAL(20, (int) offsetOf(&TRI_df_header_marker_t::_maximalSize));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_header_marker_t::_fid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,11 +113,11 @@ BOOST_AUTO_TEST_CASE (tst_df_header_marker) {
 BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
   size_t s = sizeof(TRI_df_footer_marker_t);
 
-  BOOST_CHECK_EQUAL(24 + 8, (int) s);
+  BOOST_CHECK_EQUAL(16 + 8, (int) s);
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_footer_marker_t::_maximalSize));
-  BOOST_CHECK_EQUAL(28, (int) offsetOf(&TRI_df_footer_marker_t::_totalSize));
+  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_footer_marker_t::_maximalSize));
+  BOOST_CHECK_EQUAL(20, (int) offsetOf(&TRI_df_footer_marker_t::_totalSize));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,11 +127,11 @@ BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
 BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
   size_t s = sizeof(TRI_col_header_marker_t);
 
-  BOOST_CHECK_EQUAL(24 + 16, (int) s); // base + own size
+  BOOST_CHECK_EQUAL(16 + 16, (int) s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
+  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_col_header_marker_t::_cid));
   BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_col_header_marker_t::_type));
-  BOOST_CHECK_EQUAL(32, (int) offsetOf(&TRI_col_header_marker_t::_cid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

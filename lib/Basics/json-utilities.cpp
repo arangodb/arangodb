@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/json-utilities.h"
+#include "json-utilities.h"
+#include "Basics/associative.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"

@@ -26,6 +26,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/json-utilities.h"

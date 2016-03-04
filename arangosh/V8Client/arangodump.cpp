@@ -1230,11 +1230,9 @@ int main(int argc, char* argv[]) {
     isDirectory = TRI_IsDirectory(OutputDirectory.c_str());
 
     if (isDirectory) {
-      TRI_vector_string_t files =
-          TRI_FullTreeDirectory(OutputDirectory.c_str());
+      std::vector<std::string> files(TRI_FullTreeDirectory(OutputDirectory.c_str()));
       // we don't care if the target directory is empty
-      isEmptyDirectory = (files._length == 0);
-      TRI_DestroyVectorString(&files);
+      isEmptyDirectory = (files.empty()); // TODO: TRI_FullTreeDirectory always returns at least one element (""), even if directory is empty?
     }
   }
 

@@ -34,8 +34,6 @@
 namespace arangodb {
 namespace wal {
 
-static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remote transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,51 +64,12 @@ struct transaction_remote_abort_marker_t : TRI_df_marker_t {
   TRI_voc_tid_t _externalId;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal document marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct document_marker_t : TRI_df_marker_t {
-  TRI_voc_tick_t _databaseId;
-  TRI_voc_cid_t _collectionId;
-
-  TRI_voc_rid_t _revisionId;  // this is the tick for a create and update
-  TRI_voc_tid_t _transactionId;
-
-  TRI_shape_sid_t _shape;
-
-  uint16_t _offsetKey;
-  uint16_t _offsetLegend;
-  uint32_t _offsetJson;
-
-  // char* key
-  // char* shapedJson
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal vpack document marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct vpack_document_marker_t : TRI_df_marker_t {
-  TRI_voc_tid_t _transactionId;
-  // uint8_t* vpack
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal vpack remove marker
-////////////////////////////////////////////////////////////////////////////////
-
-struct vpack_remove_marker_t : TRI_df_marker_t {
-  TRI_voc_tid_t _transactionId;
-  // uint8_t* vpack
-};
-
 class Marker {
- protected:
   Marker& operator=(Marker const&) = delete;
   Marker(Marker&&) = delete;
   Marker(Marker const&) = delete;
 
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a marker from a marker existing in memory
   //////////////////////////////////////////////////////////////////////////////
@@ -118,18 +77,18 @@ class Marker {
   Marker(TRI_df_marker_t const*, TRI_voc_fid_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create marker from a VPackSlice
-  //////////////////////////////////////////////////////////////////////////////
-  
-  Marker(TRI_df_marker_type_e, arangodb::velocypack::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create a marker that manages its own memory
   //////////////////////////////////////////////////////////////////////////////
 
-  Marker(TRI_df_marker_type_e, size_t);
+  Marker(TRI_df_marker_type_t, size_t);
 
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create marker from a VPackSlice
+  //////////////////////////////////////////////////////////////////////////////
+  
+  Marker(TRI_df_marker_type_t, arangodb::velocypack::Slice const&);
+
   virtual ~Marker();
 
   inline void freeBuffer() {
@@ -141,46 +100,21 @@ class Marker {
     }
   }
 
-  inline char* steal() {
-    char* buffer = _buffer;
-    _buffer = nullptr;
-    _mustFree = false;
-    return buffer;
-  }
-
   inline TRI_voc_fid_t fid() const { return _fid; }
 
   inline void* mem() const { return static_cast<void*>(_buffer); }
-
-  inline char* begin() const { return _buffer; }
-
-  inline char* end() const { return _buffer + _size; }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the size of the marker
   //////////////////////////////////////////////////////////////////////////////
 
   inline uint32_t size() const { return _size; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a printable representation of the marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string stringify() const;
-
  protected:
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a hex representation of a marker part
-  //////////////////////////////////////////////////////////////////////////////
+  inline char* begin() const { return _buffer; }
 
-  std::string hexifyPart(char const*, size_t) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a printable string representation of a marker part
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string stringifyPart(char const*, size_t) const;
+  inline char* end() const { return _buffer + _size; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store a vpack slice
@@ -218,8 +152,14 @@ class Marker {
 class MarkerEnvelope : public Marker {
  public:
   MarkerEnvelope(TRI_df_marker_t const*, TRI_voc_fid_t);
-
   ~MarkerEnvelope() = default;
+};
+
+class VPackMarker : public Marker {
+ public:
+  VPackMarker(TRI_df_marker_type_t type, arangodb::velocypack::Slice const& slice)
+      : Marker(type, slice) {}
+  ~VPackMarker() = default;
 };
 
 class VPackDocumentMarker : public Marker {
@@ -234,71 +174,6 @@ class VPackRemoveMarker : public Marker {
   ~VPackRemoveMarker() = default;
 };
 
-class CreateDatabaseMarker : public Marker {
- public:
-  explicit CreateDatabaseMarker(arangodb::velocypack::Slice const&);
-  ~CreateDatabaseMarker() = default;
-};
-
-class DropDatabaseMarker : public Marker {
- public:
-  explicit DropDatabaseMarker(arangodb::velocypack::Slice const&);
-  ~DropDatabaseMarker() = default;
-};
-
-class CreateCollectionMarker : public Marker {
- public:
-  explicit CreateCollectionMarker(arangodb::velocypack::Slice const&);
-  ~CreateCollectionMarker() = default;
-};
-
-class DropCollectionMarker : public Marker {
- public:
-  explicit DropCollectionMarker(arangodb::velocypack::Slice const&);
-  ~DropCollectionMarker() = default;
-};
-
-class RenameCollectionMarker : public Marker {
- public:
-  explicit RenameCollectionMarker(arangodb::velocypack::Slice const&);
-  ~RenameCollectionMarker() = default;
-};
-
-class ChangeCollectionMarker : public Marker {
- public:
-  explicit ChangeCollectionMarker(arangodb::velocypack::Slice const&);
-  ~ChangeCollectionMarker() = default;
-};
-
-class CreateIndexMarker : public Marker {
- public:
-  explicit CreateIndexMarker(arangodb::velocypack::Slice const&);
-  ~CreateIndexMarker() = default;
-};
-
-class DropIndexMarker : public Marker {
- public:
-  explicit DropIndexMarker(arangodb::velocypack::Slice const&);
-  ~DropIndexMarker() = default;
-};
-
-class BeginTransactionMarker : public Marker {
- public:
-  explicit BeginTransactionMarker(arangodb::velocypack::Slice const&);
-  ~BeginTransactionMarker() = default;
-};
-
-class CommitTransactionMarker : public Marker {
- public:
-  explicit CommitTransactionMarker(arangodb::velocypack::Slice const&);
-  ~CommitTransactionMarker() = default;
-};
-
-class AbortTransactionMarker : public Marker {
- public:
-  explicit AbortTransactionMarker(arangodb::velocypack::Slice const&);
-  ~AbortTransactionMarker() = default;
-};
 
 class BeginRemoteTransactionMarker : public Marker {
  public:

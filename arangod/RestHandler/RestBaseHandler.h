@@ -25,12 +25,10 @@
 #define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+struct TRI_json_t;
 
 namespace arangodb {
 namespace velocypack {

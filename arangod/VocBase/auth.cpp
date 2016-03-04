@@ -276,10 +276,11 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
 
     if (auth != nullptr) {
       auto it = vocbase->_authInfo.find(auth->username());
+
       if (it == vocbase->_authInfo.end()) {
         vocbase->_authInfo.emplace(auth->username(), auth.get());
+        auth.release();
       }
-      auth.release();
     }
   }
 
@@ -314,9 +315,11 @@ void TRI_ClearAuthInfo(TRI_vocbase_t* vocbase) {
 std::string TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
                                    bool* mustChange) {
   READ_LOCKER(readLocker, vocbase->_authInfoLock);
+
   auto it = vocbase->_authCache.find(hash);
   if (it != vocbase->_authCache.end()) {
     VocbaseAuthCache* cached = it->second;
+
     if (cached != nullptr) {
       *mustChange = cached->_mustChange;
       return cached->_username;
@@ -339,6 +342,7 @@ bool TRI_ExistsAuthenticationAuthInfo(TRI_vocbase_t* vocbase,
   READ_LOCKER(readLocker, vocbase->_authInfoLock);
 
   auto it = vocbase->_authInfo.find(username);
+
   if (it == vocbase->_authInfo.end()) {
     return false;
   }
@@ -449,22 +453,23 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
     // insert item into the cache
     auto cached = std::make_unique<VocbaseAuthCache>();
 
-    if (cached != nullptr) {
-      cached->_hash = std::string(TRI_DuplicateString(TRI_CORE_MEM_ZONE, hash));
-      cached->_username = std::string(TRI_DuplicateString(TRI_CORE_MEM_ZONE, username));
-      cached->_mustChange = auth->mustChange();
+    cached->_hash = std::string(hash);
+    cached->_username = std::string(username);
+    cached->_mustChange = auth->mustChange();
 
-      if (cached->_hash.empty() || cached->_username.empty()) {
-        return res;
-      }
-
-      WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
-      auto it = vocbase->_authCache.find(cached->_hash);
-      if (it == vocbase->_authCache.end()) {
-        vocbase->_authCache.emplace(cached->_hash, cached.release());
-      }
-      // else: duplicate entry unique-ptr retains and goes out of scope
+    if (cached->_hash.empty() || cached->_username.empty()) {
+      return res;
     }
+
+    WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
+
+    auto it = vocbase->_authCache.find(cached->_hash);
+
+    if (it == vocbase->_authCache.end()) {
+      vocbase->_authCache.emplace(cached->_hash, cached.get());
+      cached.release();
+    }
+    // else: duplicate entry unique-ptr retains and goes out of scope
   }
 
   return res;

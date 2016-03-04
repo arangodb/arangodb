@@ -25,7 +25,6 @@
 #include "Aql/Query.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
@@ -40,7 +39,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
-#include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/auth.h"
 #include "VocBase/DocumentAccessor.h"
 #include "VocBase/KeyGenerator.h"
@@ -1200,7 +1198,7 @@ static void JS_PropertiesVocbaseCol(
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
 
-        arangodb::wal::ChangeCollectionMarker marker(infoBuilder.slice());
+        arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);
@@ -2716,64 +2714,59 @@ static void JS_DatafileScanVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
+    DatafileScan scan = TRI_ScanDatafile(path.c_str());
 
     // build result
     result = v8::Object::New(isolate);
 
     result->Set(TRI_V8_ASCII_STRING("currentSize"),
-                v8::Number::New(isolate, scan._currentSize));
+                v8::Number::New(isolate, scan.currentSize));
     result->Set(TRI_V8_ASCII_STRING("maximalSize"),
-                v8::Number::New(isolate, scan._maximalSize));
+                v8::Number::New(isolate, scan.maximalSize));
     result->Set(TRI_V8_ASCII_STRING("endPosition"),
-                v8::Number::New(isolate, scan._endPosition));
+                v8::Number::New(isolate, scan.endPosition));
     result->Set(TRI_V8_ASCII_STRING("numberMarkers"),
-                v8::Number::New(isolate, scan._numberMarkers));
+                v8::Number::New(isolate, scan.numberMarkers));
     result->Set(TRI_V8_ASCII_STRING("status"),
-                v8::Number::New(isolate, scan._status));
+                v8::Number::New(isolate, scan.status));
     result->Set(TRI_V8_ASCII_STRING("isSealed"),
-                v8::Boolean::New(isolate, scan._isSealed));
+                v8::Boolean::New(isolate, scan.isSealed));
 
     v8::Handle<v8::Array> entries = v8::Array::New(isolate);
     result->Set(TRI_V8_ASCII_STRING("entries"), entries);
 
-    size_t const n = TRI_LengthVector(&scan._entries);
-    for (size_t i = 0; i < n; ++i) {
-      auto entry = static_cast<TRI_df_scan_entry_t const*>(
-          TRI_AddressVector(&scan._entries, i));
-
+    uint32_t i = 0;
+    for (auto const& entry : scan.entries) {
       v8::Handle<v8::Object> o = v8::Object::New(isolate);
 
       o->Set(TRI_V8_ASCII_STRING("position"),
-             v8::Number::New(isolate, entry->_position));
+             v8::Number::New(isolate, entry.position));
       o->Set(TRI_V8_ASCII_STRING("size"),
-             v8::Number::New(isolate, entry->_size));
+             v8::Number::New(isolate, entry.size));
       o->Set(TRI_V8_ASCII_STRING("realSize"),
-             v8::Number::New(isolate, entry->_realSize));
-      o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry->_tick));
+             v8::Number::New(isolate, entry.realSize));
+      o->Set(TRI_V8_ASCII_STRING("tick"), V8TickId(isolate, entry.tick));
       o->Set(TRI_V8_ASCII_STRING("type"),
-             v8::Number::New(isolate, (int)entry->_type));
+             v8::Number::New(isolate, static_cast<int>(entry.type)));
       o->Set(TRI_V8_ASCII_STRING("status"),
-             v8::Number::New(isolate, (int)entry->_status));
+             v8::Number::New(isolate, static_cast<int>(entry.status)));
 
-      if (entry->_key != nullptr) {
-        o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_ASCII_STRING(entry->_key));
+      if (!entry.key.empty()) {
+        o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_STD_STRING(entry.key));
       }
 
-      if (entry->_typeName != nullptr) {
+      if (entry.typeName != nullptr) {
         o->Set(TRI_V8_ASCII_STRING("typeName"),
-               TRI_V8_ASCII_STRING(entry->_typeName));
+               TRI_V8_ASCII_STRING(entry.typeName));
       }
 
-      if (entry->_diagnosis != nullptr) {
+      if (!entry.diagnosis.empty()) {
         o->Set(TRI_V8_ASCII_STRING("diagnosis"),
-               TRI_V8_ASCII_STRING(entry->_diagnosis));
+               TRI_V8_STD_STRING(entry.diagnosis));
       }
 
-      entries->Set((uint32_t)i, o);
+      entries->Set(i++, o);
     }
-
-    TRI_DestroyDatafileScan(&scan);
   }
 
   TRI_V8_RETURN(result);

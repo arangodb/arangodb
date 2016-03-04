@@ -628,7 +628,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
     builder.add("tid", VPackValue(trx->_id));
     builder.close();
 
-    arangodb::wal::BeginTransactionMarker marker(builder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -673,7 +673,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
     builder.add("tid", VPackValue(trx->_id));
     builder.close();
 
-    arangodb::wal::AbortTransactionMarker marker(builder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -710,7 +710,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
     builder.add("tid", VPackValue(trx->_id));
     builder.close();
 
-    arangodb::wal::CommitTransactionMarker marker(builder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, builder.slice());
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();

@@ -92,7 +92,8 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesJs(
   TRI_GET_GLOBAL_STRING(_RevKey);
   result->ForceSet(_RevKey, TRI_V8_PAIR_STRING((char const*)buffer, (int)len));
 
-  TRI_df_marker_type_t type = marker->_type;
+#if 0
+  TRI_df_marker_type_t type = marker->getType();
   char const* base = reinterpret_cast<char const*>(marker);
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -120,7 +121,7 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesJs(
     result->ForceSet(_ToKey,
                      TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
   }
-
+#endif
   return scope.Escape<v8::Object>(result);
 }
 
@@ -151,7 +152,8 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped(
   result->ForceSet(_IdKey,
                    TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
 
-  TRI_df_marker_type_t type = marker->_type;
+#if 0
+  TRI_df_marker_type_t type = marker->getType();
   char const* base = reinterpret_cast<char const*>(marker);
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -179,7 +181,7 @@ static v8::Handle<v8::Object> SetBasicDocumentAttributesShaped(
     result->ForceSet(_ToKey,
                      TRI_V8_PAIR_STRING(buffer, (int)(len + keyLength + 1)));
   }
-
+#endif
   return scope.Escape<v8::Object>(result);
 }
 
@@ -358,8 +360,7 @@ static void KeysOfShapedJson(const v8::PropertyCallbackInfo<v8::Array>& args) {
     aids = (TRI_shape_aid_t const*)qtr;
   }
 
-  TRI_df_marker_type_t type =
-      static_cast<TRI_df_marker_t const*>(marker)->_type;
+  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->getType();
   bool const isEdge = (type == TRI_DOC_MARKER_KEY_EDGE);
 
   v8::Handle<v8::Array> result =

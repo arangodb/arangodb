@@ -144,7 +144,7 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
     builder.close();
     builder.close();
 
-    arangodb::wal::DropCollectionMarker marker(builder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -665,9 +665,10 @@ static int RenameCollection(TRI_vocbase_t* vocbase,
 static bool StartupTickIterator(TRI_df_marker_t const* marker, void* data,
                                 TRI_datafile_t* datafile) {
   auto tick = static_cast<TRI_voc_tick_t*>(data);
-
-  if (marker->_tick > *tick) {
-    *tick = marker->_tick;
+  TRI_voc_tick_t markerTick = marker->getTick();
+  
+  if (markerTick > *tick) {
+    *tick = markerTick;
   }
 
   return true;
@@ -1701,7 +1702,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     markerBuilder.add("data", slice);
     markerBuilder.close();
 
-    arangodb::wal::CreateCollectionMarker marker(markerBuilder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, markerBuilder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -1918,7 +1919,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
       builder.close();
       builder.close();
 
-      arangodb::wal::RenameCollectionMarker marker(builder.slice());
+      arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, builder.slice());
 
       arangodb::wal::SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,

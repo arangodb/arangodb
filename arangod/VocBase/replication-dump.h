@@ -28,11 +28,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "VocBase/replication-common.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_shape_s;
 class TRI_vocbase_col_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,8 +44,6 @@ struct TRI_replication_dump_t {
         _buffer(nullptr),
         _chunkSize(chunkSize),
         _lastFoundTick(0),
-        _lastSid(0),
-        _lastShape(nullptr),
         _restrictCollection(restrictCollection),
         _collectionNames(),
         _failed(false),
@@ -78,8 +74,6 @@ struct TRI_replication_dump_t {
   TRI_string_buffer_t* _buffer;
   size_t _chunkSize;
   TRI_voc_tick_t _lastFoundTick;
-  TRI_shape_sid_t _lastSid;
-  struct TRI_shape_s const* _lastShape;
   TRI_voc_cid_t _restrictCollection;
   std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
   bool _failed;

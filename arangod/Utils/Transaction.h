@@ -261,11 +261,21 @@ class Transaction {
   /// @brief return the transaction collection for a document collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) {
+  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) const {
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
     return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a collection name
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string name(TRI_voc_cid_t cid) const {
+    auto c = trxCollection(cid);
+    TRI_ASSERT(c != nullptr);
+    return c->_collection->_name;
   }
 
   //////////////////////////////////////////////////////////////////////////////

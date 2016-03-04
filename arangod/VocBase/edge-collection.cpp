@@ -28,30 +28,8 @@
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the _from and _to end of an edge are identical
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsReflexive(TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-      mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    auto const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(
-        marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (edge->_toCid == edge->_fromCid) {
-      char const* fromKey =
-          reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
-      char const* toKey =
-          reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
-
-      return strcmp(fromKey, toKey) == 0;
-    }
-  } 
-
-  return false;
-}
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find edges matching search criteria and add them to the result
@@ -87,14 +65,14 @@ static bool FindEdges(arangodb::Transaction* trx,
 
     // add all results found
     for (size_t i = 0; i < n; ++i) {
-      TRI_doc_mptr_t* edge = found->at(i);
+      TRI_doc_mptr_t* mptr = found->at(i);
 
       // the following queries will use the following sequences of matchTypes:
       // inEdges(): 1,  outEdges(): 1,  edges(): 1, 3
 
       // if matchType is 1, we'll return all found edges without filtering
       // We'll exclude all loop edges now (we already got them in iteration 1),
-      // and alsoexclude all unidirectional edges
+      // and also exclude all unidirectional edges
       //
       // if matchType is 3, the direction is also reversed. We'll exclude all
       // loop edges now (we already got them in iteration 1)
@@ -102,12 +80,13 @@ static bool FindEdges(arangodb::Transaction* trx,
       if (matchType > 1) {
         // if the edge is a loop, we have already found it in iteration 1
         // we must skip it here, otherwise we would produce duplicates
-        if (IsReflexive(edge)) {
+        VPackSlice const slice(mptr->vpack());
+        if (slice.get(TRI_VOC_ATTRIBUTE_FROM).equals(slice.get(TRI_VOC_ATTRIBUTE_TO))) {
           continue;
         }
       }
 
-      result.emplace_back(*edge);
+      result.emplace_back(*mptr);
     }
   }
 

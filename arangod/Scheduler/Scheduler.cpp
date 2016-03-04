@@ -31,8 +31,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"

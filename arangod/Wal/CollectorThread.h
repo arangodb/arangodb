@@ -303,15 +303,8 @@ class CollectorThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   char* nextFreeMarkerPosition(struct TRI_document_collection_t*,
-                               TRI_voc_tick_t, TRI_df_marker_type_e,
+                               TRI_voc_tick_t, TRI_df_marker_type_t,
                                TRI_voc_size_t, CollectorCache*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize a marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  void initMarker(struct TRI_df_marker_t*, TRI_df_marker_type_e,
-                  TRI_voc_size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the tick of a marker and calculate its CRC value

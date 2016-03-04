@@ -182,7 +182,7 @@ HttpHandler::status_t PathHandler::execute() {
       // look up the mimetype
       char const* mimetype = TRI_GetMimetype(suffix.c_str());
 
-      if (mimetype != 0) {
+      if (mimetype != nullptr) {
         _response->setContentType(mimetype);
 
         return status_t(HANDLER_DONE);

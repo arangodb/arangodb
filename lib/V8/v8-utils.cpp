@@ -1367,16 +1367,12 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // constructed listing
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-  TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
+  std::vector<std::string> files(TRI_FullTreeDirectory(*name));
 
-  uint32_t j = 0;
-
-  for (size_t i = 0; i < list._length; ++i) {
-    char const* f = list._buffer[i];
-    result->Set(j++, TRI_V8_STRING(f));
+  uint32_t i = 0;
+  for (auto const& it : files) {
+    result->Set(i++, TRI_V8_STD_STRING(it));
   }
-
-  TRI_DestroyVectorString(&list);
 
   // return result
   TRI_V8_RETURN(result);

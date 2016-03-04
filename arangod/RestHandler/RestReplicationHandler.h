@@ -206,20 +206,20 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(arangodb::Transaction*,
+  int applyCollectionDumpMarker(arangodb::Transaction&,
                                 CollectionNameResolver const&,
-                                struct TRI_transaction_collection_s*,
+                                std::string const&,
                                 TRI_replication_operation_e,
-                                const TRI_voc_key_t, const TRI_voc_rid_t,
+                                VPackSlice const&,
                                 VPackSlice const&, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreDataBatch(arangodb::Transaction*,
+  int processRestoreDataBatch(arangodb::Transaction&,
                               CollectionNameResolver const&,
-                              struct TRI_transaction_collection_s*, bool, bool,
+                              std::string const&, bool, bool,
                               std::string&);
 
   //////////////////////////////////////////////////////////////////////////////

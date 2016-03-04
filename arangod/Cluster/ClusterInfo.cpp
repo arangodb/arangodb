@@ -2493,7 +2493,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
   return _followers;
 }
 
@@ -2559,7 +2559,8 @@ VPackBuilder newShardEntry (VPackSlice oldValue,
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::add(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
@@ -2621,7 +2622,8 @@ void FollowerInfo::add(ServerID const& sid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::remove(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followers->size() - 1);
   for (auto const& i : *_followers) {

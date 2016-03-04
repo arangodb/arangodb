@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"

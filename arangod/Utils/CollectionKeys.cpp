@@ -121,7 +121,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       if (!mptr->pointsToWal()) {
         auto marker = mptr->getMarkerPtr();
 
-        if (marker->_tick <= maxTick) {
+        if (marker->getTick() <= maxTick) {
           _markers->emplace_back(marker);
         }
       }
@@ -135,8 +135,8 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // now sort all markers without the read-lock
   std::sort(_markers->begin(), _markers->end(),
             [](TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
-    VPackSlice l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
-    VPackSlice r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    VPackSlice r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
     return (l.get(TRI_VOC_ATTRIBUTE_KEY).copyString() < r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   });
@@ -153,7 +153,7 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  size_t const offset = DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
   VPackSlice first(reinterpret_cast<char const*>(_markers->at(from)) + offset);
   VPackSlice last(reinterpret_cast<char const*>(_markers->at(to - 1)) + offset);
 
@@ -193,7 +193,7 @@ void CollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   
-  size_t const offset = DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
 
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
@@ -216,7 +216,7 @@ void CollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chun
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  size_t const offset = DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
   
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {

@@ -24,10 +24,9 @@
 #include "ContinuousSyncer.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
@@ -39,6 +38,12 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -64,7 +69,7 @@ ContinuousSyncer::ContinuousSyncer(
       _hasWrittenState(false) {
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
-    c = (uint64_t)256 * 1024;  // 256 kb
+    c = static_cast<uint64_t>(256 * 1024);  // 256 kb
   }
 
   TRI_ASSERT(c > 0);
@@ -337,27 +342,26 @@ int ContinuousSyncer::saveApplierState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ContinuousSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
-                                  TRI_json_t const* json) const {
+                                  VPackSlice const& slice) const {
   bool tooOld = false;
-  std::string const tick = JsonHelper::getStringValue(json, "tick", "");
+  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
     tooOld = (static_cast<TRI_voc_tick_t>(StringUtils::uint64(
                   tick.c_str(), tick.size())) < firstRegularTick);
 
     if (tooOld) {
-      int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
+      int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
       // handle marker type
-      TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
+      TRI_replication_operation_e type = static_cast<TRI_replication_operation_e>(typeValue);
 
       if (type == REPLICATION_MARKER_DOCUMENT ||
-          type == REPLICATION_MARKER_EDGE ||
           type == REPLICATION_MARKER_REMOVE ||
           type == REPLICATION_TRANSACTION_START ||
           type == REPLICATION_TRANSACTION_ABORT ||
           type == REPLICATION_TRANSACTION_COMMIT) {
         // read "tid" entry from marker
-        std::string const id = JsonHelper::getStringValue(json, "tid", "");
+        std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
         if (!id.empty()) {
           TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(
@@ -382,11 +386,10 @@ bool ContinuousSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     return false;
   }
 
-  TRI_json_t const* name = TRI_LookupObjectJson(json, "cname");
+  VPackSlice const name = slice.get("cname");
 
-  if (TRI_IsStringJson(name)) {
-    return excludeCollection(std::string(name->_value._string.data,
-                                         name->_value._string.length - 1));
+  if (name.isString()) {
+    return excludeCollection(name.copyString());
   }
 
   return false;
@@ -465,14 +468,14 @@ int ContinuousSyncer::getLocalState(std::string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a document, based on the JSON provided
+/// @brief inserts a document, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
-                                      TRI_json_t const* json,
+                                      VPackSlice const& slice,
                                       std::string& errorMsg) {
   // extract "cid"
-  TRI_voc_cid_t cid = getCid(json);
+  TRI_voc_cid_t cid = getCid(slice);
 
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -480,11 +483,10 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract optional "cname"
   bool isSystem = false;
-  TRI_json_t const* cnameJson = JsonHelper::getObjectElement(json, "cname");
+  VPackSlice const cname = slice.get("cname");
 
-  if (JsonHelper::isString(cnameJson)) {
-    std::string const cnameString =
-        JsonHelper::getStringValue(json, "cname", "");
+  if (cname.isString()) {
+    std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
     if (!cnameString.empty()) {
@@ -500,37 +502,40 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "key"
-  TRI_json_t const* keyJson = JsonHelper::getObjectElement(json, "key");
+  VPackSlice const key = slice.get("key");
 
-  if (!JsonHelper::isString(keyJson)) {
+  if (!key.isString()) {
     errorMsg = "invalid document key format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // extract "rev"
-  TRI_voc_rid_t rid;
-
-  std::string const ridString = JsonHelper::getStringValue(json, "rev", "");
-  if (ridString.empty()) {
-    rid = 0;
-  } else {
-    rid = StringUtils::uint64(ridString.c_str(), ridString.size());
+  VPackSlice const rev = slice.get("rev");
+  
+  if (!rev.isString()) {
+    errorMsg = "invalid document revision format";
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, key);
+  builder.add(TRI_VOC_ATTRIBUTE_REV, rev);
+  builder.close();
+
+  VPackSlice const old = builder.slice();
+
   // extract "data"
-  TRI_json_t const* doc = JsonHelper::getObjectElement(json, "data");
+  VPackSlice const doc = slice.get("data");
 
   // extract "tid"
-  std::string const id = JsonHelper::getStringValue(json, "tid", "");
-  TRI_voc_tid_t tid;
+  std::string const transactionId = VelocyPackHelper::getStringValue(slice, "tid", "");
+  TRI_voc_tid_t tid = 0;
 
-  if (id.empty()) {
-    // standalone operation
-    tid = 0;
-  } else {
+  if (!transactionId.empty()) {
     // operation is part of a transaction
     tid =
-        static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+        static_cast<TRI_voc_tid_t>(StringUtils::uint64(transactionId.c_str(), transactionId.size()));
   }
 
   if (tid > 0) {
@@ -554,13 +559,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    if (trx->orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    int res = applyCollectionDumpMarker(
-        trx, trxCollection, type,
-        (const TRI_voc_key_t)keyJson->_value._string.data, rid, doc, errorMsg);
+    int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
@@ -582,27 +581,14 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "unable to create replication transaction: " +
                  std::string(TRI_errno_string(res));
-
-      return res;
     }
+    else {
+      res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg); 
 
-    TRI_transaction_collection_t* trxCollection = trx.trxCollection();
-
-    if (trxCollection == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-
-    if (trx.orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    res = applyCollectionDumpMarker(
-        &trx, trxCollection, type,
-        (const TRI_voc_key_t)keyJson->_value._string.data, rid, doc, errorMsg);
-
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
-      // ignore unique constraint violations for system collections
-      res = TRI_ERROR_NO_ERROR;
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+        // ignore unique constraint violations for system collections
+        res = TRI_ERROR_NO_ERROR;
+      }
     }
 
     res = trx.finish(res);
@@ -612,13 +598,13 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a transaction, based on the JSON provided
+/// @brief starts a transaction, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
+int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
   // {"type":2200,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
 
-  std::string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -662,12 +648,12 @@ int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief aborts a transaction, based on the JSON provided
+/// @brief aborts a transaction, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
+int ContinuousSyncer::abortTransaction(VPackSlice const& slice) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-  std::string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -703,12 +689,12 @@ int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commits a transaction, based on the JSON provided
+/// @brief commits a transaction, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
+int ContinuousSyncer::commitTransaction(VPackSlice const& slice) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-  std::string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -744,20 +730,27 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a collection, based on the JSON provided
+/// @brief renames a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
-  TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-  std::string const name =
-      JsonHelper::getStringValue(collectionJson, "name", "");
-  std::string cname = getCName(json);
+int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  VPackSlice const collection = slice.get("collection");
+  if (!collection.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  std::string const name = VelocyPackHelper::getStringValue(collection, "name", "");
+  std::string const cname = getCName(slice);
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_voc_cid_t cid = getCid(json);
+  TRI_voc_cid_t const cid = getCid(slice);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
   if (col == nullptr && !cname.empty()) {
@@ -772,12 +765,17 @@ int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the properties of a collection, based on the JSON provided
+/// @brief changes the properties of a collection, based on the VelocyPack
+/// provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
-  TRI_voc_cid_t cid = getCid(json);
-  std::string cname = getCName(json);
+int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  TRI_voc_cid_t cid = getCid(slice);
+  std::string const cname = getCName(slice);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
   if (col == nullptr && !cname.empty()) {
@@ -791,34 +789,34 @@ int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  try {
-    TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-    std::shared_ptr<arangodb::velocypack::Builder> tmp =
-        arangodb::basics::JsonHelper::toVelocyPack(collectionJson);
-    arangodb::CollectionGuard guard(_vocbase, cid);
-    bool doSync = _vocbase->_settings.forceSyncProperties;
-
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
-                                    tmp->slice(), doSync);
-  } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
+  VPackSlice const collection = slice.get("collection");
+  if (!collection.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+
+  arangodb::CollectionGuard guard(_vocbase, cid);
+  bool doSync = _vocbase->_settings.forceSyncProperties;
+
+  return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection,
+                                  collection, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::applyLogMarker(TRI_json_t const* json,
+int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
                                      TRI_voc_tick_t firstRegularTick,
                                      std::string& errorMsg) {
+  if (!slice.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
   // fetch marker "type"
-  int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
+  int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
 
   // fetch "tick"
-  std::string const tick = JsonHelper::getStringValue(json, "tick", "");
+  std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
@@ -835,47 +833,45 @@ int ContinuousSyncer::applyLogMarker(TRI_json_t const* json,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
 
-  if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE ||
+  if (type == REPLICATION_MARKER_DOCUMENT || 
       type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, json, errorMsg);
+    return processDocument(type, slice, errorMsg);
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {
-    return startTransaction(json);
+    return startTransaction(slice);
   }
 
   else if (type == REPLICATION_TRANSACTION_ABORT) {
-    return abortTransaction(json);
+    return abortTransaction(slice);
   }
 
   else if (type == REPLICATION_TRANSACTION_COMMIT) {
-    return commitTransaction(json);
+    return commitTransaction(slice);
   }
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
-    TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-
-    return createCollection(collectionJson, nullptr);
+    return createCollection(slice.get("collection"), nullptr);
   }
 
   else if (type == REPLICATION_COLLECTION_DROP) {
-    return dropCollection(json, false);
+    return dropCollection(slice, false);
   }
 
   else if (type == REPLICATION_COLLECTION_RENAME) {
-    return renameCollection(json);
+    return renameCollection(slice);
   }
 
   else if (type == REPLICATION_COLLECTION_CHANGE) {
-    return changeCollection(json);
+    return changeCollection(slice);
   }
 
   else if (type == REPLICATION_INDEX_CREATE) {
-    return createIndex(json);
+    return createIndex(slice);
   }
 
   else if (type == REPLICATION_INDEX_DROP) {
-    return dropIndex(json);
+    return dropIndex(slice);
   }
 
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
@@ -893,14 +889,14 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
                                uint64_t& processedMarkers,
                                uint64_t& ignoreCount) {
   StringBuffer& data = response->getBody();
-  char* p = data.begin();
-  char* end = p + data.length();
+  char const* p = data.begin();
+  char const* end = p + data.length();
 
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
 
   while (p < end) {
-    char* q = strchr(p, '\n');
+    char const* q = strchr(p, '\n');
 
     if (q == nullptr) {
       q = end;
@@ -915,19 +911,25 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     }
 
     TRI_ASSERT(q <= end);
-    *q = '\0';
 
     processedMarkers++;
 
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, p));
+    std::shared_ptr<VPackBuilder> builder;
 
-    p = q + 1;
-
-    if (json == nullptr) {
+    try {
+      VPackParser parser(builder);
+      parser.parse(p, static_cast<size_t>(q - p));
+    }
+    catch (...) {
+      // TODO: improve error reporting
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    if (!TRI_IsObjectJson(json.get())) {
+    p = q + 1;
+
+    VPackSlice const slice = builder->slice();
+
+    if (!slice.isObject()) {
       errorMsg = "received invalid JSON data";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -935,12 +937,12 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
     int res;
     bool skipped;
-    if (skipMarker(firstRegularTick, json.get())) {
+    if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;
     } else {
-      res = applyLogMarker(json.get(), firstRegularTick, errorMsg);
+      res = applyLogMarker(slice, firstRegularTick, errorMsg);
       skipped = false;
     }
 
@@ -1244,12 +1246,11 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
   if (startTick == 0) {
     startTick = toTick;
   }
+  
+  std::shared_ptr<VPackBuilder> builder;
+  int res = parseResponse(builder, response.get());
 
-  StringBuffer& data = response->getBody();
-  std::unique_ptr<TRI_json_t> json(
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
-
-  if (!TRI_IsArrayJson(json.get())) {
+  if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "got invalid response from master at " +
                std::string(_masterInfo._endpoint) +
                ": invalid response type for initial data. expecting array";
@@ -1257,11 +1258,17 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  for (size_t i = 0; i < TRI_LengthArrayJson(json.get()); ++i) {
-    auto id = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&(json.get()->_value._objects), i));
+  VPackSlice const slice = builder->slice();
+  if (!slice.isArray()) {
+    errorMsg = "got invalid response from master at " +
+               std::string(_masterInfo._endpoint) +
+               ": invalid response type for initial data. expecting array";
 
-    if (!TRI_IsStringJson(id)) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  for (auto const& it : VPackArrayIterator(slice)) {
+    if (!it.isString()) {
       errorMsg =
           "got invalid response from master at " +
           std::string(_masterInfo._endpoint) +
@@ -1270,10 +1277,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    _ongoingTransactions.emplace(
-        StringUtils::uint64(id->_value._string.data,
-                            id->_value._string.length - 1),
-        nullptr);
+    _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
 
   {

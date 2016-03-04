@@ -40,7 +40,7 @@ struct DocumentOperation {
   ~DocumentOperation() {
     if (status == StatusType::HANDLED) {
       if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        document->_masterPointers.release(header, false);  // PROTECTED by trx
+        document->_masterPointers.release(header); 
       }
     } else if (status != StatusType::REVERTED) {
       revert();
@@ -87,12 +87,6 @@ struct DocumentOperation {
     TRI_ASSERT(header != nullptr);
     TRI_ASSERT(status == StatusType::INDEXED);
 
-    if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-        type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      // move header to the end of the list
-      document->_masterPointers.moveBack(header, &oldHeader);  // PROTECTED by trx
-    }
-
     // free the local marker buffer
     marker->freeBuffer();
     status = StatusType::HANDLED;
@@ -109,17 +103,10 @@ struct DocumentOperation {
     }
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-      document->_masterPointers.release(header, true);  // PROTECTED by trx
+      document->_masterPointers.release(header);
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-               type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      if (status != StatusType::CREATED && status != StatusType::INDEXED) {
-        document->_masterPointers.move(header, &oldHeader);  // PROTECTED by trx in trxCollection
-      }
+               tpye == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       header->copy(oldHeader);
-    } else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      if (status != StatusType::CREATED) {
-        document->_masterPointers.relink(header, &oldHeader);  // PROTECTED by trx
-      }
     }
 
     status = StatusType::REVERTED;
