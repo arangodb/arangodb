@@ -200,59 +200,6 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a HTTP 201 or 202 response
-///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generate20x(
-    HttpResponse::HttpResponseCode responseCode,
-    std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid,
-    TRI_col_type_e type) {
-  std::string handle(
-      DocumentHelper::assembleDocumentId(collectionName, key));
-  std::string rev(StringUtils::itoa(rid));
-
-  createResponse(responseCode);
-  _response->setContentType("application/json; charset=utf-8");
-
-  if (responseCode != HttpResponse::OK) {
-    // 200 OK is sent is case of delete or update.
-    // in these cases we do not return etag nor location
-    _response->setHeader("etag", 4, "\"" + rev + "\"");
-
-    std::string escapedHandle(
-        DocumentHelper::assembleDocumentId(collectionName, key, true));
-
-    if (_request->compatibility() < 10400L) {
-      // pre-1.4 location header (e.g. /_api/document/xyz)
-      _response->setHeader("location", 8,
-                           std::string(DOCUMENT_PATH + "/" + escapedHandle));
-    } else {
-      // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
-      if (type == TRI_COL_TYPE_EDGE) {
-        _response->setHeader("location", 8,
-                             std::string("/_db/" + _request->databaseName() +
-                                         EDGE_PATH + "/" + escapedHandle));
-      } else {
-        _response->setHeader("location", 8,
-                             std::string("/_db/" + _request->databaseName() +
-                                         DOCUMENT_PATH + "/" + escapedHandle));
-      }
-    }
-  }
-
-  // _id and _key are safe and do not need to be JSON-encoded
-  _response->body()
-      .appendText("{\"error\":false,\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
-      .appendText(handle)
-      .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
-      .appendText(rev)
-      .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
-      .appendText(key)
-      .appendText("\"}");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 20x response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -353,27 +300,16 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
-    std::string const& collectionName, std::string const& key, TRI_voc_rid_t rid) {
-  std::string rev(StringUtils::itoa(rid));
+    std::string const& collectionName, std::string const& key, TRI_voc_rid_t rev) {
 
-  createResponse(HttpResponse::PRECONDITION_FAILED);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(DocumentHelper::assembleDocumentId(collectionName, key)));
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(std::to_string(rev)));
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(key));
+  builder.close();
 
-  // _id and _key are safe and do not need to be JSON-encoded
-  _response->body()
-      .appendText("{\"error\":true,\"code\":")
-      .appendInteger((int32_t)HttpResponse::PRECONDITION_FAILED)
-      .appendText(",\"errorNum\":")
-      .appendInteger((int32_t)TRI_ERROR_ARANGO_CONFLICT)
-      .appendText(",\"errorMessage\":\"precondition failed\"")
-      .appendText(",\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
-      .appendText(DocumentHelper::assembleDocumentId(collectionName, key))
-      .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
-      .appendText(StringUtils::itoa(rid))
-      .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
-      .appendText(key)
-      .appendText("\"}");
+  generatePreconditionFailed(builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,7 +376,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 
 void RestVocbaseBaseHandler::generateTransactionError(
     std::string const& collectionName, int res, std::string const& key,
-    TRI_voc_rid_t rid) {
+    TRI_voc_rid_t rev) {
   switch (res) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
       if (collectionName.empty()) {
@@ -485,7 +421,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_CONFLICT:
       generatePreconditionFailed(collectionName,
-                                 key.empty() ? "unknown" : key, rid);
+                                 key.empty() ? "unknown" : key, rev);
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:

@@ -826,12 +826,8 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 static int WriteInitialHeaderMarker(TRI_datafile_t* datafile, TRI_voc_fid_t fid,
                                     TRI_voc_size_t maximalSize) {
   // create the header
-  TRI_df_header_marker_t header;
-  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&header), TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
-
-  header._version = TRI_DF_VERSION;
-  header._maximalSize = maximalSize;
-  header._fid = fid;
+  TRI_df_header_marker_t header = DatafileHelper::CreateHeaderMarker(
+    maximalSize, static_cast<TRI_voc_tick_t>(fid));
 
   // reserve space and write header to file
   TRI_df_marker_t* position;
@@ -1267,7 +1263,7 @@ bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const* marker) {
     return false;
   }
 
-  if (marker->getSize() >= static_cast<TRI_voc_size_t>(TRI_MARKER_MAXIMAL_SIZE)) {
+  if (marker->getSize() >= DatafileHelper::MaximalMarkerSize()) {
     // a single marker bigger than 256 MB seems unreasonable
     // note: this is an arbitrary limit
     return false;
@@ -1301,7 +1297,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
   }
 
   // check the maximal size
-  if (size + TRI_JOURNAL_OVERHEAD > datafile->_maximalSize) {
+  if (size + DatafileHelper::JournalOverhead() > datafile->_maximalSize) {
     // marker is bigger than journal size.
     // adding the marker to this datafile will not work
 
@@ -1315,7 +1311,7 @@ int TRI_ReserveElementDatafile(TRI_datafile_t* datafile, TRI_voc_size_t size,
     // if we get here, the collection's 'maximalJournalSize' property is
     // higher than the size of this datafile.
     // maybe the marker will fit into a new datafile with the bigger size?
-    if (size + TRI_JOURNAL_OVERHEAD > maximalJournalSize) {
+    if (size + DatafileHelper::JournalOverhead() > maximalJournalSize) {
       // marker still won't fit
       return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
     }
@@ -1628,9 +1624,7 @@ int TRI_SealDatafile(TRI_datafile_t* datafile) {
   }
 
   // create the footer
-  TRI_df_footer_marker_t footer;
-  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&footer), TRI_DF_MARKER_FOOTER,
-                         sizeof(TRI_df_footer_marker_t), datafile->_tickMax);
+  TRI_df_footer_marker_t footer = DatafileHelper::CreateFooterMarker(datafile->_tickMax);
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
@@ -1771,12 +1765,12 @@ static std::string DiagnoseMarker(TRI_df_marker_t const* marker,
 
   TRI_voc_size_t size = marker->getSize();
 
-  if (size >= static_cast<TRI_voc_size_t>(TRI_MARKER_MAXIMAL_SIZE)) {
-    // a single marker bigger than 256 MB seems unreasonable
+  if (size >= DatafileHelper::MaximalMarkerSize()) {
+    // a single marker bigger than this size seems unreasonable
     // note: this is an arbitrary limit
     result << "marker size value (" << size
            << ") is wrong. expecting value less than "
-           << TRI_MARKER_MAXIMAL_SIZE;
+           << DatafileHelper::MaximalMarkerSize();
     return result.str();
   }
 

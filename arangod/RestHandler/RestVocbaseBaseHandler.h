@@ -141,14 +141,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a HTTP 201 or 202 response
-  ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generate20x(rest::HttpResponse::HttpResponseCode, std::string const&,
-                   TRI_voc_key_t, TRI_voc_rid_t, TRI_col_type_e);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a HTTP 201 or 202 response
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(arangodb::OperationResult const&, std::string const&,
@@ -209,7 +201,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generatePreconditionFailed(std::string const&, std::string const& key,
-                                  TRI_voc_rid_t rid);
+                                  TRI_voc_rid_t rev);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates precondition failed, without transaction info

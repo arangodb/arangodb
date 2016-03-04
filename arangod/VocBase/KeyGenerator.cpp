@@ -456,7 +456,7 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
     return false;
   }
 
-  if (p - key > TRI_COL_NAME_LENGTH) {
+  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
     return false;
   }
 

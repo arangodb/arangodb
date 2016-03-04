@@ -344,11 +344,13 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     APPEND_STRING(buffer, "\",\"data\":{");
 
     // common document meta-data
+#if 0    
     APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     TRI_AppendString2StringBuffer(buffer, key, keyLength);
     APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
     APPEND_UINT64(buffer, (uint64_t)rid);
     APPEND_CHAR(buffer, '"');
+#endif
 
 #if 0
     // Is it an edge marker?

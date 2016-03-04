@@ -588,7 +588,12 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::writeHeader(Slot* slot) {
-  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+  TRI_ASSERT(_logfile != nullptr);
+
+  TRI_df_header_marker_t header = DatafileHelper::CreateHeaderMarker(
+    static_cast<TRI_voc_size_t>(_logfile->allocatedSize()), 
+    static_cast<TRI_voc_fid_t>(_logfile->id())
+  );
   size_t const size = header.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
@@ -610,7 +615,7 @@ int Slots::writeHeader(Slot* slot) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_df_prologue_marker_t header = _logfile->getPrologueMarker(databaseId, collectionId);
+  TRI_df_prologue_marker_t header = DatafileHelper::CreatePrologueMarker(databaseId, collectionId);
   size_t const size = header.base.getSize();
 
   TRI_ASSERT(mem != nullptr);
@@ -629,7 +634,7 @@ int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_v
 int Slots::writeFooter(Slot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
+  TRI_df_footer_marker_t footer = DatafileHelper::CreateFooterMarker();
   size_t const size = footer.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));

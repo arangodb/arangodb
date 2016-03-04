@@ -2069,11 +2069,7 @@ void TRI_GetDatabaseDefaultsServer(TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_tick_t TRI_NewTickServer() {
-  uint64_t tick = ServerIdentifier;
-
-  tick |= (++CurrentTick) << 16;
-
-  return tick;
+  return ++CurrentTick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2081,7 +2077,7 @@ TRI_voc_tick_t TRI_NewTickServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
-  TRI_voc_tick_t t = tick >> 16;
+  TRI_voc_tick_t t = tick;
 
   auto expected = CurrentTick.load(std::memory_order_relaxed);
 
@@ -2099,7 +2095,7 @@ void TRI_UpdateTickServer(TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_tick_t TRI_CurrentTickServer() {
-  return (ServerIdentifier | (CurrentTick << 16));
+  return CurrentTick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

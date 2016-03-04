@@ -660,7 +660,7 @@ void LogfileManager::unregisterFailedTransactions(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::logfileCreationAllowed(uint32_t size) {
-  if (size + Logfile::overhead() > filesize()) {
+  if (size + DatafileHelper::JournalOverhead() > filesize()) {
     // oversize entry. this is always allowed because otherwise everything would
     // lock
     return true;
@@ -2274,7 +2274,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   uint32_t realsize;
   if (size > 0 && size > filesize()) {
     // create a logfile with the requested size
-    realsize = size + Logfile::overhead();
+    realsize = size + DatafileHelper::JournalOverhead();
   } else {
     // create a logfile with default size
     realsize = filesize();
