@@ -559,7 +559,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
               if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
                 // document/edge already exists, now make it an update
-                opRes = trx->update(collectionName, VPackSlice(ptr), VPackSlice(ptr), options);
+                opRes = trx->update(collectionName, VPackSlice(ptr), options);
                 res = opRes.code;
               }
 

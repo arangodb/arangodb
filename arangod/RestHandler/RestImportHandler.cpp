@@ -258,7 +258,7 @@ int RestImportHandler::handleSingleDocument(
 
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         // update
-        opResult = trx.update(collectionName, keySlice, slice, opOptions);
+        opResult = trx.update(collectionName, slice, opOptions);
         if (opResult.successful()) {
           ++result._numUpdated;
         }
@@ -266,7 +266,7 @@ int RestImportHandler::handleSingleDocument(
         // We silently ignore all failed updates
       } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
         // replace
-        opResult = trx.replace(collectionName, keySlice, slice, opOptions);
+        opResult = trx.replace(collectionName, slice, opOptions);
         if (opResult.successful()) {
           ++result._numUpdated;
         }

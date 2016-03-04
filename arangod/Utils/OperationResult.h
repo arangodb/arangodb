@@ -35,6 +35,9 @@ namespace arangodb {
 
 struct OperationResult {
 
+  OperationResult() {
+  }
+
   explicit OperationResult(int code) 
       : customTypeHandler(), code(code), wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {

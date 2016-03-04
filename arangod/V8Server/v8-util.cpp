@@ -170,6 +170,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
+/// Note that the builder must already be open with an object and that it
+/// will remain open afterwards!
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExtractDocumentHandle(v8::Isolate* isolate,
@@ -179,7 +181,6 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
                            bool includeRev) {
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
-  VPackObjectBuilder guard(&builder);
 
   std::unique_ptr<char[]> key;
 
