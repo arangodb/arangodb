@@ -23,6 +23,9 @@
 
 #include "State.h"
 
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <chrono>
 #include <thread>
 
@@ -32,7 +35,8 @@ using namespace arangodb::velocypack;
 State::State() {
   load();
   if (!_log.size())
-    _log.push_back(log_t(index_t(0), term_t(0), id_t(0), std::string()));
+    _log.push_back(log_t(index_t(0), term_t(0), id_t(0),
+                         std::make_shared<Buffer<uint8_t>>()));
 }
 
 State::~State() {}
@@ -41,31 +45,24 @@ State::~State() {}
 std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   std::vector<index_t> idx;
-  Builder builder;
-  for (size_t i = 0; i < query->slice().length(); ++i) {
+  size_t j = 0;
+  for (auto const& i : VPackArrayIterator(query->slice()))  {
+    std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+    buf->append ((char const*)i.begin(), i.byteSize());
     idx.push_back(_log.back().index+1);
-    _log.push_back(log_t(idx[i], term, lid, query->slice()[i].toString()));
-    builder.add("query", query->slice()[i]);
-    builder.add("idx", Value(idx[i]));
-    builder.add("term", Value(term));
-    builder.add("leaderID", Value(lid));
-    builder.close();
+    _log.push_back(log_t(idx[j++], term, lid, buf));
   }
-  save (builder); // persist
+  //  save (builder);
   return idx;
 }
 
 //Follower
-void State::log (std::string const& query, index_t index, term_t term, id_t lid) {
+void State::log (query_t const& query, index_t index, term_t term, id_t lid) {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  _log.push_back(log_t(index, term, lid, query));
-  Builder builder;
-  builder.add("query", Value(query));         // query
-  builder.add("idx", Value(index));    // log index
-  builder.add("term", Value(term));    // term
-  builder.add("leaderID", Value(lid)); // leader id
-  builder.close();
-  save (builder);
+  std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+  buf->append ((char const*)query->slice().begin(), query->slice().byteSize());
+  _log.push_back(log_t(index, term, lid, buf));
+  //save (builder);
 }
 
 bool State::findit (index_t index, term_t term) {

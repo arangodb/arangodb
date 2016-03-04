@@ -32,130 +32,13 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include <regex>
+#include <cstdint>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {
-
-template<class T> struct TypeTraits {
-  static bool supported () {return false;}
-};
-template<> struct TypeTraits<int64_t> {
-  static bool supported () {return false;}
-};
-template<> struct TypeTraits<uint64_t> {
-  static bool supported () {return false;}
-};
-template<> struct TypeTraits<double> {
-  static bool supported () {return false;}
-};
-template<> struct TypeTraits<std::string> {
-  static bool supported () {return false;}
-};
-
-template<class T>
-using Type = typename std::decay<typename std::remove_reference<T>::type>::type;
-
-struct Any {
-
-  bool is_null() const { return !_base_ptr; }
-  bool not_null() const { return _base_ptr; }
-
-  template<typename S> Any(S&& value)
-    : _base_ptr(new Derived<Type<S>>(std::forward<S>(value))) {}
-
-  template<class S> bool is() const {
-    typedef Type<S> T;
-    auto derived = dynamic_cast<Derived<T>*> (_base_ptr);
-    return derived;
-  }
-
-  template<class S> Type<S>& as() const {
-    typedef Type<S> T;
-    auto derived = dynamic_cast<Derived<T>*> (_base_ptr);
-    if (!derived)
-      throw std::bad_cast();
-    return derived->value;
-  }
-
-  template<class S> operator S() {
-    return as<Type<S>>();
-  }
-  
-  Any() : _base_ptr(nullptr) {}
-  
-  Any(Any& that) : _base_ptr(that.clone()) {}
-  
-  Any(Any&& that) : _base_ptr(that._base_ptr) {
-    that._base_ptr = nullptr;
-  }
-  
-  Any(const Any& that) : _base_ptr(that.clone()) {}
-  
-  Any(const Any&& that) : _base_ptr(that.clone()) {}
-  
-  Any& operator=(const Any& a) {
-    if (_base_ptr == a._base_ptr)
-      return *this;
-    auto old__base_ptr = _base_ptr;
-    _base_ptr = a.clone();
-    if (old__base_ptr)
-      delete old__base_ptr;
-    return *this;
-  }
-  
-  Any& operator=(Any&& a) {
-    if (_base_ptr == a._base_ptr)
-      return *this;
-    std::swap(_base_ptr, a._base_ptr);
-    return *this;
-  }
-  
-  ~Any() {
-    if (_base_ptr)
-      delete _base_ptr;
-  }
-  
-  friend std::ostream& operator<<(std::ostream& os, const Any& a) {
-    try {
-      os << a.as<double>();
-    } catch (std::bad_cast const&) {
-      try {
-        os << a.as<int>();
-      } catch (std::bad_cast const&) {
-        try {
-          os << "\"" << a.as<char const*>() << "\"";
-        } catch (std::bad_cast const& e) {
-          throw e;
-        }
-      }
-    }
-    return os;
-  }
-  
-private:
-  
-  struct Base {
-    virtual ~Base() {}
-    virtual Base* clone() const = 0;    
-  };
-  
-  template<typename T> struct Derived : Base {
-    template<typename S> Derived(S&& value) : value(std::forward<S>(value)) { }
-    T value;
-    Base* clone() const { return new Derived<T>(value); }
-  };
-  
-  Base* clone() const {
-    if (_base_ptr)
-      return _base_ptr->clone();
-    else
-      return nullptr;
-  }
-  
-  Base* _base_ptr;
-
-};
 
 static inline std::vector<std::string>
 split (std::string str, const std::string& dlm) {
@@ -188,15 +71,14 @@ public:
 
   typedef std::vector<std::string> PathType;
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
-
-  Node (std::string const& name) : _parent(nullptr), _name(name), _value("") {}
-
+  
+  Node (std::string const& name) : _parent(nullptr), _name(name), _value(Buffer<uint8_t>()) {}
+  
   ~Node () {}
-
+  
   std::string const& name() const {return _name;}
 
-  template<class T>
-  Node& operator= (T const& t) { // Assign value (become leaf)
+  template<class T> Node& operator= (T const& t) { // Assign value (become leaf)
     _children.clear();
     _value = t;
     return *this;
@@ -289,7 +171,7 @@ public:
       for (auto const& i : n._children)
         os << *(i.second);
     } else {
-      os << n._value << std::endl;
+      os << n._value.toString() << std::endl;
     }
     return os;
   }
@@ -299,7 +181,7 @@ protected:
 private:
   NodeType _type;
   std::string _name;
-  Any _value;
+  Buffer<uint8_t> _value;
   Children _children;
 };
 

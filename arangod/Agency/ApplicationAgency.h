@@ -39,7 +39,6 @@ class Task;
 /// @brief application server with agency
 ////////////////////////////////////////////////////////////////////////////////
 using agent_t = consensus::Agent;
-using config_t = consensus::Config<double>;
 
   
 class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {

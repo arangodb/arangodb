@@ -70,7 +70,7 @@ public:
   /**
    * @brief Provide configuration
    */
-  Config<double> const& config () const;
+  config_t const& config () const;
   
   /**
    * @brief Start thread

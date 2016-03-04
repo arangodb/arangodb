@@ -76,29 +76,53 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::handleReadWrite () {
-  bool accepted;
+inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options;
-  
-  if (_request->suffix()[0] == "write") { 
+  if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
     write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
-    accepted = ret.accepted; 
-    _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
+    if (ret.accepted) {
+      Builder body;
+      body.add(VPackValue(VPackValueType::Object));
+      _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
+      body.close();
+      generateResult(body.slice());
+    } else {
+      generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+    }
   } else {
-    read_ret_t ret = _agent->read(_request->toVelocyPack(&options));
-    accepted = ret.accepted; 
-    ret.result->close();
-    generateResult(ret.result->slice());
+    generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
   }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
 
-  if (!accepted) { // We accepted the request
-    //ret.result->close();
-    //generateResult(ret.result->slice());
-  } else {            // We redirect the request
-    //_response->setHeader("Location", _agent->config().endpoints[ret.redirect]);
-    generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+inline HttpHandler::status_t RestAgencyHandler::handleRead () {
+  arangodb::velocypack::Options options;
+  if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST) {
+    read_ret_t ret = _agent->read (_request->toVelocyPack(&options));
+    if (ret.accepted) {
+      generateResult(ret.result->slice());
+    } else {
+      generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+    }
+  } else {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
   }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
 
+#include <sstream>
+std::stringstream s; 
+HttpHandler::status_t RestAgencyHandler::handleTest() {
+  Builder body;
+  body.add(VPackValue(VPackValueType::Object));
+  body.add("Configuration", Value(_agent->config().toString()));
+  body.close();
+  generateResult(body.slice());
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+inline HttpHandler::status_t RestAgencyHandler::reportMethodNotAllowed () {
+  generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -109,9 +133,15 @@ HttpHandler::status_t RestAgencyHandler::execute() {
     } else if (_request->suffix().size() > 1) {   // path size >= 2
       return reportTooManySuffices();
     } else {
-    	if (_request->suffix()[0] == "write" ||
-          _request->suffix()[0] ==  "read") { // write to / read from agency
-        return handleReadWrite();
+    	if (_request->suffix()[0] == "write") {
+        return handleWrite();
+      } else if (_request->suffix()[0] == "read") {
+        return handleRead();
+      } else if (_request->suffix()[0] == "config") {
+        if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+          return reportMethodNotAllowed();
+        }
+        return handleTest();
     	} else {
         return reportUnknownMethod();
     	}

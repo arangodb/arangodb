@@ -75,7 +75,7 @@ public:
   /**
    * @brief Log entry follower
    */
-  void log (std::string const& query, index_t, term_t term, id_t lid);
+  void log (query_t const& query, index_t, term_t term, id_t lid);
 
   /**
    * @brief Find entry at index with term

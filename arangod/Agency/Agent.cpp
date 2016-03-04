@@ -38,6 +38,7 @@ Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
   _constituent.configure(this);
+  _confirmed.resize(size(),0);
 }
 
 id_t Agent::id() const { return _config.id;}
@@ -69,16 +70,17 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
         std::string const value(i.value.copyString());
         if (key == "endpoint")
           _config.end_points[j] = value;
-        j++;
+        ++j;
       }
     }
+    LOG(WARN) << _config;
   }
     
   return priv_rpc_ret_t(
     _constituent.vote(id, t, lastLogIndex, lastLogTerm), this->term());
 }
 
-Config<double> const& Agent::config () const {
+config_t const& Agent::config () const {
   return _config;
 }
 
@@ -97,7 +99,10 @@ id_t Agent::leaderID () const {
 void Agent::catchUpReadDB() {}; // TODO
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
-  
+
+  if (size() == 1) // single host agency
+    return true;
+    
   CONDITION_LOCKER(guard, _rest_cv);
   auto start = std::chrono::system_clock::now();
   
@@ -149,12 +154,12 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t 
     throw LOWER_TERM_APPEND_ENTRIES_RPC; // (§5.1)
   if (!_state.findit(prevIndex, prevTerm))
     throw NO_MATCHING_PREVLOG; // (§5.3)
-
+  
   // Delete conflits and append (§5.3)
-  for (size_t i = 0; i < queries->slice().length()/2; i+=2) {
-    _state.log (queries->slice()[i  ].toString(),
-                queries->slice()[i+1].getUInt(), term, leaderId);
-  }
+  //for (size_t i = 0; i < queries->slice().length()/2; i+=2) {
+  //  _state.log (queries->slice()[i  ].toString(),
+  //              queries->slice()[i+1].getUInt(), term, leaderId);
+  //}
   
   return priv_rpc_ret_t(true, this->term());
 }
@@ -176,7 +181,7 @@ append_entries_t Agent::sendAppendEntriesRPC (
   Builder builder;
   for (size_t i = 0; i < entries.size(); ++i) {
     builder.add ("index", Value(std::to_string(entries.indices[i])));
-    builder.add ("query", Value(_state[entries.indices[i]].entry));
+    builder.add ("query", Builder(*_state[entries.indices[i]].entry).slice());
   }
   builder.close();
 
@@ -192,7 +197,6 @@ append_entries_t Agent::sendAppendEntriesRPC (
   
 }
 
-//query_ret_t
 write_ret_t Agent::write (query_t const& query)  { // Signal auf die _cv
   if (_constituent.leading()) {                    // We are leading
     if (true/*_spear_head.apply(query)*/) {            // We could apply to spear head?
@@ -202,7 +206,7 @@ write_ret_t Agent::write (query_t const& query)  { // Signal auf die _cv
         MUTEX_LOCKER(mutexLocker, _confirmedLock);
         _confirmed[id()]++;
       }
-      return write_ret_t(true,id(),indices); // indices
+  return write_ret_t(true,id(),indices); // indices
     } else {
       throw QUERY_NOT_APPLICABLE;
     }

@@ -137,7 +137,6 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       }
     }
     result.close();
-    LOG(WARN) << result.toJson();
     VPackSlice s = result.slice();
     generateResult(s);
   } catch (...) {

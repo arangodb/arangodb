@@ -40,11 +40,16 @@ using namespace arangodb::velocypack;
 
 void Constituent::configure(Agent* agent) {
   _agent = agent;
-  _votes.resize(size());
-  _id = _agent->config().id;
-  LOG(WARN) << " +++ my id is " << _id << "agency size is " << size();
-  if (_agent->config().notify) // Last will (notify everyone)
-    notifyAll(); 
+  if (size() == 1) {
+    _role = LEADER;
+  } else { 
+    _votes.resize(size());
+    _id = _agent->config().id;
+    LOG(WARN) << " +++ my id is " << _id << "agency size is " << size();
+    if (_agent->config().notify) {// (notify everyone) 
+      notifyAll();
+    }
+  }
 }
 
 Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
@@ -72,7 +77,7 @@ role_t Constituent::role () const {
   return _role;
 }
 
-void Constituent::follow(term_t term) {
+void Constituent::follow (term_t term) {
   if (_role > FOLLOWER)
     LOG(WARN) << "Converted to follower in term " << _term ;
   _term = term;
@@ -80,20 +85,21 @@ void Constituent::follow(term_t term) {
   _role = FOLLOWER;
 }
 
-void Constituent::lead() {
+void Constituent::lead () {
   if (_role < LEADER)
     LOG(WARN) << "Converted to leader in term " << _term ;
   _role = LEADER;
   _agent->lead(); // We need to rebuild spear_head and read_db;
 }
 
-void Constituent::candidate() {
+void Constituent::candidate () {
   if (_role != CANDIDATE)
     LOG(WARN) << "Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
 bool Constituent::leading () const {
+  LOG(WARN) << _role;
   return _role == LEADER;
 }
 
@@ -150,7 +156,7 @@ size_t Constituent::notifyAll () {
         0.0, true);
     }
 	}
-
+  
   return size()-1;
 }
 
@@ -212,11 +218,7 @@ void Constituent::callElection() {
     }
 	}
 
-  if (_role == CANDIDATE) {
-    std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, 1.*_agent->config().min_ping)); // Wait timeout
-  } else {
-    std::this_thread::sleep_for(sleepFor(.7*_agent->config().min_ping, .75*_agent->config().min_ping)); // Wait timeout
-  }
+  std::this_thread::sleep_for(sleepFor(0.0, .5*_agent->config().min_ping)); // Wait timeout
 
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {
@@ -276,7 +278,7 @@ void Constituent::beginShutdown() {
 void Constituent::run() {
 
   // Always start off as follower
-  while (!this->isStopping()) { 
+  while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
       bool cast;
       {

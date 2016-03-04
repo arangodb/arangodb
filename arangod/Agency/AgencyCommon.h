@@ -27,10 +27,16 @@
 #include <Basics/Logger.h>
 #include <Basics/VelocyPackHelper.h>
 
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <chrono>
 #include <initializer_list>
 #include <string>
+#include <sstream>
 #include <vector>
+
+#include <memory>
 
 namespace arangodb {
 namespace consensus {
@@ -52,26 +58,49 @@ enum role_t {                                      // Role
   FOLLOWER, CANDIDATE, LEADER
 };
 
+enum AGENT_FAILURE {
+  PERSISTENCE,
+  TIMEOUT,
+  UNAVAILABLE,
+  PRECONDITION
+};
+
 /**
  * @brief Agent configuration
  */
-template<class T> struct Config {               
+template<class T>
+inline std::ostream& operator<< (std::ostream& l, std::vector<T> const& v) {
+  for (auto const& i : v)
+    l << i << " ";
+  return l;
+}
+struct AgentConfiguration {               
   id_t id;
-  T    min_ping;
-  T    max_ping;
-  T    election_timeout;
-  T    append_entries_retry_interval;
+  float min_ping;
+  float max_ping;
+  float election_timeout;
+  float append_entries_retry_interval;
   std::vector<std::string> end_points;
   bool notify;
-  Config () : min_ping(.15), max_ping(.3) {};
-  Config (uint32_t i, T min_p, T max_p, T appent_i,
+  AgentConfiguration () : min_ping(.15), max_ping(.3) {};
+  AgentConfiguration (uint32_t i, float min_p, float max_p, float appent_i,
           std::vector<std::string> const& end_p, bool n = false) :
     id(i), min_ping(min_p), max_ping(max_p),
     append_entries_retry_interval(appent_i), end_points(end_p) , notify(n){}
   inline size_t size() const {return end_points.size();}
+  inline std::string const toString() const {
+    std::stringstream out;
+    out << "Configuration\n";
+    out << "  " << "id (" << id << ") min_ping(" << min_ping << ") max_ping(" << max_ping << ")\n";
+    out << "  " << "endpoints(" << end_points << ")";
+    return out.str();
+  }
+  friend LoggerStream& operator<< (LoggerStream& l, AgentConfiguration const& c) {
+    l << c.toString();
+    return l;
+  }
 };
-
-using config_t = Config<double>;                      // Configuration type
+typedef AgentConfiguration config_t;
 
 struct  constituent_t {                               // Constituent type
   id_t id;
@@ -111,6 +140,7 @@ struct write_ret_t {
 };
 
 using namespace std::chrono;
+using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
 /**
  * @brief State entry
  */
@@ -118,11 +148,18 @@ struct log_t {
   index_t     index;
   term_t      term; 
   id_t        leaderId;
-  std::string entry;
+  //std::string entry;
+  buffer_t entry;
   milliseconds timestamp;
-  log_t (index_t idx, term_t t, id_t lid, std::string const& e) :
+//  log_t (index_t idx, term_t t, id_t lid, std::string const& e) :
+  log_t (index_t idx, term_t t, id_t lid, buffer_t const& e) :
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
+  friend std::ostream& operator<< (std::ostream& o, log_t const& l) {
+    o << l.index << " " << l.term << " " << l.leaderId << " "
+      << l.entry->toString() << " " << l.timestamp.count();
+    return o;
+  }
 };
 
 enum AGENCY_EXCEPTION {
@@ -152,11 +189,6 @@ struct priv_rpc_ret_t {
 };
 
 }}
-
-inline arangodb::LoggerStream& operator<< (
-  arangodb::LoggerStream& l, arangodb::consensus::config_t const& c) {
-  return l;  
-}
 
 #endif // __ARANGODB_CONSENSUS_AGENT__
 
