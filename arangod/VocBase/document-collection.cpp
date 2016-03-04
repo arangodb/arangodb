@@ -1094,8 +1094,6 @@ static int InitBaseDocumentCollection(TRI_document_collection_t* document,
   document->_numberDocuments = 0;
   document->_lastCompaction = 0.0;
 
-  TRI_InitReadWriteLock(&document->_compactionLock);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1108,8 +1106,6 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
     delete document->_keyGenerator;
     document->_keyGenerator = nullptr;
   }
-
-  TRI_DestroyReadWriteLock(&document->_compactionLock);
 
   if (document->getShaper() != nullptr) {  // PROTECTED by trx here
     delete document->getShaper();          // PROTECTED by trx here

@@ -348,19 +348,6 @@ class Transaction {
   /// DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  int any(TRI_transaction_collection_t*,
-          std::vector<TRI_doc_mptr_t>&,
-          arangodb::basics::BucketPosition&,
-          arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-          uint64_t&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit and an internal
-  /// offset into the primary index. this can be used for incremental access to
-  /// the documents without restarting the index scan at the begin
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
   int readIncremental(TRI_transaction_collection_t*,
                       std::vector<TRI_doc_mptr_t>&,
                       arangodb::basics::BucketPosition&, uint64_t, uint64_t&,

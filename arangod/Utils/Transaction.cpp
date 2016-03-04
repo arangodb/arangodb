@@ -279,47 +279,6 @@ int Transaction::readIncremental(TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read all master pointers, using skip and limit and an internal
-/// offset into the primary index. this can be used for incremental access to
-/// the documents without restarting the index scan at the begin
-////////////////////////////////////////////////////////////////////////////////
-
-int Transaction::any(TRI_transaction_collection_t* trxCollection,
-                     std::vector<TRI_doc_mptr_t>& docs,
-                     arangodb::basics::BucketPosition& initialPosition,
-                     arangodb::basics::BucketPosition& position,
-                     uint64_t batchSize, uint64_t& step,
-                     uint64_t& total) {
-  TRI_document_collection_t* document = documentCollection(trxCollection);
-  // READ-LOCK START
-  int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  if (orderDitch(trxCollection) == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  uint64_t numRead = 0;
-  TRI_ASSERT(batchSize > 0);
-
-  while (numRead < batchSize) {
-    auto mptr = document->primaryIndex()->lookupRandom(this, initialPosition,
-                                                       position, step, total);
-    if (mptr == nullptr) {
-      // Read all documents randomly
-      break;
-    }
-    docs.emplace_back(*mptr);
-    ++numRead;
-  }
-  this->unlock(trxCollection, TRI_TRANSACTION_READ);
-  // READ-LOCK END
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
 

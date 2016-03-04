@@ -276,7 +276,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;
-  TRI_read_write_lock_t _compactionLock;
+  arangodb::basics::ReadWriteLock _compactionLock;
   double _lastCompaction;
 
   // ...........................................................................

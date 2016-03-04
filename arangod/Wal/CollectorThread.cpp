@@ -29,6 +29,7 @@
 #include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
@@ -721,11 +722,11 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   // collection
   // if any locking attempt fails, release and try again next time
 
-  if (!TRI_TryReadLockReadWriteLock(&document->_compactionLock)) {
+  TRY_READ_LOCKER(locker, document->_compactionLock);
+  
+  if (!locker.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
-
-  TRI_DEFER(TRI_ReadUnlockReadWriteLock(&document->_compactionLock));
 
   arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
       document->_info.id(), TRI_TRANSACTION_WRITE);

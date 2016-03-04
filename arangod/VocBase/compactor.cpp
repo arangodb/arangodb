@@ -33,6 +33,7 @@
 #include "Basics/memory-map.h"
 #include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
@@ -1343,13 +1344,13 @@ void TRI_CompactorVocBase(void* data) {
           if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {
             // check whether someone else holds a read-lock on the compaction
             // lock
-            if (!TRI_TryWriteLockReadWriteLock(&document->_compactionLock)) {
+
+            TRY_WRITE_LOCKER(locker, document->_compactionLock);
+
+            if (!locker.isLocked()) {
               // someone else is holding the compactor lock, we'll not compact
               continue;
             }
-
-            // read-unlock the compaction lock later
-            TRI_DEFER(TRI_WriteUnlockReadWriteLock(&document->_compactionLock));
 
             try {
               if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <=
