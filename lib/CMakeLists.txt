@@ -122,7 +122,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fasthash.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp 
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
 )
 
 add_library(${LIB_ARANGO} STATIC
@@ -171,7 +171,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/hashes.cpp
   Basics/json-utilities.cpp
   Basics/json.cpp
-  Basics/levenshtein.cpp 
+  Basics/levenshtein.cpp
   Basics/memory.cpp
   Basics/mimetypes.cpp
   Basics/prime-numbers.cpp

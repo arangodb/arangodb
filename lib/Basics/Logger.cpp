@@ -251,7 +251,7 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
       }
     }
 
-    if (_filename.empty() && (fd == STDOUT_FILENO || fd == STDERR_FILENO)) {
+    if (_filename.empty() || fd == STDOUT_FILENO || fd == STDERR_FILENO) {
       // the logfile is either stdout or stderr. no need to print the message
       // again
       return;
@@ -264,7 +264,7 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
                                 message.size(), &escapedLength, true, false);
 
   if (escaped != nullptr) {
-    writeLogFile(fd, escaped, (ssize_t)escapedLength);
+    writeLogFile(fd, escaped, static_cast<ssize_t>(escapedLength));
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
   }
 }
