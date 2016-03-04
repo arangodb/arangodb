@@ -28,7 +28,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
@@ -389,26 +388,6 @@ class AssocUnique {
       }
     }
     return TRI_ERROR_NO_ERROR;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void appendToJson(TRI_memory_zone_t* zone, arangodb::basics::Json& json) {
-    arangodb::basics::Json bkts(zone, arangodb::basics::Json::Array);
-    for (auto& b : _buckets) {
-      arangodb::basics::Json bucketInfo(zone, arangodb::basics::Json::Object);
-      bucketInfo("nrAlloc",
-                 arangodb::basics::Json(static_cast<double>(b._nrAlloc)));
-      bucketInfo("nrUsed",
-                 arangodb::basics::Json(static_cast<double>(b._nrUsed)));
-      bkts.add(bucketInfo);
-    }
-    json("buckets", bkts);
-    json("nrBuckets",
-         arangodb::basics::Json(static_cast<double>(_buckets.size())));
-    json("totalUsed", arangodb::basics::Json(static_cast<double>(size())));
   }
 
   //////////////////////////////////////////////////////////////////////////////
