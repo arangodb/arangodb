@@ -31,7 +31,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"

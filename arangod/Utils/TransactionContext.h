@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_document_collection_t;

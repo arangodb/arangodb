@@ -25,12 +25,12 @@
 #define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

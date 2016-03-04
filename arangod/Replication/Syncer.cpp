@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
@@ -32,7 +31,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"

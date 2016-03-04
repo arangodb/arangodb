@@ -28,7 +28,8 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
-#include "Utils/transactions.h"
+#include "Utils/OperationResult.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 

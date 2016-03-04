@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectorThread.h"
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
@@ -34,8 +33,8 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/transactions.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"

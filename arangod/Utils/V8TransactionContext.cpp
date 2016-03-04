@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8TransactionContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
 #include "V8/v8-globals.h"

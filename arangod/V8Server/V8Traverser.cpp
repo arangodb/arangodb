@@ -23,9 +23,9 @@
 
 #include "V8Traverser.h"
 #include "Indexes/EdgeIndex.h"
-#include "Utils/transactions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ShapedJsonTransformer.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"

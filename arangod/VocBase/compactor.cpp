@@ -26,7 +26,6 @@
 #endif
 
 #include "compactor.h"
-
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
@@ -35,8 +34,8 @@
 #include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "Utils/transactions.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/document-collection.h"

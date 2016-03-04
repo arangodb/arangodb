@@ -39,7 +39,6 @@
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/transactions.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"

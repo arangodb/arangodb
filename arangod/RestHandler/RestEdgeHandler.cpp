@@ -23,6 +23,7 @@
 
 #include "RestEdgeHandler.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/document-collection.h"
 
 using namespace arangodb;

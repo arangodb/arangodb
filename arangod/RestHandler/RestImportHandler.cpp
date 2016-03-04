@@ -26,6 +26,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"

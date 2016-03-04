@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/update-policy.h"
 
 struct TRI_json_t;
 

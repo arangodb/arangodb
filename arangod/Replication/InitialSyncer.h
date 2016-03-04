@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Logger.h"
 #include "Replication/Syncer.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Slice.h>
 

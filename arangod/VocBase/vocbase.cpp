@@ -39,7 +39,6 @@
 #include "Basics/WriteLocker.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/transactions.h"
 #include "VocBase/auth.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"

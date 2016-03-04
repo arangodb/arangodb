@@ -40,7 +40,6 @@
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
-#include "Utils/transactions.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"

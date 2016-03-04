@@ -21,8 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/transactions.h"
-//#include "Basics/conversions.h"
+#include "Transaction.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -37,6 +36,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
+#include "VocBase/server.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
