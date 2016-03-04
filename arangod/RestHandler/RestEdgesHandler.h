@@ -30,6 +30,7 @@
 #include "VocBase/edge-collection.h"
 
 namespace arangodb {
+class SingleCollectionTransaction;
 
 namespace traverser {
 class TraverserExpression;

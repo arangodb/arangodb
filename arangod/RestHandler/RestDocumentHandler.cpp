@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
@@ -418,6 +419,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   }
 
+#warning fixme
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier

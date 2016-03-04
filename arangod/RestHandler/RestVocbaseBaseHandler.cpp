@@ -28,7 +28,9 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 
 #include <velocypack/Builder.h>

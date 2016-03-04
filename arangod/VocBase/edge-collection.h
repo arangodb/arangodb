@@ -27,7 +27,12 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/document-collection.h"
+
+struct TRI_document_collection_t;
+
+namespace arangodb {
+class Transaction;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction

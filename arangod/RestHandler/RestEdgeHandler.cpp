@@ -23,6 +23,7 @@
 
 #include "RestEdgeHandler.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/document-collection.h"
 

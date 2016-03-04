@@ -28,6 +28,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+class OperationOptions;
+class SingleCollectionTransaction;
 
 struct RestImportResult {
  public:

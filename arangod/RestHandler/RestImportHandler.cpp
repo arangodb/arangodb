@@ -26,10 +26,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
@@ -322,9 +321,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // extract the collection name
   bool found;
-  std::string const collection = _request->value("collection", found);
+  std::string const collectionName = _request->value("collection", found);
 
-  if (!found || collection.empty()) {
+  if (!found || collectionName.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
@@ -332,7 +331,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  if (!checkCreateCollection(collection, getCollectionType())) {
+  if (!checkCreateCollection(collectionName, getCollectionType())) {
     return false;
   }
 
@@ -371,7 +370,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                            collection, TRI_TRANSACTION_WRITE);
+                            collectionName, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -380,18 +379,18 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
+  
+  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
-    trx.truncate(collection, truncateOpts);
+    trx.truncate(collectionName, truncateOpts);
     // Ignore the result ...
   }
 
@@ -458,7 +457,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       }
 
       res = handleSingleDocument(trx, result, oldPtr, builder->slice(),
-                                 collection, isEdgeCollection, opOptions, i);
+                                 collectionName, isEdgeCollection, opOptions, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -497,7 +496,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, nullptr, slice, collection,
+      res = handleSingleDocument(trx, result, nullptr, slice, collectionName,
                                  isEdgeCollection, opOptions, i + 1);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -519,7 +518,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
   } else {
     // generate result
     generateDocumentsCreated(result);
@@ -551,9 +550,9 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  std::string const collection = _request->value("collection", found);
+  std::string const collectionName = _request->value("collection", found);
 
-  if (!found || collection.empty()) {
+  if (!found || collectionName.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + IMPORT_PATH +
@@ -561,7 +560,7 @@ bool RestImportHandler::createFromKeyValueList() {
     return false;
   }
 
-  if (!checkCreateCollection(collection, getCollectionType())) {
+  if (!checkCreateCollection(collectionName, getCollectionType())) {
     return false;
   }
 
@@ -624,7 +623,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                            collection, TRI_TRANSACTION_WRITE);
+                            collectionName, TRI_TRANSACTION_WRITE);
 
   // .............................................................................
   // inside write transaction
@@ -633,20 +632,18 @@ bool RestImportHandler::createFromKeyValueList() {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
-    trx.truncate(collection, truncateOpts);
+    trx.truncate(collectionName, truncateOpts);
     // Ignore the result ...
-    // truncate collection first
   }
 
   size_t i = (size_t)lineNumber;
@@ -705,7 +702,7 @@ bool RestImportHandler::createFromKeyValueList() {
             createVelocyPackObject(keys, values, errorMsg, i);
         res =
             handleSingleDocument(trx, result, lineStart, objectBuilder->slice(),
-                                 collection, isEdgeCollection, opOptions, i);
+                                 collectionName, isEdgeCollection, opOptions, i);
       } catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;
@@ -731,7 +728,7 @@ bool RestImportHandler::createFromKeyValueList() {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
   } else {
     // generate result
     generateDocumentsCreated(result);

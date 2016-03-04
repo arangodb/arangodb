@@ -31,12 +31,12 @@
 /// @brief update and delete policy
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_doc_update_policy_e {
   TRI_DOC_UPDATE_ERROR,
   TRI_DOC_UPDATE_LAST_WRITE,
   TRI_DOC_UPDATE_ONLY_IF_NEWER,
   TRI_DOC_UPDATE_ILLEGAL
-} TRI_doc_update_policy_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief policy container

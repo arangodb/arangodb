@@ -32,7 +32,6 @@
 #include "VocBase/datafile.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 

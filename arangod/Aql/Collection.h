@@ -25,9 +25,10 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+
+struct TRI_document_collection_t;
 
 namespace arangodb {
 namespace aql {
@@ -85,30 +86,19 @@ struct Collection {
   /// @brief get the pointer to the document collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_document_collection_t* documentCollection() const {
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(collection->_collection != nullptr);
-
-    return collection->_collection;
-  }
+  TRI_document_collection_t* documentCollection() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the collection is an edge collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline bool isEdgeCollection() const {
-    auto document = documentCollection();
-    return (document->_info.type() == TRI_COL_TYPE_EDGE);
-  }
+  bool isEdgeCollection() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the collection is a document collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline bool isDocumentCollection() const {
-    auto document = documentCollection();
-    return (document->_info.type() == TRI_COL_TYPE_DOCUMENT);
-  }
+  bool isDocumentCollection() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief count the LOCAL number of documents in the collection
@@ -191,6 +181,7 @@ struct Collection {
   void fillIndexesLocal() const;
 
  private:
+
   TRI_vocbase_col_t* collection;
 
   //////////////////////////////////////////////////////////////////////////////

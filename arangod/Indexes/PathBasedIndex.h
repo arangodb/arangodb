@@ -28,7 +28,8 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/document-collection.h"
+
+struct TRI_document_collection_t;
 
 namespace arangodb {
 namespace aql {

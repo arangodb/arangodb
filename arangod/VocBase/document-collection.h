@@ -153,7 +153,7 @@ struct TRI_doc_mptr_t {
 /// @brief collection info
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_collection_info_s {
+struct TRI_doc_collection_info_t {
   TRI_voc_ssize_t _numberDatafiles;
   TRI_voc_ssize_t _numberJournalfiles;
   TRI_voc_ssize_t _numberCompactorfiles;
@@ -185,7 +185,7 @@ typedef struct TRI_doc_collection_info_s {
   char const* _waitingForDitch;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
-} TRI_doc_collection_info_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection with global read-write lock
@@ -466,15 +466,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
 static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
     TRI_df_marker_t const* marker) {
-#if 0
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*)marker) +
-           ((TRI_doc_edge_key_marker_t const*)marker)->_offsetFromKey;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*)marker) +
-           ((arangodb::wal::edge_marker_t const*)marker)->_offsetFromKey;
-  }
-#endif
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -498,15 +489,6 @@ static inline char const* TRI_EXTRACT_MARKER_FROM_KEY(
 
 static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
     TRI_df_marker_t const* marker) {
-#if 0
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*)marker) +
-           ((TRI_doc_edge_key_marker_t const*)marker)->_offsetToKey;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*)marker) +
-           ((arangodb::wal::edge_marker_t const*)marker)->_offsetToKey;
-  }
-#endif
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -530,14 +512,6 @@ static inline char const* TRI_EXTRACT_MARKER_TO_KEY(
 
 static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
     TRI_df_marker_t const* marker) {
-#if 0  
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((TRI_doc_edge_key_marker_t const*)marker)->_fromCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((arangodb::wal::edge_marker_t const*)marker)->_fromCid;
-  }
-#endif
-
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -561,14 +535,6 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID(
 
 static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
     TRI_df_marker_t const* marker) {
-#if 0  
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((TRI_doc_edge_key_marker_t const*)marker)->_toCid;
-  } else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((arangodb::wal::edge_marker_t const*)marker)->_toCid;
-  }
-#endif
-
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -592,16 +558,6 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     TRI_df_marker_t const* marker) {
-#if 0
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((TRI_doc_document_key_marker_t const*)marker)->_rid;
-  } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-             marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((arangodb::wal::document_marker_t const*)marker)->_revisionId;
-  }
-#endif
-
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -624,18 +580,6 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(TRI_doc_mptr_t const* mptr) {
 
 static inline char const* TRI_EXTRACT_MARKER_KEY(
     TRI_df_marker_t const* marker) {
-#if 0
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*)marker) +
-           ((TRI_doc_document_key_marker_t const*)marker)->_offsetKey;
-  } else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-             marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*)marker) +
-           ((arangodb::wal::document_marker_t const*)marker)->_offsetKey;
-  }
-#endif
-
   // invalid marker type
   TRI_ASSERT(false);
 
@@ -839,6 +783,7 @@ std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
+/// TODO remove
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ShapedJsonHash {
@@ -869,44 +814,5 @@ struct ShapedJsonEq {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RotateJournalDocumentCollection(TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads an element from the document collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReadShapedJsonDocumentCollection(arangodb::Transaction*,
-                                         TRI_transaction_collection_t*,
-                                         const TRI_voc_key_t,
-                                         TRI_doc_mptr_t*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a shaped-json document (or edge)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveShapedJsonDocumentCollection(arangodb::Transaction*,
-                                           TRI_transaction_collection_t*,
-                                           const TRI_voc_key_t, TRI_voc_rid_t,
-                                           arangodb::wal::Marker*,
-                                           TRI_doc_update_policy_t const*, bool,
-                                           bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a shaped-json document (or edge)
-/// note: key might be NULL. in this case, a key is auto-generated
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertShapedJsonDocumentCollection(
-    arangodb::Transaction*, TRI_transaction_collection_t*, const TRI_voc_key_t,
-    TRI_voc_rid_t, arangodb::wal::Marker*, TRI_doc_mptr_t*,
-    TRI_shaped_json_t const*, TRI_document_edge_t const*, bool, bool, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UpdateShapedJsonDocumentCollection(
-    arangodb::Transaction*, TRI_transaction_collection_t*, const TRI_voc_key_t,
-    TRI_voc_rid_t, arangodb::wal::Marker*, TRI_doc_mptr_t*,
-    TRI_shaped_json_t const*, TRI_doc_update_policy_t const*, bool, bool);
 
 #endif
