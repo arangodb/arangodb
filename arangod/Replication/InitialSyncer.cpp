@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialSyncer.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
@@ -1587,7 +1586,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
             res = opRes.code;
           } else {
             // UPDATE
-            OperationResult opRes = trx.update(collectionName, it, it, options);
+            OperationResult opRes = trx.update(collectionName, it, options);
             res = opRes.code;
           }
 

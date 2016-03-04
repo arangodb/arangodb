@@ -1907,22 +1907,24 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     arangodb::Transaction& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type, 
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
+    
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(!slice.isNone());
     TRI_ASSERT(slice.isObject());
 
-    OperationOptions options;
-    options.silent = true;
-    // TODO: ignore revision
-
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
       
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // must update
-        opRes = trx.update(collectionName, old, slice, options);
+#warning check old/slice        
+        opRes = trx.update(collectionName, slice, options);
       }
 
       return opRes.code;
@@ -1936,10 +1938,6 @@ int RestReplicationHandler::applyCollectionDumpMarker(
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     
-    OperationOptions options;
-    options.silent = true;
-    // TODO: ignore revision
-
     try {
       OperationResult opRes = trx.remove(collectionName, old, options);
 

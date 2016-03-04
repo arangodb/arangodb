@@ -105,7 +105,7 @@ struct DocumentOperation {
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
       document->_masterPointers.release(header);
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-               tpye == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+               type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       header->copy(oldHeader);
     }
 

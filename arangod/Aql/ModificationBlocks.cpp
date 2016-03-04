@@ -646,7 +646,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
                     VPackSlice slice; // TODO: fill slice from patchedJson
 #warning fill slice from patchedJson                    
-                    OperationResult opRes = _trx->update(_collection->name, slice, slice, options); 
+                    OperationResult opRes = _trx->update(_collection->name, slice, options); 
                     errorCode = opRes.code;
                   }
                 }
@@ -819,7 +819,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                 VPackSlice slice; // TODO: fill from updateJson
 #warning fill slice from updateJson               
                 // TODO: check if we can use _trx->replace() here 
-                OperationResult opRes = _trx->update(_collection->name, slice, slice, options);
+                OperationResult opRes = _trx->update(_collection->name, slice, options);
                 errorCode = opRes.code;
               } else {
                 // update
@@ -845,7 +845,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                 
                     VPackSlice slice; // TODO: fill from mergedJson
 #warning fill slice from mergedJson                
-                    OperationResult opRes = _trx->update(_collection->name, slice, slice, options);
+                    OperationResult opRes = _trx->update(_collection->name, slice, options);
                   }
                 }
               }
@@ -1070,7 +1070,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
           VPackSlice slice; // TODO: fill slice from json
 #warning fill slice from json          
-          OperationResult opRes = _trx->update(_collection->name, slice, slice, options); 
+          OperationResult opRes = _trx->update(_collection->name, slice, options); 
           errorCode = opRes.code;
         }
 
