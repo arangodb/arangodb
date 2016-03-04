@@ -387,7 +387,7 @@ std::string ServerState::createIdForRole(AgencyComm comm, ServerState::RoleEnum 
   std::string id;
 
   VPackBuilder builder;
-  builder.add(VPackValue("\"none\""));
+  builder.add(VPackValue("none"));
 
   VPackSlice idValue = builder.slice();
   AgencyCommResult createResult; 
