@@ -197,6 +197,38 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief V8ToVPack without _key and _rev, builder must be open with an
+/// object and is left open at the end
+////////////////////////////////////////////////////////////////////////////////
+
+static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
+                                VPackBuilder& builder,
+                                v8::Local<v8::Value> const obj) {
+
+  TRI_ASSERT(obj->IsObject() && !obj->IsArray());
+  auto o = v8::Local<v8::Object>::Cast(obj);
+  v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+  uint32_t const n = names->Length();
+  for (uint32_t i = 0; i < n; ++i) {
+    v8::Handle<v8::Value> key = names->Get(i);
+    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+    if (*str == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    if (strcmp(*str, "_key") != 0 &&
+        strcmp(*str, "_rev") != 0 &&
+        strcmp(*str, "_id") != 0) {
+      builder.add(VPackValue(*str));
+      int res = TRI_V8ToVPack(isolate, builder, o->Get(key), false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection for usage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,9 +347,12 @@ static void ExistsVocbaseVPack(
   VPackBuilder builder;
   std::string collectionName;
 
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      true, args[0]);
+  int res;
+  { VPackObjectBuilder guard(&builder);
+    res = ParseDocumentOrDocumentHandle(
+      isolate, vocbase, transactionContext->getResolver(), col,
+      collectionName, builder, true, args[0]);
+  }
 
   LocalCollectionGuard g(useCollection ? nullptr
                                        : const_cast<TRI_vocbase_col_t*>(col));
@@ -361,151 +396,6 @@ static void ExistsVocbaseVPack(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces a document
-////////////////////////////////////////////////////////////////////////////////
-
-static void ReplaceVocbaseCol(bool useCollection,
-                              v8::FunctionCallbackInfo<v8::Value> const& args) {
-
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  OperationOptions options;
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  bool overwrite = false;
-  TRI_GET_GLOBALS();
-
-  if (argLength < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
-        "booleanValue})");
-  }
-
-  // we're only accepting "real" object documents
-  if (!args[1]->IsObject() || args[1]->IsArray()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  if (args.Length() > 2) {
-    if (args[2]->IsObject()) {
-      v8::Handle<v8::Object> optionsObject = args[2].As<v8::Object>();
-      TRI_GET_GLOBAL_STRING(OverwriteKey);
-      if (optionsObject->Has(OverwriteKey)) {
-        overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
-      }
-      TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-      if (optionsObject->Has(WaitForSyncKey)) {
-        options.waitForSync =
-            TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
-      }
-      TRI_GET_GLOBAL_STRING(SilentKey);
-      if (optionsObject->Has(SilentKey)) {
-        options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
-      }
-    } else {  // old variant replace(<document>, <data>, <overwrite>,
-              // <waitForSync>)
-      overwrite = TRI_ObjectToBoolean(args[2]);
-      if (argLength > 3) {
-        options.waitForSync = TRI_ObjectToBoolean(args[3]);
-      }
-    }
-  }
-
-  TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = nullptr;
-
-  if (useCollection) {
-    // called as db.collection.replace()
-    col =
-        TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-    if (col == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    vocbase = col->_vocbase;
-  } else {
-    // called as db._replace()
-    vocbase = GetContextVocBase(isolate);
-  }
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (!args[1]->IsObject() || args[1]->IsArray()) {
-    // we're only accepting "real" object documents
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  VPackBuilder builder;
-  std::string collectionName;
-
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-  
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      !overwrite, args[0]);
-
-  LocalCollectionGuard g(useCollection ? nullptr
-                                       : const_cast<TRI_vocbase_col_t*>(col));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_ASSERT(col != nullptr);
-
-  TRI_ASSERT(!collectionName.empty());
-  VPackSlice search = builder.slice();
-  TRI_ASSERT(search.isObject());
-
-  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-
-  res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  VPackBuilder updateBuilder;
-  res = TRI_V8ToVPack(isolate, updateBuilder, args[1], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  VPackSlice update = updateBuilder.slice();
-
-  if (update.isNone()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "<data> is no valid JSON");
-  }
-
-  OperationResult opResult = trx.replace(collectionName, search, update, options);
-
-  res = trx.finish(opResult.code);
-
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  if (options.silent) {
-    // no return value
-    TRI_V8_RETURN_TRUE();
-  }
-
-  VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document and returns it
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -546,18 +436,19 @@ static void DocumentVocbaseVPack(
   VPackBuilder builder;
   std::string collectionName;
 
-
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      true, args[0]);
+  { VPackObjectBuilder guard(&builder);
+    int res = ParseDocumentOrDocumentHandle(
+        isolate, vocbase, transactionContext->getResolver(), col,
+        collectionName, builder, true, args[0]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
 
   LocalCollectionGuard g(useCollection ? nullptr
                                        : const_cast<TRI_vocbase_col_t*>(col));
 
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
 
   TRI_ASSERT(col != nullptr);
 
@@ -568,7 +459,7 @@ static void DocumentVocbaseVPack(
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  res = trx.begin();
+  int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -594,154 +485,6 @@ static void DocumentVocbaseVPack(
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
 
   TRI_V8_RETURN(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates (patches) a document
-////////////////////////////////////////////////////////////////////////////////
-
-static void UpdateVocbaseVPack(bool useCollection,
-                               v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  OperationOptions options;
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  bool overwrite = false;
-
-  TRI_GET_GLOBALS();
-
-  if (argLength < 2 || argLength > 5) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
-        "booleanValue, mergeObjects: booleanValue, waitForSync: "
-        "booleanValue})");
-  }
-
-  if (argLength > 2) {
-    if (args[2]->IsObject()) {
-      v8::Handle<v8::Object> optionsObject = args[2].As<v8::Object>();
-      TRI_GET_GLOBAL_STRING(OverwriteKey);
-      if (optionsObject->Has(OverwriteKey)) {
-        overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
-      }
-      TRI_GET_GLOBAL_STRING(KeepNullKey);
-      if (optionsObject->Has(KeepNullKey)) {
-        options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(KeepNullKey));
-      }
-      TRI_GET_GLOBAL_STRING(MergeObjectsKey);
-      if (optionsObject->Has(MergeObjectsKey)) {
-        options.mergeObjects =
-            TRI_ObjectToBoolean(optionsObject->Get(MergeObjectsKey));
-      }
-      TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-      if (optionsObject->Has(WaitForSyncKey)) {
-        options.waitForSync =
-            TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
-      }
-      TRI_GET_GLOBAL_STRING(SilentKey);
-      if (optionsObject->Has(SilentKey)) {
-        options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
-      }
-    } else {  // old variant update(<document>, <data>, <overwrite>, <keepNull>,
-              // <waitForSync>)
-      overwrite = TRI_ObjectToBoolean(args[2]);
-      if (argLength > 3) {
-        options.keepNull = TRI_ObjectToBoolean(args[3]);
-      }
-      if (argLength > 4) {
-        options.waitForSync = TRI_ObjectToBoolean(args[4]);
-      }
-    }
-  }
-
-  TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = nullptr;
-
-  if (useCollection) {
-    // called as db.collection.update()
-    col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-    if (col == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    vocbase = col->_vocbase;
-  } else {
-    // called as db._update()
-    vocbase = GetContextVocBase(isolate);
-  }
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (!args[1]->IsObject() || args[1]->IsArray()) {
-    // we're only accepting "real" object documents
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  VPackBuilder builder;
-  std::string collectionName;
-
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      !overwrite, args[0]);
-
-  LocalCollectionGuard g(useCollection ? nullptr
-                                       : const_cast<TRI_vocbase_col_t*>(col));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_ASSERT(col != nullptr);
-
-  TRI_ASSERT(!collectionName.empty());
-  VPackSlice search = builder.slice();
-  TRI_ASSERT(search.isObject());
-
-  SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-
-  res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  VPackBuilder updateBuilder;
-  res = TRI_V8ToVPack(isolate, updateBuilder, args[1], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  VPackSlice update = updateBuilder.slice();
-
-  OperationResult opResult = trx.update(collectionName, search, update, options);
-
-  res = trx.finish(opResult.code);
-
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  if (options.silent) {
-    // no return value
-    TRI_V8_RETURN_TRUE();
-  }
-
-  VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
-  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -816,12 +559,14 @@ static void RemoveVocbaseVPack(
   LocalCollectionGuard g(useCollection ? nullptr
                                        : const_cast<TRI_vocbase_col_t*>(col));
 
-  int res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-      !overwrite, args[0]);
+  { VPackObjectBuilder guard(&builder);
+    int res = ParseDocumentOrDocumentHandle(
+        isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
+        !overwrite, args[0]);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   VPackSlice toRemove = builder.slice();
@@ -830,7 +575,7 @@ static void RemoveVocbaseVPack(
   SingleCollectionTransaction trx(transactionContext, collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  res = trx.begin();
+  int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1606,13 +1351,338 @@ static void JS_RenameVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief option parsing for replace and update methods
+////////////////////////////////////////////////////////////////////////////////
+
+static void parseReplaceAndUpdateOptions(
+    v8::Isolate* isolate,
+    v8::FunctionCallbackInfo<v8::Value> const& args,
+    OperationOptions& options,
+    TRI_voc_document_operation_e operation) {
+
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(args.Length() > 2);
+  if (args[2]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = args[2].As<v8::Object>();
+    TRI_GET_GLOBAL_STRING(OverwriteKey);
+    if (optionsObject->Has(OverwriteKey)) {
+      options.ignoreRevs = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
+    }
+    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
+    if (optionsObject->Has(WaitForSyncKey)) {
+      options.waitForSync =
+          TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+    }
+    TRI_GET_GLOBAL_STRING(SilentKey);
+    if (optionsObject->Has(SilentKey)) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
+    }
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      TRI_GET_GLOBAL_STRING(KeepNullKey);
+      if (optionsObject->Has(KeepNullKey)) {
+        options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(KeepNullKey));
+      }
+      TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+      if (optionsObject->Has(MergeObjectsKey)) {
+        options.mergeObjects =
+            TRI_ObjectToBoolean(optionsObject->Get(MergeObjectsKey));
+      }
+    }
+  } else {  
+    // old variants 
+    //   replace(<document>, <data>, <overwrite>, <waitForSync>)
+    // and
+    //   update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>
+    options.ignoreRevs = TRI_ObjectToBoolean(args[2]);
+    if (args.Length() > 3) {
+      if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        options.waitForSync = TRI_ObjectToBoolean(args[3]);
+      } else {  // UPDATE
+        options.keepNull = TRI_ObjectToBoolean(args[3]);
+        if (args.Length() > 4) {
+          options.waitForSync = TRI_ObjectToBoolean(args[4]);
+        }
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ModifyVocbaseCol
+////////////////////////////////////////////////////////////////////////////////
+
+static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
+                             v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+
+  if (argLength < 2 ||
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+          "replace(<document(s)>, <data>, {overwrite: booleanValue,"
+          " waitForSync: booleanValue})");
+    } else {   // UPDATE
+      TRI_V8_THROW_EXCEPTION_USAGE(
+          "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
+          "booleanValue, mergeObjects: booleanValue, waitForSync: "
+          "booleanValue})");
+    }
+  }
+
+  // we're only accepting "real" object documents or arrays of such
+  if (!args[1]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (args[0]->IsArray() ^ args[1]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (args[0]->IsArray()) {  // then both are arrays, check equal length
+    auto a = v8::Local<v8::Array>::Cast(args[0]);
+    auto b = v8::Local<v8::Array>::Cast(args[1]);
+    if (a->Length() != b->Length()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+  }
+
+  OperationOptions options;
+  options.ignoreRevs = false;
+  parseReplaceAndUpdateOptions(isolate, args, options, operation);
+
+  // Find collection and vocbase
+  std::string collectionName;
+  TRI_vocbase_col_t const* col =
+      TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  TRI_vocbase_t* vocbase = col->vocbase();
+  collectionName = col->name();
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  
+  // Now start the transaction:
+  SingleCollectionTransaction trx(transactionContext, collectionName,
+                                  TRI_TRANSACTION_WRITE);
+  if (!args[0]->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackBuilder updateBuilder;
+
+  auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal) {
+    std::string collName;
+    if (!ExtractDocumentHandle(isolate, searchVal, collName,
+                               updateBuilder, false)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    }
+  };
+
+  auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
+    int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  };
+
+  if (!args[0]->IsArray()) {
+    // we deal with the single document case:
+    VPackObjectBuilder guard(&updateBuilder);
+    workOnOneDocument(args[1]);
+    workOnOneSearchVal(args[0]);
+  } else { // finally, the array case, note that we already know that the two
+           // arrays have equal length!
+    TRI_ASSERT(args[0]->IsArray() && args[1]->IsArray());
+    VPackArrayBuilder guard(&updateBuilder);
+    auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
+    auto documents = v8::Local<v8::Array>::Cast(args[1]);
+    for (uint32_t i = 0; i < searchVals->Length(); ++i) {
+      VPackObjectBuilder guard(&updateBuilder);
+      workOnOneDocument(documents->Get(i));
+      workOnOneSearchVal(searchVals->Get(i));
+    }
+  }
+
+  VPackSlice const update = updateBuilder.slice();
+
+  OperationResult opResult;
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    opResult = trx.replace(collectionName, update, options);
+  } else {
+    opResult = trx.update(collectionName, update, options);
+  }
+  res = trx.finish(opResult.code);
+
+  if (!opResult.successful()) {
+    TRI_V8_THROW_EXCEPTION(opResult.code);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  if (options.silent) {
+    // no return value
+    TRI_V8_RETURN_TRUE();
+  }
+
+  VPackSlice resultSlice = opResult.slice();
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock documentsCollectionReplace
+/// Replace a document, collection method
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return ReplaceVocbaseCol(true, args);
+  ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock documentsCollectionUpdate
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_UpdateVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ModifyVocbase, database method, only single documents
+////////////////////////////////////////////////////////////////////////////////
+
+static void ModifyVocbase(TRI_voc_document_operation_e operation,
+                          v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+
+  if (argLength < 2 ||
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+          "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
+          "booleanValue})");
+    } else {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+          "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
+          "booleanValue, mergeObjects: booleanValue, waitForSync: "
+          "booleanValue})");
+    }
+  }
+
+  // we're only accepting "real" object documents
+  if (!args[1]->IsObject() || args[1]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  OperationOptions options;
+  options.ignoreRevs = false;
+  if (args.Length() > 2) {
+    parseReplaceAndUpdateOptions(isolate, args, options, operation);
+  }
+
+  TRI_vocbase_col_t const* col = nullptr;
+  std::string collectionName;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  
+  VPackBuilder updateBuilder;
+
+  { VPackObjectBuilder guard(&updateBuilder);
+    int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, args[1]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    res = ParseDocumentOrDocumentHandle(
+        isolate, vocbase, transactionContext->getResolver(), col,
+        collectionName, updateBuilder, !options.ignoreRevs, args[0]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
+  // We need to free the collection object in the end
+  LocalCollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
+
+  SingleCollectionTransaction trx(transactionContext, collectionName,
+                                  TRI_TRANSACTION_WRITE);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackSlice const update = updateBuilder.slice();
+
+  OperationResult opResult;
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    opResult = trx.replace(collectionName, update, options);
+  } else {
+    opResult = trx.update(collectionName, update, options);
+  }
+
+  res = trx.finish(opResult.code);
+
+  if (!opResult.successful()) {
+    TRI_V8_THROW_EXCEPTION(opResult.code);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  if (options.silent) {
+    // no return value
+    TRI_V8_RETURN_TRUE();
+  }
+
+  VPackSlice resultSlice = opResult.slice();
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock documentsDocumentReplace
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock documentsDocumentUpdate
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1724,17 +1794,6 @@ static void JS_RotateVocbaseCol(
   }
 
   TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionUpdate
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_UpdateVocbaseVPack(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return UpdateVocbaseVPack(true, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2504,26 +2563,6 @@ static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentReplace
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return ReplaceVocbaseCol(false, args);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentUpdate
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return UpdateVocbaseVPack(false, args);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionCount
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2829,7 +2868,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unload"),
                        JS_UnloadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("update"),
-                       JS_UpdateVocbaseVPack);
+                       JS_UpdateVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionVocbaseCol);
 

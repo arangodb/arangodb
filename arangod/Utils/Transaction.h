@@ -221,13 +221,13 @@ class Transaction {
   /// @brief extract the _key attribute from a slice
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string extractKey(VPackSlice const*);
+  static std::string extractKey(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _rev attribute from a slice
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_voc_rid_t extractRevisionId(VPackSlice const*);
+  static TRI_voc_rid_t extractRevisionId(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
@@ -301,8 +301,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult update(std::string const& collectionName,
-                         VPackSlice const& oldValue,
-                         VPackSlice const& updateValue,
+                         VPackSlice const updateValue,
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -312,8 +311,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult replace(std::string const& collectionName,
-                          VPackSlice const& oldValue,
-                          VPackSlice const& updateValue,
+                          VPackSlice const updateValue,
                           OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -407,24 +405,17 @@ class Transaction {
                               OperationOptions& options);
   
   OperationResult updateCoordinator(std::string const& collectionName,
-                                    VPackSlice const& oldValue,
-                                    VPackSlice const& newValue,
+                                    VPackSlice const newValue,
                                     OperationOptions& options);
 
-  OperationResult updateLocal(std::string const& collectionName,
-                              VPackSlice const& oldValue,
-                              VPackSlice const& newValue,
-                              OperationOptions& options);
-  
   OperationResult replaceCoordinator(std::string const& collectionName,
-                                     VPackSlice const& oldValue,
-                                     VPackSlice const& newValue,
+                                     VPackSlice const newValue,
                                      OperationOptions& options);
 
-  OperationResult replaceLocal(std::string const& collectionName,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue,
-                               OperationOptions& options);
+  OperationResult modifyLocal(std::string const& collectionName,
+                              VPackSlice const newValue,
+                              OperationOptions& options,
+                              TRI_voc_document_operation_e operation);
   
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const& value,

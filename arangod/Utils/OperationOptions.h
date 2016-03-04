@@ -34,7 +34,7 @@ class Marker;
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
   OperationOptions() 
-      : recoveryMarker(nullptr), waitForSync(false), keepNull(false), mergeObjects(false), silent(false) {}
+      : recoveryMarker(nullptr), waitForSync(false), keepNull(false), mergeObjects(false), silent(false), ignoreRevs(true) {}
 
   // original marker, set by the recovery procedure only!
   arangodb::wal::Marker* recoveryMarker;
@@ -50,6 +50,9 @@ struct OperationOptions {
 
   // be silent. this will build smaller results and thus may speed up operations
   bool silent;
+
+  // ignore _rev attributes given in documents (for replace and update)
+  bool ignoreRevs;
 };
 
 }

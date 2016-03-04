@@ -196,7 +196,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // check for an etag
   bool isValidRevision;
   TRI_voc_rid_t const ifNoneRid =
-      extractRevision("if-none-match", 0, isValidRevision);
+      extractRevision("if-none-match", nullptr, isValidRevision);
   if (!isValidRevision) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
@@ -204,7 +204,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   TRI_voc_rid_t const ifRid =
-      extractRevision("if-match", "rev", isValidRevision);
+      extractRevision("if-match", nullptr, isValidRevision);
   if (!isValidRevision) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
@@ -347,18 +347,32 @@ bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 bool RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 2) {
+  if (suffix.size() != 0 && suffix.size() != 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
-    msg.append(" /_api/document/<document-handle>");
+    msg.append(" /_api/document or /_api/document/<document-handle>");
 
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
-  // split the document reference
-  std::string const& collectionName = suffix[0];
-  std::string const& key = suffix[1];
+  bool isArrayCase = suffix.size() == 0;
+
+  std::string collectionName;
+  std::string key;
+
+  if (isArrayCase) {
+    bool found;
+    collectionName = _request->value("collection", found);
+    if (!found) {
+      std::string msg("query parameter 'collection' must be specified");
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+      return false;
+    }
+  } else {
+    collectionName = suffix[0];
+    key = suffix[1];
+  }
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
@@ -369,20 +383,23 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   VPackSlice body = parsedBody->slice();
 
-  if (!body.isObject()) {
+  if ((!isArrayCase && !body.isObject()) ||
+      (isArrayCase && !body.isArray())) {
     generateTransactionError(collectionName,
                              TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "");
     return false;
   }
 
   // extract the revision
-  bool isValidRevision;
-  TRI_voc_rid_t const revision =
-      extractRevision("if-match", "rev", isValidRevision);
-  if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
+  TRI_voc_rid_t revision = 0;
+  if (!isArrayCase) {
+    bool isValidRevision;
+    revision = extractRevision("if-match", nullptr, isValidRevision);
+    if (!isValidRevision) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid revision number");
+      return false;
+    }
   }
 
   // extract or chose the update policy
@@ -440,10 +457,12 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       opOptions.mergeObjects = false;
     }
 
-    result = trx.update(collectionName, search, body, opOptions);
+    // FIXME: body is wrong here, search must be integrated
+    result = trx.update(collectionName, body, opOptions);
   } else {
+    // FIXME: body is wrong here, search must be integrated
     // replacing an existing document
-    result = trx.replace(collectionName, search, body, opOptions);
+    result = trx.replace(collectionName, body, opOptions);
   }
 
   res = trx.finish(result.code);
@@ -486,7 +505,7 @@ bool RestDocumentHandler::deleteDocument() {
   // extract the revision
   bool isValidRevision;
   TRI_voc_rid_t const revision =
-      extractRevision("if-match", "rev", isValidRevision);
+      extractRevision("if-match", nullptr, isValidRevision);
   if (!isValidRevision) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");

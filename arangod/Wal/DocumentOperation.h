@@ -70,6 +70,7 @@ struct DocumentOperation {
 
   void init() {
     if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // copy the old header into a safe area
       TRI_ASSERT(header != nullptr);
@@ -103,7 +104,8 @@ struct DocumentOperation {
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
       document->_masterPointers.release(header);
-    } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+               tpye == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       header->copy(oldHeader);
     }
 
