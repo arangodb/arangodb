@@ -52,7 +52,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
-#include "VocBase/shape-accessor.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/DocumentOperation.h"
@@ -68,18 +67,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
    
-TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
-  VPackSlice const slice(vpack());
-  VPackSlice const revisionSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
-  if (revisionSlice.isString()) {
-    return arangodb::basics::VelocyPackHelper::stringUInt64(revisionSlice);
-  }
-  else if (revisionSlice.isNumber()) {
-    return revisionSlice.getNumber<TRI_voc_rid_t>();
-  }
-  return 0; 
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////

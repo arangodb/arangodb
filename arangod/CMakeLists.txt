@@ -266,6 +266,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
   VocBase/edge-collection.cpp
+  VocBase/MasterPointer.cpp
   VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
