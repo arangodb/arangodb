@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
+#include "VocBase/MasterPointer.h"
 
 using namespace arangodb;
-
 
 void OperationCursor::reset() {
   _indexIterator->reset();

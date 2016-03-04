@@ -24,6 +24,7 @@
 #include "v8-wrapshapedjson.h"
 #include "Basics/conversions.h"
 #include "Basics/Logger.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"

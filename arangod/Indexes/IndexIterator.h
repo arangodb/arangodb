@@ -25,7 +25,6 @@
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

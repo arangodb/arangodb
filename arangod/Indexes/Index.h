@@ -26,13 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
-#include "VocBase/document-collection.h"
+#include "Basics/Exceptions.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
 
-struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
 
 // Define search slice attribute names
@@ -143,7 +143,7 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  Index(TRI_idx_iid_t, TRI_document_collection_t*,
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
@@ -259,7 +259,7 @@ class Index {
   /// @brief return the underlying collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline struct TRI_document_collection_t* collection() const {
+  inline TRI_document_collection_t* collection() const {
     return _collection;
   }
 
@@ -403,7 +403,7 @@ class Index {
  protected:
   TRI_idx_iid_t const _iid;
 
-  struct TRI_document_collection_t* _collection;
+  TRI_document_collection_t* _collection;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 

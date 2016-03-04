@@ -30,7 +30,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_fulltext_wordlist_s;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 

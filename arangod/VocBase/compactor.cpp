@@ -31,6 +31,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/memory-map.h"
 #include "Basics/Logger.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"

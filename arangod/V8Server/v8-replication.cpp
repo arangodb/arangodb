@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
+#include "Basics/ReadLocker.h"
 #include "Replication/InitialSyncer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

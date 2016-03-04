@@ -30,6 +30,9 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
 class GeoIndex2 final : public Index {

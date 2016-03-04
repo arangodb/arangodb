@@ -28,7 +28,6 @@
 #include "Basics/fasthash.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Utils/OperationOptions.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
@@ -47,6 +46,7 @@ class EdgeIndex;
 class ExampleMatcher;
 class Index;
 class KeyGenerator;
+class OperationOptions;
 class PrimaryIndex;
 class Transaction;
 namespace velocypack {
@@ -175,10 +175,10 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::EdgeIndex* edgeIndex();
 
   arangodb::Ditches* ditches() { return &_ditches; }
-
   mutable arangodb::Ditches _ditches;
 
   arangodb::MasterPointers _masterPointers;
+
   arangodb::KeyGenerator* _keyGenerator;
 
   std::vector<arangodb::Index*> _indexes;

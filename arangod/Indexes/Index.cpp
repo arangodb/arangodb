@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 
 #include <ostream>

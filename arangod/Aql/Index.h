@@ -28,13 +28,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include <iosfwd>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <iosfwd>
 
 namespace arangodb {
 namespace aql {

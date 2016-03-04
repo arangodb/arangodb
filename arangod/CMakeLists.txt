@@ -224,6 +224,7 @@ add_executable(${BIN_ARANGOD}
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
   Utils/ShapedJsonTransformer.cpp
+  Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
   Utils/TransactionContext.cpp
