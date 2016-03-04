@@ -32,7 +32,7 @@ using namespace arangodb::wal;
 
 Marker::Marker(TRI_df_marker_t const* existing, TRI_voc_fid_t fid)
     : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
-      _size(existing->_size),
+      _size(existing->getSize()),
       _mustFree(false),
       _fid(fid) {}
 
@@ -40,7 +40,7 @@ Marker::Marker(TRI_df_marker_t const* existing, TRI_voc_fid_t fid)
 /// @brief create marker from a VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
   
-Marker::Marker(TRI_df_marker_type_e type, VPackSlice const& properties)
+Marker::Marker(TRI_df_marker_type_t type, VPackSlice const& properties)
     : Marker(type, sizeof(TRI_df_marker_t) + properties.byteSize()) {
   
   storeSlice(sizeof(TRI_df_marker_t), properties);
@@ -50,18 +50,12 @@ Marker::Marker(TRI_df_marker_type_e type, VPackSlice const& properties)
 /// @brief create marker with a sized buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-Marker::Marker(TRI_df_marker_type_e type, size_t size)
+Marker::Marker(TRI_df_marker_type_t type, size_t size)
     : _buffer(new char[size]),
       _size(static_cast<uint32_t>(size)),
       _mustFree(true),
       _fid(0) {
-  TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
-  memset(m, 0, size);
-
-  m->_type = type;
-  m->_size = static_cast<TRI_voc_size_t>(size);
-  m->_crc = 0;
-  m->_tick = 0;
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(begin()), type, _size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,33 +78,6 @@ void Marker::storeSlice(size_t offset, arangodb::velocypack::Slice const& slice)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a hex representation of a marker part
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Marker::hexifyPart(char const* offset, size_t length) const {
-  return arangodb::basics::StringUtils::escapeHex(std::string(offset, length), ' ');
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a printable string representation of a marker part
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Marker::stringifyPart(char const* offset, size_t length) const {
-  return arangodb::basics::StringUtils::escapeC(std::string(offset, length));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the marker in binary form
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Marker::stringify() const {
-  auto const* m = reinterpret_cast<TRI_df_marker_t const*>(begin());
-  return std::string("[") + std::string(TRI_NameMarkerDatafile(m)) + 
-         ", size " + std::to_string(size()) + 
-         ", data " + stringifyPart(begin(), size()) + "]";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,7 +91,7 @@ MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
 
 VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
                                          VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_DOCUMENT,
+    : Marker(TRI_DF_MARKER_VPACK_DOCUMENT,
              sizeof(vpack_document_marker_t) + properties.byteSize()) {
   auto* m = reinterpret_cast<vpack_document_marker_t*>(begin());
   m->_transactionId = transactionId;
@@ -139,7 +106,7 @@ VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
 
 VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
                                      VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_REMOVE,
+    : Marker(TRI_DF_MARKER_VPACK_REMOVE,
              sizeof(vpack_remove_marker_t) + properties.byteSize()) {
   auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
   m->_transactionId = transactionId;
@@ -152,88 +119,10 @@ VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-CreateDatabaseMarker::CreateDatabaseMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_CREATE_DATABASE, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-DropDatabaseMarker::DropDatabaseMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_DROP_DATABASE, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-CreateCollectionMarker::CreateCollectionMarker(VPackSlice const& properties) 
-    : Marker(TRI_WAL_MARKER_VPACK_CREATE_COLLECTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-DropCollectionMarker::DropCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_DROP_COLLECTION, properties) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-RenameCollectionMarker::RenameCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_RENAME_COLLECTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-ChangeCollectionMarker::ChangeCollectionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-CreateIndexMarker::CreateIndexMarker(VPackSlice const& properties) 
-    : Marker(TRI_WAL_MARKER_VPACK_CREATE_INDEX, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-DropIndexMarker::DropIndexMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_DROP_INDEX, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-BeginTransactionMarker::BeginTransactionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-CommitTransactionMarker::CommitTransactionMarker(VPackSlice const& properties) 
-    : Marker(TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
-AbortTransactionMarker::AbortTransactionMarker(VPackSlice const& properties)
-    : Marker(TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION, properties) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)
-    : Marker(TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION,
+    : Marker(TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION,
              sizeof(transaction_remote_begin_marker_t)) {
   transaction_remote_begin_marker_t* m =
       reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
@@ -250,7 +139,7 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
 CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)
-    : Marker(TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION,
+    : Marker(TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION,
              sizeof(transaction_remote_commit_marker_t)) {
   transaction_remote_commit_marker_t* m =
       reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
@@ -267,7 +156,7 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
 AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)
-    : Marker(TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION,
+    : Marker(TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION,
              sizeof(transaction_remote_abort_marker_t)) {
   transaction_remote_abort_marker_t* m =
       reinterpret_cast<transaction_remote_abort_marker_t*>(begin());

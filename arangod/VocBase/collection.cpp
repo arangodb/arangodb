@@ -391,10 +391,10 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       ptr += DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
       cm = (TRI_col_header_marker_t*)ptr;
 
-      if (cm->base._type != TRI_COL_MARKER_HEADER) {
+      if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
         LOG(ERR) << "collection header mismatch in file '" << filename
-                 << "', expected TRI_COL_MARKER_HEADER, found "
-                 << cm->base._type;
+                 << "', expected TRI_DF_MARKER_COL_HEADER, found "
+                 << cm->base.getType();
 
         stop = true;
         break;
@@ -1440,12 +1440,12 @@ bool TRI_IterateTicksCollection(char const* const path,
     // no journal found for collection. should not happen normally, but if
     // it does, we need to grab the ticks from the datafiles, too
     return IterateFiles(structure.datafiles, iterator, data);
-  } else {
-    // compactor files don't need to be iterated... they just contain data
-    // copied
-    // from other files, so their tick values will never be any higher
-    return IterateFiles(structure.journals, iterator, data);
-  }
+  } 
+    
+  // compactor files don't need to be iterated... they just contain data
+  // copied
+  // from other files, so their tick values will never be any higher
+  return IterateFiles(structure.journals, iterator, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -159,15 +159,16 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   char const* p = reinterpret_cast<char const*>(marker);
 
   TRI_ASSERT(marker != nullptr);
-
-  switch (marker->_type) {
+  TRI_df_marker_type_t const type = marker->getType();
+  
+  switch (type) {
     case TRI_DF_MARKER_PROLOGUE: {
       auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
       state->resetCollection(m->_databaseId, m->_collectionId);
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
       TRI_voc_tick_t const databaseId = state->lastDatabaseId;
       TRI_voc_cid_t const collectionId = state->lastCollectionId;
       TRI_ASSERT(databaseId > 0);
@@ -190,13 +191,13 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(type));
       state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_REMOVE: {
+    case TRI_DF_MARKER_VPACK_REMOVE: {
       TRI_voc_tick_t const databaseId = state->lastDatabaseId;
       TRI_voc_cid_t const collectionId = state->lastCollectionId;
       TRI_ASSERT(databaseId > 0);
@@ -219,18 +220,18 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(type));
       state->documentOperations[collectionId][slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()] = marker;
       state->operationsCount[collectionId]++;
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
-    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION: {
+    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION: {
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
+    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t const tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
 
@@ -239,7 +240,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION: {
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection is now considered not dropped
@@ -247,7 +248,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: {
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
       // note that the collection was dropped and doesn't need to be collected
@@ -259,7 +260,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_CREATE_DATABASE: {
+    case TRI_DF_MARKER_VPACK_CREATE_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database is now considered not dropped
@@ -267,7 +268,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_DROP_DATABASE: {
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
       // note that the database was dropped and doesn't need to be collected
@@ -289,12 +290,12 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       break;
     }
     
-    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION: {
+    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
+    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION: {
       break;
     }
 
-    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
+    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: {
       transaction_remote_abort_marker_t const* m =
           reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
       // note which abort markers we found
@@ -682,11 +683,13 @@ void CollectorThread::processCollectionMarker(
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(marker != nullptr);
 
-  if (walMarker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+  TRI_df_marker_type_t const type = walMarker->getType();
+
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
@@ -700,11 +703,6 @@ void CollectorThread::processCollectionMarker(
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     } else {
-      // update size info
-      document->_masterPointers.adjustTotalSize(
-          DatafileHelper::AlignedSize<int64_t>(walMarker->_size),
-          DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize));
-
       // we can safely update the master pointer's dataptr value
       found->setDataPtr(
           static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
@@ -713,12 +711,12 @@ void CollectorThread::processCollectionMarker(
       dfi.numberAlive++;
       dfi.sizeAlive += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     }
-  } else if (walMarker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
+  } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     auto& dfi = createDfi(cache, fid);
     dfi.numberUncollected--;
     dfi.numberDeletions++;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+    VPackSlice slice(reinterpret_cast<char const*>(walMarker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
     TRI_voc_rid_t revisionId = arangodb::basics::VelocyPackHelper::stringUInt64(slice.get(TRI_VOC_ATTRIBUTE_REV));
@@ -907,7 +905,7 @@ int CollectorThread::collect(Logfile* logfile) {
       // sort vector by marker tick
       std::sort(sortedOperations.begin(), sortedOperations.end(),
                 [](TRI_df_marker_t const* left, TRI_df_marker_t const* right) {
-                  return (left->_tick < right->_tick);
+                  return (left->getTick() < right->getTick());
                 });
     }
 
@@ -1033,8 +1031,9 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
     TRI_df_marker_t const* source = (*it2);
+    TRI_voc_tick_t const tick = source->getTick();
 
-    if (source->_tick <= minTransferTick) {
+    if (tick <= minTransferTick) {
       // we have already transferred this marker in a previous run, nothing to
       // do
       continue;
@@ -1047,12 +1046,13 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
       }
     }
 
-    if (source->_type == TRI_WAL_MARKER_VPACK_DOCUMENT ||
-        source->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
-      char const* base = reinterpret_cast<char const*>(source);
-      char* dst = nextFreeMarkerPosition(document, source->_tick,
-                                          TRI_DOC_MARKER_KEY_DOCUMENT,
-                                          source->_size, cache);
+    TRI_df_marker_type_t const type = source->getType();
+
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+        type == TRI_DF_MARKER_VPACK_REMOVE) {
+      TRI_voc_size_t const size = source->getSize();
+
+      char* dst = nextFreeMarkerPosition(document, tick, type, size, cache);
 
       if (dst == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1061,9 +1061,9 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
       auto& dfi = getDfi(cache, cache->lastFid);
       dfi.numberUncollected++;
 
-      memcpy(dst, source, source->_size);
+      memcpy(dst, source, size);
 
-      finishMarker(base, dst, document, source->_tick, cache);
+      finishMarker(reinterpret_cast<char const*>(source), dst, document, tick, cache);
     }
   }
 
@@ -1216,7 +1216,7 @@ int CollectorThread::syncDatafileCollection(
 
 char* CollectorThread::nextFreeMarkerPosition(
     TRI_document_collection_t* document, TRI_voc_tick_t tick,
-    TRI_df_marker_type_e type, TRI_voc_size_t size, CollectorCache* cache) {
+    TRI_df_marker_type_t type, TRI_voc_size_t size, CollectorCache* cache) {
   TRI_collection_t* collection = document;
   size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
 
@@ -1298,7 +1298,7 @@ leave:
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   if (dst != nullptr) {
-    initMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
+    DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
 
     TRI_ASSERT(datafile != nullptr);
 
@@ -1329,21 +1329,6 @@ leave:
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a marker
-////////////////////////////////////////////////////////////////////////////////
-
-void CollectorThread::initMarker(TRI_df_marker_t* marker,
-                                 TRI_df_marker_type_e type,
-                                 TRI_voc_size_t size) {
-  TRI_ASSERT(marker != nullptr);
-
-  marker->_size = size;
-  marker->_type = static_cast<TRI_df_marker_type_t>(type);
-  marker->_crc = 0;
-  marker->_tick = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the tick of a marker and calculate its CRC value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1364,5 +1349,6 @@ void CollectorThread::finishMarker(char const* walPosition,
   document->_tickMax = tick;
 
   cache->operations->emplace_back(CollectorOperation(
-      datafilePosition, marker->_size, walPosition, cache->lastFid));
+      datafilePosition, marker->getSize(), walPosition, cache->lastFid));
 }
+

@@ -99,7 +99,8 @@ class DocumentAccessor {
 
 static inline std::string TRI_EXTRACT_MARKER_KEY(
     arangodb::Transaction* trx, TRI_df_marker_t const* marker) {
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+#if 0
+  if (marker->_type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
     VPackSlice slice(reinterpret_cast<uint8_t const*>(b));
@@ -110,7 +111,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
   // invalid marker type
   TRI_ASSERT(false);
 #endif
-
+#endif
   return "";
 }
 
@@ -130,6 +131,7 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(arangodb::Transaction* trx,
 
 static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
     arangodb::Transaction*, TRI_df_marker_t const* marker) {
+#if 0
   if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
     auto b = reinterpret_cast<char const*>(marker) +
              sizeof(arangodb::wal::vpack_document_marker_t);
@@ -142,7 +144,7 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
   // invalid marker type
   TRI_ASSERT(false);
 #endif
-
+#endif
   return 0;
 }
 

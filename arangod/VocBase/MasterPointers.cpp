@@ -59,8 +59,6 @@ static inline size_t GetBlockSize(size_t blockNumber) {
 MasterPointers::MasterPointers()
     : _freelist(nullptr),
       _nrAllocated(0),
-      _nrLinked(0),
-      _totalSize(0),
       _blocks() {
   _blocks.reserve(16);
 }
@@ -84,109 +82,11 @@ uint64_t MasterPointers::memory() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moves an existing header to the end of the list
-/// this is called when there is an update operation on a document
-////////////////////////////////////////////////////////////////////////////////
-
-void MasterPointers::moveBack(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
-  if (header == nullptr) {
-    return;
-  }
-
-  TRI_ASSERT(_nrAllocated > 0);
-  TRI_ASSERT(_nrLinked > 0);
-  TRI_ASSERT(_totalSize > 0);
-
-  // we have at least one element in the list
-  TRI_ASSERT(old != nullptr);
-  TRI_ASSERT(old->getDataPtr() !=
-             nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
-
-  int64_t newSize = static_cast<int64_t>(header->getMarkerPtr()->_size);  
-  int64_t oldSize = static_cast<int64_t>(old->getMarkerPtr()->_size);
-
-  // we must adjust the size of the collection
-  _totalSize += (DatafileHelper::AlignedSize<int64_t>(newSize) - DatafileHelper::AlignedSize<int64_t>(oldSize));
-
-  TRI_ASSERT(_totalSize > 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moves a header around in the list, using its previous position
-/// (specified in "old"), note that this is only used in revert operations
-////////////////////////////////////////////////////////////////////////////////
-
-void MasterPointers::move(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
-  if (header == nullptr) {
-    return;
-  }
-
-  TRI_ASSERT(_nrAllocated > 0);
-  TRI_ASSERT(header->getDataPtr() != nullptr);
-  TRI_ASSERT(header->getMarkerPtr()->_size > 0);
-  TRI_ASSERT(old != nullptr);
-  TRI_ASSERT(old->getDataPtr() != nullptr);
-
-  int64_t newSize = static_cast<int64_t>(header->getMarkerPtr()->_size);
-  int64_t oldSize = static_cast<int64_t>(old->getMarkerPtr()->_size);
-
-  // Please note the following: This operation is only used to revert an
-  // update operation. The "new" document is removed again and the "old"
-  // one is used once more. Therefore, the signs in the following statement
-  // are actually OK:
-  _totalSize -= (DatafileHelper::AlignedSize<int64_t>(newSize) - DatafileHelper::AlignedSize<int64_t>(oldSize));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks a header from the linked list, without freeing it
-////////////////////////////////////////////////////////////////////////////////
-
-void MasterPointers::unlink(TRI_doc_mptr_t* header) {
-  TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() != nullptr); 
-
-  int64_t size = static_cast<int64_t>(header->getMarkerPtr()->_size);
-  TRI_ASSERT(size > 0);
-
-  TRI_ASSERT(_nrLinked > 0);
-  _nrLinked--;
-  _totalSize -= DatafileHelper::AlignedSize<int64_t>(size);
-
-  if (_nrLinked == 0) {
-    TRI_ASSERT(_totalSize == 0);
-  } else {
-    TRI_ASSERT(_totalSize > 0);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moves a header back into the list, using its previous position
-/// (specified in "old")
-////////////////////////////////////////////////////////////////////////////////
-
-void MasterPointers::relink(TRI_doc_mptr_t* header, TRI_doc_mptr_t const* old) {
-  if (header == nullptr) {
-    return;
-  }
-
-  TRI_ASSERT(header->getDataPtr() != nullptr);
-  int64_t size = static_cast<int64_t>(header->getMarkerPtr()->_size);
-  TRI_ASSERT(size > 0);
-
-  this->move(header, old);
-  _nrLinked++;
-  _totalSize += DatafileHelper::AlignedSize<int64_t>(size);
-  TRI_ASSERT(_totalSize > 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief requests a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* MasterPointers::request(size_t size) {
+TRI_doc_mptr_t* MasterPointers::request() {
   TRI_doc_mptr_t* header;
-
-  TRI_ASSERT(size > 0);
 
   if (_freelist == nullptr) {
     size_t blockSize = GetBlockSize(_blocks.size());
@@ -226,13 +126,10 @@ TRI_doc_mptr_t* MasterPointers::request(size_t size) {
   TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(_freelist);
   TRI_ASSERT(result != nullptr);
 
-  _freelist = static_cast<TRI_doc_mptr_t const*>(
-      result->getDataPtr());    // ONLY IN HEADERS, PROTECTED by RUNTIME
+  _freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr());    
   result->setDataPtr(nullptr);  // ONLY IN HEADERS
 
   _nrAllocated++;
-  _nrLinked++;
-  _totalSize += DatafileHelper::AlignedSize<int64_t>(size);
 
   return result;
 }
@@ -241,13 +138,9 @@ TRI_doc_mptr_t* MasterPointers::request(size_t size) {
 /// @brief releases a header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-void MasterPointers::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
+void MasterPointers::release(TRI_doc_mptr_t* header) {
   if (header == nullptr) {
     return;
-  }
-
-  if (unlinkHeader) {
-    this->unlink(header);
   }
 
   header->clear();
@@ -271,16 +164,5 @@ void MasterPointers::release(TRI_doc_mptr_t* header, bool unlinkHeader) {
 
     _freelist = nullptr;
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjust the total size of the markers handed out
-/// this is called by the collector
-////////////////////////////////////////////////////////////////////////////////
-
-void MasterPointers::adjustTotalSize(int64_t oldSize, int64_t newSize) {
-  // oldSize = size of marker in WAL
-  // newSize = size of marker in datafile
-  _totalSize -= (DatafileHelper::AlignedSize<int64_t>(oldSize) - DatafileHelper::AlignedSize<int64_t>(newSize));
 }
 

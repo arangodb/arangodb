@@ -170,8 +170,7 @@ char* Logfile::reserve(size_t size) {
 
 TRI_df_header_marker_t Logfile::getHeaderMarker() const {
   TRI_df_header_marker_t header;
-  size_t const size = sizeof(TRI_df_header_marker_t);
-  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER, size);
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&header), TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
 
   header._version = TRI_DF_VERSION;
   header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
@@ -186,8 +185,7 @@ TRI_df_header_marker_t Logfile::getHeaderMarker() const {
 
 TRI_df_prologue_marker_t Logfile::getPrologueMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) const {
   TRI_df_prologue_marker_t header;
-  size_t const size = sizeof(TRI_df_prologue_marker_t);
-  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_PROLOGUE, size);
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&header), TRI_DF_MARKER_PROLOGUE, sizeof(TRI_df_prologue_marker_t));
 
   header._databaseId = databaseId;
   header._collectionId = collectionId;
@@ -201,8 +199,7 @@ TRI_df_prologue_marker_t Logfile::getPrologueMarker(TRI_voc_tick_t databaseId, T
 
 TRI_df_footer_marker_t Logfile::getFooterMarker() const {
   TRI_df_footer_marker_t footer;
-  size_t const size = sizeof(TRI_df_footer_marker_t);
-  TRI_InitMarkerDatafile((char*)&footer, TRI_DF_MARKER_FOOTER, size);
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&footer), TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
 
   return footer;
 }

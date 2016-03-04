@@ -405,8 +405,8 @@ void Slots::returnSyncRegion(SyncRegion const& region) {
       // update the data tick
       TRI_df_marker_t const* m =
           static_cast<TRI_df_marker_t const*>(slot->mem());
-      if (m->_type != TRI_DF_MARKER_HEADER &&
-          m->_type != TRI_DF_MARKER_FOOTER) {
+      if (m->getType() != TRI_DF_MARKER_HEADER &&
+          m->getType() != TRI_DF_MARKER_FOOTER) {
         _lastCommittedDataTick = tick;
       }
 
@@ -589,7 +589,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
 
 int Slots::writeHeader(Slot* slot) {
   TRI_df_header_marker_t header = _logfile->getHeaderMarker();
-  size_t const size = header.base._size;
+  size_t const size = header.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
@@ -611,7 +611,7 @@ int Slots::writeHeader(Slot* slot) {
 
 int Slots::writePrologue(Slot* slot, void* mem, TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_df_prologue_marker_t header = _logfile->getPrologueMarker(databaseId, collectionId);
-  size_t const size = header.base._size;
+  size_t const size = header.base.getSize();
 
   TRI_ASSERT(mem != nullptr);
 
@@ -630,7 +630,7 @@ int Slots::writeFooter(Slot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
   TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
-  size_t const size = footer.base._size;
+  size_t const size = footer.base.getSize();
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);

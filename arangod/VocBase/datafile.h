@@ -113,96 +113,50 @@ enum TRI_df_state_e {
 /// @brief type of the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-enum TRI_df_marker_type_e {
-  TRI_MARKER_MIN = 999,  // not a real marker type,
-                         // but used for bounds checking
+enum TRI_df_marker_type_t : uint8_t {
+  TRI_DF_MARKER_MIN = 9,  // not a real marker type,
+                          // but used for bounds checking
 
-  TRI_DF_MARKER_HEADER = 1000,
-  TRI_DF_MARKER_FOOTER = 1001,
-  TRI_DF_MARKER_PROLOGUE = 1002,
-
-  TRI_DF_MARKER_BLANK = 1100,
-
-  TRI_COL_MARKER_HEADER = 2000,
+  TRI_DF_MARKER_HEADER = 10,
+  TRI_DF_MARKER_FOOTER = 11,
+  TRI_DF_MARKER_BLANK = 12,
   
-  TRI_DOC_MARKER_KEY_DOCUMENT = 3007,  // new marker with key values
-  TRI_DOC_MARKER_KEY_EDGE = 3008,      // new marker with key values
+  TRI_DF_MARKER_COL_HEADER = 20,
+  TRI_DF_MARKER_PROLOGUE = 25,
 
-  TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION = 4023,
-  TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION = 4024,
-  TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION = 4025,
+  TRI_DF_MARKER_VPACK_DOCUMENT = 30,
+  TRI_DF_MARKER_VPACK_REMOVE = 31,
 
-  TRI_WAL_MARKER_VPACK_DOCUMENT = 5000,
-  TRI_WAL_MARKER_VPACK_REMOVE = 5001,
-  TRI_WAL_MARKER_VPACK_CREATE_COLLECTION = 5010,
-  TRI_WAL_MARKER_VPACK_DROP_COLLECTION = 5011,
-  TRI_WAL_MARKER_VPACK_RENAME_COLLECTION = 5012,
-  TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION = 5013,
-  TRI_WAL_MARKER_VPACK_CREATE_INDEX = 5020,
-  TRI_WAL_MARKER_VPACK_DROP_INDEX = 5021,
-  TRI_WAL_MARKER_VPACK_CREATE_DATABASE = 5030,
-  TRI_WAL_MARKER_VPACK_DROP_DATABASE = 5031,
-  TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION = 5040,
-  TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION = 5041,
-  TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION = 5042,
+  TRI_DF_MARKER_VPACK_CREATE_COLLECTION = 40,
+  TRI_DF_MARKER_VPACK_DROP_COLLECTION = 41,
+  TRI_DF_MARKER_VPACK_RENAME_COLLECTION = 42,
+  TRI_DF_MARKER_VPACK_CHANGE_COLLECTION = 43,
+  TRI_DF_MARKER_VPACK_CREATE_INDEX = 50,
+  TRI_DF_MARKER_VPACK_DROP_INDEX = 51,
+  TRI_DF_MARKER_VPACK_CREATE_DATABASE = 60,
+  TRI_DF_MARKER_VPACK_DROP_DATABASE = 61,
+  TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION = 70,
+  TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION = 71,
+  TRI_DF_MARKER_VPACK_ABORT_TRANSACTION = 72,
 
-  TRI_MARKER_MAX  // again, this is not a real
-                  // marker, but we use it for
-                  // bounds checking
+  // deprecated
+  TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION = 200,
+  TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION = 201,
+  TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION = 202,
+
+  TRI_DOC_MARKER_KEY_DOCUMENT = 210,  // new marker with key values
+  TRI_DOC_MARKER_KEY_EDGE = 211,      // new marker with key values
+
+  TRI_DF_MARKER_MAX  // again, this is not a real
+                     // marker, but we use it for
+                     // bounds checking
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief storage type of the marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint32_t TRI_df_marker_type_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef uint32_t TRI_df_version_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scan result
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_df_scan_t {
-  TRI_voc_size_t _currentSize;
-  TRI_voc_size_t _maximalSize;
-  TRI_voc_size_t _endPosition;
-  TRI_voc_size_t _numberMarkers;
-
-  TRI_vector_t _entries;
-
-  uint32_t _status;
-  bool _isSealed;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scan result entry
-///
-/// status:
-///   1 - entry ok
-///   2 - empty entry
-///   3 - empty size
-///   4 - size too small
-///   5 - CRC failed
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_df_scan_entry_t {
-  TRI_voc_size_t _position;
-  TRI_voc_size_t _size;
-  TRI_voc_size_t _realSize;
-  TRI_voc_tick_t _tick;
-
-  TRI_df_marker_type_t _type;
-
-  uint32_t _status;
-  char* _diagnosis;
-  char* _key;
-  char const* _typeName;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile
@@ -296,14 +250,43 @@ struct TRI_datafile_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_df_marker_t {
-  TRI_voc_size_t _size;  // 4 bytes, must be supplied
-  TRI_voc_crc_t _crc;    // 4 bytes, will be generated
-  TRI_df_marker_type_t _type;  // 4 bytes, must be supplied
+ private:
+  TRI_voc_size_t _size;  // 4 bytes
+  TRI_voc_crc_t _crc;    // 4 bytes, generated
+  uint64_t _typeAndTick; // 8 bytes
+
+ public:
+  inline off_t offsetOfSize() const {
+    return offsetof(TRI_df_marker_t, _size);
+  }
+  inline off_t offsetOfCrc() const {
+    return offsetof(TRI_df_marker_t, _crc);
+  }
+  inline off_t offsetOfTypeAndTick() const {
+    return offsetof(TRI_df_marker_t, _typeAndTick);
+  }
+  inline TRI_voc_size_t getSize() const { return _size; }
+  inline void setSize(TRI_voc_size_t size) { _size = size; }
   
-#ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
-#endif
-  TRI_voc_tick_t _tick;  // 8 bytes, will be generated
+  inline TRI_voc_crc_t getCrc() const { return _crc; }
+  inline void setCrc(TRI_voc_crc_t crc) { _crc = crc; }
+
+  inline TRI_voc_tick_t getTick() const { 
+    return static_cast<TRI_voc_tick_t>(_typeAndTick & 0x00ffffffffffffffULL); 
+  }
+  inline void setTick(TRI_voc_tick_t tick) { 
+    _typeAndTick &= 0xff00000000000000ULL; 
+    _typeAndTick |= tick;
+  }
+
+  inline TRI_df_marker_type_t getType() const { 
+    return static_cast<TRI_df_marker_type_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
+  }
+  inline void setType(TRI_df_marker_type_t type) { 
+    uint64_t t = static_cast<uint64_t>(type) << 56;
+    _typeAndTick &= 0x00ffffffffffffffULL; 
+    _typeAndTick |= t;
+  } 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,7 +320,7 @@ struct TRI_df_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_df_header_marker_t {
-  TRI_df_marker_t base;  // 24 bytes
+  TRI_df_marker_t base;  // 16 bytes
 
   TRI_df_version_t _version;    //  4 bytes
   TRI_voc_size_t _maximalSize;  //  4 bytes
@@ -349,7 +332,7 @@ struct TRI_df_header_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_df_prologue_marker_t {
-  TRI_df_marker_t base;  // 24 bytes
+  TRI_df_marker_t base;  // 16 bytes
 
   TRI_voc_tick_t _databaseId; // 8 bytes
   TRI_voc_cid_t _collectionId; // 8 bytes
@@ -382,7 +365,7 @@ struct TRI_df_prologue_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_df_footer_marker_t {
-  TRI_df_marker_t base;  // 24 bytes
+  TRI_df_marker_t base;  // 16 bytes
 
   TRI_voc_size_t _maximalSize;  //  4 bytes
   TRI_voc_size_t _totalSize;    //  4 bytes
@@ -393,55 +376,10 @@ struct TRI_df_footer_marker_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_col_header_marker_t {
-  TRI_df_marker_t base;  // 24 bytes
-
-  TRI_col_type_t _type;  //  4 bytes
-
-#ifdef TRI_PADDING_32
-  char _padding_col_header_marker[4];
-#endif
+  TRI_df_marker_t base;  // 16 bytes
 
   TRI_voc_cid_t _cid;  //  8 bytes
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile marker with key
-/// TODO: remove
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_doc_document_key_marker_t {
-  TRI_df_marker_t base;
-
-  TRI_voc_rid_t _rid;  // this is the tick for a create and update
-  TRI_voc_tid_t _tid;
-
-//  TRI_shape_sid_t _shape;
-
-  uint16_t _offsetKey;
-  uint16_t _offsetJson;
-
-#ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
-#endif
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge datafile marker with key
-/// TODO: remove
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_doc_edge_key_marker_t {
-  TRI_doc_document_key_marker_t base;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_cid_t _fromCid;
-
-  uint16_t _offsetToKey;
-  uint16_t _offsetFromKey;
-
-#ifdef TRI_PADDING_32
-  char _padding_df_marker[4];
-#endif
+  TRI_col_type_t _type;  //  4 bytes
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,12 +409,6 @@ void TRI_FreeDatafile(TRI_datafile_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_NameMarkerDatafile(TRI_df_marker_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a marker with the most basic information
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitMarkerDatafile(char*, TRI_df_marker_type_e, TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a marker is valid
@@ -562,15 +494,62 @@ int TRI_TruncateDatafile(char const* path, TRI_voc_size_t position);
 bool TRI_TryRepairDatafile(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief scan result entry
+///
+/// status:
+///   1 - entry ok
+///   2 - empty entry
+///   3 - empty size
+///   4 - size too small
+///   5 - CRC failed
+////////////////////////////////////////////////////////////////////////////////
+
+struct DatafileScanEntry {
+  DatafileScanEntry() 
+      : position(0), size(0), realSize(0), tick(0), type(TRI_DF_MARKER_MIN), 
+        status(0), typeName(nullptr) {}
+  
+  ~DatafileScanEntry() = default;
+
+  TRI_voc_size_t position;
+  TRI_voc_size_t size;
+  TRI_voc_size_t realSize;
+  TRI_voc_tick_t tick;
+
+  TRI_df_marker_type_t type;
+  uint32_t status;
+
+  char const* typeName;
+  std::string key;
+  std::string diagnosis;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scan result
+////////////////////////////////////////////////////////////////////////////////
+
+struct DatafileScan {
+  DatafileScan() 
+      : currentSize(0), maximalSize(0), endPosition(0), numberMarkers(0),
+        status(1), isSealed(false) {
+    entries.reserve(2048);
+  }
+
+  TRI_voc_size_t currentSize;
+  TRI_voc_size_t maximalSize;
+  TRI_voc_size_t endPosition;
+  TRI_voc_size_t numberMarkers;
+
+  std::vector<DatafileScanEntry> entries;
+
+  uint32_t status;
+  bool isSealed;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafile, only called by arango-dfdd
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_df_scan_t TRI_ScanDatafile(char const* path);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys information about the datafile
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyDatafileScan(TRI_df_scan_t* scan);
+DatafileScan TRI_ScanDatafile(char const* path);
 
 #endif

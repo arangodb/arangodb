@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/associative.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"

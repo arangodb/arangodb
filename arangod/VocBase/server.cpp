@@ -895,7 +895,7 @@ static int WriteCreateMarker(VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::CreateDatabaseMarker marker(slice);
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, slice);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -934,7 +934,7 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
     builder.close();
     builder.close();
 
-    arangodb::wal::DropDatabaseMarker marker(builder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,

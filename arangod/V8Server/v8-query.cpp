@@ -1030,102 +1030,6 @@ static void JS_ByExampleSkiplist(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper struct used when calculting checksums
-////////////////////////////////////////////////////////////////////////////////
-
-struct collection_checksum_t {
-  explicit collection_checksum_t(CollectionNameResolver const* resolver)
-      : _resolver(resolver), _checksum(0) {}
-
-  CollectionNameResolver const* _resolver;
-  TRI_string_buffer_t _buffer;
-  uint32_t _checksum;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback for checksum calculation, WR = with _rid, WD = with data
-////////////////////////////////////////////////////////////////////////////////
-
-template <bool WR, bool WD>
-static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
-                               TRI_document_collection_t* document,
-                               void* data) {
-  // This callback is only called in TRI_DocumentIteratorDocumentCollection
-  // and there we have an ongoing transaction. Therefore all master pointer
-  // and data pointer accesses here are safe!
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-      mptr->getDataPtr());  // PROTECTED by trx in calling function
-                            // TRI_DocumentIteratorDocumentCollection
-  collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
-  uint32_t localCrc;
-
-  // TODO vpack
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    TRI_voc_rid_t rid = 0;
-    if (WR) {
-      rid = mptr->revisionId();
-    }
-
-    localCrc = TRI_Crc32HashString(
-        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
-    // TRI_DocumentIteratorDocumentCollection
-    if (WR) {
-      localCrc += TRI_Crc32HashPointer(&rid, sizeof(TRI_voc_rid_t));
-    }
-  } else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    // must convert _rid, _fromCid, _toCid into strings for portability
-    TRI_voc_rid_t rid = 0;
-    if (WR) {
-      rid = mptr->revisionId();
-    }
-
-    localCrc = TRI_Crc32HashString(
-        TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function
-    // TRI_DocumentIteratorDocumentCollection
-    if (WR) {
-      localCrc += TRI_Crc32HashPointer(&rid, sizeof(TRI_voc_rid_t));
-    }
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* e =
-          reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-      std::string const extra =
-          helper->_resolver->getCollectionNameCluster(e->_toCid) +
-          TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          std::string(((char*)marker) + e->_offsetToKey) +
-          helper->_resolver->getCollectionNameCluster(e->_fromCid) +
-          TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          std::string(((char*)marker) + e->_offsetFromKey);
-
-      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
-    }
-  } else {
-    return true;
-  }
-
-  if (WD) {
-    // with data
-    void const* d = static_cast<void const*>(marker);
-
-    TRI_shaped_json_t shaped;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
-
-    TRI_StringifyArrayShapedJson(
-        document->getShaper(), &helper->_buffer, &shaped,
-        false);  // PROTECTED by trx in calling function
-                 // TRI_DocumentIteratorDocumentCollection
-    localCrc += TRI_Crc32HashPointer(TRI_BeginStringBuffer(&helper->_buffer),
-                                     TRI_LengthStringBuffer(&helper->_buffer));
-    TRI_ResetStringBuffer(&helper->_buffer);
-  }
-
-  helper->_checksum += localCrc;
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionChecksum
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1167,54 +1071,40 @@ static void JS_ChecksumCollection(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_document_collection_t* document = trx.documentCollection();
-
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-
-  collection_checksum_t helper(trx.resolver());
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  trx.lockRead();
+  
   // get last tick
-  std::string const rid = StringUtils::itoa(document->_info.revision());
+  TRI_document_collection_t* document = trx.documentCollection();
+  std::string const revisionId = std::to_string(document->_info.revision());
+  uint64_t hash = 0;
 
-  if (withData) {
-    TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
+  trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
+    VPackSlice const slice(mptr->vpack());
+
+    uint64_t localHash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
 
     if (withRevisions) {
-      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper,
-                                             &ChecksumCalculator<true, true>);
-    } else {
-      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper,
-                                             &ChecksumCalculator<false, true>);
+      localHash += slice.get(TRI_VOC_ATTRIBUTE_REV).hash();
     }
 
-    TRI_DestroyStringBuffer(&helper._buffer);
-  } else {
-    if (withRevisions) {
-      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper,
-                                             &ChecksumCalculator<true, false>);
-    } else {
-      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper,
-                                             &ChecksumCalculator<false, false>);
+    if (withData) {
+      // with data
+      localHash += slice.hash(); 
     }
-  }
+
+    hash ^= localHash;
+    return true;
+  });
 
   trx.finish(res);
 
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
+  std::string const hashString = std::to_string(hash);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("checksum"),
-              v8::Number::New(isolate, helper._checksum));
-  result->Set(TRI_V8_ASCII_STRING("revision"), TRI_V8_STD_STRING(rid));
+  result->Set(TRI_V8_ASCII_STRING("checksum"), TRI_V8_STD_STRING(hashString));
+  result->Set(TRI_V8_ASCII_STRING("revision"), TRI_V8_STD_STRING(revisionId));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

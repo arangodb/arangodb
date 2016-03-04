@@ -134,7 +134,7 @@ struct TRI_doc_mptr_t {
 
   // return a pointer to the beginning of the vpack  
   inline uint8_t const* vpack() const { 
-    return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT);
+    return reinterpret_cast<uint8_t const*>(_dataptr) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
   }
   
   // whether or not the master pointer points into the WAL
@@ -355,21 +355,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
                                              arangodb::velocypack::Slice const& newValue,
                                              bool mergeObjects, bool keepNull);
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all documents in the collection, using a user-defined
-/// callback function. Returns the total number of documents in the collection
-///
-/// The user can abort the iteration by return "false" from the callback
-/// function.
-///
-/// Note: the function will not acquire any locks. It is the task of the caller
-/// to ensure the collection is properly locked
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_DocumentIteratorDocumentCollection(
-    arangodb::Transaction*, TRI_document_collection_t*, void*,
-    bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the journal files and the parameter file

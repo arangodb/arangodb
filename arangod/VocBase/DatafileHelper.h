@@ -45,7 +45,7 @@ static inline T AlignedSize(T value) {
 
 template <typename T>
 static inline T AlignedMarkerSize(TRI_df_marker_t const* marker) {
-  size_t value = marker->_size;
+  size_t value = marker->getSize();
   return static_cast<T>((value + 7) - ((value + 7) & 7));
 }
 
@@ -83,14 +83,37 @@ static inline void StoreNumber(uint8_t* dest, T value, uint32_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t VPackOffset(TRI_df_marker_type_t type) {
-  auto t = static_cast<TRI_df_marker_type_e>(type);
-
-  if (t == TRI_WAL_MARKER_VPACK_DOCUMENT ||
-      t == TRI_WAL_MARKER_VPACK_REMOVE) {
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+      type == TRI_DF_MARKER_VPACK_REMOVE) {
     return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t);
   }
   TRI_ASSERT(false);
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void InitMarker(TRI_df_marker_t* marker, 
+                   TRI_df_marker_type_t type, uint32_t size, TRI_voc_tick_t tick) {
+  TRI_ASSERT(marker != nullptr);
+  TRI_ASSERT(type > TRI_DF_MARKER_MIN && type < TRI_DF_MARKER_MAX);
+  TRI_ASSERT(size > 0);
+
+  marker->setSize(size);
+  marker->setType(type);
+  marker->setCrc(0);
+  marker->setTick(tick);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void InitMarker(TRI_df_marker_t* marker, 
+                              TRI_df_marker_type_t type, uint32_t size) {
+  InitMarker(marker, type, size, 0);
 }
 
 }

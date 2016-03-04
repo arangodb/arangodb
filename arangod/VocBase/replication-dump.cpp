@@ -293,11 +293,11 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     return TRI_ERROR_INTERNAL;
   }
 
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::vpack_document_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_DOCUMENT;
@@ -307,10 +307,10 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_REMOVE: {
+    case TRI_DF_MARKER_VPACK_REMOVE: {
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::vpack_remove_marker_t const*>(marker);
-      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+      VPackSlice slice(reinterpret_cast<char const*>(m) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
       key = slice.get(TRI_VOC_ATTRIBUTE_KEY).getString(keyLength);
       rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
       type = REPLICATION_MARKER_REMOVE;
@@ -326,7 +326,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
 
   if (withTicks) {
     APPEND_STRING(buffer, "{\"tick\":\"");
-    APPEND_UINT64(buffer, (uint64_t)marker->_tick);
+    APPEND_UINT64(buffer, (uint64_t)marker->getTick());
     APPEND_STRING(buffer, "\",\"type\":");
   } else {
     APPEND_STRING(buffer, "{\"type\":");
@@ -350,6 +350,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     APPEND_UINT64(buffer, (uint64_t)rid);
     APPEND_CHAR(buffer, '"');
 
+#if 0
     // Is it an edge marker?
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_voc_key_t fromKey;
@@ -365,7 +366,6 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
         fromCid = e->_fromCid;
         toCid = e->_toCid;
       }
-
       int res;
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
       res = AppendCollection(dump, fromCid, translateCollectionIds,
@@ -389,6 +389,7 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
       APPEND_STRING(buffer, toKey);
       APPEND_CHAR(buffer, '"');
     }
+#endif
 
 #if 0
     // the actual document data
@@ -437,7 +438,7 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
   }
 #endif  
   
-  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
+  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)));
 
   APPEND_STRING(dump->_buffer, "\"tid\":\"");
   APPEND_UINT64(dump->_buffer, m->_transactionId);
@@ -478,7 +479,7 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_transactionId);
   APPEND_STRING(dump->_buffer, "\",\"key\":\"");
   
-  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT)));
+  VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)));
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
 
@@ -495,17 +496,18 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
-  return (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT ||
-          marker->_type == TRI_WAL_MARKER_VPACK_REMOVE ||
-          marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_CREATE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_DROP_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_RENAME_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_CREATE_INDEX ||
-          marker->_type == TRI_WAL_MARKER_VPACK_DROP_INDEX);
+  TRI_df_marker_type_t type = marker->getType();
+  return (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+          type == TRI_DF_MARKER_VPACK_REMOVE ||
+          type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+          type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+          type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION ||
+          type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+          type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+          type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+          type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+          type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+          type == TRI_DF_MARKER_VPACK_DROP_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,9 +515,10 @@ static inline bool MustReplicateWalMarkerType(TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
-  return (marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION);
+  TRI_df_marker_type_t type = marker->getType();
+  return (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+          type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+          type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -524,28 +527,28 @@ static inline bool IsTransactionWalMarkerType(TRI_df_marker_t const* marker) {
 
 static TRI_replication_operation_e TranslateType(
     TRI_df_marker_t const* marker) {
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_VPACK_DOCUMENT:
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT:
       return REPLICATION_MARKER_DOCUMENT;
-    case TRI_WAL_MARKER_VPACK_REMOVE:
+    case TRI_DF_MARKER_VPACK_REMOVE:
       return REPLICATION_MARKER_REMOVE;
-    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
       return REPLICATION_TRANSACTION_START;
-    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
       return REPLICATION_TRANSACTION_COMMIT;
-    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
       return REPLICATION_TRANSACTION_ABORT;
-    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
       return REPLICATION_COLLECTION_CREATE;
-    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
       return REPLICATION_COLLECTION_DROP;
-    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
+    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
       return REPLICATION_COLLECTION_RENAME;
-    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       return REPLICATION_COLLECTION_CHANGE;
-    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_CREATE_INDEX:
       return REPLICATION_INDEX_CREATE;
-    case TRI_WAL_MARKER_VPACK_DROP_INDEX:
+    case TRI_DF_MARKER_VPACK_DROP_INDEX:
       return REPLICATION_INDEX_DROP;
 
     default:
@@ -562,7 +565,7 @@ static int StringifyWalMarker(TRI_replication_dump_t* dump,
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
   APPEND_STRING(dump->_buffer, "{\"tick\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)marker->_tick);
+  APPEND_UINT64(dump->_buffer, (uint64_t)marker->getTick());
   APPEND_STRING(dump->_buffer, "\",\"type\":");
   APPEND_UINT64(dump->_buffer, (uint64_t)TranslateType(marker));
   APPEND_STRING(dump->_buffer, ",\"data\":");
@@ -571,37 +574,38 @@ static int StringifyWalMarker(TRI_replication_dump_t* dump,
 
   int res = TRI_ERROR_INTERNAL;
 
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_VPACK_DOCUMENT: {
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
       res = StringifyWalMarkerDocument(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_REMOVE: {
+    case TRI_DF_MARKER_VPACK_REMOVE: {
       res = StringifyWalMarkerRemove(dump, marker);
       break;
     }
 
-    case TRI_WAL_MARKER_VPACK_CREATE_DATABASE: 
-    case TRI_WAL_MARKER_VPACK_DROP_DATABASE: 
-    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION: 
-    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION: 
-    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION: 
-    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION: 
-    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
-    case TRI_WAL_MARKER_VPACK_DROP_INDEX: 
-    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
-    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
-    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
+    case TRI_DF_MARKER_VPACK_CREATE_DATABASE: 
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE: 
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
+    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
       arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
       VPackDumper dumper(&adapter); // TODO: need CustomTypeHandler here!
       dumper.dump(VPackSlice(p + sizeof(TRI_df_marker_t)));
       break;
     }
 
-    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
-    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
+    case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
+    case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION:
+    case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION: 
+    default: {
       TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;
     }
@@ -620,6 +624,7 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
 
   char const* p = reinterpret_cast<char const*>(marker);
 
+  // TODO: Fix this
   VPackSlice const slice(p + sizeof(TRI_df_marker_t));
   if (!slice.isObject()) {
     return 0;
@@ -639,14 +644,15 @@ static TRI_voc_tick_t GetDatabaseFromWalMarker(TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_cid_t GetCollectionFromWalMarker(TRI_df_marker_t const* marker) {
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_VPACK_CREATE_COLLECTION:
-    case TRI_WAL_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_WAL_MARKER_VPACK_RENAME_COLLECTION:
-    case TRI_WAL_MARKER_VPACK_CHANGE_COLLECTION:
-    case TRI_WAL_MARKER_VPACK_CREATE_INDEX:
-    case TRI_WAL_MARKER_VPACK_DROP_INDEX: {
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
+    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_DROP_INDEX: {
       char const* p = reinterpret_cast<char const*>(marker);
+      // TODO: fix this
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       if (!slice.isObject()) {
         return 0;
@@ -675,17 +681,18 @@ static TRI_voc_cid_t GetCollectionFromWalMarker(TRI_df_marker_t const* marker) {
 static TRI_voc_tid_t GetTransactionFromWalMarker(TRI_df_marker_t const* marker) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
   
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_VPACK_DOCUMENT: 
-    case TRI_WAL_MARKER_VPACK_REMOVE: 
-    case TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION:
-    case TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION:
-    case TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION: {
+  switch (marker->getType()) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: 
+    case TRI_DF_MARKER_VPACK_REMOVE: 
+    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
       char const* p = reinterpret_cast<char const*>(marker);
       VPackSlice const slice(p + sizeof(TRI_df_marker_t));
       if (!slice.isObject()) {
         return 0;
       }
+      // TODO: this is wrong for VPACK_DOCUMENT & VPACK_REMOVE
       VPackSlice const tid = slice.get("tid");
       if (tid.isString()) {
         return std::stoull(tid.copyString());
@@ -759,7 +766,7 @@ static bool MustReplicateWalMarker(
   }
 
   
-  if (marker->_tick >= firstRegularTick) {
+  if (marker->getTick() >= firstRegularTick) {
     return true;
   }
 
@@ -829,14 +836,20 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     while (ptr < end) {
       auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
-      if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+      if (marker->getSize() == 0) {
         // end of datafile
+        break;
+      }
+      
+      TRI_df_marker_type_t type = marker->getType();
+        
+      if (type <= TRI_DF_MARKER_MIN) {
         break;
       }
 
       ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
-      if (marker->_type == TRI_DF_MARKER_BLANK) {
+      if (type == TRI_DF_MARKER_BLANK) {
         // fully ignore these marker types. they don't need to be replicated,
         // but we also cannot stop iteration if we find one of these
         continue;
@@ -845,7 +858,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
       // TODO: handle prologue markers here
 
       // get the marker's tick and check whether we should include it
-      TRI_voc_tick_t foundTick = marker->_tick;
+      TRI_voc_tick_t foundTick = marker->getTick();
 
       if (foundTick <= dataMin) {
         // marker too old
@@ -858,8 +871,8 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         goto NEXT_DF;
       }
 
-      if (marker->_type != TRI_WAL_MARKER_VPACK_DOCUMENT &&
-          marker->_type != TRI_WAL_MARKER_VPACK_REMOVE) {
+      if (type != TRI_DF_MARKER_VPACK_DOCUMENT &&
+          type != TRI_DF_MARKER_VPACK_REMOVE) {
         // found a non-data marker...
 
         // check if we can abort searching
@@ -1014,15 +1027,20 @@ int TRI_DumpLogReplication(
         TRI_df_marker_t const* marker =
             reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
-        if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+        if (marker->getSize() == 0) {
           // end of datafile
+          break;
+        }
+          
+        TRI_df_marker_type_t type = marker->getType();
+        if (type <= TRI_DF_MARKER_MIN) {
           break;
         }
 
         ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
-        TRI_voc_tick_t foundTick = marker->_tick;
+        TRI_voc_tick_t foundTick = marker->getTick();
 
         if (foundTick <= tickMin) {
           // marker too old
@@ -1143,15 +1161,21 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
         TRI_df_marker_t const* marker =
             reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
-        if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+        if (marker->getSize() == 0) {
           // end of datafile
+          break;
+        }
+          
+        TRI_df_marker_type_t const type = marker->getType();
+
+        if (type <= TRI_DF_MARKER_MIN) {
           break;
         }
 
         ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
-        TRI_voc_tick_t foundTick = marker->_tick;
+        TRI_voc_tick_t foundTick = marker->getTick();
 
         if (foundTick <= tickMin) {
           // marker too old
@@ -1173,11 +1197,11 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           continue;
         }
 
-        if (marker->_type == TRI_WAL_MARKER_VPACK_BEGIN_TRANSACTION) {
+        if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
           VPackSlice slice(reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t));
           transactions.emplace(NumericValue<TRI_voc_tid_t>(slice, "tid"), foundTick);
-        } else if (marker->_type == TRI_WAL_MARKER_VPACK_COMMIT_TRANSACTION ||
-                   marker->_type == TRI_WAL_MARKER_VPACK_ABORT_TRANSACTION) {
+        } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+                   type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
           VPackSlice slice(reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t));
           transactions.erase(NumericValue<TRI_voc_tid_t>(slice, "tid"));
         }

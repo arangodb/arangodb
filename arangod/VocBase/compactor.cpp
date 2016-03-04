@@ -205,7 +205,7 @@ static TRI_datafile_t* CreateCompactor(TRI_document_collection_t* document,
 static int CopyMarker(TRI_document_collection_t* document,
                       TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                       TRI_df_marker_t** result) {
-  int res = TRI_ReserveElementDatafile(compactor, marker->_size, result, 0);
+  int res = TRI_ReserveElementDatafile(compactor, marker->getSize(), result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
@@ -381,16 +381,15 @@ static void RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
 
 static bool Compactifier(TRI_df_marker_t const* marker, void* data,
                          TRI_datafile_t* datafile) {
-  TRI_df_marker_t* result;
-  int res;
-
   auto* context = static_cast<compaction_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
   TRI_voc_fid_t const targetFid = context->_compactor->_fid;
 
+  TRI_df_marker_type_t const type = marker->getType();
+
   // new or updated document
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
     VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
     TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -411,7 +410,8 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
     context->_keepDeletions = true;
 
     // write to compactor files
-    res = CopyMarker(document, context->_compactor, marker, &result);
+    TRI_df_marker_t* result;
+    int res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: dont fail but recover from this state
@@ -420,7 +420,7 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
     TRI_ASSERT(found2->getDataPtr() != nullptr);
-    TRI_ASSERT(found2->getMarkerPtr()->_size > 0);
+    TRI_ASSERT(found2->getMarkerPtr()->getSize() > 0);
 
     // let marker point to the new position
     found2->setDataPtr(result);
@@ -434,10 +434,11 @@ static bool Compactifier(TRI_df_marker_t const* marker, void* data,
   }
 
   // deletions
-  else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
+  else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     if (context->_keepDeletions) {
       // write to compactor files
-      res = CopyMarker(document, context->_compactor, marker, &result);
+      TRI_df_marker_t* result;
+      int res = CopyMarker(document, context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: dont fail but recover from this state
@@ -534,9 +535,11 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   auto* context = static_cast<compaction_initial_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
 
+  TRI_df_marker_type_t const type = marker->getType();
+
   // new or updated document
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
     VPackSlice const keySlice(slice.get(TRI_VOC_ATTRIBUTE_KEY));
     TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -555,8 +558,10 @@ static bool CalculateSize(TRI_df_marker_t const* marker, void* data,
   }
 
   // deletions
-  else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
-    context->_targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+  else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
+    if (context->_keepDeletions) {
+      context->_targetSize += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+    }
   }
 
   return true;

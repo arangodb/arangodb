@@ -303,7 +303,7 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
     }
 
     char const* p = reinterpret_cast<char const*>(_ex->_documents->at(_position++));
-    VPackSlice const slice(p + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+    VPackSlice const slice(p + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
     {
       result.clear();

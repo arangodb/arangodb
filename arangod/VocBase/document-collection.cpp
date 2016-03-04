@@ -820,7 +820,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_DOCUMENT));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -844,7 +844,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   // it is a new entry
   if (found == nullptr) {
-    TRI_doc_mptr_t* header = document->_masterPointers.request(marker->_size);  // ONLY IN OPENITERATOR
+    TRI_doc_mptr_t* header = document->_masterPointers.request();
 
     if (header == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -859,7 +859,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     int res = primaryIndex->insertKey(trx, header, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      document->_masterPointers.release(header, true);  // ONLY IN OPENITERATOR
+      document->_masterPointers.release(header);
       LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
@@ -882,8 +882,6 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     found->setFid(fid, false); // when we're here, we're looking at a datafile
     found->setDataPtr(marker);
 
-    document->_masterPointers.moveBack(found, &oldData);  // ONLY IN OPENITERATOR
-
     // update the datafile info
     DatafileStatisticsContainer* dfi;
     if (oldData.getFid() == state->_fid) {
@@ -893,7 +891,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     }
 
     if (oldData.getDataPtr() != nullptr) { 
-      int64_t size = static_cast<int64_t>(oldData.getMarkerPtr()->_size);
+      int64_t size = static_cast<int64_t>(oldData.getMarkerPtr()->getSize());
 
       dfi->numberAlive--;
       dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -910,7 +908,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     TRI_ASSERT(found->getDataPtr() != nullptr);
 
     state->_dfi->numberDead++;
-    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->_size);
+    state->_dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->getSize());
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -926,7 +924,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   TRI_document_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_WAL_MARKER_VPACK_REMOVE));
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
   VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
   std::string const key(keySlice.copyString());
   TRI_voc_rid_t const rid = std::stoull(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
@@ -966,7 +964,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
     TRI_ASSERT(found->getDataPtr() != nullptr);
 
-    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->_size);
+    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->getMarkerPtr()->getSize());
 
     dfi->numberAlive--;
     dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -978,7 +976,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     --document->_numberDocuments;
 
     // free the header
-    document->_masterPointers.release(found, true);  // ONLY IN OPENITERATOR
+    document->_masterPointers.release(found);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -992,11 +990,12 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
                          TRI_datafile_t* datafile) {
   TRI_document_collection_t* document =
       static_cast<open_iterator_state_t*>(data)->_document;
-  TRI_voc_tick_t tick = marker->_tick;
+  TRI_voc_tick_t const tick = marker->getTick();
+  TRI_df_marker_type_t const type = marker->getType();
 
   int res;
 
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile,
                                            static_cast<open_iterator_state_t*>(data));
 
@@ -1007,17 +1006,17 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
-  } else if (marker->_type == TRI_WAL_MARKER_VPACK_REMOVE) {
+  } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile,
                                            static_cast<open_iterator_state_t*>(data));
   } else {
-    if (marker->_type == TRI_DF_MARKER_HEADER) {
+    if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
       // collection
       FindDatafileStats(static_cast<open_iterator_state_t*>(data), datafile->_fid);
     }
 
-    LOG(TRACE) << "skipping marker type " << marker->_type;
+    LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -1030,10 +1029,10 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   }
 
   if (tick > document->_tickMax) {
-    if (marker->_type != TRI_DF_MARKER_HEADER &&
-        marker->_type != TRI_DF_MARKER_FOOTER &&
-        marker->_type != TRI_COL_MARKER_HEADER &&
-        marker->_type != TRI_DF_MARKER_PROLOGUE) {
+    if (type != TRI_DF_MARKER_HEADER &&
+        type != TRI_DF_MARKER_FOOTER &&
+        type != TRI_DF_MARKER_COL_HEADER &&
+        type != TRI_DF_MARKER_PROLOGUE) {
       document->_tickMax = tick;
     }
   }
@@ -1446,10 +1445,9 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   }
 
   TRI_col_header_marker_t cm;
-  TRI_InitMarkerDatafile((char*)&cm, TRI_COL_MARKER_HEADER,
-                         sizeof(TRI_col_header_marker_t));
-  cm.base._tick = static_cast<TRI_voc_tick_t>(fid);
-  cm._type = (TRI_col_type_t)document->_info.type();
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(&cm), TRI_DF_MARKER_COL_HEADER,
+                         sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
+  cm._type = static_cast<TRI_col_type_t>(document->_info.type());
   cm._cid = document->_info.id();
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
@@ -1503,46 +1501,6 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
   }
 
   return journal;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all documents in the collection, using a user-defined
-/// callback function. Returns the total number of documents in the collection
-///
-/// The user can abort the iteration by return "false" from the callback
-/// function.
-///
-/// Note: the function will not acquire any locks. It is the task of the caller
-/// to ensure the collection is properly locked
-/// TODO: remove
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_DocumentIteratorDocumentCollection(
-    arangodb::Transaction* trx, TRI_document_collection_t* document, void* data,
-    bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*,
-                     void*)) {
-  // The first argument is only used to make the compiler prove that a
-  // transaction is ongoing. We need this to prove that accesses to
-  // master pointers and their data pointers in the callback are
-  // protected.
-
-  auto idx = document->primaryIndex();
-  size_t const nrUsed = idx->size();
-
-  if (nrUsed > 0) {
-    arangodb::basics::BucketPosition position;
-    uint64_t total = 0;
-
-    while (true) {
-      TRI_doc_mptr_t const* mptr = idx->lookupSequential(trx, position, total);
-
-      if (mptr == nullptr || !callback(mptr, document, data)) {
-        break;
-      }
-    }
-  }
-
-  return nrUsed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2416,7 +2374,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
     markerBuilder.add("data", idxSlice);
     markerBuilder.close();
 
-    arangodb::wal::CreateIndexMarker marker(markerBuilder.slice());
+    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, markerBuilder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -2500,7 +2458,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
         markerBuilder.close();
         markerBuilder.close();
 
-        arangodb::wal::DropIndexMarker marker(markerBuilder.slice());
+        arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, markerBuilder.slice());
         
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -3602,8 +3560,7 @@ TRI_ASSERT(false);
     }
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_masterPointers.request(
-        marker->size());  // PROTECTED by trx in trxCollection
+    TRI_doc_mptr_t* header = operation.header = document->_masterPointers.request();
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -3849,8 +3806,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     }
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = _masterPointers.request(
-        operation.marker->size());  // PROTECTED by trx in trxCollection
+    TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -4131,8 +4087,6 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
 
     operation.indexed();
-
-    _masterPointers.unlink(header);
     _numberDocuments--;
 
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }
