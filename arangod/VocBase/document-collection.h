@@ -55,8 +55,6 @@ class Slice;
 }
 }
 
-#define TRI_WAL_FILE_BITMASK 0x8000000000000000ULL
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +103,7 @@ struct TRI_doc_mptr_t {
   // return the datafile id.
   inline TRI_voc_fid_t getFid() const { 
     // unmask the WAL bit
-    return (_fid & ~TRI_WAL_FILE_BITMASK);
+    return (_fid & ~arangodb::DatafileHelper::WalFileBitmask());
   }
 
   // sets datafile id. note that the highest bit of the file id must
@@ -117,7 +115,7 @@ struct TRI_doc_mptr_t {
     // set the WAL bit if required
     _fid = fid;
     if (isWal) {
-      _fid |= TRI_WAL_FILE_BITMASK;
+      _fid |= arangodb::DatafileHelper::WalFileBitmask();
     }
   }
 
@@ -142,7 +140,7 @@ struct TRI_doc_mptr_t {
   // the _fid value is set, and to a datafile otherwise
   inline bool pointsToWal() const {
     // check whether the WAL bit is set
-    return ((_fid & TRI_WAL_FILE_BITMASK) == 1);
+    return ((_fid & arangodb::DatafileHelper::WalFileBitmask()) == 1);
   }
 
   // return the marker's revision id

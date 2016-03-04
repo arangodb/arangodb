@@ -23,7 +23,6 @@
 
 #include "CollectionKeys.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/DatafileHelper.h"

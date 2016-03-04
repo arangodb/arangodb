@@ -23,13 +23,12 @@
 
 #include "RestVocbaseBaseHandler.h"
 #include "Basics/conversions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
 
 #include <velocypack/Builder.h>
@@ -128,6 +127,20 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a document id from a string and a string
+/// optionally url-encodes
+////////////////////////////////////////////////////////////////////////////////
+
+std::string RestVocbaseBaseHandler::assembleDocumentId(
+    std::string const& collectionName, std::string const& key, bool urlEncode) {
+  if (urlEncode) {
+    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
+           StringUtils::urlEncode(key);
+  }
+  return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Generate a result for successful save
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,7 +228,7 @@ void RestVocbaseBaseHandler::generate20x(
   if (slice.isObject()) {
     _response->setHeader("etag", 4, "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
-    std::string escapedHandle(DocumentHelper::assembleDocumentId(
+    std::string escapedHandle(assembleDocumentId(
         collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
     if (type == TRI_COL_TYPE_EDGE) {
       _response->setHeader("location", 8,
@@ -305,7 +318,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(DocumentHelper::assembleDocumentId(collectionName, key)));
+  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(assembleDocumentId(collectionName, key, false)));
   builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(std::to_string(rev)));
   builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(key));
   builder.close();

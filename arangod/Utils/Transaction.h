@@ -25,14 +25,8 @@
 #define ARANGOD_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-//#include "Basics/tri-strings.h"
-//#include "Basics/VelocyPackHelper.h"
-//#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-//#include "Utils/TransactionContext.h"
-//#include "VocBase/collection.h"
-//#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"

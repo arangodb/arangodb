@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/ServerState.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

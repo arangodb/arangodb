@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterInfo.h"
-
+#include "ClusterInfo.h"
 #include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/json-utilities.h"
@@ -33,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
