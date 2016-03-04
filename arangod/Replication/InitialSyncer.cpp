@@ -27,7 +27,6 @@
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-//#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
