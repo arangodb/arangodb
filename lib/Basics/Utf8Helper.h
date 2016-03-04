@@ -26,7 +26,7 @@
 #define LIB_BASICS_UTF8_HELPER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
+
 #include <unicode/coll.h>
 #include <unicode/regex.h>
 #include <unicode/ustring.h>

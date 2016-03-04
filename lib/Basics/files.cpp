@@ -35,6 +35,7 @@
 #include <sys/file.h>
 #endif
 
+#include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/conversions.h"
@@ -45,6 +46,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
+#include "Basics/vector.h"
 
 #ifdef _WIN32
 #include <tchar.h>
@@ -215,40 +217,33 @@ static void InitializeLockFiles(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ListTreeRecursively(char const* full, char const* path,
-                                TRI_vector_string_t* result) {
-  size_t j;
+                                std::vector<std::string>& result) {
   std::vector<std::string> dirs = TRI_FilesDirectory(full);
 
-  for (j = 0; j < 2; ++j) {
+  for (size_t j = 0; j < 2; ++j) {
     for (auto const& filename : dirs) {
-      char* newfull = TRI_Concatenate2File(full, filename.c_str());
-      char* newpath;
+      std::string const newFull = arangodb::basics::FileUtils::buildFilename(full, filename); 
+      std::string newPath;
 
       if (*path) {
-        newpath = TRI_Concatenate2File(path, filename.c_str());
+        newPath = arangodb::basics::FileUtils::buildFilename(path, filename);
       } else {
-        newpath = TRI_DuplicateString(filename.c_str());
+        newPath = filename;
       }
 
       if (j == 0) {
-        if (TRI_IsDirectory(newfull)) {
-          TRI_PushBackVectorString(result, newpath);
+        if (TRI_IsDirectory(newFull.c_str())) {
+          result.push_back(newPath);
 
-          if (!TRI_IsSymbolicLink(newfull)) {
-            ListTreeRecursively(newfull, newpath, result);
+          if (!TRI_IsSymbolicLink(newFull.c_str())) {
+            ListTreeRecursively(newFull.c_str(), newPath.c_str(), result);
           }
-        } else {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, newpath);
         }
       } else {
-        if (!TRI_IsDirectory(newfull)) {
-          TRI_PushBackVectorString(result, newpath);
-        } else {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, newpath);
+        if (!TRI_IsDirectory(newFull.c_str())) {
+          result.push_back(newPath);
         }
       }
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, newfull);
     }
   }
 }
@@ -811,13 +806,11 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
 /// @brief lists the directory tree including files and directories
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t TRI_FullTreeDirectory(char const* path) {
-  TRI_vector_string_t result;
+std::vector<std::string> TRI_FullTreeDirectory(char const* path) {
+  std::vector<std::string> result;
 
-  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
-
-  TRI_PushBackVectorString(&result, TRI_DuplicateString(""));
-  ListTreeRecursively(path, "", &result);
+  result.push_back("");
+  ListTreeRecursively(path, "", result);
 
   return result;
 }
