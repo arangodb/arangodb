@@ -34,7 +34,6 @@
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_transaction_collection_s;
 
 // Define search slice attribute names
 #define TRI_SLICE_KEY_EQUAL "eq"

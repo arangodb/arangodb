@@ -24,6 +24,7 @@
 #include "RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/vocbase.h"
 

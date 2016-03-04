@@ -819,7 +819,7 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
-    struct TRI_transaction_collection_s*,
+    struct TRI_transaction_collection_t*,
     arangodb::ExampleMatcher const& matcher);
 
 ////////////////////////////////////////////////////////////////////////////////

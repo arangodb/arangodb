@@ -21,12 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include "vocbase.h"
-
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/conversions.h"
@@ -40,6 +35,7 @@
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"

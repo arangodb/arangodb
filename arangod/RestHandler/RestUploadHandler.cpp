@@ -26,6 +26,7 @@
 #include "Basics/files.h"
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 

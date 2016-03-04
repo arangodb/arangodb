@@ -30,6 +30,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
@@ -1729,11 +1730,15 @@ static v8::Handle<v8::Value> VertexIdToData(
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
+  OperationOptions options;
+
+  VPackSlice slice;
+#warning fill slice from vertexId.key
+  OperationResult opRes = trx->document(i->second.col->_collection->_name, slice, options);
+#warning fill document
   TRI_doc_mptr_t document;
 
-  int res = trx->document(i->second.col, &document, vertexId.key);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!opRes.successful()) {
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }

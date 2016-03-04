@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/edge-collection.h"
 
 namespace arangodb {
 

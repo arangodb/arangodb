@@ -26,6 +26,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/OperationOptions.h"

@@ -154,7 +154,7 @@ class SimpleEdgeExpander {
  public:
   SimpleEdgeExpander(TRI_edge_direction_e& direction,
                      EdgeCollectionInfo* edgeCollection)
-      : _direction(direction), _edgeCollection(edgeCollection){};
+      : _direction(direction), _edgeCollection(edgeCollection) {}
 
   void operator()(VertexId& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
@@ -241,11 +241,16 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
     return false;
   }
 
+  OperationOptions options;
+  VPackSlice slice;
+#warning fill slice from v.key
+#warning pass trx into this function!
+//  OperationResult opRes = trx->document(it->second.col, slice, options);
+  OperationResult opRes(TRI_ERROR_INTERNAL);
+#warning fill vertex
   TRI_doc_mptr_t vertex;
 
-  int res = it->second.trx->document(it->second.col, &vertex, v.key);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!opRes.successful()) {
     return false;
   }
 

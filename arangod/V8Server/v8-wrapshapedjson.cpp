@@ -29,7 +29,9 @@
 #include "V8/v8-conv.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

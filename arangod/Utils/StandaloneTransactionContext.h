@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Utils/TransactionContext.h"
 
-struct TRI_transaction_s;
+struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -60,13 +60,13 @@ class StandaloneTransactionContext final : public TransactionContext {
   /// @brief return the parent transaction (none in our case)
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_transaction_s* getParentTransaction() const override;
+  struct TRI_transaction_t* getParentTransaction() const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the transaction, does nothing
   //////////////////////////////////////////////////////////////////////////////
 
-  int registerTransaction(struct TRI_transaction_s*) override;
+  int registerTransaction(struct TRI_transaction_t*) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

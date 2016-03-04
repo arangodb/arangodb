@@ -32,7 +32,6 @@
 #include <velocypack/Slice.h>
 
 class TRI_replication_applier_configuration_t;
-struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 
 namespace arangodb {

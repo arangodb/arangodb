@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Rest/HttpRequest.h"

@@ -22,13 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocindex.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
@@ -46,6 +43,10 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

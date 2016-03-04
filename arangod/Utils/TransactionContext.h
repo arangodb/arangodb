@@ -29,7 +29,7 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_document_collection_t;
-struct TRI_transaction_s;
+struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -118,7 +118,7 @@ class TransactionContext {
   /// @brief get parent transaction (if any)
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual struct TRI_transaction_s* getParentTransaction() const = 0;
+  virtual struct TRI_transaction_t* getParentTransaction() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embeddable
@@ -130,7 +130,7 @@ class TransactionContext {
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual int registerTransaction(struct TRI_transaction_s*) = 0;
+  virtual int registerTransaction(struct TRI_transaction_t*) = 0;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction

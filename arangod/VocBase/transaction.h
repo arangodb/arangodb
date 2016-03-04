@@ -25,8 +25,8 @@
 #define ARANGOD_VOC_BASE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
-#include "VocBase/datafile.h"
+#include "Basics/vector.h"
+//#include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -62,23 +62,23 @@ class TRI_vocbase_col_t;
 /// @brief transaction type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_transaction_type_e {
   TRI_TRANSACTION_NONE = 0,
   TRI_TRANSACTION_READ = 1,
   TRI_TRANSACTION_WRITE = 2
-} TRI_transaction_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction statuses
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_transaction_status_e {
   TRI_TRANSACTION_UNDEFINED = 0,
   TRI_TRANSACTION_CREATED = 1,
   TRI_TRANSACTION_RUNNING = 2,
   TRI_TRANSACTION_COMMITTED = 3,
   TRI_TRANSACTION_ABORTED = 4
-} TRI_transaction_status_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for transaction hints
@@ -90,7 +90,7 @@ typedef uint32_t TRI_transaction_hint_t;
 /// @brief hints that can be used for transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_transaction_hint_e {
   TRI_TRANSACTION_HINT_NONE = 0,
   TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1,
   TRI_TRANSACTION_HINT_LOCK_ENTIRELY = 2,
@@ -101,13 +101,13 @@ typedef enum {
   TRI_TRANSACTION_HINT_TRY_LOCK = 64,
   TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128,
   TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256
-} TRI_transaction_hint_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction typedef
+/// @brief transaction type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_transaction_s {
+struct TRI_transaction_t {
   TRI_vocbase_t* _vocbase;            // vocbase
   TRI_voc_tid_t _id;                  // local trx id
   TRI_transaction_type_e _type;       // access type (read|write)
@@ -119,13 +119,13 @@ typedef struct TRI_transaction_s {
   bool _waitForSync;   // whether or not the collection had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
   uint64_t _timeout;   // timeout for lock acquisition
-} TRI_transaction_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection used in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_transaction_collection_s {
+struct TRI_transaction_collection_t {
   TRI_transaction_t* _transaction;     // the transaction
   TRI_voc_cid_t _cid;                  // collection id
   TRI_transaction_type_e _accessType;  // access type (read|write)
@@ -137,7 +137,7 @@ typedef struct TRI_transaction_collection_s {
   bool
       _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
-} TRI_transaction_collection_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new transaction

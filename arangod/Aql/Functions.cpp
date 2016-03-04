@@ -30,7 +30,9 @@
 #include "Basics/json-utilities.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
@@ -39,6 +41,9 @@
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Rest/SslInterface.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/Transaction.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
@@ -48,7 +53,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
+
 using Json = arangodb::basics::Json;
 using CollectionNameResolver = arangodb::CollectionNameResolver;
 using VertexId = arangodb::traverser::VertexId;
@@ -723,15 +730,18 @@ static void ReadDocument(arangodb::AqlTransaction* trx,
     }
   }
 
-  TRI_doc_mptr_t mptr;
-  int res = trx->document(collection, &mptr, key);
+  OperationOptions options;
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  VPackSlice slice;
+#warning fill slice from key
+  OperationResult opRes = trx->document(collection->_collection->_name, slice, options);
+#warning fill mptr
+
+  if (opRes.code != TRI_ERROR_NO_ERROR) {
     result.add(VPackValue(VPackValueType::Null));
   } else {
-    std::unordered_set<std::string> unused;
-    ExpandShapedJson(collection->_collection->_collection->getShaper(),
-                     resolver, cid, &mptr, result, false, unused);
+#warning convert opRes result to vpack external
+    result.add(VPackValue(static_cast<void const*>(nullptr), VPackValueType::External));
   }
 }
 
@@ -800,6 +810,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
       VPackObjectBuilder guard(&result);
       result.add(VPackValue("edge"));
       std::unordered_set<std::string> unused;
+#warning convert to vpack      
       ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
       char const* targetKey = nullptr;
       TRI_voc_cid_t targetCid = 0;
@@ -833,12 +844,11 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     }
   } else {
     for (size_t i = 0; i < resultCount; ++i) {
-      std::unordered_set<std::string> unused;
-      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
+#warning convert to vpack      
+      // ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
     }
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function to unset or keep all given names in the value.
@@ -970,9 +980,14 @@ static void VertexIdToVPack(arangodb::AqlTransaction* trx,
                                      "collection is a nullptr");
     }
   }
+  
+  OperationOptions options;
 
-  TRI_doc_mptr_t mptr;
-  int res = trx->document(collection, &mptr, id.key);
+  VPackSlice slice;
+#warning fill slice from id.key
+  OperationResult opRes = trx->document(collection->_collection->_name, slice, options);
+#warning fill mptr
+  int res = opRes.code;
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -982,12 +997,9 @@ static void VertexIdToVPack(arangodb::AqlTransaction* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  std::unordered_set<std::string> unused;
-  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   id.cid, &mptr, b, false, unused);
+#warning convert to vpack  
+  b.add(VPackValue(static_cast<void const*>(nullptr), VPackValueType::External));
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms VertexId to std::string
@@ -1145,6 +1157,7 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
     }
 
     for (auto& it : distances) {
+#warning convert to vpack      
       ExpandShapedJson(shaper, resolver, cid, it._mptr, *b,
                        saveAttr, forbidden);
       if (saveAttr) {
@@ -3328,20 +3341,24 @@ static void RegisterCollectionInTransaction(
 ///        The collection has to be locked by the transaction before
 ////////////////////////////////////////////////////////////////////////////////
 
-static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
+static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     TRI_transaction_collection_t* collection,
                                     TRI_voc_cid_t const& cid,
                                     std::string const& collectionName,
                                     std::string const& identifier,
                                     VPackBuilder& result) {
+  OperationOptions options;
+
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(identifier, "/");
 
-  TRI_doc_mptr_t mptr;
   if (parts.size() == 1) {
-    int res = trx->document(collection, &mptr, parts[0]);
-    if (res != TRI_ERROR_NO_ERROR) {
+    VPackSlice slice;
+#warning fill slice from parts[0]
+    OperationResult opRes = trx->document(collectionName, slice, options);
+#warning fill mptr
+    if (!opRes.successful()) {
       return;
     }
   } else if (parts.size() == 2) {
@@ -3349,17 +3366,19 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
       // Reqesting an _id that cannot be stored in this collection
       return;
     }
-    int res = trx->document(collection, &mptr, parts[1]);
-    if (res != TRI_ERROR_NO_ERROR) {
+    VPackSlice slice;
+#warning fill slice from parts[1]
+    OperationResult opRes = trx->document(collectionName, slice, options);
+#warning fill mptr
+    if (!opRes.successful()) {
       return;
     }
   } else {
     return;
   }
 
-  std::unordered_set<std::string> unused;
-  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   cid, &mptr, result, false, unused);
+#warning convert to vpack      
+  result.add(VPackValue(static_cast<void const*>(nullptr), VPackValueType::External));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3369,7 +3388,7 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
 /// found
 ////////////////////////////////////////////////////////////////////////////////
 
-static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
+static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
                                     CollectionNameResolver const* resolver,
                                     std::string const& identifier,
                                     VPackBuilder& result) {
@@ -3392,20 +3411,20 @@ static void getDocumentByIdentifier(arangodb::AqlTransaction* trx,
     throw;
   }
 
-  TRI_doc_mptr_t mptr;
-  int res = trx->document(collection, &mptr, parts[1]);
+  OperationOptions options;
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  VPackSlice slice;
+#warning fill slice from parts[1]
+  OperationResult opRes = trx->document(collectionName, slice, options);
+#warning fill mptr
+
+  if (opRes.code != TRI_ERROR_NO_ERROR) {
     return;
   }
 
-  std::unordered_set<std::string> unused;
-  ExpandShapedJson(collection->_collection->_collection->getShaper(), resolver,
-                   cid, &mptr, result, false, unused);
+#warning convert opRes result to vpack external
+  result.add(VPackValue(static_cast<void const*>(nullptr), VPackValueType::External));
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function Document
@@ -3435,7 +3454,7 @@ AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     if (id.isString()) {
       std::string identifier = id.copyString();
-      getDocumentByIdentifier(trx, resolver, identifier, *b);
+      GetDocumentByIdentifier(trx, resolver, identifier, *b);
       if (b->isEmpty()) {
         // not found
         b->add(VPackValue(VPackValueType::Null));
@@ -3446,7 +3465,7 @@ AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
         try {
           if (next.isString()) {
             std::string identifier = next.copyString();
-            getDocumentByIdentifier(trx, resolver, identifier, *b);
+            GetDocumentByIdentifier(trx, resolver, identifier, *b);
           }
         } catch (arangodb::basics::Exception const&) {
           // Ignore all ArangoDB exceptions here
@@ -3487,7 +3506,7 @@ AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
     }
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     std::string identifier = id.copyString();
-    getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+    GetDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
     if (b->isEmpty()) {
       b->add(VPackValue(VPackValueType::Null));
     }
@@ -3501,7 +3520,7 @@ AqlValue$ Functions::DocumentVPack(arangodb::aql::Query* query,
           try {
             if (next.isString()) {
               std::string identifier = next.copyString();
-              getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+              GetDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
             }
           } catch (arangodb::basics::Exception const&) {
             // Ignore all ArangoDB exceptions here
@@ -5189,6 +5208,7 @@ AqlValue$ Functions::FulltextVPack(arangodb::aql::Query* query,
 
     for (size_t i = 0; i < numResults; ++i) {
       std::unordered_set<std::string> unused;
+#warning convert to vpack      
       ExpandShapedJson(shaper, resolver, cid,
                        (TRI_doc_mptr_t const*)queryResult->_documents[i], *b,
                        false, unused);

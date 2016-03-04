@@ -285,7 +285,9 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   VPackBuilder builder;
 
   OperationOptions options;
+  options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
+  // TODO: ignoreRev
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -329,7 +331,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&nptr, a.getMarker());
         } else {
           // need to fetch the old document
-          errorCode = _trx->document(trxCollection, &nptr, key);
+          VPackSlice slice; // TODO: fill from key
+#warning fill slice from key, and populate nptr          
+          OperationResult opRes = _trx->document(_collection->name, slice, options);
+          errorCode = opRes.code;
         }
       }
 
@@ -408,6 +413,11 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                                   trxCollection->_collection->_collection);
   }
 
+  OperationOptions options;
+  options.silent = !producesOutput;
+  options.waitForSync = ep->_options.waitForSync;
+  // TODO: ignoreRev
+
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -462,17 +472,10 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         TRI_doc_mptr_t mptr;
         auto json = a.toJson(_trx, document, false);
 
-        if (isEdgeCollection) {
-          // edge
-          edge._fromKey = (TRI_voc_key_t)from.c_str();
-          edge._toKey = (TRI_voc_key_t)to.c_str();
-          errorCode = _trx->insert(trxCollection, &mptr, json.json(), &edge,
-                                   ep->_options.waitForSync);
-        } else {
-          // document
-          errorCode = _trx->insert(trxCollection, &mptr, json.json(), nullptr,
-                                   ep->_options.waitForSync);
-        }
+        VPackSlice slice; // TODO: build this from json
+#warning fill slice from json
+        OperationResult opRes = _trx->insert(_collection->name, slice, options); 
+        errorCode = opRes.code;
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->setValue(dstRow, _outRegNew,
@@ -545,6 +548,11 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     result->setDocumentCollection(_outRegNew,
                                   trxCollection->_collection->_collection);
   }
+  
+  OperationOptions options;
+  options.waitForSync = ep->_options.waitForSync;
+  options.silent = !producesOutput;
+  // TODO: ignoreRev
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -596,7 +604,10 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&oldDocument, a.getMarker());
         } else {
           // "old" is no ShapedJson. now fetch old version from database
-          errorCode = _trx->document(trxCollection, &oldDocument, key);
+          VPackSlice slice; // TODO: fill from key
+#warning fill slice from key, and populate oldDocument    
+          OperationResult opRes = _trx->document(_collection->name, slice, options);
+          errorCode = opRes.code;
         }
 
         if (!json.isObject()) {
@@ -607,13 +618,16 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
           if (oldDocument.getDataPtr() != nullptr) {
             if (json.members() > 0) {
               // only update the document if the update value is not empty
+#if 0 
+              // TODO shaped
               TRI_shaped_json_t shapedJson;
               TRI_EXTRACT_SHAPED_JSON_MARKER(
                   shapedJson,
                   oldDocument.getDataPtr());  // PROTECTED by trx here
               std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(
                   _collection->documentCollection()->getShaper(), &shapedJson));
-
+#endif
+              std::unique_ptr<TRI_json_t> old;
               // the default
               errorCode = TRI_ERROR_OUT_OF_MEMORY;
 
@@ -629,10 +643,11 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
                         TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
                   } else {
                     // all exceptions are caught in _trx->update()
-                    errorCode = _trx->update(trxCollection, key, 0, &mptr,
-                                             patchedJson.get(),
-                                             TRI_DOC_UPDATE_LAST_WRITE, 0,
-                                             nullptr, ep->_options.waitForSync);
+
+                    VPackSlice slice; // TODO: fill slice from patchedJson
+#warning fill slice from patchedJson                    
+                    OperationResult opRes = _trx->update(_collection->name, slice, slice, options); 
+                    errorCode = opRes.code;
                   }
                 }
               }
@@ -735,6 +750,11 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     result->setDocumentCollection(_outRegNew,
                                   trxCollection->_collection->_collection);
   }
+  
+  OperationOptions options;
+  options.waitForSync = ep->_options.waitForSync;
+  options.silent = !producesOutput;
+  // TODO: ignoreRev
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -795,11 +815,12 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                     TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
               } else if (ep->_isReplace) {
                 // replace
-
-                errorCode =
-                    _trx->update(trxCollection, key, 0, &mptr,
-                                 updateJson.json(), TRI_DOC_UPDATE_LAST_WRITE,
-                                 0, nullptr, ep->_options.waitForSync);
+               
+                VPackSlice slice; // TODO: fill from updateJson
+#warning fill slice from updateJson               
+                // TODO: check if we can use _trx->replace() here 
+                OperationResult opRes = _trx->update(_collection->name, slice, slice, options);
+                errorCode = opRes.code;
               } else {
                 // update
                 if (updateJson.members() == 0) {
@@ -821,10 +842,10 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
                   if (mergedJson.get() != nullptr) {
                     // all exceptions are caught in _trx->update()
-                    errorCode = _trx->update(trxCollection, key, 0, &mptr,
-                                             mergedJson.get(),
-                                             TRI_DOC_UPDATE_LAST_WRITE, 0,
-                                             nullptr, ep->_options.waitForSync);
+                
+                    VPackSlice slice; // TODO: fill from mergedJson
+#warning fill slice from mergedJson                
+                    OperationResult opRes = _trx->update(_collection->name, slice, slice, options);
                   }
                 }
               }
@@ -887,19 +908,10 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               } else {
                 TRI_doc_mptr_t mptr;
 
-                if (isEdgeCollection) {
-                  // edge
-                  edge._fromKey = (TRI_voc_key_t)from.c_str();
-                  edge._toKey = (TRI_voc_key_t)to.c_str();
-                  errorCode =
-                      _trx->insert(trxCollection, &mptr, insertJson.json(),
-                                   &edge, ep->_options.waitForSync);
-                } else {
-                  // document
-                  errorCode =
-                      _trx->insert(trxCollection, &mptr, insertJson.json(),
-                                   nullptr, ep->_options.waitForSync);
-                }
+                VPackSlice slice; // TODO: fill slice from insertJson
+#warning fill slice from insertJson                
+                OperationResult opRes = _trx->insert(_collection->name, slice, options);
+                errorCode = opRes.code; 
 
                 if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
                   result->setValue(
@@ -977,6 +989,11 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     result->setDocumentCollection(_outRegNew,
                                   trxCollection->_collection->_collection);
   }
+  
+  OperationOptions options;
+  options.silent = true;
+  options.waitForSync = ep->_options.waitForSync;
+  // TODO: ignoreRev
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -1022,7 +1039,10 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
           constructMptr(&nptr, a.getMarker());
         } else {
           // "old" is no ShapedJson. now fetch old version from database
-          readErrorCode = _trx->document(trxCollection, &nptr, key);
+          VPackSlice slice; // TODO: fill from key
+#warning fill slice from key, and populate nptr 
+          OperationResult opRes = _trx->document(_collection->name, slice, options);
+          readErrorCode = opRes.code;
         }
       }
 
@@ -1031,12 +1051,15 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         auto const json = a.toJson(_trx, document, true);
 
         if (_isDBServer) {
+#if 0 
+          // TODO         
           TRI_shaped_json_t shapedJson;
           TRI_EXTRACT_SHAPED_JSON_MARKER(
               shapedJson, nptr.getDataPtr());  // PROTECTED by trx here
           std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(
               _collection->documentCollection()->getShaper(), &shapedJson));
-
+#endif
+          std::unique_ptr<TRI_json_t> old;
           if (isShardKeyChange(old.get(), json.json(), false)) {
             errorCode = TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
           }
@@ -1044,9 +1067,11 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
           // all exceptions are caught in _trx->update()
-          errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(),
-                                   TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr,
-                                   ep->_options.waitForSync);
+
+          VPackSlice slice; // TODO: fill slice from json
+#warning fill slice from json          
+          OperationResult opRes = _trx->update(_collection->name, slice, slice, options); 
+          errorCode = opRes.code;
         }
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {

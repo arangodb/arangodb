@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-applier.h"
-
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
@@ -30,6 +29,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Replication/ContinuousSyncer.h"

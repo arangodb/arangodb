@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Utils/TransactionContext.h"
 
-struct TRI_transaction_s;
+struct TRI_transaction_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -58,13 +58,13 @@ class V8TransactionContext final : public TransactionContext {
   /// @brief get parent transaction (if any)
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_transaction_s* getParentTransaction() const override;
+  struct TRI_transaction_t* getParentTransaction() const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the transaction in the context
   //////////////////////////////////////////////////////////////////////////////
 
-  int registerTransaction(struct TRI_transaction_s* trx) override;
+  int registerTransaction(struct TRI_transaction_t* trx) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction from the context
@@ -116,7 +116,7 @@ class V8TransactionContext final : public TransactionContext {
   /// @brief the currently ongoing transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_transaction_s* _currentTransaction;
+  struct TRI_transaction_t* _currentTransaction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not further transactions can be embedded
