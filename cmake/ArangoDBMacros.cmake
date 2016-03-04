@@ -46,6 +46,7 @@ if (USE_RELATIVE)
 
   # bin dir ----------------------------
   set(ARANGODB_INSTALL_BIN "bin")
+  set(ARANGODB_INSTALL_LIBEXEC "libexec")
   set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 
   # MS stuff ---------------------------
@@ -121,6 +122,7 @@ else ()
     set(ARANGODB_INSTALL_BIN "bin")
     set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
   endif ()
+  set(ARANGODB_INSTALL_LIBEXEC "libexec")
 
   # sbinaries
   if (MSVC)
@@ -170,7 +172,7 @@ endif ()
 if (NOT WINDOWS)
   install(
     PROGRAMS ${PROJECT_BINARY_DIR}/bin/etcd-arango
-    DESTINATION ${ARANGODB_INSTALL_BIN}
+    DESTINATION ${ARANGODB_INSTALL_LIBEXEC}
   )
 endif ()
 
