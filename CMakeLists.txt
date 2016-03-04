@@ -139,7 +139,7 @@ endif ()
 
 find_package(FLEX)
 find_package(BISON)
-find_package(PythonInterp 2)
+find_package(PythonInterp 2 REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 
 find_package(Go 1.2)
