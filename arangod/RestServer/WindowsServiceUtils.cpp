@@ -115,7 +115,7 @@ static void InstallServiceCommand(std::string command) {
   }
 
   SERVICE_DESCRIPTION description = {
-      "multi-model NoSQL database (version " TRI_VERSION ")"};
+      "multi-model NoSQL database (version " ARANGODB_VERSION ")"};
   ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &description);
 
   std::cout << "INFO: added service with command line '" << command << "'"

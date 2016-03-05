@@ -22,20 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #include "HttpServer/HttpServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -46,11 +53,6 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "Wal/LogfileManager.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -413,7 +415,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
 
     json.add("server", VPackValue(VPackValueType::Object));
-    json.add("version", VPackValue(TRI_VERSION));
+    json.add("version", VPackValue(ARANGODB_VERSION));
     json.add("serverId", VPackValue(serverIdString));
     TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
     json.close();

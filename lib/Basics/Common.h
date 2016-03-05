@@ -37,14 +37,6 @@
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 
-#include "Basics/build.h"
-
-#ifdef _DEBUG
-#define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "-DEBUG]"
-#else
-#define TRI_VERSION_FULL TRI_VERSION " [" TRI_PLATFORM "]"
-#endif
-
 #undef TRI_WITHIN_COMMON
 
 #include <assert.h>

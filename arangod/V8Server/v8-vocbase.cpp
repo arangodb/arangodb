@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
+
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -39,6 +40,7 @@
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
+#include "Rest/Version.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "V8/JSLoader.h"
@@ -2874,7 +2876,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_V8_RETURN(TRI_V8_ASCII_STRING(TRI_VERSION));
+  TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -46,6 +46,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
+#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -4307,7 +4308,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
 #endif
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VERSION"),
-                               TRI_V8_ASCII_STRING(TRI_VERSION));
+                               TRI_V8_ASCII_STRING(ARANGODB_VERSION));
 
   TRI_AddGlobalVariableVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_PLATFORM"),

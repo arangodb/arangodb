@@ -38,9 +38,6 @@ set(ARANGODB_VERSION_REVISION   "0-devel")
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-add_definitions("-DARANGODB_BUILD_DATE=\"${ARANGODB_BUILD_DATE}\"")
-
 # for NSIS
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
@@ -74,9 +71,17 @@ set(TEST_GEO_SUITE    geo_suite)
 ## VERSION FILES
 ################################################################################
 
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
+  NEWLINE_STYLE UNIX
+)
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
   NEWLINE_STYLE UNIX
 )
 
