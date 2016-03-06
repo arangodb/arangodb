@@ -26,8 +26,6 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/json-utilities.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
@@ -56,7 +54,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
 using CollectionNameResolver = arangodb::CollectionNameResolver;
 using VertexId = arangodb::traverser::VertexId;
 
@@ -196,82 +193,6 @@ static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a value into a number value
 ////////////////////////////////////////////////////////////////////////////////
-
-static double ValueToNumber(TRI_json_t const* json, bool& isValid) {
-  switch (json->_type) {
-    case TRI_JSON_NULL: {
-      isValid = true;
-      return 0.0;
-    }
-    case TRI_JSON_BOOLEAN: {
-      isValid = true;
-      return (json->_value._boolean ? 1.0 : 0.0);
-    }
-
-    case TRI_JSON_NUMBER: {
-      isValid = true;
-      return json->_value._number;
-    }
-
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      std::string const str =
-          arangodb::basics::JsonHelper::getStringValue(json, "");
-      try {
-        size_t behind = 0;
-        double value = std::stod(str, &behind);
-        while (behind < str.size()) {
-          char c = str[behind];
-          if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-            isValid = false;
-            return 0.0;
-          }
-          ++behind;
-        }
-        isValid = true;
-        return value;
-      } catch (...) {
-        size_t behind = 0;
-        while (behind < str.size()) {
-          char c = str[behind];
-          if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-            isValid = false;
-            return 0.0;
-          }
-          ++behind;
-        }
-        // A string only containing whitespae-characters is valid and should return 0.0
-        // It throws in std::stod
-        isValid = true;
-        return 0.0;
-      }
-      // fall-through to invalidity
-      break;
-    }
-
-    case TRI_JSON_ARRAY: {
-      size_t const n = TRI_LengthVector(&json->_value._objects);
-      if (n == 0) {
-        isValid = true;
-        return 0.0;
-      }
-      if (n == 1) {
-        json = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&json->_value._objects, 0));
-        return ValueToNumber(json, isValid);
-      }
-      break;
-    }
-
-    case TRI_JSON_OBJECT:
-    case TRI_JSON_UNUSED: {
-      break;
-    }
-  }
-
-  isValid = false;
-  return 0.0;
-}
 
 static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   if (slice.isNull()) {
@@ -413,59 +334,6 @@ static void ExtractKeys(std::unordered_set<std::string>& names,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append the JSON value to a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-static void AppendAsString(arangodb::basics::StringBuffer& buffer,
-                           TRI_json_t const* json) {
-  TRI_json_type_e const type =
-      (json == nullptr ? TRI_JSON_UNUSED : json->_type);
-
-  switch (type) {
-    case TRI_JSON_UNUSED:
-    case TRI_JSON_NULL: {
-      buffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
-      break;
-    }
-    case TRI_JSON_BOOLEAN: {
-      if (json->_value._boolean) {
-        buffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
-      } else {
-        buffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
-      }
-      break;
-    }
-    case TRI_JSON_NUMBER: {
-      buffer.appendDecimal(json->_value._number);
-      break;
-    }
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      buffer.appendText(arangodb::basics::JsonHelper::getStringValue(json, ""));
-      break;
-    }
-    case TRI_JSON_ARRAY: {
-      size_t const n = TRI_LengthArrayJson(json);
-      for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-          buffer.appendChar(',');
-        }
-        AppendAsString(buffer, static_cast<TRI_json_t const*>(
-                                   TRI_AtVector(&json->_value._objects, i)));
-      }
-      break;
-    }
-    case TRI_JSON_OBJECT: {
-      buffer.appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
-      break;
-    }
-  }
-
-  // make it null-terminated for all c-string-related functions
-  buffer.ensureNullTerminated();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,49 +432,6 @@ static bool SortNumberList(VPackSlice const& values,
   }
   std::sort(result.begin(), result.end());
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Expands a shaped Json
-////////////////////////////////////////////////////////////////////////////////
-
-static inline Json ExpandShapedJson(VocShaper* shaper,
-                                    CollectionNameResolver const* resolver,
-                                    TRI_voc_cid_t const& cid,
-                                    TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker =
-      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-
-  TRI_shaped_json_t shaped;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
-  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-  std::string id(resolver->getCollectionName(cid));
-  id.push_back('/');
-  id.append(key);
-  json(TRI_VOC_ATTRIBUTE_ID, Json(id));
-  json(TRI_VOC_ATTRIBUTE_REV,
-       Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-  json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
-
-#if 0
-  // TODO
-  if (TRI_IS_EDGE_MARKER(marker)) {
-    std::string from(resolver->getCollectionNameCluster(
-        TRI_EXTRACT_MARKER_FROM_CID(marker)));
-    from.push_back('/');
-    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-    json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
-    std::string to(
-        resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
-
-    to.push_back('/');
-    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-    json(TRI_VOC_ATTRIBUTE_TO, Json(to));
-  }
-#endif  
-
-  return json;
 }
 
 static inline void ExpandShapedJson(
@@ -980,7 +805,7 @@ static std::string VertexIdToString(CollectionNameResolver const* resolver,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms an unordered_map<VertexId> to AQL json values
+/// @brief Transforms an unordered_map<VertexId> to AQL VelocyPack values
 ////////////////////////////////////////////////////////////////////////////////
 
 static AqlValue$ VertexIdsToAqlValueVPack(
@@ -1144,20 +969,6 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal recursive flatten helper
 ////////////////////////////////////////////////////////////////////////////////
-
-static void FlattenList(Json array, size_t maxDepth, size_t curDepth,
-                        Json& result) {
-  size_t elementCount = array.size();
-  for (size_t i = 0; i < elementCount; ++i) {
-    Json tmp = array.at(i);
-    if (tmp.isArray() && curDepth < maxDepth) {
-      FlattenList(tmp, maxDepth, curDepth + 1, result);
-    } else {
-      // Transfer the content of tmp into the result
-      result.transfer(tmp.json());
-    }
-  }
-}
 
 static void FlattenList(VPackSlice const& array, size_t maxDepth,
                         size_t curDepth, VPackBuilder& result) {
