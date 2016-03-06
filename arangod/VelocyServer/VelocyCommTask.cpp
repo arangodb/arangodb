@@ -359,7 +359,7 @@ bool VelocyCommTask::processRead() {
             // setVstreamValues(bool isFirst, uint64_t messageId)
             velocystream vst;
             vst.length = sizeof(buffer);
-            vst.chunkx = ((std::uint32_t)1) | ((std::uint64_t)firstChunk);
+            vst.chunkx = ((std::uint32_t)1) | ((std::uint64_t)firstChunk); // chunk + isFirstChunk = chunkx
             vst.messageId = _message_id;
             vst.vpacks = *buffer; 
 
