@@ -873,40 +873,33 @@ AqlValue Expression::executeSimpleExpressionFCall(
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
   size_t const n = member->numMembers();
-  FunctionParameters parameters;
+  VPackFunctionParameters parameters;
   parameters.reserve(n);
+#warning Can we get access to query here?
+  // std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+  VPackBuilder builder;
 
-  try {
-    for (size_t i = 0; i < n; ++i) {
-      TRI_document_collection_t const* myCollection = nullptr;
-      auto arg = member->getMemberUnchecked(i);
+#warning Check if this is correct w.r.t. Memory Management
+  for (size_t i = 0; i < n; ++i) {
+    builder.clear();
+    TRI_document_collection_t const* myCollection = nullptr;
+    auto arg = member->getMemberUnchecked(i);
 
-      if (arg->type == NODE_TYPE_COLLECTION) {
-        parameters.emplace_back(
-            AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, arg->getStringValue(),
-                              arg->getStringLength())),
-            nullptr);
-      } else {
-        parameters.emplace_back(
-            executeSimpleExpression(arg, &myCollection, trx, argv, startPos,
-                                    vars, regs, false),
-            myCollection);
-      }
+    if (arg->type == NODE_TYPE_COLLECTION) {
+      builder.add(VPackValue(
+          std::string(arg->getStringValue(), arg->getStringLength())));
+      parameters.emplace_back(AqlValue$(builder));
+    } else {
+      AqlValue tmp = executeSimpleExpression(arg, &myCollection, trx, argv,
+                                             startPos, vars, regs, false);
+      parameters.emplace_back(AqlValue$(tmp, trx, myCollection));
     }
-
-    auto res2 = func->implementation(_ast->query(), trx, parameters);
-
-    for (auto& it : parameters) {
-      it.first.destroy();
-    }
-    return res2;
-  } catch (...) {
-    // prevent leak and rethrow error
-    for (auto& it : parameters) {
-      it.first.destroy();
-    }
-    throw;
   }
+
+  auto res2 = func->implementation(_ast->query(), trx, parameters);
+
+  // parameters go out if scope and free themselves.
+  return AqlValue(res2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
