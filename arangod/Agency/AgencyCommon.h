@@ -143,12 +143,13 @@ typedef std::initializer_list<index_t> index_list_t;
 struct write_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
+  std::vector<bool>    applied;
   std::vector<index_t> indices; // Indices of log entries (if any) to wait for
   write_ret_t () : accepted(false), redirect(0) {}
-  write_ret_t (bool a, id_t id, index_list_t const& idx = index_list_t()) :
-    accepted(a), redirect(id), indices(idx) {}
-  write_ret_t (bool a, id_t id, std::vector<index_t> const& idx) :
-    accepted(a), redirect(id), indices(idx) {}
+  write_ret_t (bool a, id_t id) : accepted(a), redirect(id) {}
+  write_ret_t (bool a, id_t id, std::vector<bool> const& app,
+               std::vector<index_t> const& idx) :
+    accepted(a), redirect(id), applied(app), indices(idx) {}
 };
 
 using namespace std::chrono;

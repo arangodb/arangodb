@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
+#include <iostream>
 
 using namespace arangodb::velocypack;
 
@@ -37,6 +38,7 @@ namespace consensus {
 Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
+  _state.setEndPoint(_config.end_points[this->id()]);
   if (!_state.load())
     LOG(FATAL) << "Failed to load persistent state on statup.";
   _constituent.configure(this);
@@ -199,20 +201,23 @@ append_entries_t Agent::sendAppendEntriesRPC (
   
 }
 
-write_ret_t Agent::write (query_t const& query)  { // Signal auf die _cv
+write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {                    // Leading 
+    MUTEX_LOCKER(mutexLocker, _confirmedLock);
     std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
-    if (applied.size() == 0) {
-      throw QUERY_NOT_APPLICABLE;
-    }
+
     std::vector<index_t> indices = 
-      _state.log (query, applied, term(), id());   // Append to log w/ indicies
-    {
-      MUTEX_LOCKER(mutexLocker, _confirmedLock);
-      _confirmed[id()]++;                          // Confirm myself
+      _state.log (query, applied, term(), id()); // Append to log w/ indicies
+
+    for (size_t i = 0; i < applied.size(); ++i) {
+      if (applied[i]) {
+        _confirmed[id()] = indices[i];           // Confirm myself
+      }
     }
-    return write_ret_t(true,id(),indices);         // Indices to wait for to rest
-  } else {                                         // Leading else redirect
+    
+    _cv.signal();                                // Wake up run
+    return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
+  } else {                                       // Leading else redirect
     return write_ret_t(false,_constituent.leaderID());
   }
 }

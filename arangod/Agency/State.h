@@ -112,11 +112,19 @@ private:
   /**
    * @brief Save currentTerm, votedFor, log entries
    */
-  bool save (arangodb::velocypack::Slice const&, double timeout = 0.0);
+  bool save (arangodb::velocypack::Slice const&, index_t, term_t,
+             double timeout = 0.0);
+
+  bool loadCollection (std::string const& name);
+
+  bool checkDBs();
+  bool checkDB(std::string const& name);
+  bool createCollection(std::string const& name);
 
   mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
   std::vector<log_t> _log;          /**< @brief  State entries */
   std::string _end_point;            /**< @brief persistence end point */
+  bool _dbs_checked;
   
 };
 

@@ -178,13 +178,9 @@ public:
     return os;
   }
 
-  bool apply (arangodb::velocypack::Slice const& slice) {
-    // TODO apply slice to database
-    return true;
-  }
-  
-  std::vector<bool> apply (query_t const& query) {
+  std::vector<bool> apply (query_t const& query) {    
     std::vector<bool> applied;
+    MUTEX_LOCKER(mutexLocker, _storeLock);
     for (auto const& i : VPackArrayIterator(query->slice())) {
       applied.push_back(apply(i));
     }
@@ -192,6 +188,7 @@ public:
   }
 
   query_t read (query_t const& query) const {
+    MUTEX_LOCKER(mutexLocker, _storeLock);
     // TODO: Run through JSON and asseble result
     query_t ret = std::make_shared<arangodb::velocypack::Builder>();
     return ret;
@@ -200,10 +197,17 @@ public:
 protected:
   Node* _parent;
 private:
+  bool apply (arangodb::velocypack::Slice const& slice) {
+    // TODO apply slice to database
+    return true;
+  }
+  
   NodeType _type;
   std::string _name;
   Buffer<uint8_t> _value;
   Children _children;
+  mutable arangodb::Mutex _storeLock;
+  
 };
 
 

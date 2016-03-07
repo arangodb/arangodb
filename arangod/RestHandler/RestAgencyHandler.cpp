@@ -77,18 +77,16 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 }
 
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
-  arangodb::velocypack::Options options;
+  arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
-    write_ret_t ret;
-    try {
-      ret = _agent->write (_request->toVelocyPack(&options));
-    } catch (agencyException const& e) {
-      generateError(HttpResponse::PRECONDITION_FAILED,412);
-    }
+    write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
     if (ret.accepted) {
       Builder body;
       body.add(VPackValue(VPackValueType::Object));
       _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
+      for (size_t i = 0; i < ret.indices.size(); ++i) {
+        body.add(std::to_string(ret.applied[i]), Value(ret.indices[i]));
+      }
       body.close();
       generateResult(body.slice());
     } else {
