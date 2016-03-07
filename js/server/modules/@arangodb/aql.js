@@ -4092,23 +4092,7 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit);
-
-  if (distanceAttribute === null || distanceAttribute === undefined) {
-    return result.documents;
-  }
-
-  distanceAttribute = AQL_TO_STRING(distanceAttribute);
-
-  // inject distances
-  var documents = result.documents;
-  var distances = result.distances;
-  var n = documents.length, i;
-  for (i = 0; i < n; ++i) {
-    documents[i][distanceAttribute] = distances[i];
-  }
-
-  return documents;
+  return COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4141,21 +4125,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius);
-
-  if (distanceAttribute === null || distanceAttribute === undefined) {
-    return result.documents;
-  }
-
-  // inject distances
-  var documents = result.documents;
-  var distances = result.distances;
-  var n = documents.length, i;
-  for (i = 0; i < n; ++i) {
-    documents[i][distanceAttribute] = distances[i];
-  }
-
-  return documents;
+  return COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -37,8 +37,6 @@ var SimpleQueryNear;
 var SimpleQueryWithin;
 var SimpleQueryWithinRectangle;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +61,6 @@ function GeneralArrayCursor (documents, skip, limit, data) {
 
   this.execute();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
@@ -138,7 +135,6 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements of the cursor
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +195,6 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._extra = null;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +207,6 @@ function SimpleQuery () {
   this._countTotal = null;
   this._batchSize = null;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join limits
@@ -264,7 +257,6 @@ SimpleQuery.prototype.clone = function () {
 SimpleQuery.prototype.execute = function () {
   throw "cannot execute abstract query";
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock queryLimit
@@ -409,8 +401,6 @@ SimpleQuery.prototype.dispose = function() {
   this._countTotal = null;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all query
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,7 +411,6 @@ function SimpleQueryAll (collection) {
 
 SimpleQueryAll.prototype = new SimpleQuery();
 SimpleQueryAll.prototype.constructor = SimpleQueryAll;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -457,8 +446,6 @@ SimpleQueryAll.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
@@ -469,7 +456,6 @@ SimpleQueryArray = function (documents) {
 
 SimpleQueryArray.prototype = new SimpleQuery();
 SimpleQueryArray.prototype.constructor = SimpleQueryArray;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -519,8 +505,6 @@ SimpleQueryArray.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-example
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,7 +516,6 @@ function SimpleQueryByExample (collection, example) {
 
 SimpleQueryByExample.prototype = new SimpleQuery();
 SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-example
@@ -570,8 +553,6 @@ SimpleQueryByExample.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,7 +564,6 @@ function SimpleQueryByCondition (collection, condition) {
 
 SimpleQueryByCondition.prototype = new SimpleQuery();
 SimpleQueryByCondition.prototype.constructor = SimpleQueryByCondition;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-condition
@@ -621,8 +601,6 @@ SimpleQueryByCondition.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief range query
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +615,6 @@ function SimpleQueryRange (collection, attribute, left, right, type) {
 
 SimpleQueryRange.prototype = new SimpleQuery();
 SimpleQueryRange.prototype.constructor = SimpleQueryRange;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a range query
@@ -677,8 +654,6 @@ SimpleQueryRange.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,7 +662,6 @@ function SimpleQueryGeo (collection, index) {
   this._collection = collection;
   this._index = index;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a geo index
@@ -704,7 +678,6 @@ SimpleQueryGeo.prototype._PRINT = function (context) {
 
   context.output += text;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for an index
@@ -729,8 +702,6 @@ SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
 SimpleQueryGeo.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this._collection, lat1, lon1, lat2, lon2, this._index);
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief near query
@@ -776,7 +747,6 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
 SimpleQueryNear.prototype = new SimpleQuery();
 SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a near query
 ////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +790,6 @@ SimpleQueryNear.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the distance attribute
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,8 +808,6 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 
   return clone;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within query
@@ -884,7 +851,6 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
 
 SimpleQueryWithin.prototype = new SimpleQuery();
 SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a within query
@@ -953,8 +919,6 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
 
   return clone;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within-rectangle query
@@ -1051,8 +1015,6 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext query
 ////////////////////////////////////////////////////////////////////////////////
@@ -1092,7 +1054,6 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
 
 SimpleQueryFulltext.prototype = new SimpleQuery();
 SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a fulltext query
@@ -1134,7 +1095,6 @@ SimpleQueryFulltext.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
@@ -1146,5 +1106,4 @@ exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
-
 
