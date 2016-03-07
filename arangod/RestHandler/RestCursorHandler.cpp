@@ -108,15 +108,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bindVarsBuilder->add(bindVars);
   }
 
-  VPackBuilder optionsBuilder = buildOptions(slice);
-  VPackSlice options = optionsBuilder.slice();
+  auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
 
   arangodb::aql::Query query(
       _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
       bindVarsBuilder,
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(options),
+      options,
       arangodb::aql::PART_MAIN);
 
   registerQuery(&query);
@@ -139,10 +138,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     _response->setContentType("application/json; charset=utf-8");
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
+    VPackSlice opts = options->slice();
 
     size_t batchSize =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-            options, "batchSize", 1000);
+            opts, "batchSize", 1000);
     size_t const n = TRI_LengthArrayJson(queryResult.json);
 
     if (n <= batchSize) {
@@ -158,7 +158,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
         result.add("hasMore", VPackValue(false));
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count",
                                                                 false)) {
           result.add("count", VPackValue(n));
         }
@@ -188,9 +188,9 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     TRI_ASSERT(cursors != nullptr);
 
     double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-        options, "ttl", 30);
+        opts, "ttl", 30);
     bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        options, "count", false);
+        opts, "count", false);
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
@@ -350,10 +350,7 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
     }
     if (queryResult.profile != nullptr) {
       extra->add(VPackValue("profile"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile, *extra);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return nullptr;
-      }
+      extra->add(queryResult.profile->slice());
       queryResult.profile = nullptr;
     }
     if (queryResult.warnings == nullptr) {

@@ -42,6 +42,9 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
@@ -97,48 +100,47 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the list of collections in a JSON
+/// @brief process the list of collections in a VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::getCollectionsFromJson(Ast* ast,
-                                           arangodb::basics::Json const& json) {
+void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
+                                                 VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
-  arangodb::basics::Json jsonCollections = json.get("collections");
+  VPackSlice collectionsSlice = slice.get("collections");
 
-  if (!jsonCollections.isArray()) {
+  if (!collectionsSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "json node \"collections\" not found or not an array");
   }
 
-  auto const size = jsonCollections.size();
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonCollection =
-        jsonCollections.at(static_cast<int>(i));
-    auto typeStr = arangodb::basics::JsonHelper::checkAndGetStringValue(
-        oneJsonCollection.json(), "type");
-
+  for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
+    auto typeStr = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+        collection, "type");
     ast->query()->collections()->add(
-        arangodb::basics::JsonHelper::checkAndGetStringValue(
-            oneJsonCollection.json(), "name"),
+        arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
+                                                                   "name"),
         TRI_GetTransactionTypeFromStr(
-            arangodb::basics::JsonHelper::checkAndGetStringValue(
-                oneJsonCollection.json(), "type").c_str()));
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                collection, "type")
+                .c_str()));
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan from JSON
+/// @brief create an execution plan from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instantiateFromJson(
-    Ast* ast, arangodb::basics::Json const& json) {
+ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
+    Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
 
+#warning In place slice => Json
+  Json json(TRI_UNKNOWN_MEM_ZONE,
+            arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   plan->_root = plan->fromJson(json);
   plan->_varUsageComputed = true;
 

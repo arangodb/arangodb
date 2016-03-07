@@ -77,9 +77,6 @@ struct QueryResult {
     if (json != nullptr) {
       TRI_FreeJson(zone, json);
     }
-    if (profile != nullptr) {
-      TRI_FreeJson(zone, profile);
-    }
   }
 
   int code;
@@ -91,7 +88,7 @@ struct QueryResult {
   TRI_json_t* warnings;
   TRI_json_t* json;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
-  TRI_json_t* profile;
+  std::shared_ptr<arangodb::velocypack::Builder> profile;
   TRI_json_t* clusterplan;
 };
 }

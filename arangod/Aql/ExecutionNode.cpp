@@ -377,7 +377,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
   len = jsonvarsUsedLater.size();
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarUsedLater = std::make_unique<Variable>(jsonvarsUsedLater.at(i));
+#warning Still Json Version. Ignore return val
+    auto builder = JsonHelper::toVelocyPack(jsonvarsUsedLater.at(i).json());
+    auto oneVarUsedLater = std::make_unique<Variable>(builder->slice());
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
@@ -398,7 +400,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
   len = jsonvarsValidList.size();
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarValid = std::make_unique<Variable>(jsonvarsValidList.at(i));
+#warning Deprecated
+    auto builder = JsonHelper::toVelocyPack(jsonvarsValidList.at(i).json());
+    auto oneVarValid = std::make_unique<Variable>(builder->slice());
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
@@ -629,8 +633,9 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
         "Mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
   }
-
-  return ast->variables()->createVariable(variableJson);
+#warning Deprecated
+  auto builder = JsonHelper::toVelocyPack(variableJson.json());
+  return ast->variables()->createVariable(builder->slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

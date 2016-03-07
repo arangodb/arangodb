@@ -92,7 +92,8 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  VPackSlice options = querySlice.get("options");
+  auto options = std::make_shared<VPackBuilder>(
+      VPackBuilder::clone(querySlice.get("options")));
 
   std::string const part = VelocyPackHelper::getStringValue(querySlice, "part", "");
 
@@ -240,10 +241,9 @@ void RestAqlHandler::explainQuery() {
     return;
   }
 
-#warning Can we use Builder::clone(Slice) here?
   auto bindVars = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("parameters")));
 
-  VPackSlice options = querySlice.get("options");
+  auto options = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("options")));
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
                          queryString.size(), bindVars, options, PART_MAIN);
@@ -314,9 +314,10 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  auto bindVars = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("parameters")));
-  
-  VPackSlice options = querySlice.get("options");
+  auto bindVars = std::make_shared<VPackBuilder>(
+      VPackBuilder::clone(querySlice.get("parameters")));
+  auto options = std::make_shared<VPackBuilder>(
+      VPackBuilder::clone(querySlice.get("options")));
 
   auto query =
       new Query(_applicationV8, false, _vocbase, queryString.c_str(),
