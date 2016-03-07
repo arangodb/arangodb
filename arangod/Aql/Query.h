@@ -116,10 +116,19 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*,
+        QueryPart);
+
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        arangodb::velocypack::Slice const, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
+
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        arangodb::velocypack::Slice const, QueryPart);
 
   ~Query();
 
@@ -403,6 +412,14 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_json_t* warningsToJson(TRI_memory_zone_t*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief convert the list of warnings to VelocyPack.
+  ///        Will add a new entry { ..., warnings: <warnings>, } if there are
+  ///        warnings. If there are none it will not modify the builder
+  //////////////////////////////////////////////////////////////////////////////
+
+   void warningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch the global query tracking value

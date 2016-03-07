@@ -36,6 +36,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -171,6 +172,48 @@ bool Query::DoDisableQueryTracking = false;
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
+             std::shared_ptr<VPackBuilder> bindParameters, VPackSlice const options, QueryPart part)
+    : _id(0),
+      _applicationV8(applicationV8),
+      _vocbase(vocbase),
+      _executor(nullptr),
+      _context(nullptr),
+      _queryString(queryString),
+      _queryLength(queryLength),
+      _queryJson(),
+      _bindParameters(bindParameters),
+      _options(arangodb::basics::VelocyPackHelper::velocyPackToJson(options)),
+      _collections(vocbase),
+      _strings(),
+      _shortStringStorage(1024),
+      _ast(nullptr),
+      _profile(nullptr),
+      _state(INVALID_STATE),
+      _plan(nullptr),
+      _parser(nullptr),
+      _trx(nullptr),
+      _engine(nullptr),
+      _maxWarningCount(10),
+      _warnings(),
+      _part(part),
+      _contextOwnedByExterior(contextOwnedByExterior),
+      _killed(false),
+      _isModificationQuery(false) {
+  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
+  // queryString << "\n";
+
+  TRI_ASSERT(_vocbase != nullptr);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query
+////////////////////////////////////////////////////////////////////////////////
+
+Query::Query(arangodb::ApplicationV8* applicationV8,
+             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+             char const* queryString, size_t queryLength,
              std::shared_ptr<VPackBuilder> bindParameters, TRI_json_t* options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
@@ -245,6 +288,49 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 
   TRI_ASSERT(_vocbase != nullptr);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+Query::Query(arangodb::ApplicationV8* applicationV8,
+             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+             std::shared_ptr<VPackBuilder> queryStruct,
+             VPackSlice const options, QueryPart part)
+    : _id(0),
+      _applicationV8(applicationV8),
+      _vocbase(vocbase),
+      _executor(nullptr),
+      _context(nullptr),
+      _queryString(nullptr),
+      _queryLength(0),
+      _queryJson(TRI_UNKNOWN_MEM_ZONE, arangodb::basics::VelocyPackHelper::velocyPackToJson(
+          queryStruct->slice())),
+      _bindParameters(nullptr),
+      _options(arangodb::basics::VelocyPackHelper::velocyPackToJson(options)),
+      _collections(vocbase),
+      _strings(),
+      _shortStringStorage(1024),
+      _ast(nullptr),
+      _profile(nullptr),
+      _state(INVALID_STATE),
+      _plan(nullptr),
+      _parser(nullptr),
+      _trx(nullptr),
+      _engine(nullptr),
+      _maxWarningCount(10),
+      _warnings(),
+      _part(part),
+      _contextOwnedByExterior(contextOwnedByExterior),
+      _killed(false),
+      _isModificationQuery(false) {
+  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON):
+  // " << _queryJson.toString() << "\n";
+
+  TRI_ASSERT(_vocbase != nullptr);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a query
@@ -1232,6 +1318,18 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
   }
 
   return valueJson->_value._boolean;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convert the list of warnings to VelocyPack.
+///        Will add a new entry { ..., warnings: <warnings>, } if there are
+///        warnings. If there are none it will not modify the builder
+//////////////////////////////////////////////////////////////////////////////
+
+void Query::warningsToVelocyPack(arangodb::velocypack::Builder&) const {
+#warning Needs to be implemented.
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
