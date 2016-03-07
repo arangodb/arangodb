@@ -203,6 +203,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
         arangodb::wal::DocumentOperation* op = (*it);
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            op->type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           TRI_voc_fid_t fid = op->oldHeader.getFid();
           auto marker = op->oldHeader.getMarkerPtr();
@@ -620,13 +621,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("database", VPackValue(trx->_vocbase->_id));
-    builder.add("tid", VPackValue(trx->_id));
-    builder.close();
-
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, builder.slice());
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -665,13 +660,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("database", VPackValue(trx->_vocbase->_id));
-    builder.add("tid", VPackValue(trx->_id));
-    builder.close();
-
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, builder.slice());
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -702,13 +691,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("database", VPackValue(trx->_vocbase->_id));
-    builder.add("tid", VPackValue(trx->_id));
-    builder.close();
-
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, builder.slice());
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -1111,7 +1094,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_ASSERT(position != nullptr);
 
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
-      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
     operation.header->setDataPtr(position); 
   }
@@ -1132,6 +1116,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     ++document->_uncollectedLogfileEntries;
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
       TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();

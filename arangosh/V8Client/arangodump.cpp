@@ -468,7 +468,7 @@ static int DumpCollection(int fd, std::string const& cid,
   uint64_t chunkSize = ChunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
-                              "&ticks=false&translateIds=true&flush=false";
+                              "&ticks=false&flush=false";
 
   uint64_t fromTick = TickStart;
 
@@ -478,12 +478,6 @@ static int DumpCollection(int fd, std::string const& cid,
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
-    }
-
-    if (Force) {
-      url += "&failOnUnknown=false";
-    } else {
-      url += "&failOnUnknown=true";
     }
 
     Stats._totalBatches++;
@@ -848,7 +842,7 @@ static int DumpShard(int fd, std::string const& DBserver,
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&collection=" + name + "&chunkSize=" +
                               StringUtils::itoa(ChunkSize) +
-                              "&ticks=false&translateIds=true";
+                              "&ticks=false";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;

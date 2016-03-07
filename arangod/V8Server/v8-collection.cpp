@@ -1189,17 +1189,13 @@ static void JS_PropertiesVocbaseCol(
       try {
         VPackBuilder infoBuilder;
         infoBuilder.openObject();
-        infoBuilder.add("database", VPackValue(document->_vocbase->_id));
-        infoBuilder.add("cid", VPackValue(document->_info.id()));
-        infoBuilder.add("data", VPackValue(VPackValueType::Object));
         TRI_CreateVelocyPackCollectionInfo(base->_info, infoBuilder);
-        infoBuilder.close();
         infoBuilder.close();
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
 
-        arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, infoBuilder.slice());
+        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, document->_vocbase->_id, document->_info.id(), infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                         false);
@@ -1378,6 +1374,7 @@ static void parseReplaceAndUpdateOptions(
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
       if (optionsObject->Has(KeepNullKey)) {
         options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(KeepNullKey));
@@ -1420,7 +1417,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
@@ -1450,7 +1447,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   OperationOptions options;
   options.ignoreRevs = false;
-  parseReplaceAndUpdateOptions(isolate, args, options, operation);
+  if (args.Length() > 2) {
+    parseReplaceAndUpdateOptions(isolate, args, options, operation);
+  }
 
   // Find collection and vocbase
   std::string collectionName;
@@ -1578,7 +1577,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "

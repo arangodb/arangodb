@@ -1198,39 +1198,39 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
     case TRI_DF_MARKER_PROLOGUE:
       return "prologue";
     case TRI_DF_MARKER_VPACK_DOCUMENT:
-      return "document (vpack)";
+      return "document";
     case TRI_DF_MARKER_VPACK_REMOVE:
-      return "remove document (vpack)";
+      return "remove document";
     case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
-      return "create collection (vpack)";
+      return "create collection";
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-      return "drop collection (vpack)";
+      return "drop collection";
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
-      return "rename collection (vpack)";
+      return "rename collection";
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
-      return "change collection (vpack)";
+      return "change collection";
     case TRI_DF_MARKER_VPACK_CREATE_INDEX:
-      return "create index (vpack)";
+      return "create index";
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
-      return "drop index (vpack)";
+      return "drop index";
     case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
-      return "create database (vpack)";
+      return "create database";
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
-      return "drop database (vpack)";
+      return "drop database";
     case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
-      return "begin transaction (vpack)";
+      return "begin transaction";
     case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
-      return "commit transaction (vpack)";
+      return "commit transaction";
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION:
-      return "abort transaction (vpack)";
+      return "abort transaction";
 
     // datafile markers
     case TRI_DF_MARKER_BEGIN_REMOTE_TRANSACTION:
-      return "begin remote transaction (wal)";
+      return "begin remote transaction";
     case TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION:
-      return "commit remote transaction (wal)";
+      return "commit remote transaction";
     case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION:
-      return "abort remote transaction (wal)";
+      return "abort remote transaction";
     case TRI_DOC_MARKER_KEY_DOCUMENT:
       return "document (df)";
     case TRI_DOC_MARKER_KEY_EDGE:

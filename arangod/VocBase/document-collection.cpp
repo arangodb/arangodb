@@ -2349,14 +2349,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    VPackBuilder markerBuilder;
-    markerBuilder.openObject();
-    markerBuilder.add("database", VPackValue(vocbase->_id));
-    markerBuilder.add("cid", VPackValue(document->_info.id()));
-    markerBuilder.add("data", idxSlice);
-    markerBuilder.close();
-
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, markerBuilder.slice());
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, vocbase->_id, document->_info.id(), idxSlice);
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -2433,14 +2426,10 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
       try {
         VPackBuilder markerBuilder;
         markerBuilder.openObject();
-        markerBuilder.add("database", VPackValue(document->_vocbase->_id));
-        markerBuilder.add("cid", VPackValue(document->_info.id()));
-        markerBuilder.add("data", VPackValue(VPackValueType::Object));
         markerBuilder.add("id", VPackValue(iid));
         markerBuilder.close();
-        markerBuilder.close();
 
-        arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, markerBuilder.slice());
+        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, document->_vocbase->_id, document->_info.id(), markerBuilder.slice());
         
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -3555,7 +3544,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     VPackBuilder builder = newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, std::to_string(revisionId));
- 
+
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {
@@ -3751,7 +3740,7 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
     Transaction* trx, VPackSlice const* slice) {
-  return new arangodb::wal::VPackDocumentMarker(trx->getInternals()->_id, *slice);
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, trx->getInternals()->_id, *slice);
 }
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
@@ -3765,7 +3754,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
     Transaction* trx, VPackSlice const* slice) {
-  return new arangodb::wal::VPackRemoveMarker(trx->getInternals()->_id, *slice);
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, trx->getInternals()->_id, *slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

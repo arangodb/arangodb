@@ -40,6 +40,7 @@
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
@@ -810,7 +811,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   arangodb::wal::LogfileManagerState state =
       arangodb::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = state.lastDataTick;
+  TRI_voc_tick_t tickEnd = UINT64_MAX;
   TRI_voc_tick_t firstRegularTick = 0;
 
   bool found;
@@ -910,8 +911,10 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
+    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()),
                                 includeSystem, cid);
 
     // and dump
@@ -1011,8 +1014,10 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(), false,
+    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()), false,
                                 0);
 
     // and dump
@@ -2014,21 +2019,16 @@ static int restoreDataParser(char const* ptr, char const* pos,
       }
     }
 
-    else if (attributeName == "key") {
-      if (pair.value.isString()) {
-        key = pair.value.copyString();
-      }
-    }
-
-    else if (useRevision && attributeName == "rev") {
-      if (pair.value.isString()) {
-        rev = pair.value.copyString();
-      }
-    }
-
     else if (attributeName == "data") {
       if (pair.value.isObject()) {
         doc = pair.value;
+    
+        if (doc.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+          key = doc.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        }
+        else if (useRevision && doc.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
+          rev = doc.get(TRI_VOC_ATTRIBUTE_REV).copyString();
+        } 
       }
     }
   }
@@ -2785,8 +2785,6 @@ void RestReplicationHandler::handleCommandDump() {
   TRI_voc_tick_t tickEnd = static_cast<TRI_voc_tick_t>(UINT64_MAX);
   bool flush = true;  // flush WAL before dumping?
   bool withTicks = true;
-  bool translateCollectionIds = true;
-  bool failOnUnknown = false;
   uint64_t flushWait = 0;
 
   bool found;
@@ -2797,13 +2795,6 @@ void RestReplicationHandler::handleCommandDump() {
 
   if (found) {
     flush = StringUtils::boolean(value);
-  }
-
-  // fail on unknown collection names referenced in edges
-  value = _request->value("failOnUnknown", found);
-
-  if (found) {
-    failOnUnknown = StringUtils::boolean(value);
   }
 
   // determine flush WAL wait time value
@@ -2849,12 +2840,6 @@ void RestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value);
   }
 
-  value = _request->value("translateIds", found);
-
-  if (found) {
-    translateCollectionIds = StringUtils::boolean(value);
-  }
-
   TRI_vocbase_col_t* c =
       TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
@@ -2885,13 +2870,13 @@ void RestReplicationHandler::handleCommandDump() {
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
 
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
     // initialize the dump container
-    TRI_replication_dump_t dump(_vocbase, (size_t)determineChunkSize(),
+    TRI_replication_dump_t dump(transactionContext, static_cast<size_t>(determineChunkSize()),
                                 includeSystem, 0);
 
-    res =
-        TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks,
-                                      translateCollectionIds, failOnUnknown);
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
