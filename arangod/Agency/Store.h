@@ -42,18 +42,6 @@
 namespace arangodb {
 namespace consensus {
 
-static inline std::vector<std::string>
-split (std::string str, const std::string& dlm) {
-	std::vector<std::string> sv;
-	size_t  start = (str.find('/') == 0) ? 1:0, end = 0;
-	while (end != std::string::npos) {
-		end = str.find (dlm, start);
-		sv.push_back(str.substr(start, (end == std::string::npos) ? std::string::npos : end - start));
-		start = ((end > (std::string::npos - dlm.size())) ? std::string::npos : end + dlm.size());
-	}
-	return sv;
-}
-
 enum NodeType {NODE, LEAF};
 
 inline std::ostream& operator<< (std::ostream& os, std::vector<std::string> const& sv) {
@@ -74,11 +62,11 @@ public:
   typedef std::vector<std::string> PathType;
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
   
-  Node (std::string const& name) : _parent(nullptr), _name(name), _value(Buffer<uint8_t>()) {}
+  Node (std::string const& name);
   
-  ~Node () {}
+  ~Node ();
   
-  std::string const& name() const {return _name;}
+  std::string const& name() const;
 
   template<class T> Node& operator= (T const& t) { // Assign value (become leaf)
     _children.clear();

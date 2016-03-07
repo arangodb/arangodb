@@ -201,6 +201,10 @@ append_entries_t Agent::sendAppendEntriesRPC (
   
 }
 
+bool Agent::load () {
+  return _state.load();
+}
+
 write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {                    // Leading 
     MUTEX_LOCKER(mutexLocker, _confirmedLock);

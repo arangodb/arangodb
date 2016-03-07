@@ -99,6 +99,8 @@ public:
 
   bool lead ();
 
+  bool load ();
+
   /**
    * @brief Attempt write
    */
