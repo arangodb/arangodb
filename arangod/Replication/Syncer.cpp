@@ -381,6 +381,9 @@ int Syncer::applyCollectionDumpMarker(
     // {"type":2402,"key":"592063"}
     
     try {
+      OperationOptions options;
+      options.silent = true;
+      options.ignoreRevs = true;
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (opRes.successful() ||
