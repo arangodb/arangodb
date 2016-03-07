@@ -63,18 +63,18 @@ class ExecutionPlan {
   static ExecutionPlan* instantiateFromAst(Ast*);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief process the list of collections in a JSON
+  /// @brief process the list of collections in a VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static void getCollectionsFromJson(Ast* ast,
-                                     arangodb::basics::Json const& Json);
+  static void getCollectionsFromVelocyPack(Ast* ast,
+                                           arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an execution plan from JSON
+  /// @brief create an execution plan from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static ExecutionPlan* instantiateFromJson(Ast* ast,
-                                            arangodb::basics::Json const& Json);
+  static ExecutionPlan* instantiateFromVelocyPack(
+      Ast* ast, arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone the plan by recursively cloning starting from the root

@@ -534,7 +534,9 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       break;
     }
     case NODE_TYPE_VARIABLE: {
-      auto variable = ast->variables()->createVariable(json);
+#warning Fix this
+      auto builder = JsonHelper::toVelocyPack(json.json());
+      auto variable = ast->variables()->createVariable(builder->slice());
       TRI_ASSERT(variable != nullptr);
       setData(variable);
       break;

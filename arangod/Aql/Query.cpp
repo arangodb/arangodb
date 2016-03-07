@@ -47,6 +47,7 @@
 #include "VocBase/Graphs.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -147,19 +148,6 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the profile to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
-  arangodb::basics::Json result(arangodb::basics::Json::Object);
-  for (auto const& it : results) {
-    result.set(StateNames[static_cast<int>(it.first)].c_str(),
-               arangodb::basics::Json(it.second));
-  }
-  return result.steal();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not query tracking is disabled globally
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +160,7 @@ bool Query::DoDisableQueryTracking = false;
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
-             std::shared_ptr<VPackBuilder> bindParameters, VPackSlice const options, QueryPart part)
+             std::shared_ptr<VPackBuilder> const bindParameters, std::shared_ptr<VPackBuilder> const options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
       _vocbase(vocbase),
@@ -180,9 +168,9 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _context(nullptr),
       _queryString(queryString),
       _queryLength(queryLength),
-      _queryJson(),
+      _queryBuilder(),
       _bindParameters(bindParameters),
-      _options(arangodb::basics::VelocyPackHelper::velocyPackToJson(options)),
+      _options(options),
       _collections(vocbase),
       _strings(),
       _shortStringStorage(1024),
@@ -201,90 +189,6 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _isModificationQuery(false) {
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
-
-  TRI_ASSERT(_vocbase != nullptr);
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query
-////////////////////////////////////////////////////////////////////////////////
-
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             char const* queryString, size_t queryLength,
-             std::shared_ptr<VPackBuilder> bindParameters, TRI_json_t* options, QueryPart part)
-    : _id(0),
-      _applicationV8(applicationV8),
-      _vocbase(vocbase),
-      _executor(nullptr),
-      _context(nullptr),
-      _queryString(queryString),
-      _queryLength(queryLength),
-      _queryJson(),
-      _bindParameters(bindParameters),
-      _options(options),
-      _collections(vocbase),
-      _strings(),
-      _shortStringStorage(1024),
-      _ast(nullptr),
-      _profile(nullptr),
-      _state(INVALID_STATE),
-      _plan(nullptr),
-      _parser(nullptr),
-      _trx(nullptr),
-      _engine(nullptr),
-      _maxWarningCount(10),
-      _warnings(),
-      _startTime(TRI_microtime()),
-      _part(part),
-      _contextOwnedByExterior(contextOwnedByExterior),
-      _killed(false),
-      _isModificationQuery(false) {
-  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
-  // queryString << "\n";
-
-  TRI_ASSERT(_vocbase != nullptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a query from Json
-////////////////////////////////////////////////////////////////////////////////
-
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             arangodb::basics::Json queryStruct, TRI_json_t* options,
-             QueryPart part)
-    : _id(0),
-      _applicationV8(applicationV8),
-      _vocbase(vocbase),
-      _executor(nullptr),
-      _context(nullptr),
-      _queryString(nullptr),
-      _queryLength(0),
-      _queryJson(queryStruct),
-      _bindParameters(nullptr),
-      _options(options),
-      _collections(vocbase),
-      _strings(),
-      _shortStringStorage(1024),
-      _ast(nullptr),
-      _profile(nullptr),
-      _state(INVALID_STATE),
-      _plan(nullptr),
-      _parser(nullptr),
-      _trx(nullptr),
-      _engine(nullptr),
-      _maxWarningCount(10),
-      _warnings(),
-      _startTime(TRI_microtime()),
-      _part(part),
-      _contextOwnedByExterior(contextOwnedByExterior),
-      _killed(false),
-      _isModificationQuery(false) {
-  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON):
-  // " << _queryJson.toString() << "\n";
 
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -295,8 +199,8 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
-             std::shared_ptr<VPackBuilder> queryStruct,
-             VPackSlice const options, QueryPart part)
+             std::shared_ptr<VPackBuilder> const queryStruct,
+             std::shared_ptr<VPackBuilder> const options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
       _vocbase(vocbase),
@@ -304,10 +208,9 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _context(nullptr),
       _queryString(nullptr),
       _queryLength(0),
-      _queryJson(TRI_UNKNOWN_MEM_ZONE, arangodb::basics::VelocyPackHelper::velocyPackToJson(
-          queryStruct->slice())),
+      _queryBuilder(queryStruct),
       _bindParameters(nullptr),
-      _options(arangodb::basics::VelocyPackHelper::velocyPackToJson(options)),
+      _options(options),
       _collections(vocbase),
       _strings(),
       _shortStringStorage(1024),
@@ -342,11 +245,6 @@ Query::~Query() {
 
   delete _profile;
   _profile = nullptr;
-
-  if (_options != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _options);
-    _options = nullptr;
-  }
 
   delete _executor;
   _executor = nullptr;
@@ -390,21 +288,11 @@ Query::~Query() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Query* Query::clone(QueryPart part, bool withPlan) {
-  std::unique_ptr<TRI_json_t> options;
-
-  if (_options != nullptr) {
-    options.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options));
-
-    if (options == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-  }
 
   std::unique_ptr<Query> clone;
 
   clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
-                        _queryLength, std::shared_ptr<VPackBuilder>(), options.get(), part));
-  options.release();
+                        _queryLength, std::shared_ptr<VPackBuilder>(), _options, part));
 
   if (_plan != nullptr) {
     if (withPlan) {
@@ -618,11 +506,13 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       // Now plan and all derived plans belong to the optimizer
       plan.reset(opt.stealBest());  // Now we own the best one again
       planRegisters = true;
-    } else {  // no queryString, we are instantiating from _queryJson
+    } else {  // no queryString, we are instantiating from _queryBuilder
       enterState(PLAN_INSTANTIATION);
-      ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
-      parser->ast()->variables()->fromJson(_queryJson);
+      VPackSlice const querySlice = _queryBuilder->slice();
+      ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
+
+      parser->ast()->variables()->fromVelocyPack(querySlice);
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will
       // fail)
@@ -637,8 +527,8 @@ QueryResult Query::prepare(QueryRegistry* registry) {
         return transactionError(res);
       }
 
-      // we have an execution plan in JSON format
-      plan.reset(ExecutionPlan::instantiateFromJson(parser->ast(), _queryJson));
+      // we have an execution plan in VelocyPack format
+      plan.reset(ExecutionPlan::instantiateFromVelocyPack(parser->ast(), _queryBuilder->slice()));
       if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
@@ -721,7 +611,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
-        res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+#warning Replace QueryResult with VPack
+        VPackBuilder tmp;
+        tmp.openObject();
+        warningsToVelocyPack(tmp);
+        tmp.close();
+        res.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
         res.json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
         res.cached = true;
 
@@ -838,12 +733,17 @@ QueryResult Query::execute(QueryRegistry* registry) {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+#warning Replace QueryResult with VPack
+    VPackBuilder tmp;
+    tmp.openObject();
+    warningsToVelocyPack(tmp);
+    tmp.close();
+    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
     result.json = jsonResult.steal();
     result.stats = stats;
 
     if (_profile != nullptr && profiling()) {
-      result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
+      result.profile = _profile->toVelocyPack();
     }
 
     return result;
@@ -992,11 +892,16 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     enterState(FINALIZATION);
 
-    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+#warning Replace QueryResult with VPack
+    VPackBuilder tmp;
+    tmp.openObject();
+    warningsToVelocyPack(tmp);
+    tmp.close();
+    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
     result.stats = stats;
 
     if (_profile != nullptr && profiling()) {
-      result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
+      result.profile = _profile->toVelocyPack();
     }
 
     return result;
@@ -1130,7 +1035,13 @@ QueryResult Query::explain() {
 
     _trx->commit();
 
-    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+#warning Replace QueryResult with VPack
+    VPackBuilder tmp;
+    tmp.openObject();
+    warningsToVelocyPack(tmp);
+    tmp.close();
+    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
+
     result.stats = opt._stats.toVelocyPack();
 
     return result;
@@ -1308,16 +1219,17 @@ void Query::getStats(VPackBuilder& builder) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::getBooleanOption(char const* option, bool defaultValue) const {
-  if (!TRI_IsObjectJson(_options)) {
+  VPackSlice options = _options->slice();
+  if (!options.isObject()) {
     return defaultValue;
   }
 
-  TRI_json_t const* valueJson = TRI_LookupObjectJson(_options, option);
-  if (!TRI_IsBooleanJson(valueJson)) {
+  VPackSlice value = options.get(option);
+  if (!value.isBoolean()) {
     return defaultValue;
   }
 
-  return valueJson->_value._boolean;
+  return value.getBool();
 }
 
 
@@ -1327,43 +1239,21 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
 ///        warnings. If there are none it will not modify the builder
 //////////////////////////////////////////////////////////////////////////////
 
-void Query::warningsToVelocyPack(arangodb::velocypack::Builder&) const {
-#warning Needs to be implemented.
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the list of warnings to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* Query::warningsToJson(TRI_memory_zone_t* zone) const {
+void Query::warningsToVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
   if (_warnings.empty()) {
-    return nullptr;
+    return;
   }
-
   size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateArrayJson(zone, n);
-
-  if (json != nullptr) {
+  builder.add(VPackValue("warnings"));
+  {
+    VPackArrayBuilder guard(&builder);
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateObjectJson(zone, 2);
-
-      if (error != nullptr) {
-        TRI_Insert3ObjectJson(
-            zone, error, "code",
-            TRI_CreateNumberJson(zone,
-                                 static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ObjectJson(
-            zone, error, "message",
-            TRI_CreateStringCopyJson(zone, _warnings[i].second.c_str(),
-                                     _warnings[i].second.size()));
-
-        TRI_PushBack3ArrayJson(zone, json, error);
-      }
+      VPackObjectBuilder objGuard(&builder);
+      builder.add("code", VPackValue(_warnings[i].first));
+      builder.add("message", VPackValue(_warnings[i].second));
     }
   }
-
-  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1470,16 +1360,17 @@ bool Query::canUseQueryCache() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 double Query::getNumericOption(char const* option, double defaultValue) const {
-  if (!TRI_IsObjectJson(_options)) {
+  VPackSlice options = _options->slice();
+  if (!options.isObject()) {
     return defaultValue;
   }
 
-  TRI_json_t const* valueJson = TRI_LookupObjectJson(_options, option);
-  if (!TRI_IsNumberJson(valueJson)) {
+  VPackSlice value = options.get(option);
+  if (!value.isNumber()) {
     return defaultValue;
   }
 
-  return valueJson->_value._number;
+  return value.getNumericValue<double>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1507,21 +1398,19 @@ QueryResult Query::transactionError(int errorCode) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::inspectSimplePlans() const {
-  if (!TRI_IsObjectJson(_options)) {
+  VPackSlice options = _options->slice();
+  if (!options.isObject()) {
     return true;  // default
   }
 
-  TRI_json_t const* optJson = TRI_LookupObjectJson(_options, "optimizer");
+  VPackSlice opt = options.get("optimizer");
 
-  if (!TRI_IsObjectJson(optJson)) {
+  if (!opt.isObject()) {
     return true;  // default
   }
 
-  TRI_json_t const* j = TRI_LookupObjectJson(optJson, "inspectSimplePlans");
-  if (TRI_IsBooleanJson(j)) {
-    return j->_value._boolean;
-  }
-  return true;  // default;
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(
+      opt, "inspectSimplePlans", true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1531,31 +1420,27 @@ bool Query::inspectSimplePlans() const {
 std::vector<std::string> Query::getRulesFromOptions() const {
   std::vector<std::string> rules;
 
-  if (!TRI_IsObjectJson(_options)) {
+  VPackSlice options = _options->slice();
+
+  if (!options.isObject()){
     return rules;
   }
 
-  TRI_json_t const* optJson = TRI_LookupObjectJson(_options, "optimizer");
+  VPackSlice opt = options.get("optimizer");
 
-  if (!TRI_IsObjectJson(optJson)) {
+  if (!opt.isObject()) {
     return rules;
   }
 
-  TRI_json_t const* rulesJson = TRI_LookupObjectJson(optJson, "rules");
+  VPackSlice rulesList = opt.get("rules");
 
-  if (!TRI_IsArrayJson(rulesJson)) {
+  if (!rulesList.isArray()) {
     return rules;
   }
 
-  size_t const n = TRI_LengthArrayJson(rulesJson);
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* rule = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&rulesJson->_value._objects, i));
-
-    if (TRI_IsStringJson(rule)) {
-      rules.emplace_back(rule->_value._string.data,
-                         rule->_value._string.length - 1);
+  for (auto const& rule : VPackArrayIterator(rulesList)) {
+    if (rule.isString()){
+      rules.emplace_back(rule.copyString());
     }
   }
 

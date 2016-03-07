@@ -66,10 +66,10 @@ class VariableGenerator {
   Variable* createVariable(std::string const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generate a variable from JSON
+  /// @brief generate a variable from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  Variable* createVariable(arangodb::basics::Json const&);
+  Variable* createVariable(arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clones a variable from an existing one
@@ -114,10 +114,10 @@ class VariableGenerator {
   arangodb::basics::Json toJson(TRI_memory_zone_t*) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief import from JSON
+  /// @brief import from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void fromJson(arangodb::basics::Json const& jsonAllVariablesList);
+  void fromVelocyPack(arangodb::velocypack::Slice const& allVariablesList);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

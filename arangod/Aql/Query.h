@@ -38,7 +38,6 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -97,8 +96,6 @@ struct Profile {
 
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
 
-  TRI_json_t* toJson(TRI_memory_zone_t*);
-
   Query* query;
   std::vector<std::pair<ExecutionState, double>> results;
   double stamp;
@@ -116,19 +113,12 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*,
-        QueryPart);
-
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder>,
-        arangodb::velocypack::Slice const, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder> const,
+        std::shared_ptr<arangodb::velocypack::Builder> const, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
-        arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
-
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
-        std::shared_ptr<arangodb::velocypack::Builder>,
-        arangodb::velocypack::Slice const, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder> const,
+        std::shared_ptr<arangodb::velocypack::Builder> const, QueryPart);
 
   ~Query();
 
@@ -408,12 +398,6 @@ class Query {
   bool getBooleanOption(char const*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief convert the list of warnings to JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_json_t* warningsToJson(TRI_memory_zone_t*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief convert the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
@@ -582,10 +566,10 @@ class Query {
   size_t const _queryLength;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief query in a JSON structure
+  /// @brief query in a VelocyPack structure
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json const _queryJson;
+  std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bind parameters for the query
@@ -597,7 +581,7 @@ class Query {
   /// @brief query options
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* _options;
+  std::shared_ptr<arangodb::velocypack::Builder> _options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collections used in the query

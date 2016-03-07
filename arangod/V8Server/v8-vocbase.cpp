@@ -1120,22 +1120,24 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::unique_ptr<TRI_json_t> options;
+  auto options = std::make_shared<VPackBuilder>();
 
   if (args.Length() > 2) {
     // handle options
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
-    options.reset(TRI_ObjectToJson(isolate, args[2]));
+    int res = TRI_V8ToVPack(isolate, *options, args[2], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
                              queryString.c_str(), queryString.size(),
-                             bindVars, options.release(),
+                             bindVars, options,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
@@ -1205,8 +1207,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
 
-  std::unique_ptr<TRI_json_t> queryjson(TRI_ObjectToJson(isolate, args[0]));
-  std::unique_ptr<TRI_json_t> options;
+  auto queryBuilder = std::make_shared<VPackBuilder>();
+  int res = TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  auto options = std::make_shared<VPackBuilder>();
 
   if (args.Length() > 1) {
     // we have options! yikes!
@@ -1214,15 +1221,15 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    options.reset(TRI_ObjectToJson(isolate, args[1]));
+    res = TRI_V8ToVPack(isolate, *options, args[1], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             Json(TRI_UNKNOWN_MEM_ZONE, queryjson.release()),
-                             options.get(), arangodb::aql::PART_MAIN);
-
-  options.release();
+  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase, queryBuilder,
+                             options, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(
       static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
@@ -1246,7 +1253,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"),
-                     TRI_ObjectJson(isolate, queryResult.profile));
+                     TRI_VPackToV8(isolate, queryResult.profile->slice()));
   }
   if (queryResult.warnings == nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
@@ -1291,7 +1298,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<VPackBuilder> bindVars;
 
   // options
-  std::unique_ptr<TRI_json_t> options;
+  auto options = std::make_shared<VPackBuilder>();
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
@@ -1313,17 +1320,17 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    options.reset(TRI_ObjectToJson(isolate, args[2]));
+    int res = TRI_V8ToVPack(isolate, *options, args[2], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(),
-                             bindVars, options.get(),
-                             arangodb::aql::PART_MAIN);
-
-  options.release();
+                             queryString.c_str(), queryString.size(), bindVars,
+                             options, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
@@ -1352,7 +1359,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"),
-                     TRI_ObjectJson(isolate, queryResult.profile));
+                     TRI_VPackToV8(isolate, queryResult.profile->slice()));
   }
   if (queryResult.warnings == nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));

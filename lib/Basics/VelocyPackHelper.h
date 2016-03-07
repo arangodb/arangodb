@@ -127,6 +127,28 @@ class VelocyPackHelper {
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a Numeric sub-element, or throws if <name> does not exist
+  /// or it is not a Number
+  //////////////////////////////////////////////////////////////////////////////
+
+  template <typename T>
+  static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      std::string msg =
+          "The attribute '" + std::string(name) + "' was not found.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    }
+    VPackSlice const sub = slice.get(name);
+    if (!sub.isNumber()) {
+      std::string msg =
+          "The attribute '" + std::string(name) + "' is not a number.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    }
+    return sub.getNumericValue<T>();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string value, or the default value if it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
