@@ -97,7 +97,7 @@ static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(Ex
 Profile::Profile (Query* query) 
   : query(query),
     results(),
-    stamp(TRI_microtime()),
+    stamp(query->startTime()),
     tracked(false) {
 
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
@@ -206,6 +206,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _engine(nullptr),
     _maxWarningCount(10),
     _warnings(),
+    _startTime(TRI_microtime()),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior),
     _killed(false),
@@ -248,6 +249,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _engine(nullptr),
     _maxWarningCount(10),
     _warnings(),
+    _startTime(TRI_microtime()),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior),
     _killed(false),
@@ -760,9 +762,10 @@ QueryResult Query::execute (QueryRegistry* registry) {
       throw;
     }
 
-    stats = _engine->_stats.toJson();
-
     _trx->commit();
+
+    stats = _engine->_stats.toJson();
+    stats.set("executionTime", Json(TRI_microtime() - _startTime));
     
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
@@ -910,10 +913,11 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       throw;
     }
 
-    stats = _engine->_stats.toJson();
-
     _trx->commit();
-    
+
+    stats = _engine->_stats.toJson();
+    stats.set("executionTime", Json(TRI_microtime() - _startTime));
+   
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION); 
@@ -1216,9 +1220,13 @@ void Query::exitContext () {
 
 triagens::basics::Json Query::getStats() {
   if (_engine) {
-    return _engine->_stats.toJson();
+    Json stats = _engine->_stats.toJson();
+    stats.set("executionTime", Json(TRI_microtime() - _startTime));
+    return stats;
   }
-  return ExecutionStats::toJsonStatic();
+  Json stats = ExecutionStats::toJsonStatic();
+  stats.set("executionTime", Json(TRI_microtime() - _startTime));
+  return stats;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
