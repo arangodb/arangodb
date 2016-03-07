@@ -152,7 +152,7 @@ static int ProcessIndexFields(v8::Isolate* isolate,
 
       std::string const f = TRI_ObjectToString(fieldList->Get(i));
 
-      if (f.empty() || (create && f[0] == '_')) {
+      if (f.empty() || (create && f == TRI_VOC_ATTRIBUTE_ID)) {
         // accessing internal attributes is disallowed
         return TRI_ERROR_BAD_PARAMETER;
       }
