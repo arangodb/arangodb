@@ -23,7 +23,6 @@
 
 #include "ApplicationCluster.h"
 #include "Rest/Endpoint.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Logger.h"
