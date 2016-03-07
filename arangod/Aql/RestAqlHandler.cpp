@@ -740,17 +740,13 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       if (items.get() == nullptr) {
         answerBuilder.add("exhausted", VPackValue(true));
         answerBuilder.add("error", VPackValue(false));
-#warning query->getStats has to be VPackified
         answerBuilder.add(VPackValue("stats"));
-        // DO not care for result. This is removed soon!
-        JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
+        query->getStats(answerBuilder);
       } else {
         try {
           items->toVelocyPack(query->trx(), answerBuilder);
-#warning query->getStats has to be VPackified
           answerBuilder.add(VPackValue("stats"));
-          // DO not care for result. This is removed soon!
-          JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
+          query->getStats(answerBuilder);
         } catch (...) {
           LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
           generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -783,10 +779,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       }
       answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
       answerBuilder.add("error", VPackValue(false));
-#warning query->getStats has to be VPackified
       answerBuilder.add(VPackValue("stats"));
-      // DO not care for result. This is removed soon!
-      JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
+      query->getStats(answerBuilder);
     } else if (operation == "skip") {
       auto number =
           VelocyPackHelper::getNumericValue<size_t>(querySlice, "number", 1);
@@ -804,10 +798,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         }
         answerBuilder.add("exhausted", VPackValue(exhausted));
         answerBuilder.add("error", VPackValue(false));
-#warning query->getStats has to be VPackified
         answerBuilder.add(VPackValue("stats"));
-        // DO not care for result. This is removed soon!
-        JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
+        query->getStats(answerBuilder);
       } catch (...) {
         LOG(ERR) << "skip lead to an exception";
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -834,10 +826,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       }
       answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
       answerBuilder.add("code", VPackValue(static_cast<double>(res)));
-#warning query->getStats has to be VPackified
       answerBuilder.add(VPackValue("stats"));
-      // DO not care for result. This is removed soon!
-      JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
+      query->getStats(answerBuilder);
     } else if (operation == "shutdown") {
       int res = TRI_ERROR_INTERNAL;
       int errorCode = VelocyPackHelper::getNumericValue<int>(
@@ -846,12 +836,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         res =
             query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
 
-// return statistics
-#warning query->getStats has to be VPackified
+        // return statistics
         answerBuilder.add(VPackValue("stats"));
-        // DO not care for result. This is removed soon!
-        JsonHelper::toVelocyPack(query->getStats().json(), answerBuilder);
-        query->warningsToVelocyPack(answerBuilder);
+        query->getStats(answerBuilder);
 
         // return warnings if present
         query->warningsToVelocyPack(answerBuilder);
