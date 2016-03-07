@@ -2019,21 +2019,16 @@ static int restoreDataParser(char const* ptr, char const* pos,
       }
     }
 
-    else if (attributeName == "key") {
-      if (pair.value.isString()) {
-        key = pair.value.copyString();
-      }
-    }
-
-    else if (useRevision && attributeName == "rev") {
-      if (pair.value.isString()) {
-        rev = pair.value.copyString();
-      }
-    }
-
     else if (attributeName == "data") {
       if (pair.value.isObject()) {
         doc = pair.value;
+    
+        if (doc.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+          key = doc.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        }
+        else if (useRevision && doc.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
+          rev = doc.get(TRI_VOC_ATTRIBUTE_REV).copyString();
+        } 
       }
     }
   }

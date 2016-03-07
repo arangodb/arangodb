@@ -22,12 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
-#include <iostream>
-
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
@@ -44,6 +38,13 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -298,18 +299,17 @@ static std::string GetHttpErrorMessage(SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int TryCreateDatabase(std::string const& name) {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("name", arangodb::basics::Json(name));
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", VPackValue(name));
+  builder.add("users", VPackValue(VPackValueType::Array));
+  builder.openObject();
+  builder.add("username", VPackValue(BaseClient.username()));
+  builder.add("passwd", VPackValue(BaseClient.password()));
+  builder.close();
+  builder.close();
 
-  arangodb::basics::Json user(arangodb::basics::Json::Object);
-  user("username", arangodb::basics::Json(BaseClient.username()));
-  user("passwd", arangodb::basics::Json(BaseClient.password()));
-
-  arangodb::basics::Json users(arangodb::basics::Json::Array);
-  users.add(user);
-  json("users", users);
-
-  std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
+  std::string const body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
       Client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
