@@ -110,9 +110,142 @@ static inline void StoreNumber(uint8_t* dest, T value, uint32_t length) {
 static inline size_t VPackOffset(TRI_df_marker_type_t type) {
   if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
       type == TRI_DF_MARKER_VPACK_REMOVE) {
-    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t);
+    // VPack is located after transaction id
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t); 
   }
-  TRI_ASSERT(false);
+  if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+    // VPack is located after database id and collection id
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t);
+  }
+  if (type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
+    // VPack is located after database id
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t);
+  }
+  if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+    // VPack is located after database id and transaction id
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_tid_t);
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific database id offset
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t DatabaseIdOffset(TRI_df_marker_type_t type) {
+  if (type == TRI_DF_MARKER_PROLOGUE ||
+      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+    return sizeof(TRI_df_marker_t);
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific database id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t DatabaseId(TRI_df_marker_t const* marker) {
+  TRI_df_marker_type_t type = marker->getType();
+  if (type == TRI_DF_MARKER_PROLOGUE ||
+      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+      type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
+      type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+    return *reinterpret_cast<TRI_voc_tick_t const*>(reinterpret_cast<char const*>(marker) + DatabaseIdOffset(type));
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific collection id offset
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t CollectionIdOffset(TRI_df_marker_type_t type) {
+  if (type == TRI_DF_MARKER_PROLOGUE ||
+      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t);
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific collection id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t CollectionId(TRI_df_marker_t const* marker) {
+  TRI_df_marker_type_t type = marker->getType();
+  if (type == TRI_DF_MARKER_PROLOGUE ||
+      type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_DROP_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
+      type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
+      type == TRI_DF_MARKER_VPACK_DROP_INDEX) {
+    return *reinterpret_cast<TRI_voc_cid_t const*>(reinterpret_cast<char const*>(marker) + CollectionIdOffset(type));
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific transaction id offset
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t TransactionIdOffset(TRI_df_marker_type_t type) {
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+      type == TRI_DF_MARKER_VPACK_REMOVE) {
+    return sizeof(TRI_df_marker_t);
+  }
+  if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+    return sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tick_t);
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the marker-specific transaction id
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tick_t TransactionId(TRI_df_marker_t const* marker) {
+  TRI_df_marker_type_t type = marker->getType();
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+      type == TRI_DF_MARKER_VPACK_REMOVE ||
+      type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+      type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+    return *reinterpret_cast<TRI_voc_tid_t const*>(reinterpret_cast<char const*>(marker) + TransactionIdOffset(type));
+  }
   return 0;
 }
 

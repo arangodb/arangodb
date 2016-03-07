@@ -720,6 +720,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       }
       items.reset(block->getSomeForShard(atLeast, atMost, shardId));
     }
+#if 0    
     if (items.get() == nullptr) {
       answerBody("exhausted", arangodb::basics::Json(true))(
           "error", arangodb::basics::Json(false))("stats", query->getStats());
@@ -736,6 +737,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         return;
       }
     }
+#endif    
   } else if (operation == "skipSome") {
     auto atLeast =
         JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
@@ -761,8 +763,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     }
     answerBody("skipped", arangodb::basics::Json(static_cast<double>(skipped)))(
         "error", arangodb::basics::Json(false));
+#if 0    
     answerBody.set("stats", query->getStats());
+#endif
   } else if (operation == "skip") {
+#if 0    
     auto number =
         JsonHelper::getNumericValue<size_t>(queryJson.json(), "number", 1);
     try {
@@ -787,7 +792,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                     "skip lead to an exception");
       return;
     }
+#endif      
   } else if (operation == "initializeCursor") {
+#if 0    
     auto pos = JsonHelper::getNumericValue<size_t>(queryJson.json(), "pos", 0);
     std::unique_ptr<AqlItemBlock> items;
     int res;
@@ -807,12 +814,14 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     answerBody("error", arangodb::basics::Json(res != TRI_ERROR_NO_ERROR))(
         "code", arangodb::basics::Json(static_cast<double>(res)));
     answerBody.set("stats", query->getStats());
+#endif    
   } else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
     int errorCode = JsonHelper::getNumericValue<int>(queryJson.json(), "code",
                                                      TRI_ERROR_INTERNAL);
 
     try {
+#if 0      
       res = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
 
       // return statistics
@@ -828,6 +837,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       // delete the query from the registry
       _queryRegistry->destroy(_vocbase, _qId, errorCode);
       _qId = 0;
+#endif    
     } catch (...) {
       LOG(ERR) << "shutdown lead to an exception";
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,

@@ -419,34 +419,32 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
     state->lastTick = tick;
   }
 
-  char const* p = reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t);
-  // TODO
-  VPackSlice const slice(p);
+  TRI_df_marker_type_t const type = marker->getType();
 
-  switch (marker->getType()) {
+  switch (type) {
     case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION: {
       // insert this transaction into the list of failed transactions
       // we do this because if we don't find a commit marker for this
       // transaction,
       // we'll have it in the failed list at the end of the scan and can ignore
       // it
-      TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(slice, "database");
-      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
       state->failedTransactions.emplace(tid, std::make_pair(databaseId, false));
       break;
     }
 
     case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION: {
       // remove this transaction from the list of failed transactions
-      TRI_voc_tid_t tidValue = NumericValue<TRI_voc_tid_t>(slice, "tid");
-      state->failedTransactions.erase(tidValue);
+      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+      state->failedTransactions.erase(tid);
       break;
     }
 
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
       // insert this transaction into the list of failed transactions
-      TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(slice, "database");
-      TRI_voc_tid_t tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
       state->failedTransactions[tid] = std::make_pair(databaseId, true);
       break;
     }
@@ -488,7 +486,7 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
 
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
       // note that the collection was dropped and doesn't need to be recovered
-      TRI_voc_cid_t cid = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      TRI_voc_cid_t const cid = DatafileHelper::CollectionId(marker);
       state->droppedIds.emplace(cid);
       break;
     }
@@ -514,16 +512,17 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
   LOG(TRACE) << "replaying marker of type " << TRI_NameMarkerDatafile(marker);
 #endif
       
-  char const* p = reinterpret_cast<char const*>(marker);
-  // TODO
-  VPackSlice const markerData(p + sizeof(TRI_df_marker_t));
+  TRI_df_marker_type_t const type = marker->getType();
 
   try {
-    switch (marker->getType()) {
+    switch (type) {
       case TRI_DF_MARKER_PROLOGUE: {
         // simply note the last state
-        auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
-        state->resetCollection(m->_databaseId, m->_collectionId);
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+
+        LOG(TRACE) << "found prologue marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
+        state->resetCollection(databaseId, collectionId);
         return true;
       }
 
@@ -533,19 +532,21 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       case TRI_DF_MARKER_VPACK_DOCUMENT: {
         // re-insert the document/edge into the collection
-        TRI_voc_tick_t databaseId = state->lastDatabaseId; // from prologue
-        TRI_voc_cid_t collectionId = state->lastCollectionId; // from prologue
-
+        TRI_voc_tick_t const databaseId = state->lastDatabaseId; // from prologue
+        TRI_voc_cid_t const collectionId = state->lastCollectionId; // from prologue
+        
         if (state->isDropped(databaseId, collectionId)) {
           return true;
         }
 
-        TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
-
-        if (state->ignoreTransaction(transactionId)) {
+        TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
+        
+        if (state->ignoreTransaction(tid)) {
           // transaction was aborted
           return true;
         }
+        
+        LOG(TRACE) << "found document marker. databaseId: " << databaseId << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
@@ -557,7 +558,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->_info.name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(marker->getType());
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
 
               OperationOptions options;
               options.silent = true;
@@ -588,8 +589,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
       case TRI_DF_MARKER_VPACK_REMOVE: {
         // re-apply the remove operation
-        TRI_voc_tick_t databaseId = state->lastDatabaseId; // from prologue
-        TRI_voc_cid_t collectionId = state->lastCollectionId; // from prologue
+        TRI_voc_tick_t const databaseId = state->lastDatabaseId; // from prologue
+        TRI_voc_cid_t const collectionId = state->lastCollectionId; // from prologue
 
         TRI_ASSERT(databaseId > 0);
         TRI_ASSERT(collectionId > 0);
@@ -598,11 +599,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
+        TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
         
-        if (state->ignoreTransaction(transactionId)) {
+        if (state->ignoreTransaction(tid)) {
           return true;
         }
+        
+        LOG(TRACE) << "found remove marker. databaseId: " << databaseId << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
@@ -614,7 +617,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
               std::string const collectionName = trx->documentCollection()->_info.name();
-              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(marker->getType());
+              uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
 
               OperationOptions options;
               options.silent = true;
@@ -641,9 +644,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       // -----------------------------------------------------------------------------
 
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot rename collection: invalid marker";
@@ -654,6 +657,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         if (state->isDropped(databaseId)) {
           return true;
         }
+        
+        LOG(TRACE) << "found collection rename marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -705,9 +710,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot change properties of collection: invalid marker";
@@ -718,6 +723,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         if (state->isDropped(databaseId)) {
           return true;
         }
+        
+        LOG(TRACE) << "found collection change marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -749,9 +756,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_INDEX: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create index for collection: invalid marker";
@@ -759,11 +766,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return state->canContinue();
         }
         
-        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "iid");
+        TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "id");
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
         }
+        
+        LOG(TRACE) << "found create index marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -808,15 +817,17 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create collection: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
+        
+        LOG(TRACE) << "found create collection marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
         
         // remove the drop marker
         state->droppedCollections.erase(collectionId);
@@ -905,14 +916,16 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_CREATE_DATABASE: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot create database: invalid marker";
           ++state->errorCount;
           return state->canContinue();
         }
+        
+        LOG(TRACE) << "found create database marker. databaseId: " << databaseId;
         
         // remove the drop marker
         state->droppedDatabases.erase(databaseId);
@@ -967,9 +980,9 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_INDEX: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
-        VPackSlice const payloadSlice = markerData.get("data");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
         
         if (!payloadSlice.isObject()) {
           LOG(WARN) << "cannot drop index for collection: invalid marker";
@@ -978,6 +991,8 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
         
         TRI_idx_iid_t indexId = NumericValue<TRI_idx_iid_t>(payloadSlice, "id");
+        
+        LOG(TRACE) << "found drop index marker. databaseId: " << databaseId << ", collectionId: " << collectionId << ", indexId: " << indexId;
 
         if (state->isDropped(databaseId, collectionId)) {
           return true;
@@ -1018,11 +1033,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
-        TRI_voc_cid_t collectionId = NumericValue<TRI_voc_cid_t>(markerData, "cid");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
         
         // insert the drop marker
         state->droppedCollections.emplace(collectionId);
+        
+        LOG(TRACE) << "found drop collection marker. databaseId: " << databaseId << ", collectionId: " << collectionId;
 
         TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
@@ -1045,10 +1062,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
 
       case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
-        TRI_voc_tick_t databaseId = NumericValue<TRI_voc_tick_t>(markerData, "database");
+        TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
 
         // insert the drop marker
         state->droppedDatabases.emplace(databaseId);
+        
+        LOG(TRACE) << "found drop database marker. databaseId: " << databaseId;
+
         TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
 
         if (vocbase != nullptr) {
@@ -1059,6 +1079,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
       }
       
       case TRI_DF_MARKER_HEADER: 
+      case TRI_DF_MARKER_COL_HEADER: 
       case TRI_DF_MARKER_FOOTER: {
         // new datafile or end of datafile. forget state!
         state->resetCollection();
@@ -1158,12 +1179,7 @@ int RecoverState::abortOpenTransactions() {
 
       TRI_voc_tick_t databaseId = (*it).second.first;
      
-      builder.openObject();
-      builder.add("database", VPackValue(databaseId)); 
-      builder.add("tid", VPackValue(transactionId));
-      builder.close();
-
-      Marker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, builder.slice());
+      TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, databaseId, transactionId);
       SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(
               marker.mem(), marker.size(), false);

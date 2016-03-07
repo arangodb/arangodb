@@ -82,13 +82,13 @@ class Marker {
 
   Marker(TRI_df_marker_type_t, size_t);
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create marker from a VPackSlice
   //////////////////////////////////////////////////////////////////////////////
   
   Marker(TRI_df_marker_type_t, arangodb::velocypack::Slice const&);
 
+ public:
   virtual ~Marker();
 
   inline void freeBuffer() {
@@ -155,25 +155,29 @@ class MarkerEnvelope : public Marker {
   ~MarkerEnvelope() = default;
 };
 
-class VPackMarker : public Marker {
+class CrudMarker : public Marker {
  public:
-  VPackMarker(TRI_df_marker_type_t type, arangodb::velocypack::Slice const& slice)
-      : Marker(type, slice) {}
-  ~VPackMarker() = default;
+  CrudMarker(TRI_df_marker_type_t, TRI_voc_tid_t, arangodb::velocypack::Slice const&);
+  ~CrudMarker() = default;
 };
 
-class VPackDocumentMarker : public Marker {
+class DatabaseMarker : public Marker {
  public:
-  VPackDocumentMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
-  ~VPackDocumentMarker() = default;
+  DatabaseMarker(TRI_df_marker_type_t, TRI_voc_tick_t, arangodb::velocypack::Slice const&);
+  ~DatabaseMarker() = default;
 };
 
-class VPackRemoveMarker : public Marker {
+class CollectionMarker : public Marker {
  public:
-  VPackRemoveMarker(TRI_voc_tid_t, arangodb::velocypack::Slice const&);
-  ~VPackRemoveMarker() = default;
+  CollectionMarker(TRI_df_marker_type_t, TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::Slice const&);
+  ~CollectionMarker() = default;
 };
 
+class TransactionMarker : public Marker {
+ public:
+  TransactionMarker(TRI_df_marker_type_t, TRI_voc_tick_t, TRI_voc_tid_t);
+  ~TransactionMarker() = default;
+};
 
 class BeginRemoteTransactionMarker : public Marker {
  public:
