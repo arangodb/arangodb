@@ -30202,33 +30202,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       */
       },
 
-      timer: {
-
-        begin: 0,
-        end: 0,
-
-        start: function() {
-          this.begin = new Date().getTime();
-        },
-
-        stop: function() {
-          this.end = new Date().getTime();
-        },
-
-        reset: function() {
-          this.begin = 0;
-          this.end = 0;
-        },
-
-        getTimeAndReset: function() {
-          this.stop();
-          var result =  this.end - this.begin;
-          this.reset();
-
-          return result;
-        }
-      },
-
       resize: function() {
         // this.drawTree();
       },
@@ -30260,7 +30233,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         );
 
         $('.queryExecutionTime').text('');
-        self.timer.start();
         this.execPending = false;
 
         var warningsFunc = function(data) {
@@ -30282,8 +30254,12 @@ window.ArangoUsers = Backbone.Collection.extend({
           self.switchTab("result-switch");
           window.progressView.hide();
 
-          var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
-          $('.queryExecutionTime').text(time);
+          var time = "-";
+          if (data && data.extra && data.extra.stats) {
+            time = data.extra.stats.executionTime.toFixed(3) + " s";
+          }
+
+          $('.queryExecutionTime').text("Execution time: " + time);
 
           self.deselect(outputEditor);
           $('#downloadQueryResult').show();
