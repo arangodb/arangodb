@@ -50,7 +50,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("server", VPackValue("arango"));
-    result.add("version", VPackValue(TRI_VERSION));
+    result.add("version", VPackValue(ARANGODB_VERSION));
 
     bool found;
     char const* detailsStr = _request->value("details", found);

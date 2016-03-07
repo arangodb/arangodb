@@ -22,19 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #include "HttpServer/HttpServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -413,7 +414,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
-    builder.add("version", VPackValue(TRI_VERSION));
+    builder.add("version", VPackValue(ARANGODB_VERSION));
     builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
     builder.close();
 

@@ -38,9 +38,6 @@ set(ARANGODB_VERSION_REVISION   "0-devel")
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-add_definitions("-DARANGODB_BUILD_DATE=\"${ARANGODB_BUILD_DATE}\"")
-
 # for NSIS
 set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "https://www.arangodb.com")
@@ -74,9 +71,17 @@ set(TEST_GEO_SUITE    geo_suite)
 ## VERSION FILES
 ################################################################################
 
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
+  NEWLINE_STYLE UNIX
+)
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
   NEWLINE_STYLE UNIX
 )
 
@@ -175,15 +180,15 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 if (WINDOWS)
-  set(BASE_FLAGS "/D WIN32 /D _WINDOWS /W3")
-  set(BASE_C_FLAGS)
-  set(BASE_CXX_FLAGS "/GR /EHsc")
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3" CACHE STRING "base flags")
+  set(BASE_C_FLAGS   ""                         CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "/GR /EHsc"                CACHE STRING "base C++flags")
 else ()
-  set(BASE_FLAGS)
-  set(BASE_C_FLAGS ${CMAKE_C_FLAGS})
-  set(BASE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-  set(BASE_LD_FLAGS $ENV{LDFLAGS})
-  set(BASE_LIBS $ENV{LIBS})
+  set(BASE_FLAGS     ""                   CACHE STRING "base flags")
+  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}"   CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "base C++ flags")
+  set(BASE_LD_FLAGS  "$ENV{LDFLAGS}"      CACHE STRING "base linker flags")
+  set(BASE_LIBS      "$ENV{LIBS}"         CACHE STRING "base libraries")
 endif ()
 
 if (SOLARIS)
