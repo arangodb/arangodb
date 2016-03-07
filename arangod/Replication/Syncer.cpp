@@ -352,15 +352,15 @@ int Syncer::applyCollectionDumpMarker(
 
     OperationOptions options;
     options.silent = true;
+    options.ignoreRevs = true;
 
-    // TODO: ignore revision id here!
     try {
       // try insert first
       OperationResult opRes = trx.insert(collectionName, slice, options); 
 
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // perform an update
-        opRes = trx.replace(collectionName, old, slice, options); 
+        opRes = trx.replace(collectionName, slice, options); 
       }
     
       res = opRes.code;

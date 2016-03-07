@@ -1916,14 +1916,14 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 
     OperationOptions options;
     options.silent = true;
-    // TODO: ignore revision
+    options.ignoreRevs = true;
 
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
       
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // must update
-        opRes = trx.update(collectionName, old, slice, options);
+        opRes = trx.update(collectionName, slice, options);
       }
 
       return opRes.code;
