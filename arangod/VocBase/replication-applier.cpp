@@ -22,17 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-applier.h"
-
-#include "Basics/conversions.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "Replication/ContinuousSyncer.h"
+#include "Rest/Version.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -1270,7 +1273,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
 
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("version", VPackValue(TRI_VERSION));
+  builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
   builder.close();  // server
 

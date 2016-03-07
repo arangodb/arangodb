@@ -25,6 +25,8 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Traverser.h"
 
 #include <velocypack/Iterator.h>

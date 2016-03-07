@@ -25,9 +25,11 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

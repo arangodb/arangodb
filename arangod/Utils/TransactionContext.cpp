@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"

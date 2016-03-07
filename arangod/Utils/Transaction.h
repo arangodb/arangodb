@@ -25,27 +25,12 @@
 #define ARANGOD_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/AssocUnique.h"
-#include "Basics/Exceptions.h"
-#include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/DocumentHelper.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-#include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
-#include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
 #define TRI_DEFAULT_BATCH_SIZE 1000
@@ -53,13 +38,16 @@
 namespace arangodb {
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Forward Declaration
+/// @brief forward declarations
 //////////////////////////////////////////////////////////////////////////////
 
+class CollectionNameResolver;
+class DocumentDitch;
 struct OperationCursor;
+class TransactionContext;
 
 class Transaction {
-  using VPackOptions = arangodb::velocypack::Options;
+  using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -72,55 +60,21 @@ class Transaction {
   Transaction& operator=(Transaction const&) = delete;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(std::shared_ptr<TransactionContext> transactionContext, TRI_voc_tid_t externalId)
-      : _externalId(externalId),
-        _setupState(TRI_ERROR_NO_ERROR),
-        _nestingLevel(0),
-        _errorData(),
-        _hints(0),
-        _timeout(0.0),
-        _waitForSync(false),
-        _allowImplicitCollections(true),
-        _isReal(true),
-        _trx(nullptr),
-        _vocbase(transactionContext->vocbase()),
-        _transactionContext(transactionContext) {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_transactionContext != nullptr);
-
-    if (ServerState::instance()->isCoordinator()) {
-      _isReal = false;
-    }
-
-    this->setupTransaction();
-  }
+  Transaction(std::shared_ptr<TransactionContext> transactionContext, 
+              TRI_voc_tid_t externalId);
 
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Transaction() {
-    if (_trx == nullptr) {
-      return;
-    }
-
-    if (isEmbeddedTransaction()) {
-      _trx->_nestingLevel--;
-    } else {
-      if (getStatus() == TRI_TRANSACTION_RUNNING) {
-        // auto abort a running transaction
-        this->abort();
-      }
-
-      // free the data associated with the transaction
-      freeTransaction();
-    }
-  }
+  virtual ~Transaction();
 
  public:
 
@@ -188,30 +142,13 @@ class Transaction {
   /// @brief return the names of all collections used in the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> collectionNames() {
-    std::vector<std::string> result;
-
-    for (size_t i = 0; i < _trx->_collections._length; ++i) {
-      auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-          TRI_AtVectorPointer(&_trx->_collections, i));
-
-      if (trxCollection->_collection != nullptr) {
-        result.emplace_back(trxCollection->_collection->_name);
-      }
-    }
-
-    return result;
-  }
+  std::vector<std::string> collectionNames() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection name resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionNameResolver const* resolver() const {
-    CollectionNameResolver const* r = this->_transactionContext->getResolver();
-    TRI_ASSERT(r != nullptr);
-    return r;
-  }
+  CollectionNameResolver const* resolver() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embedded
@@ -261,12 +198,7 @@ class Transaction {
   /// @brief return the transaction collection for a document collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) const {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-
-    return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
-  }
+  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a collection name
@@ -283,19 +215,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::DocumentDitch* orderDitch(
-      TRI_transaction_collection_t* trxCollection) {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(trxCollection != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING ||
-               getStatus() == TRI_TRANSACTION_CREATED);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-
-    TRI_document_collection_t* document =
-        trxCollection->_collection->_collection;
-    TRI_ASSERT(document != nullptr);
-
-    return _transactionContext->orderDitch(document);
-  }
+      TRI_transaction_collection_t* trxCollection);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _key attribute from a slice
@@ -340,56 +260,6 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult any(std::string const&, uint64_t, uint64_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit and an internal
-  /// offset into the primary index. this can be used for incremental access to
-  /// the documents without restarting the index scan at the begin
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int any(TRI_transaction_collection_t*,
-          std::vector<TRI_doc_mptr_t>&,
-          arangodb::basics::BucketPosition&,
-          arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-          uint64_t&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit and an internal
-  /// offset into the primary index. this can be used for incremental access to
-  /// the documents without restarting the index scan at the begin
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readIncremental(TRI_transaction_collection_t*,
-                      std::vector<TRI_doc_mptr_t>&,
-                      arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-                      uint64_t, uint64_t&);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a single document, identified by key
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int document(TRI_transaction_collection_t* trxCollection,
-               TRI_doc_mptr_t* mptr, std::string const& key) {
-    TRI_ASSERT(mptr != nullptr);
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-      
-    TRI_document_collection_t* documentCol = trxCollection->_collection->_collection;
-
-    try {
-      return documentCol->read(this, key, mptr, !isLocked(trxCollection, TRI_TRANSACTION_READ));
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of a collection
@@ -499,187 +369,16 @@ class Transaction {
                             bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using shaped json
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int insert(TRI_transaction_collection_t* trxCollection,
-                    const TRI_voc_key_t key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
-                    void const* data, bool forceSync) {
-    bool lock = !isLocked(trxCollection, TRI_TRANSACTION_WRITE);
-
-    try {
-      return TRI_InsertShapedJsonDocumentCollection(
-          this, trxCollection, key, rid, nullptr, mptr, shaped,
-          static_cast<TRI_document_edge_t const*>(data), lock, forceSync,
-          false);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using JSON
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int insert(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_t* mptr, TRI_json_t const* json,
-             void const* data, bool forceSync) {
-    TRI_ASSERT(json != nullptr);
-
-    TRI_voc_key_t key = nullptr;
-    int res = DocumentHelper::getKey(json, &key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    auto shaper = this->shaper(trxCollection);
-    TRI_memory_zone_t* zone = shaper->memoryZone();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
-
-    if (shaped == nullptr) {
-      return TRI_ERROR_ARANGO_SHAPER_FAILED;
-    }
-
-    res = insert(trxCollection, key, 0, mptr, shaped, data, forceSync);
-
-    TRI_FreeShapedJson(zone, shaped);
-
-    return res;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using VelocyPack
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int insert(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_t* mptr, VPackSlice const& slice,
-             void const* data, bool forceSync) {
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-
-    if (json == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    return insert(trxCollection, mptr, json.get(), data, forceSync);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a single document, using shaped json
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int update(TRI_transaction_collection_t* const trxCollection,
-                    std::string const& key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_t* mptr, TRI_shaped_json_t* const shaped,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision, bool forceSync) {
-    TRI_doc_update_policy_t updatePolicy(policy, expectedRevision,
-                                         actualRevision);
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    try {
-      return TRI_UpdateShapedJsonDocumentCollection(
-          this, trxCollection, (const TRI_voc_key_t)key.c_str(), rid, nullptr,
-          mptr, shaped, &updatePolicy,
-          !isLocked(trxCollection, TRI_TRANSACTION_WRITE), forceSync);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a single document, using JSON
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int update(TRI_transaction_collection_t* trxCollection,
-             std::string const& key, TRI_voc_rid_t rid,
-             TRI_doc_mptr_t* mptr, TRI_json_t const* json,
-             TRI_doc_update_policy_e policy, TRI_voc_rid_t expectedRevision,
-             TRI_voc_rid_t* actualRevision, bool forceSync) {
-    auto shaper = this->shaper(trxCollection);
-    TRI_memory_zone_t* zone = shaper->memoryZone();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
-
-    if (shaped == nullptr) {
-      return TRI_ERROR_ARANGO_SHAPER_FAILED;
-    }
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    int res = update(trxCollection, key, rid, mptr, shaped, policy,
-                     expectedRevision, actualRevision, forceSync);
-
-    TRI_FreeShapedJson(zone, shaped);
-    return res;
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update (replace!) a single document within a transaction,
-  /// using VelocyPack
-  /// DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
-  int update(TRI_transaction_collection_t* trxCollection, 
-             std::string const& key, TRI_voc_rid_t rid, TRI_doc_mptr_t* mptr,
-             VPackSlice const& slice, TRI_doc_update_policy_e policy,
-             TRI_voc_rid_t expectedRevision,
-             TRI_voc_rid_t* actualRevision, bool forceSync) {
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-
-    if (json == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    return update(trxCollection, key, rid, mptr, json.get(), policy,
-                  expectedRevision, actualRevision, forceSync);
-  }
-  
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(TRI_transaction_collection_t const* trxCollection,
-                TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return false;
-    }
-
-    return TRI_IsLockedCollectionTransaction(trxCollection, type,
-                                             _nestingLevel);
-  }
+  bool isLocked(TRI_transaction_collection_t const*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(TRI_document_collection_t* document,
-                TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return false;
-    }
-
-    TRI_transaction_collection_t* trxCollection =
-        TRI_GetCollectionTransaction(_trx, document->_info.id(), type);
-    return isLocked(trxCollection, type);
-  }
+  bool isLocked(TRI_document_collection_t*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
@@ -766,108 +465,31 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_document_collection_t* documentCollection(
-      TRI_transaction_collection_t const* trxCollection) const {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-
-    return trxCollection->_collection->_collection;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a collection's shaper
-  //////////////////////////////////////////////////////////////////////////////
-
-  VocShaper* shaper(TRI_transaction_collection_t const* trxCollection) const {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-
-    return trxCollection->_collection->_collection
-        ->getShaper();  // PROTECTED by trx in trxCollection
-  }
+      TRI_transaction_collection_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t cid, char const* name,
-                    TRI_transaction_type_e type) {
-    int res = this->addCollection(cid, type);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      _errorData = std::string(name);
-    }
-
-    return res;
-  }
+  int addCollection(TRI_voc_cid_t, char const*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t cid, std::string const& name,
-                    TRI_transaction_type_e type) {
-    int res = this->addCollection(cid, type);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      _errorData = name;
-    }
-
-    return res;
-  }
+  int addCollection(TRI_voc_cid_t, std::string const&, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    if (_trx == nullptr) {
-      return registerError(TRI_ERROR_INTERNAL);
-    }
-
-    if (cid == 0) {
-      // invalid cid
-      return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    TRI_transaction_status_e const status = getStatus();
-
-    if (status == TRI_TRANSACTION_COMMITTED ||
-        status == TRI_TRANSACTION_ABORTED) {
-      // transaction already finished?
-      return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
-    }
-
-    int res;
-
-    if (this->isEmbeddedTransaction()) {
-      res = this->addCollectionEmbedded(cid, type);
-    } else {
-      res = this->addCollectionToplevel(cid, type);
-    }
-
-    return res;
-  }
-
+  int addCollection(TRI_voc_cid_t, TRI_transaction_type_e);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by name
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(std::string const& name, TRI_transaction_type_e type) {
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    return addCollection(this->resolver()->getCollectionId(name),
-                         name.c_str(), type);
-  }
+  int addCollection(std::string const&, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the lock acquisition timeout
@@ -893,29 +515,16 @@ class Transaction {
   /// @brief read- or write-lock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int lock(TRI_transaction_collection_t* trxCollection,
-           TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    return TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
-  }
+  int lock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read- or write-unlock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int unlock(TRI_transaction_collection_t* trxCollection,
-             TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
-  }
+  int unlock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -936,42 +545,13 @@ class Transaction {
   /// @brief add a collection to an embedded transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    TRI_ASSERT(_trx != nullptr);
-
-    int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel,
-                                           false, _allowImplicitCollections);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return registerError(res);
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  int addCollectionEmbedded(TRI_voc_cid_t, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to a top-level transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    TRI_ASSERT(_trx != nullptr);
-
-    int res;
-
-    if (getStatus() != TRI_TRANSACTION_CREATED) {
-      // transaction already started?
-      res = TRI_ERROR_TRANSACTION_INTERNAL;
-    } else {
-      res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false,
-                                         _allowImplicitCollections);
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      registerError(res);
-    }
-
-    return res;
-  }
+  int addCollectionToplevel(TRI_voc_cid_t, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the transaction
@@ -979,75 +559,25 @@ class Transaction {
   /// transaction. if not, it will create a transaction of its own
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupTransaction() {
-    // check in the context if we are running embedded
-    _trx = this->_transactionContext->getParentTransaction();
-
-    if (_trx != nullptr) {
-      // yes, we are embedded
-      _setupState = setupEmbedded();
-    } else {
-      // non-embedded
-      _setupState = setupToplevel();
-    }
-
-    // this may well be TRI_ERROR_NO_ERROR...
-    return _setupState;
-  }
+  int setupTransaction();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up an embedded transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupEmbedded() {
-    TRI_ASSERT(_nestingLevel == 0);
-
-    _nestingLevel = ++_trx->_nestingLevel;
-
-    if (!this->_transactionContext->isEmbeddable()) {
-      // we are embedded but this is disallowed...
-      return TRI_ERROR_TRANSACTION_NESTED;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  int setupEmbedded();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up a top-level transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupToplevel() {
-    TRI_ASSERT(_nestingLevel == 0);
-
-    // we are not embedded. now start our own transaction
-    _trx = TRI_CreateTransaction(_vocbase, _externalId, _timeout, _waitForSync);
-
-    if (_trx == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    // register the transaction in the context
-    return this->_transactionContext->registerTransaction(_trx);
-  }
+  int setupToplevel();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief free transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  void freeTransaction() {
-    TRI_ASSERT(!isEmbeddedTransaction());
-
-    if (_trx != nullptr) {
-      auto id = _trx->_id;
-      bool hasFailedOperations = TRI_FreeTransaction(_trx);
-      _trx = nullptr;
-      
-      // store result
-      this->_transactionContext->storeTransactionResult(id, hasFailedOperations);
-      
-      this->_transactionContext->unregisterTransaction();
-    }
-  }
+  void freeTransaction();
 
  private:
   //////////////////////////////////////////////////////////////////////////////

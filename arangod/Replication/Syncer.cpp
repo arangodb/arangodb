@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
@@ -32,7 +31,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -381,10 +380,6 @@ int Syncer::applyCollectionDumpMarker(
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     
-    OperationOptions options;
-    options.silent = true;
-
-    // TODO: ignore revison id here!
     try {
       OperationResult opRes = trx.remove(collectionName, old, options);
 

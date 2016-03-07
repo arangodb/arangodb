@@ -21,15 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_TRANSACTIONS_H
-#define ARANGOD_UTILS_TRANSACTIONS_H 1
+#include "MasterPointer.h"
+#include "Basics/VelocyPackHelper.h"
 
-#include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/ExplicitTransaction.h"
-#include "Utils/ReplicationTransaction.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "Utils/V8TransactionContext.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-#endif
+using namespace arangodb;
+   
+TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
+  VPackSlice const slice(vpack());
+  VPackSlice const revisionSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
+  if (revisionSlice.isString()) {
+    return arangodb::basics::VelocyPackHelper::stringUInt64(revisionSlice);
+  }
+  else if (revisionSlice.isNumber()) {
+    return revisionSlice.getNumber<TRI_voc_rid_t>();
+  }
+  return 0; 
+}
+

@@ -29,11 +29,12 @@
 #include "Basics/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
+#include "Cluster/AgencyComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "VocBase/voc-types.h"
-#include "Cluster/AgencyComm.h"
 #include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 

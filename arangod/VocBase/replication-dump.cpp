@@ -26,6 +26,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/Logger.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Cluster/ServerState.h"
@@ -48,40 +49,41 @@
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut function
+/// @brief append values to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#define FAIL_IFNOT(func, buffer, val)            \
-  if (func(buffer, val) != TRI_ERROR_NO_ERROR) { \
-    return TRI_ERROR_OUT_OF_MEMORY;              \
+static void Append(TRI_replication_dump_t* dump, uint64_t value) {
+  int res = TRI_AppendUInt64StringBuffer(dump->_buffer, value);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
   }
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a string-buffer function name
-////////////////////////////////////////////////////////////////////////////////
+static void Append(TRI_replication_dump_t* dump, char value) {
+  int res = TRI_AppendCharStringBuffer(dump->_buffer, value);
 
-#define APPEND_FUNC(name) TRI_##name##StringBuffer
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append a character to a string-buffer or fail
-////////////////////////////////////////////////////////////////////////////////
+static void Append(TRI_replication_dump_t* dump, char const* value) {
+  int res = TRI_AppendStringStringBuffer(dump->_buffer, value);
 
-#define APPEND_CHAR(buffer, c) FAIL_IFNOT(APPEND_FUNC(AppendChar), buffer, c)
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append a string to a string-buffer or fail
-////////////////////////////////////////////////////////////////////////////////
+static void Append(TRI_replication_dump_t* dump, std::string const& value) {
+  int res = TRI_AppendString2StringBuffer(dump->_buffer, value.c_str(), value.size());
 
-#define APPEND_STRING(buffer, str) \
-  FAIL_IFNOT(APPEND_FUNC(AppendString), buffer, str)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append uint64 to a string-buffer or fail
-////////////////////////////////////////////////////////////////////////////////
-
-#define APPEND_UINT64(buffer, val) \
-  FAIL_IFNOT(APPEND_FUNC(AppendUInt64), buffer, val)
-
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a datafile descriptor
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +131,7 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   if (!name.empty()) {
     // insert into cache
     try {
-      dump->_collectionNames.emplace(cid, name);
+      dump->_collectionNames.emplace(cid, std::move(name));
     } catch (...) {
       return nullptr;
     }
@@ -156,7 +158,8 @@ static int AppendCollection(TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
       } else {
         name = resolver->getCollectionName(cid);
       }
-      APPEND_STRING(dump->_buffer, name.c_str());
+
+      Append(dump, name);
       if (failOnUnknown && name[0] == '_' && name == "_unknown") {
         return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
       }
@@ -164,13 +167,13 @@ static int AppendCollection(TRI_replication_dump_t* dump, TRI_voc_cid_t cid,
       return TRI_ERROR_NO_ERROR;
     }
 
-    APPEND_STRING(dump->_buffer, "_unknown");
+    Append(dump, "_unknown");
 
     if (failOnUnknown) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
   } else {
-    APPEND_UINT64(dump->_buffer, (uint64_t)cid);
+    Append(dump, cid);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -246,19 +249,20 @@ static std::vector<df_entry_t> GetRangeDatafiles(
 static int AppendContext(TRI_replication_dump_t* dump,
                          TRI_voc_tick_t databaseId,
                          TRI_voc_cid_t collectionId) {
-  APPEND_STRING(dump->_buffer, "\"database\":\"");
-  APPEND_UINT64(dump->_buffer, databaseId);
-  APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
-  APPEND_UINT64(dump->_buffer, collectionId);
+  Append(dump, "\"database\":\"");
+  Append(dump, databaseId);
+  Append(dump, "\",\"cid\":\"");
+  Append(dump, collectionId);
 
   // also include collection name
   char const* cname = NameFromCid(dump, collectionId);
+
   if (cname != nullptr) {
-    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
-    APPEND_STRING(dump->_buffer, cname);
+    Append(dump, "\",\"cname\":\"");
+    Append(dump, cname);
   }
 
-  APPEND_STRING(dump->_buffer, "\",");
+  Append(dump, "\",");
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -323,23 +327,23 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
   }
 
   if (withTicks) {
-    APPEND_STRING(buffer, "{\"tick\":\"");
-    APPEND_UINT64(buffer, (uint64_t)marker->getTick());
-    APPEND_STRING(buffer, "\",\"type\":");
+    Append(dump, "{\"tick\":\"");
+    Append(dump, (uint64_t)marker->getTick());
+    Append(dump, "\",\"type\":");
   } else {
-    APPEND_STRING(buffer, "{\"type\":");
+    Append(dump, "{\"type\":");
   }
 
-  APPEND_UINT64(buffer, (uint64_t)type);
-  APPEND_STRING(buffer, ",\"key\":\"");
+  Append(dump, (uint64_t)type);
+  Append(dump, ",\"key\":\"");
   // key is user-defined, but does not need escaping
   TRI_AppendString2StringBuffer(buffer, key, keyLength);
-  APPEND_STRING(buffer, "\",\"rev\":\"");
-  APPEND_UINT64(buffer, (uint64_t)rid);
+  Append(dump, "\",\"rev\":\"");
+  Append(dump, (uint64_t)rid);
 
   // document
   if (haveData) {
-    APPEND_STRING(buffer, "\",\"data\":{");
+    Append(dump, "\",\"data\":{");
 
     // common document meta-data
 #if 0    
@@ -413,9 +417,9 @@ static int StringifyMarkerDump(TRI_replication_dump_t* dump,
     }
 #endif    
 
-    APPEND_STRING(buffer, "}}\n");
+    Append(dump, "}}\n");
   } else {  // deletion marker, so no data
-    APPEND_STRING(buffer, "\"}\n");
+    Append(dump, "\"}\n");
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -440,16 +444,16 @@ static int StringifyWalMarkerDocument(TRI_replication_dump_t* dump,
   
   VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT)));
 
-  APPEND_STRING(dump->_buffer, "\"tid\":\"");
+  Append(dump, "\"tid\":\"");
 //  APPEND_UINT64(dump->_buffer, m->_transactionId);
-  APPEND_STRING(dump->_buffer, "\",\"key\":\"");
+  Append(dump, "\",\"key\":\"");
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
   
-  APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
+  Append(dump, "\",\"rev\":\"");
   std::string rev(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, rev.c_str(), rev.size());
-  APPEND_STRING(dump->_buffer, "\",\"data\":");
+  Append(dump, "\",\"data\":");
 
   arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
   VPackDumper dumper(&adapter); // TODO: need CustomTypeHandler here!
@@ -476,18 +480,18 @@ static int StringifyWalMarkerRemove(TRI_replication_dump_t* dump,
   }
 #endif  
 
-  APPEND_STRING(dump->_buffer, "\"tid\":\"");
+  Append(dump, "\"tid\":\"");
 //  APPEND_UINT64(dump->_buffer, m->_transactionId);
-  APPEND_STRING(dump->_buffer, "\",\"key\":\"");
+  Append(dump, "\",\"key\":\"");
   
   VPackSlice slice(reinterpret_cast<char const*>(DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE)));
   std::string key(slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, key.c_str(), key.size());
 
-  APPEND_STRING(dump->_buffer, "\",\"rev\":\"");
+  Append(dump, "\",\"rev\":\"");
   std::string rev(slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
   TRI_AppendString2StringBuffer(dump->_buffer, rev.c_str(), rev.size());
-  APPEND_STRING(dump->_buffer, "\"");
+  Append(dump, "\"");
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -565,11 +569,11 @@ static int StringifyWalMarker(TRI_replication_dump_t* dump,
                               TRI_df_marker_t const* marker) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
 
-  APPEND_STRING(dump->_buffer, "{\"tick\":\"");
-  APPEND_UINT64(dump->_buffer, (uint64_t)marker->getTick());
-  APPEND_STRING(dump->_buffer, "\",\"type\":");
-  APPEND_UINT64(dump->_buffer, (uint64_t)TranslateType(marker));
-  APPEND_STRING(dump->_buffer, ",\"data\":");
+  Append(dump, "{\"tick\":\"");
+  Append(dump, (uint64_t)marker->getTick());
+  Append(dump, "\",\"type\":");
+  Append(dump, (uint64_t)TranslateType(marker));
+  Append(dump, ",\"data\":");
       
   char const* p = reinterpret_cast<char const*>(marker);
 
@@ -612,7 +616,7 @@ static int StringifyWalMarker(TRI_replication_dump_t* dump,
     }
   }
 
-  APPEND_STRING(dump->_buffer, "}\n");
+  Append(dump, "}\n");
   return res;
 }
 
@@ -965,19 +969,19 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   }
 
   // block compaction
-  TRI_ReadLockReadWriteLock(&document->_compactionLock);
-
   int res;
+  {
+    READ_LOCKER(locker, document->_compactionLock);
 
-  try {
-    res = DumpCollection(dump, document, dataMin, dataMax, withTicks,
+    try {
+      res = DumpCollection(dump, document, dataMin, dataMax, withTicks,
                          translateCollectionIds, failOnUnknown, &resolver);
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
+    }
   }
 
   // always execute this
-  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
   document->ditches()->freeDitch(b);
 
   return res;
@@ -1006,11 +1010,10 @@ int TRI_DumpLogReplication(
   bool hasMore = true;
   bool bufferFull = false;
 
-  if (outputAsArray) {
-    TRI_AppendStringStringBuffer(dump->_buffer, "[\n");
-  }
-
   try {
+    if (outputAsArray) {
+      Append(dump, "[");
+    }
     bool first = true;
 
     // iterate over the datafiles found
@@ -1025,8 +1028,7 @@ int TRI_DumpLogReplication(
           logfile, ptr, end);
 
       while (ptr < end) {
-        TRI_df_marker_t const* marker =
-            reinterpret_cast<TRI_df_marker_t const*>(ptr);
+        auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
         if (marker->getSize() == 0) {
           // end of datafile
@@ -1034,7 +1036,8 @@ int TRI_DumpLogReplication(
         }
           
         TRI_df_marker_type_t type = marker->getType();
-        if (type <= TRI_DF_MARKER_MIN) {
+
+        if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           break;
         }
 
@@ -1067,7 +1070,7 @@ int TRI_DumpLogReplication(
 
         if (outputAsArray) {
           if (!first) {
-            TRI_AppendStringStringBuffer(dump->_buffer, ", ");
+            Append(dump, ",");
           } else {
             first = false;
           }
@@ -1079,7 +1082,7 @@ int TRI_DumpLogReplication(
           THROW_ARANGO_EXCEPTION(res);
         }
 
-        if ((uint64_t)TRI_LengthStringBuffer(dump->_buffer) >=
+        if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >=
             dump->_chunkSize) {
           // abort the iteration
           bufferFull = true;
@@ -1091,6 +1094,10 @@ int TRI_DumpLogReplication(
         break;
       }
     }
+  
+    if (outputAsArray) {
+      Append(dump, "]");
+    }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -1099,10 +1106,6 @@ int TRI_DumpLogReplication(
 
   // always return the logfiles we have used
   arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
-
-  if (outputAsArray) {
-    TRI_AppendStringStringBuffer(dump->_buffer, "\n]");
-  }
 
   dump->_fromTickIncluded = fromTickIncluded;
 
@@ -1159,8 +1162,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
       // LOG(INFO) << "scanning logfile " << i;
       while (ptr < end) {
-        TRI_df_marker_t const* marker =
-            reinterpret_cast<TRI_df_marker_t const*>(ptr);
+        auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
         if (marker->getSize() == 0) {
           // end of datafile
@@ -1169,14 +1171,15 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           
         TRI_df_marker_type_t const type = marker->getType();
 
-        if (type <= TRI_DF_MARKER_MIN) {
+        if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
+          // somehow invalid
           break;
         }
 
         ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
 
         // get the marker's tick and check whether we should include it
-        TRI_voc_tick_t foundTick = marker->getTick();
+        TRI_voc_tick_t const foundTick = marker->getTick();
 
         if (foundTick <= tickMin) {
           // marker too old
@@ -1185,7 +1188,6 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
 
         if (foundTick > tickMax) {
           // marker too new
-          // LOG(INFO) << "marker too new. aborting logfile " << i;
           break;
         }
 
@@ -1198,13 +1200,15 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           continue;
         }
 
+        VPackSlice slice(reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t));
+
         if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
-          VPackSlice slice(reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t));
           transactions.emplace(NumericValue<TRI_voc_tid_t>(slice, "tid"), foundTick);
         } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
-          VPackSlice slice(reinterpret_cast<char const*>(marker) + sizeof(TRI_df_marker_t));
           transactions.erase(NumericValue<TRI_voc_tid_t>(slice, "tid"));
+        } else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "found invalid marker type");
         }
       }
     }
@@ -1213,10 +1217,10 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     // LOG(INFO) << "last tick: " << lastFoundTick;
 
     if (transactions.empty()) {
-      TRI_AppendStringStringBuffer(dump->_buffer, "[]");
+      Append(dump, "[]");
     } else {
       bool first = true;
-      TRI_AppendStringStringBuffer(dump->_buffer, "[\"");
+      Append(dump, "[\"");
 
       for (auto const& it : transactions) {
         if (it.second - 1 < lastFoundTick) {
@@ -1226,13 +1230,13 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
         if (first) {
           first = false;
         } else {
-          TRI_AppendStringStringBuffer(dump->_buffer, "\",\"");
+          Append(dump, "\",\"");
         }
 
-        TRI_AppendUInt64StringBuffer(dump->_buffer, it.first);
+        Append(dump, it.first);
       }
 
-      TRI_AppendStringStringBuffer(dump->_buffer, "\"]");
+      Append(dump, "\"]");
     }
 
     dump->_fromTickIncluded = fromTickIncluded;

@@ -24,7 +24,8 @@
 #include "Basics/JsonHelper.h"
 #include "Aql/Graphs.h"
 #include "Cluster/ClusterMethods.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Graphs.h"
 
 using namespace arangodb::basics;

@@ -27,12 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/Logger.h"
 #include "Replication/Syncer.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Slice.h>
 
 class TRI_replication_applier_configuration_t;
-struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 
 namespace arangodb {

@@ -30,7 +30,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
-#include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

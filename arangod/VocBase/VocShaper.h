@@ -28,13 +28,14 @@
 #include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
 #include "Wal/Marker.h"
 
 #define NUM_SHAPE_ACCESSORS 8
+
+struct TRI_document_collection_t;
 
 class VocShaper : public Shaper {
  public:

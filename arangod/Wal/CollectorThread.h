@@ -28,11 +28,10 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 

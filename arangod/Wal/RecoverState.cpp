@@ -27,6 +27,8 @@
 #include "Basics/files.h"
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"

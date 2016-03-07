@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
+#include "Basics/ReadLocker.h"
 #include "Replication/InitialSyncer.h"
+#include "Rest/Version.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -63,7 +65,7 @@ static void JS_StateLoggerReplication(
   result->Set(TRI_V8_ASCII_STRING("state"), state);
 
   v8::Handle<v8::Object> server = v8::Object::New(isolate);
-  server->Set(TRI_V8_ASCII_STRING("version"), TRI_V8_ASCII_STRING(TRI_VERSION));
+  server->Set(TRI_V8_ASCII_STRING("version"), TRI_V8_ASCII_STRING(ARANGODB_VERSION));
   server->Set(TRI_V8_ASCII_STRING("serverId"),
               TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer())));
   result->Set(TRI_V8_ASCII_STRING("server"), server);

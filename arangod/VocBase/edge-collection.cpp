@@ -25,6 +25,7 @@
 #include "edge-collection.h"
 #include "Basics/Logger.h"
 #include "Indexes/EdgeIndex.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 

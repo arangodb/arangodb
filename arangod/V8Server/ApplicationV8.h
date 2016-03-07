@@ -25,11 +25,10 @@
 #define ARANGOD_V8_SERVER_APPLICATION_V8_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
-
-#include <v8.h>
-
 #include "Basics/ConditionVariable.h"
 #include "V8/JSLoader.h"
+
+#include <v8.h>
 
 struct TRI_server_t;
 struct TRI_vocbase_t;

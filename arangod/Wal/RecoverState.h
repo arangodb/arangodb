@@ -25,7 +25,7 @@
 #define ARANGOD_WAL_RECOVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -33,6 +33,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
+
 #include <functional>
 
 namespace arangodb {

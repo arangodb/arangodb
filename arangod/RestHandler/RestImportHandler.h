@@ -25,11 +25,11 @@
 #define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/transactions.h"
 
 namespace arangodb {
+class OperationOptions;
+class SingleCollectionTransaction;
 
 struct RestImportResult {
  public:

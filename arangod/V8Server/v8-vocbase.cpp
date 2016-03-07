@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
+
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -30,6 +31,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
@@ -39,7 +41,7 @@
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
-#include "Utils/transactions.h"
+#include "Rest/Version.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -1729,11 +1731,15 @@ static v8::Handle<v8::Value> VertexIdToData(
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
+  OperationOptions options;
+
+  VPackSlice slice;
+#warning fill slice from vertexId.key
+  OperationResult opRes = trx->document(i->second.col->_collection->_name, slice, options);
+#warning fill document
   TRI_doc_mptr_t document;
 
-  int res = trx->document(i->second.col, &document, vertexId.key);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (!opRes.successful()) {
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
@@ -2890,7 +2896,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_V8_RETURN(TRI_V8_ASCII_STRING(TRI_VERSION));
+  TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

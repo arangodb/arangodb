@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/ServerState.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -43,7 +42,7 @@ struct TRI_doc_mptr_t;
 #define TRI_VOC_PARAMETER_FILE "parameter.json"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tick type (48bit)
+/// @brief tick type (56bit)
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef uint64_t TRI_voc_tick_t;

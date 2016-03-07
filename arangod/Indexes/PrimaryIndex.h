@@ -36,6 +36,7 @@
 
 namespace arangodb {
 
+class PrimaryIndex;
 class Transaction;
 
 class PrimaryIndexIterator final : public IndexIterator {

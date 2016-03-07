@@ -32,6 +32,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+struct TRI_df_marker_t;
 struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 

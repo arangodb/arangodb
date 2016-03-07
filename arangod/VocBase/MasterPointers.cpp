@@ -23,8 +23,7 @@
 
 #include "MasterPointers.h"
 #include "Basics/Logger.h"
-#include "VocBase/DatafileHelper.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/MasterPointer.h"
 
 using namespace arangodb;
 

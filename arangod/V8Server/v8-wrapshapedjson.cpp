@@ -24,16 +24,18 @@
 #include "v8-wrapshapedjson.h"
 #include "Basics/conversions.h"
 #include "Basics/Logger.h"
-#include "Utils/transactions.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/VocShaper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t

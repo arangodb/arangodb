@@ -36,7 +36,7 @@ target_link_libraries(${BIN_ARANGOB}
 
 install(
   TARGETS ${BIN_ARANGOB}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangob)
 
@@ -74,7 +74,7 @@ target_link_libraries(${BIN_ARANGODUMP}
 
 install(
   TARGETS ${BIN_ARANGODUMP}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangodump)
 
@@ -112,7 +112,7 @@ target_link_libraries(${BIN_ARANGOIMP}
 
 install(
   TARGETS ${BIN_ARANGOIMP}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimp)
 
@@ -150,7 +150,7 @@ target_link_libraries(${BIN_ARANGORESTORE}
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangorestore)
 
@@ -192,7 +192,7 @@ target_link_libraries(${BIN_ARANGOSH}
 
 install(
   TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION ${ARANGODB_INSTALL_BIN})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangosh)
 
@@ -203,7 +203,7 @@ add_dependencies(arangosh zlibstatic v8_build)
 ################################################################################
 
 install_command_alias(${BIN_ARANGOSH}
-  ${ARANGODB_INSTALL_BIN}
+  ${CMAKE_INSTALL_BINDIR}
   foxx-manager)
 
 install_config(foxx-manager)

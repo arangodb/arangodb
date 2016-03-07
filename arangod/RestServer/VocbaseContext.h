@@ -25,7 +25,6 @@
 #define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
 #include "Basics/Common.h"
-
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"

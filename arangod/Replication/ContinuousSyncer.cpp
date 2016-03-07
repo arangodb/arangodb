@@ -33,7 +33,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"

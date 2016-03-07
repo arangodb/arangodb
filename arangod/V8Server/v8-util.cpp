@@ -25,7 +25,6 @@
 #include "Basics/conversions.h"
 #include "VocBase/KeyGenerator.h"
 #include "V8/v8-conv.h"
-#include "Utils/DocumentHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

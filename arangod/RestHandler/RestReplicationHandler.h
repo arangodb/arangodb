@@ -28,10 +28,8 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
-struct TRI_transaction_collection_s;
 class TRI_vocbase_col_t;
 
 namespace arangodb {

@@ -24,10 +24,13 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Utils/AqlTransaction.h"
 #include "Utils/ShapedJsonTransformer.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-wrapshapedjson.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
 #include <velocypack/Buffer.h>

@@ -39,6 +39,8 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;

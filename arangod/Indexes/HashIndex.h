@@ -31,10 +31,11 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/document-collection.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+struct TRI_document_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter

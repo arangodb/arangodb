@@ -29,6 +29,7 @@
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

@@ -24,6 +24,7 @@
 #include "DocumentAccessor.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/VocShaper.h"
 

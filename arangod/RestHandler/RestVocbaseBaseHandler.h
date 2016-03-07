@@ -28,8 +28,9 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/transactions.h"
+#include "Utils/OperationResult.h"
+#include "VocBase/update-policy.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 
@@ -125,6 +126,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ~RestVocbaseBaseHandler();
 
  protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a string
+  /// optionally url-encodes
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string assembleDocumentId(std::string const&, std::string const&, bool);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if a collection needs to be created on the fly
   ///

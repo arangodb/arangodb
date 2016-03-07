@@ -27,6 +27,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>

@@ -25,7 +25,6 @@
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
-
 #include "Cluster/AgencyComm.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"

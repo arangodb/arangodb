@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"

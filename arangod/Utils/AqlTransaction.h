@@ -25,12 +25,11 @@
 #define ARANGOD_UTILS_AQL_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Aql/Collection.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/Transaction.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 

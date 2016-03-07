@@ -22,24 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #include "HttpServer/HttpServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/transactions.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
@@ -414,7 +414,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
-    builder.add("version", VPackValue(TRI_VERSION));
+    builder.add("version", VPackValue(ARANGODB_VERSION));
     builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
     builder.close();
 
@@ -1908,6 +1908,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     arangodb::Transaction& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type, 
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
+    
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
@@ -1937,10 +1938,6 @@ int RestReplicationHandler::applyCollectionDumpMarker(
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     
-    OperationOptions options;
-    options.silent = true;
-    // TODO: ignore revision
-
     try {
       OperationResult opRes = trx.remove(collectionName, old, options);
 

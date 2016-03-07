@@ -30,7 +30,6 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
@@ -294,23 +293,6 @@ class AssocMulti {
     builder.close();  // buckets
     builder.add("nrBuckets", VPackValue(_buckets.size()));
     builder.add("totalUsed", VPackValue(size()));
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void appendToJson(TRI_memory_zone_t* zone, Json& json) {
-    Json bkts(zone, Json::Array);
-    for (auto& b : _buckets) {
-      Json bucketInfo(zone, Json::Object);
-      bucketInfo("nrAlloc", Json(static_cast<double>(b._nrAlloc)));
-      bucketInfo("nrUsed", Json(static_cast<double>(b._nrUsed)));
-      bkts.add(bucketInfo);
-    }
-    json("buckets", bkts);
-    json("nrBuckets", Json(static_cast<double>(_buckets.size())));
-    json("totalUsed", Json(static_cast<double>(size())));
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -40,6 +40,7 @@
 #include "Basics/memory-map.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/auth.h"

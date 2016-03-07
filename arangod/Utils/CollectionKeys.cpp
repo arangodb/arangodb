@@ -23,11 +23,13 @@
 
 #include "CollectionKeys.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/DocumentHelper.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 

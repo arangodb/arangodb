@@ -24,19 +24,22 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_H
 #define ARANGOD_AQL_AQL_VALUE_H 1
 
-
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/StringBuffer.h"
-#include "Utils/V8TransactionContext.h"
-#include "Utils/AqlTransaction.h"
-#include "VocBase/document-collection.h"
 
 #include <v8.h>
 
+struct TRI_df_marker_t;
+struct TRI_document_collection_t;
+
 namespace arangodb {
+class AqlTransaction;
+
+namespace basics {
+class StringBuffer;
+}
 
 namespace velocypack {
 template <typename T>

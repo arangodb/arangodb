@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneTransactionContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;

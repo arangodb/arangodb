@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "document-collection.h"
-
 #include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
@@ -43,9 +42,9 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "RestServer/ArangoServer.h"
-#include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/edge-collection.h"
@@ -53,7 +52,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
-#include "VocBase/shape-accessor.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/DocumentOperation.h"
@@ -69,18 +67,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
    
-TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
-  VPackSlice const slice(vpack());
-  VPackSlice const revisionSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
-  if (revisionSlice.isString()) {
-    return arangodb::basics::VelocyPackHelper::stringUInt64(revisionSlice);
-  }
-  else if (revisionSlice.isNumber()) {
-    return revisionSlice.getNumber<TRI_voc_rid_t>();
-  }
-  return 0; 
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1094,8 +1080,6 @@ static int InitBaseDocumentCollection(TRI_document_collection_t* document,
   document->_numberDocuments = 0;
   document->_lastCompaction = 0.0;
 
-  TRI_InitReadWriteLock(&document->_compactionLock);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1108,8 +1092,6 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
     delete document->_keyGenerator;
     document->_keyGenerator = nullptr;
   }
-
-  TRI_DestroyReadWriteLock(&document->_compactionLock);
 
   if (document->getShaper() != nullptr) {  // PROTECTED by trx here
     delete document->getShaper();          // PROTECTED by trx here
@@ -3286,433 +3268,6 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReadShapedJsonDocumentCollection(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    const TRI_voc_key_t key, TRI_doc_mptr_t* mptr, bool lock) {
-
-TRI_ASSERT(false); 
-#if 0 
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-
-  {
-    TRI_IF_FAILURE("ReadDocumentNoLock") {
-      // test what happens if no lock can be acquired
-      return TRI_ERROR_DEBUG;
-    }
-
-    TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_document_collection_t* document =
-        trxCollection->_collection->_collection;
-    arangodb::CollectionReadLocker collectionLocker(document, lock);
-
-    TRI_doc_mptr_t* header;
-    int res = LookupDocument(trx, document, key, nullptr, header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    // we found a document, now copy it over
-    *mptr = *header;
-  }
-
-  TRI_ASSERT(mptr->getDataPtr() != nullptr); 
-  TRI_ASSERT(mptr->_rid > 0);
-
-  return TRI_ERROR_NO_ERROR;
-#endif
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a shaped-json document (or edge)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveShapedJsonDocumentCollection(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
-    TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
-
-TRI_ASSERT(false); 
-#if 0 
-  bool const freeMarker = (marker == nullptr);
-  rid = GetRevisionId(rid);
-
-  TRI_ASSERT(key != nullptr);
-
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
-  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
-    // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
-    // test what happens if no marker can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (marker == nullptr) {
-    marker = new arangodb::wal::RemoveMarker(
-        document->_vocbase->_id, document->_info.id(), rid,
-        TRI_MarkerIdTransaction(trxCollection->_transaction), std::string(key));
-  }
-
-  TRI_ASSERT(marker != nullptr);
-
-  TRI_doc_mptr_t* header;
-  int res;
-  TRI_voc_tick_t markerTick = 0;
-  {
-    TRI_IF_FAILURE("RemoveDocumentNoLock") {
-      // test what happens if no lock can be acquired
-      if (freeMarker) {
-        delete marker;
-      }
-      return TRI_ERROR_DEBUG;
-    }
-
-    // create a temporary deleter object for the marker
-    // this will destroy the marker in case the write-locker throws an exception on creation
-    std::unique_ptr<arangodb::wal::Marker> deleter;
-    if (marker != nullptr && freeMarker) {
-      deleter.reset(marker);
-    }
-
-    arangodb::CollectionWriteLocker collectionLocker(document, lock);
-
-    // if we got here, the marker must not be deleted by the deleter, but will be handed to
-    // the document operation, which will take over
-    deleter.release();
-
-    arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-
-    res = LookupDocument(trx, document, key, policy, header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    // we found a document to remove
-    TRI_ASSERT(header != nullptr);
-    operation.header = header;
-    operation.init();
-
-    // delete from indexes
-    res = DeleteSecondaryIndexes(trx, document, header, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(trx, document, header, true);
-      return res;
-    }
-
-    res = DeletePrimaryIndex(trx, document, header, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(trx, document, header, true);
-      return res;
-    }
-
-    operation.indexed();
-
-    document->_masterPointers.unlink(header);  // PROTECTED by trx in trxCollection
-    document->_numberDocuments--;
-
-    TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }
-
-    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    res = TRI_AddOperationTransaction(trxCollection->_transaction, operation,
-                                      forceSync);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      operation.revert();
-    } else if (forceSync) {
-      markerTick = operation.tick;
-    }
-  }
-
-  if (markerTick > 0) {
-    // need to wait for tick, outside the lock
-    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
-  }
-
-  return res;
-#endif
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a shaped-json document (or edge)
-/// note: key might be NULL. in this case, a key is auto-generated
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertShapedJsonDocumentCollection(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    const TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
-    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
-    TRI_document_edge_t const* edge, bool lock, bool forceSync,
-    bool isRestore) {
-
-TRI_ASSERT(false);
-#if 0
-  bool const freeMarker = (marker == nullptr);
-
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-
-  rid = GetRevisionId(rid);
-  TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
-
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT(lock ||
-  // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
-  // 0));
-
-  std::string keyString;
-
-  if (key == nullptr) {
-    // no key specified, now generate a new one
-    keyString.assign(document->_keyGenerator->generate(tick));
-
-    if (keyString.empty()) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-    }
-  } else {
-    // key was specified, now validate it
-    int res = document->_keyGenerator->validate(key, isRestore);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    keyString = key;
-  }
-
-  // TODO: Fix hash calculation
-  VPackBuilder builder;
-  builder.add(VPackValue(keyString));
-  uint64_t const hash = document->primaryIndex()->calculateHash(
-      trx, builder.data());
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (marker == nullptr) {
-    res = CreateMarkerNoLegend(marker, document, rid, trxCollection, keyString,
-                               shaped, edge);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (marker != nullptr) {
-        // avoid memleak
-        delete marker;
-      }
-
-      return res;
-    }
-  }
-
-  TRI_ASSERT(marker != nullptr);
-
-  TRI_voc_tick_t markerTick = 0;
-  // now insert into indexes
-  {
-    TRI_IF_FAILURE("InsertDocumentNoLock") {
-      // test what happens if no lock can be acquired
-
-      if (freeMarker) {
-        delete marker;
-      }
-
-      return TRI_ERROR_DEBUG;
-    }
-
-    // create a temporary deleter object for the marker
-    // this will destroy the marker in case the write-locker throws an exception on creation
-    std::unique_ptr<arangodb::wal::Marker> deleter;
-    if (marker != nullptr && freeMarker) {
-      deleter.reset(marker);
-    }
-
-    arangodb::CollectionWriteLocker collectionLocker(document, lock);
-
-    // if we got here, the marker must not be deleted by the deleter, but will be handed to
-    // the document operation, which will take over
-    deleter.release();
-
-    arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_INSERT);
-
-    TRI_IF_FAILURE("InsertDocumentNoHeader") {
-      // test what happens if no header can be acquired
-      return TRI_ERROR_DEBUG;
-    }
-
-    TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
-      // test what happens if no header can be acquired
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_masterPointers.request();
-
-    if (header == nullptr) {
-      // out of memory. no harm done here. just return the error
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    // update the header we got
-    void* mem = operation.marker->mem();
-    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
-    header->_hash = hash;
-
-    // insert into indexes
-    res =
-        InsertDocument(trx, trxCollection, header, operation, mptr, forceSync);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      operation.revert();
-    } else {
-      TRI_ASSERT(mptr->getDataPtr() !=
-                 nullptr);  // PROTECTED by trx in trxCollection
-
-      if (forceSync) {
-        markerTick = operation.tick;
-      }
-    }
-  }
-
-  if (markerTick > 0) {
-    // need to wait for tick, outside the lock
-    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
-  }
-  return res;
-#endif
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UpdateShapedJsonDocumentCollection(
-    arangodb::Transaction* trx, TRI_transaction_collection_t* trxCollection,
-    TRI_voc_key_t key, TRI_voc_rid_t rid, arangodb::wal::Marker* marker,
-    TRI_doc_mptr_t* mptr, TRI_shaped_json_t const* shaped,
-    TRI_doc_update_policy_t const* policy, bool lock, bool forceSync) {
-
-TRI_ASSERT(false);  
-#if 0
-  bool const freeMarker = (marker == nullptr);
-
-  rid = GetRevisionId(rid);
-
-  TRI_ASSERT(key != nullptr);
-
-  // initialize the result
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  // TRI_ASSERT(lock ||
-  // TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE,
-  // 0));
-
-  int res = TRI_ERROR_NO_ERROR;
-  TRI_voc_tick_t markerTick = 0;
-  {
-    TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
-
-    // note: the write-locker may throw if it cannot acquire the lock
-    arangodb::CollectionWriteLocker collectionLocker(document, lock);
-
-    // get the header pointer of the previous revision
-    TRI_doc_mptr_t* oldHeader;
-    res = LookupDocument(trx, document, key, policy, oldHeader);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    TRI_IF_FAILURE("UpdateDocumentNoMarker") {
-      // test what happens when no marker can be created
-      return TRI_ERROR_DEBUG;
-    }
-
-    TRI_IF_FAILURE("UpdateDocumentNoMarkerExcept") {
-      // test what happens when no marker can be created
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    if (marker == nullptr) {
-      TRI_IF_FAILURE("UpdateDocumentNoLegend") {
-        // test what happens when no legend can be created
-        return TRI_ERROR_DEBUG;
-      }
-
-      TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
-        // test what happens when no legend can be created
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(
-          oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
-
-      res = CloneMarkerNoLegend(marker, original, document, rid, trxCollection,
-                                shaped);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (marker != nullptr) {
-          // avoid memleak
-          delete marker;
-        }
-        return res;
-      }
-    }
-
-    TRI_ASSERT(marker != nullptr);
-
-    arangodb::wal::DocumentOperation operation(
-        trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-    operation.header = oldHeader;
-    operation.init();
-
-    res = UpdateDocument(trx, trxCollection, oldHeader, operation, mptr,
-                         forceSync);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      operation.revert();
-    } else if (forceSync) {
-      markerTick = operation.tick;
-    }
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(mptr->getDataPtr() !=
-               nullptr);  // PROTECTED by trx in trxCollection
-    TRI_ASSERT(mptr->_rid > 0);
-  }
-
-  if (markerTick > 0) {
-    // need to wait for tick, outside the lock
-    arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
-  }
-
-  return res;
-#endif
-  return TRI_ERROR_INTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads an element from the document collection
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
                                     TRI_doc_mptr_t* mptr, bool lock) {
   TRI_ASSERT(mptr != nullptr);
@@ -4261,6 +3816,7 @@ int TRI_document_collection_t::lookupDocument(
   if (!key.isString()) {
     return TRI_ERROR_INTERNAL;
   }
+
   VPackBuilder searchValue;
   searchValue.openArray();
   searchValue.openObject();
