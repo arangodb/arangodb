@@ -89,29 +89,57 @@ MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackDocumentMarker::VPackDocumentMarker(TRI_voc_tid_t transactionId,
-                                         VPackSlice const& properties)
-    : Marker(TRI_DF_MARKER_VPACK_DOCUMENT,
-             sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t) + properties.byteSize()) {
-  *reinterpret_cast<TRI_voc_tid_t*>(begin() + sizeof(TRI_df_marker_t)) = transactionId;
+CrudMarker::CrudMarker(TRI_df_marker_type_t type,
+                       TRI_voc_tid_t transactionId,
+                       VPackSlice const& properties)
+    : Marker(type, DatafileHelper::VPackOffset(type) + properties.byteSize()) {
+  *reinterpret_cast<TRI_voc_tid_t*>(begin() + DatafileHelper::TransactionIdOffset(type)) = transactionId;
 
   // store vpack
-  storeSlice(sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t), properties);
+  storeSlice(DatafileHelper::VPackOffset(type), properties);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackRemoveMarker::VPackRemoveMarker(TRI_voc_tid_t transactionId,
-                                     VPackSlice const& properties)
-    : Marker(TRI_DF_MARKER_VPACK_REMOVE,
-             sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t) + properties.byteSize()) {
-  
-  *reinterpret_cast<TRI_voc_tid_t*>(begin() + sizeof(TRI_df_marker_t)) = transactionId;
+DatabaseMarker::DatabaseMarker(TRI_df_marker_type_t type,
+                               TRI_voc_tick_t databaseId,
+                               VPackSlice const& properties)
+    : Marker(type, DatafileHelper::VPackOffset(type) + properties.byteSize()) {
 
+  *reinterpret_cast<TRI_voc_tick_t*>(begin() + DatafileHelper::DatabaseIdOffset(type)) = databaseId;
   // store vpack
-  storeSlice(sizeof(TRI_df_marker_t) + sizeof(TRI_voc_tid_t), properties);
+  storeSlice(DatafileHelper::VPackOffset(type), properties);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionMarker::CollectionMarker(TRI_df_marker_type_t type,
+                                   TRI_voc_tick_t databaseId,
+                                   TRI_voc_cid_t collectionId,
+                                   VPackSlice const& properties)
+    : Marker(type, DatafileHelper::VPackOffset(type) + properties.byteSize()) {
+
+  *reinterpret_cast<TRI_voc_tick_t*>(begin() + DatafileHelper::DatabaseIdOffset(type)) = databaseId;
+  *reinterpret_cast<TRI_voc_cid_t*>(begin() + DatafileHelper::CollectionIdOffset(type)) = collectionId;
+  // store vpack
+  storeSlice(DatafileHelper::VPackOffset(type), properties);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+TransactionMarker::TransactionMarker(TRI_df_marker_type_t type,
+                                     TRI_voc_tick_t databaseId,
+                                     TRI_voc_tid_t transactionId) 
+    : Marker(type, DatafileHelper::VPackOffset(type)) {
+
+  *reinterpret_cast<TRI_voc_tick_t*>(begin() + DatafileHelper::DatabaseIdOffset(type)) = databaseId;
+  *reinterpret_cast<TRI_voc_tid_t*>(begin() + DatafileHelper::TransactionIdOffset(type)) = transactionId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

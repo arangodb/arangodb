@@ -151,6 +151,9 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
 
 std::shared_ptr<VPackCustomTypeHandler> TransactionContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
+    if (!hasResolver()) {
+      createResolver();
+    }
     _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
   }
 

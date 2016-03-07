@@ -892,11 +892,11 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
 /// @brief writes a create-database marker into the log
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteCreateMarker(VPackSlice const& slice) {
+static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, slice);
+    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE, id, slice);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
                                                                     false);
@@ -929,13 +929,10 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("database", VPackValue(id));
-    builder.add("data", VPackValue(VPackValueType::Object));
-    builder.add("id", VPackValue(id));
-    builder.close();
+    builder.add("id", VPackValue(std::to_string(id)));
     builder.close();
 
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, builder.slice());
+    arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -1682,7 +1679,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
   if (writeMarker) {
     builder.close(); // close inner
     builder.close();
-    res = WriteCreateMarker(builder.slice());
+    res = WriteCreateMarker(databaseId, builder.slice());
   }
 
   *database = vocbase;

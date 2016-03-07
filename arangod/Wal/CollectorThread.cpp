@@ -156,15 +156,16 @@ static bool ShouldIgnoreCollection(CollectorState const* state,
 static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
                        TRI_datafile_t* datafile) {
   CollectorState* state = static_cast<CollectorState*>(data);
-  char const* p = reinterpret_cast<char const*>(marker);
 
   TRI_ASSERT(marker != nullptr);
   TRI_df_marker_type_t const type = marker->getType();
   
   switch (type) {
     case TRI_DF_MARKER_PROLOGUE: {
-      auto const* m = reinterpret_cast<TRI_df_prologue_marker_t const*>(marker);
-      state->resetCollection(m->_databaseId, m->_collectionId);
+      // simply note the last state
+      TRI_voc_tick_t const databaseId = DatafileHelper::DatabaseId(marker);
+      TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
+      state->resetCollection(databaseId, collectionId);
       break;
     }
 
@@ -175,7 +176,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
       TRI_ASSERT(databaseId > 0);
       TRI_ASSERT(collectionId > 0);
 
-      TRI_voc_tid_t transactionId = *reinterpret_cast<TRI_voc_tid_t const*>(p + sizeof(TRI_df_marker_t));
+      TRI_voc_tid_t transactionId = DatafileHelper::TransactionId(marker);
 
       state->collections[collectionId] = databaseId;
 
@@ -202,8 +203,7 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
-      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t const tid = NumericValue<TRI_voc_tid_t>(slice, "tid");
+      TRI_voc_tid_t const tid = DatafileHelper::TransactionId(marker);
 
       // note which abort markers we found
       state->handledTransactions.emplace(tid);
@@ -211,16 +211,14 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: {
-      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
       // note that the collection is now considered not dropped
       state->droppedCollections.erase(collectionId);
       break;
     }
 
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION: {
-      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tid_t const collectionId = NumericValue<TRI_voc_cid_t>(slice, "cid");
+      TRI_voc_cid_t const collectionId = DatafileHelper::CollectionId(marker);
       // note that the collection was dropped and doesn't need to be collected
       state->droppedCollections.emplace(collectionId);
       state->structuralOperations.erase(collectionId);
@@ -231,16 +229,14 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
     }
 
     case TRI_DF_MARKER_VPACK_CREATE_DATABASE: {
-      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tick_t const database = DatafileHelper::DatabaseId(marker);
       // note that the database is now considered not dropped
       state->droppedDatabases.erase(database);
       break;
     }
 
     case TRI_DF_MARKER_VPACK_DROP_DATABASE: {
-      VPackSlice const slice(p + sizeof(TRI_df_marker_t));
-      TRI_voc_tick_t database = NumericValue<TRI_voc_tick_t>(slice, "database");
+      TRI_voc_tick_t const database = DatafileHelper::DatabaseId(marker);
       // note that the database was dropped and doesn't need to be collected
       state->droppedDatabases.emplace(database);
 

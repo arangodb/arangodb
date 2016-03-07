@@ -28,17 +28,23 @@
 #include "Basics/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using JsonHelper = arangodb::basics::JsonHelper;
 
 RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
@@ -63,33 +69,35 @@ bool RestAqlHandler::isDirect() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief POST method for /_api/aql/instantiate (internal)
-/// The body is a JSON with attributes "plan" for the execution plan and
+/// The body is a VelocyPack with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
+#warning update this comment AQL_EXECUTEJSON => AQL_EXECUTEVPACK
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestAqlHandler::createQueryFromJson() {
-  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
-    LOG(ERR) << "invalid JSON plan in query";
+void RestAqlHandler::createQueryFromVelocyPack() {
+  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
+  if (queryBuilder == nullptr) {
+    LOG(ERR) << "invalid VelocyPack plan in query";
     return;
   }
+  VPackSlice querySlice = queryBuilder->slice();
 
-  arangodb::basics::Json plan;
-  arangodb::basics::Json options;
-
-  plan = queryJson.get("plan").copy();  // cannot throw
-  if (plan.isEmpty()) {
-    LOG(ERR) << "Invalid JSON: \"plan\" attribute missing.";
+  TRI_ASSERT(querySlice.isObject());
+  
+  VPackSlice plan = querySlice.get("plan");
+  if (plan.isNone()) {
+    LOG(ERR) << "Invalid VelocyPack: \"plan\" attribute missing.";
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"plan\"");
     return;
   }
-  options = queryJson.get("options").copy();
 
-  std::string const part =
-      JsonHelper::getStringValue(queryJson.json(), "part", "");
+  VPackSlice options = querySlice.get("options");
 
-  auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(),
+  std::string const part = VelocyPackHelper::getStringValue(querySlice, "part", "");
+
+  auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
+  auto query = new Query(_applicationV8, false, _vocbase, planBuilder, options,
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -123,14 +131,19 @@ void RestAqlHandler::createQueryFromJson() {
     return;
   }
 
-  createResponse(arangodb::rest::HttpResponse::ACCEPTED);
-  _response->setContentType("application/json; charset=utf-8");
-  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
-  answerBody("queryId",
-             arangodb::basics::Json(arangodb::basics::StringUtils::itoa(_qId)))(
-      "ttl", arangodb::basics::Json(ttl));
+  VPackBuilder answerBody;
+  try {
+    VPackObjectBuilder guard(&answerBody);
+#warning Can we switch to A proper number type here?
+    answerBody.add("queryId", VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
+    answerBody.add("ttl", VPackValue(ttl));
+  } catch (...) {
+    LOG(ERR) << "could not keep query in registry";
+    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
 
-  _response->body().appendText(answerBody.toString());
+  sendResponse(arangodb::rest::HttpResponse::ACCEPTED, answerBody.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,14 +155,15 @@ void RestAqlHandler::createQueryFromJson() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::parseQuery() {
-  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
-    LOG(ERR) << "invalid JSON plan in query";
+  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
+  if (bodyBuilder == nullptr) {
+    LOG(ERR) << "invalid VelocyPack plan in query";
     return;
   }
+  VPackSlice querySlice = bodyBuilder->slice();
 
   std::string const queryString =
-      JsonHelper::getStringValue(queryJson.json(), "query", "");
+      VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -168,26 +182,38 @@ void RestAqlHandler::parseQuery() {
   }
 
   // Now prepare the answer:
-  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 4);
-  answerBody("parsed", arangodb::basics::Json(true));
-  arangodb::basics::Json collections(arangodb::basics::Json::Array,
-                                     res.collectionNames.size());
-  for (auto const& c : res.collectionNames) {
-    collections(arangodb::basics::Json(c));
-  }
-  answerBody("collections", collections);
-  arangodb::basics::Json bindVars(arangodb::basics::Json::Array,
-                                  res.bindParameters.size());
-  for (auto const& p : res.bindParameters) {
-    bindVars(arangodb::basics::Json(p));
-  }
-  answerBody("parameters", bindVars);
-  answerBody("ast", arangodb::basics::Json(res.zone, res.json));
-  res.json = nullptr;
+  VPackBuilder answerBuilder;
+  try {
+    VPackObjectBuilder guard(&answerBuilder);
+    answerBuilder.add("parsed", VPackValue(true));
+    answerBuilder.add(VPackValue("collections"));
+    {
+      VPackArrayBuilder arrGuard(&answerBuilder);
+      for (auto const& c : res.collectionNames) {
+        answerBuilder.add(VPackValue(c));
+      }
+    }
 
-  createResponse(arangodb::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText(answerBody.toString());
+    answerBuilder.add(VPackValue("parameters"));
+    {
+      VPackArrayBuilder arrGuard(&answerBuilder);
+      for (auto const& p : res.bindParameters) {
+        answerBuilder.add(VPackValue(p));
+      }
+    }
+#warning res.json has to be replaced by VPack in first-place
+    answerBuilder.add(VPackValue("ast"));
+    int errCode = JsonHelper::toVelocyPack(res.json, answerBuilder);
+    if (errCode != TRI_ERROR_NO_ERROR) {
+#warning only temporary, wrong error does not matter at all.
+      generateError(HttpResponse::BAD, errCode);
+    }
+    res.json = nullptr;
+  } catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
+  }
+  sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,13 +225,14 @@ void RestAqlHandler::parseQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::explainQuery() {
-  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
+  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
+  if (bodyBuilder == nullptr) {
     return;
   }
+  VPackSlice querySlice = bodyBuilder->slice();
 
   std::string queryString =
-      JsonHelper::getStringValue(queryJson.json(), "query", "");
+      VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -213,22 +240,13 @@ void RestAqlHandler::explainQuery() {
     return;
   }
 
-  auto bindVars = std::make_shared<VPackBuilder>();
-  {
-    int res = arangodb::basics::JsonHelper::toVelocyPack(queryJson.get("parameters").json(), *(bindVars.get()));
-  
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
-                    "could not convert parameters to vpack");
-      return;
-    }
-  }
+#warning Can we use Builder::clone(Slice) here?
+  auto bindVars = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("parameters")));
 
-  arangodb::basics::Json options;
-  options = queryJson.get("options").copy();  // cannot throw
+  VPackSlice options = querySlice.get("options");
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
-                         queryString.size(), bindVars, options.steal(), PART_MAIN);
+                         queryString.size(), bindVars, options, PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
@@ -238,19 +256,28 @@ void RestAqlHandler::explainQuery() {
   }
 
   // Now prepare the answer:
-  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 1);
-  if (res.json != nullptr) {
-    if (query->allPlans()) {
-      answerBody("plans", arangodb::basics::Json(res.zone, res.json));
-    } else {
-      answerBody("plan", arangodb::basics::Json(res.zone, res.json));
+  VPackBuilder answerBuilder;
+  try {
+    VPackObjectBuilder guard(&answerBuilder);
+    if (res.json != nullptr) {
+#warning QueryResult needs to be replaced by VPack
+      if (query->allPlans()) {
+        answerBuilder.add(VPackValue("plans"));
+      } else {
+        answerBuilder.add(VPackValue("plan"));
+      }
+      int errCode = JsonHelper::toVelocyPack(res.json, answerBuilder);
+      if (errCode != TRI_ERROR_NO_ERROR) {
+#warning only temporary, wrong error does not matter at all.
+        generateError(HttpResponse::BAD, errCode);
+      }
+      res.json = nullptr;
     }
+  } catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
   }
-  res.json = nullptr;
-
-  createResponse(arangodb::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText(answerBody.toString());
+  sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,13 +290,14 @@ void RestAqlHandler::explainQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromString() {
-  arangodb::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
+  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
+  if (queryBuilder == nullptr) {
     return;
   }
+  VPackSlice querySlice = queryBuilder->slice();
 
   std::string const queryString =
-      JsonHelper::getStringValue(queryJson.json(), "query", "");
+      VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -278,7 +306,7 @@ void RestAqlHandler::createQueryFromString() {
   }
 
   std::string const part =
-      JsonHelper::getStringValue(queryJson.json(), "part", "");
+      VelocyPackHelper::getStringValue(querySlice, "part", "");
   if (part.empty()) {
     LOG(ERR) << "body must be an object with attribute \"part\"";
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -286,23 +314,13 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  auto bindVars = std::make_shared<VPackBuilder>();
-  {
-    int res = arangodb::basics::JsonHelper::toVelocyPack(queryJson.get("parameters").json(), *(bindVars.get()));
-   
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
-                    "could not convert parameters to vpack");
-      return;
-    }
-  }
+  auto bindVars = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("parameters")));
   
-  arangodb::basics::Json options;
-  options = queryJson.get("options").copy();  // cannot throw
+  VPackSlice options = querySlice.get("options");
 
   auto query =
       new Query(_applicationV8, false, _vocbase, queryString.c_str(),
-                queryString.size(), bindVars, options.steal(),
+                queryString.size(), bindVars, options,
                 (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -403,15 +421,14 @@ void RestAqlHandler::useQuery(std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  arangodb::basics::Json queryJson =
-      arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
+  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
+  if (queryBuilder == nullptr) {
     _queryRegistry->close(_vocbase, _qId);
     return;
   }
 
   try {
-    handleUseQuery(operation, query, queryJson);
+    handleUseQuery(operation, query, queryBuilder->slice());
     if (_qId != 0) {
       try {
         _queryRegistry->close(_vocbase, _qId);
@@ -573,7 +590,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       if (suffix.size() != 1) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffix[0] == "instantiate") {
-        createQueryFromJson();
+        createQueryFromVelocyPack();
       } else if (suffix[0] == "parse") {
         parseQuery();
       } else if (suffix[0] == "explain") {
@@ -668,7 +685,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
-                                    arangodb::basics::Json const& queryJson) {
+                                    VPackSlice const querySlice) {
   bool found;
   std::string shardId;
   char const* shardIdCharP = _request->header("shard-id", found);
@@ -676,211 +693,228 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     shardId = shardIdCharP;
   }
 
-  arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 3);
+  VPackBuilder answerBuilder;
+  try {
+    VPackObjectBuilder guard(&answerBuilder);
+    if (operation == "lock") {
+      // Mark current thread as potentially blocking:
+      auto currentThread = arangodb::rest::DispatcherThread::current();
 
-  if (operation == "lock") {
-    // Mark current thread as potentially blocking:
-    auto currentThread = arangodb::rest::DispatcherThread::current();
-
-    if (currentThread != nullptr) {
-      currentThread->block();
-    }
-    int res = TRI_ERROR_INTERNAL;
-    try {
-      res = query->trx()->lockCollections();
-    } catch (...) {
-      LOG(ERR) << "lock lead to an exception";
+      if (currentThread != nullptr) {
+        currentThread->block();
+      }
+      int res = TRI_ERROR_INTERNAL;
+      try {
+        res = query->trx()->lockCollections();
+      } catch (...) {
+        LOG(ERR) << "lock lead to an exception";
+        if (currentThread != nullptr) {
+          currentThread->unblock();
+        }
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "lock lead to an exception");
+        return;
+      }
       if (currentThread != nullptr) {
         currentThread->unblock();
       }
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "lock lead to an exception");
-      return;
-    }
-    if (currentThread != nullptr) {
-      currentThread->unblock();
-    }
-    answerBody("error", res == TRI_ERROR_NO_ERROR
-                            ? arangodb::basics::Json(false)
-                            : arangodb::basics::Json(true))(
-        "code", arangodb::basics::Json(static_cast<double>(res)));
-  } else if (operation == "getSome") {
-    auto atLeast =
-        JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<size_t>(
-        queryJson.json(), "atMost", ExecutionBlock::DefaultBatchSize);
-    std::unique_ptr<AqlItemBlock> items;
-    if (shardId.empty()) {
-      items.reset(query->engine()->getSome(atLeast, atMost));
-    } else {
-      auto block = static_cast<BlockWithClients*>(query->engine()->root());
-      if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-          block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+#warning Do ne need cast to double or is integer ok?
+      answerBuilder.add("code", VPackValue(static_cast<double>(res)));
+    } else if (operation == "getSome") {
+      auto atLeast =
+          VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
+      auto atMost = VelocyPackHelper::getNumericValue<size_t>(
+          querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+      std::unique_ptr<AqlItemBlock> items;
+      if (shardId.empty()) {
+        items.reset(query->engine()->getSome(atLeast, atMost));
+      } else {
+        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        items.reset(block->getSomeForShard(atLeast, atMost, shardId));
       }
-      items.reset(block->getSomeForShard(atLeast, atMost, shardId));
-    }
-    if (items.get() == nullptr) {
-      answerBody("exhausted", arangodb::basics::Json(true))(
-          "error", arangodb::basics::Json(false))("stats", query->getStats());
-    } else {
+      if (items.get() == nullptr) {
+        answerBuilder.add("exhausted", VPackValue(true));
+        answerBuilder.add("error", VPackValue(false));
+        answerBuilder.add(VPackValue("stats"));
+        query->getStats(answerBuilder);
+      } else {
+        try {
+          items->toVelocyPack(query->trx(), answerBuilder);
+          answerBuilder.add(VPackValue("stats"));
+          query->getStats(answerBuilder);
+        } catch (...) {
+          LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
+          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                        "cannot transform AqlItemBlock to VelocyPack");
+          return;
+        }
+      }
+    } else if (operation == "skipSome") {
+      auto atLeast =
+          VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
+      auto atMost = VelocyPackHelper::getNumericValue<size_t>(
+          querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+      size_t skipped;
       try {
-        answerBody = items->toJson(query->trx());
-        answerBody.set("stats", query->getStats());
-        // std::cout << "ANSWERBODY: " <<
-        // JsonHelper::toString(answerBody.json()) << "\n\n";
+        if (shardId.empty()) {
+          skipped = query->engine()->skipSome(atLeast, atMost);
+        } else {
+          auto block = static_cast<BlockWithClients*>(query->engine()->root());
+          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
+          skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+        }
       } catch (...) {
-        LOG(ERR) << "cannot transform AqlItemBlock to Json";
+        LOG(ERR) << "skipSome lead to an exception";
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "cannot transform AqlItemBlock to Json");
+                      "skipSome lead to an exception");
         return;
       }
-    }
-  } else if (operation == "skipSome") {
-    auto atLeast =
-        JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<size_t>(
-        queryJson.json(), "atMost", ExecutionBlock::DefaultBatchSize);
-    size_t skipped;
-    try {
-      if (shardId.empty()) {
-        skipped = query->engine()->skipSome(atLeast, atMost);
-      } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
+      answerBuilder.add("error", VPackValue(false));
+      answerBuilder.add(VPackValue("stats"));
+      query->getStats(answerBuilder);
+    } else if (operation == "skip") {
+      auto number =
+          VelocyPackHelper::getNumericValue<size_t>(querySlice, "number", 1);
+      try {
+        bool exhausted;
+        if (shardId.empty()) {
+          exhausted = query->engine()->skip(number);
+        } else {
+          auto block = static_cast<BlockWithClients*>(query->engine()->root());
+          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
+          exhausted = block->skipForShard(number, shardId);
         }
-        skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+        answerBuilder.add("exhausted", VPackValue(exhausted));
+        answerBuilder.add("error", VPackValue(false));
+        answerBuilder.add(VPackValue("stats"));
+        query->getStats(answerBuilder);
+      } catch (...) {
+        LOG(ERR) << "skip lead to an exception";
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "skip lead to an exception");
+        return;
       }
-    } catch (...) {
-      LOG(ERR) << "skipSome lead to an exception";
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "skipSome lead to an exception");
-      return;
-    }
-    answerBody("skipped", arangodb::basics::Json(static_cast<double>(skipped)))(
-        "error", arangodb::basics::Json(false));
-    answerBody.set("stats", query->getStats());
-  } else if (operation == "skip") {
-    auto number =
-        JsonHelper::getNumericValue<size_t>(queryJson.json(), "number", 1);
-    try {
-      bool exhausted;
-      if (shardId.empty()) {
-        exhausted = query->engine()->skip(number);
-      } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    } else if (operation == "initializeCursor") {
+      auto pos =
+          VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
+      std::unique_ptr<AqlItemBlock> items;
+      int res;
+      try {
+        if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
+          res = query->engine()->initializeCursor(nullptr, 0);
+        } else {
+          items.reset(new AqlItemBlock(querySlice.get("items")));
+          res = query->engine()->initializeCursor(items.get(), pos);
         }
-        exhausted = block->skipForShard(number, shardId);
+      } catch (...) {
+        LOG(ERR) << "initializeCursor lead to an exception";
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "initializeCursor lead to an exception");
+        return;
       }
+      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+      answerBuilder.add("code", VPackValue(static_cast<double>(res)));
+      answerBuilder.add(VPackValue("stats"));
+      query->getStats(answerBuilder);
+    } else if (operation == "shutdown") {
+      int res = TRI_ERROR_INTERNAL;
+      int errorCode = VelocyPackHelper::getNumericValue<int>(
+          querySlice, "code", TRI_ERROR_INTERNAL);
+      try {
+        res =
+            query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
 
-      answerBody("exhausted", arangodb::basics::Json(exhausted))(
-          "error", arangodb::basics::Json(false));
-      answerBody.set("stats", query->getStats());
-    } catch (...) {
-      LOG(ERR) << "skip lead to an exception";
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "skip lead to an exception");
+        // return statistics
+        answerBuilder.add(VPackValue("stats"));
+        query->getStats(answerBuilder);
+
+        // return warnings if present
+        query->warningsToVelocyPack(answerBuilder);
+
+        // delete the query from the registry
+        _queryRegistry->destroy(_vocbase, _qId, errorCode);
+        _qId = 0;
+      } catch (...) {
+        LOG(ERR) << "shutdown lead to an exception";
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "shutdown lead to an exception");
+        return;
+      }
+      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+      answerBuilder.add("code", VPackValue(res));
+    } else {
+      LOG(ERR) << "Unknown operation!";
+      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
-  } else if (operation == "initializeCursor") {
-    auto pos = JsonHelper::getNumericValue<size_t>(queryJson.json(), "pos", 0);
-    std::unique_ptr<AqlItemBlock> items;
-    int res;
-    try {
-      if (JsonHelper::getBooleanValue(queryJson.json(), "exhausted", true)) {
-        res = query->engine()->initializeCursor(nullptr, 0);
-      } else {
-        items.reset(new AqlItemBlock(queryJson.get("items")));
-        res = query->engine()->initializeCursor(items.get(), pos);
-      }
-    } catch (...) {
-      LOG(ERR) << "initializeCursor lead to an exception";
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "initializeCursor lead to an exception");
-      return;
-    }
-    answerBody("error", arangodb::basics::Json(res != TRI_ERROR_NO_ERROR))(
-        "code", arangodb::basics::Json(static_cast<double>(res)));
-    answerBody.set("stats", query->getStats());
-  } else if (operation == "shutdown") {
-    int res = TRI_ERROR_INTERNAL;
-    int errorCode = JsonHelper::getNumericValue<int>(queryJson.json(), "code",
-                                                     TRI_ERROR_INTERNAL);
-
-    try {
-      res = query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
-
-      // return statistics
-      answerBody("stats", query->getStats());
-
-      // return warnings if present
-      auto warnings = query->warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-      if (warnings != nullptr) {
-        answerBody("warnings",
-                   arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, warnings));
-      }
-
-      // delete the query from the registry
-      _queryRegistry->destroy(_vocbase, _qId, errorCode);
-      _qId = 0;
-    } catch (...) {
-      LOG(ERR) << "shutdown lead to an exception";
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "shutdown lead to an exception");
-      return;
-    }
-    answerBody("error", res == TRI_ERROR_NO_ERROR
-                            ? arangodb::basics::Json(false)
-                            : arangodb::basics::Json(true))(
-        "code", arangodb::basics::Json(static_cast<double>(res)));
-  } else {
-    LOG(ERR) << "Unknown operation!";
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
+  } catch (...) {
+    LOG(ERR) << "OUT OF MEMORY when handling query.";
+    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
-  createResponse(arangodb::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText(answerBody.toString());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the JSON from the request
+/// @brief extract the VelocyPack from the request
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestAqlHandler::parseJsonBody() {
-  char* errmsg = nullptr;
-  TRI_json_t* json = _request->toJson(&errmsg);
-
-  if (json == nullptr) {
-    if (errmsg == nullptr) {
+std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
+  try {
+    std::shared_ptr<VPackBuilder> body = _request->toVelocyPack(&VPackOptions::Defaults);
+    if (body == nullptr) {
       LOG(ERR) << "cannot parse json object";
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
-    } else {
-      LOG(ERR) << "cannot parse json object: " << errmsg;
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
     }
-
-    return nullptr;
+    VPackSlice tmp = body->slice();
+    if (!tmp.isObject()) {
+      // Validate the input has correct format.
+      LOG(ERR) << "body of request must be a VelocyPack object";
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "body of request must be a VelcoyPack object");
+      return nullptr;
+    }
+    return body;
+  } catch (...) {
+#warning We can probably do something more use full with the error.
+    LOG(ERR) << "cannot parse json object";
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "cannot parse json object");
   }
-
-  TRI_ASSERT(errmsg == nullptr);
-
-  if (!TRI_IsObjectJson(json)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    LOG(ERR) << "body of request must be a JSON array";
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "body of request must be a JSON array");
-    return nullptr;
-  }
-
-  return json;
+  return nullptr;
 }
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Send slice as result with the given response type.
+//////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::sendResponse(arangodb::rest::HttpResponse::HttpResponseCode const code,
+                                 VPackSlice const slice) {
+  createResponse(code);
+  _response->setContentType("application/json; charset=utf-8");
+  arangodb::basics::VPackStringBufferAdapter buffer(
+      _response->body().stringBuffer());
+  VPackDumper dumper(&buffer);
+  try {
+    dumper.dump(slice);
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+
+}
+

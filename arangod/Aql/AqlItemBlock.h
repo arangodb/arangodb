@@ -63,7 +63,7 @@ class AqlItemBlock {
 
   AqlItemBlock(size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(arangodb::basics::Json const& json);
+  AqlItemBlock(arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the block
@@ -339,6 +339,9 @@ class AqlItemBlock {
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::AqlTransaction* trx,
+                    arangodb::velocypack::Builder&) const;
 
   arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
 

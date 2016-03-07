@@ -36,6 +36,8 @@
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
+#include <velocypack/Builder.h>
+
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
@@ -114,10 +116,19 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>, struct TRI_json_t*,
+        QueryPart);
+
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        arangodb::velocypack::Slice const, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
+
+  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        arangodb::velocypack::Slice const, QueryPart);
 
   ~Query();
 
@@ -130,6 +141,13 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
+ 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the start timestamp of the query
+  //////////////////////////////////////////////////////////////////////////////
+
+  double startTime () const { return _startTime; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query is killed
   //////////////////////////////////////////////////////////////////////////////
@@ -381,7 +399,7 @@ class Query {
   /// @brief returns statistics for current query.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json getStats();
+  void getStats(arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch a boolean value from the options
@@ -394,6 +412,14 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_json_t* warningsToJson(TRI_memory_zone_t*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief convert the list of warnings to VelocyPack.
+  ///        Will add a new entry { ..., warnings: <warnings>, } if there are
+  ///        warnings. If there are none it will not modify the builder
+  //////////////////////////////////////////////////////////////////////////////
+
+   void warningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch the global query tracking value
@@ -649,6 +675,12 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<int, std::string>> _warnings;
+ 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief query start time
+  //////////////////////////////////////////////////////////////////////////////
+
+  double _startTime;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the query part

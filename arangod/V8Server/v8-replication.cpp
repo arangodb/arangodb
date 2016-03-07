@@ -157,8 +157,10 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION_USAGE(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
+    
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
 
-  TRI_replication_dump_t dump(vocbase, 0, true, 0);
+  TRI_replication_dump_t dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 

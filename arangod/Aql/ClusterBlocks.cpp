@@ -27,6 +27,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -35,11 +36,16 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 // uncomment the following to get some debugging information
@@ -1505,21 +1511,19 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+  std::shared_ptr<VPackBuilder> responseBodyBuilder = res->result->getBodyVelocyPack();
+  VPackSlice responseBody = responseBodyBuilder->slice();
 
-  ExecutionStats newStats(responseBodyJson.get("stats"));
+  ExecutionStats newStats(responseBody.get("stats"));
 
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;
 
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
+  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
     return nullptr;
   }
 
-  return new arangodb::aql::AqlItemBlock(responseBodyJson);
+  return new arangodb::aql::AqlItemBlock(responseBody);
   LEAVE_BLOCK
 }
 

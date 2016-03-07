@@ -131,15 +131,11 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("database", VPackValue(vocbase->_id));
-    builder.add("cid", VPackValue(collectionId));
-    builder.add("data", VPackValue(VPackValueType::Object));
-    builder.add("id", VPackValue(collectionId));
+    builder.add("id", VPackValue(std::to_string(collectionId)));
     builder.add("name", VPackValue(name));
     builder.close();
-    builder.close();
 
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, builder.slice());
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, vocbase->_id, collectionId, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -1690,14 +1686,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    VPackBuilder markerBuilder;
-    markerBuilder.openObject();
-    markerBuilder.add("database", VPackValue(vocbase->_id));
-    markerBuilder.add("cid", VPackValue(cid));
-    markerBuilder.add("data", slice);
-    markerBuilder.close();
-
-    arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, markerBuilder.slice());
+    arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, vocbase->_id, cid, slice);
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
@@ -1906,15 +1895,12 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
     try {
       VPackBuilder builder;
       builder.openObject();
-      builder.add("database", VPackValue(vocbase->_id));
-      builder.add("cid", VPackValue(collection->_cid));
-      builder.add("data", VPackValue(VPackValueType::Object));
+      builder.add("id", VPackValue(std::to_string(collection->_cid)));
       builder.add("oldName", VPackValue(oldName));
       builder.add("name", VPackValue(newName));
       builder.close();
-      builder.close();
 
-      arangodb::wal::Marker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, builder.slice());
+      arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, vocbase->_id, collection->_cid, builder.slice());
 
       arangodb::wal::SlotInfoCopy slotInfo =
           arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,

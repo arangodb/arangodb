@@ -23,11 +23,13 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block
@@ -53,23 +55,23 @@ AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the block from Json, note that this can throw
+/// @brief create the block from VelocyPack, note that this can throw
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock::AqlItemBlock(Json const& json) {
-  bool exhausted = JsonHelper::getBooleanValue(json.json(), "exhausted", false);
+AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
+  bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
 
   if (exhausted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "exhausted must be false");
   }
 
-  _nrItems = JsonHelper::getNumericValue<size_t>(json.json(), "nrItems", 0);
+  _nrItems = VelocyPackHelper::getNumericValue<size_t>(slice, "nrItems", 0);
   if (_nrItems == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
 
-  _nrRegs = JsonHelper::getNumericValue<RegisterId>(json.json(), "nrRegs", 0);
+  _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
@@ -81,11 +83,11 @@ AqlItemBlock::AqlItemBlock(Json const& json) {
   }
 
   // Now put in the data:
-  Json data(json.get("data"));
-  Json raw(json.get("raw"));
+  VPackSlice data = slice.get("data");
+  VPackSlice raw = slice.get("raw");
 
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(raw.size());
+  madeHere.reserve(raw.length());
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
@@ -99,29 +101,29 @@ AqlItemBlock::AqlItemBlock(Json const& json) {
         if (emptyRun > 0) {
           emptyRun--;
         } else {
-          Json dataEntry(data.at(static_cast<int>(posInData++)));
+          VPackSlice dataEntry = data.at(posInData++);
           if (!dataEntry.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "data must contain only numbers");
           }
-          int64_t n = JsonHelper::getNumericValue<int64_t>(dataEntry.json(), 0);
+          int64_t n = data.getNumericValue<int64_t>();
           if (n == 0) {
             // empty, do nothing here
           } else if (n == -1) {
             // empty run:
-            Json runLength(data.at(static_cast<int>(posInData++)));
-            emptyRun =
-                JsonHelper::getNumericValue<int64_t>(runLength.json(), 0);
-            TRI_ASSERT(emptyRun > 0);
+            VPackSlice runLength = data.at(posInData++);
+            TRI_ASSERT(runLength.isNumber());
+            emptyRun = runLength.getNumericValue<int64_t>();
             emptyRun--;
           } else if (n == -2) {
             // a range
-            Json lowBound(data.at(static_cast<int>(posInData++)));
-            Json highBound(data.at(static_cast<int>(posInData++)));
+            VPackSlice lowBound = data.at(posInData++);
+            VPackSlice highBound = data.at(posInData++);
+            
             int64_t low =
-                JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
+                VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
             int64_t high =
-                JsonHelper::getNumericValue<int64_t>(highBound.json(), 0);
+                VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
             AqlValue a(low, high);
             try {
               setValue(i, column, a);
@@ -130,9 +132,11 @@ AqlItemBlock::AqlItemBlock(Json const& json) {
               throw;
             }
           } else if (n == 1) {
-            // a JSON value
-            Json x(raw.at(static_cast<int>(posInRaw++)));
-            AqlValue a(new Json(TRI_UNKNOWN_MEM_ZONE, x.copy().steal()));
+            // a VelocyPack value
+            VPackSlice x = raw.at(posInRaw++);
+#warning todo fix this to directly export the VPack AQLValue
+            AqlValue$ tmp(x);
+            AqlValue a(tmp);
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
             } catch (...) {
@@ -520,6 +524,11 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
+
+void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx, VPackBuilder& builder) const {
+#warning ToVelocyPack not implemented
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
   Json json(Json::Object, 6);

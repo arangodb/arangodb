@@ -25,7 +25,9 @@
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -37,34 +39,28 @@ struct ExecutionStats {
   ExecutionStats();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief instantiate the statistics from JSON
+  /// @brief instantiate the statistics from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  ExecutionStats(arangodb::basics::Json const& jsonStats);
+  explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief convert the statistics to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create empty statistics for VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackStatic();
-
+  static void toVelocyPackStatic(arangodb::velocypack::Builder&);
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief convert the statistics to JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json toJson() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create empty statistics for JSON
+  /// @brief sets query execution time from the outside
   //////////////////////////////////////////////////////////////////////////////
 
-  static arangodb::basics::Json toJsonStatic();
+  void setExecutionTime(double value) { executionTime = value; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sumarize two sets of ExecutionStats
@@ -77,6 +73,7 @@ struct ExecutionStats {
     scannedIndex += summand.scannedIndex;
     fullCount += summand.fullCount;
     filtered += summand.filtered;
+    // intentionally no modification of executionTime
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,6 +88,7 @@ struct ExecutionStats {
     scannedIndex += newStats.scannedIndex - lastStats.scannedIndex;
     fullCount += newStats.fullCount - lastStats.fullCount;
     filtered += newStats.filtered - lastStats.filtered;
+    // intentionally no modification of executionTime
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -128,6 +126,13 @@ struct ExecutionStats {
   //////////////////////////////////////////////////////////////////////////////
 
   int64_t fullCount;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief query execution time (wall-clock time). value will be set from 
+  /// the outside
+  //////////////////////////////////////////////////////////////////////////////
+
+  double executionTime;
 };
 }
 }
