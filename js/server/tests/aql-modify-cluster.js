@@ -41,6 +41,7 @@ var sanitizeStats = function (stats) {
   delete stats.scannedFull;
   delete stats.scannedIndex;
   delete stats.filtered;
+  delete stats.executionTime;
   return stats;
 };
 
