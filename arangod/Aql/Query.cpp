@@ -1327,9 +1327,21 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
 ///        warnings. If there are none it will not modify the builder
 //////////////////////////////////////////////////////////////////////////////
 
-void Query::warningsToVelocyPack(arangodb::velocypack::Builder&) const {
-#warning Needs to be implemented.
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void Query::warningsToVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  if (_warnings.empty()) {
+    return;
+  }
+  size_t const n = _warnings.size();
+  builder.add(VPackValue("warnings"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (size_t i = 0; i < n; ++i) {
+      VPackObjectBuilder objGuard(&builder);
+      builder.add("code", VPackValue(_warnings[i].first));
+      builder.add("message", VPackValue(_warnings[i].second));
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
