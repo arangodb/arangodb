@@ -51,6 +51,8 @@ std::shared_ptr<VPackBuilder> ExecutionStats::toVelocyPack() const {
       // not reported with this value
       result->add("fullCount", VPackValue(fullCount));
     }
+      
+    result->add("executionTime", VPackValue(executionTime));
   }
   return result;
 }
@@ -64,6 +66,7 @@ std::shared_ptr<VPackBuilder> ExecutionStats::toVelocyPackStatic() {
   result->add("scannedIndex", VPackValue(0));
   result->add("filtered", VPackValue(0));
   result->add("fullCount", VPackValue(-1));
+  result->add("executionTime", VPackValue(0.0));
   return result;
 }
 
@@ -84,12 +87,14 @@ Json ExecutionStats::toJson() const {
     // not reported with this value
     json.set("fullCount", Json(static_cast<double>(fullCount)));
   }
+  
+  json.set("executionTime", Json(executionTime));
 
   return json;
 }
 
 Json ExecutionStats::toJsonStatic() {
-  Json json(Json::Object, 7);
+  Json json(Json::Object, 8);
   json.set("writesExecuted", Json(0.0));
   json.set("writesIgnored", Json(0.0));
   json.set("scannedFull", Json(0.0));
@@ -97,6 +102,7 @@ Json ExecutionStats::toJsonStatic() {
   json.set("filtered", Json(0.0));
   json.set("fullCount", Json(-1.0));
   json.set("static", Json(0.0));
+  json.set("executionTime", Json(0.0));
 
   return json;
 }
@@ -107,7 +113,8 @@ ExecutionStats::ExecutionStats()
       scannedFull(0),
       scannedIndex(0),
       filtered(0),
-      fullCount(-1) {}
+      fullCount(-1),
+      executionTime(0.0) {}
 
 ExecutionStats::ExecutionStats(arangodb::basics::Json const& jsonStats) {
   if (!jsonStats.isObject()) {
@@ -129,4 +136,6 @@ ExecutionStats::ExecutionStats(arangodb::basics::Json const& jsonStats) {
   // note: fullCount is an optional attribute!
   fullCount =
       JsonHelper::getNumericValue<int64_t>(jsonStats.json(), "fullCount", -1);
+
+  // intentionally no modification of executionTime
 }
