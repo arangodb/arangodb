@@ -27,17 +27,18 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-
 #include <openssl/ssl.h>
 #include <sstream>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/build-date.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
 
 using namespace arangodb::rest;
 
@@ -93,7 +94,7 @@ void Version::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int32_t Version::getNumericServerVersion() {
-  char const* apiVersion = TRI_VERSION;
+  char const* apiVersion = ARANGODB_VERSION;
   char const* p = apiVersion;
 
   // read major version
@@ -121,7 +122,7 @@ int32_t Version::getNumericServerVersion() {
 /// @brief get server version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getServerVersion() { return std::string(TRI_VERSION); }
+std::string Version::getServerVersion() { return std::string(ARANGODB_VERSION); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get BOOST version
@@ -238,7 +239,7 @@ std::string Version::getBuildDate() {
 std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
-  version << "ArangoDB " << TRI_VERSION_FULL << " "
+  version << "ArangoDB " << ARANGODB_VERSION_FULL << " "
           << (sizeof(void*) == 4 ? "32" : "64") << "bit"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"

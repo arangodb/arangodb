@@ -26,6 +26,14 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/build.h"
+
+#ifdef _DEBUG
+#define ARANGODB_VERSION_FULL ARANGODB_VERSION " [" TRI_PLATFORM "-DEBUG]"
+#else
+#define ARANGODB_VERSION_FULL ARANGODB_VERSION " [" TRI_PLATFORM "]"
+#endif
+
 struct TRI_json_t;
 struct TRI_memory_zone_s;
 

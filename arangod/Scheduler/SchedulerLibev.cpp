@@ -204,7 +204,7 @@ void SchedulerLibev::switchAllocator() {
   }
 }
 
-static void LibEvErrorLogger(const char *msg) {
+static void LibEvErrorLogger(const char *msg) EV_THROW {
 #if _WIN32
   TRI_ERRORBUF;
   TRI_SYSTEM_ERROR();
