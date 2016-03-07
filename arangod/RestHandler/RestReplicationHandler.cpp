@@ -22,19 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #include "HttpServer/HttpServer.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeys.h"
 #include "Utils/CollectionKeysRepository.h"
@@ -413,7 +414,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
     // "server" part
     builder.add("server", VPackValue(VPackValueType::Object));
-    builder.add("version", VPackValue(TRI_VERSION));
+    builder.add("version", VPackValue(ARANGODB_VERSION));
     builder.add("serverId", VPackValue(std::to_string(TRI_GetIdServer())));
     builder.close();
 
@@ -1908,22 +1909,21 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     std::string const& collectionName, TRI_replication_operation_e type, 
     VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
     
-  OperationOptions options;
-  options.silent = true;
-  options.ignoreRevs = true;
-
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(!slice.isNone());
     TRI_ASSERT(slice.isObject());
 
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
       
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // must update
-#warning check old/slice        
         opRes = trx.update(collectionName, slice, options);
       }
 
@@ -1939,6 +1939,9 @@ int RestReplicationHandler::applyCollectionDumpMarker(
     // {"type":2402,"key":"592063"}
     
     try {
+      OperationOptions options;
+      options.silent = true;
+      options.ignoreRevs = true;
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (!opRes.successful() &&

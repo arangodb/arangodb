@@ -25,7 +25,7 @@ endif ()
 
 if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
   try_compile(
-    HAVE_USABLE_BOOT_LIBRARIES
+    HAVE_USABLE_BOOST_LIBRARIES
       "${CMAKE_BINARY_DIR}/temp"
       "${CMAKE_SOURCE_DIR}/cmake/test_boost.cpp"
     LINK_LIBRARIES
@@ -34,7 +34,7 @@ if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
       "-DINCLUDE_DIRECTORIES=${Boost_INCLUDE_DIR}"
   )
 
-  if (HAVE_USABLE_BOOT_LIBRARIES)
+  if (HAVE_USABLE_BOOST_LIBRARIES)
     option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
   else ()
     message(STATUS "cannot use BOOST library ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")

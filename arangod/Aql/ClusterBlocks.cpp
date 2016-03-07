@@ -36,6 +36,10 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -1510,10 +1514,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   std::shared_ptr<VPackBuilder> responseBodyBuilder = res->result->getBodyVelocyPack();
   VPackSlice responseBody = responseBodyBuilder->slice();
 
-#warning fix this, ExecutionStats still JSON
-  Json tmp(TRI_UNKNOWN_MEM_ZONE,
-           VelocyPackHelper::velocyPackToJson(responseBody.get("stats")));
-  ExecutionStats newStats(tmp);
+  ExecutionStats newStats(responseBody.get("stats"));
 
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;

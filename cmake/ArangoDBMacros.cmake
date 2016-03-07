@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 option(USE_RELATIVE
   "Do you want to have all path are relative to the binary"
   OFF
@@ -43,10 +45,6 @@ if (USE_RELATIVE)
 
   # resources
   set(TRI_RESOURCEDIR "resources")
-
-  # bin dir ----------------------------
-  set(ARANGODB_INSTALL_BIN "bin")
-  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 
   # MS stuff ---------------------------
   if (MSVC)
@@ -113,15 +111,6 @@ else ()
   # resources
   set(TRI_RESOURCEDIR "resources")
 
-  # binaries
-  if (MSVC)
-    set(ARANGODB_INSTALL_BIN "bin")
-    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  else ()
-    set(ARANGODB_INSTALL_BIN "bin")
-    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  endif ()
-
   # sbinaries
   if (MSVC)
     set(ARANGODB_INSTALL_SBIN "bin")
@@ -170,7 +159,7 @@ endif ()
 if (NOT WINDOWS)
   install(
     PROGRAMS ${PROJECT_BINARY_DIR}/bin/etcd-arango
-    DESTINATION ${ARANGODB_INSTALL_BIN}
+    DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
   )
 endif ()
 

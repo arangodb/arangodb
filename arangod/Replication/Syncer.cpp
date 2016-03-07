@@ -344,14 +344,14 @@ int Syncer::applyCollectionDumpMarker(
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 
-  OperationOptions options;
-  options.silent = true;
-  options.ignoreRevs = true;
-
   int res = TRI_ERROR_INTERNAL;
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
 
     try {
       // try insert first
@@ -359,7 +359,6 @@ int Syncer::applyCollectionDumpMarker(
 
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // perform an update
-#warning check old/slice        
         opRes = trx.replace(collectionName, slice, options); 
       }
     
@@ -382,6 +381,9 @@ int Syncer::applyCollectionDumpMarker(
     // {"type":2402,"key":"592063"}
     
     try {
+      OperationOptions options;
+      options.silent = true;
+      options.ignoreRevs = true;
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (opRes.successful() ||
