@@ -358,33 +358,6 @@
       }
     },
 
-    timer: {
-
-      begin: 0,
-      end: 0,
-
-      start: function() {
-        this.begin = new Date().getTime();
-      },
-
-      stop: function() {
-        this.end = new Date().getTime();
-      },
-
-      reset: function() {
-        this.begin = 0;
-        this.end = 0;
-      },
-
-      getTimeAndReset: function() {
-        this.stop();
-        var result =  this.end - this.begin;
-        this.reset();
-
-        return result;
-      }
-    },
-
     explainQuery: function() {
 
       if (this.verifyQueryAndParams()) {
@@ -1268,7 +1241,6 @@
         $("html, body").animate({ scrollTop: 0 }, "fast");
       });
 
-      self.timer.start();
       this.execPending = false;
 
       var warningsFunc = function(data) {
@@ -1296,7 +1268,11 @@
         };
 
         $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
-        var time = self.timer.getTimeAndReset() / 1000 + " s";
+          
+        var time = "-";
+        if (data && data.extra && data.extra.stats) {
+          time = data.extra.stats.executionTime.toFixed(3) + " s";
+        }
         appendSpan(time, 'fa-clock-o');
 
         if (data.extra) {

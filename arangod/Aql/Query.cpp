@@ -84,7 +84,7 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
 ////////////////////////////////////////////////////////////////////////////////
 
 Profile::Profile(Query* query)
-    : query(query), results(), stamp(TRI_microtime()), tracked(false) {
+    : query(query), results(), stamp(query->startTime()), tracked(false) {
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
 
   if (queryList != nullptr) {
@@ -194,6 +194,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _engine(nullptr),
       _maxWarningCount(10),
       _warnings(),
+      _startTime(TRI_microtime()),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -234,6 +235,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _engine(nullptr),
       _maxWarningCount(10),
       _warnings(),
+      _startTime(TRI_microtime()),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -741,9 +743,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       throw;
     }
 
-    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
-
     _trx->commit();
+
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
@@ -894,9 +897,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       throw;
     }
 
-    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
-
     _trx->commit();
+
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
@@ -1207,9 +1211,11 @@ void Query::exitContext() {
 
 arangodb::basics::Json Query::getStats() {
   if (_engine) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     return _engine->_stats.toJson();
   }
-  return ExecutionStats::toJsonStatic();
+  arangodb::basics::Json stats = ExecutionStats::toJsonStatic();
+  return stats;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
