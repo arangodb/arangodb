@@ -1420,7 +1420,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
@@ -1450,7 +1450,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   OperationOptions options;
   options.ignoreRevs = false;
-  parseReplaceAndUpdateOptions(isolate, args, options, operation);
+  if (args.Length() > 2) {
+    parseReplaceAndUpdateOptions(isolate, args, options, operation);
+  }
 
   // Find collection and vocbase
   std::string collectionName;
@@ -1578,7 +1580,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) ? 3 : 5) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
