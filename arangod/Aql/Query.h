@@ -36,6 +36,8 @@
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
+#include <velocypack/Builder.h>
+
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
@@ -388,7 +390,7 @@ class Query {
   /// @brief returns statistics for current query.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json getStats();
+  void getStats(arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch a boolean value from the options

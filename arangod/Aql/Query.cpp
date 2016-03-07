@@ -616,8 +616,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 /// @brief execute an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 QueryResult Query::execute(QueryRegistry* registry) {
   std::unique_ptr<AqlWorkStack> work;
 
@@ -746,7 +744,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
     _trx->commit();
 
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
+    auto stats = std::make_shared<VPackBuilder>();
+    _engine->_stats.toVelocyPack(*(stats.get()));
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
@@ -900,7 +899,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     _trx->commit();
 
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    std::shared_ptr<VPackBuilder> stats = _engine->_stats.toVelocyPack();
+    auto stats = std::make_shared<VPackBuilder>();
+    _engine->_stats.toVelocyPack(*(stats.get()));
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
@@ -1209,13 +1209,12 @@ void Query::exitContext() {
 /// @brief returns statistics for current query.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json Query::getStats() {
+void Query::getStats(VPackBuilder& builder) {
   if (_engine) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    return _engine->_stats.toJson();
+    _engine->_stats.toVelocyPack(builder);
   }
-  arangodb::basics::Json stats = ExecutionStats::toJsonStatic();
-  return stats;
+  ExecutionStats::toVelocyPackStatic(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
