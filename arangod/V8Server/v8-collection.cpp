@@ -1887,7 +1887,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a document, using a VPack
+/// @brief inserts a document, using VPack
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InsertVocbaseVPack(
@@ -1951,18 +1951,18 @@ static void JS_InsertVocbaseVPack(
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
-  v8::Handle<v8::Value> payload = args[0];
+  v8::Handle<v8::Value> payload = args[docIdx];
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     if (isEdgeCollection) {
       // Just insert from and to. Check is done later.
-      std::string tmpId = ExtractIdString(isolate, obj);
+      std::string tmpId = ExtractIdString(isolate, args[0]);
       if (tmpId.empty()) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
