@@ -37,6 +37,8 @@ namespace consensus {
 Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
+  if (!_state.load())
+    LOG(FATAL) << "Failed to load persistent state on statup.";
   _constituent.configure(this);
   _confirmed.resize(size(),0);
 }
@@ -198,25 +200,26 @@ append_entries_t Agent::sendAppendEntriesRPC (
 }
 
 write_ret_t Agent::write (query_t const& query)  { // Signal auf die _cv
-  if (_constituent.leading()) {                    // We are leading
-    if (true/*_spear_head.apply(query)*/) {            // We could apply to spear head?
-      std::vector<index_t> indices =               //    otherwise through
-        _state.log (query, term(), id()); // Append to my own log
-      {
-        MUTEX_LOCKER(mutexLocker, _confirmedLock);
-        _confirmed[id()]++;
-      }
-  return write_ret_t(true,id(),indices); // indices
-    } else {
+  if (_constituent.leading()) {                    // Leading 
+    std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
+    if (applied.size() == 0) {
       throw QUERY_NOT_APPLICABLE;
     }
-  } else {                          // We redirect
+    std::vector<index_t> indices = 
+      _state.log (query, applied, term(), id());   // Append to log w/ indicies
+    {
+      MUTEX_LOCKER(mutexLocker, _confirmedLock);
+      _confirmed[id()]++;                          // Confirm myself
+    }
+    return write_ret_t(true,id(),indices);         // Indices to wait for to rest
+  } else {                                         // Leading else redirect
     return write_ret_t(false,_constituent.leaderID());
   }
 }
 
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
+    _read_db.read (query);
     return read_ret_t(true,_constituent.leaderID());//(query); //TODO:
   } else {                          // We redirect
     return read_ret_t(false,_constituent.leaderID());

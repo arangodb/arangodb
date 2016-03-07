@@ -27,13 +27,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+#include <sstream>
 #include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
+using namespace arangodb::rest;
 
-State::State() {
-  load();
+State::State(std::string const& end_point) : _end_point(end_point) {
   if (!_log.size())
     _log.push_back(log_t(index_t(0), term_t(0), id_t(0),
                          std::make_shared<Buffer<uint8_t>>()));
@@ -41,18 +42,33 @@ State::State() {
 
 State::~State() {}
 
+bool State::save (arangodb::velocypack::Slice const& slice, double timeout) {
+  static const std::string path = "/_api/cursor";
+  std::map<std::string, std::string> headerFields;
+  std::unique_ptr<arangodb::ClusterCommResult> res = 
+    arangodb::ClusterComm::instance()->syncRequest (
+      "1", 1, _end_point, HttpRequest::HTTP_REQUEST_POST, path, slice.toJson(),
+      headerFields, 0.0);
+  return (res->status == CL_COMM_SENT); // TODO: More verbose result
+}
+
 //Leader
-std::vector<index_t> State::log (query_t const& query, term_t term, id_t lid) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+std::vector<index_t> State::log (
+  query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
   std::vector<index_t> idx;
+  std::vector<bool> good = appl;
   size_t j = 0;
+  MUTEX_LOCKER(mutexLocker, _logLock); // log entries must stay in order
   for (auto const& i : VPackArrayIterator(query->slice()))  {
-    std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-    buf->append ((char const*)i.begin(), i.byteSize());
-    idx.push_back(_log.back().index+1);
-    _log.push_back(log_t(idx[j++], term, lid, buf));
+    if (good[j]) {
+      std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+      buf->append ((char const*)i.begin(), i.byteSize()); 
+      idx.push_back(_log.back().index+1);
+      _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
+      save(i);                                       // log to disk
+      ++j;
+    }
   }
-  //  save (builder);
   return idx;
 }
 
@@ -108,10 +124,9 @@ collect_ret_t State::collectFrom (index_t index) {
   return collect_ret_t(prev_log_index, prev_log_term, work);
 }
 
-bool State::save (arangodb::velocypack::Builder const&) {
-  // Persist to arango db
-  // AQL votedFor, lastCommit
-  return true;
+bool State::setEndPoint (std::string const& end_point) {
+  _end_point = end_point;
+  return true; // TODO: check endpoint
 };
 
 bool State::load () {

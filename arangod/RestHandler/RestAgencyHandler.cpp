@@ -79,7 +79,12 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options;
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
-    write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
+    write_ret_t ret;
+    try {
+      ret = _agent->write (_request->toVelocyPack(&options));
+    } catch (agencyException const& e) {
+      generateError(HttpResponse::PRECONDITION_FAILED,412);
+    }
     if (ret.accepted) {
       Builder body;
       body.add(VPackValue(VPackValueType::Object));

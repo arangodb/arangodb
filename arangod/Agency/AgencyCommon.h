@@ -81,23 +81,34 @@ struct AgentConfiguration {
   float election_timeout;
   float append_entries_retry_interval;
   std::vector<std::string> end_points;
+  std::string end_point_persist;
   bool notify;
   AgentConfiguration () : min_ping(.15), max_ping(.3) {};
   AgentConfiguration (uint32_t i, float min_p, float max_p, float appent_i,
-          std::vector<std::string> const& end_p, bool n = false) :
+                      std::vector<std::string> const& end_p, bool n = false) :
     id(i), min_ping(min_p), max_ping(max_p),
-    append_entries_retry_interval(appent_i), end_points(end_p) , notify(n){}
-  inline size_t size() const {return end_points.size();}
-  inline std::string const toString() const {
+    append_entries_retry_interval(appent_i), end_points(end_p), notify(n) {
+    end_point_persist = end_points[id]; 
+  }
+    inline size_t size() const {return end_points.size();}
+/*  inline std::string constituen toString() const {
     std::stringstream out;
     out << "Configuration\n";
     out << "  " << "id (" << id << ") min_ping(" << min_ping << ") max_ping(" << max_ping << ")\n";
     out << "  " << "endpoints(" << end_points << ")";
     return out.str();
+    }*/
+  friend std::ostream& operator<< (std::ostream& out, AgentConfiguration const& c) {
+    out << "Configuration\n";
+    out << "  " << "id (" << c.id << ") min_ping(" << c.min_ping
+        << ") max_ping(" << c.max_ping << ")\n";
+    out << "  endpoints(" << c.end_points << ")";
+    return out;
   }
-  friend LoggerStream& operator<< (LoggerStream& l, AgentConfiguration const& c) {
-    l << c.toString();
-    return l;
+  inline std::string const toString() const {
+    std::stringstream s;
+    s << *this;
+    return s.str();
   }
 };
 typedef AgentConfiguration config_t;
@@ -133,6 +144,7 @@ struct write_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
   std::vector<index_t> indices; // Indices of log entries (if any) to wait for
+  write_ret_t () : accepted(false), redirect(0) {}
   write_ret_t (bool a, id_t id, index_list_t const& idx = index_list_t()) :
     accepted(a), redirect(id), indices(idx) {}
   write_ret_t (bool a, id_t id, std::vector<index_t> const& idx) :
@@ -162,7 +174,7 @@ struct log_t {
   }
 };
 
-enum AGENCY_EXCEPTION {
+enum agencyException {
   QUERY_NOT_APPLICABLE
 };
 

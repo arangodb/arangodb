@@ -55,7 +55,7 @@ public:
   /**
    * @brief Default constructor
    */
-  State ();
+  State (std::string const& end_point = "tcp://localhost:8529");
   
   /**
    * @brief Default Destructor
@@ -70,7 +70,7 @@ public:
   /**
    * @brief Log entries (leader)
    */
-  std::vector<index_t> log (query_t const& query, term_t term, id_t lid);
+  std::vector<index_t> log (query_t const& query, std::vector<bool> const& indices, term_t term, id_t lid);
 
   /**
    * @brief Log entry follower
@@ -96,21 +96,27 @@ public:
    * @brief last log entry
    */
   log_t const& lastLog () const;
-  
-private:
-  
+
   /**
-   * @brief Save currentTerm, votedFor, log entries
+   * @brief Set endpoint
    */
-  bool save (arangodb::velocypack::Builder const&);
+  bool setEndPoint (std::string const&);
 
   /**
    * @brief Load persisted data from above or start with empty log
    */
   bool load ();
 
-  mutable arangodb::Mutex _logLock;          /**< @brief Mutex for modifying _log */
+private:
+  
+  /**
+   * @brief Save currentTerm, votedFor, log entries
+   */
+  bool save (arangodb::velocypack::Slice const&, double timeout = 0.0);
+
+  mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
   std::vector<log_t> _log;          /**< @brief  State entries */
+  std::string _end_point;            /**< @brief persistence end point */
   
 };
 

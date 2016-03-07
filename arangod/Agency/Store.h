@@ -24,6 +24,8 @@
 #ifndef __ARANGODB_CONSENSUS_STORE__
 #define __ARANGODB_CONSENSUS_STORE__
 
+#include "AgencyCommon.h"
+
 #include <type_traits>
 #include <utility>
 #include <typeinfo>
@@ -174,6 +176,25 @@ public:
       os << n._value.toString() << std::endl;
     }
     return os;
+  }
+
+  bool apply (arangodb::velocypack::Slice const& slice) {
+    // TODO apply slice to database
+    return true;
+  }
+  
+  std::vector<bool> apply (query_t const& query) {
+    std::vector<bool> applied;
+    for (auto const& i : VPackArrayIterator(query->slice())) {
+      applied.push_back(apply(i));
+    }
+    return applied;
+  }
+
+  query_t read (query_t const& query) const {
+    // TODO: Run through JSON and asseble result
+    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
+    return ret;
   }
 
 protected:
