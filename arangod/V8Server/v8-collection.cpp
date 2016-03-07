@@ -1374,6 +1374,7 @@ static void parseReplaceAndUpdateOptions(
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
       if (optionsObject->Has(KeepNullKey)) {
         options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(KeepNullKey));

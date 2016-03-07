@@ -191,7 +191,7 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
 
 TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
                                      VPackSlice const& slice) const {
-  if (!slice.isArray() && slice.length() == 1) {
+  if (!slice.isArray() || slice.length() != 1) {
     // Invalid lookup
     TRI_ASSERT(false);
     return nullptr;

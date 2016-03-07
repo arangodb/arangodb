@@ -203,6 +203,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
         arangodb::wal::DocumentOperation* op = (*it);
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            op->type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           TRI_voc_fid_t fid = op->oldHeader.getFid();
           auto marker = op->oldHeader.getMarkerPtr();
@@ -1093,7 +1094,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_ASSERT(position != nullptr);
 
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
-      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
     operation.header->setDataPtr(position); 
   }
@@ -1114,6 +1116,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     ++document->_uncollectedLogfileEntries;
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
       TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();

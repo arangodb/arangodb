@@ -3544,7 +3544,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     VPackBuilder builder = newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, std::to_string(revisionId));
- 
+
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {

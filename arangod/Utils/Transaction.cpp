@@ -1048,9 +1048,9 @@ OperationResult Transaction::modifyLocal(
           !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision);
     }
 
-    std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
+      std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, actualRevision, "");
       return TRI_ERROR_ARANGO_CONFLICT;
     } else if (res != TRI_ERROR_NO_ERROR) {
@@ -1060,6 +1060,7 @@ OperationResult Transaction::modifyLocal(
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
 
     if (!options.silent) {
+      std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, 
           std::to_string(mptr.revisionId()), std::to_string(actualRevision));
     }
