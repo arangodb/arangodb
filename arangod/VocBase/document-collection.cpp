@@ -4131,8 +4131,8 @@ VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
             key != TRI_VOC_ATTRIBUTE_ID &&
             key != TRI_VOC_ATTRIBUTE_REV) {
           newValues.emplace(it.key().copyString(), it.value());
-          it.next();
         }
+        it.next();
       }
     }
 

@@ -223,7 +223,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveInvalidDocumentType : function () {
-      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+      [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           collection.save(doc);
           fail();
@@ -689,7 +689,14 @@ function CollectionDocumentSuite () {
       // check with revision
       var d3 = collection.replace("2", { });
       // d2 is gone now...
-      assertFalse(collection.exists(d2));
+      try {
+        collection.exists(d2);
+        fail();
+      }
+      catch (err0) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
+      }
+
       // d3 is still there
       assertTrue(collection.exists(d3));
 
@@ -1499,6 +1506,7 @@ function DatabaseDocumentSuite () {
       }
     },
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -1523,13 +1531,24 @@ function DatabaseDocumentSuite () {
       // check with revision
       var d3 = collection.replace("2", { });
       // d2 is gone now...
-      assertFalse(db._exists(d2));
+      try {
+        db._exists(d2);
+      }
+      catch (err0) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
+      }
+
       // d3 is still there
       assertTrue(db._exists(d3));
 
 
       // non existing collection
-      assertFalse(db._exists("UnitTestsNonExistingCollection/1"));
+      try {
+        db._exists("UnitTestsNonExistingCollection/1");
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err1.errorNum);
+      }
 
       // invalid key pattern
       try {
