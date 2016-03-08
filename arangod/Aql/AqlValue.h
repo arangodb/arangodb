@@ -393,9 +393,11 @@ struct AqlValue$ {
   } _data;
 
  public:
-  AqlValue$(arangodb::velocypack::Builder const&);
-  AqlValue$(arangodb::velocypack::Builder const*);
-  AqlValue$(arangodb::velocypack::Slice const&);
+  explicit AqlValue$(arangodb::velocypack::Builder const&);
+  explicit AqlValue$(arangodb::velocypack::Builder const*);
+  explicit AqlValue$(arangodb::velocypack::Slice const&);
+  
+  AqlValue$();
 
   AqlValue$(AqlValue const&, arangodb::AqlTransaction*,
             TRI_document_collection_t const*);
@@ -407,7 +409,7 @@ struct AqlValue$ {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Copy Constructor.
+  /// @brief Copy Constructor
   ////////////////////////////////////////////////////////////////////////////////
 
   AqlValue$(AqlValue$ const& other);
@@ -423,10 +425,34 @@ struct AqlValue$ {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a slice to read this Value's data
   //////////////////////////////////////////////////////////////////////////////
+
   arangodb::velocypack::Slice slice() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the numeric value of an AqlValue
+  //////////////////////////////////////////////////////////////////////////////
+
+  double toDouble() const;
+  int64_t toInt64() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not an AqlValue evaluates to true
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isTrue() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief compare function for two values
+  /// TODO: implement
+  //////////////////////////////////////////////////////////////////////////////
+
+  static int Compare(arangodb::AqlTransaction*, AqlValue$ const& left, AqlValue$ const& right, bool useUtf8) {
+    // TODO: implement
+    return 0;
+  }
 };
 
-static_assert(sizeof(AqlValue$) < 17, "invalid AqlValue size.");
+static_assert(sizeof(AqlValue$) == 16, "invalid AqlValue$ size");
 
 }  // closes namespace arangodb::aql
 }  // closes namespace arangodb

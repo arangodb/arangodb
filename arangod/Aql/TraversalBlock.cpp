@@ -184,7 +184,7 @@ void TraversalBlock::executeExpressions() {
         // inVars and inRegs needs fixx
         TRI_document_collection_t const* myCollection = nullptr;
         AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i], &myCollection);
+                                             _inRegs[i]);
         it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
         a.destroy();
       }
