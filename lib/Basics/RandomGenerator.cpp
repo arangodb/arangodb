@@ -23,7 +23,7 @@
 
 #include "RandomGenerator.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

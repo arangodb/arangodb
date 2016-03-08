@@ -24,7 +24,7 @@
 #include "fulltext-index.h"
 
 #include "Basics/locks.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #include "fulltext-handles.h"
 #include "fulltext-list.h"

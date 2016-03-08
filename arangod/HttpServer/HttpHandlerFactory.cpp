@@ -23,7 +23,7 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpRequest.h"
 

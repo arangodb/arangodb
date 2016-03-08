@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "edge-collection.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Indexes/EdgeIndex.h"
 #include "VocBase/document-collection.h"
 

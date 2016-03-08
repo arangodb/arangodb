@@ -178,7 +178,7 @@ class VelocyPackHelper {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices
 //////////////////////////////////////////////////////////////////////////////
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
   arangodb::velocypack::Slice const&);
 

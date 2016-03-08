@@ -25,7 +25,7 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/conversions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"

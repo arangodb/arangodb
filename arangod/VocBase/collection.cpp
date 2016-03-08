@@ -28,7 +28,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"

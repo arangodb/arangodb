@@ -46,7 +46,7 @@ class SimpleHttpResult;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
-namespace v8client {
+namespace import {
 
 class ImportHelper {
  public:

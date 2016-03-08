@@ -26,9 +26,9 @@
 #include <iostream>
 
 #include "ApplicationServer/ApplicationServer.h"
-#include "Basics/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 #include "Rest/Version.h"
 #include "VocBase/vocbase.h"
 #include "V8/V8LineEditor.h"

@@ -26,7 +26,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Indexes/PrimaryIndex.h"

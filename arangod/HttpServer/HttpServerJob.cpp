@@ -25,7 +25,7 @@
 #include "HttpServerJob.h"
 
 #include "Basics/WorkMonitor.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"

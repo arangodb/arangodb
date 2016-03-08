@@ -40,7 +40,7 @@
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/random.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Thread.h"
@@ -1987,11 +1987,14 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 /// call to TRI_GetTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* TRI_ApplicationName = nullptr;
+static std::string TRI_ApplicationName = "arangodb";
 
 void TRI_SetApplicationName(char const* name) {
   TRI_ASSERT(strlen(name) <= 13);
-  TRI_ApplicationName = name;
+
+  if (name != nullptr) {
+    TRI_ApplicationName = name;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2026,7 +2029,7 @@ std::string TRI_GetTempPath() {
       system = std::string(v) + "/";
     }
 
-    system += std::string(TRI_ApplicationName) + "_XXXXXX";
+    system += TRI_ApplicationName + "_XXXXXX";
 
     // copy to a character array
     SystemTempPath.reset(new char[system.size() + 1]);

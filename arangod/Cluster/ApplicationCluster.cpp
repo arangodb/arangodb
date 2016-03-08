@@ -26,7 +26,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"

@@ -34,7 +34,7 @@
 #include <sys/wait.h>
 #endif
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket

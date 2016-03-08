@@ -25,13 +25,13 @@
 
 #include "Basics/Common.h"
 
-#include "ProgramOptions2/Option.h"
-#include "ProgramOptions2/Section.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <functional>
+#include "Basics/levenshtein.h"
+#include "Basics/terminal-utils.h"
+#include "ProgramOptions2/Option.h"
+#include "ProgramOptions2/Section.h"
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
@@ -45,30 +45,51 @@ class ProgramOptions {
   // struct containing the option processing result
   class ProcessingResult {
    public:
-    ProcessingResult() : _positionals(), _touched(), _failed(false) {}
+    ProcessingResult() : _positionals(), _touched(), _frozen(), _failed(false) {}
     ~ProcessingResult() = default;
 
     // mark an option as being touched during options processing
     void touch(std::string const& name) { _touched.emplace(name); }
-    // whether or not an option was touched during options processing
+
+    // whether or not an option was touched during options processing,
+    // including the current pass
     bool touched(std::string const& name) const {
       return _touched.find(Option::stripPrefix(name)) != _touched.end();
     }
+    
+    // mark an option as being frozen
+    void freeze(std::string const& name) { _frozen.emplace(name); }
+    
+    // whether or not an option was touched during options processing,
+    // not including the current pass
+    bool frozen(std::string const& name) const {
+      return _frozen.find(Option::stripPrefix(name)) != _frozen.end();
+    }
+
     // mark options processing as failed
     void failed(bool value) { _failed = value; }
+
     // whether or not options processing has failed
     bool failed() const { return _failed; }
 
     // values of all positional arguments found
     std::vector<std::string> _positionals;
+
     // which options were touched during option processing
+    // this includes options that are touched in the current pass
     std::unordered_set<std::string> _touched;
+    
+    // which options were touched during option processing
+    // this does not include options that are touched in the current pass
+    std::unordered_set<std::string> _frozen;
+
     // whether or not options processing failed
     bool _failed;
   };
 
   // function type for determining terminal width
   typedef std::function<size_t()> TerminalWidthFuncType;
+
   // function type for determining the similarity between two strings
   typedef std::function<int(std::string const&, std::string const&)>
       SimilarityFuncType;
@@ -79,8 +100,8 @@ class ProgramOptions {
 
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more,
-                 TerminalWidthFuncType const& terminalWidth,
-                 SimilarityFuncType const& similarity)
+                 TerminalWidthFuncType const& terminalWidth = TRI_ColumnsWidth,
+                 SimilarityFuncType const& similarity = TRI_Levenshtein)
       : _progname(progname),
         _usage(usage),
         _more(more),
@@ -114,10 +135,8 @@ class ProgramOptions {
     checkIfSealed();
     _overrideOptions = value;
   }
-  
-  bool allowOverride() const {
-    return _overrideOptions;
-  }
+
+  bool allowOverride() const { return _overrideOptions; }
 
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
@@ -167,7 +186,8 @@ class ProgramOptions {
 
   // prints a help for all options, or the options of a section
   // the special search string "*" will show help for all sections
-  // the special search string "." will show help for all sections, even if hidden
+  // the special search string "." will show help for all sections, even if
+  // hidden
   void printHelp(std::string const& search) const {
     printUsage();
 
@@ -198,10 +218,11 @@ class ProgramOptions {
   }
 
   // returns a VPack representation of the option values
-  VPackBuilder toVPack(bool onlyTouched, std::unordered_set<std::string> const& exclude) const {
+  VPackBuilder toVPack(bool onlyTouched,
+                       std::unordered_set<std::string> const& exclude) const {
     VPackBuilder builder;
     builder.openObject();
-       
+
     walk([&builder, &exclude](Section const&, Option const& option) {
       std::string full(option.fullName());
       if (exclude.find(full) != exclude.end()) {
@@ -271,10 +292,10 @@ class ProgramOptions {
 
   // sets a value for an option
   bool setValue(std::string const& name, std::string const& value) {
-    if (!_overrideOptions && _processingResult.touched(name)) {
-      // option already set. don't override it
+    if (!_overrideOptions && _processingResult.frozen(name)) {
+      // option already frozen. don't override it
       return true;
-    } 
+    }
 
     auto parts = Option::splitName(name);
     auto it = _sections.find(parts.first);
@@ -311,6 +332,16 @@ class ProgramOptions {
     _processingResult.touch(name);
 
     return true;
+  }
+
+  // finalizes a pass, copying touched into frozen
+  void endPass() {
+    if (!_overrideOptions) {
+      return;
+    }
+    for (auto const& it : _processingResult._touched) {
+      _processingResult.freeze(it);
+    } 
   }
 
   // check whether or not an option requires a value

@@ -18,70 +18,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Benjamin Pritchard (ben@bennyp.org)
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "levenshtein.h"
 
+#include <numeric>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate the levenshtein distance of the two strings
-/// @author Benjamin Pritchard (ben@bennyp.org)
-/// copyright 2013 Benjamin Pritchard. Released under the MIT License
-/// copyright The MIT License
-/// From
-/// https://raw.githubusercontent.com/bennybp/stringmatch/master/stringmatch.cpp
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Levenshtein(std::string const& str1, std::string const& str2) {
-  // for all i and j, d[i,j] will hold the Levenshtein distance between
-  // the first i characters of s and the first j characters of t;
-  // note that d has (m+1)x(n+1) values
-  size_t m = str1.size();
-  size_t n = str2.size();
+int TRI_Levenshtein(std::string const& lhs, std::string const& rhs) {
+  int const lhsLength = static_cast<int>(lhs.size());
+  int const rhsLength = static_cast<int>(rhs.size());
 
-  int** d = new int* [m + 1];
-  for (size_t i = 0; i <= m; i++) {
-    d[i] = new int[n + 1];
-  }
+  int* col = new int[lhsLength + 1];
+  int start = 1;
+  // fill with initial values
+  std::iota(col + start, col + lhsLength + 1, start);
 
-  for (size_t i = 0; i <= m; i++) {
-    d[i][0] = static_cast<int>(
-        i);  // the distance of any first string to an empty second string
-  }
-
-  for (size_t j = 0; j <= n; j++) {
-    d[0][j] = static_cast<int>(
-        j);  // the distance of any second string to an empty first string
-  }
-
-  int min;
-
-  for (size_t j = 1; j <= n; j++) {
-    for (size_t i = 1; i <= m; i++) {
-      if (str1[i - 1] == str2[j - 1]) {
-        d[i][j] = d[i - 1][j - 1];  // no operation required
-      } else {
-        // find a minimum
-        min = d[i - 1][j] + /*1*/ 3;    // a deletion
-        if ((d[i][j - 1] + 1) < min) {  // an insertion
-          min = (d[i][j - 1] + 1);
-        }
-        if ((d[i - 1][j - 1] + 1) < min) {  // a substitution
-          min = (d[i - 1][j - 1] + /*1*/ 2);
-        }
-
-        d[i][j] = min;
-      }
+  for (int x = start; x <= rhsLength; ++x) {
+    col[0] = x;
+    int last = x - start;
+    for (int y = start; y <= lhsLength; ++y) {
+      int const save = col[y];
+      col[y] = (std::min)({
+          col[y] + 1,                                // deletion
+          col[y - 1] + 1,                            // insertion
+          last + (lhs[y - 1] == rhs[x - 1] ? 0 : 1)  // substitution
+      });
+      last = save;
     }
   }
 
-  int result = d[m][n];
-
-  for (size_t i = 0; i <= m; i++) {
-    delete[] d[i];
-  }
-  delete[] d;
+  // fetch final value
+  int result = col[lhsLength];
+  // free memory
+  delete[] col;
 
   return result;
 }

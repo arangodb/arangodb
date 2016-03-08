@@ -26,8 +26,8 @@
 #include <iostream>
 
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
 #include "Basics/process-utils.h"
+#include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
 #include "Scheduler/SignalTask.h"

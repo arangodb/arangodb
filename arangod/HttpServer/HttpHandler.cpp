@@ -24,7 +24,7 @@
 #include "HttpHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 

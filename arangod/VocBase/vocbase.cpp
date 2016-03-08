@@ -33,7 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"

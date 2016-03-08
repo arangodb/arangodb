@@ -116,6 +116,56 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
   }
 }
 
+SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
+                                         double requestTimeout,
+                                         double connectTimeout,
+                                         size_t connectRetries,
+                                         uint32_t sslProtocol)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
+                              connectRetries),
+      _ssl(nullptr),
+      _ctx(nullptr) {
+  TRI_invalidatesocket(&_socket);
+
+  SSL_METHOD SSL_CONST* meth = nullptr;
+
+  switch (protocol_e(sslProtocol)) {
+#ifndef OPENSSL_NO_SSL2
+    case SSL_V2:
+      meth = SSLv2_method();
+      break;
+#endif
+
+#ifndef OPENSSL_NO_SSL3_METHOD
+    case SSL_V3:
+      meth = SSLv3_method();
+      break;
+#endif
+
+    case SSL_V23:
+      meth = SSLv23_method();
+      break;
+
+    case TLS_V1:
+      meth = TLSv1_method();
+      break;
+
+    default:
+      // fallback is to use tlsv1
+      meth = TLSv1_method();
+  }
+
+  _ctx = SSL_CTX_new(meth);
+
+  if (_ctx != nullptr) {
+    SSL_CTX_set_cipher_list(_ctx, "ALL");
+
+    bool sslCache = true;
+    SSL_CTX_set_session_cache_mode(
+        _ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////

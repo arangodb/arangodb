@@ -35,7 +35,7 @@
 #include "Basics/Thread.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"

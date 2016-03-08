@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jen Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_LEVENSHTEIN_H

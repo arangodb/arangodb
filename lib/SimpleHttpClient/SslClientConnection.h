@@ -53,6 +53,9 @@ class SslClientConnection final : public GeneralClientConnection {
   SslClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
                       size_t, uint32_t);
 
+  SslClientConnection(std::unique_ptr<arangodb::rest::Endpoint>& endpoint,
+                      double, double, size_t, uint32_t);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
   //////////////////////////////////////////////////////////////////////////////

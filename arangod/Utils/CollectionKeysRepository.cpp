@@ -23,7 +23,7 @@
 
 #include "CollectionKeysRepository.h"
 #include "Basics/json.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"

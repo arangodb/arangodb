@@ -83,7 +83,7 @@ set(V8_INCLUDE_DIR
 
 
 if (${CMAKE_GENERATOR} MATCHES "Ninja")
-  message("NINJA!")
+  message(STATUS "using generator NINJA!")
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
 

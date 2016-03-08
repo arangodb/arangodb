@@ -31,7 +31,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
