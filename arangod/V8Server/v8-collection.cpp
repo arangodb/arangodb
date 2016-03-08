@@ -1483,7 +1483,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
-                               updateBuilder, false)) {
+                               updateBuilder, true)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
   };

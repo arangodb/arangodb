@@ -3283,6 +3283,18 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock) {
+
+  if (_info.type() == TRI_COL_TYPE_EDGE) {
+    VPackSlice s = slice->get(TRI_VOC_ATTRIBUTE_FROM);
+    if (!s.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    s = slice->get(TRI_VOC_ATTRIBUTE_TO);
+    if (!s.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
@@ -3475,6 +3487,18 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        OperationOptions& options,
                                        bool lock,
                                        TRI_voc_rid_t& prevRev) {
+
+  if (_info.type() == TRI_COL_TYPE_EDGE) {
+    VPackSlice s = newSlice.get(TRI_VOC_ATTRIBUTE_FROM);
+    if (!s.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    s = newSlice.get(TRI_VOC_ATTRIBUTE_TO);
+    if (!s.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
