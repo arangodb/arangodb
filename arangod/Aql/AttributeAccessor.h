@@ -42,18 +42,18 @@ struct Variable;
 class AttributeAccessor {
  public:
   AttributeAccessor(std::vector<char const*> const&, Variable const*);
-
-  ~AttributeAccessor();
+  ~AttributeAccessor() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute the accessor
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
-               std::vector<Variable const*> const&,
-               std::vector<RegisterId> const&);
+  AqlValue$ get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+                std::vector<Variable const*> const&,
+                std::vector<RegisterId> const&);
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   //////////////////////////////////////////////////////////////////////////////

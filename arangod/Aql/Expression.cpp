@@ -138,10 +138,10 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::execute(arangodb::AqlTransaction* trx,
-                             AqlItemBlock const* argv, size_t startPos,
-                             std::vector<Variable const*> const& vars,
-                             std::vector<RegisterId> const& regs) {
+AqlValue$ Expression::execute(arangodb::AqlTransaction* trx,
+                              AqlItemBlock const* argv, size_t startPos,
+                              std::vector<Variable const*> const& vars,
+                              std::vector<RegisterId> const& regs) {
   if (!_built) {
     buildExpression();
   }
@@ -152,13 +152,16 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
   // and execute
   switch (_type) {
     case JSON: {
+      // TODO
       TRI_ASSERT(_data != nullptr);
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
+      VPackBuilder builder;
+      JsonHelper::toVelocyPack(_data, builder);
+      return AqlValue$(builder);
     }
 
     case SIMPLE: {
-      return AqlValue(executeSimpleExpression(_node, trx, argv, startPos,
-                                     vars, regs, true));
+      return executeSimpleExpression(_node, trx, argv, startPos,
+                                     vars, regs, true);
     }
 
     case ATTRIBUTE: {
@@ -268,9 +271,9 @@ void Expression::invalidate() {
 bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
-  TRI_ASSERT(right.slice().isArray());
+  TRI_ASSERT(right.isArray());
 
-  size_t const n = right.slice().length();
+  size_t const n = right.length();
 
   if (n > 3 && 
       (node->getMember(1)->isSorted() ||
@@ -283,10 +286,8 @@ bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
     while (true) {
       // determine midpoint
       size_t m = l + ((r - l) / 2);
-      VPackSlice arrayItem = right.slice().at(m);
-      AqlValue$ arrayItemValue(arrayItem);
 
-      int compareResult = AqlValue$::Compare(trx, left, arrayItemValue, true);
+      int compareResult = AqlValue$::Compare(trx, left, AqlValue$(right.at(m).slice()), true);
 
       if (compareResult == 0) {
         // item found in the list
@@ -306,20 +307,19 @@ bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
         return false;
       }
     }
-  } else {
-    // use linear search
-    for (auto const& it : VPackArrayIterator(right.slice())) {
-      // do not copy the list element we're looking at
-      int compareResult = AqlValue$::Compare(trx, left, AqlValue$(it), false);
+  } 
+    
+  // use linear search
+  for (size_t i = 0; i < n; ++i) {
+    int compareResult = AqlValue$::Compare(trx, left, AqlValue$(right.at(i).slice()), false);
 
-      if (compareResult == 0) {
-        // item found in the list
-        return true;
-      }
+    if (compareResult == 0) {
+      // item found in the list
+      return true;
     }
-
-    return false;
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,14 +571,7 @@ AqlValue$ Expression::executeSimpleExpressionAttributeAccess(
   AqlValue$ result = executeSimpleExpression(member, trx, argv,
                                              startPos, vars, regs, false);
 
-  VPackSlice slice = result.slice();
-  if (slice.isObject()) {
-    VPackSlice value = slice.get(name);
-    if (!value.isNone()) {
-      return AqlValue$(value);
-    }
-  }
-  return AqlValue$(VelocyPackHelper::NullValue());
+  return result.get(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -608,12 +601,12 @@ AqlValue$ Expression::executeSimpleExpressionIndexedAccess(
   AqlValue$ result = executeSimpleExpression(member, trx, argv,
                                              startPos, vars, regs, false);
 
-  if (result.slice().isArray()) {
+  if (result.isArray()) {
     AqlValue$ indexResult = executeSimpleExpression(
         index, trx, argv, startPos, vars, regs, false);
 
-    if (indexResult.slice().isNumber()) {
-      return AqlValue$(result.slice().at(indexResult.toInt64()));
+    if (indexResult.isNumber()) {
+      return result.at(indexResult.toInt64());
     }
      
     if (indexResult.slice().isString()) {
@@ -622,33 +615,25 @@ AqlValue$ Expression::executeSimpleExpressionIndexedAccess(
       try {
         // stoll() might throw an exception if the string is not a number
         int64_t position = static_cast<int64_t>(std::stoll(value));
-        return AqlValue$(result.slice().at(position));
+        return result.at(position);
       } catch (...) {
         // no number found.
       }
     } 
 
     // fall-through to returning null
-  } else if (result.slice().isObject()) {
+  } else if (result.isObject()) {
     AqlValue$ indexResult = executeSimpleExpression(
         index, trx, argv, startPos, vars, regs, false);
 
-    if (indexResult.slice().isNumber()) {
-      std::string const indexString = std::to_string(indexResult.slice().getNumber<int64_t>());
-      VPackSlice value = result.slice().get(indexString);
-      if (!value.isNone()) {
-        return AqlValue$(value);
-      }
-      return AqlValue$(VelocyPackHelper::NullValue());
+    if (indexResult.isNumber()) {
+      std::string const indexString = std::to_string(indexResult.toInt64());
+      return result.get(indexString);
     }
      
     if (indexResult.slice().isString()) {
       std::string const indexString = indexResult.slice().copyString();
-      VPackSlice value = result.slice().get(indexString);
-      if (!value.isNone()) {
-        return AqlValue$(value);
-      }
-      return AqlValue$(VelocyPackHelper::NullValue());
+      return result.get(indexString);
     } 
     // fall-through to returning null
   }
@@ -800,16 +785,7 @@ AqlValue$ Expression::executeSimpleExpressionRange(
   AqlValue$ resultHigh = executeSimpleExpression(
       high, trx, argv, startPos, vars, regs, false);
  
-  // build a custom type for the range 
-  VPackBuilder builder;
-  uint8_t* p = builder.add(VPackValuePair(2 + 2 * sizeof(int64_t), VPackValueType::Custom));
-  *p++ = 0xf4; // custom type for range
-  *p++ = 2 * sizeof(int64_t);
-  memcpy(p, &low, sizeof(int64_t));
-  p += sizeof(int64_t);
-  memcpy(p, &high, sizeof(int64_t));
-  
-  return AqlValue$(builder);
+  return AqlValue$(resultLow.toInt64(), resultHigh.toInt64());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -829,14 +805,12 @@ AqlValue$ Expression::executeSimpleExpressionFCall(
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
+  VPackBuilder builder;
   size_t const n = member->numMembers();
+
   VPackFunctionParameters parameters;
   parameters.reserve(n);
-#warning Can we get access to query here?
-  // std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-  VPackBuilder builder;
 
-#warning Check if this is correct w.r.t. Memory Management
   for (size_t i = 0; i < n; ++i) {
     auto arg = member->getMemberUnchecked(i);
 
@@ -867,7 +841,7 @@ AqlValue$ Expression::executeSimpleExpressionNot(
       executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
 
-  return AqlValue$(operand.isTrue() ? VelocyPackHelper::FalseValue() : VelocyPackHelper::TrueValue());
+  return AqlValue$(operand.isFalse());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,10 +900,10 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // IN and NOT IN
-    if (!right.slice().isArray()) {
+    if (!right.isArray()) {
       // right operand must be a list, otherwise we return false
       // do not throw, but return "false" instead
-      return AqlValue$(VelocyPackHelper::FalseValue());
+      return AqlValue$(false);
     }
 
     bool result =
@@ -940,7 +914,7 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
       result = !result;
     }
 
-    return AqlValue$(result ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+    return AqlValue$(result);
   }
 
   // all other comparison operators...
@@ -952,17 +926,17 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
   int compareResult = AqlValue$::Compare(trx, left, right, compareUtf8);
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return AqlValue$((compareResult == 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult == 0);
     case NODE_TYPE_OPERATOR_BINARY_NE:
-      return AqlValue$((compareResult != 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult != 0);
     case NODE_TYPE_OPERATOR_BINARY_LT:
-      return AqlValue$((compareResult < 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult < 0);
     case NODE_TYPE_OPERATOR_BINARY_LE:
-      return AqlValue$((compareResult <= 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult <= 0);
     case NODE_TYPE_OPERATOR_BINARY_GT:
-      return AqlValue$((compareResult > 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult > 0);
     case NODE_TYPE_OPERATOR_BINARY_GE:
-      return AqlValue$((compareResult >= 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+      return AqlValue$(compareResult >= 0);
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -987,23 +961,23 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
       executeSimpleExpression(node->getMember(1), trx, argv,
                               startPos, vars, regs, false);
 
-  if (!left.slice().isArray()) {
+  if (!left.isArray()) {
     // left operand must be an array
     // do not throw, but return "false" instead
-    return AqlValue$(VelocyPackHelper::FalseValue());
+    return AqlValue$(false);
   }
   
   if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // IN and NOT IN
-    if (!right.slice().isArray()) {
+    if (!right.isArray()) {
       // right operand must be a list, otherwise we return false
       // do not throw, but return "false" instead
-      return AqlValue$(VelocyPackHelper::FalseValue());
+      return AqlValue$(false);
     }
   }
 
-  size_t const n = left.slice().length();
+  size_t const n = left.length();
   std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
@@ -1015,16 +989,15 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
   bool overallResult = true;
   size_t matches = 0;
   size_t numLeft = n;
- 
-  for (auto const& it : VPackArrayIterator(left.slice())) { 
-    AqlValue$ leftItemValue(it);
+
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue$ leftItemValue(left.at(i));
     bool result;
 
     // IN and NOT IN
     if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-      result =
-          findInArray(leftItemValue, right, trx, node);
+      result = findInArray(leftItemValue, right, trx, node);
     
       if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
         // revert the result in case of a NOT IN
@@ -1084,7 +1057,7 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
     }
   }
       
-  return AqlValue$(overallResult ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
+  return AqlValue$(overallResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1100,14 +1073,17 @@ AqlValue$ Expression::executeSimpleExpressionTernary(
       executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
 
+  size_t position;
   if (condition.isTrue()) {
     // return true part
-    return executeSimpleExpression(node->getMember(1), trx, argv,
-                                   startPos, vars, regs, true);
+    position = 1;
+  }
+  else {
+    // return false part
+    position = 2;
   }
 
-  // return false part
-  return executeSimpleExpression(node->getMember(2), trx, argv,
+  return executeSimpleExpression(node->getMember(position), trx, argv,
                                  startPos, vars, regs, true);
 }
 
@@ -1141,10 +1117,7 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
     
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    VPackBuilder builder;
-    builder.openArray();
-    builder.close();
-    return AqlValue$(builder);
+    return AqlValueReference(VelocyPackHelper::ArrayValue());
   }
 
   // FILTER
@@ -1158,10 +1131,7 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      VPackBuilder builder;
-      builder.openArray();
-      builder.close();
-      return AqlValue$(builder);
+      return AqlValueReference(VelocyPackHelper::ArrayValue());
     }
   }
 
@@ -1176,33 +1146,34 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
     value = executeSimpleExpression(node->getMember(0), trx,
                                     argv, startPos, vars, regs, false);
       
+    if (!value.isArray()) {
+      return AqlValueReference(VelocyPackHelper::ArrayValue());
+    }
+    
     VPackBuilder builder;
     builder.openArray();
-
-    if (!value.slice().isArray()) {
-      builder.close();
-      return AqlValue$(builder);
-    }
       
     // generate a new temporary for the flattened array
-    std::function<void(VPackSlice const&, int64_t)> flatten =
-        [&](VPackSlice const& json, int64_t level) {
-          if (!json.isArray()) {
+    std::function<void(AqlValue$ const&, int64_t)> flatten =
+        [&](AqlValue$ const& v, int64_t level) {
+          if (!v.isArray()) {
             return;
           }
 
-          for (auto const& it : VPackArrayIterator(json)) {
-            bool const isArray = it.isArray();
+          size_t const n = v.length();
+          for (size_t i = 0; i < n; ++i) {
+            AqlValue$ item(v.at(i));
+            bool const isArray = item.isArray();
 
             if (!isArray || level == levels) {
-              builder.add(it);
+              builder.add(item.slice());
             } else if (isArray && level < levels) {
-              flatten(it, level + 1);
+              flatten(item, level + 1);
             }
           }
         };
 
-    flatten(value.slice(), 1);
+    flatten(value, 1);
     builder.close();
 
     value = AqlValue$(builder);
@@ -1210,11 +1181,8 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
     value = executeSimpleExpression(node->getMember(0), trx,
                                     argv, startPos, vars, regs, false);
 
-    if (!value.slice().isArray()) {
-      VPackBuilder builder;
-      builder.openArray();
-      builder.close();
-      return AqlValue$(builder);
+    if (!value.isArray()) {
+      return AqlValueReference(VelocyPackHelper::ArrayValue());
     }
   }
 
@@ -1230,8 +1198,10 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
   VPackBuilder builder;
   builder.openArray();
 
-  for (auto const& it : VPackArrayIterator(value.slice())) {
-    setVariable(variable, it);
+  size_t const n = value.length();
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue$ item(value.at(i));
+    setVariable(variable, item.slice());
 
     bool takeItem = true;
 
@@ -1299,19 +1269,19 @@ AqlValue$ Expression::executeSimpleExpressionArithmetic(
   AqlValue$ lhs = executeSimpleExpression(node->getMember(0),
                                           trx, argv, startPos, vars, regs, true);
 
-  if (lhs.slice().isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue());
+  if (lhs.isObject()) {
+    return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
   }
 
   AqlValue$ rhs = executeSimpleExpression(node->getMember(1),
                                           trx, argv, startPos, vars, regs, true);
 
-  if (rhs.slice().isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue());
+  if (rhs.isObject()) {
+    return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
   }
 
-  double const l = lhs.slice().getNumber<double>();
-  double const r = rhs.slice().getNumber<double>();
+  double const l = lhs.toDouble();
+  double const r = rhs.toDouble();
 
   VPackBuilder builder;
 
@@ -1328,17 +1298,17 @@ AqlValue$ Expression::executeSimpleExpressionArithmetic(
     case NODE_TYPE_OPERATOR_BINARY_DIV:
       if (r == 0.0) {
         RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue());
+        return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
       }
       return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_MOD:
       if (r == 0.0) {
         RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue());
+        return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
       }
       builder.add(VPackValue(fmod(l, r)));
       return AqlValue$(builder);
     default:
-      return AqlValue$(VelocyPackHelper::NullValue());
+      return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
   }
 }

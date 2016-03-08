@@ -47,7 +47,6 @@ class StringBuffer;
 namespace aql {
 
 class AqlItemBlock;
-struct AqlValue;
 struct AqlValue$;
 class Ast;
 class AttributeAccessor;
@@ -169,9 +168,9 @@ class Expression {
   /// @brief execute the expression
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue execute(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
-                   std::vector<Variable const*> const&,
-                   std::vector<RegisterId> const&);
+  AqlValue$ execute(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+                    std::vector<Variable const*> const&,
+                    std::vector<RegisterId> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether this is a JSON expression

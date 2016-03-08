@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/V8Expression.h"
+#include "V8Expression.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Executor.h"
 #include "Aql/Query.h"
@@ -30,7 +30,7 @@
 #include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "V8Server/v8-shape-conv.h"
+#include "V8/v8-vpack.h"
 
 using namespace arangodb::aql;
 
@@ -62,11 +62,11 @@ V8Expression::~V8Expression() {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                               arangodb::AqlTransaction* trx,
-                               AqlItemBlock const* argv, size_t startPos,
-                               std::vector<Variable const*> const& vars,
-                               std::vector<RegisterId> const& regs) {
+AqlValue$ V8Expression::execute(v8::Isolate* isolate, Query* query,
+                                arangodb::AqlTransaction* trx,
+                                AqlItemBlock const* argv, size_t startPos,
+                                std::vector<Variable const*> const& vars,
+                                std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
   TRI_ASSERT(regs.size() == n);  // assert same vector length
 
@@ -75,18 +75,17 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
   for (size_t i = 0; i < n; ++i) {
-    auto reg = regs[i];
+    RegisterId reg = regs[i];
 
-    auto const& value(argv->getValueReference(startPos, reg));
+    AqlValue$ value(argv->getValueReference(startPos, reg), trx, nullptr);
 
-    if (value.isEmpty()) {
+    if (value.isNone()) {
       continue;
     }
 
-    auto document = argv->getDocumentCollection(reg);
-    auto const& varname = vars[i]->name;
+    std::string const& varname = vars[i]->name;
 
-    if (hasRestrictions && value.isJson()) {
+    if (hasRestrictions && value.isObject()) {
       // check if we can get away with constructing a partial JSON object
       auto it = _attributeRestrictions.find(vars[i]);
 
@@ -94,7 +93,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
         // build a partial object
         values->ForceSet(
             TRI_V8_STD_STRING(varname),
-            value.toV8Partial(isolate, trx, (*it).second, document));
+            value.toV8Partial(isolate, trx, (*it).second));
         continue;
       }
     }
@@ -103,7 +102,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     // build the regular object
     values->ForceSet(TRI_V8_STD_STRING(varname),
-                     value.toV8(isolate, trx, document));
+                     value.toV8(isolate, trx));
   }
 
   TRI_ASSERT(query != nullptr);
@@ -128,23 +127,6 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // won't modify their arguments is unsafe
     auto constantValues = v8::Local<v8::Object>::New(isolate, _constantValues);
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    // a hash function for hashing V8 object contents
-    auto hasher =
-        [](v8::Isolate* isolate, v8::Handle<v8::Value> const obj) -> uint64_t {
-          std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, obj));
-
-          if (json == nullptr) {
-            return 0;
-          }
-
-          return TRI_FastHashJson(json.get());
-        };
-
-    // hash the constant values that we pass into V8
-    uint64_t const hash = hasher(isolate, constantValues);
-#endif
-
     v8::Handle<v8::Value> args[] = {
         values, constantValues,
         v8::Boolean::New(isolate, _numExecutions++ == 0)};
@@ -154,17 +136,6 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     auto func = v8::Local<v8::Function>::New(isolate, _func);
     result = func->Call(func, 3, args);
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    // now that the V8 function call is finished, check that our
-    // constants actually were not modified
-    uint64_t cmpHash = hasher(isolate, constantValues);
-
-    if (hash != 0 && cmpHash != 0) {
-      // only compare if both values are not 0
-      TRI_ASSERT(hasher(isolate, constantValues) == hash);
-    }
-#endif
 
     v8g->_query = old;
 
@@ -176,31 +147,21 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   }
 
   // no exception was thrown if we get here
-  std::unique_ptr<TRI_json_t> json;
+  VPackBuilder builder;
 
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
-    json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+    builder.add(VPackValue(VPackValueType::Null));
   } else {
     // expression had a result. convert it to JSON
-    if (_isSimple) {
-      json.reset(TRI_ObjectToJsonSimple(isolate, result));
-    } else {
-      json.reset(TRI_ObjectToJson(isolate, result));
+    int res = TRI_V8ToVPack(isolate, builder, result, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
+    // TODO: what does _isSimple do here?
   }
 
-  if (json.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  auto j = new arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
-  json.release();
-  return AqlValue(j);
+  return AqlValue$(builder);
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End
