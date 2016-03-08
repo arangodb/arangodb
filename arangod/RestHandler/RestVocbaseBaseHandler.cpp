@@ -467,9 +467,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
         
     case TRI_ERROR_OUT_OF_MEMORY: 
     case TRI_ERROR_LOCK_TIMEOUT: 
-    case TRI_ERROR_AID_NOT_FOUND:
     case TRI_ERROR_DEBUG:
-    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
     case TRI_ERROR_LOCKED:
     case TRI_ERROR_DEADLOCK: {
       generateError(HttpResponse::SERVER_ERROR, res);
@@ -552,9 +550,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
         
     case TRI_ERROR_OUT_OF_MEMORY: 
     case TRI_ERROR_LOCK_TIMEOUT: 
-    case TRI_ERROR_AID_NOT_FOUND:
     case TRI_ERROR_DEBUG:
-    case TRI_ERROR_LEGEND_NOT_IN_WAL_FILE:
     case TRI_ERROR_LOCKED:
     case TRI_ERROR_DEADLOCK: {
       generateError(HttpResponse::SERVER_ERROR, result.code);
