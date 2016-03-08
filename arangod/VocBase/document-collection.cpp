@@ -3279,17 +3279,17 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
+int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock) {
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
-    VPackSlice s = slice->get(TRI_VOC_ATTRIBUTE_FROM);
+    VPackSlice s = slice.get(TRI_VOC_ATTRIBUTE_FROM);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
-    s = slice->get(TRI_VOC_ATTRIBUTE_TO);
+    s = slice.get(TRI_VOC_ATTRIBUTE_TO);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
@@ -3298,7 +3298,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
+  VPackSlice const key(slice.get(TRI_VOC_ATTRIBUTE_KEY));
   uint64_t const hash = key.hash();
 
   std::unique_ptr<arangodb::wal::Marker> marker;
@@ -3594,10 +3594,10 @@ int TRI_document_collection_t::replace(Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_document_collection_t::remove(arangodb::Transaction* trx,
-                                      VPackSlice const* slice,
-                                      TRI_doc_update_policy_t const* policy,
+                                      VPackSlice const slice,
                                       OperationOptions& options,
-                                      bool lock) {
+                                      bool lock,
+                                      TRI_voc_rid_t& prevRev) {
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
@@ -3635,30 +3635,43 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     TRI_ASSERT(operation.marker != nullptr);
     TRI_ASSERT(marker == nullptr);
 
-    TRI_doc_mptr_t* header;
-    res = lookupDocument(trx, slice, policy, header);
-
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader;
+    VPackSlice key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_ASSERT(!key.isNone());
+    res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
+    }
+
+    prevRev = oldHeader->revisionId();
+
+    // Check old revision:
+    if (!options.ignoreRevs) {
+      VPackSlice expectedRevSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
+      int res = checkRevision(trx, expectedRevSlice, prevRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
     }
 
     // we found a document to remove
-    TRI_ASSERT(header != nullptr);
-    operation.header = header;
+    TRI_ASSERT(oldHeader != nullptr);
+    operation.header = oldHeader;
     operation.init();
 
     // delete from indexes
-    res = deleteSecondaryIndexes(trx, header, false);
+    res = deleteSecondaryIndexes(trx, oldHeader, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      insertSecondaryIndexes(trx, header, true);
+      insertSecondaryIndexes(trx, oldHeader, true);
       return res;
     }
 
-    res = deletePrimaryIndex(trx, header);
+    res = deletePrimaryIndex(trx, oldHeader);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      insertSecondaryIndexes(trx, header, true);
+      insertSecondaryIndexes(trx, oldHeader, true);
       return res;
     }
 
@@ -3741,13 +3754,8 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
-    Transaction* trx, VPackSlice const* slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, trx->getInternals()->_id, *slice);
-}
-
-arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
-    Transaction* trx, VPackSlice const& slice) {
-  return createVPackInsertMarker(trx, &slice);
+    Transaction* trx, VPackSlice const slice) {
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, trx->getInternals()->_id, slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3755,8 +3763,8 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
-    Transaction* trx, VPackSlice const* slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, trx->getInternals()->_id, *slice);
+    Transaction* trx, VPackSlice const slice) {
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, trx->getInternals()->_id, slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

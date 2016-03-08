@@ -281,7 +281,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult document(std::string const& collectionName,
-                           VPackSlice const& value,
+                           VPackSlice const value,
                            OperationOptions& options);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -291,7 +291,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult insert(std::string const& collectionName,
-                         VPackSlice const& value,
+                         VPackSlice const value,
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -321,7 +321,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult remove(std::string const& collectionName,
-                         VPackSlice const& value,
+                         VPackSlice const value,
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -389,19 +389,19 @@ class Transaction {
  private:
   
   OperationResult documentCoordinator(std::string const& collectionName,
-                                      VPackSlice const& value,
+                                      VPackSlice const value,
                                       OperationOptions& options);
 
   OperationResult documentLocal(std::string const& collectionName,
-                                VPackSlice const& value,
+                                VPackSlice const value,
                                 OperationOptions& options);
 
   OperationResult insertCoordinator(std::string const& collectionName,
-                                    VPackSlice const& value,
+                                    VPackSlice const value,
                                     OperationOptions& options);
 
   OperationResult insertLocal(std::string const& collectionName,
-                              VPackSlice const& value,
+                              VPackSlice const value,
                               OperationOptions& options);
   
   OperationResult updateCoordinator(std::string const& collectionName,
@@ -418,11 +418,11 @@ class Transaction {
                               TRI_voc_document_operation_e operation);
   
   OperationResult removeCoordinator(std::string const& collectionName,
-                                    VPackSlice const& value,
+                                    VPackSlice const value,
                                     OperationOptions& options);
   
   OperationResult removeLocal(std::string const& collectionName,
-                              VPackSlice const& value,
+                              VPackSlice const value,
                               OperationOptions& options);
   
   OperationResult allKeysCoordinator(std::string const& collectionName,

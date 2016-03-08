@@ -482,18 +482,13 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::document(std::string const& collectionName,
-                                      VPackSlice const& value,
+                                      VPackSlice const value,
                                       OperationOptions& options) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  if (value.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -508,8 +503,13 @@ OperationResult Transaction::document(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
-                                                 VPackSlice const& value,
+                                                 VPackSlice const value,
                                                  OperationOptions& options) {
+  if (value.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
@@ -557,7 +557,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::documentLocal(std::string const& collectionName,
-                                           VPackSlice const& value,
+                                           VPackSlice const value,
                                            OperationOptions& options) {
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
@@ -565,13 +565,6 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  std::string key(Transaction::extractKey(value));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(value);
-
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
@@ -579,32 +572,56 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   }
  
-  TRI_doc_mptr_t mptr;
-  int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
-  }
-  
-  TRI_ASSERT(mptr.getDataPtr() != nullptr);
-  if (expectedRevision != 0 && expectedRevision != mptr.revisionId()) {
-    // still return 
-    VPackBuilder resultBuilder;
-    buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
-
-    return OperationResult(resultBuilder.steal(), nullptr, "",
-        TRI_ERROR_ARANGO_CONFLICT,
-        options.waitForSync || document->_info.waitForSync()); 
-  }
-  
   VPackBuilder resultBuilder;
-  if (!options.silent) {
-    resultBuilder.add(VPackSlice(mptr.vpack()));
+
+  auto workOnOneDocument = [&](VPackSlice const value) -> int {
+    std::string key(Transaction::extractKey(value));
+    if (key.empty()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    }
+
+    TRI_voc_rid_t expectedRevision = 0;
+    if (!options.ignoreRevs) {
+      expectedRevision = Transaction::extractRevisionId(value);
+    }
+
+    TRI_doc_mptr_t mptr;
+    int res = document->read(this, key, &mptr, !isLocked(document, TRI_TRANSACTION_READ));
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  
+    TRI_ASSERT(mptr.getDataPtr() != nullptr);
+    if (expectedRevision != 0 && expectedRevision != mptr.revisionId()) {
+      // still return 
+      buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
+      return TRI_ERROR_ARANGO_CONFLICT;
+    }
+  
+    if (!options.silent) {
+      resultBuilder.add(VPackSlice(mptr.vpack()));
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  };
+
+  int res = TRI_ERROR_NO_ERROR;
+  if (!value.isArray()) {
+    res = workOnOneDocument(value);
+  } else {
+    VPackArrayBuilder guard(&resultBuilder);
+    for (auto const s : VPackArrayIterator(value)) {
+      res = workOnOneDocument(s);
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
   }
 
   return OperationResult(resultBuilder.steal(), 
                          transactionContext()->orderCustomTypeHandler(), "",
-                         TRI_ERROR_NO_ERROR, false); 
+                         res, options.waitForSync); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -614,7 +631,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::insert(std::string const& collectionName,
-                                    VPackSlice const& value,
+                                    VPackSlice const value,
                                     OperationOptions const& options) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
@@ -686,7 +703,7 @@ OperationResult Transaction::insert(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
-                                               VPackSlice const& value,
+                                               VPackSlice const value,
                                                OperationOptions& options) {
 
   if (value.isArray()) {
@@ -740,7 +757,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::insertLocal(std::string const& collectionName,
-                                         VPackSlice const& value,
+                                         VPackSlice const value,
                                          OperationOptions& options) {
  
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
@@ -794,7 +811,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     VPackSlice insertSlice = toInsert.slice();
     
     TRI_doc_mptr_t mptr;
-    int res = document->insert(this, &insertSlice, &mptr, options,
+    int res = document->insert(this, insertSlice, &mptr, options,
         !isLocked(document, TRI_TRANSACTION_WRITE));
     
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1093,7 +1110,7 @@ OperationResult Transaction::modifyLocal(
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::remove(std::string const& collectionName,
-                                    VPackSlice const& value,
+                                    VPackSlice const value,
                                     OperationOptions const& options) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
@@ -1102,11 +1119,6 @@ OperationResult Transaction::remove(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (value.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   OperationOptions optionsCopy = options;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1123,8 +1135,14 @@ OperationResult Transaction::remove(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::removeCoordinator(std::string const& collectionName,
-                                               VPackSlice const& value,
+                                               VPackSlice const value,
                                                OperationOptions& options) {
+
+  if (value.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
@@ -1176,7 +1194,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::removeLocal(std::string const& collectionName,
-                                         VPackSlice const& value,
+                                         VPackSlice const value,
                                          OperationOptions& options) {
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
@@ -1187,47 +1205,42 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
  
-  std::string key; 
-  TRI_voc_rid_t const expectedRevision = Transaction::extractRevisionId(value);
-
-  VPackBuilder builder;
-  builder.openObject();
-
-  // extract _key
-  if (value.isObject()) {
-    VPackSlice k = value.get(TRI_VOC_ATTRIBUTE_KEY);
-    if (!k.isString()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    }
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, k);
-    key = k.copyString();
-  } else if (value.isString()) {
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, value);
-    key = value.copyString();
-  }
-  
-  // add _rev  
-  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(expectedRevision)));
-  builder.close();
-
-  VPackSlice removeSlice = builder.slice();
-
-  TRI_voc_rid_t actualRevision = 0;
-  TRI_doc_update_policy_t updatePolicy(expectedRevision == 0 ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR, expectedRevision, &actualRevision);
-  int res = document->remove(this, &removeSlice, &updatePolicy, options, !isLocked(document, TRI_TRANSACTION_WRITE));
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
-  }
-
-  if (options.silent) {
-    return OperationResult(TRI_ERROR_NO_ERROR);
-  }
-
   VPackBuilder resultBuilder;
-  buildDocumentIdentity(resultBuilder, cid, key, std::to_string(actualRevision), "");
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+  auto workOnOneDocument = [&](VPackSlice const value) -> int {
+    TRI_voc_rid_t actualRevision = 0;
+    int res = document->remove(this, value, options,
+                               !isLocked(document, TRI_TRANSACTION_WRITE),
+                               actualRevision);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    if (options.silent) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+    buildDocumentIdentity(resultBuilder, cid, key,
+                          std::to_string(actualRevision), "");
+
+    return TRI_ERROR_NO_ERROR;
+  };
+
+  int res = TRI_ERROR_NO_ERROR;
+  if (value.isArray()) {
+    VPackArrayBuilder guard(&resultBuilder);
+    for (auto const s : VPackArrayIterator(value)) {
+      res = workOnOneDocument(s);
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    }
+  } else {
+    res = workOnOneDocument(value);
+  }
+  return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync); 
 }
 
@@ -1473,24 +1486,15 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
  
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
   
-  TRI_voc_rid_t actualRevision = 0;
-  TRI_doc_update_policy_t updatePolicy(TRI_DOC_UPDATE_LAST_WRITE, 0, &actualRevision);
-  
   VPackBuilder keyBuilder;
   auto primaryIndex = document->primaryIndex();
 
-  std::function<bool(TRI_doc_mptr_t*)> callback = [this, &document, &keyBuilder, &updatePolicy, &options](TRI_doc_mptr_t const* mptr) {
-    VPackSlice slice(mptr->vpack());
-    VPackSlice keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  options.ignoreRevs = true;
 
-    keyBuilder.clear();
-    keyBuilder.openObject();
-    keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, keySlice);
-    keyBuilder.close();
-
-    VPackSlice builderSlice = keyBuilder.slice();
-
-    int res = document->remove(this, &builderSlice, &updatePolicy, options, false);
+  auto callback = [&](TRI_doc_mptr_t const* mptr) {
+    TRI_voc_rid_t actualRevision = 0;
+    int res = document->remove(this, VPackSlice(mptr->vpack()), options, false,
+                               actualRevision);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

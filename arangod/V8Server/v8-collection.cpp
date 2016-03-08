@@ -449,8 +449,6 @@ static void DocumentVocbaseVPack(
   LocalCollectionGuard g(useCollection ? nullptr
                                        : const_cast<TRI_vocbase_col_t*>(col));
 
-
-
   TRI_ASSERT(col != nullptr);
 
   TRI_ASSERT(!collectionName.empty());
@@ -468,6 +466,7 @@ static void DocumentVocbaseVPack(
 
   // No options here
   OperationOptions options;
+  options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
   res = trx.finish(opResult.code);
@@ -497,10 +496,10 @@ static void RemoveVocbaseVPack(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   OperationOptions options;
+  options.ignoreRevs = false;
 
   // check the arguments
   uint32_t const argLength = args.Length();
-  bool overwrite = false;
 
   TRI_GET_GLOBALS();
 
@@ -513,7 +512,7 @@ static void RemoveVocbaseVPack(
       v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(OverwriteKey);
       if (optionsObject->Has(OverwriteKey)) {
-        overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
+        options.ignoreRevs = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
       }
       TRI_GET_GLOBAL_STRING(WaitForSyncKey);
       if (optionsObject->Has(WaitForSyncKey)) {
@@ -522,7 +521,7 @@ static void RemoveVocbaseVPack(
       }
     } else {  // old variant replace(<document>, <data>, <overwrite>,
               // <waitForSync>)
-      overwrite = TRI_ObjectToBoolean(args[1]);
+      options.ignoreRevs = TRI_ObjectToBoolean(args[1]);
       if (argLength > 2) {
         options.waitForSync = TRI_ObjectToBoolean(args[2]);
       }
@@ -563,7 +562,7 @@ static void RemoveVocbaseVPack(
   { VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
         isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
-        !overwrite, args[0]);
+        !options.ignoreRevs, args[0]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -587,7 +586,7 @@ static void RemoveVocbaseVPack(
   res = trx.finish(result.code);
 
   if (!result.successful()) {
-    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && overwrite) {
+    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && options.ignoreRevs) {
       TRI_V8_RETURN_FALSE();
     } else {
       TRI_V8_THROW_EXCEPTION(result.code);
