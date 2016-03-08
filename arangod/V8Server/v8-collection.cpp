@@ -378,6 +378,7 @@ static void ExistsVocbaseVPack(
 
   OperationOptions options;
   options.silent = true; // We do not care for the result anyway
+  options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
   res = trx.finish(opResult.code);
