@@ -525,12 +525,12 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp lib/Rest/EndpointIpV4.cpp \
 	lib/Rest/EndpointIpV6.cpp lib/Rest/EndpointUnixDomain.cpp \
-	lib/Rest/HttpRequest.cpp lib/Rest/HttpResponse.cpp \
-	lib/Rest/InitializeRest.cpp lib/Rest/SslInterface.cpp \
-	lib/Rest/Version.cpp lib/Utilities/DummyShell.cpp \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellBase.cpp lib/Zip/ioapi.cpp \
-	lib/Zip/unzip.cpp lib/Zip/zip.cpp \
+	lib/Rest/EndpointSrv.cpp lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpResponse.cpp lib/Rest/InitializeRest.cpp \
+	lib/Rest/SslInterface.cpp lib/Rest/Version.cpp \
+	lib/Utilities/DummyShell.cpp lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp lib/Utilities/ShellBase.cpp \
+	lib/Zip/ioapi.cpp lib/Zip/unzip.cpp lib/Zip/zip.cpp \
 	3rdParty/linenoise-ng/src/linenoise.cpp \
 	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
 	3rdParty/linenoise-ng/src/wcwidth.cpp \
@@ -623,6 +623,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Rest/lib_libarango_a-EndpointIpV4.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-EndpointIpV6.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-EndpointUnixDomain.$(OBJEXT) \
+	lib/Rest/lib_libarango_a-EndpointSrv.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-HttpRequest.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-HttpResponse.$(OBJEXT) \
 	lib/Rest/lib_libarango_a-InitializeRest.$(OBJEXT) \
@@ -1363,12 +1364,13 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp lib/Rest/EndpointIpV4.cpp \
 	lib/Rest/EndpointIpV6.cpp lib/Rest/EndpointUnixDomain.cpp \
-	lib/Rest/HttpRequest.cpp lib/Rest/HttpResponse.cpp \
-	lib/Rest/InitializeRest.cpp lib/Rest/SslInterface.cpp \
-	lib/Rest/Version.cpp lib/Utilities/DummyShell.cpp \
-	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellBase.cpp lib/Zip/ioapi.cpp \
-	lib/Zip/unzip.cpp lib/Zip/zip.cpp $(am__append_3) \
+	lib/Rest/EndpointSrv.cpp lib/Rest/HttpRequest.cpp \
+	lib/Rest/HttpResponse.cpp lib/Rest/InitializeRest.cpp \
+	lib/Rest/SslInterface.cpp lib/Rest/Version.cpp \
+	lib/Utilities/DummyShell.cpp lib/Utilities/LineEditor.cpp \
+	lib/Utilities/ScriptLoader.cpp lib/Utilities/ShellBase.cpp \
+	lib/Zip/ioapi.cpp lib/Zip/unzip.cpp lib/Zip/zip.cpp \
+	$(am__append_3) \
 	3rdParty/velocypack/src/AttributeTranslator.cpp \
 	3rdParty/velocypack/src/Builder.cpp \
 	3rdParty/velocypack/src/Collection.cpp \
@@ -3246,6 +3248,8 @@ lib/Rest/lib_libarango_a-EndpointIpV6.$(OBJEXT):  \
 	lib/Rest/$(am__dirstamp) lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/lib_libarango_a-EndpointUnixDomain.$(OBJEXT):  \
 	lib/Rest/$(am__dirstamp) lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/lib_libarango_a-EndpointSrv.$(OBJEXT):  \
+	lib/Rest/$(am__dirstamp) lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/lib_libarango_a-HttpRequest.$(OBJEXT):  \
 	lib/Rest/$(am__dirstamp) lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/lib_libarango_a-HttpResponse.$(OBJEXT):  \
@@ -4166,6 +4170,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointIpV4.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointIpV6.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointList.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointUnixDomain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/lib_libarango_a-HttpResponse.Po@am__quote@
@@ -8257,6 +8262,20 @@ lib/Rest/lib_libarango_a-EndpointUnixDomain.obj: lib/Rest/EndpointUnixDomain.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Rest/EndpointUnixDomain.cpp' object='lib/Rest/lib_libarango_a-EndpointUnixDomain.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Rest/lib_libarango_a-EndpointUnixDomain.obj `if test -f 'lib/Rest/EndpointUnixDomain.cpp'; then $(CYGPATH_W) 'lib/Rest/EndpointUnixDomain.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Rest/EndpointUnixDomain.cpp'; fi`
+
+lib/Rest/lib_libarango_a-EndpointSrv.o: lib/Rest/EndpointSrv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Rest/lib_libarango_a-EndpointSrv.o -MD -MP -MF lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Tpo -c -o lib/Rest/lib_libarango_a-EndpointSrv.o `test -f 'lib/Rest/EndpointSrv.cpp' || echo '$(srcdir)/'`lib/Rest/EndpointSrv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Tpo lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Rest/EndpointSrv.cpp' object='lib/Rest/lib_libarango_a-EndpointSrv.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Rest/lib_libarango_a-EndpointSrv.o `test -f 'lib/Rest/EndpointSrv.cpp' || echo '$(srcdir)/'`lib/Rest/EndpointSrv.cpp
+
+lib/Rest/lib_libarango_a-EndpointSrv.obj: lib/Rest/EndpointSrv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Rest/lib_libarango_a-EndpointSrv.obj -MD -MP -MF lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Tpo -c -o lib/Rest/lib_libarango_a-EndpointSrv.obj `if test -f 'lib/Rest/EndpointSrv.cpp'; then $(CYGPATH_W) 'lib/Rest/EndpointSrv.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Rest/EndpointSrv.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Tpo lib/Rest/$(DEPDIR)/lib_libarango_a-EndpointSrv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Rest/EndpointSrv.cpp' object='lib/Rest/lib_libarango_a-EndpointSrv.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Rest/lib_libarango_a-EndpointSrv.obj `if test -f 'lib/Rest/EndpointSrv.cpp'; then $(CYGPATH_W) 'lib/Rest/EndpointSrv.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Rest/EndpointSrv.cpp'; fi`
 
 lib/Rest/lib_libarango_a-HttpRequest.o: lib/Rest/HttpRequest.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Rest/lib_libarango_a-HttpRequest.o -MD -MP -MF lib/Rest/$(DEPDIR)/lib_libarango_a-HttpRequest.Tpo -c -o lib/Rest/lib_libarango_a-HttpRequest.o `test -f 'lib/Rest/HttpRequest.cpp' || echo '$(srcdir)/'`lib/Rest/HttpRequest.cpp

@@ -139,6 +139,7 @@ add_library(
     Rest/EndpointIp.cpp
     Rest/EndpointIpV4.cpp
     Rest/EndpointIpV6.cpp
+    Rest/EndpointSrv.cpp
     Rest/HttpRequest.cpp
     Rest/HttpResponse.cpp
     Rest/InitializeRest.cpp

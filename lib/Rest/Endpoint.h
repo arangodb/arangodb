@@ -88,7 +88,8 @@ namespace triagens {
           DOMAIN_UNKNOWN = 0,
           DOMAIN_UNIX,
           DOMAIN_IPV4,
-          DOMAIN_IPV6
+          DOMAIN_IPV6,
+          DOMAIN_SRV
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +206,7 @@ namespace triagens {
 /// @brief return whether the endpoint is connected
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isConnected () const {
+        virtual bool isConnected () const {
           return _connected;
         }
 
@@ -221,7 +222,7 @@ namespace triagens {
 /// @brief get the domain type of an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        DomainType getDomainType () const {
+        virtual DomainType getDomainType () const {
           return _domainType;
         }
 

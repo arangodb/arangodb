@@ -5,10 +5,13 @@ v2.8.5 (2016-03-XX)
   and #1770 (Display ACTUAL query time in aardvark's AQL editor)
 
 * Windows: the unhandled exception handler now calls the windows logging
-  facilities directly without locks. 
+  facilities directly without locks.
   This fixes lockups on crashes from the logging framework.
 
 * improve nullptr handling in logger.
+
+* added new endpoint "srv://" for DNS service records
+
 
 v2.8.4 (2016-03-01)
 -------------------

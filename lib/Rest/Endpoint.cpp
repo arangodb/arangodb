@@ -39,6 +39,7 @@
 #endif
 #include "Rest/EndpointIpV4.h"
 #include "Rest/EndpointIpV6.h"
+#include "Rest/EndpointSrv.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -116,25 +117,19 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     return "";
   }
 #endif
+  else if (StringUtils::isPrefix(copy, "srv://")) {
+    return copy;
+  }
   else if (! StringUtils::isPrefix(copy, "ssl://") &&
            ! StringUtils::isPrefix(copy, "tcp://")) {
     // invalid type
     return "";
   }
 
-  size_t found;
-  /*
-  // turn "localhost" into "127.0.0.1"
-  // technically this is not always correct, but circumvents obvious problems
-  // when the configuration contains both "127.0.0.1" and "localhost" endpoints
-  found = copy.find("localhost");
-  if (found != string::npos && found >= 6 && found < 10) {
-    copy = copy.replace(found, strlen("localhost"), "127.0.0.1");
-  }
-  */
-
   // tcp/ip or ssl
+  size_t found;
   string temp = copy.substr(6, copy.length()); // strip tcp:// or ssl://
+
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
@@ -144,6 +139,7 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     }
 
     found = temp.find("]", 1);
+
     if (found != string::npos && found > 2 && found + 1 == temp.size()) {
       // hostname only (e.g. [address])
       return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
@@ -227,7 +223,6 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   EncryptionType encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
 
-
   if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl
     encryption = ENCRYPTION_SSL;
@@ -245,6 +240,14 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     return nullptr;
   }
 #endif
+
+  else if (StringUtils::isPrefix(domainType, "srv://")) {
+    if (type != ENDPOINT_CLIENT) {
+      return nullptr;
+    }
+    
+    return new EndpointSrv(specification.substr(6));
+  }
 
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
