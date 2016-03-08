@@ -659,14 +659,14 @@ Then you can choose between three choices:
 
 1. Build all arangodb related files:
 
-`grunt`
+  * `grunt`
 
 2. Build all arangodb related files, including libraries. This should always
 be used when we offer a new major release of arangodb.
 
-`grunt deploy`
+  * `grunt deploy`
 
-2. Live build arangodb related files, when a file has been changed. This task
+3. Live build arangodb related files, when a file has been changed. This task
 does not include the minifying process.
 
-`grunt watch`
+  * `grunt watch`
