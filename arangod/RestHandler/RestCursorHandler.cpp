@@ -131,7 +131,13 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
-  TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
+  VPackSlice qResult = queryResult.result->slice();
+
+  if (qResult.isNone()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_ASSERT(qResult.isArray());
 
   {
     createResponse(HttpResponse::CREATED);
@@ -143,7 +149,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     size_t batchSize =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
             opts, "batchSize", 1000);
-    size_t const n = TRI_LengthArrayJson(queryResult.json);
+    size_t const n = static_cast<size_t>(qResult.length());
 
     if (n <= batchSize) {
       // result is smaller than batchSize and will be returned directly. no need
@@ -153,10 +159,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
-        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json, result);
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
+        result.add(qResult);
         result.add("hasMore", VPackValue(false));
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count",
                                                                 false)) {
@@ -192,19 +195,9 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
         opts, "count", false);
 
-    // steal the query JSON, cursor will take over the ownership
-    auto j = queryResult.json;
-    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(j);
-    {
-      // Temporarily validate that transformation actually worked.
-      // Can be removed again as soon as queryResult returns VPack
-      VPackSlice validate = builder->slice();
-      if (validate.isNone() && j != nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-    }
+    // steal the query result, cursor will take over the ownership
     arangodb::JsonCursor* cursor = cursors->createFromVelocyPack(
-        builder, batchSize, extra, ttl, count, queryResult.cached);
+        queryResult.result, batchSize, extra, ttl, count, queryResult.cached);
 
     try {
       _response->body().appendChar('{');
@@ -358,10 +351,7 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
       extra->close();
     } else {
       extra->add(VPackValue("warnings"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings, *extra);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return nullptr;
-      }
+      extra->add(queryResult.warnings->slice());
     }
   } catch (...) {
     return nullptr;

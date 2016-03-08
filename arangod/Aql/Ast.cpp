@@ -141,9 +141,11 @@ Ast::~Ast() {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
 /// the caller is responsible for freeing the JSON later
+/// @DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
+#warning Deprecated
   TRI_json_t* json = TRI_CreateArrayJson(zone);
 
   if (json == nullptr) {
@@ -158,6 +160,19 @@ TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the AST into VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard(builder.get());
+    _root->toVelocyPack(*builder, verbose);
+  }
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

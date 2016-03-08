@@ -612,19 +612,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
-#warning Replace QueryResult with VPack
-        VPackBuilder tmp;
-        tmp.openObject();
-        warningsToVelocyPack(tmp);
-        tmp.close();
-        res.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
-        res.json = arangodb::basics::VelocyPackHelper::velocyPackToJson(cacheEntry->_queryResult->slice());
+        res.warnings = warningsToVelocyPack();
+        TRI_ASSERT(cacheEntry->_queryResult != nullptr);
+        res.result = cacheEntry->_queryResult;
         res.cached = true;
-
-        if (res.json == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
         return res;
       }
     }
@@ -650,14 +641,13 @@ QueryResult Query::execute(QueryRegistry* registry) {
       useQueryCache = false;
     }
 
-    arangodb::basics::Json jsonResult(arangodb::basics::Json::Array, 16);
-
-    // this is the RegisterId our results can be found in
-    auto const resultRegister = _engine->resultRegister();
-
     AqlItemBlock* value = nullptr;
-
+    auto resultBuilder = std::make_shared<VPackBuilder>();
     try {
+      VPackArrayBuilder guard(resultBuilder.get());
+      // this is the RegisterId our results can be found in
+      auto const resultRegister = _engine->resultRegister();
+
       if (useQueryCache) {
         // iterate over result, return it and store it in query cache
         while (nullptr != (value = _engine->getSome(
@@ -665,14 +655,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
           auto doc = value->getDocumentCollection(resultRegister);
 
           size_t const n = value->size();
-          // reserve space for n additional results at once
-          jsonResult.reserve(n);
 
           for (size_t i = 0; i < n; ++i) {
             auto val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              jsonResult.add(val.toJson(_trx, doc, true));
+              val.toVelocyPack(_trx, doc, *resultBuilder);
             }
           }
           delete value;
@@ -681,14 +669,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          std::shared_ptr<VPackBuilder> copy(arangodb::basics::JsonHelper::toVelocyPack(jsonResult.json()));
-
-          if (copy == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-
           auto result = QueryCache::instance()->store(
-              _vocbase, queryStringHash, _queryString, _queryLength, copy,
+              _vocbase, queryStringHash, _queryString, _queryLength, resultBuilder,
               _trx->collectionNames());
 
           if (result == nullptr) {
@@ -702,14 +684,11 @@ QueryResult Query::execute(QueryRegistry* registry) {
           auto doc = value->getDocumentCollection(resultRegister);
 
           size_t const n = value->size();
-          // reserve space for n additional results at once
-          jsonResult.reserve(n);
-
           for (size_t i = 0; i < n; ++i) {
             auto val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              jsonResult.add(val.toJson(_trx, doc, true));
+              val.toVelocyPack(_trx, doc, *resultBuilder);
             }
           }
           delete value;
@@ -732,13 +711,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-#warning Replace QueryResult with VPack
-    VPackBuilder tmp;
-    tmp.openObject();
-    warningsToVelocyPack(tmp);
-    tmp.close();
-    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
-    result.json = jsonResult.steal();
+    result.warnings = warningsToVelocyPack();
+    result.result = resultBuilder;
     result.stats = stats;
 
     if (_profile != nullptr && profiling()) {
@@ -890,12 +864,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     enterState(FINALIZATION);
 
-#warning Replace QueryResult with VPack
-    VPackBuilder tmp;
-    tmp.openObject();
-    warningsToVelocyPack(tmp);
-    tmp.close();
-    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
+    result.warnings = warningsToVelocyPack();
     result.stats = stats;
 
     if (_profile != nullptr && profiling()) {
@@ -996,21 +965,21 @@ QueryResult Query::explain() {
 
     QueryResult result(TRI_ERROR_NO_ERROR);
     QueryRegistry localRegistry;
+    result.result = std::make_shared<VPackBuilder>();
 
     if (allPlans()) {
-      arangodb::basics::Json out(Json::Array);
+      {
+        VPackArrayBuilder guard(result.result.get());
 
-      auto plans = opt.getPlans();
-      for (auto& it : plans) {
-        TRI_ASSERT(it != nullptr);
+        auto plans = opt.getPlans();
+        for (auto& it : plans) {
+          TRI_ASSERT(it != nullptr);
 
-        it->findVarUsage();
-        it->planRegisters();
-        out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
+          it->findVarUsage();
+          it->planRegisters();
+          it->toVelocyPack(parser.ast(), verbosePlans(), *result.result);
+        }
       }
-
-      result.json = out.steal();
-
       // cacheability not available here
       result.cached = false;
     } else {
@@ -1021,9 +990,7 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
-      result.json =
-          bestPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans())
-              .steal();
+      bestPlan->toVelocyPack(parser.ast(), verbosePlans(), *result.result);
 
       // cacheability
       result.cached = (_queryString != nullptr && _queryLength > 0 &&
@@ -1033,12 +1000,7 @@ QueryResult Query::explain() {
 
     _trx->commit();
 
-#warning Replace QueryResult with VPack
-    VPackBuilder tmp;
-    tmp.openObject();
-    warningsToVelocyPack(tmp);
-    tmp.close();
-    result.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
+    result.warnings = warningsToVelocyPack();
 
     result.stats = opt._stats.toVelocyPack();
 
@@ -1237,7 +1199,8 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
 ///        warnings. If there are none it will not modify the builder
 //////////////////////////////////////////////////////////////////////////////
 
-void Query::warningsToVelocyPack(arangodb::velocypack::Builder& builder) const {
+void Query::addWarningsToVelocyPackObject(
+    arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   if (_warnings.empty()) {
     return;
@@ -1252,6 +1215,28 @@ void Query::warningsToVelocyPack(arangodb::velocypack::Builder& builder) const {
       builder.add("message", VPackValue(_warnings[i].second));
     }
   }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief transform the list of warnings to VelocyPack.
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Query::warningsToVelocyPack() const {
+  if (_warnings.empty()) {
+    return nullptr;
+  }
+  auto result = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard(result.get());
+    size_t const n = _warnings.size();
+    for (size_t i = 0; i < n; ++i) {
+      VPackObjectBuilder objGuard(result.get());
+      result->add("code", VPackValue(_warnings[i].first));
+      result->add("message", VPackValue(_warnings[i].second));
+    }
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

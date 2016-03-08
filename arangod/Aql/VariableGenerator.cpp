@@ -217,18 +217,14 @@ std::string VariableGenerator::nextName() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON, returns an AUTOFREE Json object
+/// @brief export to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json VariableGenerator::toJson(
-    TRI_memory_zone_t* zone) const {
-  Json jsonAllVariablesList(Json::Array, _variables.size());
-
+void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder guard(&builder);
   for (auto const& oneVariable : _variables) {
-    jsonAllVariablesList(oneVariable.second->toJson());
+    oneVariable.second->toVelocyPack(builder);
   }
-
-  return jsonAllVariablesList;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

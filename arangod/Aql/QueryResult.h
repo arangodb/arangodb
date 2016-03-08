@@ -40,19 +40,15 @@ struct QueryResult {
     code = other.code;
     cached = other.cached;
     details = other.details;
-    warnings = other.warnings;
-    json = other.json;
-    stats = other.stats;
-    profile = other.profile;
-    zone = other.zone;
+    warnings.swap(other.warnings);
+    result.swap(other.result);
+    stats.swap(other.stats);
+    profile.swap(other.profile);
+
     clusterplan = other.clusterplan;
     bindParameters = other.bindParameters;
     collectionNames = other.collectionNames;
 
-    other.warnings = nullptr;
-    other.json = nullptr;
-    other.stats = nullptr;
-    other.profile = nullptr;
     other.clusterplan = nullptr;
   }
 
@@ -60,9 +56,8 @@ struct QueryResult {
       : code(code),
         cached(false),
         details(details),
-        zone(TRI_UNKNOWN_MEM_ZONE),
         warnings(nullptr),
-        json(nullptr),
+        result(nullptr),
         profile(nullptr),
         clusterplan(nullptr) {}
 
@@ -71,12 +66,6 @@ struct QueryResult {
   QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
 
   virtual ~QueryResult() {
-    if (warnings != nullptr) {
-      TRI_FreeJson(zone, warnings);
-    }
-    if (json != nullptr) {
-      TRI_FreeJson(zone, json);
-    }
   }
 
   int code;
@@ -84,9 +73,8 @@ struct QueryResult {
   std::string details;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  TRI_memory_zone_t* zone;
-  TRI_json_t* warnings;
-  TRI_json_t* json;
+  std::shared_ptr<arangodb::velocypack::Builder> warnings;
+  std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
   std::shared_ptr<arangodb::velocypack::Builder> profile;
   TRI_json_t* clusterplan;

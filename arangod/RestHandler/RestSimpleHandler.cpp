@@ -333,18 +333,19 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     }
 
     size_t resultSize = 10;
-    if (TRI_IsArrayJson(queryResult.json)) {
-      resultSize = TRI_LengthArrayJson(queryResult.json);
+    VPackSlice qResult = queryResult.result->slice();
+    if (qResult.isArray()) {
+      resultSize = static_cast<size_t>(qResult.length());
     }
 
+    VPackBuilder result;
     {
+      VPackObjectBuilder guard(&result);
       createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
-      arangodb::basics::Json result(arangodb::basics::Json::Object, 3);
 
-      if (TRI_IsArrayJson(queryResult.json)) {
-        size_t const n = TRI_LengthArrayJson(queryResult.json);
+      if (qResult.isArray()) {
 
         // This is for internal use of AQL Traverser only.
         // Should not be documented
@@ -370,54 +371,49 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
               expression.release();
             }
           }
+          
+          result.add(VPackValue("documents"));
+          std::vector<std::string> filteredIds;
 
-          arangodb::basics::Json filteredDocuments(
-              arangodb::basics::Json::Array, n);
-          arangodb::basics::Json filteredIds(arangodb::basics::Json::Array);
-
-          for (size_t i = 0; i < n; ++i) {
-            TRI_json_t const* tmp = TRI_LookupArrayJson(queryResult.json, i);
-            if (tmp != nullptr) {
+          result.openArray();
+          for (auto const& tmp : VPackArrayIterator(qResult)) {
+            if (!tmp.isNone()) {
               bool add = true;
               for (auto& e : expressions) {
                 if (!e->isEdgeAccess && !e->matchesCheck(tmp)) {
                   add = false;
-                  try {
-                    std::string _id =
-                        arangodb::basics::JsonHelper::checkAndGetStringValue(
-                            tmp, "_id");
-                    arangodb::basics::Json tmp(_id);
-                    filteredIds.add(tmp.steal());
-                  } catch (...) {
-                    // This should never occur.
-                  }
+                  std::string _id =
+                      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                          tmp, "_id");
+                  filteredIds.emplace_back(_id);
                   break;
                 }
               }
               if (add) {
-                filteredDocuments.add(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, tmp));
+                result.add(tmp);
               }
             }
           }
+          result.close();
 
-          result.set("documents", filteredDocuments);
-          result.set("filtered", filteredIds);
+          result.add(VPackValue("filtered"));
+          result.openArray();
+          for (auto const& it : filteredIds) {
+            result.add(VPackValue(it));
+          }
+          result.close();
         } else {
-          result.set("documents", arangodb::basics::Json(
-                                      TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                      arangodb::basics::Json::AUTOFREE));
-          queryResult.json = nullptr;
+          result.add(VPackValue("documents"));
+          result.add(qResult);
+          queryResult.result = nullptr;
         }
       } else {
-        result.set("documents", arangodb::basics::Json(
-                                    TRI_UNKNOWN_MEM_ZONE, queryResult.json,
-                                    arangodb::basics::Json::AUTOFREE));
-        queryResult.json = nullptr;
+        result.add(VPackValue("documents"));
+        result.add(qResult);
+        queryResult.result = nullptr;
       }
-
-      result.set("error", arangodb::basics::Json(false));
-      result.set("code", arangodb::basics::Json(
-                             static_cast<double>(_response->responseCode())));
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue(_response->responseCode()));
 
       // reserve 48 bytes per result document by default
       int res = _response->body().reserve(48 * resultSize);
@@ -426,7 +422,10 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      result.dump(_response->body());
+      arangodb::basics::VPackStringBufferAdapter buffer(
+          _response->body().stringBuffer());
+      VPackDumper dumper(&buffer);
+      dumper.dump(result.slice());
     }
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();

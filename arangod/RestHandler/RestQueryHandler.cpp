@@ -390,14 +390,10 @@ bool RestQueryHandler::parseQuery() {
       }
       result.close();  // bindVars
 
-      auto tmp = VPackParser::fromJson(
-          arangodb::basics::JsonHelper::toString(parseResult.json));
-      result.add("ast", tmp->slice());
+      result.add("ast", parseResult.result->slice());
 
       if (parseResult.warnings != nullptr) {
-        auto tmp = VPackParser::fromJson(
-            arangodb::basics::JsonHelper::toString(parseResult.warnings));
-        result.add("warnings", tmp->slice());
+        result.add("warnings", parseResult.warnings->slice());
       }
     }
 

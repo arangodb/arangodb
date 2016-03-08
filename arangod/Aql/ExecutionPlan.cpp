@@ -214,10 +214,12 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
+/// DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
                                              bool verbose) const {
+#warning Remove this
   // TODO
   VPackBuilder b;
   _root->toVelocyPack(b, verbose);
@@ -247,13 +249,51 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
   }
 
   result.set("collections", jsonCollectionList);
-  result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+  VPackBuilder tmpTwo;
+  ast->variables()->toVelocyPack(tmpTwo);
+  result.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmpTwo.slice()));
   size_t nrItems = 0;
   result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
   result.set("estimatedNrItems",
              arangodb::basics::Json(static_cast<double>(nrItems)));
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::toVelocyPack(Ast* ast, bool verbose,
+                                 VPackBuilder& builder) const {
+  _root->toVelocyPack(builder, verbose);
+  // set up rules
+  auto appliedRules(Optimizer::translateRules(_appliedRules));
+
+  builder.add(VPackValue("rules"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& r : appliedRules) {
+      builder.add(VPackValue(r));
+    }
+  }
+  builder.add(VPackValue("collections"));
+  auto usedCollections = *ast->query()->collections()->collections();
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& c : usedCollections) {
+      VPackObjectBuilder objGuard(&builder);
+      builder.add("name", VPackValue(c.first));
+      builder.add("type",
+                  VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+    }
+  }
+  builder.add(VPackValue("variables"));
+  ast->variables()->toVelocyPack(builder);
+  size_t nrItems = 0;
+  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
+  builder.add("estimatedNrItems", VPackValue(nrItems));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -202,14 +202,9 @@ void RestAqlHandler::parseQuery() {
         answerBuilder.add(VPackValue(p));
       }
     }
-#warning res.json has to be replaced by VPack in first-place
     answerBuilder.add(VPackValue("ast"));
-    int errCode = JsonHelper::toVelocyPack(res.json, answerBuilder);
-    if (errCode != TRI_ERROR_NO_ERROR) {
-#warning only temporary, wrong error does not matter at all.
-      generateError(HttpResponse::BAD, errCode);
-    }
-    res.json = nullptr;
+    answerBuilder.add(res.result->slice());
+    res.result = nullptr;
   } catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
@@ -259,19 +254,14 @@ void RestAqlHandler::explainQuery() {
   VPackBuilder answerBuilder;
   try {
     VPackObjectBuilder guard(&answerBuilder);
-    if (res.json != nullptr) {
-#warning QueryResult needs to be replaced by VPack
+    if (res.result != nullptr) {
       if (query->allPlans()) {
         answerBuilder.add(VPackValue("plans"));
       } else {
         answerBuilder.add(VPackValue("plan"));
       }
-      int errCode = JsonHelper::toVelocyPack(res.json, answerBuilder);
-      if (errCode != TRI_ERROR_NO_ERROR) {
-#warning only temporary, wrong error does not matter at all.
-        generateError(HttpResponse::BAD, errCode);
-      }
-      res.json = nullptr;
+      answerBuilder.add(res.result->slice());
+      res.result = nullptr;
     }
   } catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
@@ -842,7 +832,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         query->getStats(answerBuilder);
 
         // return warnings if present
-        query->warningsToVelocyPack(answerBuilder);
+        query->addWarningsToVelocyPackObject(answerBuilder);
 
         // delete the query from the registry
         _queryRegistry->destroy(_vocbase, _qId, errorCode);

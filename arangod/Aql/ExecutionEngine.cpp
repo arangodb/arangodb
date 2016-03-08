@@ -472,6 +472,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                              EngineInfo const& info, Collection* collection,
                              QueryId& connectedId, std::string const& shardId,
                              TRI_json_t* jsonPlan) {
+#warning still Json inplace. Needs to be fixed
     // create a JSON representation of the plan
     Json result(Json::Object);
 
@@ -487,8 +488,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         "type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
     jsonNodesList.set("collections", jsonCollectionsList);
-    jsonNodesList.set("variables",
-                      query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+    VPackBuilder tmp;
+    query->ast()->variables()->toVelocyPack(tmp);
+    jsonNodesList.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice()));
 
     result.set("plan", jsonNodesList);
     if (info.part == arangodb::aql::PART_MAIN) {
