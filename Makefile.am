@@ -146,7 +146,8 @@ LIBS = \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@ICU_LIBS@ \
-	@ZLIB_LIBS@
+	@ZLIB_LIBS@ \
+	@LIBS@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                              LIBRARIES & PROGRAMS
