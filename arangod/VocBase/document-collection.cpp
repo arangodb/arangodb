@@ -3240,10 +3240,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   VPackBuilder builder;
-  builder.openObject();
   builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-  builder.close();
-
   VPackSlice slice = builder.slice();
 
   {
