@@ -22,13 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeAccessor.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/AqlTransaction.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -45,35 +42,22 @@ AttributeAccessor::AttributeAccessor(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the accessor
-////////////////////////////////////////////////////////////////////////////////
-
-AttributeAccessor::~AttributeAccessor() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
-                                AqlItemBlock const* argv, size_t startPos,
-                                std::vector<Variable const*> const& vars,
-                                std::vector<RegisterId> const& regs) {
+AqlValue$ AttributeAccessor::get(arangodb::AqlTransaction* trx,
+                                 AqlItemBlock const* argv, size_t startPos,
+                                 std::vector<Variable const*> const& vars,
+                                 std::vector<RegisterId> const& regs) {
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
-      auto& result = argv->getValueReference(startPos, regs[i]);
-
-      // extract the attribute
-      VPackSlice const slice;
-#warning TODO: fill slice from AqlValue (result)
-      VPackSlice extracted = slice.get(_attributeParts);
-#warning TODO: build result from extracted
-      return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+      return AqlValue$(argv->getValueReference(startPos, regs[i]), trx, nullptr).get(_attributeParts);
     }
     // fall-through intentional
   }
 
-  return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+  return AqlValueReference(arangodb::basics::VelocyPackHelper::NullValue());
 }
 

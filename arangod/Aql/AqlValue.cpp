@@ -28,12 +28,15 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/ShapedJsonTransformer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -732,74 +735,147 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
   
 AqlValue$::AqlValue$() {
-  VPackBuilder builder;
-  memcpy(_data.internal, builder.slice().begin(), builder.slice().byteSize());
-  _data.internal[15] = AqlValueType::INTERNAL; 
+  invalidate(*this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(VPackBuilder const& data) {
   TRI_ASSERT(data.isClosed());
-  VPackValueLength l = data.size();
-  if (l < 16) {
+  VPackValueLength length = data.size();
+  if (length < 16) {
     // Use internal
-    memcpy(_data.internal, data.data(), l);
-    _data.internal[15] = AqlValueType::INTERNAL; 
+    memcpy(_data.internal, data.data(), length);
+    setType(AqlValueType::INTERNAL);
   } else {
     // Use external
-    _data.external = new VPackBuffer<uint8_t>(l);
-    memcpy(_data.external->data(), data.data(), l);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
+    _data.external = new VPackBuffer<uint8_t>(length);
+    memcpy(_data.external->data(), data.data(), length);
+    setType(AqlValueType::EXTERNAL);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(VPackSlice const& data) {
-  VPackValueLength l = data.byteSize();
-  if (l < 16) {
+  VPackValueLength length = data.byteSize();
+  if (length < 16) {
     // Use internal
-    memcpy(_data.internal, data.start(), l);
-    _data.internal[15] = AqlValueType::INTERNAL; 
+    memcpy(_data.internal, data.begin(), length);
+    setType(AqlValueType::INTERNAL);
   } else {
     // Use external
-    _data.external = new VPackBuffer<uint8_t>(l);
-    memcpy(_data.external->data(), data.start(), l);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
+    _data.external = new VPackBuffer<uint8_t>(length);
+    memcpy(_data.external->data(), data.begin(), length);
+    setType(AqlValueType::EXTERNAL);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Copy Constructor.
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(VPackSlice const& data, AqlValueType type) {
+  if (type == AqlValueType::REFERENCE ||
+      type == AqlValueType::REFERENCE_STICKY) {
+    // simply copy the slice
+    _data.reference = data.begin();
+    setType(type);
+    return;
+  }
+
+  // everything else as usual
+  VPackValueLength length = data.byteSize();
+  if (length < 16) {
+    // Use internal
+    memcpy(_data.internal, data.begin(), length);
+    setType(AqlValueType::INTERNAL);
+  } else {
+    // Use external
+    _data.external = new VPackBuffer<uint8_t>(length);
+    memcpy(_data.external->data(), data.begin(), length);
+    setType(AqlValueType::EXTERNAL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with range value
+////////////////////////////////////////////////////////////////////////////////
+  
+AqlValue$::AqlValue$(int64_t low, int64_t high) {
+  Range* range = new Range(low, high);
+
+  _data.internal[0] = 0xf4; // custom type for range
+  _data.internal[1] = sizeof(Range*);
+  memcpy(&_data.internal[2], &range, sizeof(Range*));
+  setType(AqlValueType::RANGE);
+}
+   
+AqlValue$::AqlValue$(bool value) 
+    : AqlValue$(value ? arangodb::basics::VelocyPackHelper::TrueValue() : 
+       arangodb::basics::VelocyPackHelper::FalseValue()) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+  
+AqlValue$::~AqlValue$() {
+  destroy();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(AqlValue$ const& other) {
-  VPackSlice s = other.slice();
-  VPackValueLength length = s.byteSize();
-  if (other.type()) {
-    // Isse external
-    _data.external = new VPackBuffer<uint8_t>(length);
-    memcpy(_data.external->data(), other._data.external->data(), length);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
-  } else {
-    memcpy(_data.internal, other._data.internal, length);
-    _data.internal[15] = AqlValueType::INTERNAL; 
+  copy(other);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$& AqlValue$::operator=(AqlValue$ const& other) {
+  if (this != &other) {
+    destroy();
+    copy(other);
   }
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$::AqlValue$(AqlValue$&& other) {
+  move(other);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue$& AqlValue$::operator=(AqlValue$&& other) {
+  if (this != &other) {
+    destroy();
+    move(other);
+  }
+  return *this;
 }
 
 // Temporary constructor to transform an old AqlValue to a new VPackBased
@@ -849,14 +925,12 @@ AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
     case AqlValue::RANGE: {
       // TODO Has to be replaced by VPackCustom Type
       TRI_ASSERT(other._range != nullptr);
-      try {
-        VPackArrayBuilder b(&builder);
-        size_t const n = other._range->size();
-        for (size_t i = 0; i < n; ++i) {
-          builder.add(VPackValue(other._range->at(i)));
-        }
-      } catch (...) {
-      }
+      Range* range = new Range(other._range->_low, other._range->_high);
+
+      _data.internal[0] = 0xf4; // custom type for range
+      _data.internal[1] = sizeof(Range*);
+      memcpy(&_data.internal[2], &range, sizeof(Range*));
+      _data.internal[15] = AqlValueType::RANGE; 
       break;
     }
     case AqlValue::EMPTY: {
@@ -864,60 +938,227 @@ AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
       break;
     }
     default: {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
   }
   VPackValueLength length = builder.size();
   if (length < 16) {
     // Small enough for local
     // copy memory from the builder into the internal data.
     memcpy(_data.internal, builder.data(), length);
-    _data.internal[15] = AqlValueType::INTERNAL; 
+    setType(AqlValueType::INTERNAL);
   } else {
     // We need a large external buffer
     // TODO: Replace by SlimBuffer
     _data.external = new VPackBuffer<uint8_t>(length);
     memcpy(_data.external->data(), builder.data(), length);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
+    setType(AqlValueType::EXTERNAL);
   }
 }
 
-AqlValue$::AqlValueType AqlValue$::type() const {
-  return static_cast<AqlValueType>(_data.internal[15]);
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a slice for the contained value
+//////////////////////////////////////////////////////////////////////////////
+
+VPackSlice AqlValue$::slice() const {
+  switch (type()) {
+    case EXTERNAL:
+      return VPackSlice(_data.external->data());
+    case REFERENCE:
+    case REFERENCE_STICKY:
+      return VPackSlice(_data.reference);
+    case INTERNAL:
+    case RANGE: 
+      return VPackSlice(_data.internal);
+  }
+  return VPackSlice(); // we should not get here
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value is empty / none
+//////////////////////////////////////////////////////////////////////////////
+ 
+bool AqlValue$::isNone() const {
+  return slice().isNone();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value is a number
+//////////////////////////////////////////////////////////////////////////////
+ 
+bool AqlValue$::isNumber() const {
+  if (type() == RANGE) {
+    return false;
+  }
+  return slice().isNumber();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value is an object
+//////////////////////////////////////////////////////////////////////////////
+ 
+bool AqlValue$::isObject() const {
+  if (type() == RANGE) {
+    // special handling for ranges
+    return true;
+  }
+  // all other cases
+  return slice().isObject();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value is an array (note: this treats ranges
+/// as arrays, too!)
+//////////////////////////////////////////////////////////////////////////////
+ 
+bool AqlValue$::isArray() const {
+  if (type() == RANGE) {
+    // special handling for ranges
+    return true;
+  }
+  // all other cases
+  return slice().isArray();
 }
   
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the (array) length (note: this treats ranges as arrays, too!)
+//////////////////////////////////////////////////////////////////////////////
+
+size_t AqlValue$::length() const {
+  if (type() == RANGE) {
+    // special handling for ranges
+    return range()->size();
+  }
+  // all other cases
+  VPackSlice const s = slice();
+  if (s.isArray()) {
+    return s.length();
+  }
+  return 0;
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the (array) element at position 
+//////////////////////////////////////////////////////////////////////////////
+
+AqlValue$ AqlValue$::at(int64_t position) const {
+  if (type() == RANGE) {
+    // special handling for ranges
+    Range* r = range();
+    size_t const n = r->size();
+
+    if (position < 0) {
+      // a negative position is allowed
+      position = static_cast<int64_t>(n) + position;
+    }
+
+    if (position >= 0 && position < static_cast<int64_t>(n)) {
+      // only look up the value if it is within array bounds
+      VPackBuilder builder;
+      builder.add(VPackValue(r->at(static_cast<size_t>(position))));
+      return AqlValue$(builder);
+    }
+    // fall-through intentional
+  }
+  else {
+    VPackSlice const s = slice();
+    if (s.isArray()) {
+      size_t const n = static_cast<size_t>(s.length());
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within array bounds
+        if (type() == AqlValueType::REFERENCE_STICKY) {
+          return AqlValue$(s.at(position), AqlValueType::REFERENCE_STICKY);
+        }
+        return AqlValue$(s.at(position));
+      }
+    }
+  }
+
+  // default is to return null
+  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue(), REFERENCE_STICKY);
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the (object) element by name
+//////////////////////////////////////////////////////////////////////////////
+  
+AqlValue$ AqlValue$::get(std::string const& name) const {
+  VPackSlice const s = slice();
+  if (s.isObject()) {
+    VPackSlice const value = s.get(name);
+    if (!value.isNone()) {
+      if (type() == AqlValueType::REFERENCE_STICKY) {
+        return AqlValue$(value, AqlValueType::REFERENCE_STICKY);
+      }
+      return AqlValue$(value);
+    }
+  }
+  
+  // default is to return null
+  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue(), REFERENCE_STICKY);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the (object) element(s) by name
+//////////////////////////////////////////////////////////////////////////////
+  
+AqlValue$ AqlValue$::get(std::vector<char const*> const& names) const {
+  VPackSlice const s = slice();
+  if (s.isObject()) {
+    VPackSlice const value = s.get(names);
+    if (!value.isNone()) {
+      if (type() == AqlValueType::REFERENCE_STICKY) {
+        return AqlValue$(value, AqlValueType::REFERENCE_STICKY);
+      }
+      return AqlValue$(value);
+    }
+  }
+  
+  // default is to return null
+  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue(), REFERENCE_STICKY);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the numeric value of an AqlValue
 //////////////////////////////////////////////////////////////////////////////
  
 double AqlValue$::toDouble() const {
-  if (slice().isCustom()) {
-#warning FIX custom      
-    // range. TODO
-    //size_t rangeSize = _range->size();
-    //if (rangeSize == 1) {
-    //  return _range->at(0);
-    //}
+  if (type() == RANGE) {
+    // special handling for ranges
+    Range* r = range();
+    size_t rangeSize = r->size();
+  
+    if (rangeSize == 1) {
+      return static_cast<double>(r->at(0));
+    }
     return 0.0;
   }
-  if (slice().isBoolean()) {
-    return slice().getBoolean() ? 1.0 : 0.0;
+
+  VPackSlice const s = slice();
+
+  if (s.isBoolean()) {
+    return s.getBoolean() ? 1.0 : 0.0;
   }
-  if (slice().isNumber()) {
-    return slice().getNumber<double>();
+  if (s.isNumber()) {
+    return s.getNumber<double>();
   }
-  if (slice().isString()) {
+  if (s.isString()) {
     try {
-      return std::stod(slice().copyString());
+      return std::stod(s.copyString());
     } catch (...) {
       // conversion failed
     }
     return 0.0;
   }
-  if (slice().isArray()) {
-    if (slice().length() == 1) {
-      AqlValue$ tmp(slice().at(0));
+  if (s.isArray()) {
+    if (s.length() == 1) {
+      AqlValue$ tmp(s.at(0));
       return tmp.toDouble();
     }
     return 0.0;
@@ -931,32 +1172,36 @@ double AqlValue$::toDouble() const {
 //////////////////////////////////////////////////////////////////////////////
 
 int64_t AqlValue$::toInt64() const {
-  if (slice().isCustom()) {
-#warning FIX custom      
-    // range. TODO
-    //size_t rangeSize = _range->size();
-    //if (rangeSize == 1) {
-    //  return _range->at(0);
-    //}
-    return 0;
+  if (type() == RANGE) {
+    // special handling for ranges
+    Range* r = range();
+    size_t rangeSize = r->size();
+  
+    if (rangeSize == 1) {
+      return static_cast<int64_t>(r->at(0));
+    }
+    return 0.0;
   }
-  if (slice().isBoolean()) {
-    return slice().getBoolean() ? 1 : 0;
+  
+  VPackSlice const s = slice();
+  
+  if (s.isBoolean()) {
+    return s.getBoolean() ? 1 : 0;
   }
-  if (slice().isNumber()) {
-    return slice().getNumber<int64_t>();
+  if (s.isNumber()) {
+    return s.getNumber<int64_t>();
   }
-  if (slice().isString()) {
+  if (s.isString()) {
     try {
-      return static_cast<int64_t>(std::stoll(slice().copyString()));
+      return static_cast<int64_t>(std::stoll(s.copyString()));
     } catch (...) {
       // conversion failed
     }
     return 0;
   }
-  if (slice().isArray()) {
-    if (slice().length() == 1) {
-      AqlValue$ tmp(slice().at(0));
+  if (s.isArray()) {
+    if (s.length() == 1) {
+      AqlValue$ tmp(s.at(0));
       return tmp.toInt64();
     }
     return 0;
@@ -965,35 +1210,234 @@ int64_t AqlValue$::toInt64() const {
   return 0;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the contained value evaluates to true
+//////////////////////////////////////////////////////////////////////////////
+
 bool AqlValue$::isTrue() const {
-  if (slice().isBoolean() && slice().getBoolean()) {
-    return true;
-  } 
-  if (slice().isNumber() && slice().getNumber<double>() != 0.0) {
-    return true;
-  } 
-  if (slice().isString() && !slice().copyString().empty()) {
-    return true;
-  } 
-  if (slice().isArray() || slice().isObject()) {
+  if (type() == RANGE) {
     return true;
   }
-  if (slice().isCustom()) {
-    // range
-    return true;
-  } 
+  VPackSlice const s = slice();
 
+  if (s.isBoolean()) {
+    return s.getBoolean();
+  } 
+  if (s.isNumber()) {
+    return (s.getNumber<double>() != 0.0);
+  } 
+  if (s.isString()) {
+    VPackValueLength length;
+    s.getString(length);
+    return length > 0;
+  } 
+  if (s.isArray() || s.isObject()) {
+    return true;
+  }
+
+  // all other cases, include Null and None
   return false;
 }
 
-VPackSlice AqlValue$::slice() const {
-  if (type()) {
-    // Use External
-    return VPackSlice(_data.external->data());
-  } else {
-    return VPackSlice(_data.internal);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a V8 value as input for the expression execution in V8
+/// only construct those attributes that are needed in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> AqlValue$::toV8Partial(
+    v8::Isolate* isolate, arangodb::AqlTransaction* trx,
+    std::unordered_set<std::string> const& attributes) const {
+  VPackSlice const s = slice();
+
+  if (isObject()) {
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+    // only construct those attributes needed
+    size_t left = attributes.size();
+
+    // we can only have got here if we had attributes
+    TRI_ASSERT(left > 0);
+
+    // iterate over all the object's attributes
+    for (auto const& it : VPackObjectIterator(s)) {
+      // check if we need to render this attribute
+      auto it2 = attributes.find(it.key.copyString());
+
+      if (it2 == attributes.end()) {
+        // we can skip the attribute
+        continue;
+      }
+
+      // TODO: do we need a customTypeHandler here?
+      result->ForceSet(TRI_V8_STD_STRING((*it2)),
+                       TRI_VPackToV8(isolate, it.value));
+
+      if (--left == 0) {
+        // we have rendered all required attributes
+        break;
+      }
+    }
+
+    // return partial object
+    return result;
+  }
+
+  // fallback
+  // TODO: do we need a customTypeHandler here?
+  return TRI_VPackToV8(isolate, s);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a V8 value as input for the expression execution in V8
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> AqlValue$::toV8(
+    v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
+  if (type() == RANGE) {
+    Range* r = range();
+    size_t const n = r->size();
+
+    v8::Handle<v8::Array> result =
+          v8::Array::New(isolate, static_cast<int>(n));
+
+    for (uint32_t i = 0; i < n; ++i) {
+      // is it safe to use a double here (precision loss)?
+      result->Set(i, v8::Number::New(isolate, 
+        static_cast<double>(r->at(static_cast<size_t>(i)))));
+    }
+
+    return result;
+  }
+
+  // all other types go here
+  return TRI_VPackToV8(isolate, slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief sets the value type
+//////////////////////////////////////////////////////////////////////////////
+
+void AqlValue$::setType(AqlValueType type) {
+  _data.internal[15] = type;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for copy construction/assignment
+//////////////////////////////////////////////////////////////////////////////
+
+void AqlValue$::copy(AqlValue$ const& other) {
+  setType(other.type());
+  VPackValueLength length = other.slice().byteSize();
+  switch (other.type()) {
+    case EXTERNAL: {
+      _data.external = new VPackBuffer<uint8_t>(length);
+      memcpy(_data.external->data(), other._data.external->data(), length);
+      break;
+    }
+    case REFERENCE: 
+    case REFERENCE_STICKY: {
+      _data.reference = other._data.reference;
+      break;
+    }
+    case INTERNAL: {
+      memcpy(_data.internal, other._data.internal, length);
+      break;
+    }
+    case RANGE: {
+      Range* range = new Range(other.range()->_low, other.range()->_high);
+
+      _data.internal[0] = 0xf4; // custom type for range
+      _data.internal[1] = sizeof(Range*);
+      memcpy(&_data.internal[2], &range, sizeof(Range*));
+      break; 
+    }
   }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for move construction/assignment
+//////////////////////////////////////////////////////////////////////////////
+
+void AqlValue$::move(AqlValue$& other) {
+  setType(other.type());
+  switch (other.type()) {
+    case EXTERNAL: {
+      // steal the other's external value
+      _data.external = other._data.external;
+
+      // overwrite the other's value
+      invalidate(other);
+      break;
+    }
+    case REFERENCE: 
+    case REFERENCE_STICKY: {
+      // reuse the other's external value
+      _data.reference = other._data.reference;
+      break;
+    }
+    case INTERNAL: {
+      VPackValueLength length = other.slice().byteSize();
+      memcpy(_data.internal, other._data.internal, length);
+      break;
+    }
+    case RANGE: {
+      // copy the range pointer over to us
+      VPackValueLength length = other.slice().byteSize();
+      memcpy(_data.internal, other._data.internal, length);
+      
+      // overwrite the other's value
+      invalidate(other);
+      break;
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the value's internals
+//////////////////////////////////////////////////////////////////////////////
+
+void AqlValue$::destroy() {
+  switch (type()) {
+    case EXTERNAL: {
+      if (_data.external != nullptr) {
+        delete _data.external;
+      }
+      break;
+    }
+    case REFERENCE:
+    case REFERENCE_STICKY:
+    case INTERNAL: {
+      // NOTHING TO DO
+      break;
+    }
+    case RANGE: {
+      delete range();
+      break;
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates/resets a value to None
+//////////////////////////////////////////////////////////////////////////////
+
+void AqlValue$::invalidate(AqlValue$& other) {
+  VPackSlice empty; // None slice
+  memcpy(other._data.internal, empty.begin(), empty.byteSize());
+  setType(AqlValueType::INTERNAL);
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get pointer of the included Range object
+//////////////////////////////////////////////////////////////////////////////
+
+Range* AqlValue$::range() const {
+  TRI_ASSERT(type() == RANGE);
+  Range* range = nullptr;
+  memcpy(&range, &_data.internal[2], sizeof(Range*));
+  return range;
+}
+
 
 void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
                             TRI_document_collection_t const* document,

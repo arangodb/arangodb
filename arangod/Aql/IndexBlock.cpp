@@ -106,8 +106,8 @@ void IndexBlock::executeExpressions() {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions]);
+    AqlValue a = AqlValue(exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
+                              _inRegs[posInExpressions]));
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);

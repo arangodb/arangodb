@@ -64,6 +64,13 @@ static VPackBuilder TrueBuilder;
 
 static VPackBuilder FalseBuilder;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for empty ARRAYs which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder ArrayBuilder;
+
 
 // attribute exclude handler for skipping over system attributes
 struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
@@ -115,9 +122,15 @@ void VelocyPackHelper::initialize() {
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
 
+  // Null value
   NullBuilder.add(VPackValue(VPackValueType::Null));
+  // True value
   TrueBuilder.add(VPackValue(true));
+  // False value
   FalseBuilder.add(VPackValue(false));
+  // Array value (empty)
+  ArrayBuilder.openArray();
+  ArrayBuilder.close();
 }
 
 arangodb::velocypack::Slice VelocyPackHelper::NullValue() {
@@ -130,6 +143,10 @@ arangodb::velocypack::Slice VelocyPackHelper::TrueValue() {
 
 arangodb::velocypack::Slice VelocyPackHelper::FalseValue() {
   return FalseBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::ArrayValue() {
+  return ArrayBuilder.slice(); 
 }
   
 ////////////////////////////////////////////////////////////////////////////////

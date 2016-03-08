@@ -134,7 +134,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     }
 
     // execute the expression
-    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs);
+    AqlValue a = AqlValue(_expression->execute(_trx, result, i, _inVars, _inRegs));
 
     try {
       TRI_IF_FAILURE("CalculationBlock::executeExpression") {
