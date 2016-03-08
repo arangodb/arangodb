@@ -223,7 +223,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveInvalidDocumentType : function () {
-      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+      [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           collection.save(doc);
           fail();
@@ -1498,6 +1498,7 @@ function DatabaseDocumentSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists
