@@ -42,6 +42,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
@@ -617,7 +618,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         warningsToVelocyPack(tmp);
         tmp.close();
         res.warnings = arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice().get("warnings"));
-        res.json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
+        res.json = arangodb::basics::VelocyPackHelper::velocyPackToJson(cacheEntry->_queryResult->slice());
         res.cached = true;
 
         if (res.json == nullptr) {
@@ -680,20 +681,18 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
-          std::unique_ptr<TRI_json_t> copy(
-              TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, jsonResult.json()));
+          std::shared_ptr<VPackBuilder> copy(arangodb::basics::JsonHelper::toVelocyPack(jsonResult.json()));
 
           if (copy == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
           auto result = QueryCache::instance()->store(
-              _vocbase, queryStringHash, _queryString, _queryLength, copy.get(),
+              _vocbase, queryStringHash, _queryString, _queryLength, copy,
               _trx->collectionNames());
 
-          if (result != nullptr) {
-            // result now belongs to cache
-            copy.release();
+          if (result == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
         }
       } else {
@@ -789,8 +788,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
-        res.result = v8::Handle<v8::Array>::Cast(
-            TRI_ObjectJson(isolate, cacheEntry->_queryResult));
+        res.result = v8::Handle<v8::Array>::Cast(TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice()));
         res.cached = true;
         return res;
       }
@@ -821,12 +819,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     try {
       if (useQueryCache) {
         // iterate over result, return it and store it in query cache
-        std::unique_ptr<TRI_json_t> cacheResult(
-            TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
-
-        if (cacheResult == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
+        auto builder = std::make_shared<VPackBuilder>();
+        builder->openArray();
 
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
@@ -842,20 +836,24 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               result.result->Set(j++, val.toV8(isolate, _trx, doc));
 
               auto json = val.toJson(_trx, doc, true);
-              TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, cacheResult.get(),
-                                     json.steal());
+              int res = arangodb::basics::JsonHelper::toVelocyPack(json.json(), *(builder.get()));
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                delete value;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
             }
           }
           delete value;
           value = nullptr;
         }
 
+        builder->close();
+
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
           QueryCache::instance()->store(_vocbase, queryStringHash, _queryString,
-                                        _queryLength, cacheResult.get(),
-                                        _trx->collectionNames());
-          cacheResult.release();
+                                        _queryLength, builder, _trx->collectionNames());
         }
       } else {
         // iterate over result and return it

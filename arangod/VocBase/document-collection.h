@@ -683,41 +683,6 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     std::string const&, int, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a select-by-example query
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
-    struct TRI_transaction_collection_t*,
-    arangodb::ExampleMatcher const& matcher);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a select-by-example query
-/// TODO remove
-////////////////////////////////////////////////////////////////////////////////
-
-struct ShapedJsonHash {
-  size_t operator()(TRI_shaped_json_t const& shap) const {
-    uint64_t hash = 0x12345678;
-    hash = fasthash64(&shap._sid, sizeof(shap._sid), hash);
-    return static_cast<size_t>(
-        fasthash64(shap._data.data, shap._data.length, hash));
-  }
-};
-
-struct ShapedJsonEq {
-  bool operator()(TRI_shaped_json_t const& left,
-                  TRI_shaped_json_t const& right) const {
-    if (left._sid != right._sid) {
-      return false;
-    }
-    if (left._data.length != right._data.length) {
-      return false;
-    }
-    return (memcmp(left._data.data, right._data.data, left._data.length) == 0);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection
 /// use this for testing only
 ////////////////////////////////////////////////////////////////////////////////

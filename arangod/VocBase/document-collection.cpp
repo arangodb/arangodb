@@ -3206,28 +3206,6 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a select-by-example query
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<TRI_doc_mptr_t> TRI_SelectByExample(
-    TRI_transaction_collection_t* trxCollection,
-    ExampleMatcher const& matcher) {
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
-  // use filtered to hold copies of the master pointer
-  std::vector<TRI_doc_mptr_t> filtered;
-
-  auto work = [&matcher, &filtered](TRI_doc_mptr_t const* ptr) {
-    if (matcher.matches(0, ptr)) {
-      filtered.emplace_back(*ptr);
-    }
-    return true;
-  };
-  document->primaryIndex()->invokeOnAllElements(work);
-  return filtered;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection
 /// use this for testing only
 ////////////////////////////////////////////////////////////////////////////////
