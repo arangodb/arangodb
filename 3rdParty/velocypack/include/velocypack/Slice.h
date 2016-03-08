@@ -326,10 +326,39 @@ class Slice {
 
     return last;
   }
+  
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  Slice get(std::vector<char const*> const& attributes) const {
+    size_t const n = attributes.size();
+    if (n == 0) {
+      throw Exception(Exception::InvalidAttributePath);
+    }
+
+    // use ourselves as the starting point
+    Slice last = Slice(start());
+    for (size_t i = 0; i < attributes.size(); ++i) {
+      // fetch subattribute
+      last = last.get(attributes[i]);
+
+      // abort as early as possible
+      if (last.isNone() || (i + 1 < n && !last.isObject())) {
+        return Slice();
+      }
+    }
+
+    return last;
+  }
 
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(std::string const& attribute) const;
+  
+  // look for the specified attribute inside an Object
+  // returns a Slice(ValueType::None) if not found
+  Slice get(char const* attribute) const {
+    return get(std::string(attribute));
+  }
 
   Slice operator[](std::string const& attribute) const {
     return get(attribute);
