@@ -734,6 +734,16 @@ Json AqlValue::toJson(arangodb::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor
 ////////////////////////////////////////////////////////////////////////////////
+  
+AqlValue$::AqlValue$() {
+  VPackBuilder builder;
+  memcpy(_data.internal, builder.slice().begin(), builder.slice().byteSize());
+  _data.internal[15] = AqlValueType::INTERNAL; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Constructor
+////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$::AqlValue$(VPackBuilder const& data) {
   TRI_ASSERT(data.isClosed());
@@ -754,7 +764,7 @@ AqlValue$::AqlValue$(VPackBuilder const& data) {
 /// @brief Constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data){};
+AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor
@@ -772,8 +782,7 @@ AqlValue$::AqlValue$(VPackSlice const& data) {
     memcpy(_data.external->data(), data.start(), l);
     _data.internal[15] = AqlValueType::EXTERNAL; 
   }
-};
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Copy Constructor.
@@ -876,6 +885,105 @@ AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
 
 AqlValue$::AqlValueType AqlValue$::type() const {
   return static_cast<AqlValueType>(_data.internal[15]);
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+//////////////////////////////////////////////////////////////////////////////
+ 
+double AqlValue$::toDouble() const {
+  if (slice().isCustom()) {
+#warning FIX custom      
+    // range. TODO
+    //size_t rangeSize = _range->size();
+    //if (rangeSize == 1) {
+    //  return _range->at(0);
+    //}
+    return 0.0;
+  }
+  if (slice().isBoolean()) {
+    return slice().getBoolean() ? 1.0 : 0.0;
+  }
+  if (slice().isNumber()) {
+    return slice().getNumber<double>();
+  }
+  if (slice().isString()) {
+    try {
+      return std::stod(slice().copyString());
+    } catch (...) {
+      // conversion failed
+    }
+    return 0.0;
+  }
+  if (slice().isArray()) {
+    if (slice().length() == 1) {
+      AqlValue$ tmp(slice().at(0));
+      return tmp.toDouble();
+    }
+    return 0.0;
+  }
+
+  return 0.0;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+//////////////////////////////////////////////////////////////////////////////
+
+int64_t AqlValue$::toInt64() const {
+  if (slice().isCustom()) {
+#warning FIX custom      
+    // range. TODO
+    //size_t rangeSize = _range->size();
+    //if (rangeSize == 1) {
+    //  return _range->at(0);
+    //}
+    return 0;
+  }
+  if (slice().isBoolean()) {
+    return slice().getBoolean() ? 1 : 0;
+  }
+  if (slice().isNumber()) {
+    return slice().getNumber<int64_t>();
+  }
+  if (slice().isString()) {
+    try {
+      return static_cast<int64_t>(std::stoll(slice().copyString()));
+    } catch (...) {
+      // conversion failed
+    }
+    return 0;
+  }
+  if (slice().isArray()) {
+    if (slice().length() == 1) {
+      AqlValue$ tmp(slice().at(0));
+      return tmp.toInt64();
+    }
+    return 0;
+  }
+
+  return 0;
+}
+
+bool AqlValue$::isTrue() const {
+  if (slice().isBoolean() && slice().getBoolean()) {
+    return true;
+  } 
+  if (slice().isNumber() && slice().getNumber<double>() != 0.0) {
+    return true;
+  } 
+  if (slice().isString() && !slice().copyString().empty()) {
+    return true;
+  } 
+  if (slice().isArray() || slice().isObject()) {
+    return true;
+  }
+  if (slice().isCustom()) {
+    // range
+    return true;
+  } 
+
+  return false;
 }
 
 VPackSlice AqlValue$::slice() const {

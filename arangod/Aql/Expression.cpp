@@ -21,45 +21,31 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Expression.h"
+#include "Expression.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/json.h"
-#include "VocBase/document-collection.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for NULL which can be shared by all
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t const Expression::NullJson = {TRI_JSON_NULL, {false}};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for TRUE which can be shared by all
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t const Expression::TrueJson = {TRI_JSON_BOOLEAN, {true}};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for FALSE which can be shared by all
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t const Expression::FalseJson = {TRI_JSON_BOOLEAN, {false}};
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
@@ -155,8 +141,7 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                              AqlItemBlock const* argv, size_t startPos,
                              std::vector<Variable const*> const& vars,
-                             std::vector<RegisterId> const& regs,
-                             TRI_document_collection_t const** collection) {
+                             std::vector<RegisterId> const& regs) {
   if (!_built) {
     buildExpression();
   }
@@ -172,8 +157,8 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
     }
 
     case SIMPLE: {
-      return executeSimpleExpression(_node, collection, trx, argv, startPos,
-                                     vars, regs, true);
+      return AqlValue(executeSimpleExpression(_node, trx, argv, startPos,
+                                     vars, regs, true));
     }
 
     case ATTRIBUTE: {
@@ -185,9 +170,6 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
       TRI_ASSERT(_func != nullptr);
       try {
         ISOLATE;
-        // Dump the expression in question
-        // std::cout << arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE,
-        // _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars,
                               regs);
       } catch (arangodb::basics::Exception& ex) {
@@ -283,14 +265,12 @@ void Expression::invalidate() {
 /// linear search (if the node is not sorted)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
-                             TRI_document_collection_t const* leftCollection,
-                             TRI_document_collection_t const* rightCollection,
+bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
-  TRI_ASSERT(right.isArray());
+  TRI_ASSERT(right.slice().isArray());
 
-  size_t const n = right.arraySize();
+  size_t const n = right.slice().length();
 
   if (n > 3 && 
       (node->getMember(1)->isSorted() ||
@@ -303,11 +283,10 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     while (true) {
       // determine midpoint
       size_t m = l + ((r - l) / 2);
-      auto arrayItem = right.extractArrayMember(trx, rightCollection, m, false);
-      AqlValue arrayItemValue(&arrayItem);
+      VPackSlice arrayItem = right.slice().at(m);
+      AqlValue$ arrayItemValue(arrayItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection,
-                                            arrayItemValue, nullptr, false);
+      int compareResult = AqlValue$::Compare(trx, left, arrayItemValue, true);
 
       if (compareResult == 0) {
         // item found in the list
@@ -329,13 +308,9 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     }
   } else {
     // use linear search
-    for (size_t i = 0; i < n; ++i) {
+    for (auto const& it : VPackArrayIterator(right.slice())) {
       // do not copy the list element we're looking at
-      auto arrayItem = right.extractArrayMember(trx, rightCollection, i, false);
-      AqlValue arrayItemValue(&arrayItem);
-
-      int compareResult = AqlValue::Compare(trx, left, leftCollection,
-                                            arrayItemValue, nullptr, false);
+      int compareResult = AqlValue$::Compare(trx, left, AqlValue$(it), false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -458,9 +433,8 @@ void Expression::buildExpression() {
 /// the resulting AqlValue will be destroyed outside eventually
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpression(
-    AstNode const* node, TRI_document_collection_t const** collection,
-    arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
+AqlValue$ Expression::executeSimpleExpression(
+    AstNode const* node, arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
   switch (node->type) {
@@ -479,7 +453,7 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_VALUE:
       return executeSimpleExpressionValue(node);
     case NODE_TYPE_REFERENCE:
-      return executeSimpleExpressionReference(node, collection, argv, startPos,
+      return executeSimpleExpressionReference(node, trx, argv, startPos,
                                               vars, regs, doCopy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, argv, startPos, vars,
@@ -520,7 +494,7 @@ AqlValue Expression::executeSimpleExpression(
       return executeSimpleExpressionExpansion(node, trx, argv, startPos, vars,
                                               regs);
     case NODE_TYPE_ITERATOR:
-      return executeSimpleExpressionIterator(node, collection, trx, argv,
+      return executeSimpleExpressionIterator(node, trx, argv,
                                              startPos, vars, regs);
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
@@ -583,7 +557,7 @@ void Expression::stringifyIfNotTooLong(
 /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionAttributeAccess(
+AqlValue$ Expression::executeSimpleExpressionAttributeAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -594,20 +568,24 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   auto member = node->getMemberUnchecked(0);
   auto name = static_cast<char const*>(node->getData());
 
-  TRI_document_collection_t const* myCollection = nullptr;
-  AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv,
-                                            startPos, vars, regs, false);
+  AqlValue$ result = executeSimpleExpression(member, trx, argv,
+                                             startPos, vars, regs, false);
 
-  auto j = result.extractObjectMember(trx, myCollection, name, true, _buffer);
-  result.destroy();
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+  VPackSlice slice = result.slice();
+  if (slice.isObject()) {
+    VPackSlice value = slice.get(name);
+    if (!value.isNone()) {
+      return AqlValue$(value);
+    }
+  }
+  return AqlValue$(VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionIndexedAccess(
+AqlValue$ Expression::executeSimpleExpressionIndexedAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -627,75 +605,62 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
   auto member = node->getMember(0);
   auto index = node->getMember(1);
 
-  TRI_document_collection_t const* myCollection = nullptr;
-  AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv,
-                                            startPos, vars, regs, false);
+  AqlValue$ result = executeSimpleExpression(member, trx, argv,
+                                             startPos, vars, regs, false);
 
-  if (result.isArray()) {
-    TRI_document_collection_t const* myCollection2 = nullptr;
-    AqlValue indexResult = executeSimpleExpression(
-        index, &myCollection2, trx, argv, startPos, vars, regs, false);
+  if (result.slice().isArray()) {
+    AqlValue$ indexResult = executeSimpleExpression(
+        index, trx, argv, startPos, vars, regs, false);
 
-    if (indexResult.isNumber()) {
-      auto j = result.extractArrayMember(trx, myCollection,
-                                         indexResult.toInt64(), true);
-      indexResult.destroy();
-      result.destroy();
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
-    } else if (indexResult.isString()) {
-      auto value(indexResult.toString());
-      indexResult.destroy();
+    if (indexResult.slice().isNumber()) {
+      return AqlValue$(result.slice().at(indexResult.toInt64()));
+    }
+     
+    if (indexResult.slice().isString()) {
+      std::string const value = indexResult.slice().copyString();
 
       try {
         // stoll() might throw an exception if the string is not a number
-        int64_t position = static_cast<int64_t>(std::stoll(value.c_str()));
-        auto j = result.extractArrayMember(trx, myCollection, position, true);
-        result.destroy();
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+        int64_t position = static_cast<int64_t>(std::stoll(value));
+        return AqlValue$(result.slice().at(position));
       } catch (...) {
         // no number found.
       }
-    } else {
-      indexResult.destroy();
-    }
+    } 
 
     // fall-through to returning null
-  } else if (result.isObject()) {
-    TRI_document_collection_t const* myCollection2 = nullptr;
-    AqlValue indexResult = executeSimpleExpression(
-        index, &myCollection2, trx, argv, startPos, vars, regs, false);
+  } else if (result.slice().isObject()) {
+    AqlValue$ indexResult = executeSimpleExpression(
+        index, trx, argv, startPos, vars, regs, false);
 
-    if (indexResult.isNumber()) {
-      auto indexString(std::to_string(indexResult.toInt64()));
-      auto j = result.extractObjectMember(trx, myCollection,
-                                          indexString.c_str(), true, _buffer);
-      indexResult.destroy();
-      result.destroy();
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
-    } else if (indexResult.isString()) {
-      auto value(indexResult.toString());
-      indexResult.destroy();
-
-      auto j = result.extractObjectMember(trx, myCollection, value.c_str(),
-                                          true, _buffer);
-      result.destroy();
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
-    } else {
-      indexResult.destroy();
+    if (indexResult.slice().isNumber()) {
+      std::string const indexString = std::to_string(indexResult.slice().getNumber<int64_t>());
+      VPackSlice value = result.slice().get(indexString);
+      if (!value.isNone()) {
+        return AqlValue$(value);
+      }
+      return AqlValue$(VelocyPackHelper::NullValue());
     }
-
+     
+    if (indexResult.slice().isString()) {
+      std::string const indexString = indexResult.slice().copyString();
+      VPackSlice value = result.slice().get(indexString);
+      if (!value.isNone()) {
+        return AqlValue$(value);
+      }
+      return AqlValue$(VelocyPackHelper::NullValue());
+    } 
     // fall-through to returning null
   }
-  result.destroy();
 
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &NullJson, Json::NOFREE));
+  return AqlValue$(VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionArray(
+AqlValue$ Expression::executeSimpleExpressionArray(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -707,31 +672,33 @@ AqlValue Expression::executeSimpleExpressionArray(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    // we do not own the JSON but the node does!
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE));
+    VPackBuilder builder;
+    JsonHelper::toVelocyPack(json, builder);
+
+    return AqlValue$(builder);
   }
 
   size_t const n = node->numMembers();
-  auto array = std::make_unique<Json>(Json::Array, n);
+
+  VPackBuilder builder;
+  builder.openArray();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    TRI_document_collection_t const* myCollection = nullptr;
-
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv,
-                                              startPos, vars, regs, false);
-    array->add(result.toJson(trx, myCollection, true));
-    result.destroy();
+    AqlValue$ result = executeSimpleExpression(member, trx, argv,
+                                               startPos, vars, regs, false);
+    builder.add(result.slice());
   }
+  builder.close();
 
-  return AqlValue(array.release());
+  return AqlValue$(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionObject(
+AqlValue$ Expression::executeSimpleExpressionObject(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -742,51 +709,54 @@ AqlValue Expression::executeSimpleExpressionObject(
     if (json == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
+    
+    VPackBuilder builder;
+    JsonHelper::toVelocyPack(json, builder);
 
-    // we do not own the JSON but the node does!
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE));
+    return AqlValue$(builder);
   }
+
+  VPackBuilder builder;
+  builder.openObject();
 
   size_t const n = node->numMembers();
-  auto object = std::make_unique<Json>(Json::Object, n);
-
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    TRI_document_collection_t const* myCollection = nullptr;
-
     TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-    auto key = member->getStringValue();
+    char const* key = member->getStringValue();
     member = member->getMember(0);
 
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv,
-                                              startPos, vars, regs, false);
-    object->set(key, result.toJson(trx, myCollection, true));
-    result.destroy();
+    AqlValue$ result = executeSimpleExpression(member, trx, argv,
+                                               startPos, vars, regs, false);
+    builder.add(key, result.slice());
   }
-  return AqlValue(object.release());
+  builder.close();
+
+  return AqlValue$(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with VALUE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionValue(AstNode const* node) {
+AqlValue$ Expression::executeSimpleExpressionValue(AstNode const* node) {
   auto json = node->computeJson();
 
   if (json == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  // we do not own the JSON but the node does!
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE));
+  VPackBuilder builder;
+  JsonHelper::toVelocyPack(json, builder);
+  return AqlValue$(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with REFERENCE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionReference(
-    AstNode const* node, TRI_document_collection_t const** collection,
+AqlValue$ Expression::executeSimpleExpressionReference(
+    AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs, bool doCopy) {
@@ -796,34 +766,17 @@ AqlValue Expression::executeSimpleExpressionReference(
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
-      *collection = nullptr;
-      auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (*it).second);
-
-      if (copy == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, copy));
+      return AqlValue$((*it).second);
     }
   }
 
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->name == v->name) {
-      TRI_ASSERT(collection != nullptr);
-
-      // save the collection info
-      *collection = argv->getDocumentCollection(regs[i]);
-
-      if (doCopy) {
-        return argv->getValueReference(startPos, regs[i]).clone();
-      }
-
-      // AqlValue.destroy() will be called for the returned value soon,
-      // so we must not return the original AqlValue from the AqlItemBlock here
-      return argv->getValueReference(startPos, regs[i]).shallowClone();
+      return AqlValue$(argv->getValueReference(startPos, regs[i]), trx, nullptr);
     }
   }
+
   std::string msg("variable not found '");
   msg.append(v->name);
   msg.append("' in executeSimpleExpression()");
@@ -834,32 +787,36 @@ AqlValue Expression::executeSimpleExpressionReference(
 /// @brief execute an expression of type SIMPLE with RANGE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionRange(
+AqlValue$ Expression::executeSimpleExpressionRange(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* leftCollection = nullptr;
-  TRI_document_collection_t const* rightCollection = nullptr;
 
   auto low = node->getMember(0);
   auto high = node->getMember(1);
-  AqlValue resultLow = executeSimpleExpression(low, &leftCollection, trx, argv,
-                                               startPos, vars, regs, false);
-  AqlValue resultHigh = executeSimpleExpression(
-      high, &rightCollection, trx, argv, startPos, vars, regs, false);
-  AqlValue res = AqlValue(resultLow.toInt64(), resultHigh.toInt64());
-  resultLow.destroy();
-  resultHigh.destroy();
-
-  return res;
+  AqlValue$ resultLow = executeSimpleExpression(low, trx, argv,
+                                                startPos, vars, regs, false);
+  AqlValue$ resultHigh = executeSimpleExpression(
+      high, trx, argv, startPos, vars, regs, false);
+ 
+  // build a custom type for the range 
+  VPackBuilder builder;
+  uint8_t* p = builder.add(VPackValuePair(2 + 2 * sizeof(int64_t), VPackValueType::Custom));
+  *p++ = 0xf4; // custom type for range
+  *p++ = 2 * sizeof(int64_t);
+  memcpy(p, &low, sizeof(int64_t));
+  p += sizeof(int64_t);
+  memcpy(p, &high, sizeof(int64_t));
+  
+  return AqlValue$(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with FCALL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionFCall(
+AqlValue$ Expression::executeSimpleExpressionFCall(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -881,132 +838,109 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
 #warning Check if this is correct w.r.t. Memory Management
   for (size_t i = 0; i < n; ++i) {
-    builder.clear();
-    TRI_document_collection_t const* myCollection = nullptr;
     auto arg = member->getMemberUnchecked(i);
 
     if (arg->type == NODE_TYPE_COLLECTION) {
+      builder.clear();
       builder.add(VPackValue(
           std::string(arg->getStringValue(), arg->getStringLength())));
       parameters.emplace_back(AqlValue$(builder));
     } else {
-      AqlValue tmp = executeSimpleExpression(arg, &myCollection, trx, argv,
-                                             startPos, vars, regs, false);
-      parameters.emplace_back(AqlValue$(tmp, trx, myCollection));
+      parameters.emplace_back(executeSimpleExpression(arg, trx, argv,
+                                              startPos, vars, regs, false));
     }
   }
 
-  auto res2 = func->implementation(_ast->query(), trx, parameters);
-
-  // parameters go out if scope and free themselves.
-  return AqlValue(res2);
+  return func->implementation(_ast->query(), trx, parameters);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with NOT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionNot(
+AqlValue$ Expression::executeSimpleExpressionNot(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* myCollection = nullptr;
-  AqlValue operand =
-      executeSimpleExpression(node->getMember(0), &myCollection, trx, argv,
+  AqlValue$ operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
 
-  bool const operandIsTrue = operand.isTrue();
-  operand.destroy();
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                           operandIsTrue ? &FalseJson : &TrueJson,
-                           Json::NOFREE));
+  return AqlValue$(operand.isTrue() ? VelocyPackHelper::FalseValue() : VelocyPackHelper::TrueValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with AND or OR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionAndOr(
+AqlValue$ Expression::executeSimpleExpressionAndOr(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* leftCollection = nullptr;
-  AqlValue left =
-      executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv,
+  AqlValue$ left =
+      executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, true);
-  TRI_document_collection_t const* rightCollection = nullptr;
-  AqlValue right =
-      executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv,
+  AqlValue$ right =
+      executeSimpleExpression(node->getMember(1), trx, argv,
                               startPos, vars, regs, true);
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
     // AND
     if (left.isTrue()) {
       // left is true => return right
-      left.destroy();
       return right;
     }
 
     // left is false, return left
-    right.destroy();
     return left;
-  } else {
-    // OR
-    if (left.isTrue()) {
-      // left is true => return left
-      right.destroy();
-      return left;
-    }
-
-    // left is false => return right
-    left.destroy();
-    return right;
+  } 
+    
+  // OR
+  if (left.isTrue()) {
+    // left is true => return left
+    return left;
   }
+
+  // left is false => return right
+  return right;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with COMPARISON
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionComparison(
+AqlValue$ Expression::executeSimpleExpressionComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* leftCollection = nullptr;
-  AqlValue left =
-      executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv,
+  AqlValue$ left =
+      executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
-  TRI_document_collection_t const* rightCollection = nullptr;
-  AqlValue right =
-      executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv,
+  AqlValue$ right =
+      executeSimpleExpression(node->getMember(1), trx, argv,
                               startPos, vars, regs, false);
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // IN and NOT IN
-    if (!right.isArray()) {
+    if (!right.slice().isArray()) {
       // right operand must be a list, otherwise we return false
-      left.destroy();
-      right.destroy();
       // do not throw, but return "false" instead
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+      return AqlValue$(VelocyPackHelper::FalseValue());
     }
 
     bool result =
-        findInArray(left, right, leftCollection, rightCollection, trx, node);
+        findInArray(left, right, trx, node);
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // revert the result in case of a NOT IN
       result = !result;
     }
 
-    left.destroy();
-    right.destroy();
-
-    return AqlValue(new arangodb::basics::Json(result));
+    return AqlValue$(result ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
   }
 
   // all other comparison operators...
@@ -1015,35 +949,20 @@ AqlValue Expression::executeSimpleExpressionComparison(
   bool compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
                       node->type != NODE_TYPE_OPERATOR_BINARY_NE);
 
-  int compareResult = AqlValue::Compare(trx, left, leftCollection, right,
-                                        rightCollection, compareUtf8);
-  left.destroy();
-  right.destroy();
+  int compareResult = AqlValue$::Compare(trx, left, right, compareUtf8);
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult == 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult == 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     case NODE_TYPE_OPERATOR_BINARY_NE:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult != 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult != 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     case NODE_TYPE_OPERATOR_BINARY_LT:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult < 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult < 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     case NODE_TYPE_OPERATOR_BINARY_LE:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult <= 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult <= 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     case NODE_TYPE_OPERATOR_BINARY_GT:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult > 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult > 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     case NODE_TYPE_OPERATOR_BINARY_GE:
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                               (compareResult >= 0) ? &TrueJson : &FalseJson,
-                               Json::NOFREE));
+      return AqlValue$((compareResult >= 0) ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -1056,41 +975,35 @@ AqlValue Expression::executeSimpleExpressionComparison(
 /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionArrayComparison(
+AqlValue$ Expression::executeSimpleExpressionArrayComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* leftCollection = nullptr;
-  AqlValue left =
-      executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv,
+  AqlValue$ left =
+      executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
-  TRI_document_collection_t const* rightCollection = nullptr;
-  AqlValue right =
-      executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv,
+  AqlValue$ right =
+      executeSimpleExpression(node->getMember(1), trx, argv,
                               startPos, vars, regs, false);
 
-  if (!left.isArray()) {
+  if (!left.slice().isArray()) {
     // left operand must be an array
-    left.destroy();
-    right.destroy();
     // do not throw, but return "false" instead
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+    return AqlValue$(VelocyPackHelper::FalseValue());
   }
   
   if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // IN and NOT IN
-    if (!right.isArray()) {
+    if (!right.slice().isArray()) {
       // right operand must be a list, otherwise we return false
-      left.destroy();
-      right.destroy();
       // do not throw, but return "false" instead
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
+      return AqlValue$(VelocyPackHelper::FalseValue());
     }
   }
 
-  size_t const n = left.arraySize();
+  size_t const n = left.slice().length();
   std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
@@ -1102,17 +1015,16 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   bool overallResult = true;
   size_t matches = 0;
   size_t numLeft = n;
-  
-  for (size_t i = 0; i < n; ++i) {
-    auto leftItem = left.extractArrayMember(trx, leftCollection, static_cast<int64_t>(i), false);
-    AqlValue leftItemValue(&leftItem);
+ 
+  for (auto const& it : VPackArrayIterator(left.slice())) { 
+    AqlValue$ leftItemValue(it);
     bool result;
 
     // IN and NOT IN
     if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
       result =
-          findInArray(leftItemValue, right, nullptr, rightCollection, trx, node);
+          findInArray(leftItemValue, right, trx, node);
     
       if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
         // revert the result in case of a NOT IN
@@ -1121,8 +1033,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     }
     else {
       // other operators
-      int compareResult = AqlValue::Compare(trx, leftItemValue, nullptr,
-                                            right, rightCollection, compareUtf8);
+      int compareResult = AqlValue$::Compare(trx, leftItemValue, right, compareUtf8);
 
       result = false;
       switch (node->type) {
@@ -1173,35 +1084,30 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
     }
   }
       
-  left.destroy();
-  right.destroy();
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, overallResult ? &TrueJson : &FalseJson, Json::NOFREE));
+  return AqlValue$(overallResult ? VelocyPackHelper::TrueValue() : VelocyPackHelper::FalseValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with TERNARY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionTernary(
+AqlValue$ Expression::executeSimpleExpressionTernary(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* myCollection = nullptr;
-  AqlValue condition =
-      executeSimpleExpression(node->getMember(0), &myCollection, trx, argv,
+  AqlValue$ condition =
+      executeSimpleExpression(node->getMember(0), trx, argv,
                               startPos, vars, regs, false);
 
-  bool const isTrue = condition.isTrue();
-  condition.destroy();
-  if (isTrue) {
+  if (condition.isTrue()) {
     // return true part
-    return executeSimpleExpression(node->getMember(1), &myCollection, trx, argv,
+    return executeSimpleExpression(node->getMember(1), trx, argv,
                                    startPos, vars, regs, true);
   }
 
   // return false part
-  return executeSimpleExpression(node->getMember(2), &myCollection, trx, argv,
+  return executeSimpleExpression(node->getMember(2), trx, argv,
                                  startPos, vars, regs, true);
 }
 
@@ -1209,7 +1115,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
 /// @brief execute an expression of type SIMPLE with EXPANSION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionExpansion(
+AqlValue$ Expression::executeSimpleExpressionExpansion(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -1223,23 +1129,22 @@ AqlValue Expression::executeSimpleExpressionExpansion(
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
-    TRI_document_collection_t const* subCollection = nullptr;
-    AqlValue sub =
-        executeSimpleExpression(limitNode->getMember(0), &subCollection, trx,
+    AqlValue$ sub =
+        executeSimpleExpression(limitNode->getMember(0), trx,
                                 argv, startPos, vars, regs, false);
     offset = sub.toInt64();
-    sub.destroy();
 
-    subCollection = nullptr;
-    sub = executeSimpleExpression(limitNode->getMember(1), &subCollection, trx,
+    sub = executeSimpleExpression(limitNode->getMember(1), trx,
                                   argv, startPos, vars, regs, false);
     count = sub.toInt64();
-    sub.destroy();
   }
-
+    
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Array));
+    VPackBuilder builder;
+    builder.openArray();
+    builder.close();
+    return AqlValue$(builder);
   }
 
   // FILTER
@@ -1253,8 +1158,10 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(
-          new arangodb::basics::Json(arangodb::basics::Json::Array));
+      VPackBuilder builder;
+      builder.openArray();
+      builder.close();
+      return AqlValue$(builder);
     }
   }
 
@@ -1262,67 +1169,52 @@ AqlValue Expression::executeSimpleExpressionExpansion(
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
   auto levels = node->getIntValue(true);
 
-  AqlValue value;
+  AqlValue$ value;
 
   if (levels > 1) {
     // flatten value...
-
-    // generate a new temporary for the flattened array
-    auto flattened = std::make_unique<Json>(Json::Array);
-
-    TRI_document_collection_t const* myCollection = nullptr;
-    value = executeSimpleExpression(node->getMember(0), &myCollection, trx,
+    value = executeSimpleExpression(node->getMember(0), trx,
                                     argv, startPos, vars, regs, false);
+      
+    VPackBuilder builder;
+    builder.openArray();
 
-    if (!value.isArray()) {
-      value.destroy();
-      return AqlValue(
-          new arangodb::basics::Json(arangodb::basics::Json::Array));
+    if (!value.slice().isArray()) {
+      builder.close();
+      return AqlValue$(builder);
     }
-
-    std::function<void(TRI_json_t const*, int64_t)> flatten =
-        [&](TRI_json_t const* json, int64_t level) {
-          if (!TRI_IsArrayJson(json)) {
+      
+    // generate a new temporary for the flattened array
+    std::function<void(VPackSlice const&, int64_t)> flatten =
+        [&](VPackSlice const& json, int64_t level) {
+          if (!json.isArray()) {
             return;
           }
 
-          size_t const n = TRI_LengthArrayJson(json);
-
-          for (size_t i = 0; i < n; ++i) {
-            auto item = static_cast<TRI_json_t const*>(
-                TRI_AtVector(&json->_value._objects, i));
-
-            bool const isArray = TRI_IsArrayJson(item);
+          for (auto const& it : VPackArrayIterator(json)) {
+            bool const isArray = it.isArray();
 
             if (!isArray || level == levels) {
-              auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, item);
-
-              if (copy == nullptr) {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-              }
-
-              flattened->add(copy);
+              builder.add(it);
             } else if (isArray && level < levels) {
-              flatten(item, level + 1);
+              flatten(it, level + 1);
             }
           }
         };
 
-    auto subJson = value.toJson(trx, myCollection, false);
-    flatten(subJson.json(), 1);
-    value.destroy();
+    flatten(value.slice(), 1);
+    builder.close();
 
-    value = AqlValue(flattened.release());
+    value = AqlValue$(builder);
   } else {
-    TRI_document_collection_t const* myCollection = nullptr;
-    value = executeSimpleExpression(node->getMember(0), &myCollection, trx,
+    value = executeSimpleExpression(node->getMember(0), trx,
                                     argv, startPos, vars, regs, false);
 
-    if (!value.isArray()) {
-      // must cast value to array first
-      value.destroy();
-      return AqlValue(
-          new arangodb::basics::Json(arangodb::basics::Json::Array));
+    if (!value.slice().isArray()) {
+      VPackBuilder builder;
+      builder.openArray();
+      builder.close();
+      return AqlValue$(builder);
     }
   }
 
@@ -1335,26 +1227,19 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     projectionNode = node->getMember(4);
   }
 
-  size_t const n = value.arraySize();
-  auto array = std::make_unique<Json>(Json::Array, n);
+  VPackBuilder builder;
+  builder.openArray();
 
-  for (size_t i = 0; i < n; ++i) {
-    // TODO: check why we must copy the array member. will crash without
-    // copying!
-    TRI_document_collection_t const* myCollection = nullptr;
-    auto arrayItem = value.extractArrayMember(trx, myCollection, i, true);
-
-    setVariable(variable, arrayItem.json());
+  for (auto const& it : VPackArrayIterator(value.slice())) {
+    setVariable(variable, it);
 
     bool takeItem = true;
 
     if (filterNode != nullptr) {
       // have a filter
-      TRI_document_collection_t const* subCollection = nullptr;
-      AqlValue sub = executeSimpleExpression(filterNode, &subCollection, trx,
+      AqlValue$ sub = executeSimpleExpression(filterNode, trx,
                                              argv, startPos, vars, regs, false);
       takeItem = sub.isTrue();
-      sub.destroy();
     }
 
     if (takeItem && offset > 0) {
@@ -1364,17 +1249,13 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     }
 
     if (takeItem) {
-      TRI_document_collection_t const* subCollection = nullptr;
-      AqlValue sub =
-          executeSimpleExpression(projectionNode, &subCollection, trx, argv,
+      AqlValue$ sub =
+          executeSimpleExpression(projectionNode, trx, argv,
                                   startPos, vars, regs, true);
-      array->add(sub.toJson(trx, subCollection, true));
-      sub.destroy();
+      builder.add(sub.slice());
     }
 
     clearVariable(variable);
-
-    arrayItem.destroy();
 
     if (takeItem && count > 0) {
       // number of items to pick was restricted
@@ -1385,24 +1266,24 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     }
   }
 
-  value.destroy();
-  return AqlValue(array.release());
+  builder.close();
+
+  return AqlValue$(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ITERATOR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionIterator(
-    AstNode const* node, TRI_document_collection_t const** collection,
+AqlValue$ Expression::executeSimpleExpressionIterator(
+    AstNode const* node, 
     arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  *collection = nullptr;
-  return executeSimpleExpression(node->getMember(1), collection, trx, argv,
+  return executeSimpleExpression(node->getMember(1), trx, argv,
                                  startPos, vars, regs, true);
 }
 
@@ -1410,62 +1291,54 @@ AqlValue Expression::executeSimpleExpressionIterator(
 /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionArithmetic(
+AqlValue$ Expression::executeSimpleExpressionArithmetic(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
-  TRI_document_collection_t const* leftCollection = nullptr;
-  AqlValue lhs = executeSimpleExpression(node->getMember(0), &leftCollection,
-                                         trx, argv, startPos, vars, regs, true);
+  AqlValue$ lhs = executeSimpleExpression(node->getMember(0),
+                                          trx, argv, startPos, vars, regs, true);
 
-  if (lhs.isObject()) {
-    lhs.destroy();
-    return AqlValue(new Json(Json::Null));
+  if (lhs.slice().isObject()) {
+    return AqlValue$(VelocyPackHelper::NullValue());
   }
 
-  TRI_document_collection_t const* rightCollection = nullptr;
-  AqlValue rhs = executeSimpleExpression(node->getMember(1), &rightCollection,
-                                         trx, argv, startPos, vars, regs, true);
+  AqlValue$ rhs = executeSimpleExpression(node->getMember(1),
+                                          trx, argv, startPos, vars, regs, true);
 
-  if (rhs.isObject()) {
-    lhs.destroy();
-    rhs.destroy();
-    return AqlValue(new Json(Json::Null));
+  if (rhs.slice().isObject()) {
+    return AqlValue$(VelocyPackHelper::NullValue());
   }
 
-  bool failed = false;
-  double l = lhs.toNumber(failed);
-  lhs.destroy();
+  double const l = lhs.slice().getNumber<double>();
+  double const r = rhs.slice().getNumber<double>();
 
-  if (failed) {
-    rhs.destroy();
-    return AqlValue(new Json(Json::Null));
-  }
-
-  double r = rhs.toNumber(failed);
-  rhs.destroy();
-
-  if (failed) {
-    return AqlValue(new Json(Json::Null));
-  }
+  VPackBuilder builder;
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      return AqlValue(new Json(l + r));
+      builder.add(VPackValue(l + r));
+      return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
-      return AqlValue(new Json(l - r));
+      builder.add(VPackValue(l - r));
+      return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
-      return AqlValue(new Json(l * r));
+      builder.add(VPackValue(l * r));
+      return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_DIV:
-      if (r == 0) {
+      if (r == 0.0) {
         RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue(new Json(Json::Null));
+        return AqlValue$(VelocyPackHelper::NullValue());
       }
-      return AqlValue(new Json(l / r));
+      return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-      return AqlValue(new Json(fmod(l, r)));
+      if (r == 0.0) {
+        RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        return AqlValue$(VelocyPackHelper::NullValue());
+      }
+      builder.add(VPackValue(fmod(l, r)));
+      return AqlValue$(builder);
     default:
-      return AqlValue(new Json(Json::Null));
+      return AqlValue$(VelocyPackHelper::NullValue());
   }
 }

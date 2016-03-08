@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/VelocyPackHelper.h"
+#include "VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Logger.h"
@@ -42,6 +42,28 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for NULL which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder NullBuilder; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for TRUE which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder TrueBuilder;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for FALSE which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder FalseBuilder;
+
 
 // attribute exclude handler for skipping over system attributes
 struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
@@ -92,6 +114,22 @@ void VelocyPackHelper::initialize() {
   
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
+
+  NullBuilder.add(VPackValue(VPackValueType::Null));
+  TrueBuilder.add(VPackValue(true));
+  FalseBuilder.add(VPackValue(false));
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::NullValue() {
+  return NullBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::TrueValue() {
+  return TrueBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::FalseValue() {
+  return FalseBuilder.slice(); 
 }
   
 ////////////////////////////////////////////////////////////////////////////////

@@ -128,17 +128,13 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->setValue(i, _outReg, AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                                                       &Expression::NullJson,
-                                                       Json::NOFREE)));
+        result->setValue(i, _outReg, AqlValue(new Json(Json::Null)));
         continue;
       }
     }
 
     // execute the expression
-    TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a =
-        _expression->execute(_trx, result, i, _inVars, _inRegs, &myCollection);
+    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs);
 
     try {
       TRI_IF_FAILURE("CalculationBlock::executeExpression") {

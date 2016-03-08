@@ -26,6 +26,7 @@
 
 #include "Basics/JsonHelper.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -207,6 +208,10 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static double toDouble(VPackSlice const&, bool&);
+
+  static arangodb::velocypack::Slice NullValue();
+  static arangodb::velocypack::Slice TrueValue();
+  static arangodb::velocypack::Slice FalseValue();
 };
 }
 }
@@ -214,7 +219,7 @@ class VelocyPackHelper {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices
 //////////////////////////////////////////////////////////////////////////////
-#include "Basics/Logger.h"
+
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
   arangodb::velocypack::Slice const&);
 
