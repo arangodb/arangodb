@@ -24,11 +24,8 @@
 #include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/GeoIndex2.h"
-#include "Indexes/HashIndex.h"
-#include "Indexes/SkiplistIndex.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -36,16 +33,12 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "V8Server/v8-wrapshapedjson.h"
 #include "V8Server/V8VPackWrapper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/ExampleMatcher.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
