@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_VARIABLE_GENERATOR_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 

@@ -1158,11 +1158,6 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
                   v8::Boolean::New(isolate, queryResult.cached));
     }
 
-    if (queryResult.clusterplan != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("clusterplans"),
-                  TRI_ObjectJson(isolate, queryResult.clusterplan));
-    }
-
     if (queryResult.warnings == nullptr) {
       result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
     } else {

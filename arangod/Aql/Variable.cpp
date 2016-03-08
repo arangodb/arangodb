@@ -66,18 +66,6 @@ Variable::Variable(arangodb::velocypack::Slice const slice)
 Variable::~Variable() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the variable
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json Variable::toJson() const {
-  arangodb::basics::Json json(arangodb::basics::Json::Object, 2);
-  json("id", arangodb::basics::Json(static_cast<double>(id)))(
-      "name", arangodb::basics::Json(name));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the variable
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -24,13 +24,13 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator

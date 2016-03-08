@@ -34,10 +34,6 @@ class Builder;
 class Slice;
 }
 
-namespace basics {
-class Json;
-}
-
 namespace aql {
 
 struct Variable {
@@ -88,12 +84,6 @@ struct Variable {
     // variables starting with a number are not user-defined
     return isUserDefined() || name.back() != '_';
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the variable
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a VelocyPack representation of the variable

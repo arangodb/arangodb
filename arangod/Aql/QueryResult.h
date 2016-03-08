@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -45,11 +44,9 @@ struct QueryResult {
     stats.swap(other.stats);
     profile.swap(other.profile);
 
-    clusterplan = other.clusterplan;
     bindParameters = other.bindParameters;
     collectionNames = other.collectionNames;
 
-    other.clusterplan = nullptr;
   }
 
   QueryResult(int code, std::string const& details)
@@ -58,8 +55,7 @@ struct QueryResult {
         details(details),
         warnings(nullptr),
         result(nullptr),
-        profile(nullptr),
-        clusterplan(nullptr) {}
+        profile(nullptr) {}
 
   explicit QueryResult(int code) : QueryResult(code, "") {}
 
@@ -77,7 +73,6 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
   std::shared_ptr<arangodb::velocypack::Builder> profile;
-  TRI_json_t* clusterplan;
 };
 }
 }

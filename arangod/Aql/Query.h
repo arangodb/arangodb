@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResultV8.h"
@@ -277,7 +276,7 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from JSON and then store it in the
+  /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
   //////////////////////////////////////////////////////////////////////////////
 
