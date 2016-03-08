@@ -52,7 +52,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/VocShaper.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
@@ -3260,7 +3259,7 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
     CollectionReadLocker collectionLocker(this, lock);
 
     TRI_doc_mptr_t* header;
-    int res = lookupDocument(trx, &slice, nullptr, header);
+    int res = lookupDocument(trx, slice, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -3765,41 +3764,6 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
     Transaction* trx, VPackSlice const slice) {
   return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, trx->getInternals()->_id, slice);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document by key, low level worker
-/// the caller must make sure the read lock on the collection is held
-/// the slice contains _key and possibly _rev
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_document_collection_t::lookupDocument(
-    arangodb::Transaction* trx, VPackSlice const* slice,
-    TRI_doc_update_policy_t const* policy, TRI_doc_mptr_t*& header) {
-  
-  VPackSlice key = slice->get(TRI_VOC_ATTRIBUTE_KEY);
-  
-  if (!key.isString()) {
-    return TRI_ERROR_INTERNAL;
-  }
-  VPackBuilder searchValue;
-  searchValue.openArray();
-  searchValue.openObject();
-  searchValue.add(TRI_SLICE_KEY_EQUAL, key);
-  searchValue.close();
-  searchValue.close();
-    
-  header = primaryIndex()->lookup(trx, searchValue.slice());
-
-  if (header == nullptr) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  if (policy != nullptr) {
-    return policy->check(header->revisionId());
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

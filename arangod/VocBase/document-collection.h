@@ -235,8 +235,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction*, arangodb::velocypack::Slice const);
   arangodb::wal::Marker* createVPackRemoveMarker(
       arangodb::Transaction*, arangodb::velocypack::Slice const);
-  int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const*,
-                     TRI_doc_update_policy_t const*, TRI_doc_mptr_t*&);
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
