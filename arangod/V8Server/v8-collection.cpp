@@ -1417,7 +1417,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
@@ -1484,14 +1484,17 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
                                updateBuilder, true)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    }
+    if (!collName.empty() && collName != collectionName) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
   };
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
     int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION(res);
     }
   };
 
@@ -1577,14 +1580,14 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 3 : 5)) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4 : 5)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
           "booleanValue})");
     } else {
       TRI_V8_THROW_EXCEPTION_USAGE(
-          "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
+          "_update(<document>, <data>, {overwrite: booleanValue, keepNull: "
           "booleanValue, mergeObjects: booleanValue, waitForSync: "
           "booleanValue})");
     }
@@ -1957,20 +1960,20 @@ static void JS_InsertVocbaseVPack(
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     if (isEdgeCollection) {
       // Just insert from and to. Check is done later.
       std::string tmpId = ExtractIdString(isolate, args[0]);
       if (tmpId.empty()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
       builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(tmpId));
 
       tmpId = ExtractIdString(isolate, args[1]);
       if (tmpId.empty()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
       builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(tmpId));
     }
