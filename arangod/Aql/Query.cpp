@@ -31,10 +31,8 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -53,7 +51,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief empty string singleton
@@ -228,9 +225,6 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
-  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON):
-  // " << _queryJson.toString() << "\n";
-
   TRI_ASSERT(_vocbase != nullptr);
 }
 
@@ -446,7 +440,7 @@ void Query::registerWarning(int code, char const* details) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare an AQL query, this is a preparation for execute, but
 /// execute calls it internally. The purpose of this separate method is
-/// to be able to only prepare a query from JSON and then store it in the
+/// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -485,9 +479,6 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       enterState(AST_OPTIMIZATION);
 
       parser->ast()->validateAndOptimize();
-      // std::cout << "AST: " <<
-      // arangodb::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE,
-      // false)) << "\n";
 
       enterState(PLAN_INSTANTIATION);
       plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
@@ -538,22 +529,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       planRegisters = false;
     }
 
-    // std::cout << "GOT PLAN:\n" << plan.get()->toJson(parser->ast(),
-    // TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
-
     TRI_ASSERT(plan.get() != nullptr);
-    /* // for debugging of serialization/deserialization . . . * /
-    auto JsonPlan = plan->toJson(parser->ast(),TRI_UNKNOWN_MEM_ZONE, true);
-    auto JsonString = JsonPlan.toString();
-    std::cout << "original plan: \n" << JsonString << "\n";
-
-    auto otherPlan = ExecutionPlan::instantiateFromJson (parser->ast(),
-                                                         JsonPlan);
-    otherPlan->getCost();
-    auto otherJsonString =
-      otherPlan->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString();
-    std::cout << "deserialized plan: \n" << otherJsonString << "\n";
-    //TRI_ASSERT(otherJsonString == JsonString); */
 
     // varsUsedLater and varsValid are unordered_sets and so their orders
     // are not the same in the serialized and deserialized plans
@@ -809,13 +785,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx, doc));
 
-              auto json = val.toJson(_trx, doc, true);
-              int res = arangodb::basics::JsonHelper::toVelocyPack(json.json(), *(builder.get()));
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                delete value;
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-              }
+              val.toVelocyPack(_trx, doc, *builder);
             }
           }
           delete value;
@@ -932,9 +902,6 @@ QueryResult Query::explain() {
     enterState(AST_OPTIMIZATION);
     // optimize and validate the ast
     parser.ast()->validateAndOptimize();
-    // std::cout << "AST: " <<
-    // arangodb::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE))
-    // << "\n";
 
     // create the transaction object, but do not start it yet
     _trx = new arangodb::AqlTransaction(createTransactionContext(),
