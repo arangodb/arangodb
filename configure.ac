@@ -679,6 +679,12 @@ LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
 
+dnl ----------------------------------------------------------------------------
+dnl resolv
+dnl ----------------------------------------------------------------------------
+
+LIBS="$LIBS -lresolv"
+
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES
 dnl ============================================================================

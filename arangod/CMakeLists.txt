@@ -295,6 +295,13 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGOD}
+    "resolv"
+  )
+endif ()
+
 ################################################################################
 ### @brief install arangod binary
 ################################################################################

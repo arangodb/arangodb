@@ -53,6 +53,13 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGOB}
+    "resolv"
+  )
+endif ()
+
 ################################################################################
 ### @brief install arangob binary
 ################################################################################
@@ -102,6 +109,13 @@ target_link_libraries(
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
+
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGODUMP}
+    "resolv"
+  )
+endif ()
 
 ################################################################################
 ### @brief install arangodump binary
@@ -154,6 +168,13 @@ target_link_libraries(
     ${MSVC_LIBS}
 )
 
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGOIMP}
+    "resolv"
+  )
+endif ()
+
 ################################################################################
 ### @brief install arangoimp binary
 ################################################################################
@@ -202,6 +223,13 @@ target_link_libraries(
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
+
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGORESTORE}
+    "resolv"
+  )
+endif ()
 
 ################################################################################
 ### @brief install arangorestore binary
@@ -255,6 +283,13 @@ target_link_libraries(
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
+
+if (NOT MSVC)
+  target_link_libraries(
+    ${BIN_ARANGOSH}
+    "resolv"
+  )
+endif ()
 
 ################################################################################
 ### @brief install arangosh binary
