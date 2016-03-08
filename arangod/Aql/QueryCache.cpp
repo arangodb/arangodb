@@ -23,7 +23,6 @@
 
 #include "Aql/QueryCache.h"
 #include "Basics/fasthash.h"
-#include "Basics/json.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -60,7 +59,7 @@ static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
 QueryCacheResultEntry::QueryCacheResultEntry(
     uint64_t hash, char const* queryString, size_t queryStringLength,
-    TRI_json_t* queryResult, std::vector<std::string> const& collections)
+    std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& collections)
     : _hash(hash),
       _queryString(nullptr),
       _queryStringLength(queryStringLength),
@@ -83,7 +82,6 @@ QueryCacheResultEntry::QueryCacheResultEntry(
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryCacheResultEntry::~QueryCacheResultEntry() {
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _queryResult);
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _queryString);
 }
 
@@ -393,12 +391,13 @@ QueryCache::~QueryCache() {
 VPackBuilder QueryCache::properties() {
   MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
-  VPackBuilder json;
-  json.add(VPackValue(VPackValueType::Object));
-  json.add("mode", VPackValue(modeString(mode())));
-  json.add("maxResults", VPackValue(MaxResults));
-  json.close();
-  return json;
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("mode", VPackValue(modeString(mode())));
+  builder.add("maxResults", VPackValue(MaxResults));
+  builder.close();
+
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,9 +485,9 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
 
 QueryCacheResultEntry* QueryCache::store(
     TRI_vocbase_t* vocbase, uint64_t hash, char const* queryString,
-    size_t queryStringLength, TRI_json_t* result,
+    size_t queryStringLength, std::shared_ptr<VPackBuilder> result,
     std::vector<std::string> const& collections) {
-  if (!TRI_IsArrayJson(result)) {
+  if (!result->slice().isArray()) {
     return nullptr;
   }
 
