@@ -28,7 +28,6 @@
 #include "Cluster/AgencyComm.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 

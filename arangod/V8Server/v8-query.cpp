@@ -37,7 +37,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/V8VPackWrapper.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

@@ -27,7 +27,6 @@
 #include "Utils/ShapedJsonTransformer.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
 using namespace arangodb;

@@ -47,8 +47,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/edge-collection.h"
-#include "VocBase/ExampleMatcher.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
