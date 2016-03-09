@@ -506,29 +506,13 @@ static void ReadDocument(arangodb::AqlTransaction* trx,
                          CollectionNameResolver const* resolver,
                          TRI_voc_cid_t cid, char const* key,
                          VPackBuilder& result) {
-  auto collection = trx->trxCollection(cid);
-
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "collection is a nullptr");
-    }
-  }
+  trx->addCollectionAtRuntime(cid);
 
   OperationOptions options;
 
   VPackSlice slice;
 #warning fill slice from key
-  OperationResult opRes = trx->document(collection->_collection->_name, slice, options);
+  OperationResult opRes = trx->document(trx->collectionName(cid), slice, options);
 #warning fill mptr
 
   if (opRes.code != TRI_ERROR_NO_ERROR) {
@@ -756,30 +740,13 @@ static void VertexIdToVPack(arangodb::AqlTransaction* trx,
                             CollectionNameResolver const* resolver,
                             VertexId const& id,
                             VPackBuilder& b) {
-  auto collection = trx->trxCollection(id.cid);
-
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), id.cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(id.cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "collection is a nullptr");
-    }
-  }
+  trx->addCollectionAtRuntime(id.cid);
   
   OperationOptions options;
 
   VPackSlice slice;
 #warning fill slice from id.key
-  OperationResult opRes = trx->document(collection->_collection->_name, slice, options);
+  OperationResult opRes = trx->document(trx->collectionName(id.cid), slice, options);
 #warning fill mptr
   int res = opRes.code;
 
@@ -835,27 +802,8 @@ static AqlValue$ VertexIdsToAqlValueVPack(
 
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                     TRI_voc_cid_t const& cid,
-                                    std::string const& colName,
-                                    VocShaper*& shaper) {
-  auto collection = trx->trxCollection(cid);
-
-  // ensure the collection is loaded
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "'%s'", colName.c_str());
-    }
-  }
+                                    std::string const& colName) {
+  trx->addCollectionAtRuntime(cid);
 
   auto document = trx->documentCollection(cid);
 
@@ -878,11 +826,8 @@ static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                   colName.c_str());
   }
 
-  if (trx->orderDitch(collection) == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  trx->orderDitch(cid);
 
-  shaper = collection->_collection->_collection->getShaper();
   return index;
 }
 
@@ -891,6 +836,8 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
                                 CollectionNameResolver const* resolver,
                                 TRI_voc_cid_t const& cid,
                                 std::string const& attributeName) {
+  // TODO FIXME
+  // note: shaper will always be nullptr here...
   if (cors == nullptr) {
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     {
@@ -2370,27 +2317,8 @@ AqlValue$ Functions::Neighbors(arangodb::aql::Query* query,
 
   TRI_voc_cid_t eCid = resolver->getCollectionIdLocal(eColName);
 
-  {
-    // ensure the collection is loaded
-    auto collection = trx->trxCollection(eCid);
-
-    if (collection == nullptr) {
-      int res = TRI_AddCollectionTransaction(trx->getInternals(), eCid,
-                                             TRI_TRANSACTION_READ,
-                                             trx->nestingLevel(), true, true);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-
-      TRI_EnsureCollectionsTransaction(trx->getInternals());
-      collection = trx->trxCollection(eCid);
-
-      if (collection == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "collection is a nullptr");
-      }
-    }
-  }
+  // ensure the collection is loaded
+  trx->addCollectionAtRuntime(eCid);
 
   // Function to return constant distance
   auto wc = [](TRI_doc_mptr_t&) -> double { return 1; };
@@ -2490,17 +2418,15 @@ AqlValue$ Functions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  VocShaper* shaper = nullptr;
-  arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
+  arangodb::Index* index = getGeoIndex(trx, cid, colName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(shaper != nullptr);
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
       trx, latitude.getNumericValue<double>(),
       longitude.getNumericValue<double>(), limitValue);
 
-  return buildGeoResult(query, cors, shaper, resolver, cid, attributeName);
+  return buildGeoResult(query, cors, nullptr, resolver, cid, attributeName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2554,17 +2480,15 @@ AqlValue$ Functions::Within(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  VocShaper* shaper = nullptr;
-  arangodb::Index* index = getGeoIndex(trx, cid, colName, shaper);
+  arangodb::Index* index = getGeoIndex(trx, cid, colName);
 
   TRI_ASSERT(index != nullptr);
-  TRI_ASSERT(shaper != nullptr);
 
   GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
       trx, latitude.getNumericValue<double>(),
       longitude.getNumericValue<double>(), radius.getNumericValue<double>());
 
-  return buildGeoResult(query, cors, shaper, resolver, cid, attributeName);
+  return buildGeoResult(query, cors, nullptr, resolver, cid, attributeName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2771,33 +2695,15 @@ AqlValue$ Functions::Minus(arangodb::aql::Query* query,
 
 static void RegisterCollectionInTransaction(
     arangodb::AqlTransaction* trx, std::string const& collectionName,
-    TRI_voc_cid_t& cid, TRI_transaction_collection_t*& collection) {
-  TRI_ASSERT(collection == nullptr);
+    TRI_voc_cid_t& cid) {
   cid = trx->resolver()->getCollectionIdLocal(collectionName);
+
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
-  // ensure the collection is loaded
-  collection = trx->trxCollection(cid);
 
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", collectionName.c_str());
-    }
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      // This case should never occur
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "could not load collection");
-    }
-  }
-  TRI_ASSERT(collection != nullptr);
+  trx->addCollectionAtRuntime(cid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2806,9 +2712,6 @@ static void RegisterCollectionInTransaction(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
-                                    CollectionNameResolver const* resolver,
-                                    TRI_transaction_collection_t* collection,
-                                    TRI_voc_cid_t const& cid,
                                     std::string const& collectionName,
                                     std::string const& identifier,
                                     VPackBuilder& result) {
@@ -2853,7 +2756,6 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
-                                    CollectionNameResolver const* resolver,
                                     std::string const& identifier,
                                     VPackBuilder& result) {
   std::vector<std::string> parts =
@@ -2863,10 +2765,9 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
     return;
   }
   std::string collectionName = parts[0];
-  TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid = 0;
   try {
-    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+    RegisterCollectionInTransaction(trx, collectionName, cid);
   } catch (arangodb::basics::Exception const& ex) {
     // don't throw if collection is not found
     if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -2905,13 +2806,12 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
         (int)2);
   }
 
-  auto resolver = trx->resolver();
   if (n == 1) {
     VPackSlice id = ExtractFunctionParameter(trx, parameters, 0);
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     if (id.isString()) {
       std::string identifier = id.copyString();
-      GetDocumentByIdentifier(trx, resolver, identifier, *b);
+      GetDocumentByIdentifier(trx, identifier, *b);
       if (b->isEmpty()) {
         // not found
         b->add(VPackValue(VPackValueType::Null));
@@ -2922,7 +2822,7 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
         try {
           if (next.isString()) {
             std::string identifier = next.copyString();
-            GetDocumentByIdentifier(trx, resolver, identifier, *b);
+            GetDocumentByIdentifier(trx, identifier, *b);
           }
         } catch (arangodb::basics::Exception const&) {
           // Ignore all ArangoDB exceptions here
@@ -2940,12 +2840,11 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
   }
   std::string collectionName = collectionSlice.copyString();
 
-  TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid;
   bool notFound = false;
 
   try {
-    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+    RegisterCollectionInTransaction(trx, collectionName, cid);
   } catch (arangodb::basics::Exception const& ex) {
     // don't throw if collection is not found
     if (ex.code() != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -2953,7 +2852,7 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
     }
     notFound = true;
   }
-
+  
   VPackSlice id = ExtractFunctionParameter(trx, parameters, 1);
   if (id.isString()) {
     if (notFound) {
@@ -2963,7 +2862,7 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
     }
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     std::string identifier = id.copyString();
-    GetDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+    GetDocumentByIdentifier(trx, collectionName, identifier, *b);
     if (b->isEmpty()) {
       b->add(VPackValue(VPackValueType::Null));
     }
@@ -2977,7 +2876,7 @@ AqlValue$ Functions::Document(arangodb::aql::Query* query,
           try {
             if (next.isString()) {
               std::string identifier = next.copyString();
-              GetDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier, *b);
+              GetDocumentByIdentifier(trx, collectionName, identifier, *b);
             }
           } catch (arangodb::basics::Exception const&) {
             // Ignore all ArangoDB exceptions here
@@ -3014,15 +2913,18 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
   }
   std::string collectionName = collectionSlice.copyString();
 
-  TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid;
-  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
-  if (collection->_collection->_type != TRI_COL_TYPE_EDGE) {
+  RegisterCollectionInTransaction(trx, collectionName, cid);
+  
+  TRI_document_collection_t* documentCollection = trx->documentCollection(cid);
+
+  if (!trx->isEdgeCollection(collectionName)) {
     RegisterWarning(query, "EDGES", TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     b->add(VPackValue(VPackValueType::Null));
     return AqlValue$(b.get());
   }
+  
 
   VPackSlice vertexSlice = ExtractFunctionParameter(trx, parameters, 1);
   if (!vertexSlice.isArray() && !vertexSlice.isString() && !vertexSlice.isObject()) {
@@ -3064,7 +2966,7 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
 
   auto resolver = trx->resolver();
 
-  auto shaper = collection->_collection->_collection->getShaper();
+  auto shaper = documentCollection->getShaper();
   std::unique_ptr<arangodb::ExampleMatcher> matcher;
 
   if (n > 3) {
@@ -3107,7 +3009,7 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
       for (auto const& v : VPackArrayIterator(vertexSlice)) {
         try {
           RequestEdges(v, trx, resolver, shaper, cid,
-                       collection->_collection->_collection, direction,
+                       documentCollection, direction,
                        matcher.get(), includeVertices, *b);
         } catch (...) {
           // Errors in Array are simply ignored
@@ -3115,7 +3017,7 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
       }
     } else {
       RequestEdges(vertexSlice, trx, resolver, shaper, cid,
-                   collection->_collection->_collection, direction,
+                   documentCollection, direction,
                    matcher.get(), includeVertices, *b);
     }
   }
@@ -3802,26 +3704,7 @@ AqlValue$ Functions::CollectionCount(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  auto collection = trx->trxCollection(cid);
-
-  // ensure the collection is loaded
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "'%s'", colName.c_str());
-    }
-  }
-
+  trx->addCollectionAtRuntime(cid);
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
@@ -4369,25 +4252,7 @@ AqlValue$ Functions::Fulltext(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  auto collection = trx->trxCollection(cid);
-
-  // ensure the collection is loaded
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "'%s'", colName.c_str());
-    }
-  }
+  trx->addCollectionAtRuntime(cid);
 
   auto document = trx->documentCollection(cid);
 
@@ -4417,9 +4282,7 @@ AqlValue$ Functions::Fulltext(arangodb::aql::Query* query,
                                   colName.c_str());
   }
 
-  if (trx->orderDitch(collection) == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  trx->orderDitch(cid);
 
   TRI_fulltext_query_t* ft =
       TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
@@ -4446,7 +4309,7 @@ AqlValue$ Functions::Fulltext(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  auto shaper = collection->_collection->_collection->getShaper();
+  auto shaper = document->getShaper();
   size_t const numResults = queryResult->_numDocuments;
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();

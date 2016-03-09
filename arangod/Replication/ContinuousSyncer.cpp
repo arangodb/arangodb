@@ -553,12 +553,6 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    TRI_transaction_collection_t* trxCollection = trx->trxCollection(cid);
-
-    if (trxCollection == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {

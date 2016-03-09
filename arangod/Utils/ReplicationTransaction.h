@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"

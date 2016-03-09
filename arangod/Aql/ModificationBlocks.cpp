@@ -44,10 +44,8 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _isDBServer(false),
       _usesDefaultSharding(true),
       _buffer(TRI_UNKNOWN_MEM_ZONE) {
-  auto trxCollection = _trx->trxCollection(_collection->cid());
-  if (trxCollection != nullptr) {
-    _trx->orderDitch(trxCollection);
-  }
+
+  _trx->orderDitch(_collection->cid());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
 
@@ -268,7 +266,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   RegisterId const registerId = it->second.registerId;
 
   TRI_doc_mptr_t nptr;
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto documentCollection = _trx->documentCollection(_collection->cid());
 
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
@@ -278,8 +276,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   if (producesOutput) {
-    result->setDocumentCollection(_outRegOld,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegOld, documentCollection);
   }
         
   VPackBuilder builder;
@@ -287,7 +284,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
-  // TODO: ignoreRev
+  options.ignoreRevs = true;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -392,7 +389,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto documentCollection = _trx->documentCollection(_collection->cid());
 
   TRI_doc_mptr_t nptr;
   bool const isEdgeCollection = _collection->isEdgeCollection();
@@ -409,14 +406,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   if (producesOutput) {
-    result->setDocumentCollection(_outRegNew,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegNew, documentCollection);
   }
 
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
-  // TODO: ignoreRev
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -534,25 +529,23 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto documentCollection = _trx->documentCollection(_collection->cid());
 
   result.reset(new AqlItemBlock(
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   if (ep->_outVariableOld != nullptr) {
-    result->setDocumentCollection(_outRegOld,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegOld, documentCollection);
   }
   if (ep->_outVariableNew != nullptr) {
-    result->setDocumentCollection(_outRegNew,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegNew, documentCollection);
   }
   
   OperationOptions options;
-  options.waitForSync = ep->_options.waitForSync;
   options.silent = !producesOutput;
-  // TODO: ignoreRev
+  options.waitForSync = ep->_options.waitForSync;
+  options.ignoreRevs = true;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -739,7 +732,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   TRI_doc_mptr_t nptr;
   std::string errorMessage;
 
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto documentCollection = _trx->documentCollection(_collection->cid());
   bool const isEdgeCollection = _collection->isEdgeCollection();
 
   result.reset(new AqlItemBlock(
@@ -747,14 +740,13 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   if (ep->_outVariableNew != nullptr) {
-    result->setDocumentCollection(_outRegNew,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegNew, documentCollection);
   }
   
   OperationOptions options;
-  options.waitForSync = ep->_options.waitForSync;
   options.silent = !producesOutput;
-  // TODO: ignoreRev
+  options.waitForSync = ep->_options.waitForSync;
+  options.ignoreRevs = true;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -975,25 +967,23 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto documentCollection = _trx->documentCollection(_collection->cid());
 
   result.reset(new AqlItemBlock(
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   if (ep->_outVariableOld != nullptr) {
-    result->setDocumentCollection(_outRegOld,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegOld, documentCollection);
   }
   if (ep->_outVariableNew != nullptr) {
-    result->setDocumentCollection(_outRegNew,
-                                  trxCollection->_collection->_collection);
+    result->setDocumentCollection(_outRegNew, documentCollection);
   }
   
   OperationOptions options;
   options.silent = true;
   options.waitForSync = ep->_options.waitForSync;
-  // TODO: ignoreRev
+  options.ignoreRevs = true;
 
   // loop over all blocks
   size_t dstRow = 0;

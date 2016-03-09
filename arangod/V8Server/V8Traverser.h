@@ -64,11 +64,11 @@ struct EdgeInfo {
 
 struct VertexFilterInfo {
   arangodb::ExplicitTransaction* trx;
-  TRI_transaction_collection_t* col;
+  TRI_document_collection_t* col;
   arangodb::ExampleMatcher* matcher;
 
   VertexFilterInfo(arangodb::ExplicitTransaction* trx,
-                   TRI_transaction_collection_t* col,
+                   TRI_document_collection_t* col,
                    arangodb::ExampleMatcher* matcher)
       : trx(trx), col(col), matcher(matcher) {}
 };
@@ -128,7 +128,7 @@ struct BasicOptions {
   void addVertexFilter(v8::Isolate* isolate,
                        v8::Handle<v8::Value> const& example,
                        arangodb::ExplicitTransaction* trx,
-                       TRI_transaction_collection_t* col, VocShaper* shaper,
+                       TRI_document_collection_t* col, VocShaper* shaper,
                        TRI_voc_cid_t const& cid, std::string& errorMessage);
 
   bool matchesEdge(EdgeId& e, TRI_doc_mptr_t* edge) const;
@@ -240,17 +240,20 @@ class DepthFirstTraverser : public Traverser {
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Collection name resolver
     //////////////////////////////////////////////////////////////////////////////
+
     CollectionNameResolver* _resolver;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Cache for indexes. Maps collectionName to Index
     //////////////////////////////////////////////////////////////////////////////
+
     std::unordered_map<std::string, std::pair<TRI_voc_cid_t, EdgeIndex*>>
         _indexCache;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Traverser options
     //////////////////////////////////////////////////////////////////////////////
+
     TraverserOptions _opts;
 
     //////////////////////////////////////////////////////////////////////////////
@@ -417,20 +420,20 @@ class VertexCollectionInfo {
   /// @brief vertex collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* _vertexCollection;
+  TRI_document_collection_t* _vertexCollection;
 
  public:
   VertexCollectionInfo(TRI_voc_cid_t& vertexCollectionCid,
-                       TRI_transaction_collection_t* vertexCollection)
+                       TRI_document_collection_t* vertexCollection)
       : _vertexCollectionCid(vertexCollectionCid),
         _vertexCollection(vertexCollection) {}
 
   TRI_voc_cid_t getCid() { return _vertexCollectionCid; }
 
-  TRI_transaction_collection_t* getCollection() { return _vertexCollection; }
+  TRI_document_collection_t* getCollection() { return _vertexCollection; }
 
   VocShaper* getShaper() {
-    return _vertexCollection->_collection->_collection->getShaper();
+    return _vertexCollection->getShaper();
   }
 };
 

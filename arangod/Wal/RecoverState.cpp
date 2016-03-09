@@ -66,30 +66,15 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a collection is volatile
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsVolatile(
-    TRI_transaction_collection_t const* trxCollection) {
-  return trxCollection->_collection->_collection->_info.isVolatile();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the directory for a database
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string GetDatabaseDirectory(TRI_server_t* server,
                                         TRI_voc_tick_t databaseId) {
-  char* idString = TRI_StringUInt64(databaseId);
-  char* dname = TRI_Concatenate2String("database-", idString);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
-  char* filename = TRI_Concatenate2File(server->_databasePath, dname);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+  std::string const dname("database-" + std::to_string(databaseId));
+  std::string const filename(arangodb::basics::FileUtils::buildFilename(server->_databasePath, dname));
 
-  std::string result(filename);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  return result;
+  return filename;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +536,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
             [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-              if (IsVolatile(trx->trxCollection())) {
+              if (trx->documentCollection()->_info.isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 
@@ -610,7 +595,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
             [&](SingleCollectionTransaction* trx, Marker* envelope) -> int {
-              if (IsVolatile(trx->trxCollection())) {
+              if (trx->documentCollection()->_info.isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
               

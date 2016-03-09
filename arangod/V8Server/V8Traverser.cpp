@@ -198,7 +198,7 @@ class SimpleEdgeExpander {
 void BasicOptions::addVertexFilter(v8::Isolate* isolate,
                                    v8::Handle<v8::Value> const& example,
                                    ExplicitTransaction* trx,
-                                   TRI_transaction_collection_t* col,
+                                   TRI_document_collection_t* col,
                                    VocShaper* shaper, TRI_voc_cid_t const& cid,
                                    std::string& errorMessage) {
   auto it = _vertexFilter.find(cid);
@@ -719,17 +719,16 @@ Json* SingleServerTraversalPath::lastVertexToJson(
 Json* SingleServerTraversalPath::edgeToJson(Transaction* trx,
                                             CollectionNameResolver* resolver,
                                             EdgeInfo const& e) {
-  auto collection = trx->trxCollection(e.cid);
+  TRI_document_collection_t* documentCollection = trx->documentCollection(e.cid);
 
-  if (collection == nullptr) {
+  if (documentCollection == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  TRI_ASSERT(collection != nullptr);
 
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, &e.mptr);
   return new Json(
-      TRI_ExpandShapedJson(collection->_collection->_collection->getShaper(),
+      TRI_ExpandShapedJson(documentCollection->getShaper(),
                            resolver, e.cid, &e.mptr));
 }
 
@@ -998,15 +997,15 @@ EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
     std::string const& eColName,
     TRI_voc_cid_t& cid) {
   auto it = _indexCache.find(eColName);
+
   if (it == _indexCache.end()) {
     cid = _resolver->getCollectionIdLocal(eColName);
-    TRI_transaction_collection_t* trxCollection = _trx->trxCollection(cid);
-    TRI_ASSERT(trxCollection != nullptr);
-    TRI_document_collection_t* ecl = trxCollection->_collection->_collection;
-    arangodb::EdgeIndex* edgeIndex = ecl->edgeIndex();
+    TRI_document_collection_t* documentCollection = _trx->documentCollection(cid);
+    arangodb::EdgeIndex* edgeIndex = documentCollection->edgeIndex();
     _indexCache.emplace(eColName, std::make_pair(cid, edgeIndex));
     return edgeIndex;
   }
+
   cid = it->second.first;
   return it->second.second;
 }

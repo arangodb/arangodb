@@ -99,15 +99,11 @@ TRI_document_collection_t* SingleCollectionTransaction::documentCollection() {
   if (this->_documentCollection != nullptr) {
     return this->_documentCollection;
   }
-
-  this->trxCollection();
+ 
+  this->trxCollection(); 
   TRI_ASSERT(this->_documentCollection != nullptr);
 
   return this->_documentCollection;
-}
-
-TRI_document_collection_t* SingleCollectionTransaction::documentCollection(TRI_voc_cid_t) {
-  return documentCollection();
 }
 
 //////////////////////////////////////////////////////////////////////////////

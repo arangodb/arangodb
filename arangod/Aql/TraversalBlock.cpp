@@ -95,10 +95,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       TRI_voc_cid_t cid = _resolver->getCollectionIdLocal(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
 
-      auto trxCollection = _trx->trxCollection(cid);
-      if (trxCollection != nullptr) {
-        _trx->orderDitch(trxCollection);
-      }
+      _trx->orderDitch(cid);
     }
     _traverser.reset(new arangodb::traverser::DepthFirstTraverser(
         edgeCollections, opts, _resolver, _trx, _expressions));

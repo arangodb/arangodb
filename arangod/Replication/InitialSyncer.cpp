@@ -778,17 +778,8 @@ int InitialSyncer::handleCollectionDump(
 
         return res;
       }
-      
-      TRI_transaction_collection_t* trxCollection = trx.trxCollection();
-
-      if (trxCollection == nullptr) {
-        res = TRI_ERROR_INTERNAL;
-        errorMsg = "unable to start transaction: " + std::string(TRI_errno_string(res));
-      }
-            
-      if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-      }
+     
+      trx.orderDitch(col->_cid); // will throw when it fails
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = applyCollectionDump(trx, collectionName, response.get(), markersProcessed, errorMsg);
@@ -1183,7 +1174,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     // first chunk
     OperationOptions options;
     options.silent = true;
-    // TODO: ignore old revisions
+    options.ignoreRevs = true;
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
@@ -1254,7 +1245,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     
     OperationOptions options;
     options.silent = true;
-    // TODO: ignore old revisions
+    options.ignoreRevs = true;
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
@@ -1265,9 +1256,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return res;
     }
     
-    if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+    trx.orderDitch(col->_cid); // will throw when it fails
     
     auto idx = trx.documentCollection()->primaryIndex();
 
@@ -1852,9 +1841,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               return res;
             }
 
-            if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
+            trx.orderDitch(col->_cid); // will throw when it fails
       
             TRI_document_collection_t* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);

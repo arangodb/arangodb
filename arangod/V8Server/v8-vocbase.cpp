@@ -97,10 +97,10 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 struct CollectionDitchInfo {
   arangodb::DocumentDitch* ditch;
-  TRI_transaction_collection_t* col;
+  TRI_document_collection_t* col;
 
   CollectionDitchInfo(arangodb::DocumentDitch* ditch,
-                      TRI_transaction_collection_t* col)
+                      TRI_document_collection_t* col)
       : ditch(ditch), col(col) {}
 };
 
@@ -1737,7 +1737,7 @@ static v8::Handle<v8::Value> VertexIdToData(
 
   VPackSlice slice;
 #warning fill slice from vertexId.key
-  OperationResult opRes = trx->document(i->second.col->_collection->_name, slice, options);
+  OperationResult opRes = trx->document(i->second.col->_info.name(), slice, options);
 #warning fill document
   TRI_doc_mptr_t document;
 
@@ -1747,7 +1747,7 @@ static v8::Handle<v8::Value> VertexIdToData(
   }
 
   return TRI_WrapShapedJson(isolate, resolver, i->second.ditch, vertexId.cid,
-                            i->second.col->_collection->_collection,
+                            i->second.col,
                             document.getDataPtr());
 }
 
@@ -1847,13 +1847,9 @@ static void ExtractCidsFromPath(TRI_vocbase_t* vocbase,
 static void AddDitch(
     ExplicitTransaction* trx, TRI_voc_cid_t const& cid,
     std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
-  TRI_transaction_collection_t* col = trx->trxCollection(cid);
+  TRI_document_collection_t* col = trx->documentCollection(cid);
 
-  auto ditch = trx->orderDitch(col);
-
-  if (ditch == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  auto ditch = trx->orderDitch(cid); // will throw when it fails
 
   ditches.emplace(cid, CollectionDitchInfo(ditch, col));
 }
@@ -2252,7 +2248,7 @@ static void JS_QueryShortestPath(
   if (opts.useWeight) {
     for (auto const& it : edgeCollectionNames) {
       auto cid = resolver->getCollectionIdLocal(it);
-      auto colObj = ditches.find(cid)->second.col->_collection->_collection;
+      TRI_document_collection_t* colObj = ditches.find(cid)->second.col;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
           trx.get(), cid, colObj,
           AttributeWeightCalculator(opts.weightAttribute, opts.defaultWeight,
@@ -2261,7 +2257,7 @@ static void JS_QueryShortestPath(
   } else {
     for (auto const& it : edgeCollectionNames) {
       auto cid = resolver->getCollectionIdLocal(it);
-      auto colObj = ditches.find(cid)->second.col->_collection->_collection;
+      TRI_document_collection_t* colObj = ditches.find(cid)->second.col;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
           trx.get(), cid, colObj, HopWeightCalculator()));
     }
@@ -2269,7 +2265,7 @@ static void JS_QueryShortestPath(
 
   for (auto const& it : vertexCollectionNames) {
     auto cid = resolver->getCollectionIdLocal(it);
-    auto colObj = ditches.find(cid)->second.col;
+    TRI_document_collection_t* colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(cid, colObj));
   }
 
@@ -2574,7 +2570,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (auto const& it : edgeCollectionNames) {
     auto cid = resolver->getCollectionIdLocal(it);
-    auto colObj = ditches.find(cid)->second.col->_collection->_collection;
+    TRI_document_collection_t* colObj = ditches.find(cid)->second.col;
     edgeCollectionInfos.emplace_back(
         new EdgeCollectionInfo(trx.get(), cid, colObj, HopWeightCalculator()));
     TRI_IF_FAILURE("EdgeCollectionDitchOOM") {
@@ -2584,7 +2580,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (auto it : vertexCollectionNames) {
     auto cid = resolver->getCollectionIdLocal(it);
-    auto colObj = ditches.find(cid)->second.col;
+    TRI_document_collection_t* colObj = ditches.find(cid)->second.col;
     vertexCollectionInfos.emplace_back(new VertexCollectionInfo(cid, colObj));
     // Explicitly allow all collections.
     opts.addCollectionRestriction(cid);

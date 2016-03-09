@@ -40,7 +40,7 @@ class CollectionNameResolver {
   /// @brief create the resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionNameResolver(TRI_vocbase_t* vocbase)
+  explicit CollectionNameResolver(TRI_vocbase_t* vocbase)
       : _vocbase(vocbase), _resolvedNames(), _resolvedIds() {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -257,6 +257,7 @@ class CollectionNameResolver {
   /// the name is copied into <buffer>. the caller is responsible for allocating
   /// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
   /// to the buffer. the length of the collection name is returned.
+  /// TODO: remove this
   //////////////////////////////////////////////////////////////////////////////
 
   void getCollectionName(TRI_voc_cid_t cid,
@@ -337,6 +338,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster-wide collection name for a cluster-wide
   /// collection id
+  /// TODO: remove this
   //////////////////////////////////////////////////////////////////////////////
 
   void getCollectionNameCluster(TRI_voc_cid_t cid,

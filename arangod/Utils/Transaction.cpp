@@ -149,25 +149,36 @@ TRI_transaction_collection_t* Transaction::trxCollection(TRI_voc_cid_t cid) cons
 
   return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief order a ditch for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-DocumentDitch* Transaction::orderDitch(TRI_transaction_collection_t* trxCollection) {
+DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING ||
              getStatus() == TRI_TRANSACTION_CREATED);
+
+  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+
+  if (trxCollection == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);    
+  }
+
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
   TRI_document_collection_t* document =
       trxCollection->_collection->_collection;
   TRI_ASSERT(document != nullptr);
 
-  return _transactionContext->orderDitch(document);
-}
+  DocumentDitch* ditch = _transactionContext->orderDitch(document);
 
+  if (ditch == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return ditch;
+}
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _key attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,10 +377,8 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   if (cid == 0) {
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
+ 
+  orderDitch(cid); // will throw when it fails 
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
@@ -438,6 +447,14 @@ TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName)
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of a collection
+//////////////////////////////////////////////////////////////////////////////
+  
+std::string Transaction::collectionName(TRI_voc_cid_t cid) { 
+  return resolver()->getCollectionName(cid);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief Iterate over all elements of the collection.
 //////////////////////////////////////////////////////////////////////////////
 
@@ -457,9 +474,7 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 
   TRI_document_collection_t* document = documentCollection(trxCol);
 
-  if (orderDitch(trxCol) == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  orderDitch(cid); // will throw when it fails
 
   int res = lock(trxCol, TRI_TRANSACTION_READ);
   
@@ -568,9 +583,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   // TODO: clean this up
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  orderDitch(cid); // will throw when it fails
  
   VPackBuilder resultBuilder;
 
@@ -1302,9 +1315,7 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  orderDitch(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
@@ -1391,9 +1402,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  orderDitch(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
@@ -1474,9 +1483,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  if (orderDitch(trxCollection(cid)) == nullptr) {
-    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  orderDitch(cid); // will throw when it fails
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
 
@@ -1703,6 +1710,22 @@ TRI_document_collection_t* Transaction::documentCollection(
       TRI_transaction_collection_t const* trxCollection) const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trxCollection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
+
+  return trxCollection->_collection->_collection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_document_collection_t* Transaction::documentCollection(
+      TRI_voc_cid_t cid) const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+  
+  auto trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
   TRI_ASSERT(trxCollection->_collection != nullptr);
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 

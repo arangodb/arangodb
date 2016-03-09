@@ -91,12 +91,9 @@ bool RestEdgesHandler::getEdgesForVertex(
     return false;
   }
   
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  trx.orderDitch(trx.cid()); // will throw when it fails
 
-  TRI_document_collection_t* docCol =
-      trx.trxCollection()->_collection->_collection;
+  TRI_document_collection_t* docCol = trx.documentCollection();
 
   std::vector<TRI_doc_mptr_t>&& edges = TRI_LookupEdgesDocumentCollection(
       &trx, docCol, direction, start.cid, const_cast<char*>(start.key));

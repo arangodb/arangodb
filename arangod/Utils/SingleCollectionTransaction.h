@@ -56,13 +56,14 @@ class SingleCollectionTransaction : public Transaction {
 
   ~SingleCollectionTransaction() = default;
 
- public:
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying transaction collection
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_transaction_collection_t* trxCollection();
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying document collection
   /// note that we have two identical versions because this is called
@@ -70,8 +71,6 @@ class SingleCollectionTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_document_collection_t* documentCollection();
-
-  TRI_document_collection_t* documentCollection(TRI_voc_cid_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's id

@@ -66,6 +66,30 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   ~AqlTransaction() {}
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection to the transaction for read, at runtime
+  //////////////////////////////////////////////////////////////////////////////
+
+  void addCollectionAtRuntime(TRI_voc_cid_t cid) {
+    auto collection = this->trxCollection(cid);
+
+    if (collection == nullptr) {
+      int res = TRI_AddCollectionTransaction(this->getInternals(), cid,
+                                             TRI_TRANSACTION_READ,
+                                             this->nestingLevel(), true, true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      TRI_EnsureCollectionsTransaction(this->getInternals());
+      collection = this->trxCollection(cid);
+
+      if (collection == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "collection is a nullptr");
+      }
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a list of collections to the transaction

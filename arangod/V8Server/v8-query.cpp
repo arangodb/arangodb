@@ -340,9 +340,7 @@ static void JS_ChecksumCollection(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  trx.orderDitch(col->_cid); // will throw when it fails
   
   // get last tick
   TRI_document_collection_t* document = trx.documentCollection();

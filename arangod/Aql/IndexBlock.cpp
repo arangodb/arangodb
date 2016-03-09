@@ -51,10 +51,12 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false) {
   _context = new IndexIteratorContext(en->_vocbase);
 
-  auto trxCollection = _trx->trxCollection(_collection->cid());
-
-  if (trxCollection != nullptr) {
-    _trx->orderDitch(trxCollection);
+  try {
+    _trx->orderDitch(_collection->cid());
+  }
+  catch (...) {
+    delete _context;
+    throw;
   }
 }
 
