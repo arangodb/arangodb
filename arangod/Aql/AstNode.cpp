@@ -40,6 +40,7 @@
 #endif
 
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
@@ -432,7 +433,7 @@ static bool IsEmptyString(char const* p, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), computedJson(nullptr) {}
+    : type(type), flags(0), computedValue(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a node, with defining a value type
@@ -441,7 +442,7 @@ AstNode::AstNode(AstNodeType type)
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,7 +454,7 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +466,7 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +478,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   setStringValue(v, length);
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,7 +488,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 
   auto query = ast->query();
 
@@ -676,7 +677,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -830,9 +831,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::~AstNode() {
-  if (computedJson != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
-    computedJson = nullptr;
+  if (computedValue != nullptr) {
+    delete[] computedValue;
   }
 }
 
@@ -936,21 +936,23 @@ void AstNode::dump(int level) const {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the JSON for a constant value node
-/// the JSON is owned by the node and must not be freed by the caller
+/// @brief compute the value for a constant value node
+/// the value is owned by the node and must not be freed by the caller
 /// note that the return value might be NULL in case of OOM
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AstNode::computeJson() const {
+VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
-  if (computedJson == nullptr) {
-    // note: the following may fail but we do not need to
-    // check that here
-    computedJson = toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+  if (computedValue == nullptr) {
+    VPackBuilder builder;
+    toVelocyPackValue(builder);
+
+    computedValue = new uint8_t[builder.size()];
+    memcpy(computedValue, builder.data(), builder.size());
   }
 
-  return computedJson;
+  return VPackSlice(computedValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

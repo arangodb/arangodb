@@ -104,7 +104,7 @@ Expression::~Expression() {
     switch (_type) {
       case JSON:
         TRI_ASSERT(_data != nullptr);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+        delete[] _data;
         break;
 
       case ATTRIBUTE: {
@@ -154,9 +154,7 @@ AqlValue$ Expression::execute(arangodb::AqlTransaction* trx,
     case JSON: {
       // TODO
       TRI_ASSERT(_data != nullptr);
-      VPackBuilder builder;
-      JsonHelper::toVelocyPack(_data, builder);
-      return AqlValue$(builder);
+      return AqlValue$(VPackSlice(_data), AqlValue$::AqlValueType::REFERENCE_STICKY);
     }
 
     case SIMPLE: {
@@ -171,22 +169,8 @@ AqlValue$ Expression::execute(arangodb::AqlTransaction* trx,
 
     case V8: {
       TRI_ASSERT(_func != nullptr);
-      try {
-        ISOLATE;
-        return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars,
-                              regs);
-      } catch (arangodb::basics::Exception& ex) {
-        if (_ast->query()->verboseErrors()) {
-          ex.addToMessage(" while evaluating expression ");
-          auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-          if (json != nullptr) {
-            ex.addToMessage(arangodb::basics::JsonHelper::toString(json));
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
-          }
-        }
-        throw;
-      }
+      ISOLATE;
+      return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars, regs);
     }
 
     case UNPROCESSED: {
@@ -408,12 +392,11 @@ void Expression::buildExpression() {
   if (_type == JSON) {
     TRI_ASSERT(_data == nullptr);
     // generate a constant value
-    _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    VPackBuilder builder;
+    _node->toVelocyPackValue(builder);
 
-    if (_data == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid json in simple expression");
-    }
+    _data = new uint8_t[builder.size()];
+    memcpy(_data, builder.data(), builder.size());
   } else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
@@ -651,16 +634,7 @@ AqlValue$ Expression::executeSimpleExpressionArray(
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   if (node->isConstant()) {
-    auto json = node->computeJson();
-
-    if (json == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    VPackBuilder builder;
-    JsonHelper::toVelocyPack(json, builder);
-
-    return AqlValue$(builder);
+    return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
   }
 
   size_t const n = node->numMembers();
@@ -689,16 +663,7 @@ AqlValue$ Expression::executeSimpleExpressionObject(
     std::vector<Variable const*> const& vars,
     std::vector<RegisterId> const& regs) {
   if (node->isConstant()) {
-    auto json = node->computeJson();
-
-    if (json == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    
-    VPackBuilder builder;
-    JsonHelper::toVelocyPack(json, builder);
-
-    return AqlValue$(builder);
+    return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
   }
 
   VPackBuilder builder;
@@ -725,15 +690,7 @@ AqlValue$ Expression::executeSimpleExpressionObject(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue$ Expression::executeSimpleExpressionValue(AstNode const* node) {
-  auto json = node->computeJson();
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  VPackBuilder builder;
-  JsonHelper::toVelocyPack(json, builder);
-  return AqlValue$(builder);
+  return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1270,14 +1227,14 @@ AqlValue$ Expression::executeSimpleExpressionArithmetic(
                                           trx, argv, startPos, vars, regs, true);
 
   if (lhs.isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+    return AqlValue$(VelocyPackHelper::NullValue());
   }
 
   AqlValue$ rhs = executeSimpleExpression(node->getMember(1),
                                           trx, argv, startPos, vars, regs, true);
 
   if (rhs.isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+    return AqlValue$(VelocyPackHelper::NullValue());
   }
 
   double const l = lhs.toDouble();
@@ -1298,17 +1255,17 @@ AqlValue$ Expression::executeSimpleExpressionArithmetic(
     case NODE_TYPE_OPERATOR_BINARY_DIV:
       if (r == 0.0) {
         RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+        return AqlValue$(VelocyPackHelper::NullValue());
       }
       return AqlValue$(builder);
     case NODE_TYPE_OPERATOR_BINARY_MOD:
       if (r == 0.0) {
         RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+        return AqlValue$(VelocyPackHelper::NullValue());
       }
       builder.add(VPackValue(fmod(l, r)));
       return AqlValue$(builder);
     default:
-      return AqlValue$(VelocyPackHelper::NullValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+      return AqlValue$(VelocyPackHelper::NullValue());
   }
 }

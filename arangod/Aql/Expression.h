@@ -490,7 +490,7 @@ class Expression {
   union {
     V8Expression* _func;
 
-    struct TRI_json_t* _data;
+    uint8_t* _data;
 
     AttributeAccessor* _accessor;
   };
