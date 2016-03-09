@@ -30,6 +30,8 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 
+#include <velocypack/Slice.h>
+
 #include <functional>
 #include <iosfwd>
 
@@ -291,12 +293,12 @@ struct AstNode {
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief compute the JSON for a constant value node
-  /// the JSON is owned by the node and must not be freed by the caller
+  /// @brief compute the value for a constant value node
+  /// the value is owned by the node and must not be freed by the caller
   /// note that the return value might be NULL in case of OOM
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* computeJson() const;
+  arangodb::velocypack::Slice computeValue() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort the members of an (array) node
@@ -932,10 +934,10 @@ struct AstNode {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief precomputed JSON value (used when executing expressions)
+  /// @brief precomputed VPack value (used when executing expressions)
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t mutable* computedJson;
+  uint8_t mutable* computedValue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the node's sub nodes

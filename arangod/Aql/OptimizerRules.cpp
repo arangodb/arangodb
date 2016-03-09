@@ -668,8 +668,7 @@ class PropagateConstantAttributesHelper {
         return;
       }
 
-      if (TRI_CompareValuesJson(value->computeJson(), previous->computeJson(),
-                                true) != 0) {
+      if (!value->computeValue().equals(previous->computeValue())) {
         // different value found for an already tracked attribute. better not
         // use this attribute
         (*it2).second = nullptr;

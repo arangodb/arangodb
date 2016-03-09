@@ -33,6 +33,7 @@
 #include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -1046,25 +1047,22 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(nl + nr, arangodb::basics::JsonHash(),
-            arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*> cache(nl + nr);
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    cache.emplace(json, member);
+    cache.emplace(slice, member);
   }
 
   auto node = createNodeArray();
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    auto it = cache.find(json);
+    auto it = cache.find(slice);
 
     if (it != cache.end()) {
       node->addMember((*it).second);
@@ -1085,10 +1083,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(nl + nr, arangodb::basics::JsonHash(),
-            arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*> cache(nl + nr);
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -1097,9 +1092,9 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    cache.emplace(json, member);
+    cache.emplace(slice, member);
   }
 
   auto node = createNodeArray();
@@ -2039,16 +2034,14 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   // TODO: sort values in place first and compare two adjacent members each
 
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(n, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*> cache(n);
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    if (cache.find(json) == cache.end()) {
-      cache.emplace(json, member);
+    if (cache.find(slice) == cache.end()) {
+      cache.emplace(slice, member);
     }
   }
 
