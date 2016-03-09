@@ -30,8 +30,6 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 
-struct TRI_document_collection_t;
-
 namespace arangodb {
 namespace aql {
 
@@ -79,7 +77,7 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue getValue(size_t index, RegisterId varNr) const {
+  AqlValue$ getValue(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -88,7 +86,7 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register by reference
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
+  AqlValue$ const& getValueReference(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -97,7 +95,7 @@ class AqlItemBlock {
   /// @brief setValue, set the current value of a register
   //////////////////////////////////////////////////////////////////////////////
 
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+  void setValue(size_t index, RegisterId varNr, AqlValue$ const& value) {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
@@ -117,31 +115,6 @@ class AqlItemBlock {
     }
 
     _data[index * _nrRegs + varNr] = value;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill a slot in the item block with a SHAPED AqlValue
-  /// this is a specialization without reference counting
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setShaped(size_t index, RegisterId varNr,
-                 TRI_df_marker_t const* marker) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(!_data[index * _nrRegs + varNr].requiresDestruction());
-
-    auto& v = _data[index * _nrRegs + varNr];
-    v._marker = marker;
-    v._type = AqlValue::SHAPED;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill a slot in the item block with an external VelocyPack value.
-  ///        This value should not be freed.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setExternal(size_t index, RegisterId varNr,
-                   arangodb::velocypack::Slice external) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -170,7 +143,7 @@ class AqlItemBlock {
       }
     }
 
-    element.erase();
+    element.invalidate();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -195,7 +168,7 @@ class AqlItemBlock {
       }
     }
 
-    element.erase();
+    element.invalidate();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -206,7 +179,7 @@ class AqlItemBlock {
   void eraseAll() {
     for (auto& it : _data) {
       if (!it.isEmpty()) {
-        it.erase();
+        it.invalidate();
       }
     }
 
@@ -218,7 +191,7 @@ class AqlItemBlock {
   /// this is used if the value is stolen and later released from elsewhere
   //////////////////////////////////////////////////////////////////////////////
 
-  uint32_t valueCount(AqlValue const& v) const {
+  uint32_t valueCount(AqlValue$ const& v) const {
     auto it = _valueCount.find(v);
 
     if (it == _valueCount.end()) {
@@ -234,7 +207,7 @@ class AqlItemBlock {
   /// might be deleted at any time!
   //////////////////////////////////////////////////////////////////////////////
 
-  void steal(AqlValue const& v) {
+  void steal(AqlValue$ const& v) {
     if (v.requiresDestruction()) {
       auto it = _valueCount.find(v);
 
@@ -242,25 +215,6 @@ class AqlItemBlock {
         _valueCount.erase(it);
       }
     }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getDocumentCollection
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_document_collection_t const* getDocumentCollection(
-      RegisterId varNr) const {
-    return _docColls[varNr];
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief setDocumentCollection, set the current value of a variable or
-  /// attribute
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline void setDocumentCollection(RegisterId varNr,
-                                    TRI_document_collection_t const* docColl) {
-    _docColls[varNr] = docColl;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -274,14 +228,6 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   inline size_t size() const { return _nrItems; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getter for _docColls
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*>& getDocumentCollections() {
-    return _docColls;
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shrink the block to the specified number of rows
@@ -343,15 +289,13 @@ class AqlItemBlock {
   void toVelocyPack(arangodb::AqlTransaction* trx,
                     arangodb::velocypack::Builder&) const;
 
-  arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
   /// times _nrRegs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<AqlValue> _data;
+  std::vector<AqlValue$> _data;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _valueCount, since we have to allow for identical AqlValues
@@ -362,14 +306,7 @@ class AqlItemBlock {
   /// count with valueCount.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<AqlValue, uint32_t> _valueCount;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _docColls, for every column a possible collection, which contains
-  /// all AqlValues of type SHAPED in this column.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*> _docColls;
+  std::unordered_map<AqlValue$, uint32_t> _valueCount;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nrItems, number of rows

@@ -107,12 +107,13 @@ void IndexBlock::executeExpressions() {
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
-    TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a = AqlValue(exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions]));
-    auto jsonified = a.toJson(_trx, myCollection, true);
+    AqlValue$ a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
+                              _inRegs[posInExpressions]);
+    VPackSlice slice = a.slice();
+    //AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
     a.destroy();
-    AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
+
     _condition->getMember(toReplace->orMember)
         ->getMember(toReplace->andMember)
         ->changeMember(toReplace->operatorMember, evaluatedNode);
@@ -492,11 +493,6 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(cur, res.get(), _pos);
 
-      // set our collection for our output register
-      res->setDocumentCollection(
-          static_cast<arangodb::aql::RegisterId>(curRegs),
-          _trx->documentCollection(_collection->cid()));
-
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
           // re-use already copied aqlvalues
@@ -511,9 +507,8 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                      AqlValue(reinterpret_cast<TRI_df_marker_t const*>(
-                          _documents[_posInDocs++].getDataPtr())));
+        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
+                      AqlValueDocument(VPackSlice(_documents[_posInDocs++].vpack())));
         // No harm done, if the setValue throws!
       }
     }

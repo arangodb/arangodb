@@ -97,7 +97,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
-          AqlValue a = _inputRegisterValues->getValue(0, reg);
+          AqlValue$ a = _inputRegisterValues->getValue(0, reg);
           _inputRegisterValues->steal(a);
 
           try {
@@ -111,10 +111,6 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
             throw;
           }
           _inputRegisterValues->eraseValue(0, reg);
-          // if the latter throws, it does not matter, since we have
-          // already stolen the value
-          result->setDocumentCollection(
-              reg, _inputRegisterValues->getDocumentCollection(reg));
         }
       }
     } catch (...) {
@@ -441,22 +437,17 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   auto stripped = std::make_unique<AqlItemBlock>(n, 1);
 
   for (size_t i = 0; i < n; i++) {
-    auto a = res->getValueReference(i, registerId);
+    AqlValue$ const& a = res->getValueReference(i, registerId);
 
-    if (!a.isEmpty()) {
+    if (!a.isNone()) {
       if (a.requiresDestruction()) {
         res->steal(a);
 
-        try {
-          TRI_IF_FAILURE("ReturnBlock::getSome") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          stripped->setValue(i, 0, a);
-        } catch (...) {
-          a.destroy();
-          throw;
+        TRI_IF_FAILURE("ReturnBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+
+        stripped->setValue(i, 0, a);
         // If the following does not go well, we do not care, since
         // the value is already stolen and installed in stripped
         res->eraseValue(i, registerId);
@@ -466,7 +457,6 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
     }
   }
 
-  stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
   delete res.get();
   res.release();
 

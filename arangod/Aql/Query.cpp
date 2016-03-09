@@ -181,6 +181,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _engine(nullptr),
       _maxWarningCount(10),
       _warnings(),
+      _startTime(TRI_microtime()),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -221,14 +222,13 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
       _engine(nullptr),
       _maxWarningCount(10),
       _warnings(),
+      _startTime(TRI_microtime()),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
   TRI_ASSERT(_vocbase != nullptr);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a query
@@ -628,15 +628,13 @@ QueryResult Query::execute(QueryRegistry* registry) {
         // iterate over result, return it and store it in query cache
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize))) {
-          auto doc = value->getDocumentCollection(resultRegister);
-
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            auto val = value->getValueReference(i, resultRegister);
+            AqlValue$ const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, doc, *resultBuilder);
+              val.toVelocyPack(_trx, *resultBuilder);
             }
           }
           delete value;
@@ -657,14 +655,13 @@ QueryResult Query::execute(QueryRegistry* registry) {
         // iterate over result and return it
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize))) {
-          auto doc = value->getDocumentCollection(resultRegister);
 
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
-            auto val = value->getValueReference(i, resultRegister);
+            AqlValue$ const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, doc, *resultBuilder);
+              val.toVelocyPack(_trx, *resultBuilder);
             }
           }
           delete value;
@@ -697,18 +694,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
         TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   } catch (std::exception const& ex) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   } catch (...) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     return QueryResult(TRI_ERROR_INTERNAL,
                        TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
@@ -738,7 +739,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
-        res.result = v8::Handle<v8::Array>::Cast(TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice()));
+        res.result = v8::Handle<v8::Array>::Cast(TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), _trx->transactionContext()->getVPackOptions()));
         res.cached = true;
         return res;
       }
@@ -775,17 +776,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize))) {
-          auto doc = value->getDocumentCollection(resultRegister);
-
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            auto val = value->getValueReference(i, resultRegister);
+            AqlValue$ const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              result.result->Set(j++, val.toV8(isolate, _trx, doc));
-
-              val.toVelocyPack(_trx, doc, *builder);
+              result.result->Set(j++, val.toV8(isolate, _trx));
+              val.toVelocyPack(_trx, *builder);
             }
           }
           delete value;
@@ -804,15 +802,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize))) {
-          auto doc = value->getDocumentCollection(resultRegister);
-
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            auto val = value->getValueReference(i, resultRegister);
+            AqlValue$ const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              result.result->Set(j++, val.toV8(isolate, _trx, doc));
+              result.result->Set(j++, val.toV8(isolate, _trx));
             }
           }
           delete value;
@@ -843,17 +839,21 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(ex.code());
     return QueryResultV8(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResultV8(
         TRI_ERROR_OUT_OF_MEMORY,
         TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   } catch (std::exception const& ex) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   } catch (...) {
+    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
                        TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());

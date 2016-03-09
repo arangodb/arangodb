@@ -53,6 +53,8 @@ struct OperationOptions {
 
   // ignore _rev attributes given in documents (for replace and update)
   bool ignoreRevs;
+
+  // TODO: add returnOld, returnNew
 };
 
 }

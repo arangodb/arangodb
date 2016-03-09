@@ -149,12 +149,10 @@ class GatherBlock : public ExecutionBlock {
    public:
     OurLessThan(arangodb::AqlTransaction* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
-                std::vector<std::pair<RegisterId, bool>>& sortRegisters,
-                std::vector<TRI_document_collection_t const*>& colls)
+                std::vector<std::pair<RegisterId, bool>>& sortRegisters) 
         : _trx(trx),
           _gatherBlockBuffer(gatherBlockBuffer),
-          _sortRegisters(sortRegisters),
-          _colls(colls) {}
+          _sortRegisters(sortRegisters) {}
 
     bool operator()(std::pair<size_t, size_t> const& a,
                     std::pair<size_t, size_t> const& b);
@@ -163,7 +161,6 @@ class GatherBlock : public ExecutionBlock {
     arangodb::AqlTransaction* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
-    std::vector<TRI_document_collection_t const*>& _colls;
   };
 };
 
@@ -389,10 +386,10 @@ class DistributeBlock : public BlockWithClients {
   bool getBlockForClient(size_t atLeast, size_t atMost, size_t clientId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the JSON that is used to determine the initial shard
+  /// @brief return the value that is used to determine the initial shard
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t const* getInputJson(AqlItemBlock const*) const;
+  arangodb::velocypack::Slice getInput(AqlItemBlock const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the

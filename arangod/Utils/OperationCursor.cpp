@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
+#include "Logger/Logger.h"
 #include "VocBase/MasterPointer.h"
 
 using namespace arangodb;
@@ -57,22 +58,29 @@ int OperationCursor::getMore(uint64_t batchSize, bool useExternals) {
   }
   // We restart the builder
   _builder.clear();
+
+
   VPackArrayBuilder guard(&_builder);
   TRI_doc_mptr_t* mptr = nullptr;
   // TODO: Improve this for baby awareness
   while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
     --batchSize;
     --_limit;
+#if 0    
     if (useExternals) {
       _builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
     } else {
-      _builder.add(VPackSlice(mptr->vpack()));
+#endif      
+    _builder.add(VPackSlice(mptr->vpack()));
+#if 0      
     }
+#endif    
   }
   if (batchSize > 0 || _limit == 0) {
     // Iterator empty, there is no more
     _hasMore = false;
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 

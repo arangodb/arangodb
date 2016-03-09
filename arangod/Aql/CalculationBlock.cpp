@@ -24,8 +24,9 @@
 #include "CalculationBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -86,24 +87,16 @@ int CalculationBlock::initialize() { return ExecutionBlock::initialize(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
-  result->setDocumentCollection(_outReg,
-                                result->getDocumentCollection(_inRegs[0]));
-
   size_t const n = result->size();
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
     // care of correct freeing:
-    auto a = result->getValueReference(i, _inRegs[0]);
+    AqlValue$ const& a = result->getValueReference(i, _inRegs[0]);
 
-    try {
-      TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      result->setValue(i, _outReg, a);
-    } catch (...) {
-      a.destroy();
-      throw;
+    TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    result->setValue(i, _outReg, a);
   }
 }
 
@@ -112,8 +105,6 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  result->setDocumentCollection(_outReg, nullptr);
-
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
 
@@ -122,19 +113,19 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // check the condition variable (if any)
     if (hasCondition) {
-      AqlValue conditionResult = result->getValueReference(i, _conditionReg);
+      AqlValue$ const& conditionResult = result->getValueReference(i, _conditionReg);
 
       if (!conditionResult.isTrue()) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->setValue(i, _outReg, AqlValue(new Json(Json::Null)));
+        result->setValue(i, _outReg, AqlValue$(arangodb::basics::VelocyPackHelper::NullValue()));
         continue;
       }
     }
 
     // execute the expression
-    AqlValue a = AqlValue(_expression->execute(_trx, result, i, _inVars, _inRegs));
+    AqlValue$ a = _expression->execute(_trx, result, i, _inVars, _inRegs);
 
     try {
       TRI_IF_FAILURE("CalculationBlock::executeExpression") {

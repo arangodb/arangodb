@@ -64,14 +64,7 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief extract a key from the AqlValue passed
   //////////////////////////////////////////////////////////////////////////////
 
-  int extractKey(AqlValue const&, TRI_document_collection_t const*,
-                 std::string&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a master pointer from the marker passed
-  //////////////////////////////////////////////////////////////////////////////
-
-  void constructMptr(TRI_doc_mptr_t*, TRI_df_marker_t const*) const;
+  int extractKey(AqlValue$ const&, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether a shard key value has changed
@@ -91,6 +84,12 @@ class ModificationBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an update or replace document modification operation
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlItemBlock* modify(std::vector<AqlItemBlock*>& blocks, bool isReplace);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -133,8 +132,7 @@ class ModificationBlock : public ExecutionBlock {
 class RemoveBlock : public ModificationBlock {
  public:
   RemoveBlock(ExecutionEngine*, RemoveNode const*);
-
-  ~RemoveBlock();
+  ~RemoveBlock() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -147,8 +145,7 @@ class RemoveBlock : public ModificationBlock {
 class InsertBlock : public ModificationBlock {
  public:
   InsertBlock(ExecutionEngine*, InsertNode const*);
-
-  ~InsertBlock();
+  ~InsertBlock() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -161,8 +158,7 @@ class InsertBlock : public ModificationBlock {
 class UpdateBlock : public ModificationBlock {
  public:
   UpdateBlock(ExecutionEngine*, UpdateNode const*);
-
-  ~UpdateBlock();
+  ~UpdateBlock() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -175,8 +171,7 @@ class UpdateBlock : public ModificationBlock {
 class ReplaceBlock : public ModificationBlock {
  public:
   ReplaceBlock(ExecutionEngine*, ReplaceNode const*);
-
-  ~ReplaceBlock();
+  ~ReplaceBlock() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -189,8 +184,7 @@ class ReplaceBlock : public ModificationBlock {
 class UpsertBlock : public ModificationBlock {
  public:
   UpsertBlock(ExecutionEngine*, UpsertNode const*);
-
-  ~UpsertBlock();
+  ~UpsertBlock() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

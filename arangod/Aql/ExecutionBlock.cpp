@@ -181,17 +181,18 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resolve a collection name and return cid and document key
+/// @brief resolve a collection name and return success or failure
 /// this is used for parsing _from, _to and _id values
 ////////////////////////////////////////////////////////////////////////////////
 
-int ExecutionBlock::resolve(char const* handle, TRI_voc_cid_t& cid,
-                            std::string& key) const {
+int ExecutionBlock::resolve(std::string const& input) const {
+  char const* handle = input.c_str();
   char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
   if (p == nullptr || *p == '\0') {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
+  TRI_voc_cid_t cid = 0;
   if (*handle >= '0' && *handle <= '9') {
     cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
   } else {
@@ -202,8 +203,6 @@ int ExecutionBlock::resolve(char const* handle, TRI_voc_cid_t& cid,
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-
-  key = std::string(p + 1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -221,10 +220,10 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto value = src->getValueReference(srcRow, i);
+      auto const& value = src->getValueReference(srcRow, i);
 
       if (!value.isEmpty()) {
-        AqlValue a = value.clone();
+        AqlValue$ a = value.clone();
         try {
           dst->setValue(dstRow, i, a);
         } catch (...) {
@@ -232,8 +231,6 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
           throw;
         }
       }
-      // copy collection
-      dst->setDocumentCollection(i, src->getDocumentCollection(i));
     }
   }
 }
@@ -250,11 +247,10 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto value = src->getValueReference(row, i);
+      auto const& value = src->getValueReference(row, i);
 
       if (!value.isEmpty()) {
-        AqlValue a = value.clone();
-
+        AqlValue$ a = value.clone();
         try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -266,8 +262,6 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
           throw;
         }
       }
-      // copy collection
-      dst->setDocumentCollection(i, src->getDocumentCollection(i));
     }
   }
 }

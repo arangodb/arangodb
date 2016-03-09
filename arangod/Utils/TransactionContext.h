@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Options.h>
+
 struct TRI_document_collection_t;
 struct TRI_transaction_t;
 struct TRI_vocbase_t;
@@ -85,7 +87,7 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<velocypack::CustomTypeHandler> orderCustomTypeHandler();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a document ditch for the collection
   /// this will create one if none exists
@@ -99,6 +101,12 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get velocypack options with a custom type handler
+  //////////////////////////////////////////////////////////////////////////////
+  
+  arangodb::velocypack::Options* getVPackOptions();
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the transaction
@@ -154,6 +162,8 @@ class TransactionContext {
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+
+  arangodb::velocypack::Options _options;
 
   struct {
     TRI_voc_tid_t id; 

@@ -179,10 +179,11 @@ void TraversalBlock::executeExpressions() {
           dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
       if (it != nullptr && it->expression != nullptr) {
         // inVars and inRegs needs fixx
-        TRI_document_collection_t const* myCollection = nullptr;
-        AqlValue a = AqlValue(it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i]));
-        it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
+        AqlValue$ a = it->expression->execute(_trx, cur, _pos, _inVars[i],
+                                             _inRegs[i]);
+        // TODO FIX setting compareTo value!!
+//      it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
+#warning FIX setting compareTo value        
         a.destroy();
       }
     }
@@ -268,10 +269,11 @@ bool TraversalBlock::morePaths(size_t hint) {
       break;
     }
 
-    AqlValue pathValue;
+    AqlValue$ pathValue;
 
     if (usesPathOutput() || (en->condition() != nullptr)) {
-      pathValue = AqlValue(p->pathToJson(_trx, _resolver));
+      // pathValue = AqlValue$(p->pathToJson(_trx, _resolver));
+#warning FIX PATH CREATION
     }
 
     if (usesVertexOutput()) {
@@ -313,7 +315,7 @@ size_t TraversalBlock::skipPaths(size_t hint) {
 
 void TraversalBlock::initializePaths(AqlItemBlock const* items) {
   if (!_vertices.empty()) {
-    // No Initialisation required.
+    // No Initialization required.
     return;
   }
   if (!_useRegister) {
@@ -326,37 +328,22 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                              "Only id strings or objects with "
                                              "_id are allowed");
       } else {
-        _vertexBuilder.clear();
-        _vertexBuilder.add(VPackValue(_vertexId));
-        _traverser->setStartVertex(_vertexBuilder.slice());
+        _traverser->setStartVertex(_vertexId);
       }
     }
   } else {
-    auto in = items->getValueReference(_pos, _reg);
-    /* TODO Deprecated uses shapes, should use slices instead
-    if (in.isShaped()) {
-      auto col = items->getDocumentCollection(_reg);
-      VertexId v(col->_info.id(), TRI_EXTRACT_MARKER_KEY(in.getMarker()));
-      _traverser->setStartVertex(v);
-    } else if (in.isObject()) {
-      Json input = in.toJson(_trx, nullptr, false);
-      if (input.has(TRI_VOC_ATTRIBUTE_ID)) {
-        Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
-        if (_idJson.isString()) {
-          _vertexId =
-              arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
-          VertexId v =
-              arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
-          _traverser->setStartVertex(v);
-        }
+    AqlValue$ const& in = items->getValueReference(_pos, _reg);
+    if (in.isObject()) {
+      try {
+        std::string idString = _trx->extractIdString(in.slice());
+        _traverser->setStartVertex(idString);
       }
-    } else if (in.isString()) {
-    */
-    if (in.isString()) {
-      _vertexId = in.toString();
-      _vertexBuilder.clear();
-      _vertexBuilder.add(VPackValue(_vertexId));
-      _traverser->setStartVertex(_vertexBuilder.slice());
+      catch (...) {
+        // _id or _key not present... ignore this error and fall through
+      }
+    } else if (in.slice().isString()) {
+      _vertexId = in.slice().copyString();
+      _traverser->setStartVertex(_vertexId);
     } else {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
                                            "Invalid input for traversal: Only "

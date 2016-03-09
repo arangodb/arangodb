@@ -26,9 +26,12 @@
 #define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AqlValue.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace utils {
@@ -47,8 +50,7 @@ class SortedCollectBlock : public ExecutionBlock {
   typedef std::vector<Aggregator*> AggregateValuesType;
 
   struct CollectGroup {
-    std::vector<AqlValue> groupValues;
-    std::vector<TRI_document_collection_t const*> collections;
+    std::vector<AqlValue$> groupValues;
 
     std::vector<AqlItemBlock*> groupBlocks;
     AggregateValuesType aggregators;
@@ -59,9 +61,7 @@ class SortedCollectBlock : public ExecutionBlock {
     bool const count;
 
     CollectGroup() = delete;
-
     explicit CollectGroup(bool);
-
     ~CollectGroup();
 
     void initialize(size_t capacity);
@@ -137,12 +137,17 @@ class SortedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::string> _variableNames;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief builder for temporary aggregate values
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::velocypack::Builder _builder;
 };
 
 class HashedCollectBlock : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
-
   ~HashedCollectBlock();
 
   int initialize() override;
@@ -178,14 +183,12 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyHash {
-    GroupKeyHash(arangodb::AqlTransaction* trx,
-                 std::vector<TRI_document_collection_t const*>& colls)
-        : _trx(trx), _colls(colls), _num(colls.size()) {}
+    GroupKeyHash(arangodb::AqlTransaction* trx, size_t num)
+        : _trx(trx), _num(num) {}
 
-    size_t operator()(std::vector<AqlValue> const& value) const;
+    size_t operator()(std::vector<AqlValue$> const& value) const;
 
     arangodb::AqlTransaction* _trx;
-    std::vector<TRI_document_collection_t const*>& _colls;
     size_t const _num;
   };
 
@@ -194,15 +197,13 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyEqual {
-    GroupKeyEqual(arangodb::AqlTransaction* trx,
-                  std::vector<TRI_document_collection_t const*>& colls)
-        : _trx(trx), _colls(colls) {}
+    GroupKeyEqual(arangodb::AqlTransaction* trx)
+        : _trx(trx) {}
 
-    bool operator()(std::vector<AqlValue> const&,
-                    std::vector<AqlValue> const&) const;
+    bool operator()(std::vector<AqlValue$> const&,
+                    std::vector<AqlValue$> const&) const;
 
     arangodb::AqlTransaction* _trx;
-    std::vector<TRI_document_collection_t const*>& _colls;
   };
 };
 
