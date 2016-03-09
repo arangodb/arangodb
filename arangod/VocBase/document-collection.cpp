@@ -4054,17 +4054,7 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
   VPackBuilder builder;
   { VPackObjectBuilder guard(&builder);
 
-    VPackObjectIterator it(newValue);
-    while (it.valid()) {
-      std::string key(it.key().copyString());
-      if (key[0] != '_' ||
-          (key != TRI_VOC_ATTRIBUTE_ID &&
-           key != TRI_VOC_ATTRIBUTE_KEY &&
-           key != TRI_VOC_ATTRIBUTE_REV)) {
-        builder.add(key, it.value());
-      }
-      it.next();
-    }
+    TRI_SanitizeObject(newValue, builder);
     VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_ID);
     TRI_ASSERT(!s.isNone());
     builder.add(TRI_VOC_ATTRIBUTE_ID, s);

@@ -33,6 +33,10 @@
 #include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
+
 #include <functional>
 
 struct TRI_document_collection_t;
@@ -632,6 +636,13 @@ void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*, bool);
 /// @brief extract the _rev attribute from a slice
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t TRI_extractRevisionId(VPackSlice const slice);
+TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
   
 #endif

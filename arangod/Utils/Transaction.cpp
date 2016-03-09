@@ -515,7 +515,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = TRI_extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
 
   int res = arangodb::getDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision, headers, true,
@@ -576,7 +576,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
 
     TRI_voc_rid_t expectedRevision = 0;
     if (!options.ignoreRevs) {
-      expectedRevision = TRI_extractRevisionId(value);
+      expectedRevision = TRI_ExtractRevisionId(value);
     }
 
     TRI_doc_mptr_t mptr;
@@ -767,6 +767,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice const value) -> int {
+    if (!value.isObject()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    }
     // add missing attributes for document (_id, _rev, _key)
     VPackBuilder merge;
     merge.openObject();
@@ -892,7 +895,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -980,7 +983,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -1050,6 +1053,9 @@ OperationResult Transaction::modifyLocal(
   VPackBuilder resultBuilder;  // building the complete result
 
   auto workForOneDocument = [&](VPackSlice const newVal) -> int {
+    if (!newVal.isObject()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    }
     TRI_doc_mptr_t mptr;
     TRI_voc_rid_t actualRevision = 0;
 
@@ -1148,7 +1154,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = TRI_extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
 
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -1210,6 +1216,11 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                actualRevision);
     
     if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_CONFLICT) {
+        std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        buildDocumentIdentity(resultBuilder, cid, key,
+                              std::to_string(actualRevision), "");
+      }
       return res;
     }
 

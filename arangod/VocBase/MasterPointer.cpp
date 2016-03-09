@@ -32,6 +32,6 @@ using namespace arangodb;
    
 TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
   VPackSlice const slice(vpack());
-  return TRI_extractRevisionId(slice);
+  return TRI_ExtractRevisionId(slice);
 }
 
