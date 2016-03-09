@@ -75,6 +75,8 @@ class ExampleMatcher {
   ~ExampleMatcher() { }
 
   bool matches(TRI_voc_cid_t, TRI_doc_mptr_t const* mptr) const;
+
+  bool matches(arangodb::velocypack::Slice const) const;
 };
 }
 

@@ -241,6 +241,31 @@ void EdgeIndexIterator::reset() {
   _buffer = nullptr;
 }
 
+TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {
+  TRI_doc_mptr_t* res = nullptr;
+  if (_useInbound) {
+    do {
+      res = _inbound->next();
+    } while (res != nullptr && _seen.find(res) != _seen.end());
+    return res;
+  }
+  res = _outbound->next();
+  if (res == nullptr) {
+    _useInbound = true;
+    return next();
+  }
+  _seen.emplace(res);
+  return res;
+}
+
+void AnyDirectionEdgeIndexIterator::reset() {
+  _useInbound = false;
+  _seen.clear();
+  _outbound->reset();
+  _inbound->reset();
+}
+
+
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
@@ -527,6 +552,52 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
        {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
 
   return matcher.specializeOne(this, node, reference);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given VelocyPackSlices.
+///        The searchValue is a an Array with exactly two Entries.
+///        If the first is set it means we are searching for _from (OUTBOUND),
+///        if the second is set we are searching for _to (INBOUND).
+///        if both are set we are search for ANY direction. Result is made
+///        DISTINCT.
+///        Each defined slice that is set has to be list of keys to search for.
+///        Each key needs to have the following formats:
+///
+///        1) {"eq": <compareValue>} // The value in index is exactly this
+///        
+///        Reverse is not supported, hence ignored
+///        NOTE: The iterator is only valid as long as the slice points to
+///        a valid memory region.
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* EdgeIndex::iteratorForSlice(
+    arangodb::Transaction* trx, IndexIteratorContext*,
+    arangodb::velocypack::Slice const searchValues, bool) const {
+  if (!searchValues.isArray() || searchValues.length() != 2) {
+    // Invalid searchValue
+    return nullptr;
+  }
+  VPackSlice const from = searchValues.at(0);
+  VPackSlice const to = searchValues.at(1);
+
+  if (!from.isNone()) {
+    TRI_ASSERT(from.isArray());
+    if (!to.isNone()) {
+      // ANY search
+      TRI_ASSERT(to.isArray());
+      auto left = std::make_unique<EdgeIndexIterator>(trx, _edgesFrom, from);
+      auto right = std::make_unique<EdgeIndexIterator>(trx, _edgesTo, to);
+      return new AnyDirectionEdgeIndexIterator(left.release(), right.release());
+    }
+    // OUTBOUND search
+    TRI_ASSERT(to.isNone());
+    return new EdgeIndexIterator(trx, _edgesFrom, from);
+  } else {
+    // INBOUND search
+    TRI_ASSERT(to.isArray());
+    return new EdgeIndexIterator(trx, _edgesTo, to);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

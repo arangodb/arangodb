@@ -58,6 +58,20 @@ class EdgeIndexIterator final : public IndexIterator {
         _batchSize(50) {  // This might be adjusted
   }
 
+  EdgeIndexIterator(arangodb::Transaction* trx,
+                    TRI_EdgeIndexHash_t const* index,
+                    arangodb::velocypack::Slice searchValues)
+      : _trx(trx),
+        _index(index),
+        _searchValues(nullptr),
+        _keys(searchValues),
+        _position(0),
+        _last(nullptr),
+        _buffer(nullptr),
+        _posInBuffer(0),
+        _batchSize(50) {  // This might be adjusted
+  }
+ 
   ~EdgeIndexIterator() {
     // Free the vector space, not the content
     delete _buffer;
@@ -73,6 +87,32 @@ class EdgeIndexIterator final : public IndexIterator {
   std::vector<TRI_doc_mptr_t*>* _buffer;
   size_t _posInBuffer;
   size_t _batchSize;
+};
+
+class AnyDirectionEdgeIndexIterator final : public IndexIterator {
+ public:
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+  AnyDirectionEdgeIndexIterator(EdgeIndexIterator* outboundIterator,
+                                EdgeIndexIterator* inboundIterator)
+      : _outbound(outboundIterator),
+        _inbound(inboundIterator),
+        _useInbound(false),
+        _done(false) {}
+
+  ~AnyDirectionEdgeIndexIterator() {
+    delete _outbound;
+    delete _inbound;
+  }
+
+ private:
+  EdgeIndexIterator* _outbound;
+  EdgeIndexIterator* _inbound;
+  std::unordered_set<TRI_doc_mptr_t*> _seen;
+  bool _useInbound;
+  bool _done;
 };
 
 class EdgeIndex final : public Index {
@@ -151,6 +191,26 @@ class EdgeIndex final : public Index {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates an IndexIterator for the given VelocyPackSlices.
+  ///        The searchValue is a an Array with exactly two Entries, one of them
+  ///        has to be NONE.
+  ///        If the first is set it means we are searching for _from (OUTBOUND),
+  ///        if the second is set we are searching for _to (INBOUND).
+  ///        The slice that is set has to be list of keys to search for.
+  ///        Each key needs to have the following formats:
+  ///
+  ///        1) {"eq": <compareValue>} // The value in index is exactly this
+  ///
+  ///        Reverse is not supported, hence ignored
+  ///        NOTE: The iterator is only valid as long as the slice points to
+  ///        a valid memory region.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* iteratorForSlice(arangodb::Transaction*, IndexIteratorContext*,
+                                  arangodb::velocypack::Slice const,
+                                  bool) const override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
