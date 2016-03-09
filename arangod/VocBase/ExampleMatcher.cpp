@@ -220,3 +220,12 @@ bool ExampleMatcher::matches(TRI_voc_cid_t, TRI_doc_mptr_t const* mptr) const {
   }
   return false;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the given velocyPack matches the examples in this class
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExampleMatcher::matches(VPackSlice const slice) const {
+#warning IMPLEMENT THIS
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

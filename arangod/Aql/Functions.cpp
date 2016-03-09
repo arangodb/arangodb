@@ -36,9 +36,11 @@
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
 #include "Indexes/Index.h"
+#include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Rest/SslInterface.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/Transaction.h"
@@ -546,9 +548,8 @@ static void FilterDocuments(arangodb::ExampleMatcher const* matcher,
 
 static void RequestEdges(VPackSlice const& vertexSlice,
                          arangodb::AqlTransaction* trx,
-                         CollectionNameResolver const* resolver,
-                         VocShaper* shaper, TRI_voc_cid_t cid,
-                         TRI_document_collection_t* collection,
+                         std::string const& collectionName,
+                         std::string const& indexId,
                          TRI_edge_direction_e direction,
                          arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, VPackBuilder& result) {
@@ -571,59 +572,110 @@ static void RequestEdges(VPackSlice const& vertexSlice,
                                    vertexId);
   }
 
-  TRI_voc_cid_t startCid = resolver->getCollectionIdLocal(parts[0]);
-  if (startCid == 0) {
+  if (trx->getCollectionType(parts[0]) == TRI_COL_TYPE_UNKNOWN) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   parts[0].c_str());
   }
 
-  char* key = const_cast<char*>(parts[1].c_str());
-  std::vector<TRI_doc_mptr_t> edges = TRI_LookupEdgesDocumentCollection(
-      trx, collection, direction, startCid, key);
-  FilterDocuments(matcher, cid, edges);
-  size_t resultCount = edges.size();
+#warning might be optimized
+  VPackBuilder searchValueBuilder;
+  searchValueBuilder.openArray();
+  switch (direction) {
+    case TRI_EDGE_OUT:
+      searchValueBuilder.openArray();
+      searchValueBuilder.openObject();
+      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
+      searchValueBuilder.close();
+      searchValueBuilder.close();
+      searchValueBuilder.add(VPackValue(VPackValueType::None));
+      break;
+    case TRI_EDGE_IN:
+      searchValueBuilder.add(VPackValue(VPackValueType::None));
+      searchValueBuilder.openArray();
+      searchValueBuilder.openObject();
+      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
+      searchValueBuilder.close();
+      searchValueBuilder.close();
+      break;
+    case TRI_EDGE_ANY:
+      searchValueBuilder.openArray();
+      searchValueBuilder.openObject();
+      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
+      searchValueBuilder.close();
+      searchValueBuilder.close();
+      searchValueBuilder.openArray();
+      searchValueBuilder.openObject();
+      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
+      searchValueBuilder.close();
+      searchValueBuilder.close();
+  }
+  searchValueBuilder.close();
+  VPackSlice search = searchValueBuilder.slice();
+  OperationCursor cursor = trx->indexScan(
+      collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
+      search, 0, UINT64_MAX, 1000, false);
+  if (cursor.failed()) {
+    THROW_ARANGO_EXCEPTION(cursor.code);
+  }
 
-  if (includeVertices) {
-    for (size_t i = 0; i < resultCount; ++i) {
-      VPackObjectBuilder guard(&result);
-      result.add(VPackValue("edge"));
-      std::unordered_set<std::string> unused;
-#warning convert to vpack      
-      ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
-      char const* targetKey = nullptr;
-      TRI_voc_cid_t targetCid = 0;
+  while (cursor.hasMore()) {
+    cursor.getMore();
+    VPackSlice edges = cursor.slice();
+    TRI_ASSERT(edges.isArray());
+    if (includeVertices) {
+      for (auto const& edge : VPackArrayIterator(edges)) {
+        VPackObjectBuilder guard(&result);
+        if (matcher->matches(edge)) {
+          result.add("edge", edge);
 
-      switch (direction) {
-        case TRI_EDGE_OUT:
-          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
-          break;
-        case TRI_EDGE_IN:
-          targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
-          break;
-        case TRI_EDGE_ANY:
-          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
-          if (targetCid == startCid && strcmp(targetKey, key) == 0) {
-            targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
-            targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
+          std::string target;
+          TRI_ASSERT(edge.hasKey(TRI_VOC_ATTRIBUTE_FROM));
+          TRI_ASSERT(edge.hasKey(TRI_VOC_ATTRIBUTE_TO));
+          switch (direction) {
+            case TRI_EDGE_OUT:
+              target = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+              break;
+            case TRI_EDGE_IN:
+              target = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+              break;
+            case TRI_EDGE_ANY:
+              target = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+              if (target == vertexId) {
+                target = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+              }
+              break;
           }
-          break;
-      }
 
-      if (targetKey == nullptr || targetCid == 0) {
-        // somehow invalid
-        continue;
+          if (target.empty()) {
+            // somehow invalid
+            continue;
+          }
+          std::vector<std::string> split = arangodb::basics::StringUtils::split(target, "/");
+          TRI_ASSERT(split.size() == 2);
+          VPackBuilder vertexSearch;
+          vertexSearch.openObject();
+          vertexSearch.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(split[1]));
+          vertexSearch.close();
+          OperationOptions opts;
+          OperationResult vertexResult = trx->document(split[0], vertexSearch.slice(), opts);
+          if (vertexResult.failed()) {
+            if (vertexResult.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+              // This is okay
+              result.add("vertex", VPackValue(VPackValueType::Null));
+            } else {
+              THROW_ARANGO_EXCEPTION(vertexResult.code);
+            }
+          } else {
+            result.add("vertex", vertexResult.slice());
+          }
+        }
       }
-
-      result.add(VPackValue("vertex"));
-      ReadDocument(trx, resolver, targetCid, targetKey, result);
-    }
-  } else {
-    for (size_t i = 0; i < resultCount; ++i) {
-#warning convert to vpack      
-      // ExpandShapedJson(shaper, resolver, cid, &(edges[i]), result, false, unused);
+    } else {
+      for (auto const& edge : VPackArrayIterator(edges)) {
+        if (matcher->matches(edge)) {
+          result.add(edge);
+        }
+      }
     }
   }
 }
@@ -2702,7 +2754,6 @@ static void RegisterCollectionInTransaction(
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
-
   trx->addCollectionAtRuntime(cid);
 }
 
@@ -2916,7 +2967,6 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
   TRI_voc_cid_t cid;
   RegisterCollectionInTransaction(trx, collectionName, cid);
   
-  TRI_document_collection_t* documentCollection = trx->documentCollection(cid);
 
   if (!trx->isEdgeCollection(collectionName)) {
     RegisterWarning(query, "EDGES", TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
@@ -2966,8 +3016,12 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
 
   auto resolver = trx->resolver();
 
-  auto shaper = documentCollection->getShaper();
   std::unique_ptr<arangodb::ExampleMatcher> matcher;
+
+  TRI_document_collection_t* documentCollection = trx->documentCollection(cid);
+  arangodb::EdgeIndex* edgeIndex = documentCollection->edgeIndex();
+  TRI_ASSERT(edgeIndex != nullptr); // Checked because collection is edge Collection.
+  std::string indexId = arangodb::basics::StringUtils::itoa(edgeIndex->id());
 
   if (n > 3) {
     // We might have examples
@@ -3008,16 +3062,14 @@ AqlValue$ Functions::Edges(arangodb::aql::Query* query,
     if (vertexSlice.isArray()) {
       for (auto const& v : VPackArrayIterator(vertexSlice)) {
         try {
-          RequestEdges(v, trx, resolver, shaper, cid,
-                       documentCollection, direction,
+          RequestEdges(v, trx, collectionName, indexId, direction,
                        matcher.get(), includeVertices, *b);
         } catch (...) {
           // Errors in Array are simply ignored
         }
       }
     } else {
-      RequestEdges(vertexSlice, trx, resolver, shaper, cid,
-                   documentCollection, direction,
+      RequestEdges(vertexSlice, trx, collectionName, indexId, direction,
                    matcher.get(), includeVertices, *b);
     }
   }

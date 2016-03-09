@@ -1601,7 +1601,7 @@ OperationCursor Transaction::indexScan(
     std::string const& indexId, VPackSlice const search,
     uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
 
-  // TODO Who checks if indexId is valid and is used for this collection?
+#warning TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
 
   if (ServerState::instance()->isCoordinator()) {
