@@ -225,7 +225,7 @@ static void _printLine(std::string const& s) {
 
 void ConsoleFeature::printLine(std::string const& s, bool forceNewLine) {
 #ifdef _WIN32
-#warning do we need forceNewLine
+//#warning do we need forceNewLine
 
   if (!cygwinShell) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows

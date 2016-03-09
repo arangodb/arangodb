@@ -307,7 +307,11 @@ install(
 
 install_config(arangod)
 
-add_dependencies(arangod ev zlibstatic v8_build)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangod ev zlibstatic v8_build)
+else ()
+  add_dependencies(arangod ev zlibstatic)
+endif ()
 
 ################################################################################
 ## arango-dfdb
