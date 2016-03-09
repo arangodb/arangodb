@@ -236,7 +236,6 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-valid", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.parsed_response['_key'].should eq(key)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
@@ -264,7 +263,6 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-valid", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.parsed_response['_key'].should eq(key)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
        
