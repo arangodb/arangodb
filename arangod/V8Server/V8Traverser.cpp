@@ -248,13 +248,12 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
 //  OperationResult opRes = trx->document(it->second.col, slice, options);
   OperationResult opRes(TRI_ERROR_INTERNAL);
 #warning fill vertex
-  TRI_doc_mptr_t vertex;
 
   if (!opRes.successful()) {
     return false;
   }
 
-  return it->second.matcher->matches(v.cid, &vertex);
+  return it->second.matcher->matches(opRes.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,13 +301,12 @@ void BasicOptions::addEdgeFilter(Json const& example, VocShaper* shaper,
 /// @brief Insert a new edge matcher object
 ////////////////////////////////////////////////////////////////////////////////
 
-void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
-                                 TRI_voc_cid_t const& cid,
-                                 CollectionNameResolver const* resolver) {
+void BasicOptions::addEdgeFilter(VPackSlice const& example,
+                                 TRI_voc_cid_t const& cid) {
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid, new ExampleMatcher(example, resolver, true));
+    _edgeFilter.emplace(cid, new ExampleMatcher(example, true));
   }
 }
 
@@ -332,7 +330,7 @@ bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_t* edge) const {
     return false;
   }
 
-  return it->second->matches(e.cid, edge);
+  return it->second->matches(VPackSlice(edge->vpack()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

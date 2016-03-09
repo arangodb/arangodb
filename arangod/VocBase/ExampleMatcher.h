@@ -29,8 +29,6 @@
 
 #include <v8.h>
 
-struct TRI_doc_mptr_t;
-
 namespace arangodb {
 
 namespace velocypack {
@@ -50,7 +48,6 @@ class ExampleMatcher {
   std::vector<ExampleDefinition> definitions;
 
   void fillExampleDefinition(arangodb::velocypack::Slice const& example,
-                             arangodb::CollectionNameResolver const* resolver,
                              ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
@@ -69,12 +66,11 @@ class ExampleMatcher {
                  arangodb::CollectionNameResolver const* resolver);
 
   ExampleMatcher(arangodb::velocypack::Slice const& example,
-                 arangodb::CollectionNameResolver const* resolver,
                  bool allowStrings);
 
   ~ExampleMatcher() { }
 
-  bool matches(TRI_voc_cid_t, TRI_doc_mptr_t const* mptr) const;
+  bool matches(arangodb::velocypack::Slice const) const;
 };
 }
 

@@ -75,7 +75,7 @@ void ExampleMatcher::fillExampleDefinition(
 }
 
 void ExampleMatcher::fillExampleDefinition(
-    VPackSlice const& example, CollectionNameResolver const* resolver,
+    VPackSlice const& example,
     ExampleDefinition& def) {
   TRI_ASSERT(def._values.isEmpty());
   VPackArrayBuilder guard(&def._values);
@@ -166,11 +166,10 @@ ExampleMatcher::ExampleMatcher(TRI_json_t const* example,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExampleMatcher::ExampleMatcher(VPackSlice const& example,
-                               CollectionNameResolver const* resolver,
                                bool allowStrings) {
   if (example.isObject() || example.isString()) {
     ExampleDefinition def;
-    ExampleMatcher::fillExampleDefinition(example, resolver, def);
+    ExampleMatcher::fillExampleDefinition(example, def);
     definitions.emplace_back(std::move(def));
   } else if (example.isArray()) {
     for (auto const& e : VPackArrayIterator(example)) {
@@ -179,7 +178,7 @@ ExampleMatcher::ExampleMatcher(VPackSlice const& example,
         // We do not match strings in Array
         continue;
       }
-      ExampleMatcher::fillExampleDefinition(e, resolver, def);
+      ExampleMatcher::fillExampleDefinition(e, def);
       definitions.emplace_back(std::move(def));
     }
     if (definitions.empty()) {
@@ -190,16 +189,11 @@ ExampleMatcher::ExampleMatcher(VPackSlice const& example,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Checks if the given mptr matches the examples in this class
+/// @brief Checks if the given velocyPack matches the examples in this class
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExampleMatcher::matches(TRI_voc_cid_t, TRI_doc_mptr_t const* mptr) const {
-  if (mptr == nullptr) {
-    return false;
-  }
-  VPackSlice toMatch(mptr->vpack());
+bool ExampleMatcher::matches(VPackSlice const toMatch) const {
   for (auto const& def : definitions) {
     VPackSlice const compareValue = def.slice();
     size_t i = 0;
