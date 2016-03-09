@@ -367,6 +367,8 @@ struct AqlValue {
 
 // do not add virtual methods!
 struct AqlValue$ {
+ friend struct std::hash<arangodb::aql::AqlValue$>;
+ friend struct std::equal_to<arangodb::aql::AqlValue$>;
  public:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -590,6 +592,66 @@ static_assert(sizeof(AqlValueDocument) == 16, "invalid AqlValueDocument size");
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace std {
+
+template <>
+struct hash<arangodb::aql::AqlValue$> {
+  size_t operator()(arangodb::aql::AqlValue$ const& x) const {
+    std::hash<uint8_t> intHash;
+    std::hash<void const*> ptrHash;
+    arangodb::aql::AqlValue$::AqlValueType type = x.type();
+    size_t res = intHash(type);
+    switch (type) {
+      case arangodb::aql::AqlValue$::INTERNAL: {
+        return res ^ x.slice().hash();
+      }
+      case arangodb::aql::AqlValue$::EXTERNAL: {
+        return res ^ ptrHash(x._data.external);
+      }
+      case arangodb::aql::AqlValue$::REFERENCE: 
+      case arangodb::aql::AqlValue$::REFERENCE_STICKY: {
+        return res ^ ptrHash(x._data.reference);
+      }
+      case arangodb::aql::AqlValue$::RANGE: {
+        return res ^ ptrHash(x.range());
+      }
+    }
+
+    TRI_ASSERT(false);
+    return 0;
+  }
+};
+
+template <>
+struct equal_to<arangodb::aql::AqlValue$> {
+  bool operator()(arangodb::aql::AqlValue$ const& a,
+                  arangodb::aql::AqlValue$ const& b) const {
+    arangodb::aql::AqlValue$::AqlValueType type = a.type();
+    if (type != b.type()) {
+      return false;
+    }
+    switch (type) {
+      case arangodb::aql::AqlValue$::INTERNAL: {
+        return a.slice().equals(b.slice());
+      }
+      case arangodb::aql::AqlValue$::EXTERNAL: {
+        return a._data.external == b._data.external;
+      }
+      case arangodb::aql::AqlValue$::REFERENCE: 
+      case arangodb::aql::AqlValue$::REFERENCE_STICKY: {
+        return a._data.reference == b._data.reference;
+      }
+      case arangodb::aql::AqlValue$::RANGE: {
+        return a.range() == b.range();
+      }
+
+      default: {
+        TRI_ASSERT(false);
+        return false;
+      }
+    }
+  }
+};
+
 
 template <>
 struct hash<arangodb::aql::AqlValue> {
