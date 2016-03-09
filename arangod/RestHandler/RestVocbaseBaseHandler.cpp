@@ -632,27 +632,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the update policy
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy() const {
-  bool found;
-  char const* policy = _request->value("policy", found);
-
-  if (found) {
-    if (TRI_CaseEqualString(policy, "error")) {
-      return TRI_DOC_UPDATE_ERROR;
-    } else if (TRI_CaseEqualString(policy, "last")) {
-      return TRI_DOC_UPDATE_LAST_WRITE;
-    } else {
-      return TRI_DOC_UPDATE_ILLEGAL;
-    }
-  } else {
-    return TRI_DOC_UPDATE_ERROR;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the waitForSync value
 ////////////////////////////////////////////////////////////////////////////////
 

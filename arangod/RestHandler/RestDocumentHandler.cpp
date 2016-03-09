@@ -397,7 +397,6 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  // extract the update policy
   OperationOptions opOptions;
   opOptions.ignoreRevs = true;
   bool found;
