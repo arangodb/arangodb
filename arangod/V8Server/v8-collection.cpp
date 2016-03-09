@@ -397,11 +397,102 @@ static void ExistsVocbaseVPack(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document and returns it
+/// @brief looks up (a) document(s) and returns it/them, collection method
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DocumentVocbaseVPack(
-    bool useCollection, v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void DocumentVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // first and only argument should be a document idenfifier
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle(s)>)");
+  }
+
+  OperationOptions options;
+  options.ignoreRevs = false;
+
+  // Find collection and vocbase
+  std::string collectionName;
+  TRI_vocbase_col_t const* col
+      = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  TRI_vocbase_t* vocbase = col->_vocbase;
+  collectionName = col->name();
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
+  SingleCollectionTransaction trx(transactionContext, collectionName, 
+                                  TRI_TRANSACTION_READ);
+  if (!args[0]->IsArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackBuilder searchBuilder;
+
+  auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue) {
+    std::string collName;
+    if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder,
+                               true)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    }
+    if (!collName.empty() && collName != collectionName) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
+    }
+  };
+
+  if (!args[0]->IsArray()) {
+    VPackObjectBuilder guard(&searchBuilder);
+    workOnOneDocument(args[0]);
+  } else {
+    VPackArrayBuilder guard(&searchBuilder);
+    auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
+    for (uint32_t i = 0; i < searchVals->Length(); ++i) {
+      VPackObjectBuilder guard(&searchBuilder);
+      workOnOneDocument(searchVals->Get(i));
+    }
+  }
+
+  VPackSlice search = searchBuilder.slice();
+
+  // No options here
+  OperationResult opResult = trx.document(collectionName, search, options);
+
+  res = trx.finish(opResult.code);
+
+  if (!opResult.successful()) {
+    TRI_V8_THROW_EXCEPTION(opResult.code);
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
+
+  TRI_V8_RETURN(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document and returns it, database method
+////////////////////////////////////////////////////////////////////////////////
+
+static void DocumentVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -413,21 +504,7 @@ static void DocumentVocbaseVPack(
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t const* col = nullptr;
 
-  if (useCollection) {
-    // called as db.collection.document()
-    col =
-        TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
-    if (col == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    vocbase = col->_vocbase;
-  } else {
-    // called as db._document()
-    vocbase = GetContextVocBase(isolate);
-  }
-
+  vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
@@ -446,8 +523,7 @@ static void DocumentVocbaseVPack(
     }
   }
 
-  LocalCollectionGuard g(useCollection ? nullptr
-                                       : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(const_cast<TRI_vocbase_col_t*>(col));
 
   TRI_ASSERT(col != nullptr);
 
@@ -604,10 +680,10 @@ static void RemoveVocbaseVPack(
 /// @brief was docuBlock documentsCollectionName
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DocumentVocbaseVPack(
+static void JS_DocumentVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  DocumentVocbaseVPack(true, args);
+  DocumentVocbaseCol(args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2550,7 +2626,7 @@ static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DocumentVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  DocumentVocbaseVPack(false, args);
+  DocumentVocbase(args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2825,7 +2901,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
-                       JS_DocumentVocbaseVPack);
+                       JS_DocumentVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
                        JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"),
