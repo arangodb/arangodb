@@ -25,6 +25,7 @@
 #define LIB_BASICS_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/JsonHelper.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

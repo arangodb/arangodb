@@ -24,7 +24,7 @@
 
 #include "SimpleHttpClient.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -39,7 +39,7 @@ namespace httpclient {
 /// @brief empty map, used for headers
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::string> const SimpleHttpClient::NoHeaders;
+std::map<std::string, std::string> const SimpleHttpClient::NO_HEADERS;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
@@ -62,6 +62,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _maxRetries(3),
       _retryWaitTime(1 * 1000 * 1000),
       _retryMessage(),
+      _deleteConnectionOnDestruction(false),
       _keepConnectionOnDestruction(false),
       _warn(warn),
       _keepAlive(true),
@@ -74,11 +75,23 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
   }
 }
 
+SimpleHttpClient::SimpleHttpClient(
+    std::unique_ptr<GeneralClientConnection>& connection, double requestTimeout,
+    bool warn)
+    : SimpleHttpClient(connection.get(), requestTimeout, warn) {
+  _deleteConnectionOnDestruction = true;
+  connection.release();
+}
+
 SimpleHttpClient::~SimpleHttpClient() {
   // connection may have been invalidated by other objects
   if (_connection != nullptr) {
     if (!_keepConnectionOnDestruction || !_connection->isConnected()) {
       _connection->disconnect();
+    }
+
+    if (_deleteConnectionOnDestruction) {
+      delete _connection;
     }
   }
 }
@@ -86,6 +99,21 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
+
+void SimpleHttpClient::setInterrupted(bool value) {
+  if (_connection != nullptr) {
+    _connection->setInterrupted(value);
+  }
+}
+
+bool SimpleHttpClient::isConnected() { return _connection->isConnected(); }
+
+void SimpleHttpClient::disconnect() { _connection->disconnect(); }
+
+std::string SimpleHttpClient::getEndpointSpecification() const {
+  return _connection == nullptr ? "unknown"
+                                : _connection->getEndpointSpecification();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief close connection
@@ -112,7 +140,7 @@ void SimpleHttpClient::close() {
 SimpleHttpResult* SimpleHttpClient::retryRequest(
     rest::HttpRequest::HttpRequestType method, std::string const& location,
     char const* body, size_t bodyLength) {
-  return retryRequest(method, location, body, bodyLength, NoHeaders);
+  return retryRequest(method, location, body, bodyLength, NO_HEADERS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +175,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_retryMessage.empty() && (_maxRetries - tries) > 0) {
-      LOG(WARN) << "" << _retryMessage << " - retries left: " << (_maxRetries - tries);
+      LOG(WARN) << "" << _retryMessage
+                << " - retries left: " << (_maxRetries - tries);
     }
 
 #ifdef _WIN32
@@ -168,7 +197,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 SimpleHttpResult* SimpleHttpClient::request(
     rest::HttpRequest::HttpRequestType method, std::string const& location,
     char const* body, size_t bodyLength) {
-  return doRequest(method, location, body, bodyLength, NoHeaders);
+  return doRequest(method, location, body, bodyLength, NO_HEADERS);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +227,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   TRI_ASSERT(_result == nullptr);
 
   // create a new result
-  _result = new SimpleHttpResult;
+  _result = new SimpleHttpResult();
 
   // reset error message
   _errorMessage = "";

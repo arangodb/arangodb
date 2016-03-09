@@ -28,7 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/QueryList.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "HttpServer/HttpHandler.h"
 #include "Scheduler/Scheduler.h"

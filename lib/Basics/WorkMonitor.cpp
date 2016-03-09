@@ -27,7 +27,7 @@
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"

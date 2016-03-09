@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
 #include "Basics/VelocyPackHelper.h"

@@ -25,7 +25,7 @@
 
 #ifdef TRI_HAVE_POSIX_MMAP
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 
 #include <sys/mman.h>

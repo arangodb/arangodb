@@ -43,6 +43,7 @@ class ApplicationFeature {
 
   virtual ~ApplicationFeature();
 
+ public:
   // return the feature's name
   std::string name() const { return _name; }
 
@@ -90,8 +91,12 @@ class ApplicationFeature {
   bool doesStartBefore(std::string const& other) const;
 
   // add the feature's options to the global list of options. this method will
-  // be regardless of whether to feature is enabled or disabled
+  // be called regardless of whether to feature is enabled or disabled
   virtual void collectOptions(std::shared_ptr<options::ProgramOptions>);
+
+  // load options from somewhere. this method will only be called for enabled
+  // features
+  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should
@@ -101,7 +106,7 @@ class ApplicationFeature {
   virtual void validateOptions(std::shared_ptr<options::ProgramOptions>);
 
   // preparation phase for feature in the preparation phase, the features must
-  // not start any threads furthermore, they must not write any files under
+  // not start any threads. furthermore, they must not write any files under
   // elevated privileges if they want other features to access them, or if they
   // want to access these files with dropped privileges
   virtual void prepare();
@@ -146,24 +151,31 @@ class ApplicationFeature {
 
   // abort program execution because of invalid parameters
   // TODO: add default implementation
-  void abortInvalidParameters();
+  void abortInvalidParameters() { std::abort(); }
 
  private:
   // pointer to application server
   ApplicationServer* _server;
+
   // name of feature
   std::string const _name;
+
   // names of other features required to be enabled if this feature
   // is enabled
   std::vector<std::string> _requires;
+
   // name of other feature that will enable or disable this feature
   std::string _enableWith;
+
   // a list of start dependencies for the feature
   std::unordered_set<std::string> _startsAfter;
+
   // whether or not the feature is enabled
   bool _enabled;
+
   // whether or not the feature is optional
   bool _optional;
+
   // whether or not the feature requires elevated privileges
   bool _requiresElevatedPrivileges;
 };

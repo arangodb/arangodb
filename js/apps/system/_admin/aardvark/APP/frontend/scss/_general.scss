@@ -29,7 +29,7 @@
 
   .outerDiv {
     min-height: 100%;
-    padding: 40px;
+    padding: 20px 40px 40px;
     z-index: 88888;
   }
 
@@ -47,6 +47,29 @@
     color: $c-c2grey;
     cursor: pointer;
   }
+
+  .document-info-div,
+  .document-content-div {
+    left: 40px;
+    position: absolute;
+    right: 40px;
+  }
+
+  .document-content-div {
+    bottom: 80px;
+    top: 130px;
+  }
+
+  .document-editor {
+    height: 100%;
+  }
+
+  .bottomButtonBar {
+    left: -1px;
+    position: absolute;
+    right: -1px;
+  }
+
 }
 
 //still in use???

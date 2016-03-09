@@ -23,7 +23,7 @@
 
 #include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

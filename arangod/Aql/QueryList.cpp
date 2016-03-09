@@ -23,7 +23,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"

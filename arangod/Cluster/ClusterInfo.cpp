@@ -24,7 +24,7 @@
 
 #include "ClusterInfo.h"
 #include "Basics/json.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"

@@ -24,7 +24,7 @@
 #include "ServerJob.h"
 
 #include "Basics/MutexLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/DispatcherQueue.h"

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeoIndex2.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 

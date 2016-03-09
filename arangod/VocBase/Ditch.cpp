@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ditch.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "VocBase/document-collection.h"
 

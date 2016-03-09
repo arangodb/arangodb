@@ -27,7 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
 using namespace arangodb::basics;

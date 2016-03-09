@@ -51,7 +51,7 @@
 #include <TlHelp32.h>
 #endif
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -135,46 +135,6 @@ typedef struct process_state_s {
 } process_state_t;
 
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief original process name
-////////////////////////////////////////////////////////////////////////////////
-
-static char* ProcessName = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief argc
-////////////////////////////////////////////////////////////////////////////////
-
-static int ARGC = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief argv
-////////////////////////////////////////////////////////////////////////////////
-
-static char** ARGV = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief true, if environment has been copied already
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_TAMPER_WITH_ENVIRON
-static bool IsEnvironmentEnlarged = false;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief do we need to free the copy of the environ data on shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_TAMPER_WITH_ENVIRON
-static bool MustFreeEnvironment = false;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximal size of the process title
-////////////////////////////////////////////////////////////////////////////////
-
-static size_t MaximalProcessTitleSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all external processes
@@ -785,61 +745,7 @@ TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
-extern char** environ;
-
 void TRI_SetProcessTitle(char const* title) {
-#if TRI_TAMPER_WITH_ENVIRON
-
-  if (!IsEnvironmentEnlarged) {
-    size_t size;
-
-    int envLen = -1;
-
-    if (environ) {
-      while (environ[++envLen]) {
-        ;
-      }
-    }
-
-    if (envLen > 0) {
-      size = environ[envLen - 1] + strlen(environ[envLen - 1]) - ARGV[0];
-    } else {
-      size = ARGV[ARGC - 1] + strlen(ARGV[ARGC - 1]) - ARGV[0];
-    }
-
-    if (environ) {
-      char** newEnviron =
-          TRI_Allocate(TRI_CORE_MEM_ZONE, (envLen + 1) * sizeof(char*), false);
-      size_t i = 0;
-
-      while (environ[i]) {
-        newEnviron[i] = TRI_DuplicateString(TRI_CORE_MEM_ZONE, environ[i]);
-        ++i;
-      }
-      // pad with a null pointer so we know the end of the array
-      newEnviron[i] = NULL;
-
-      environ = newEnviron;
-      MustFreeEnvironment = true;
-    }
-
-    IsEnvironmentEnlarged = true;
-    MaximalProcessTitleSize = size;
-  }
-
-#else
-
-  MaximalProcessTitleSize = ARGV[ARGC - 1] + strlen(ARGV[ARGC - 1]) - ARGV[0];
-
-#endif
-
-  if (0 < MaximalProcessTitleSize) {
-    char* args = ARGV[0];
-
-    memset(args, '\0', MaximalProcessTitleSize);
-    snprintf(args, MaximalProcessTitleSize - 1, "%s", title);
-  }
-
 #ifdef TRI_HAVE_SYS_PRCTL_H
   prctl(PR_SET_NAME, title, 0, 0, 0);
 #endif
@@ -1338,16 +1244,8 @@ static uint64_t GetPhysicalMemory() {
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess(int argc, char* argv[]) {
+void TRI_InitializeProcess() {
   TRI_PhysicalMemory = GetPhysicalMemory();
-
-  if (ProcessName != nullptr) {
-    return;
-  }
-
-  ProcessName = TRI_DuplicateString(argv[0]);
-  ARGC = argc;
-  ARGV = argv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1355,20 +1253,4 @@ void TRI_InitializeProcess(int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess() {
-  TRI_FreeString(TRI_CORE_MEM_ZONE, ProcessName);
-
-#ifdef TRI_TAMPER_WITH_ENVIRON
-  if (MustFreeEnvironment) {
-    size_t i = 0;
-
-    TRI_ASSERT(environ);
-    // free all arguments copied for environ
-
-    while (environ[i]) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, environ[i]);
-      ++i;
-    }
-    TRI_Free(TRI_CORE_MEM_ZONE, environ);
-  }
-#endif
 }

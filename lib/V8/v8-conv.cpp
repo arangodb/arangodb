@@ -24,7 +24,7 @@
 #include "v8-conv.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-utils.h"

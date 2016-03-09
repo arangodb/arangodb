@@ -32,13 +32,26 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
+  void start() override;
+  void stop() override;
 
  private:
   std::vector<std::string> _output;
-  std::string _level;
+  std::vector<std::string> _levels;
   bool _useLocalTime;
+  std::string _prefix;
+  std::string _file;
   bool _lineNumber;
   bool _thread;
+  bool _performance;
+
+ private:
+  bool _daemon;
+  bool _backgrounded;
+  bool _threaded;
 };
 }
 

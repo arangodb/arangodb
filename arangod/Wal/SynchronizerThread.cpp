@@ -23,7 +23,7 @@
 
 #include "SynchronizerThread.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/server.h"

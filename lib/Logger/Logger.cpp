@@ -790,6 +790,7 @@ LoggerStream::~LoggerStream() {
 
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
+LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance",
@@ -797,7 +798,9 @@ LogTopic Logger::PERFORMANCE("performance",
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress by default
+LogTopic Logger::STARTUP("startup", LogLevel::WARN);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
+LogTopic Logger::V8("v8", LogLevel::WARN);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current log level

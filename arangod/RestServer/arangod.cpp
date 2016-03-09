@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
 
   // initialize sub-systems
   TRI_GlobalEntryFunction();
-  TRIAGENS_REST_INITIALIZE(argc, argv);
+  TRIAGENS_REST_INITIALIZE();
 
   arangodb::basics::VelocyPackHelper::initialize();
 
