@@ -40,7 +40,11 @@ install(
 
 install_config(arangob)
 
-add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangob zlibstatic)
+endif ()
 
 ################################################################################
 ## arangodump
