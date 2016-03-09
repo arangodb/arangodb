@@ -121,9 +121,8 @@ struct BasicOptions {
                      TRI_voc_cid_t const& cid,
                      arangodb::CollectionNameResolver const* resolver);
 
-  void addEdgeFilter(arangodb::velocypack::Slice const& example, VocShaper* shaper,
-                     TRI_voc_cid_t const& cid,
-                     arangodb::CollectionNameResolver const* resolver);
+  void addEdgeFilter(arangodb::velocypack::Slice const& example,
+                     TRI_voc_cid_t const& cid);
 
   void addVertexFilter(v8::Isolate* isolate,
                        v8::Handle<v8::Value> const& example,

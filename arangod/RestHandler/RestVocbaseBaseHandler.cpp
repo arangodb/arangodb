@@ -150,9 +150,9 @@ void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type) {
   if (result.wasSynchronous) {
-    createResponse(rest::HttpResponse::ACCEPTED);
-  } else {
     createResponse(rest::HttpResponse::CREATED);
+  } else {
+    createResponse(rest::HttpResponse::ACCEPTED);
   }
   generate20x(result, collectionName, type);
 }

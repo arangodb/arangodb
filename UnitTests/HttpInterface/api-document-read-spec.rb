@@ -32,10 +32,10 @@ describe ArangoDB do
         cmd = "/_api/document/123456"
         doc = ArangoDB.log_get("#{prefix}-bad-handle", cmd)
 
-        doc.code.should eq(400)
+        doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1203)
+        doc.parsed_response['code'].should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
@@ -552,10 +552,10 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-        # get the document head
+        # get the document head, withdrawn for 3.0
         doc = ArangoDB.head(cmd + "?rev=abcd")
 
-        doc.code.should eq(400)
+        doc.code.should eq(200)
         
         hdr = { "if-match" => "'abcd'" }
         doc = ArangoDB.log_head("#{prefix}-head-rev-invalid", cmd, :headers => hdr)

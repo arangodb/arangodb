@@ -1046,8 +1046,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     trx->_waitForSync = true;
   }
 
-  // default is false
-  waitForSync = false;
   if (isSingleOperationTransaction) {
     waitForSync |= document->_info.waitForSync();
   }

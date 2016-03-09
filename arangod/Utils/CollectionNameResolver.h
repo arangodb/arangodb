@@ -366,6 +366,21 @@ class CollectionNameResolver {
     buffer.appendText("_unknown");
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return collection name if given string is either the name or
+  /// a string with the (numerical) collection id, this returns the cluster
+  /// wide collection name in the DBserver case
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getCollectionName(std::string const& nameOrId) const {
+    if (!nameOrId.empty() &&
+        (nameOrId[0] < '0' || nameOrId[0] > '9')) {
+      return nameOrId;
+    }
+    TRI_voc_cid_t tmp = arangodb::basics::StringUtils::uint64(nameOrId);
+    return getCollectionName(tmp);
+  }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer

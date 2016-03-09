@@ -81,25 +81,29 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (!suffix.empty()) {
+  if (suffix.size() > 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
   }
 
-  // extract the cid
   bool found;
-  char const* collection = _request->value("collection", found);
+  std::string collectionName;
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+    found = true;
+  } else {
+    collectionName = _request->value("collection", found);
+  }
 
-  if (!found || *collection == '\0') {
+  if (!found || collectionName.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+                      "/<collectionname> or query parameter 'collection'");
     return false;
   }
-  std::string collectionName(collection);
 
   bool parseSuccess = true;
   // copy default options
@@ -111,28 +115,23 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-
-  /* TODO
-  if (!checkCreateCollection(collection, getCollectionType())) {
-    return false;
-  }
-  */
-
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                          collectionName, TRI_TRANSACTION_WRITE);
+  VPackSlice body = parsedBody->slice();
+  if (!body.isArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
   arangodb::OperationOptions opOptions;
   opOptions.waitForSync = extractWaitForSync();
-  VPackSlice body = parsedBody->slice();
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
@@ -165,12 +164,8 @@ bool RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-      return readAllDocuments();
-
     case 1:
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+      return readAllDocuments();
 
     case 2:
       return readSingleDocument(true);
@@ -227,9 +222,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
                                           collection, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  // .............................................................................
+  // ...........................................................................
   // inside read transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
@@ -239,6 +234,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   OperationOptions options;
+  options.ignoreRevs = false;
   OperationResult result = trx.document(collection, search, options);
 
   res = trx.finish(result.code);
@@ -260,9 +256,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  TRI_voc_rid_t const rid =
-      VelocyPackHelper::getNumericValue<TRI_voc_rid_t>(
-          result.slice(), TRI_VOC_ATTRIBUTE_REV, 0);
+  TRI_voc_rid_t const rid = TRI_extractRevisionId(result.slice());
   if (ifNoneRid != 0 && ifNoneRid == rid) {
     generateNotModified(rid);
   } else {
@@ -280,7 +274,14 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string const collectionName = _request->value("collection", found);
+  std::string collectionName;
+
+  std::vector<std::string> const& suffix = _request->suffix();
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+  } else {
+    collectionName = _request->value("collection", found);
+  }
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {

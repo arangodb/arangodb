@@ -198,25 +198,6 @@ std::string Transaction::extractKey(VPackSlice const slice) {
   return "";
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _rev attribute from a slice
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_rid_t Transaction::extractRevisionId(VPackSlice const slice) {
-  TRI_ASSERT(slice.isObject());
-
-  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
-  if (r.isString()) {
-    VPackValueLength length;
-    char const* p = r.getString(length);
-    return arangodb::basics::StringUtils::uint64(p, length);
-  }
-  if (r.isInteger()) {
-    return r.getNumber<TRI_voc_rid_t>();
-  }
-  return 0;
-}
-  
 //////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string
@@ -575,7 +556,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_extractRevisionId(value);
 
   int res = arangodb::getDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision, headers, true,
@@ -636,7 +617,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
 
     TRI_voc_rid_t expectedRevision = 0;
     if (!options.ignoreRevs) {
-      expectedRevision = Transaction::extractRevisionId(value);
+      expectedRevision = TRI_extractRevisionId(value);
     }
 
     TRI_doc_mptr_t mptr;
@@ -654,6 +635,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
+      //resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      // This is the future, for now, we have to do this:
       resultBuilder.add(VPackSlice(mptr.vpack()));
     }
 
@@ -950,7 +933,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : Transaction::extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_extractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -1038,7 +1021,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : Transaction::extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_extractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -1206,7 +1189,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_extractRevisionId(value);
 
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
@@ -1309,16 +1292,18 @@ OperationResult Transaction::allKeys(std::string const& collectionName,
   
   std::string prefix;
 
+  std::string realCollName = resolver()->getCollectionName(collectionName);
+
   if (type == "key") {
     prefix = "";
   } else if (type == "id") {
-    prefix = collectionName + "/";
+    prefix = realCollName + "/";
   } else {
     // default return type: paths to documents
     if (isEdgeCollection(collectionName)) {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + collectionName + "/";
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + realCollName + "/";
     } else {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + collectionName + "/";
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + realCollName + "/";
     }
   }
   

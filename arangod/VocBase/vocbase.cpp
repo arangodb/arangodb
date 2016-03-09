@@ -2317,3 +2317,22 @@ void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_extractRevisionId(VPackSlice const slice) {
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
+  if (r.isString()) {
+    VPackValueLength length;
+    char const* p = r.getString(length);
+    return arangodb::basics::StringUtils::uint64(p, length);
+  }
+  if (r.isInteger()) {
+    return r.getNumber<TRI_voc_rid_t>();
+  }
+  return 0;
+}
+  
