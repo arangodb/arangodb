@@ -47,8 +47,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/edge-collection.h"
-#include "VocBase/ExampleMatcher.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
@@ -2406,8 +2404,6 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
   arangodb::Index* found = nullptr;
   {
-    READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
-
     arangodb::aql::QueryCache::instance()->invalidate(
         vocbase, document->_info.namec_str());
     found = document->removeIndex(iid);
@@ -2715,7 +2711,6 @@ arangodb::Index* TRI_EnsureGeoIndex1DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& location, bool geoJson,
     bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
   auto idx =
       CreateGeoIndexDocumentCollection(trx, document, location, std::string(),
@@ -2744,7 +2739,6 @@ arangodb::Index* TRI_EnsureGeoIndex2DocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& latitude,
     std::string const& longitude, bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
   auto idx = CreateGeoIndexDocumentCollection(
       trx, document, std::string(), latitude, longitude, false, iid, created);
@@ -2874,7 +2868,6 @@ arangodb::Index* TRI_EnsureHashIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid,
                                                sparse, unique, created);
@@ -3004,7 +2997,6 @@ arangodb::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::vector<std::string> const& attributes, bool sparse,
     bool unique, bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
   auto idx = CreateSkiplistIndexDocumentCollection(
       trx, document, attributes, iid, sparse, unique, created);
@@ -3184,7 +3176,6 @@ arangodb::Index* TRI_EnsureFulltextIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     TRI_idx_iid_t iid, std::string const& attribute, int minWordLength,
     bool& created) {
-  READ_LOCKER(readLocker, document->_vocbase->_inventoryLock);
 
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute,
                                                    minWordLength, iid, created);
@@ -4047,8 +4038,8 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
     
 VPackBuilder TRI_document_collection_t::newObjectForReplace(
     Transaction* trx,
-    VPackSlice const oldValue,
-    VPackSlice const newValue,
+    VPackSlice const& oldValue,
+    VPackSlice const& newValue,
     std::string const& rev) {
   // replace
   VPackBuilder builder;
@@ -4073,13 +4064,14 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
     
 VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
       arangodb::Transaction* trx,
-      VPackSlice const oldValue,
-      VPackSlice const newValue,
+      VPackSlice const& oldValue,
+      VPackSlice const& newValue,
       std::string const& rev,
       bool mergeObjects, bool keepNull) {
 
   VPackBuilder b;
-  { VPackObjectBuilder guard(&b);
+  { 
+    VPackObjectBuilder guard(&b);
 
     // Find the attributes in the newValue object:
     std::unordered_map<std::string, VPackSlice> newValues;

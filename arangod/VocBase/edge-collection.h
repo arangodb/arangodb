@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_EDGE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_document_collection_t;
@@ -33,16 +32,6 @@ struct TRI_document_collection_t;
 namespace arangodb {
 class Transaction;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge direction
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_EDGE_ANY = 0,  // can only be used for searching
-  TRI_EDGE_IN = 1,
-  TRI_EDGE_OUT = 2
-} TRI_edge_direction_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge index iterator

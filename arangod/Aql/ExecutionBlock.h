@@ -170,11 +170,11 @@ class ExecutionBlock {
   void returnBlock(AqlItemBlock*&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief resolve a collection name and return cid and document key
+  /// @brief resolve a collection name and return success or failure
   /// this is used for parsing _from, _to and _id values
   //////////////////////////////////////////////////////////////////////////////
 
-  int resolve(char const*, TRI_voc_cid_t&, std::string&) const;
+  int resolve(std::string const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief copy register data from one block (src) into another (dst)

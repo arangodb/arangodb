@@ -199,6 +199,47 @@ std::string Transaction::extractKey(VPackSlice const slice) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _id attribute from a slice, and convert it into a 
+/// string
+//////////////////////////////////////////////////////////////////////////////
+
+std::string Transaction::extractIdString(VPackSlice const slice) {
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+      
+  VPackSlice const id = slice.get(TRI_VOC_ATTRIBUTE_ID);
+  if (id.isString()) {
+    // _id is already a string
+    return id.copyString();
+  }
+
+  if (!id.isCustom() || id.head() != 0xf3) {
+    // invalid type for _id
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  VPackSlice const key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  if (!key.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  
+  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  char buffer[512];  // This is enough for collection name + _key
+  size_t len = resolver()->getCollectionName(&buffer[0], cid);
+  buffer[len] = '/';
+
+  VPackValueLength keyLength;
+  char const* p = key.getString(keyLength);
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid _key value");
+  }
+  memcpy(&buffer[len + 1], p, keyLength);
+  return std::string(&buffer[0], len + 1 + keyLength);
+}
+  
+//////////////////////////////////////////////////////////////////////////////
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.
 //////////////////////////////////////////////////////////////////////////////

@@ -1194,7 +1194,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
-                                             VPackSlice const json,
+                                             VPackSlice const& json,
                                              std::string& errorMsg,
                                              double timeout) {
   using arangodb::velocypack::Slice;

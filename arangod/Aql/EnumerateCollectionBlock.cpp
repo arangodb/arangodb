@@ -190,10 +190,6 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   // only copy 1st row of registers inherited from previous frame(s)1
   inheritRegisters(cur, res.get(), _pos);
 
-  // set our collection for our output register
-  res->setDocumentCollection(static_cast<arangodb::aql::RegisterId>(curRegs),
-                             _trx->documentCollection(_collection->cid()));
-
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
       // re-use already copied aqlvalues
@@ -208,8 +204,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setExternal(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                       _documents.at(_posInDocuments));
+      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
+                    AqlValue$(_documents.at(_posInDocuments)));
       // No harm done, if the setValue throws!
     }
 

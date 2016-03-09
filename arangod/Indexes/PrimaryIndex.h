@@ -42,9 +42,10 @@ class Transaction;
 class PrimaryIndexIterator final : public IndexIterator {
  public:
   PrimaryIndexIterator(arangodb::Transaction* trx, PrimaryIndex const* index,
-                       arangodb::velocypack::Slice const keys)
-      : _trx(trx), _index(index), _keys(keys), _position(0) {
-        TRI_ASSERT(_keys.isArray());
+                       std::unique_ptr<VPackBuilder>& keys)
+      : _trx(trx), _index(index), _keys(keys.get()), _position(0) {
+        keys.release(); // now we have ownership for _keys
+        TRI_ASSERT(_keys->slice().isArray());
       }
 
   ~PrimaryIndexIterator() {}
@@ -56,7 +57,7 @@ class PrimaryIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   PrimaryIndex const* _index;
-  arangodb::velocypack::Slice const _keys;
+  std::unique_ptr<VPackBuilder> _keys;
   size_t _position;
 };
 

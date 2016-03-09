@@ -53,7 +53,7 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 Variable::Variable(std::string const& name, VariableId id)
     : name(name), value(nullptr), id(id) {}
 
-Variable::Variable(arangodb::velocypack::Slice const slice)
+Variable::Variable(arangodb::velocypack::Slice const& slice)
     : Variable(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
                    slice, "name"),
                arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<

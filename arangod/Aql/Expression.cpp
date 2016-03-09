@@ -715,7 +715,7 @@ AqlValue$ Expression::executeSimpleExpressionReference(
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->name == v->name) {
-      return AqlValue$(argv->getValueReference(startPos, regs[i]), trx, nullptr);
+      return argv->getValueReference(startPos, regs[i]);
     }
   }
 

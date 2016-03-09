@@ -135,15 +135,13 @@ enum TRI_vocbase_operationmode_e {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge from and to
+/// @brief edge direction
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_document_edge_t {
-  TRI_voc_cid_t _fromCid;
-  TRI_voc_key_t _fromKey;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_key_t _toKey;
+enum TRI_edge_direction_e {
+  TRI_EDGE_ANY = 0,  // can only be used for searching
+  TRI_EDGE_IN = 1,
+  TRI_EDGE_OUT = 2
 };
 
 ////////////////////////////////////////////////////////////////////////////////

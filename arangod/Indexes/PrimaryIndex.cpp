@@ -79,13 +79,15 @@ static bool IsEqualElementElement(void*, TRI_doc_mptr_t const* left,
 }
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
+  VPackSlice slice = _keys->slice();
+
   while (true) {
-    if (_position >= static_cast<size_t>(_keys.length())) {
+    if (_position >= static_cast<size_t>(slice.length())) {
       // we're at the end of the lookup values
       return nullptr;
     }
 
-    auto result = _index->lookup(_trx, _keys.at(_position++));
+    auto result = _index->lookup(_trx, slice.at(_position++));
 
     if (result != nullptr) {
       // found a result
@@ -465,7 +467,9 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
     // Invalid searchValue
     return nullptr;
   }
-  return new PrimaryIndexIterator(trx, this, searchValues);
+  auto builder = std::make_unique<VPackBuilder>();
+  builder->add(searchValues);
+  return new PrimaryIndexIterator(trx, this, builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,11 +498,9 @@ IndexIterator* PrimaryIndex::createIterator(
   bool const isId =
       (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
 
-  // TODO Where to store the BUILDER?
-
   // only leave the valid elements in the vector
-  VPackBuilder keys;
-  keys.openArray();
+  auto keys = std::make_unique<VPackBuilder>();
+  keys->openArray();
 
   for (auto const& valNode : valNodes) {
     if (!valNode->isStringValue()) {
@@ -535,20 +537,19 @@ IndexIterator* PrimaryIndex::createIterator(
       }
 
       // use _key value from _id
-      keys.openObject();
-      keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(key));
-      keys.close();
+      keys->openObject();
+      keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(key));
+      keys->close();
     } else {
-      keys.openObject();
-      keys.add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
-      keys.close();
+      keys->openObject();
+      keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
+      keys->close();
     }
   }
 
   TRI_IF_FAILURE("PrimaryIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  keys.close();
-  TRI_ASSERT(false); // TODO This has undefined behaviour. We have to put keys somewhere!
-  return new PrimaryIndexIterator(trx, this, keys.slice());
+  keys->close();
+  return new PrimaryIndexIterator(trx, this, keys);
 }

@@ -194,6 +194,7 @@ class RemoveNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RemoveBlock;
+  friend class ModificationBlock;
 
  public:
   RemoveNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -260,6 +261,7 @@ class InsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class InsertBlock;
+  friend class ModificationBlock;
 
  public:
   InsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -327,6 +329,7 @@ class UpdateNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class UpdateBlock;
+  friend class ModificationBlock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor with a vocbase and a collection name
@@ -417,6 +420,7 @@ class ReplaceNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class ReplaceBlock;
+  friend class ModificationBlock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor with a vocbase and a collection name
@@ -507,6 +511,7 @@ class UpsertNode : public ModificationNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class UpsertBlock;
+  friend class ModificationBlock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor with a vocbase and a collection name

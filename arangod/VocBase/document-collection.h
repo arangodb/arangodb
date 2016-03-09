@@ -260,8 +260,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
     
   arangodb::velocypack::Builder newObjectForReplace(
       arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const oldValue,
-      arangodb::velocypack::Slice const newValue,
+      arangodb::velocypack::Slice const& oldValue,
+      arangodb::velocypack::Slice const& newValue,
       std::string const& rev);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,8 +270,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
     
   arangodb::velocypack::Builder mergeObjectsForUpdate(
       arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const oldValue,
-      arangodb::velocypack::Slice const newValue,
+      arangodb::velocypack::Slice const& oldValue,
+      arangodb::velocypack::Slice const& newValue,
       std::string const& rev,
       bool mergeObjects, bool keepNull);
 };

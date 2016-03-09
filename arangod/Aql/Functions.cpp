@@ -904,7 +904,7 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   try {
     VPackArrayBuilder guard(b.get());
-    std::unordered_set<std::string> forbidden;
+    std::unordered_set<std::string> forbidden; // TODO: this variable is unusued
     if (!attributeName.empty()) {
       // We have to copy the entire document
       for (auto& it : distances) {

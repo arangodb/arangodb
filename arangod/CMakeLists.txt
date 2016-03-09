@@ -273,7 +273,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/server.cpp
-  VocBase/shape-accessor.cpp
   VocBase/shaped-json.cpp
   VocBase/transaction.cpp
   VocBase/vocbase-defaults.cpp
@@ -307,7 +306,11 @@ install(
 
 install_config(arangod)
 
-add_dependencies(arangod ev zlibstatic v8_build)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangod ev zlibstatic v8_build)
+else ()
+  add_dependencies(arangod ev zlibstatic)
+endif ()
 
 ################################################################################
 ## arango-dfdb

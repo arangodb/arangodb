@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionScanner.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
 
@@ -39,8 +40,7 @@ CollectionScanner::~CollectionScanner() {}
 
 VPackSlice CollectionScanner::scan(size_t batchSize) {
   if (!_cursor.hasMore()) {
-    VPackSlice empty;
-    return empty;
+    return arangodb::basics::VelocyPackHelper::ArrayValue();
   }
   _cursor.getMore(batchSize, true);
   return _cursor.slice();

@@ -48,20 +48,4 @@ v8::Handle<v8::Value> TRI_JsonShapeData(v8::Isolate* isolate, VocShaper*,
                                         TRI_shape_t const*, char const* data,
                                         size_t size);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a TRI_shaped_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaped_json_t* TRI_ShapedJsonV8Object(v8::Isolate* isolate,
-                                          v8::Handle<v8::Value> const,
-                                          VocShaper*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a V8 object to a TRI_shaped_json_t in place
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
-                               v8::Handle<v8::Value> const, TRI_shaped_json_t*,
-                               VocShaper*, bool);
-
 #endif

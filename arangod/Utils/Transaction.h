@@ -217,6 +217,13 @@ class Transaction {
   static std::string extractKey(VPackSlice const);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the _id attribute from a slice, and convert it into a 
+  /// string
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string extractIdString(VPackSlice const);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.

@@ -64,6 +64,9 @@
 #include <unicode/smpdtfmt.h>
 #include <unicode/dtfmtsym.h>
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <v8.h>
 #include <iostream>
 
@@ -2045,15 +2048,14 @@ class HopWeightCalculator {
 ////////////////////////////////////////////////////////////////////////////////
 
 class AttributeWeightCalculator {
-  TRI_shape_pid_t _shapePid;
+  std::string _attribute;
   double _defaultWeight;
   VocShaper* _shaper;
 
  public:
-  AttributeWeightCalculator(std::string const& keyWeight, double defaultWeight,
+  AttributeWeightCalculator(std::string const& attribute, double defaultWeight,
                             VocShaper* shaper)
-      : _defaultWeight(defaultWeight), _shaper(shaper) {
-    _shapePid = _shaper->lookupAttributePathByName(keyWeight.c_str());
+      : _attribute(attribute), _defaultWeight(defaultWeight), _shaper(shaper) {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -2061,29 +2063,20 @@ class AttributeWeightCalculator {
   //////////////////////////////////////////////////////////////////////////////
 
   double operator()(TRI_doc_mptr_t const& edge) {
-    if (_shapePid == 0) {
+    if (_attribute.empty()) {
       return _defaultWeight;
     }
 
-    TRI_shape_sid_t sid;
-    TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, edge.getDataPtr());
-    TRI_shape_access_t const* accessor = _shaper->findAccessor(sid, _shapePid);
-    TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, edge.getDataPtr());
-    TRI_shaped_json_t resultJson;
-    TRI_ExecuteShapeAccessor(accessor, &shapedJson, &resultJson);
-
-    if (resultJson._sid != TRI_SHAPE_NUMBER) {
+    VPackSlice slice(edge.vpack());
+    if (!slice.isObject()) {
+      return _defaultWeight;
+    }
+    VPackSlice attribute = slice.get(_attribute);
+    if (!attribute.isNumber()) {
       return _defaultWeight;
     }
 
-    std::unique_ptr<TRI_json_t> json(TRI_JsonShapedJson(_shaper, &resultJson));
-
-    if (json == nullptr) {
-      return _defaultWeight;
-    }
-
-    return json.get()->_value._number;
+    return attribute.getNumber<double>();
   }
 };
 

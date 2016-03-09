@@ -27,11 +27,19 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bye bye message
+///
+/// #include <iostream>
+/// #include <iomanip>
+/// int main(int argc, char* argv[]) {
+///   std::string line;
+///   std::getline(std::cin, line);
+///   std::cout << std::hex << "\"";
+///   for (auto c : line) {
+///     std::cout << "\\x" << (unsigned int)((unsigned char)c);
+///   }
+///   std::cout << "\"\n" << std::endl;
+/// }
 ////////////////////////////////////////////////////////////////////////////////
-
-#if _WIN32
-#pragma execution_character_set("utf-8")
-#endif
 
 #define TRI_UNICODE_LRM "\xE2\x80\x8E"
 #define TRI_UNICODE_RLM "\xE2\x80\x8F"
@@ -40,20 +48,20 @@
 #define TRI_BYE_MESSAGE_DE "Auf Wiedersehen!"
 #define TRI_BYE_MESSAGE_EN "Bye Bye!"
 #define TRI_BYE_MESSAGE_EO "Adiau!"
-#define TRI_BYE_MESSAGE_ES "¡Hasta luego!"
+#define TRI_BYE_MESSAGE_ES "\xc2\xa1\x48\x61\x73\x74\x61\x20\x6c\x75\x65\x67\x6f\x21"
 #define TRI_BYE_MESSAGE_FR "Au revoir!"
-#define TRI_BYE_MESSAGE_GR "Εις το επανιδείν!"
-#define TRI_BYE_MESSAGE_IL "תוארתהל!"
+#define TRI_BYE_MESSAGE_GR "\xce\x95\xce\xb9\xcf\x82\x20\xcf\x84\xce\xbf\x20\xce\xb5\xcf\x80\xce\xb1\xce\xbd\xce\xb9\xce\xb4\xce\xb5\xce\xaf\xce\xbd\x21"
+#define TRI_BYE_MESSAGE_IL "\xd7\x9c\xd7\x94\xd7\xaa\xd7\xa8\xd7\x90\xd7\x95\xd7\xaa\x21"
 // Should really be the following, but most terminals do not write right
 // to left, so we put it here backwards.
-//#define TRI_BYE_MESSAGE_IL "להתראות!"
+//#define TRI_BYE_MESSAGE_IL "\xd7\xaa\xd7\x95\xd7\x90\xd7\xa8\xd7\xaa\xd7\x94\xd7\x9c\x21"
 #define TRI_BYE_MESSAGE_IT "Arrivederci!"
-#define TRI_BYE_MESSAGE_JP "さようなら"
+#define TRI_BYE_MESSAGE_JP "\xe3\x81\x95\xe3\x82\x88\xe3\x81\x86\xe3\x81\xaa\xe3\x82\x89"
 #define TRI_BYE_MESSAGE_NL "Tot ziens!"
-#define TRI_BYE_MESSAGE_RU "До свидания!"
-#define TRI_BYE_MESSAGE_SV "Adjö!"
-#define TRI_BYE_MESSAGE_PT "Até Breve!"
-#define TRI_BYE_MESSAGE_FA "\u062E\u062F\u0627\u062D\u0627\u0641\u0638!"
+#define TRI_BYE_MESSAGE_RU "\xd0\x94\xd0\xbe\x20\xd1\x81\xd0\xb2\xd0\xb8\xd0\xb4\xd0\xb0\xd0\xbd\xd0\xb8\xd1\x8f\x21"
+#define TRI_BYE_MESSAGE_SV "\x41\x64\x6a\xc3\xb6\x21"
+#define TRI_BYE_MESSAGE_PT "\x41\x74\xc3\xa9\x20\x42\x72\x65\x76\x65\x21"
+#define TRI_BYE_MESSAGE_FA "\xd8\xae\xd8\xaf\xd8\xa7\xd8\xad\xd8\xa7\xd9\x81\xd8\xb8\x21"
 
 #define TRI_BYE_MESSAGE                                                 \
   TRI_BYE_MESSAGE_CH                                                    \

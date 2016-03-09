@@ -34,8 +34,6 @@
 
 using namespace arangodb::basics;
 
-// #define DEBUG_JSON_SHAPER 1
-
 static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
                               v8::Handle<v8::Value> const json, size_t level,
@@ -1449,68 +1447,3 @@ v8::Handle<v8::Value> TRI_JsonShapeData(v8::Isolate* isolate, VocShaper* shaper,
   return JsonShapeData(isolate, shaper, shape, data, size);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a V8 object to a TRI_shaped_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaped_json_t* TRI_ShapedJsonV8Object(v8::Isolate* isolate,
-                                          v8::Handle<v8::Value> const object,
-                                          VocShaper* shaper, bool create) {
-  TRI_shape_value_t dst;
-  std::set<int> seenHashes;
-  std::vector<v8::Handle<v8::Object>> seenObjects;
-
-  int res = FillShapeValueJson(isolate, shaper, &dst, object, 0, seenHashes,
-                               seenObjects, create);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
-      TRI_set_errno(res);
-    } else {
-      TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    }
-    return nullptr;
-  }
-
-  TRI_shaped_json_t* shaped = static_cast<TRI_shaped_json_t*>(
-      TRI_Allocate(shaper->memoryZone(), sizeof(TRI_shaped_json_t), false));
-
-  if (shaped == nullptr) {
-    return nullptr;
-  }
-
-  shaped->_sid = dst._sid;
-  shaped->_data.length = (uint32_t)dst._size;
-  shaped->_data.data = dst._value;
-
-  return shaped;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a V8 object to a TRI_shaped_json_t in place
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
-                               v8::Handle<v8::Value> const object,
-                               TRI_shaped_json_t* result, VocShaper* shaper,
-                               bool create) {
-  TRI_shape_value_t dst;
-  std::set<int> seenHashes;
-  std::vector<v8::Handle<v8::Object>> seenObjects;
-
-  int res = FillShapeValueJson(isolate, shaper, &dst, object, 0, seenHashes,
-                               seenObjects, create);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
-      res = TRI_ERROR_BAD_PARAMETER;
-    }
-    return TRI_set_errno(res);
-  }
-
-  result->_sid = dst._sid;
-  result->_data.length = (uint32_t)dst._size;
-  result->_data.data = dst._value;
-
-  return TRI_ERROR_NO_ERROR;
-}

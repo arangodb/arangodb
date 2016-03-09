@@ -110,6 +110,8 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), 
       _resolver(nullptr), 
       _customTypeHandler(),
+      _ditches(),
+      _options(),
       _transaction{ 0, false }, 
       _ownsResolver(false) {}
 
@@ -155,6 +157,7 @@ std::shared_ptr<VPackCustomTypeHandler> TransactionContext::orderCustomTypeHandl
       createResolver();
     }
     _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+    _options.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
@@ -206,6 +209,18 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
     return nullptr;
   }
   return (*it).second;
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get velocypack options with a custom type handler
+//////////////////////////////////////////////////////////////////////////////
+  
+VPackOptions* TransactionContext::getVPackOptions() {
+  if (_customTypeHandler == nullptr) {
+    // this modifies options!
+    orderCustomTypeHandler();
+  }
+  return &_options;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
