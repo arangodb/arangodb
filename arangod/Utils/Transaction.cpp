@@ -940,7 +940,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync, true /* isPatch */,
+      options.waitForSync, true /* isPatch */,
       options.keepNull, options.mergeObjects, newValue,
       headers, responseCode, resultHeaders, resultBody);
 
@@ -1028,7 +1028,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync, false /* isPatch */,
+      options.waitForSync, false /* isPatch */,
       false /* keepNull */, false /* mergeObjects */, newValue,
       headers, responseCode, resultHeaders, resultBody);
 
@@ -1199,7 +1199,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync,
+      options.waitForSync,
       headers, responseCode, resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
