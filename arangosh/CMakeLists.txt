@@ -79,7 +79,11 @@ install(
 
 install_config(arangodump)
 
-add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangodump zlibstatic)
+endif ()
 
 ################################################################################
 ## arangoimp
@@ -119,7 +123,11 @@ install(
 
 install_config(arangoimp)
 
-add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangoimp zlibstatic) # v8_build includes ICU build
+endif ()
 
 ################################################################################
 ## arangorestore
@@ -158,7 +166,11 @@ install(
 
 install_config(arangorestore)
 
-add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+endif ()
 
 ################################################################################
 ## arangosh
@@ -202,7 +214,11 @@ install(
 
 install_config(arangosh)
 
-add_dependencies(arangosh zlibstatic v8_build)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangosh zlibstatic v8_build)
+else ()
+  add_dependencies(arangosh zlibstatic)
+endif ()
 
 ################################################################################
 ## foxx-manager
