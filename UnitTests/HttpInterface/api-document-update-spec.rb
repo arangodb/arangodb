@@ -29,7 +29,7 @@ describe ArangoDB do
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1227)
         doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -153,7 +153,6 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
@@ -208,7 +207,6 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
@@ -273,7 +271,6 @@ describe ArangoDB do
 
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
 
         did2 = doc.parsed_response['_id']
         did2.should be_kind_of(String)
