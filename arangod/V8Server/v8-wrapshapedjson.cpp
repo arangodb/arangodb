@@ -758,14 +758,7 @@ static void PropertyQueryShapedJson(
       TRI_V8_RETURN(v8::Handle<v8::Integer>());
     }
 
-    TRI_shape_access_t const* acc = shaper->findAccessor(sid, pid);
-
-    // key not found
-    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      TRI_V8_RETURN(v8::Handle<v8::Integer>());
-    }
-
-    TRI_V8_RETURN(v8::Handle<v8::Integer>(v8::Integer::New(isolate, v8::None)));
+    TRI_V8_RETURN(v8::Handle<v8::Integer>());
   } catch (...) {
     TRI_V8_RETURN(v8::Handle<v8::Integer>());
   }
