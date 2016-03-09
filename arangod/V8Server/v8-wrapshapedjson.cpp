@@ -23,7 +23,7 @@
 
 #include "v8-wrapshapedjson.h"
 #include "Basics/conversions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"

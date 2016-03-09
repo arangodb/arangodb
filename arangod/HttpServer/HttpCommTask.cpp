@@ -26,7 +26,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -75,7 +75,12 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _sinceCompactification(0),
       _originalBodyLength(0),
       _setupDone(false) {
-  LOG(TRACE) << "connection established, client " << TRI_get_fd_or_handle_of_socket(socket) << ", server ip " << _connectionInfo.serverAddress << ", server port " << _connectionInfo.serverPort << ", client ip " << _connectionInfo.clientAddress << ", client port " << _connectionInfo.clientPort;
+  LOG(TRACE) << "connection established, client "
+             << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
+             << _connectionInfo.serverAddress << ", server port "
+             << _connectionInfo.serverPort << ", client ip "
+             << _connectionInfo.clientAddress << ", client port "
+             << _connectionInfo.clientPort;
 
   // acquire a statistics entry and set the type to HTTP
   ConnectionStatisticsAgent::acquire();
@@ -88,7 +93,8 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpCommTask::~HttpCommTask() {
-  LOG(TRACE) << "connection closed, client " << TRI_get_fd_or_handle_of_socket(_commSocket);
+  LOG(TRACE) << "connection closed, client "
+             << TRI_get_fd_or_handle_of_socket(_commSocket);
 
   // free write buffers and statistics
   for (auto& i : _writeBuffers) {
@@ -171,7 +177,8 @@ bool HttpCommTask::processRead() {
     size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG(WARN) << "maximal header size is " << MaximalHeaderSize << ", request header size is " << headerLength;
+      LOG(WARN) << "maximal header size is " << MaximalHeaderSize
+                << ", request header size is " << headerLength;
 
       // header is too large
       HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
@@ -189,8 +196,9 @@ bool HttpCommTask::processRead() {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer->c_str() + 4;
 
-      LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": " << std::string(_readBuffer->c_str() + _startPosition,
-                            _readPosition - _startPosition);
+      LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
+                 << std::string(_readBuffer->c_str() + _startPosition,
+                                _readPosition - _startPosition);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
@@ -250,7 +258,8 @@ bool HttpCommTask::processRead() {
       // and ports
       _request->setProtocol(_server->protocol());
 
-      LOG(TRACE) << "server port " << _connectionInfo.serverPort << ", client port " << _connectionInfo.clientPort;
+      LOG(TRACE) << "server port " << _connectionInfo.serverPort
+                 << ", client port " << _connectionInfo.clientPort;
 
       // set body start to current position
       _bodyPosition = _readPosition;
@@ -314,7 +323,9 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '" << std::string(_readBuffer->c_str() + _startPosition, l) << "'";
+          LOG(WARN) << "got corrupted HTTP request '"
+                    << std::string(_readBuffer->c_str() + _startPosition, l)
+                    << "'";
 
           // bad request, method not allowed
           HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
@@ -399,7 +410,7 @@ bool HttpCommTask::processRead() {
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
     LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
-                                _bodyLength);
+                                    _bodyLength);
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -643,7 +654,12 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   _writeBuffers.push_back(buffer.get());
   auto b = buffer.release();
 
-  LOG(TRACE) << "HTTP WRITE FOR " << (void*)this << ": " << b->c_str();
+  if (!b->empty()) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "\"http-request-response\",\"" << (void*)this << "\",\""
+        << (StringUtils::escapeUnicode(std::string(b->c_str(), b->length())))
+        << "\"";
+  }
 
   // clear body
   response->body().clear();
@@ -652,15 +668,14 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
-  LOG_TOPIC(INFO, Logger::REQUESTS) 
-      << "\"http-request\",\"" << _connectionInfo.clientAddress 
-      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_httpVersion) << "\"," 
-      << static_cast<int>(response->responseCode()) << "," 
-      << _originalBodyLength << "," 
-      << responseBodyLength << ",\"" 
-      << _fullUrl << "\","
-      << Logger::DURATION(totalTime, 6);
+  LOG_TOPIC(INFO, Logger::REQUESTS)
+      << "\"http-request-end\",\"" << (void*)this << "\",\""
+      << _connectionInfo.clientAddress << "\",\""
+      << HttpRequest::translateMethod(_requestType) << "\",\""
+      << HttpRequest::translateVersion(_httpVersion) << "\","
+      << static_cast<int>(response->responseCode()) << ","
+      << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+      << "\"," << Logger::DURATION(totalTime, 6);
 
   // start output
   fillWriteBuffer();
@@ -687,11 +702,13 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
     // content-length header was sent but the request method does not support
     // that
     // we'll warn but read the body anyway
-    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this should not happen";
+    LOG(WARN) << "received HTTP GET/HEAD request with content-length, this "
+                 "should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG(WARN) << "maximal body size is " << MaximalBodySize << ", request body size is " << bodyLength;
+    LOG(WARN) << "maximal body size is " << MaximalBodySize
+              << ", request body size is " << bodyLength;
 
     // request entity too large
     HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE,
@@ -762,7 +779,8 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
       // server. that's a client problem.
       response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
                          allowHeaders);
-      LOG(TRACE) << "client requested validation of the following headers: " << allowHeaders;
+      LOG(TRACE) << "client requested validation of the following headers: "
+                 << allowHeaders;
     }
 
     // set caching time (hard-coded value)
@@ -780,14 +798,20 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const acceptEncoding =
-      _request->header("accept-encoding", found);
+  std::string const acceptEncoding = _request->header("accept-encoding", found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != std::string::npos) {
       _acceptDeflate = true;
     }
   }
+
+  LOG_TOPIC(INFO, Logger::REQUESTS)
+      << "\"http-request-begin\",\"" << (void*)this << "\",\""
+      << _connectionInfo.clientAddress << "\",\""
+      << HttpRequest::translateMethod(_requestType) << "\",\""
+      << HttpRequest::translateVersion(_httpVersion) << "\"," << _fullUrl
+      << "\"";
 
   // check for an async request
   std::string const asyncExecution = _request->header("x-arango-async", found);
@@ -805,6 +829,25 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
     handleResponse(&response);
 
     return;
+  }
+
+  if (_request != nullptr) {
+    char const* body = "";
+    size_t bodySize = 0;
+
+    if (_request != nullptr) {
+      bodySize = _request->bodySize();
+
+      if (bodySize != 0) {
+        body = _request->body();
+      }
+    }
+
+    if (bodySize != 0) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"http-request-body\",\"" << (void*)this << "\",\""
+          << (StringUtils::escapeUnicode(std::string(body, bodySize))) << "\"";
+    }
   }
 
   handler->setTaskId(_taskId, _loop);

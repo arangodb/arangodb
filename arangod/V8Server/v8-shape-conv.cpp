@@ -24,7 +24,7 @@
 #include "v8-shape-conv.h"
 
 #include "Basics/conversions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"

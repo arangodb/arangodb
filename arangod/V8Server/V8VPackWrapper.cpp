@@ -23,7 +23,7 @@
 
 #include "V8VPackWrapper.h"
 #include "Basics/conversions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-conv.h"

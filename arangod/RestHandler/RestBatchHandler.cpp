@@ -24,7 +24,7 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"

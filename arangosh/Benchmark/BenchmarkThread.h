@@ -29,7 +29,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Thread.h"
 #include "Basics/hashes.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -48,12 +48,9 @@ class BenchmarkThread : public arangodb::Thread {
                   basics::ConditionVariable* condition, void (*callback)(),
                   int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
-                  rest::Endpoint* endpoint, std::string const& databaseName,
-                  std::string const& username, std::string const& password,
-                  double requestTimeout, double connectTimeout,
-                  uint32_t sslProtocol, bool keepAlive, bool async,
+                  ClientFeature* client, bool keepAlive, bool async,
                   bool verbose)
-      : Thread("arangob"),
+      : Thread("BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
         _callback(callback),
@@ -61,18 +58,14 @@ class BenchmarkThread : public arangodb::Thread {
         _batchSize(batchSize),
         _warningCount(0),
         _operationsCounter(operationsCounter),
-        _endpoint(endpoint),
+        _client(client),
         _headers(),
-        _databaseName(databaseName),
-        _username(username),
-        _password(password),
-        _requestTimeout(requestTimeout),
-        _connectTimeout(connectTimeout),
-        _sslProtocol(sslProtocol),
+        _databaseName(client->databaseName()),
+        _username(client->username()),
+        _password(client->password()),
         _keepAlive(keepAlive),
         _async(async),
-        _client(nullptr),
-        _connection(nullptr),
+        _httpClient(nullptr),
         _offset(0),
         _counter(0),
         _time(0.0),
@@ -81,11 +74,7 @@ class BenchmarkThread : public arangodb::Thread {
         basics::StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
   }
 
-  ~BenchmarkThread() {
-    shutdown();
-    delete _client;
-    delete _connection;
-  }
+  ~BenchmarkThread() { shutdown(); }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -93,31 +82,22 @@ class BenchmarkThread : public arangodb::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void run() {
-    _connection = httpclient::GeneralClientConnection::factory(
-        _endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
-
-    if (_connection == nullptr) {
-      LOG(FATAL) << "out of memory";
+    try {
+      _httpClient = _client->createHttpClient();
+    } catch (...) {
+      LOG(FATAL) << "cannot create server connection, giving up!";
       FATAL_ERROR_EXIT();
     }
 
-    _client =
-        new httpclient::SimpleHttpClient(_connection, _requestTimeout, true);
+    _httpClient->setLocationRewriter(this, &rewriteLocation);
 
-    if (_client == nullptr) {
-      LOG(FATAL) << "out of memory";
-      FATAL_ERROR_EXIT();
-    }
-
-    _client->setLocationRewriter(this, &rewriteLocation);
-
-    _client->setUserNamePassword("/", _username, _password);
-    _client->setKeepAlive(_keepAlive);
+    _httpClient->setUserNamePassword("/", _username, _password);
+    _httpClient->setKeepAlive(_keepAlive);
 
     // test the connection
     httpclient::SimpleHttpResult* result =
-        _client->request(rest::HttpRequest::HTTP_REQUEST_GET, "/_api/version",
-                         nullptr, 0, _headers);
+        _httpClient->request(rest::HttpRequest::HTTP_REQUEST_GET,
+                             "/_api/version", nullptr, 0, _headers);
 
     if (!result || !result->isComplete()) {
       if (result) {
@@ -132,7 +112,7 @@ class BenchmarkThread : public arangodb::Thread {
 
     // if we're the first thread, set up the test
     if (_threadNumber == 0) {
-      if (!_operation->setUp(_client)) {
+      if (!_operation->setUp(_httpClient.get())) {
         LOG(FATAL) << "could not set up the test";
         FATAL_ERROR_EXIT();
       }
@@ -150,7 +130,7 @@ class BenchmarkThread : public arangodb::Thread {
       guard.wait();
     }
 
-    while (1) {
+    while (!isStopping()) {
       unsigned long numOps = _operationsCounter->next(_batchSize);
 
       if (numOps == 0) {
@@ -178,6 +158,7 @@ class BenchmarkThread : public arangodb::Thread {
           FATAL_ERROR_EXIT();
         }
       }
+
       _operationsCounter->done(_batchSize > 0 ? _batchSize : 1);
     }
   }
@@ -272,9 +253,9 @@ class BenchmarkThread : public arangodb::Thread {
         rest::HttpRequest::MultiPartContentType + "; boundary=" + boundary;
 
     double start = TRI_microtime();
-    httpclient::SimpleHttpResult* result =
-        _client->request(rest::HttpRequest::HTTP_REQUEST_POST, "/_api/batch",
-                         batchPayload.c_str(), batchPayload.length(), _headers);
+    httpclient::SimpleHttpResult* result = _httpClient->request(
+        rest::HttpRequest::HTTP_REQUEST_POST, "/_api/batch",
+        batchPayload.c_str(), batchPayload.length(), _headers);
     _time += TRI_microtime() - start;
 
     if (result == nullptr || !result->isComplete()) {
@@ -355,7 +336,7 @@ class BenchmarkThread : public arangodb::Thread {
 
     double start = TRI_microtime();
     httpclient::SimpleHttpResult* result =
-        _client->request(type, url, payload, payloadLength, _headers);
+        _httpClient->request(type, url, payload, payloadLength, _headers);
     _time += TRI_microtime() - start;
 
     if (mustFree) {
@@ -446,10 +427,10 @@ class BenchmarkThread : public arangodb::Thread {
   arangob::BenchmarkCounter<unsigned long>* _operationsCounter;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief endpoint to use
+  /// @brief client feature
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::Endpoint* _endpoint;
+  ClientFeature* _client;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extra request headers
@@ -476,24 +457,6 @@ class BenchmarkThread : public arangodb::Thread {
   std::string const _password;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the request timeout (in s)
-  //////////////////////////////////////////////////////////////////////////////
-
-  double _requestTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the connection timeout (in s)
-  //////////////////////////////////////////////////////////////////////////////
-
-  double _connectTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ssl protocol
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint32_t _sslProtocol;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief use HTTP keep-alive
   //////////////////////////////////////////////////////////////////////////////
 
@@ -506,16 +469,10 @@ class BenchmarkThread : public arangodb::Thread {
   bool _async;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief underlying client
+  /// @brief underlying http client
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::httpclient::SimpleHttpClient* _client;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief connection to the server
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::httpclient::GeneralClientConnection* _connection;
+  std::unique_ptr<arangodb::httpclient::SimpleHttpClient> _httpClient;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread offset value

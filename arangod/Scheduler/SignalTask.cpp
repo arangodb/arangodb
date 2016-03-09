@@ -25,7 +25,7 @@
 #include "SignalTask.h"
 
 #include "Basics/MutexLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #include "Scheduler/Scheduler.h"
 

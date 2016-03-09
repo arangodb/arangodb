@@ -45,7 +45,7 @@ class IniFileParser {
                                    std::regex::ECMAScript);
     // a line that assigns a value to a named variable
     _matchers.assignment = std::regex(
-        "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*)?[ \t]*$",
+        "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
   }
 
@@ -103,6 +103,7 @@ class IniFileParser {
     }
 
     // all is well
+    _options->endPass();
     return true;
   }
 

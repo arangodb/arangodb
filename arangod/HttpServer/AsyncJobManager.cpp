@@ -24,7 +24,7 @@
 #include "AsyncJobManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerJob.h"
 

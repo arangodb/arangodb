@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionEngine.h"
-#include "Aql/CollectOptions.h"
+#include "ExecutionEngine.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
 #include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,9 +41,9 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
+#include "Logger/Logger.h"
 #include "VocBase/server.h"
 
 using namespace arangodb::aql;

@@ -34,7 +34,7 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -73,7 +73,7 @@ void setter(CRYPTO_THREADID* id, T p) {
 #else
 template <typename T>
 void setter(CRYPTO_THREADID* id, T p) {
-  CRYPTO_THREADID_set_pointer(id, (void *) (intptr_t) p);
+  CRYPTO_THREADID_set_pointer(id, (void*)(intptr_t)p);
 }
 #endif
 
@@ -147,7 +147,7 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 namespace rest {
-void InitializeRest(int argc, char* argv[]) {
+void InitializeRest() {
   TRI_InitializeMemory();
   TRI_InitializeDebugging();
   TRI_InitializeError();
@@ -155,7 +155,7 @@ void InitializeRest(int argc, char* argv[]) {
   TRI_InitializeMimetypes();
   Logger::initialize(false);
   TRI_InitializeRandom();
-  TRI_InitializeProcess(argc, argv);
+  TRI_InitializeProcess();
 
   // use the rng so the linker does not remove it from the executable
   // we might need it later because .so files might refer to the symbols

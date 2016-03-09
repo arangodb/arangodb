@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FulltextIndex.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "VocBase/document-collection.h"

@@ -29,15 +29,14 @@
 var internal = require("internal");
 var fs = require("fs");
 var console = require("console");
-var _ = require('lodash')
+var _ = require('lodash');
 
 var JSHINT = require("jshint").JSHINT;
 var jshintrc = {};
 
 try {
   jshintrc = JSON.parse(fs.read('./js/.jshintrc'));
-}
-catch (err) {
+} catch (err) {
   // ignore any errors
 }
 
@@ -46,18 +45,17 @@ catch (err) {
 /// @brief runs a JSLint test on a file
 ////////////////////////////////////////////////////////////////////////////////
 
-function RunTest (path, options) {
+function RunTest(path, options) {
   var content;
 
   try {
     content = fs.read(path);
-  }
-  catch (err) {
+  } catch (err) {
     console.error("cannot load test file '%s'", path);
-    return;
+    return false;
   }
 
-  var result = { };
+  var result = {};
   content = content.replace("/*jslint", "/*xxxxxx");
   result["passed"] = JSHINT(content, _.extend({}, jshintrc, options));
 
@@ -72,33 +70,34 @@ function RunTest (path, options) {
 /// @brief runs tests from command-line
 ////////////////////////////////////////////////////////////////////////////////
 
-function RunCommandLineTests (options) {
+function RunCommandLineTests(options) {
   var result = true;
   var tests = internal.unitTests();
 
-  for (var i = 0;  i < tests.length;  ++i) {
+  for (var i = 0; i < tests.length; ++i) {
     var file = tests[i];
 
     try {
       var testResult = RunTest(file, options);
       result = result && testResult && testResult.passed;
-      if (testResult && (! testResult.passed && testResult.errors)) {
+
+      if (testResult && (!testResult.passed && testResult.errors)) {
         for (var j = 0; j < testResult.errors.length; ++j) {
           var err = testResult.errors[j];
-          if (! err) {
+
+          if (!err) {
             continue;
           }
 
           var position = file + ":" + err.line + ", " + err.character;
           var reason = err.reason;
+
           console.error("jslint: %s : %s", position, reason);
         }
-      }
-      else {
+      } else {
         console.info("jslint: %s passed", file);
       }
-    }
-    catch (err) {
+    } catch (err) {
       print("cannot run test file '" + file + "': " + err);
       print(err.stack);
       result = false;
@@ -108,7 +107,5 @@ function RunCommandLineTests (options) {
   internal.setUnitTestsResult(result);
 }
 
-
 exports.runTest = RunTest;
 exports.runCommandLineTests = RunCommandLineTests;
-

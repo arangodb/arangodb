@@ -47,6 +47,9 @@ typedef enum {
 int finalizeWindows(const TRI_win_finalize_e, char const*);
 int initializeWindows(const TRI_win_initialize_e, char const*);
 
+void ADB_WindowsEntryFunction();
+void ADB_WindowsExitFunction(int exitCode, void* data);
+
 // .............................................................................
 // windows equivalent of ftruncate (the truncation of an open file) is
 // _chsize
@@ -101,6 +104,7 @@ int TRI_MapSystemError(DWORD);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open/close the windows eventlog. Call on start / shutdown
 ////////////////////////////////////////////////////////////////////////////////
+
 bool TRI_InitWindowsEventLog(void);
 void TRI_CloseWindowsEventlog(void);
 
@@ -111,7 +115,8 @@ void TRI_CloseWindowsEventlog(void);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);

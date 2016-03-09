@@ -30,11 +30,11 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
-#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
+#include "Logger/Logger.h"
 
 #include <thread>
 #include <velocypack/Builder.h>

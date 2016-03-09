@@ -29,7 +29,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/WorkMonitor.h"
 
 #include <velocypack/Builder.h>
@@ -124,14 +124,19 @@ TRI_tid_t Thread::currentThreadId() {
 #endif
 #endif
 }
-  
+
 std::string Thread::stringify(ThreadState state) {
   switch (state) {
-    case ThreadState::CREATED: return "created";
-    case ThreadState::STARTED: return "started";
-    case ThreadState::STOPPING: return "stopping";
-    case ThreadState::STOPPED: return "stopped";
-    case ThreadState::DETACHED: return "detached";
+    case ThreadState::CREATED:
+      return "created";
+    case ThreadState::STARTED:
+      return "started";
+    case ThreadState::STOPPING:
+      return "stopping";
+    case ThreadState::STOPPED:
+      return "stopped";
+    case ThreadState::DETACHED:
+      return "detached";
   }
   return "unknown";
 }
@@ -158,7 +163,8 @@ Thread::Thread(std::string const& name)
 
 Thread::~Thread() {
   auto state = _state.load();
-  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name << "), state: " << stringify(state);
+  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name
+                                    << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
     int res = TRI_JoinThread(&_thread);
@@ -172,7 +178,8 @@ Thread::~Thread() {
 
   state = _state.load();
   if (state != ThreadState::DETACHED) {
-    LOG(FATAL) << "thread is not detached but " << stringify(state) << ". shutting down hard";
+    LOG(FATAL) << "thread is not detached but " << stringify(state)
+               << ". shutting down hard";
     FATAL_ERROR_EXIT();
   }
 }
@@ -190,6 +197,9 @@ void Thread::beginShutdown() {
          state != ThreadState::DETACHED) {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
+
+  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name
+                                    << ") reached state " << (int)_state.load();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,8 +285,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     }
   } else {
     _state.store(ThreadState::STOPPED);
-    LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '"
-                                    << _name
+    LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '" << _name
                                     << "': " << strerror(errno);
 
     return false;
@@ -342,21 +351,21 @@ void Thread::runMe() {
     run();
     _state.store(ThreadState::STOPPED);
   } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name << "': " << ex.what();
+    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
+                                    << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                    << _name << "': " << ex.what();
+    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
+                                    << "': " << ex.what();
     Logger::flush();
     _state.store(ThreadState::STOPPED);
     throw;
   } catch (...) {
     if (!isSilent()) {
-      LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '"
-                                      << _name << "'";
+      LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
+                                      << "'";
       Logger::flush();
     }
     _state.store(ThreadState::STOPPED);

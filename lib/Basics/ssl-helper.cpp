@@ -22,21 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #include <openssl/err.h>
 
-using namespace arangodb::basics;
+using namespace arangodb;
 
-
-extern "C" const SSL_METHOD *SSLv3_method(void);
+extern "C" const SSL_METHOD* SSLv3_method(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
-                                      std::string const& keyfile) {
+SSL_CTX* arangodb::sslContext(protocol_e protocol, std::string const& keyfile) {
   // create our context
   SSL_METHOD SSL_CONST* meth = nullptr;
 
@@ -67,12 +65,14 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
 
   // load our keys and certificates
   if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG(ERR) << "cannot read certificate from '" << keyfile << "': " << arangodb::basics::lastSSLError();
+    LOG(ERR) << "cannot read certificate from '" << keyfile
+             << "': " << lastSSLError();
     return nullptr;
   }
 
   if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG(ERR) << "cannot read key from '" << keyfile << "': " << arangodb::basics::lastSSLError();
+    LOG(ERR) << "cannot read key from '" << keyfile
+             << "': " << lastSSLError();
     return nullptr;
   }
 
@@ -87,7 +87,7 @@ SSL_CTX* arangodb::basics::sslContext(protocol_e protocol,
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string arangodb::basics::protocolName(protocol_e protocol) {
+std::string arangodb::protocolName(protocol_e protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";
@@ -110,7 +110,7 @@ std::string arangodb::basics::protocolName(protocol_e protocol) {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string arangodb::basics::lastSSLError() {
+std::string arangodb::lastSSLError() {
   char buf[122];
   memset(buf, 0, sizeof(buf));
 

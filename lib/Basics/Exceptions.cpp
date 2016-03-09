@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 

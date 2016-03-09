@@ -24,7 +24,7 @@
 #include "shaped-json.h"
 
 #include "Basics/hashes.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"

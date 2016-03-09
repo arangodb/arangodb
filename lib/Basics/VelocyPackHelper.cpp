@@ -24,7 +24,7 @@
 #include "VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"

@@ -25,7 +25,7 @@
 #define ARANGOD_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"

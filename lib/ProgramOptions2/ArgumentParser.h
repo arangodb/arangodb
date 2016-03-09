@@ -39,6 +39,11 @@ class ArgumentParser {
   std::string helpSection(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
       std::string const current(argv[i]);
+
+      if (current == "--") {
+        break;
+      }
+
       if (current.size() >= 6 && current.substr(0, 6) == "--help") {
         if (current.size() <= 7) {
           return "*";
@@ -56,6 +61,7 @@ class ArgumentParser {
     _options->setContext("command-line options");
 
     std::string lastOption;
+    bool optionsDone = false;
 
     for (int i = 1; i < argc; ++i) {
       std::string option;
@@ -69,13 +75,21 @@ class ArgumentParser {
       if (!option.empty()) {
         value = current;
       } else {
+        if (current == "--") {
+          optionsDone = true;
+          continue;
+        }
+
         option = current;
 
         size_t dashes = 0;
-        if (option.substr(0, 2) == "--") {
-          dashes = 2;
-        } else if (option.substr(0, 1) == "-") {
-          dashes = 1;
+
+        if (! optionsDone) {
+          if (option.substr(0, 2) == "--") {
+            dashes = 2;
+          } else if (option.substr(0, 1) == "-") {
+            dashes = 1;
+          }
         }
 
         if (dashes == 0) {
@@ -129,6 +143,7 @@ class ArgumentParser {
     }
 
     // all is well
+    _options->endPass();
     return true;
   }
 

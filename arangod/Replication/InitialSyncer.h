@@ -25,7 +25,7 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
 

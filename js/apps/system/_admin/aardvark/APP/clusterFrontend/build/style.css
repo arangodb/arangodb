@@ -58,7 +58,7 @@ textarea,
 
 .fa {
   display: inline-block;
-  font: normal normal normal 14px/1 FontAwesome;
+  font: normal normal normal 14px / 1 FontAwesome;
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
@@ -103,7 +103,7 @@ textarea,
     left: -1.8571428571em; }
 
 .fa-border {
-  padding: 0.2em 0.25em 0.15em;
+  padding: .2em .25em .15em;
   border: solid 0.08em #eee;
   border-radius: .1em; }
 
@@ -2164,11 +2164,14 @@ a.warning.coordinator, a.warning.dbserver {
     background-color: #f87c0f; }
 
 [class^='button-']:disabled,
-button.disabled, .button-inactive {
+button.disabled,
+[class*=' button-']:disabled, .button-inactive {
   background-color: #d3d3d3; }
   [class^='button-']:hover:disabled,
-  button.disabled:hover, .button-inactive:hover, [class^='button-']:focus:disabled,
-  button.disabled:focus, .button-inactive:focus {
+  button.disabled:hover,
+  [class*=' button-']:hover:disabled, .button-inactive:hover, [class^='button-']:focus:disabled,
+  button.disabled:focus,
+  [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
 a.headerButton.disabled, a.inactive.coordinator, a.inactive.dbserver {
@@ -5688,11 +5691,11 @@ div.headerBar {
 
 .fade {
   opacity: 0;
-  -moz-transition: opacity 0.03s linear;
-  -ms-transition: opacity 0.03s linear;
-  -o-transition: opacity 0.03s linear;
-  -webkit-transition: opacity 0.03s linear;
-  transition: opacity 0.03s linear; }
+  -moz-transition: opacity .03s linear;
+  -ms-transition: opacity .03s linear;
+  -o-transition: opacity .03s linear;
+  -webkit-transition: opacity .03s linear;
+  transition: opacity .03s linear; }
 
 .modal {
   border: 0 !important;

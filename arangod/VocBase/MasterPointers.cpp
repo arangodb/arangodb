@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MasterPointers.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "VocBase/MasterPointer.h"
 
 using namespace arangodb;
