@@ -26,7 +26,6 @@
 #define ARANGOD_VOC_BASE_SHAPER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "VocBase/shaped-json.h"
 
 ////////////////////////////////////////////////////////////////////////////////
