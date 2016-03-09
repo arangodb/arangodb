@@ -71,8 +71,10 @@ thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertMasterPointer(TRI_doc_mptr_t const* mptr, VPackBuilder& builder) {
-  builder.add(VPackValue(static_cast<void const*>(mptr->vpack()),
-                         VPackValueType::External));
+  //builder.add(VPackValue(static_cast<void const*>(mptr->vpack()),
+  //                       VPackValueType::External));
+  // This is the future, for now we have to copy:
+  builder.add(VPackSlice(mptr->vpack()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

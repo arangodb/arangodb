@@ -594,7 +594,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      //resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      // This is the future, for now, we have to do this:
+      resultBuilder.add(VPackSlice(mptr.vpack()));
     }
 
     return TRI_ERROR_NO_ERROR;
