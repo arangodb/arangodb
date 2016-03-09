@@ -197,7 +197,7 @@ class HashedCollectBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   struct GroupKeyEqual {
-    GroupKeyEqual(arangodb::AqlTransaction* trx)
+    explicit GroupKeyEqual(arangodb::AqlTransaction* trx)
         : _trx(trx) {}
 
     bool operator()(std::vector<AqlValue$> const&,

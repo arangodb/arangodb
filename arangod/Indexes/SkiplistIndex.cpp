@@ -557,11 +557,10 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  int compareResult = strcmp(
-      TRI_EXTRACT_MARKER_KEY(
-          leftElement->document()),  // ONLY IN INDEX, PROTECTED by RUNTIME
-      TRI_EXTRACT_MARKER_KEY(
-          rightElement->document()));  // ONLY IN INDEX, PROTECTED by RUNTIME
+  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(TRI_VOC_ATTRIBUTE_KEY);
+  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(TRI_VOC_ATTRIBUTE_KEY);
+ 
+  int compareResult = leftKey.compareString(rightKey.copyString());
 
   if (compareResult < 0) {
     return -1;

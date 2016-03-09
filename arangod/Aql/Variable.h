@@ -37,13 +37,14 @@ class Slice;
 namespace aql {
 
 struct Variable {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the variable
   //////////////////////////////////////////////////////////////////////////////
 
   Variable(std::string const&, VariableId);
 
-  explicit Variable(arangodb::velocypack::Slice const);
+  explicit Variable(arangodb::velocypack::Slice const&);
 
   Variable* clone() const { return new Variable(name, id); }
 

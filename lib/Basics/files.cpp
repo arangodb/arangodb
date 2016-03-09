@@ -1983,11 +1983,10 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 static std::string TRI_ApplicationName = "arangodb";
 
 void TRI_SetApplicationName(char const* name) {
+  TRI_ASSERT(name != nullptr);
   TRI_ASSERT(strlen(name) <= 13);
 
-  if (name != nullptr) {
-    TRI_ApplicationName = name;
-  }
+  TRI_ApplicationName = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

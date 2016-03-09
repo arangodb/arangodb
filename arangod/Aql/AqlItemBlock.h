@@ -61,7 +61,7 @@ class AqlItemBlock {
 
   AqlItemBlock(size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(arangodb::velocypack::Slice const);
+  explicit AqlItemBlock(arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the block

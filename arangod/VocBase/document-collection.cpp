@@ -4038,8 +4038,8 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
     
 VPackBuilder TRI_document_collection_t::newObjectForReplace(
     Transaction* trx,
-    VPackSlice const oldValue,
-    VPackSlice const newValue,
+    VPackSlice const& oldValue,
+    VPackSlice const& newValue,
     std::string const& rev) {
   // replace
   VPackBuilder builder;
@@ -4074,13 +4074,14 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
     
 VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
       arangodb::Transaction* trx,
-      VPackSlice const oldValue,
-      VPackSlice const newValue,
+      VPackSlice const& oldValue,
+      VPackSlice const& newValue,
       std::string const& rev,
       bool mergeObjects, bool keepNull) {
 
   VPackBuilder b;
-  { VPackObjectBuilder guard(&b);
+  { 
+    VPackObjectBuilder guard(&b);
 
     // Find the attributes in the newValue object:
     std::unordered_map<std::string, VPackSlice> newValues;

@@ -1208,10 +1208,10 @@ int AqlValue$::Compare(arangodb::AqlTransaction* trx, AqlValue$ const& left,
       if (left.range()->_low > right.range()->_low) {
         return 1;
       }
-      if (left.range()->_high < left.range()->_high) {
+      if (left.range()->_high < right.range()->_high) {
         return -1;
       }
-      if (left.range()->_high > left.range()->_high) {
+      if (left.range()->_high > right.range()->_high) {
         return 1;
       }
       return 0;
