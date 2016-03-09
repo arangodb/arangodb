@@ -39,8 +39,6 @@ Agent::Agent () : Thread ("Agent"), _stopping(false) {}
 
 Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
   _state.setEndPoint(_config.end_points[this->id()]);
-  if (!_state.load())
-    LOG(FATAL) << "Failed to load persistent state on statup.";
   _constituent.configure(this);
   _confirmed.resize(size(),0);
 }
@@ -202,14 +200,18 @@ append_entries_t Agent::sendAppendEntriesRPC (
 }
 
 bool Agent::load () {
-  return _state.load();
+  LOG(INFO) << "Loading persistent state.";
+  if (!_state.load())
+    LOG(FATAL) << "Failed to load persistent state on statup.";
+
+  return true;
 }
 
 write_ret_t Agent::write (query_t const& query)  {
+
   if (_constituent.leading()) {                    // Leading 
     MUTEX_LOCKER(mutexLocker, _confirmedLock);
     std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
-
     std::vector<index_t> indices = 
       _state.log (query, applied, term(), id()); // Append to log w/ indicies
 
@@ -271,7 +273,7 @@ void Agent::beginShutdown() {
   // Stop callbacks
   //_agent_callback.shutdown();
   // wake up all blocked rest handlers
-  //CONDITION_LOCKER(guard, _cv);
+  CONDITION_LOCKER(guard, _cv);
   //guard.broadcast();
 }
 

@@ -99,7 +99,6 @@ void Constituent::candidate () {
 }
 
 bool Constituent::leading () const {
-  LOG(WARN) << _role;
   return _role == LEADER;
 }
 

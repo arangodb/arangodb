@@ -72,6 +72,7 @@ add_executable(${BIN_ARANGOD}
   Agency/ApplicationAgency.cpp
   Agency/Constituent.cpp
   Agency/State.cpp
+  Agency/Store.cpp
   Agency/AgentCallback.cpp
   ApplicationServer/ApplicationFeature.cpp
   ApplicationServer/ApplicationServer.cpp

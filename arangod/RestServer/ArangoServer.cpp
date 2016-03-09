@@ -1882,14 +1882,14 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
-
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   // disabled maintenance mode
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
+  LOG(WARN) << "LOADING PERSISTENT AGENCY STATE";
   if(_applicationAgency->agent()!=nullptr)
-    _applicationAgency->agent().load();
+    _applicationAgency->agent()->load();
 
   // just wait until we are signalled
   _applicationServer->wait();

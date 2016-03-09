@@ -75,7 +75,7 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
 }
-
+#include <iostream>
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {

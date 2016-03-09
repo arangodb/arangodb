@@ -36,6 +36,8 @@
 #include <memory>
 #include <cstdint>
 
+#include <Basics/Mutex.h>
+#include <Basics/MutexLocker.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -47,7 +49,6 @@ enum NodeType {NODE, LEAF};
 inline std::ostream& operator<< (std::ostream& os, std::vector<std::string> const& sv) {
   for (auto const& i : sv)
     os << i << " ";
-  os << std::endl;
   return os;
 }
 
@@ -68,86 +69,34 @@ public:
   
   std::string const& name() const;
 
-  template<class T> Node& operator= (T const& t) { // Assign value (become leaf)
-    _children.clear();
-    _value = t;
-    return *this;
-  }
+  Node& operator= (arangodb::velocypack::Slice const& t);
 
-  Node& operator= (Node const& node) { // Assign node
-    *this = node;
-    return *this;
-  }
-
-  inline NodeType type() const {return _children.size() ? NODE : LEAF;}
-
-  Node& operator [](std::string name) {
-    return *_children[name];
-  }
-
-  bool append (std::string const name, std::shared_ptr<Node> const node = nullptr) {
-    if (node != nullptr) {
-      _children[name] = node;
-    } else {
-      _children[name] = std::make_shared<Node>(name);
-    }
-    _children[name]->_parent = this;
-    return true;
-  }
-
-  Node& operator ()(std::vector<std::string>& pv) {
-    switch (pv.size()) {
-    case 0: // path empty
-      return *this;
-      break;
-    default: // at least one depth left
-      auto found = _children.find(pv[0]);
-      if (found == _children.end()) {
-        _children[pv[0]] = std::make_shared<Node>(pv[0]);
-        found = _children.find(pv[0]);
-        found->second->_parent = this;
-      }
-      pv.erase(pv.begin());
-      return (*found->second)(pv);
-      break;
-    }
-  }
+  Node& operator= (Node const& node);
   
-  Node const& operator ()(std::vector<std::string>& pv) const {
-    switch (pv.size()) {
-    case 0: // path empty
-      return *this;
-      break;
-    default: // at least one depth left
-      auto found = _children.find(pv[0]);
-      if (found == _children.end()) {
-        throw PATH_NOT_FOUND;
-      }
-      pv.erase(pv.begin());
-      return (*found->second)(pv);
-      break;
-    }
-  }
+  NodeType type() const;
+
+  Node& operator [](std::string name);
+
+  bool append (std::string const name,
+               std::shared_ptr<Node> const node = nullptr);
+
+  Node& operator ()(std::vector<std::string>& pv);
   
-  Node const& operator ()(std::string const& path) const {
-    PathType pv = split(path,"/");
-    return this->operator()(pv);
-  }
+  Node const& operator ()(std::vector<std::string>& pv) const;
+  
+  Node const& operator ()(std::string const& path) const;
 
-  Node& operator ()(std::string const& path) {
-    PathType pv = split(path,"/");
-    return this->operator()(pv);
-  }
+  Node& operator ()(std::string const& path);
 
-  Node const& read (std::string const& path) const {
-    PathType pv = split(path,"/");
-    return this->operator()(pv);
-  }
+  Node const& read (std::string const& path) const;
 
-  Node& write (std::string const& path) {
-    PathType pv = split(path,"/");
-    return this->operator()(pv);
-  }
+  Node& write (std::string const& path);
+
+  friend std::ostream& operator<<(std::ostream& os, const Node& n);
+
+  std::vector<bool> apply (query_t const& query);
+
+  query_t read (query_t const& query) const;
 
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
     Node* par = n._parent;
@@ -166,33 +115,19 @@ public:
     return os;
   }
 
-  std::vector<bool> apply (query_t const& query) {    
-    std::vector<bool> applied;
-    MUTEX_LOCKER(mutexLocker, _storeLock);
-    for (auto const& i : VPackArrayIterator(query->slice())) {
-      applied.push_back(apply(i));
-    }
-    return applied;
-  }
-
-  query_t read (query_t const& query) const {
-    MUTEX_LOCKER(mutexLocker, _storeLock);
-    // TODO: Run through JSON and asseble result
-    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-    return ret;
-  }
-
 protected:
   Node* _parent;
+  bool apply (arangodb::velocypack::Slice const&);
+
 private:
-  bool apply (arangodb::velocypack::Slice const& slice) {
-    // TODO apply slice to database
-    return true;
-  }
-  
+
+  bool check (arangodb::velocypack::Slice const&);
+
+  typedef Buffer<uint8_t> value_t;
+
   NodeType _type;
   std::string _name;
-  Buffer<uint8_t> _value;
+  value_t _value;
   Children _children;
   mutable arangodb::Mutex _storeLock;
   

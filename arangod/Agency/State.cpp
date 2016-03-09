@@ -200,12 +200,12 @@ bool State::createCollection (std::string const& name) {
 }
 
 bool State::load () {
-  //loadCollection("log");
+  loadCollection("log");
   return true;
 }
 
 bool State::loadCollection (std::string const& name) {
-  std::this_thread::sleep_for(std::chrono::duration<double>(2.0));
+
   if (checkDBs()) {
 
     std::stringstream path;
