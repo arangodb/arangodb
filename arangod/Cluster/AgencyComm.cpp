@@ -21,15 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/AgencyComm.h"
-#include "Basics/Logger.h"
+#include "AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/json.h"
 #include "Basics/random.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

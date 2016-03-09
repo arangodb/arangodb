@@ -273,13 +273,16 @@ class Logger {
 
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
+  static LogTopic CONFIG;
+  static LogTopic DATAFILES;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
-  static LogTopic DATAFILES;
+  static LogTopic STARTUP;
   static LogTopic THREADS;
+  static LogTopic V8;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

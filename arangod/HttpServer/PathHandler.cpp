@@ -24,7 +24,7 @@
 #include "PathHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/mimetypes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"

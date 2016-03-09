@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
-#include "Basics/Logger.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -33,6 +33,7 @@
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"

@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Nonce.h"
 #include "Basics/process-utils.h"
 #include "Basics/ProgramOptions.h"
@@ -3874,17 +3874,22 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
     v8::Handle<v8::Function> print =
         v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
 
-    v8::Handle<v8::Value> arguments[] = {result};
-    print->Call(print, 1, arguments);
+    if (print->IsFunction()) {
+      v8::Handle<v8::Value> arguments[] = {result};
+      print->Call(print, 1, arguments);
 
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
-      } else {
-        TRI_GET_GLOBALS();
-        v8g->_canceled = true;
-        return scope.Escape<v8::Value>(v8::Undefined(isolate));
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(isolate, &tryCatch);
+        } else {
+          TRI_GET_GLOBALS();
+          v8g->_canceled = true;
+          return scope.Escape<v8::Value>(v8::Undefined(isolate));
+        }
       }
+    }
+    else {
+      LOG(ERR) << "no output function defined in Javascript context";
     }
   }
 
@@ -4287,15 +4292,19 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("MODULES_PATH"),
                                V8PathList(isolate, modules));
+
   TRI_AddGlobalVariableVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("STARTUP_PATH"),
                                TRI_V8_STD_STRING(startupPath));
+
   TRI_AddGlobalVariableVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("PATH_SEPARATOR"),
                                TRI_V8_ASCII_STRING(TRI_DIR_SEPARATOR_STR));
+
   TRI_AddGlobalVariableVocbase(
       isolate, context, TRI_V8_ASCII_STRING("VALGRIND"),
-      RUNNING_ON_VALGRIND > 0 ? v8::True(isolate) : v8::False(isolate));
+      v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
+
 #ifdef COVERAGE
   TRI_AddGlobalVariableVocbase(
       isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::True(isolate));
@@ -4303,6 +4312,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(
       isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
 #endif
+
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VERSION"),
                                TRI_V8_ASCII_STRING(ARANGODB_VERSION));
 

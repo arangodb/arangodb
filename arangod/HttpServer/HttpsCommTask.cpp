@@ -26,7 +26,7 @@
 
 #include <openssl/err.h>
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/socket-utils.h"
 #include "Basics/ssl-helper.h"
 #include "Basics/StringBuffer.h"
@@ -85,7 +85,7 @@ bool HttpsCommTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   if (_ssl == nullptr) {
     LOG(DEBUG) << "cannot build new SSL connection: "
-               << arangodb::basics::lastSSLError();
+               << lastSSLError();
 
     shutdownSsl(false);
     return false;  // terminate ourselves, ssl is nullptr
@@ -202,7 +202,7 @@ bool HttpsCommTask::trySSLAccept() {
   // shutdown of connection
   if (res == 0) {
     LOG(DEBUG) << "SSL_accept failed: "
-               << arangodb::basics::lastSSLError();
+               << lastSSLError();
 
     shutdownSsl(false);
     return false;
@@ -222,7 +222,7 @@ bool HttpsCommTask::trySSLAccept() {
   }
 
   LOG(TRACE) << "error in SSL handshake: "
-             << arangodb::basics::lastSSLError();
+             << lastSSLError();
 
   shutdownSsl(false);
   return false;
@@ -249,7 +249,7 @@ again:
       case SSL_ERROR_SSL:
         LOG(DEBUG) << "received SSL error (bytes read " << nr << ", socket "
                    << TRI_get_fd_or_handle_of_socket(_commSocket)
-                   << "): " << arangodb::basics::lastSSLError();
+                   << "): " << lastSSLError();
 
         shutdownSsl(false);
         return false;
@@ -278,7 +278,7 @@ again:
       case SSL_ERROR_SYSCALL:
         if (res != 0) {
           LOG(DEBUG) << "SSL_read returned syscall error with: "
-                     << arangodb::basics::lastSSLError();
+                     << lastSSLError();
         } else if (nr == 0) {
           LOG(DEBUG)
               << "SSL_read returned syscall error because an EOF was received";
@@ -292,7 +292,7 @@ again:
 
       default:
         LOG(DEBUG) << "received error with " << res << " and " << nr << ": "
-                   << arangodb::basics::lastSSLError();
+                   << lastSSLError();
 
         shutdownSsl(false);
         return false;
@@ -363,7 +363,7 @@ bool HttpsCommTask::trySSLWrite() {
         case SSL_ERROR_SYSCALL:
           if (res != 0) {
             LOG(DEBUG) << "SSL_write returned syscall error with: "
-                       << arangodb::basics::lastSSLError();
+                       << lastSSLError();
           } else if (nr == 0) {
             LOG(DEBUG) << "SSL_write returned syscall error because an EOF was "
                           "received";
@@ -377,7 +377,7 @@ bool HttpsCommTask::trySSLWrite() {
 
         default:
           LOG(DEBUG) << "received error with " << res << " and " << nr << ": "
-                     << arangodb::basics::lastSSLError();
+                     << lastSSLError();
 
           shutdownSsl(false);
           return false;
@@ -437,7 +437,7 @@ void HttpsCommTask::shutdownSsl(bool initShutdown) {
 
           if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
             LOG(DEBUG) << "received shutdown error with " << res << ", " << err
-                       << ": " << arangodb::basics::lastSSLError();
+                       << ": " << lastSSLError();
             break;
           }
         }

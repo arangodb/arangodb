@@ -24,7 +24,7 @@
 #include "ScriptLoader.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 

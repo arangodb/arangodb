@@ -23,7 +23,7 @@
 
 #include "json.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 

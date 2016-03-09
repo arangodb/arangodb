@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "replication-dump.h"
-#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Logger/Logger.h"
 #include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/datafile.h"

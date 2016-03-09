@@ -175,7 +175,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid);
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess(int argc, char* argv[]);
+void TRI_InitializeProcess();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the process components

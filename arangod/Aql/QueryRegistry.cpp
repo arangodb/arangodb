@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"

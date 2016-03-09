@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Job.h"
-#include "Basics/Logger.h"
+#include "Basics/json.h"
 #include "Dispatcher/DispatcherQueue.h"
+#include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/ApplicationV8.h"

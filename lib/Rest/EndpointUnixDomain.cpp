@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #include "Rest/Endpoint.h"
 

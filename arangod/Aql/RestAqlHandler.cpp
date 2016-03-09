@@ -25,7 +25,7 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"

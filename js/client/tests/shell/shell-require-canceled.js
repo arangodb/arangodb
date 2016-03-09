@@ -30,68 +30,61 @@
 
 var jsunity = require('jsunity');
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for 'require-canceled'
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequireCanceledTestSuite () {
+function RequireCanceledTestSuite() {
   'use strict';
 
   return {
-
     setUp() {
-      arango.POST_RAW("/_admin/execute",
-		      "require('module').globalPaths.unshift(require('path').resolve('./js/common/test-data/modules'));",
-		      {'x-arango-v8-context': 0});
-    },
+        arango.POST_RAW("/_admin/execute",
+          "require('module').globalPaths.unshift(require('path').resolve('./js/common/test-data/modules'));", {
+            'x-arango-v8-context': 0
+          });
+      },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+      tearDown() {
+        arango.POST_RAW("/_admin/execute",
+          "require('module').globalPaths.splice(0,1);", {
+            'x-arango-v8-context': 0
+          });
+      },
 
-    tearDown() {
-      arango.POST_RAW("/_admin/execute",
-		      "require('module').globalPaths.splice(0,1);",
-		      {'x-arango-v8-context': 0});
-    },
+      testRequireJson() {
+        var internal = require("internal");
+        var a = arango.POST_RAW("/_admin/execute",
+          'return Object.keys(require("a"));', {
+            'x-arango-async': "store",
+            'x-arango-v8-context': 0
+          });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test requiring JSON
-////////////////////////////////////////////////////////////////////////////////
+        internal.sleep(3);
 
-    testRequireJson() {
-      var internal = require("internal");
-      var a = arango.POST_RAW("/_admin/execute",
-			      'return Object.keys(require("a"));',
-			      {'x-arango-async': "store", 'x-arango-v8-context': 0});
-      internal.sleep(3);
+        var id = a.headers['x-arango-async-id'];
+        arango.PUT_RAW("/_api/job/" + id + "/cancel", '');
 
-      var id = a.headers['x-arango-async-id'];
-      arango.PUT_RAW("/_api/job/" + id + "/cancel", '');
+        var c = arango.POST_RAW("/_admin/execute?returnAsJSON=true",
+          'return Object.keys(require("a"));', {
+            'x-arango-async': "false",
+            'x-arango-v8-context': 0
+          });
 
-      var c = arango.POST_RAW("/_admin/execute?returnAsJSON=true",
-			      'return Object.keys(require("a"));',
-			      {'x-arango-async': "false", 'x-arango-v8-context': 0});
-      var d;
+        var d;
 
-      try {
-        d = JSON.parse(c.body);
+        try {
+          d = JSON.parse(c.body);
+        } catch (err) {
+          require("internal").print(c.body);
+          throw err;
+        }
+
+        assertEqual(2, d.length);
       }
-      catch (err) {
-	require("internal").print(c.body);
-        throw err;
-      }
-
-      assertEqual(2, d.length);
-    },
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(RequireCanceledTestSuite);
 

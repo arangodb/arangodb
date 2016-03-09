@@ -25,8 +25,7 @@
 #define LIB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Logger.h"
-
+#include "Logger/Logger.h"
 #include "Zip/zip.h"
 
 #include <sstream>

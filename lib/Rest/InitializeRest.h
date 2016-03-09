@@ -38,7 +38,7 @@ namespace rest {
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void InitializeRest(int argc, char* argv[]);
+extern void InitializeRest();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
@@ -52,9 +52,9 @@ extern void ShutdownRest();
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_INITIALIZE(a, b)        \
-  do {                                        \
-    arangodb::rest::InitializeRest((a), (b)); \
+#define TRIAGENS_REST_INITIALIZE()    \
+  do {                                \
+    arangodb::rest::InitializeRest(); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////

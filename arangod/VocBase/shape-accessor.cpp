@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shape-accessor.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/vector.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/VocShaper.h"

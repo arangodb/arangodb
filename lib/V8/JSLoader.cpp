@@ -23,7 +23,7 @@
 
 #include "JSLoader.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "V8/v8-utils.h"
 

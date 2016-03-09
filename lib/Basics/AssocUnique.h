@@ -28,11 +28,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
-#include "Basics/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
 #include "Basics/random.h"
+#include "Logger/Logger.h"
 
 #include <thread>
 #include <velocypack/Builder.h>

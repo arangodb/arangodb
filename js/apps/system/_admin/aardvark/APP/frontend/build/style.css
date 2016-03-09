@@ -68,7 +68,7 @@ textarea,
 
 .fa {
   display: inline-block;
-  font: normal normal normal 14px/1 FontAwesome;
+  font: normal normal normal 14px / 1 FontAwesome;
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
@@ -113,7 +113,7 @@ textarea,
     left: -1.8571428571em; }
 
 .fa-border {
-  padding: 0.2em 0.25em 0.15em;
+  padding: .2em .25em .15em;
   border: solid 0.08em #eee;
   border-radius: .1em; }
 
@@ -2154,11 +2154,14 @@ textarea,
     background-color: #f87c0f; }
 
 [class^='button-']:disabled,
-button.disabled, .button-inactive {
+button.disabled,
+[class*=' button-']:disabled, .button-inactive {
   background-color: #d3d3d3; }
   [class^='button-']:hover:disabled,
-  button.disabled:hover, .button-inactive:hover, [class^='button-']:focus:disabled,
-  button.disabled:focus, .button-inactive:focus {
+  button.disabled:hover,
+  [class*=' button-']:hover:disabled, .button-inactive:hover, [class^='button-']:focus:disabled,
+  button.disabled:focus,
+  [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
 a.headerButton.disabled {
@@ -5675,11 +5678,11 @@ div.headerBar {
 
 .fade {
   opacity: 0;
-  -moz-transition: opacity 0.03s linear;
-  -ms-transition: opacity 0.03s linear;
-  -o-transition: opacity 0.03s linear;
-  -webkit-transition: opacity 0.03s linear;
-  transition: opacity 0.03s linear; }
+  -moz-transition: opacity .03s linear;
+  -ms-transition: opacity .03s linear;
+  -o-transition: opacity .03s linear;
+  -webkit-transition: opacity .03s linear;
+  transition: opacity .03s linear; }
 
 .modal {
   border: 0 !important;
@@ -6958,7 +6961,7 @@ toolbar {
   z-index: 77777; }
   .arangoFrame .outerDiv {
     min-height: 100%;
-    padding: 40px;
+    padding: 20px 40px 40px;
     z-index: 88888; }
   .arangoFrame .innerDiv {
     z-index: 99999; }
@@ -6969,6 +6972,20 @@ toolbar {
   .arangoFrame .fa-times:hover {
     color: #c2c2c2;
     cursor: pointer; }
+  .arangoFrame .document-info-div,
+  .arangoFrame .document-content-div {
+    left: 40px;
+    position: absolute;
+    right: 40px; }
+  .arangoFrame .document-content-div {
+    bottom: 80px;
+    top: 130px; }
+  .arangoFrame .document-editor {
+    height: 100%; }
+  .arangoFrame .bottomButtonBar {
+    left: -1px;
+    position: absolute;
+    right: -1px; }
 
 .container {
   margin-left: 20px;
@@ -7275,7 +7292,7 @@ toolbar {
   clear: both; }
 
 .swagger-section #swagger-ui-container {
-  margin: 0.3em 1em !important; }
+  margin: .3em 1em !important; }
 
 .alert {
   padding: 15px 35px 15px 14px; }

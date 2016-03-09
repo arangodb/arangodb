@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -83,12 +83,12 @@ void normalizePath(std::string& name) {
 std::string buildFilename(char const* path, char const* name) {
   std::string result(path);
 
-  if (! result.empty()) {
+  if (!result.empty()) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
-  
-  result.append(name); 
-  normalizePath(result); // in place
+
+  result.append(name);
+  normalizePath(result);  // in place
 
   return result;
 }
@@ -96,12 +96,12 @@ std::string buildFilename(char const* path, char const* name) {
 std::string buildFilename(std::string const& path, std::string const& name) {
   std::string result(path);
 
-  if (! result.empty()) {
+  if (!result.empty()) {
     result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
   }
-  
-  result.append(name); 
-  normalizePath(result); // in place
+
+  result.append(name);
+  normalizePath(result);  // in place
 
   return result;
 }
@@ -362,7 +362,9 @@ bool copyDirectoryRecursive(std::string const& source,
 
   do {
 #else
-  auto isSubDirectory = [](struct dirent* item) -> bool { return isDirectory(item->d_name); };
+  auto isSubDirectory = [](struct dirent* item) -> bool {
+    return isDirectory(item->d_name);
+  };
 
   struct dirent* d = (struct dirent*)TRI_Allocate(
       TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1),
@@ -590,6 +592,31 @@ std::string homeDirectory() {
   TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
 
   return result;
+}
+
+std::string configDirectory() {
+  char* dir = TRI_LocateConfigDirectory();
+
+  if (dir == nullptr) {
+    return currentDirectory();
+  }
+
+  std::string result = dir;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
+
+  return result;
+}
+
+std::string dirname(std::string const& name) {
+  char* result = TRI_Dirname(name.c_str());
+  std::string base;
+
+  if (result != nullptr) {
+    base = result;
+    TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  }
+
+  return base;
 }
 }
 }

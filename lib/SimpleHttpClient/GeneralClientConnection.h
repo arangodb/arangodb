@@ -55,6 +55,9 @@ class GeneralClientConnection {
   GeneralClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
                           size_t);
 
+  GeneralClientConnection(std::unique_ptr<arangodb::rest::Endpoint>& endpoint,
+                          double, double, size_t);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
   //////////////////////////////////////////////////////////////////////////////
@@ -68,6 +71,10 @@ class GeneralClientConnection {
 
   static GeneralClientConnection* factory(arangodb::rest::Endpoint*, double,
                                           double, size_t, uint32_t);
+
+  static GeneralClientConnection* factory(
+      std::unique_ptr<arangodb::rest::Endpoint>&, double, double, size_t,
+      uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -194,6 +201,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::rest::Endpoint* _endpoint;
+  bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request timeout (in seconds)

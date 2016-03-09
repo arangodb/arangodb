@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AllocatorThread.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"

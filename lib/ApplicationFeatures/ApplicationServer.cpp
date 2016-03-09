@@ -23,18 +23,42 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Logger.h"
+#include "ProgramOptions2/ArgumentParser.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+ApplicationServer* ApplicationServer::server = nullptr;
+
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
-    : _options(options), _stopping(false), _privilegesDropped(false) {}
+    : _options(options), _stopping(false), _privilegesDropped(false) {
+  if (ApplicationServer::server != nullptr) {
+    LOG(ERR) << "ApplicationServer initialized twice";
+  }
+
+  ApplicationServer::server = this;
+}
 
 ApplicationServer::~ApplicationServer() {
   for (auto& it : _features) {
     delete it.second;
   }
+
+  ApplicationServer::server = nullptr;
+}
+
+ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
+  if (ApplicationServer::server == nullptr) {
+    return nullptr;
+  }
+
+  try {
+    return ApplicationServer::server->feature(name);
+  } catch (...) {
+  }
+
+  return nullptr;
 }
 
 // adds a feature to the application server. the application server
@@ -83,14 +107,22 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 // this method will initialize and validate options
 // of all feature, start them and wait for a shutdown
 // signal. after that, it will shutdown all features
-void ApplicationServer::run() {
-  LOG(TRACE) << "ApplicationServer::run";
+void ApplicationServer::run(int argc, char* argv[]) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
 
   // collect options from all features
   // in this phase, all features are order-independent
   collectOptions();
 
-  // TODO: parse command-line options here
+  // setup dependency, but ignore any failure for now
+  setupDependencies(false);
+
+  // parse the command line parameters and load any configuration
+  // file(s)
+  parseOptions(argc, argv);
+
+  // seal the options
+  _options->seal();
 
   // validate options of all features
   // in this phase, all features are stil order-independent
@@ -100,7 +132,7 @@ void ApplicationServer::run() {
   enableAutomaticFeatures();
 
   // setup and validate all feature dependencies
-  setupDependencies();
+  setupDependencies(true);
 
   // now the features will actually do some preparation work
   // in the preparation phase, the features must not start any threads
@@ -124,9 +156,10 @@ void ApplicationServer::run() {
 
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
-  LOG(TRACE) << "";
-  LOG(TRACE) << "ApplicationServer::beginShutdown";
-  LOG(TRACE) << "------------------------------------------------";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   // fowards the begin shutdown signal to all features
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
@@ -159,15 +192,42 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
 }
 
 void ApplicationServer::collectOptions() {
-  LOG(TRACE) << "ApplicationServer::collectOptions";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
   apply([this](ApplicationFeature* feature) {
     feature->collectOptions(_options);
   }, true);
 }
 
+void ApplicationServer::parseOptions(int argc, char* argv[]) {
+  ArgumentParser parser(_options.get());
+
+  std::string helpSection = parser.helpSection(argc, argv);
+
+  if (!helpSection.empty()) {
+    // user asked for "--help"
+    _options->printHelp(helpSection);
+    exit(EXIT_SUCCESS);
+  }
+
+  if (!parser.parse(argc, argv)) {
+    // command-line option parsing failed. an error was already printed
+    // by now, so we can exit
+    exit(EXIT_FAILURE);
+  }
+
+  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    if ((*it)->isEnabled()) {
+      (*it)->loadOptions(_options);
+    }
+  }
+}
+
 void ApplicationServer::validateOptions() {
-  LOG(TRACE) << "ApplicationServer::vaiidateOptions";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   apply([this](ApplicationFeature* feature) {
     feature->validateOptions(_options);
@@ -197,34 +257,44 @@ void ApplicationServer::enableAutomaticFeatures() {
 }
 
 // setup and validate all feature dependencies, determine feature order
-void ApplicationServer::setupDependencies() {
-  LOG(TRACE) << "ApplicationServer::vaiidateDependencies";
+void ApplicationServer::setupDependencies(bool failOnMissing) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "ApplicationServer::validateDependencies";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   // first check if a feature references an unknown other feature
-  apply([this](ApplicationFeature* feature) {
-    for (auto& other : feature->requires()) {
-      if (!this->exists(other)) {
-        fail("feature '" + feature->name() + "' depends on unknown feature '" +
-             other + "'");
+  if (failOnMissing) {
+    apply([this](ApplicationFeature* feature) {
+      for (auto& other : feature->requires()) {
+        if (!this->exists(other)) {
+          fail("feature '" + feature->name() +
+               "' depends on unknown feature '" + other + "'");
+        }
+        if (!this->feature(other)->isEnabled()) {
+          fail("enabled feature '" + feature->name() +
+               "' depends on other feature '" + other + "', which is disabled");
+        }
       }
-      if (!this->feature(other)->isEnabled()) {
-        fail("enabled feature '" + feature->name() +
-             "' depends on other feature '" + other + "', which is disabled");
-      }
-    }
-  }, true);
+    }, true);
+  }
 
   // first insert all features, even the inactive ones
   std::vector<ApplicationFeature*> features;
   for (auto& it : _features) {
-    features.emplace_back(it.second);
+    auto insertPosition = features.end();
+     
+    if (!features.empty()) {
+      for (size_t i = features.size(); i > 0; --i) {
+        if (it.second->doesStartBefore(features[i - 1]->name())) {
+          insertPosition = features.begin() + (i - 1);
+        }
+      }
+    }
+    features.insert(insertPosition, it.second);
   }
-
-  std::sort(features.begin(), features.end(),
-            [](ApplicationFeature const* lhs, ApplicationFeature const* rhs) {
-              return lhs->doesStartBefore(rhs->name());
-            });
-
+  
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {
@@ -240,9 +310,10 @@ void ApplicationServer::setupDependencies() {
 }
 
 void ApplicationServer::prepare() {
-  LOG(TRACE) << "";
-  LOG(TRACE) << "ApplicationServer::prepare";
-  LOG(TRACE) << "------------------------------------------------";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   // we start with elevated privileges
   bool privilegesElevated = true;
@@ -276,9 +347,10 @@ void ApplicationServer::prepare() {
 }
 
 void ApplicationServer::start() {
-  LOG(TRACE) << "";
-  LOG(TRACE) << "ApplicationServer::start";
-  LOG(TRACE) << "------------------------------------------------";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     (*it)->start();
@@ -286,9 +358,10 @@ void ApplicationServer::start() {
 }
 
 void ApplicationServer::stop() {
-  LOG(TRACE) << "";
-  LOG(TRACE) << "ApplicationServer::stop";
-  LOG(TRACE) << "------------------------------------------------";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
@@ -297,7 +370,10 @@ void ApplicationServer::stop() {
 }
 
 void ApplicationServer::wait() {
-  LOG(TRACE) << "ApplicationServer::wait";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::wait";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
 
   while (!_stopping) {
     // TODO: use condition variable for waiting for shutdown

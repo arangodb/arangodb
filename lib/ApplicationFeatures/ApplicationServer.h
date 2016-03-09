@@ -38,6 +38,10 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
+  static ApplicationServer* server;
+  static ApplicationFeature* lookupFeature(std::string const&);
+
+ public:
   explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
 
   ~ApplicationServer();
@@ -70,7 +74,7 @@ class ApplicationServer {
   // this method will initialize and validate options
   // of all feature, start them and wait for a shutdown
   // signal. after that, it will shutdown all features
-  void run();
+  void run(int argc, char* argv[]);
 
   // signal the server to shut down
   void beginShutdown();
@@ -85,16 +89,25 @@ class ApplicationServer {
   // collects the program options from all features,
   // without validating them
   void collectOptions();
+
+  // parse options
+  void parseOptions(int argc, char* argv[]);
+
   // allows features to cross-validate their program options
   void validateOptions();
+
   // enable automatic features
   void enableAutomaticFeatures();
+
   // setup and validate all feature dependencies, determine feature order
-  void setupDependencies();
+  void setupDependencies(bool failOnMissing);
+
   // allows features to prepare themselves
   void prepare();
+
   // starts features
   void start();
+
   // stops features
   void stop();
 
@@ -109,12 +122,16 @@ class ApplicationServer {
  private:
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
+
   // map of feature names to features
   std::unordered_map<std::string, ApplicationFeature*> _features;
+
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
+
   // stop flag. this is being changed by calling beginShutdown
   std::atomic<bool> _stopping;
+
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped;
 };

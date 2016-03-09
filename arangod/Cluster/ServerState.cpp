@@ -25,7 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 

@@ -77,6 +77,10 @@ static const uint32_t V8DataSlot = 0;
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)strlen(name))
 
+#define TRI_V8_ASCII_STRING2(isolate, name)                   \
+  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
+                             v8::String::kNormalString, (int)strlen(name))
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 symbol for the specified string
 ///   implicites isolate available.
@@ -98,6 +102,10 @@ static const uint32_t V8DataSlot = 0;
   v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
                           (int)strlen(name))
 
+#define TRI_V8_STRING2(isolate, name)                                 \
+  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
+                          (int)strlen(name))
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 symbol for the specified string
 ///   implicites isolate available.
@@ -105,6 +113,10 @@ static const uint32_t V8DataSlot = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_STD_STRING(name)                                             \
+  v8::String::NewFromUtf8(isolate, name.c_str(), v8::String::kNormalString, \
+                          (int)name.length())
+
+#define TRI_V8_STD_STRING2(isolate, name)                                   \
   v8::String::NewFromUtf8(isolate, name.c_str(), v8::String::kNormalString, \
                           (int)name.length())
 

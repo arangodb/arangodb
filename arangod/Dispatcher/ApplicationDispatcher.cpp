@@ -27,7 +27,7 @@
 
 #include "ApplicationDispatcher.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"

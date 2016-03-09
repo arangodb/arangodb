@@ -37,7 +37,7 @@ namespace options {
 
 // convert a string into a number, base version for signed integer types
 template <typename T>
-typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
+inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoll(value));
   if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
@@ -48,7 +48,7 @@ typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(
 
 // convert a string into a number, base version for unsigned integer types
 template <typename T>
-typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
+inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
     std::string const& value) {
   auto v = static_cast<T>(std::stoull(value));
   if (v < (std::numeric_limits<T>::min)() || v > (std::numeric_limits<T>::max)()) {
@@ -59,7 +59,7 @@ typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
 
 // convert a string into a number, version for double values
 template <>
-double toNumber<double>(std::string const& value) {
+inline double toNumber<double>(std::string const& value) {
   return std::stod(value);
 }
 
@@ -305,7 +305,8 @@ struct DiscreteValuesParameter : public T {
     if (it == allowed.end()) {
       return "invalid value " + value;
     }
-    return "";
+
+    return T::set(value);
   }
 
   std::unordered_set<typename T::ValueType> allowed;
