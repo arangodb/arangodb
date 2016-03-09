@@ -613,7 +613,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      resultBuilder.add(VPackSlice(mptr.vpack()));
+      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
     }
 
     return TRI_ERROR_NO_ERROR;
