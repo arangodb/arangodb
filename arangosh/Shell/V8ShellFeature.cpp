@@ -229,7 +229,7 @@ V8ClientConnection* V8ShellFeature::setup(
     std::vector<std::string> const& positionals, bool* promptError) {
   std::unique_ptr<V8ClientConnection> v8connection;
 
-  ClientFeature* client;
+  ClientFeature* client = nullptr;
 
   if (createConnection) {
     client = dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
