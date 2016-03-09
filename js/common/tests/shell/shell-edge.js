@@ -96,7 +96,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
 
       try {
@@ -104,7 +104,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
       
       try {
@@ -112,7 +112,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
     }
   };
@@ -167,7 +167,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveEdgesInvalidType : function () {
-      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+      [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           edge.save(v1._key, v2._key, doc);
           fail();
