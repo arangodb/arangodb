@@ -12,6 +12,9 @@ v2.8.5 (2016-03-XX)
 
 * added new endpoint "srv://" for DNS service records
 
+* `org/arangodb/request` no longer sets the content-type header to the
+  string "undefined" when no content-type header should be sent (issue #1776)
+
 
 v2.8.4 (2016-03-01)
 -------------------
