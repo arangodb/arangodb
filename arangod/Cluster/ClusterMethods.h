@@ -28,7 +28,6 @@
 #include "Cluster/AgencyComm.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -134,8 +133,7 @@ int createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync,
+    std::string const& key, TRI_voc_rid_t const rev, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
@@ -205,7 +203,7 @@ int getFilteredEdgesOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     arangodb::velocypack::Slice const& slice,
@@ -220,7 +218,7 @@ int modifyDocumentOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,

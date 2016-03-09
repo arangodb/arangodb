@@ -35,7 +35,6 @@
 #include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/shaped-json.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
