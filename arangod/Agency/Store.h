@@ -117,11 +117,13 @@ public:
 
 protected:
   Node* _parent;
-  bool apply (arangodb::velocypack::Slice const&);
 
 private:
 
-  bool check (arangodb::velocypack::Slice const&);
+  bool apply (arangodb::velocypack::Slice const&);
+  bool read  (arangodb::velocypack::Slice const&,
+              arangodb::velocypack::Builder&) const;
+  bool check (arangodb::velocypack::Slice const&) const;
 
   typedef Buffer<uint8_t> value_t;
 

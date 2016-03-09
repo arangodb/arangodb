@@ -212,6 +212,8 @@ write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {                    // Leading 
     MUTEX_LOCKER(mutexLocker, _confirmedLock);
     std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
+    std::cout << _spear_head("/") <<std::endl;
+
     std::vector<index_t> indices = 
       _state.log (query, applied, term(), id()); // Append to log w/ indicies
 
@@ -230,8 +232,8 @@ write_ret_t Agent::write (query_t const& query)  {
 
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
-    _read_db.read (query);
-    return read_ret_t(true,_constituent.leaderID());//(query); //TODO:
+    auto result = _read_db.read (query);
+    return read_ret_t(true,_constituent.leaderID(),result);//(query); //TODO:
   } else {                          // We redirect
     return read_ret_t(false,_constituent.leaderID());
   }

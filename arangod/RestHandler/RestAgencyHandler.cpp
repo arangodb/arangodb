@@ -85,7 +85,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       body.add(VPackValue(VPackValueType::Object));
       _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
       for (size_t i = 0; i < ret.indices.size(); ++i) {
-        body.add(std::to_string(ret.applied[i]), Value(ret.indices[i]));
+        body.add(std::to_string(i), Value(ret.indices[i]));
       }
       body.close();
       generateResult(body.slice());
@@ -100,7 +100,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
 
 inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   arangodb::velocypack::Options options;
-  if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST) {
+  if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
     read_ret_t ret = _agent->read (_request->toVelocyPack(&options));
     if (ret.accepted) {
       generateResult(ret.result->slice());
