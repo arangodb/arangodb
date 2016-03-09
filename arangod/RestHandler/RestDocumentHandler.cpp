@@ -81,25 +81,29 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (!suffix.empty()) {
+  if (suffix.size() > 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
   }
 
-  // extract the cid
   bool found;
-  char const* collection = _request->value("collection", found);
+  std::string collectionName;
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+    found = true;
+  } else {
+    collectionName = _request->value("collection", found);
+  }
 
-  if (!found || *collection == '\0') {
+  if (!found || collectionName.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+                      "/<collectionname> or query parameter 'collection'");
     return false;
   }
-  std::string collectionName(collection);
 
   bool parseSuccess = true;
   // copy default options
@@ -111,28 +115,23 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-
-  /* TODO
-  if (!checkCreateCollection(collection, getCollectionType())) {
-    return false;
-  }
-  */
-
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                          collectionName, TRI_TRANSACTION_WRITE);
+  VPackSlice body = parsedBody->slice();
+  if (!body.isArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
   arangodb::OperationOptions opOptions;
   opOptions.waitForSync = extractWaitForSync();
-  VPackSlice body = parsedBody->slice();
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
