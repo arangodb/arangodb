@@ -23,6 +23,7 @@
 
 #include "MasterPointer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -31,13 +32,6 @@ using namespace arangodb;
    
 TRI_voc_rid_t TRI_doc_mptr_t::revisionId() const {
   VPackSlice const slice(vpack());
-  VPackSlice const revisionSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
-  if (revisionSlice.isString()) {
-    return arangodb::basics::VelocyPackHelper::stringUInt64(revisionSlice);
-  }
-  else if (revisionSlice.isNumber()) {
-    return revisionSlice.getNumber<TRI_voc_rid_t>();
-  }
-  return 0; 
+  return TRI_extractRevisionId(slice);
 }
 

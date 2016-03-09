@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/StringUtils.h"
 #include "Basics/threads.h"
 #include "Basics/vector.h"
 #include "Basics/voc-errors.h"
@@ -627,4 +628,10 @@ bool TRI_GetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*);
 
 void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*, bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_extractRevisionId(VPackSlice const slice);
+  
 #endif

@@ -165,12 +165,8 @@ bool RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-      return readAllDocuments();
-
     case 1:
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+      return readAllDocuments();
 
     case 2:
       return readSingleDocument(true);
@@ -227,9 +223,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
                                           collection, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  // .............................................................................
+  // ...........................................................................
   // inside read transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
@@ -239,6 +235,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   OperationOptions options;
+  options.ignoreRevs = false;
   OperationResult result = trx.document(collection, search, options);
 
   res = trx.finish(result.code);
@@ -260,9 +257,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  TRI_voc_rid_t const rid =
-      VelocyPackHelper::getNumericValue<TRI_voc_rid_t>(
-          result.slice(), TRI_VOC_ATTRIBUTE_REV, 0);
+  TRI_voc_rid_t const rid = TRI_extractRevisionId(result.slice());
   if (ifNoneRid != 0 && ifNoneRid == rid) {
     generateNotModified(rid);
   } else {
@@ -280,7 +275,14 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string const collectionName = _request->value("collection", found);
+  std::string collectionName;
+
+  std::vector<std::string> const& suffix = _request->suffix();
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+  } else {
+    collectionName = _request->value("collection", found);
+  }
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {

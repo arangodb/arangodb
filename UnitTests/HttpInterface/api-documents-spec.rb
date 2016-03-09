@@ -26,7 +26,7 @@ describe ArangoDB do
 
     it "creates a document with an invalid type" do
       cmd = api + "?collection=" + @cn
-      body = "[ ]";
+      body = "[ [] ]";
       doc = ArangoDB.log_post("#{prefix}-create-list1", cmd, :body => body)
 
       doc.code.should eq(400)
