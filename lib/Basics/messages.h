@@ -61,7 +61,7 @@
 #define TRI_BYE_MESSAGE_RU "\xd0\x94\xd0\xbe\x20\xd1\x81\xd0\xb2\xd0\xb8\xd0\xb4\xd0\xb0\xd0\xbd\xd0\xb8\xd1\x8f\x21"
 #define TRI_BYE_MESSAGE_SV "\x41\x64\x6a\xc3\xb6\x21"
 #define TRI_BYE_MESSAGE_PT "\x41\x74\xc3\xa9\x20\x42\x72\x65\x76\x65\x21"
-#define TRI_BYE_MESSAGE_FA "\u062E\u062F\u0627\u062D\u0627\u0641\u0638!"
+#define TRI_BYE_MESSAGE_FA "\xd8\xae\xd8\xaf\xd8\xa7\xd8\xad\xd8\xa7\xd9\x81\xd8\xb8\x21"
 
 #define TRI_BYE_MESSAGE                                                 \
   TRI_BYE_MESSAGE_CH                                                    \
