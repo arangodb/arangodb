@@ -1,4 +1,4 @@
-/*jshint globalstrict: true, sub: true */
+/*jshint sub: true */
 /*global exports: true */
 'use strict';
 
@@ -131,7 +131,11 @@ function request(req) {
     }
   }
 
-  let headers = {'content-type': contentType};
+  const headers = {};
+
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
 
   if (req.headers) {
     Object.keys(req.headers).forEach(function (name) {
@@ -140,7 +144,7 @@ function request(req) {
   }
 
   if (req.auth) {
-    headers['authorization'] = (
+    headers['authorization'] = (//eslint-disable-line dot-notation
       req.auth.bearer ?
       'Bearer ' + req.auth.bearer :
       'Basic ' + new Buffer(
