@@ -2317,3 +2317,41 @@ void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice) {
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
+  if (r.isString()) {
+    VPackValueLength length;
+    char const* p = r.getString(length);
+    return arangodb::basics::StringUtils::uint64(p, length);
+  }
+  if (r.isInteger()) {
+    return r.getNumber<TRI_voc_rid_t>();
+  }
+  return 0;
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
+  TRI_ASSERT(slice.isObject());
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    std::string key(it.key().copyString());
+    if (key[0] != '_' ||
+        (key != TRI_VOC_ATTRIBUTE_ID &&
+         key != TRI_VOC_ATTRIBUTE_KEY &&
+         key != TRI_VOC_ATTRIBUTE_REV)) {
+      builder.add(key, it.value());
+    }
+    it.next();
+  }
+}

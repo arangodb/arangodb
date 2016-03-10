@@ -507,7 +507,7 @@ bool AgencyComm::tryConnect() {
     std::string endpointsStr { getUniqueEndpointsString() };
 
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
-    if (_globalEndpoints.size() == 0) {
+    if (_globalEndpoints.empty()) {
       return false;
     }
     
@@ -1258,7 +1258,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
-                                      arangodb::velocypack::Slice const json,
+                                      arangodb::velocypack::Slice const& json,
                                       bool prevExist, double ttl,
                                       double timeout) {
   AgencyCommResult result;

@@ -81,25 +81,29 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (!suffix.empty()) {
+  if (suffix.size() > 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
   }
 
-  // extract the cid
   bool found;
-  char const* collection = _request->value("collection", found);
+  std::string collectionName;
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+    found = true;
+  } else {
+    collectionName = _request->value("collection", found);
+  }
 
-  if (!found || *collection == '\0') {
+  if (!found || collectionName.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+                      "/<collectionname> or query parameter 'collection'");
     return false;
   }
-  std::string collectionName(collection);
 
   bool parseSuccess = true;
   // copy default options
@@ -111,28 +115,23 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-
-  /* TODO
-  if (!checkCreateCollection(collection, getCollectionType())) {
-    return false;
-  }
-  */
-
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+                                          collectionName, TRI_TRANSACTION_WRITE);
+  VPackSlice body = parsedBody->slice();
+  if (!body.isArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
   arangodb::OperationOptions opOptions;
   opOptions.waitForSync = extractWaitForSync();
-  VPackSlice body = parsedBody->slice();
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
@@ -165,12 +164,8 @@ bool RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-      return readAllDocuments();
-
     case 1:
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+      return readAllDocuments();
 
     case 2:
       return readSingleDocument(true);
@@ -227,9 +222,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
                                           collection, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  // .............................................................................
+  // ...........................................................................
   // inside read transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
@@ -239,6 +234,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   OperationOptions options;
+  options.ignoreRevs = false;
   OperationResult result = trx.document(collection, search, options);
 
   res = trx.finish(result.code);
@@ -260,9 +256,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  TRI_voc_rid_t const rid =
-      VelocyPackHelper::getNumericValue<TRI_voc_rid_t>(
-          result.slice(), TRI_VOC_ATTRIBUTE_REV, 0);
+  TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
   if (ifNoneRid != 0 && ifNoneRid == rid) {
     generateNotModified(rid);
   } else {
@@ -280,7 +274,14 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string const collectionName = _request->value("collection", found);
+  std::string collectionName;
+
+  std::vector<std::string> const& suffix = _request->suffix();
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+  } else {
+    collectionName = _request->value("collection", found);
+  }
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
@@ -348,25 +349,30 @@ bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 bool RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 0 && suffix.size() != 2) {
+  if (suffix.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
-    msg.append(" /_api/document or /_api/document/<document-handle>");
+    msg.append(" /_api/document/<collectionname> or /_api/document/<document-handle> or /_api/document and query parameter 'collection'");
 
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
-  bool isArrayCase = suffix.size() == 0;
+  bool isArrayCase = suffix.size() <= 1;
 
   std::string collectionName;
   std::string key;
 
   if (isArrayCase) {
     bool found;
-    collectionName = _request->value("collection", found);
+    if (suffix.size() == 1) {
+      collectionName = suffix[0];
+      found = true;
+    } else {
+      collectionName = _request->value("collection", found);
+    }
     if (!found) {
-      std::string msg("query parameter 'collection' must be specified");
+      std::string msg("collection must be given in URL path or query parameter 'collection' must be specified");
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
       return false;
     }
@@ -391,9 +397,19 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  // extract the revision
-  TRI_voc_rid_t revision = 0;
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = true;
+  bool found;
+  char const* ignoreRevsStr = _request->value("ignoreRevs", found);
+  if (found) {
+    opOptions.ignoreRevs = StringUtils::boolean(ignoreRevsStr);
+  }
+  opOptions.waitForSync = extractWaitForSync();
+
+  // extract the revision, if single document variant and header given:
+  std::shared_ptr<VPackBuilder> builder(nullptr);
   if (!isArrayCase) {
+    TRI_voc_rid_t revision = 0;
     bool isValidRevision;
     revision = extractRevision("if-match", nullptr, isValidRevision);
     if (!isValidRevision) {
@@ -401,35 +417,38 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                     "invalid revision number");
       return false;
     }
-  }
-
-  // extract or chose the update policy
-  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-
-  // extract or chose the update policy
-  OperationOptions opOptions;
-  opOptions.waitForSync = extractWaitForSync();
-
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-    if (revision != 0 && policy != TRI_DOC_UPDATE_LAST_WRITE) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
+    VPackSlice keyInBody = body.get(TRI_VOC_ATTRIBUTE_KEY);
+    if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
+        keyInBody.isNone() ||
+        (keyInBody.isString() && keyInBody.copyString() != key)) {
+      // We need to rewrite the document with the given revision and key:
+      builder = std::make_shared<VPackBuilder>();
+      {
+        VPackObjectBuilder guard(builder.get());
+        TRI_SanitizeObject(body, *builder);
+        builder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+        if (revision != 0) {
+          builder->add(TRI_VOC_ATTRIBUTE_REV,
+                       VPackValue(std::to_string(revision)));
+        }
+      }
+      body = builder->slice();
+    }
+    if (revision != 0) {
+      opOptions.ignoreRevs = false;
     }
   }
-
-#warning fixme
-  VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  if (!isArrayCase) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
-  // .............................................................................
+  // ...........................................................................
   // inside write transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
@@ -459,19 +478,16 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       opOptions.mergeObjects = false;
     }
 
-    // FIXME: body is wrong here, search must be integrated
     result = trx.update(collectionName, body, opOptions);
   } else {
-    // FIXME: body is wrong here, search must be integrated
-    // replacing an existing document
     result = trx.replace(collectionName, body, opOptions);
   }
 
   res = trx.finish(result.code);
 
-  // .............................................................................
+  // ...........................................................................
   // outside write transaction
-  // .............................................................................
+  // ...........................................................................
 
   if (result.failed()) {
     generateTransactionError(result);
@@ -514,21 +530,15 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
   OperationOptions opOptions;
-
-  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-  if (policy == TRI_DOC_UPDATE_ILLEGAL) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "policy must be 'error' or 'last'");
-    return false;
-  }
+  opOptions.ignoreRevs = false;
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  // .............................................................................
+  // ...........................................................................
   // inside write transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
@@ -542,7 +552,7 @@ bool RestDocumentHandler::deleteDocument() {
   {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-    if (revision != 0 && policy != TRI_DOC_UPDATE_LAST_WRITE) {
+    if (revision != 0) {
       builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
     }
   }
@@ -562,7 +572,8 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  generateDeleted(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
+  generateDeleted(result, collectionName,
+                  TRI_col_type_e(trx.getCollectionType(collectionName)));
   return true;
 }
 

@@ -150,9 +150,9 @@ void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type) {
   if (result.wasSynchronous) {
-    createResponse(rest::HttpResponse::ACCEPTED);
-  } else {
     createResponse(rest::HttpResponse::CREATED);
+  } else {
+    createResponse(rest::HttpResponse::ACCEPTED);
   }
   generate20x(result, collectionName, type);
 }
@@ -629,27 +629,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
   }
 
   return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the update policy
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy() const {
-  bool found;
-  char const* policy = _request->value("policy", found);
-
-  if (found) {
-    if (TRI_CaseEqualString(policy, "error")) {
-      return TRI_DOC_UPDATE_ERROR;
-    } else if (TRI_CaseEqualString(policy, "last")) {
-      return TRI_DOC_UPDATE_LAST_WRITE;
-    } else {
-      return TRI_DOC_UPDATE_ILLEGAL;
-    }
-  } else {
-    return TRI_DOC_UPDATE_ERROR;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

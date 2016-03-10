@@ -257,7 +257,7 @@ class AgencyComm {
   /// @brief creates a communication channel
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyComm(bool = true);
+  explicit AgencyComm(bool = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a communication channel
@@ -405,7 +405,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult casValue(std::string const&,
-                            arangodb::velocypack::Slice const, bool, double,
+                            arangodb::velocypack::Slice const&, bool, double,
                             double);
 
   //////////////////////////////////////////////////////////////////////////////

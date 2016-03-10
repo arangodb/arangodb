@@ -678,8 +678,7 @@ int createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync,
+    std::string const& key, TRI_voc_rid_t const rev, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
@@ -720,11 +719,6 @@ int deleteDocumentOnCoordinator(
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
 
-  std::string policystr;
-  if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
-    policystr = "&policy=last";
-  }
-
   if (usesDefaultShardingAttributes) {
     // OK, this is the fast method, we only have to ask one shard:
     if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -737,7 +731,7 @@ int deleteDocumentOnCoordinator(
         arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-            (waitForSync ? "true" : "false") + revstr + policystr,
+            (waitForSync ? "true" : "false") + revstr,
         "", *headers, 60.0);
 
     if (res->status == CL_COMM_TIMEOUT) {
@@ -773,7 +767,7 @@ int deleteDocumentOnCoordinator(
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (waitForSync ? "true" : "false") + revstr + policystr,
+                         (waitForSync ? "true" : "false") + revstr,
                      std::shared_ptr<std::string const>(), headersCopy, nullptr,
                      60.0);
   }
@@ -1374,7 +1368,7 @@ int getFilteredEdgesOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     VPackSlice const& slice,
@@ -1385,7 +1379,7 @@ int modifyDocumentOnCoordinator(
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(
-      dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
+      dbname, collname, key, rev, waitForSync, isPatch, keepNull,
       mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
 }
 
@@ -1396,7 +1390,7 @@ int modifyDocumentOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool waitForSync, bool isPatch,
     bool keepNull,      // only counts for isPatch == true
     bool mergeObjects,  // only counts for isPatch == true
     std::unique_ptr<TRI_json_t>& json,
@@ -1468,11 +1462,6 @@ int modifyDocumentOnCoordinator(
     reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PUT;
   }
 
-  std::string policystr;
-  if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
-    policystr = "&policy=last";
-  }
-
   auto body = std::make_shared<std::string const>(
       std::string(JsonHelper::toString(json.get())));
 
@@ -1488,7 +1477,7 @@ int modifyDocumentOnCoordinator(
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
             StringUtils::urlEncode(shardID) + "/" +
             StringUtils::urlEncode(key) + "?waitForSync=" +
-            (waitForSync ? "true" : "false") + revstr + policystr,
+            (waitForSync ? "true" : "false") + revstr,
         *(body.get()), *headers, 60.0);
 
     if (res->status == CL_COMM_TIMEOUT) {
@@ -1526,7 +1515,7 @@ int modifyDocumentOnCoordinator(
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (waitForSync ? "true" : "false") + revstr + policystr,
+                         (waitForSync ? "true" : "false") + revstr,
                      body, headersCopy, nullptr, 60.0);
   }
   // Now listen to the results:

@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aggregator.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -97,64 +102,59 @@ bool Aggregator::requiresInput(std::string const& type) {
 
 void AggregatorLength::reset() { count = 0; }
 
-void AggregatorLength::reduce(AqlValue const&,
-                              TRI_document_collection_t const*) {
+void AggregatorLength::reduce(AqlValue$ const&) {
   ++count;
 }
 
-AqlValue AggregatorLength::stealValue() {
-  uint64_t copy = count;
-  count = 0;
-  return AqlValue(new Json(static_cast<double>(copy)));
+AqlValue$ AggregatorLength::stealValue() {
+  builder.clear();
+  builder.add(VPackValue(count));
+  AqlValue$ temp(builder.slice());
+  reset();
+  return temp;
 }
 
-AggregatorMin::~AggregatorMin() { value.destroy(); }
+AggregatorMin::~AggregatorMin() { }
 
-void AggregatorMin::reset() { value.destroy(); }
+void AggregatorMin::reset() { value.invalidate(); }
 
-void AggregatorMin::reduce(AqlValue const& cmpValue,
-                           TRI_document_collection_t const* cmpColl) {
-  if (value.isEmpty() ||
+void AggregatorMin::reduce(AqlValue$ const& cmpValue) {
+  if (value.isNone() ||
       (!cmpValue.isNull(true) &&
-       AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) > 0)) {
+       AqlValue$::Compare(trx, value, cmpValue, true) > 0)) {
     // the value `null` itself will not be used in MIN() to compare lower than
     // e.g. value `false`
-    value.destroy();
-    value = cmpValue.clone();
-    coll = cmpColl;
+    value = cmpValue;
   }
 }
 
-AqlValue AggregatorMin::stealValue() {
-  if (value.isEmpty()) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+AqlValue$ AggregatorMin::stealValue() {
+  if (value.isNone()) {
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
-  AqlValue copy = value;
-  value.erase();
-  return copy;
+  AqlValue$ temp(std::move(value));
+  reset();
+  return temp;
 }
 
-AggregatorMax::~AggregatorMax() { value.destroy(); }
+AggregatorMax::~AggregatorMax() { }
 
-void AggregatorMax::reset() { value.destroy(); }
+void AggregatorMax::reset() { value.invalidate(); }
 
-void AggregatorMax::reduce(AqlValue const& cmpValue,
-                           TRI_document_collection_t const* cmpColl) {
-  if (value.isEmpty() ||
-      AqlValue::Compare(trx, value, coll, cmpValue, cmpColl, true) < 0) {
-    value.destroy();
-    value = cmpValue.clone();
-    coll = cmpColl;
+void AggregatorMax::reduce(AqlValue$ const& cmpValue) {
+  if (value.isNone() ||
+      AqlValue$::Compare(trx, value, cmpValue, true) < 0) {
+    value = cmpValue;
   }
 }
 
-AqlValue AggregatorMax::stealValue() {
-  if (value.isEmpty()) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+AqlValue$ AggregatorMax::stealValue() {
+  if (value.isNone()) {
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
-  AqlValue copy = value;
-  value.erase();
-  return copy;
+  AqlValue$ temp(std::move(value));
+  reset();
+  return temp;
 }
 
 void AggregatorSum::reset() {
@@ -162,17 +162,15 @@ void AggregatorSum::reset() {
   invalid = false;
 }
 
-void AggregatorSum::reduce(AqlValue const& cmpValue,
-                           TRI_document_collection_t const*) {
+void AggregatorSum::reduce(AqlValue$ const& cmpValue) {
   if (!invalid) {
     if (cmpValue.isNull(true)) {
       // ignore `null` values here
       return;
     }
     if (cmpValue.isNumber()) {
-      bool failed = false;
-      double const number = cmpValue.toNumber(failed);
-      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+      double const number = cmpValue.toDouble();
+      if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         sum += number;
         return;
@@ -183,12 +181,16 @@ void AggregatorSum::reduce(AqlValue const& cmpValue,
   invalid = true;
 }
 
-AqlValue AggregatorSum::stealValue() {
+AqlValue$ AggregatorSum::stealValue() {
   if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  return AqlValue(new arangodb::basics::Json(sum));
+  builder.clear();
+  builder.add(VPackValue(sum));
+  AqlValue$ temp(builder.slice());
+  reset();
+  return temp;
 }
 
 void AggregatorAverage::reset() {
@@ -197,17 +199,15 @@ void AggregatorAverage::reset() {
   invalid = false;
 }
 
-void AggregatorAverage::reduce(AqlValue const& cmpValue,
-                               TRI_document_collection_t const*) {
+void AggregatorAverage::reduce(AqlValue$ const& cmpValue) {
   if (!invalid) {
     if (cmpValue.isNull(true)) {
       // ignore `null` values here
       return;
     }
     if (cmpValue.isNumber()) {
-      bool failed = false;
-      double const number = cmpValue.toNumber(failed);
-      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+      double const number = cmpValue.toDouble();
+      if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         sum += number;
         ++count;
@@ -219,15 +219,19 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue,
   invalid = true;
 }
 
-AqlValue AggregatorAverage::stealValue() {
+AqlValue$ AggregatorAverage::stealValue() {
   if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
       sum == -HUGE_VAL) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
   TRI_ASSERT(count > 0);
-
-  return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count)));
+  
+  builder.clear();
+  builder.add(VPackValue(sum / count));
+  AqlValue$ temp(builder.slice());
+  reset();
+  return temp;
 }
 
 void AggregatorVarianceBase::reset() {
@@ -237,17 +241,15 @@ void AggregatorVarianceBase::reset() {
   invalid = false;
 }
 
-void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
-                                    TRI_document_collection_t const*) {
+void AggregatorVarianceBase::reduce(AqlValue$ const& cmpValue) {
   if (!invalid) {
     if (cmpValue.isNull(true)) {
       // ignore `null` values here
       return;
     }
     if (cmpValue.isNumber()) {
-      bool failed = false;
-      double const number = cmpValue.toNumber(failed);
-      if (!failed && !std::isnan(number) && number != HUGE_VAL &&
+      double const number = cmpValue.toDouble();
+      if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
         double const delta = number - mean;
         ++count;
@@ -261,35 +263,46 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue,
   invalid = true;
 }
 
-AqlValue AggregatorVariance::stealValue() {
+AqlValue$ AggregatorVariance::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
       sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
   TRI_ASSERT(count > 0);
-
+  
+  builder.clear();
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(
-        new arangodb::basics::Json(sum / static_cast<double>(count - 1)));
+    builder.add(VPackValue(sum / (count - 1)));
   }
-  return AqlValue(new arangodb::basics::Json(sum / static_cast<double>(count)));
+  else {
+    builder.add(VPackValue(sum / count));
+  }
+  
+  AqlValue$ temp(builder.slice());
+  reset();
+  return temp;
 }
 
-AqlValue AggregatorStddev::stealValue() {
+AqlValue$ AggregatorStddev::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
       sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(new arangodb::basics::Json(arangodb::basics::Json::Null));
+    return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
   TRI_ASSERT(count > 0);
-
+    
+  builder.clear();
   if (!population) {
     TRI_ASSERT(count > 1);
-    return AqlValue(
-        new arangodb::basics::Json(sqrt(sum / static_cast<double>(count - 1))));
+    builder.add(VPackValue(sqrt(sum / (count - 1))));
   }
-  return AqlValue(
-      new arangodb::basics::Json(sqrt(sum / static_cast<double>(count))));
+  else {
+    builder.add(VPackValue(sqrt(sum / count)));
+  }
+
+  AqlValue$ temp(builder.slice());
+  reset();
+  return temp;
 }

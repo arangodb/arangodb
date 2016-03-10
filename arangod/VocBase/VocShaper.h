@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "VocBase/datafile.h"
-#include "VocBase/shape-accessor.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
 #include "Wal/Marker.h"
@@ -36,6 +35,7 @@
 #define NUM_SHAPE_ACCESSORS 8
 
 struct TRI_document_collection_t;
+struct TRI_shape_access_t;
 
 class VocShaper : public Shaper {
  public:
@@ -174,21 +174,6 @@ class VocShaper : public Shaper {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper method for recursive shapes comparison
-///
-/// You must either supply (leftDocument, leftObject) or leftShaped.
-/// You must either supply (rightDocument, rightObject) or rightShaped.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CompareShapeTypes(char const* leftDocument,
-                          TRI_shaped_sub_t const* leftObject,
-                          TRI_shaped_json_t const* leftShaped,
-                          VocShaper* leftShaper, char const* rightDocument,
-                          TRI_shaped_sub_t const* rightObject,
-                          TRI_shaped_json_t const* rightShaped,
-                          VocShaper* rightShaper);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shape identifier pointer from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,14 +242,5 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER(TRI_shaped_json_t& dst,
   dst._data.length = 0;
   dst._data.data = nullptr;
 }
-
-void TRI_InspectShapedSub(TRI_shaped_sub_t const*, char const*,
-                          TRI_shaped_json_t&);
-
-void TRI_InspectShapedSub(TRI_shaped_sub_t const*, TRI_doc_mptr_t const*,
-                          char const*&, size_t&);
-
-void TRI_FillShapedSub(TRI_shaped_sub_t*, TRI_shaped_json_t const*,
-                       char const*);
 
 #endif

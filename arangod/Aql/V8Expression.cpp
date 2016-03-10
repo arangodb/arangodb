@@ -77,7 +77,7 @@ AqlValue$ V8Expression::execute(v8::Isolate* isolate, Query* query,
   for (size_t i = 0; i < n; ++i) {
     RegisterId reg = regs[i];
 
-    AqlValue$ value(argv->getValueReference(startPos, reg), trx, nullptr);
+    AqlValue$ const& value = argv->getValueReference(startPos, reg);
 
     if (value.isNone()) {
       continue;

@@ -125,7 +125,6 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
       openedCollections(),
       openedDatabases(),
       emptyLogfiles(),
-      policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr),
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
       lastDatabaseId(0),

@@ -29,7 +29,6 @@
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -252,12 +251,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_rid_t extractRevision(char const*, char const*, bool&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the update policy
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_update_policy_e extractUpdatePolicy() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extracts the waitForSync value

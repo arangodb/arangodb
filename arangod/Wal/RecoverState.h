@@ -228,7 +228,6 @@ struct RecoverState {
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 
-  TRI_doc_update_policy_t policy;
   bool ignoreRecoveryErrors;
   int64_t errorCount;
 

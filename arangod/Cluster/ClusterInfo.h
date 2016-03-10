@@ -500,10 +500,9 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, bool> getFlag(char const* name) const {
     std::unordered_map<ShardID, bool> m;
-    bool b;
     for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
       TRI_json_t* json = it->second;
-      b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
+      bool b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
       m.insert(std::make_pair(it->first, b));
     }
     return m;
@@ -670,7 +669,7 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
-                                  arangodb::velocypack::Slice const json,
+                                  arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -977,7 +976,7 @@ class FollowerInfo {
 
  public:
 
-  FollowerInfo(TRI_document_collection_t* d) 
+  explicit FollowerInfo(TRI_document_collection_t* d) 
     : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////

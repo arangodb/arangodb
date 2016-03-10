@@ -52,11 +52,11 @@ struct OperationCursor : public OperationResult {
  public:
 
   explicit OperationCursor(int code) 
-      : OperationResult(code), _hasMore(false), _limit(0), _batchSize(1000) { 
+      : OperationResult(code), _builder(buffer), _hasMore(false), _limit(0), _batchSize(1000) { 
   }
 
   OperationCursor(int code, std::string const& message) 
-      : OperationResult(code, message), _hasMore(false), _limit(0), _batchSize(1000) {
+      : OperationResult(code, message), _builder(buffer), _hasMore(false), _limit(0), _batchSize(1000) {
   }
 
   OperationCursor(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
@@ -65,6 +65,7 @@ struct OperationCursor : public OperationResult {
                   int code,
                   bool wasSynchronous)
       : OperationResult(buffer, handler, message, code, wasSynchronous),
+        _builder(buffer),
         _hasMore(false),
         _limit(0),
         _batchSize(1000) {

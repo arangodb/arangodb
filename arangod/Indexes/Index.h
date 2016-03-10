@@ -399,7 +399,6 @@ class Index {
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
 
-
  protected:
   TRI_idx_iid_t const _iid;
 

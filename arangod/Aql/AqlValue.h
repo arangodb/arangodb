@@ -49,324 +49,10 @@ namespace aql {
 
 class AqlItemBlock;
 
-// Temporary Forward
-struct AqlValue$;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a struct to hold a value, registers hole AqlValue* during the
-/// execution
-////////////////////////////////////////////////////////////////////////////////
-
-struct AqlValue {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief AqlValueType, indicates what sort of value we have
-  //////////////////////////////////////////////////////////////////////////////
-
-  enum AqlValueType {
-    EMPTY,   // contains no data
-    JSON,    // Json*
-    SHAPED,  // TRI_df_marker_t*
-    DOCVEC,  // a vector of blocks of results coming from a subquery
-    RANGE    // a pointer to a range remembering lower and upper bound
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructors for the various value types, note that they all take
-  /// ownership of the corresponding pointers
-  //////////////////////////////////////////////////////////////////////////////
-
-  AqlValue() : _json(nullptr), _type(EMPTY) {}
-
-  explicit AqlValue(arangodb::basics::Json* json) : _json(json), _type(JSON) {
-    TRI_ASSERT(_json != nullptr);
-  }
-
-  explicit AqlValue(TRI_df_marker_t const* marker)
-      : _marker(marker), _type(SHAPED) {
-    TRI_ASSERT(_marker != nullptr);
-  }
-
-  explicit AqlValue(std::vector<AqlItemBlock*>* vector)
-      : _vector(vector), _type(DOCVEC) {
-    TRI_ASSERT(_vector != nullptr);
-  }
-
-  AqlValue(int64_t low, int64_t high) : _range(nullptr), _type(RANGE) {
-    _range = new Range(low, high);
-  }
-
-  explicit AqlValue(AqlValue$ const& other);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor, doing nothing automatically!
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~AqlValue() {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the value type
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline AqlValueType type() const noexcept { return _type; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a quick method to decide whether the destroy value needs to be
-  /// called for a value
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool requiresDestruction() const noexcept {
-    return (_type != EMPTY && _type != SHAPED);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a quick method to decide whether a value is empty
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool isEmpty() const noexcept { return _type == EMPTY; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue is a shape
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool isShaped() const noexcept { return _type == SHAPED; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue is a JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool isJson() const noexcept { return _type == JSON; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue is a RANGE
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool isRange() const noexcept { return _type == RANGE; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the shape marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_df_marker_t const* getMarker() const {
-    TRI_ASSERT(isShaped());
-    return _marker;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the range
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline Range const* getRange() const {
-    TRI_ASSERT(isRange());
-    return _range;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a quick method to decide whether a value is true
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isTrue() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief erase, this does not free the stuff in the AqlValue, it only
-  /// erases the pointers and makes the AqlValue structure EMPTY, this
-  /// is used when the AqlValue is stolen and stored in another object
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline void erase() noexcept {
-    _type = EMPTY;
-    _json = nullptr;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroy, explicit destruction, only when needed
-  //////////////////////////////////////////////////////////////////////////////
-
-  void destroy();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the name of an AqlValue type
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getTypeString() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief clone for recursive copying
-  //////////////////////////////////////////////////////////////////////////////
-
-  AqlValue clone() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief shallow clone
-  //////////////////////////////////////////////////////////////////////////////
-
-  AqlValue shallowClone() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains a string value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isString() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains a numeric value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isNumber() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains a boolean value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isBoolean() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains an array value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isArray() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains an object value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isObject() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the AqlValue contains a null value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isNull(bool emptyIsNull) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the array member at position i
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json at(arangodb::AqlTransaction*, size_t i) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the length of an AqlValue containing an array
-  //////////////////////////////////////////////////////////////////////////////
-
-  size_t arraySize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the numeric value of an AqlValue
-  //////////////////////////////////////////////////////////////////////////////
-
-  int64_t toInt64() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the numeric value of an AqlValue
-  //////////////////////////////////////////////////////////////////////////////
-
-  double toNumber(bool&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a string representation of the AqlValue
-  /// this will fail if the value is not a string
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string toString() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief construct a V8 value as input for the expression execution in V8
-  //////////////////////////////////////////////////////////////////////////////
-
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::AqlTransaction*,
-                             TRI_document_collection_t const*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief construct a V8 value as input for the expression execution in V8
-  /// only construct those attributes that are needed in the expression
-  //////////////////////////////////////////////////////////////////////////////
-
-  v8::Handle<v8::Value> toV8Partial(v8::Isolate* isolate,
-                                    arangodb::AqlTransaction*,
-                                    std::unordered_set<std::string> const&,
-                                    TRI_document_collection_t const*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief toJson method
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json toJson(arangodb::AqlTransaction*,
-                                TRI_document_collection_t const*, bool) const;
-
-  void toVelocyPack(arangodb::AqlTransaction*, TRI_document_collection_t const*,
-                    arangodb::velocypack::Builder&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a hash value for the AqlValue
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint64_t hash(arangodb::AqlTransaction*,
-                TRI_document_collection_t const*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract an attribute value from the AqlValue
-  /// this will return null if the value is not an object
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json extractObjectMember(
-      arangodb::AqlTransaction*, TRI_document_collection_t const*, char const*,
-      bool, arangodb::basics::StringBuffer&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract a value from an array AqlValue
-  /// this will return null if the value is not an array
-  /// depending on the last parameter, the return value will either contain a
-  /// copy of the original value in the array or a reference to it (which must
-  /// not be freed)
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json extractArrayMember(arangodb::AqlTransaction*,
-                                            TRI_document_collection_t const*,
-                                            int64_t, bool) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  //////////////////////////////////////////////////////////////////////////////
-
-  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   std::vector<std::string> const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  //////////////////////////////////////////////////////////////////////////////
-
-  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   arangodb::aql::RegisterId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief 3-way comparison for AqlValue objects
-  //////////////////////////////////////////////////////////////////////////////
-
-  static int Compare(arangodb::AqlTransaction*, AqlValue const&,
-                     TRI_document_collection_t const*, AqlValue const&,
-                     TRI_document_collection_t const*, bool compareUtf8);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the actual data
-  //////////////////////////////////////////////////////////////////////////////
-
-  union {
-    arangodb::basics::Json* _json;
-    TRI_df_marker_t const* _marker;
-    std::vector<AqlItemBlock*>* _vector;
-    Range const* _range;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _type, the type of value
-  //////////////////////////////////////////////////////////////////////////////
-
-  AqlValueType _type;
-};
-
 // do not add virtual methods!
 struct AqlValue$ {
+ friend struct std::hash<arangodb::aql::AqlValue$>;
+ friend struct std::equal_to<arangodb::aql::AqlValue$>;
  public:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -403,10 +89,6 @@ struct AqlValue$ {
   AqlValue$(arangodb::velocypack::Slice const&, AqlValueType);
   AqlValue$(int64_t, int64_t); // range
   explicit AqlValue$(bool); // boolean type
-
-  AqlValue$(AqlValue const&, arangodb::AqlTransaction*,
-            TRI_document_collection_t const*);
-  
   ~AqlValue$();
   
   ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +113,22 @@ struct AqlValue$ {
   AqlValueType type() const {
     return static_cast<AqlValueType>(_data.internal[15]);
   }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the value must be destroyed
+  //////////////////////////////////////////////////////////////////////////////
 
+  bool requiresDestruction() const {
+    AqlValueType t = type();
+    return (t == EXTERNAL || t == RANGE);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief hashes the value
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t hash() const;
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a slice to read this Value's data
   //////////////////////////////////////////////////////////////////////////////
@@ -443,8 +140,14 @@ struct AqlValue$ {
   //////////////////////////////////////////////////////////////////////////////
   
   bool isNone() const;
-  bool isEmpty() const { return isNone(); }
+  bool isEmpty() const { return isNone(); } // an alias
   
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the value contains a null value
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isNull(bool emptyIsNull) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the value is a number
   //////////////////////////////////////////////////////////////////////////////
@@ -513,15 +216,70 @@ struct AqlValue$ {
                                     arangodb::AqlTransaction*,
                                     std::unordered_set<std::string> const&) const;
   
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief convert a value to VelocyPack, appending to a builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::AqlTransaction*, arangodb::velocypack::Builder&) const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief convert a value to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlValue$ toVelocyPack(arangodb::AqlTransaction*) const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get pointer of the included Range object
+  //////////////////////////////////////////////////////////////////////////////
+
+  Range* range() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief clone a value
+  //////////////////////////////////////////////////////////////////////////////
+
+  AqlValue$ clone() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidates/resets a value to None, not freeing any memory
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invalidate();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidates/resets a value to None, freeing any memory
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void destroy() {
+    destroyQuick();
+    invalidate();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a struct to hold a value, registers hole AqlValue* during the
+  /// execution
+  //////////////////////////////////////////////////////////////////////////////
+
+  static AqlValue$ CreateFromBlocks(arangodb::AqlTransaction*,
+                                    std::vector<AqlItemBlock*> const&,
+                                    std::vector<std::string> const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create an AqlValue from a vector of AqlItemBlock*s
+  //////////////////////////////////////////////////////////////////////////////
+
+  static AqlValue$ CreateFromBlocks(arangodb::AqlTransaction*,
+                                    std::vector<AqlItemBlock*> const&,
+                                    arangodb::aql::RegisterId);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare function for two values
   /// TODO: implement
   //////////////////////////////////////////////////////////////////////////////
 
-  static int Compare(arangodb::AqlTransaction*, AqlValue$ const& left, AqlValue$ const& right, bool useUtf8) {
-    // TODO: implement
-    return 0;
-  }
+  static int Compare(arangodb::AqlTransaction*, 
+                     AqlValue$ const& left, AqlValue$ const& right, bool useUtf8);
 
  private:
   
@@ -547,19 +305,13 @@ struct AqlValue$ {
   /// @brief destroy the internal data structures
   //////////////////////////////////////////////////////////////////////////////
 
-  void destroy();
+  void destroyQuick();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates/resets a value to None
   //////////////////////////////////////////////////////////////////////////////
 
   void invalidate(AqlValue$&);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get pointer of the included Range object
-  //////////////////////////////////////////////////////////////////////////////
-
-  Range* range() const;
 };
 
 static_assert(sizeof(AqlValue$) == 16, "invalid AqlValue$ size");
@@ -592,26 +344,25 @@ static_assert(sizeof(AqlValueDocument) == 16, "invalid AqlValueDocument size");
 namespace std {
 
 template <>
-struct hash<arangodb::aql::AqlValue> {
-  size_t operator()(arangodb::aql::AqlValue const& x) const {
-    std::hash<uint32_t> intHash;
+struct hash<arangodb::aql::AqlValue$> {
+  size_t operator()(arangodb::aql::AqlValue$ const& x) const {
+    std::hash<uint8_t> intHash;
     std::hash<void const*> ptrHash;
-    size_t res = intHash(static_cast<uint32_t>(x._type));
-    switch (x._type) {
-      case arangodb::aql::AqlValue::JSON: {
-        return res ^ ptrHash(x._json);
+    arangodb::aql::AqlValue$::AqlValueType type = x.type();
+    size_t res = intHash(type);
+    switch (type) {
+      case arangodb::aql::AqlValue$::INTERNAL: {
+        return res ^ x.slice().hash();
       }
-      case arangodb::aql::AqlValue::SHAPED: {
-        return res ^ ptrHash(x._marker);
+      case arangodb::aql::AqlValue$::EXTERNAL: {
+        return res ^ ptrHash(x._data.external);
       }
-      case arangodb::aql::AqlValue::DOCVEC: {
-        return res ^ ptrHash(x._vector);
+      case arangodb::aql::AqlValue$::REFERENCE: 
+      case arangodb::aql::AqlValue$::REFERENCE_STICKY: {
+        return res ^ ptrHash(x._data.reference);
       }
-      case arangodb::aql::AqlValue::RANGE: {
-        return res ^ ptrHash(x._range);
-      }
-      case arangodb::aql::AqlValue::EMPTY: {
-        return res;
+      case arangodb::aql::AqlValue$::RANGE: {
+        return res ^ ptrHash(x.range());
       }
     }
 
@@ -621,31 +372,31 @@ struct hash<arangodb::aql::AqlValue> {
 };
 
 template <>
-struct equal_to<arangodb::aql::AqlValue> {
-  bool operator()(arangodb::aql::AqlValue const& a,
-                  arangodb::aql::AqlValue const& b) const {
-    if (a._type != b._type) {
+struct equal_to<arangodb::aql::AqlValue$> {
+  bool operator()(arangodb::aql::AqlValue$ const& a,
+                  arangodb::aql::AqlValue$ const& b) const {
+    arangodb::aql::AqlValue$::AqlValueType type = a.type();
+    if (type != b.type()) {
       return false;
     }
-    switch (a._type) {
-      case arangodb::aql::AqlValue::JSON: {
-        return a._json == b._json;
+    switch (type) {
+      case arangodb::aql::AqlValue$::INTERNAL: {
+        return a.slice().equals(b.slice());
       }
-      case arangodb::aql::AqlValue::SHAPED: {
-        return a._marker == b._marker;
+      case arangodb::aql::AqlValue$::EXTERNAL: {
+        return a._data.external == b._data.external;
       }
-      case arangodb::aql::AqlValue::DOCVEC: {
-        return a._vector == b._vector;
+      case arangodb::aql::AqlValue$::REFERENCE: 
+      case arangodb::aql::AqlValue$::REFERENCE_STICKY: {
+        return a._data.reference == b._data.reference;
       }
-      case arangodb::aql::AqlValue::RANGE: {
-        return a._range == b._range;
+      case arangodb::aql::AqlValue$::RANGE: {
+        return a.range() == b.range();
       }
-      // case arangodb::aql::AqlValue::EMPTY intentionally not handled here!
-      // (should fall through and fail!)
 
       default: {
         TRI_ASSERT(false);
-        return true;
+        return false;
       }
     }
   }

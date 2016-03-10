@@ -42,7 +42,11 @@ if (USE_BOOST_UNITTESTS)
     ${SYSTEM_LIBRARIES}
   )
 
-  add_dependencies(basics_suite v8_build)
+  if (NOT USE_PRECOMPILED_V8)
+    add_dependencies(basics_suite v8_build)
+  else ()
+    add_dependencies(basics_suite)
+  endif ()
 endif ()
 
 ################################################################################
@@ -63,5 +67,9 @@ if (USE_BOOST_UNITTESTS)
     ${SYSTEM_LIBRARIES}
   )
 
-  add_dependencies(geo_suite v8_build)
+  if (NOT USE_PRECOMPILED_V8)
+    add_dependencies(geo_suite v8_build)
+  else ()
+    add_dependencies(geo_suite)
+  endif ()
 endif ()

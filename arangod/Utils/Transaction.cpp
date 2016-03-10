@@ -198,23 +198,45 @@ std::string Transaction::extractKey(VPackSlice const slice) {
   return "";
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _rev attribute from a slice
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _id attribute from a slice, and convert it into a 
+/// string
+//////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t Transaction::extractRevisionId(VPackSlice const slice) {
-  TRI_ASSERT(slice.isObject());
+std::string Transaction::extractIdString(VPackSlice const slice) {
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+      
+  VPackSlice const id = slice.get(TRI_VOC_ATTRIBUTE_ID);
+  if (id.isString()) {
+    // _id is already a string
+    return id.copyString();
+  }
 
-  VPackSlice r(slice.get(TRI_VOC_ATTRIBUTE_REV));
-  if (r.isString()) {
-    VPackValueLength length;
-    char const* p = r.getString(length);
-    return arangodb::basics::StringUtils::uint64(p, length);
+  if (!id.isCustom() || id.head() != 0xf3) {
+    // invalid type for _id
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  if (r.isInteger()) {
-    return r.getNumber<TRI_voc_rid_t>();
+
+  VPackSlice const key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  if (!key.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  return 0;
+  
+  uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  char buffer[512];  // This is enough for collection name + _key
+  size_t len = resolver()->getCollectionName(&buffer[0], cid);
+  buffer[len] = '/';
+
+  VPackValueLength keyLength;
+  char const* p = key.getString(keyLength);
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid _key value");
+  }
+  memcpy(&buffer[len + 1], p, keyLength);
+  return std::string(&buffer[0], len + 1 + keyLength);
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -534,7 +556,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
 
   int res = arangodb::getDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision, headers, true,
@@ -595,7 +617,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
 
     TRI_voc_rid_t expectedRevision = 0;
     if (!options.ignoreRevs) {
-      expectedRevision = Transaction::extractRevisionId(value);
+      expectedRevision = TRI_ExtractRevisionId(value);
     }
 
     TRI_doc_mptr_t mptr;
@@ -613,7 +635,9 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     }
   
     if (!options.silent) {
-      resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      //resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
+      // This is the future, for now, we have to do this:
+      resultBuilder.add(VPackSlice(mptr.vpack()));
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -784,6 +808,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice const value) -> int {
+    if (!value.isObject()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    }
     // add missing attributes for document (_id, _rev, _key)
     VPackBuilder merge;
     merge.openObject();
@@ -909,11 +936,11 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : Transaction::extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync, true /* isPatch */,
+      options.waitForSync, true /* isPatch */,
       options.keepNull, options.mergeObjects, newValue,
       headers, responseCode, resultHeaders, resultBody);
 
@@ -997,11 +1024,11 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
   TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : Transaction::extractRevisionId(newValue);
+      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync, false /* isPatch */,
+      options.waitForSync, false /* isPatch */,
       false /* keepNull */, false /* mergeObjects */, newValue,
       headers, responseCode, resultHeaders, resultBody);
 
@@ -1067,6 +1094,9 @@ OperationResult Transaction::modifyLocal(
   VPackBuilder resultBuilder;  // building the complete result
 
   auto workForOneDocument = [&](VPackSlice const newVal) -> int {
+    if (!newVal.isObject()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    }
     TRI_doc_mptr_t mptr;
     TRI_voc_rid_t actualRevision = 0;
 
@@ -1165,11 +1195,11 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = Transaction::extractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
 
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
-      TRI_DOC_UPDATE_ERROR, options.waitForSync,
+      options.waitForSync,
       headers, responseCode, resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1227,6 +1257,11 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                actualRevision);
     
     if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_CONFLICT) {
+        std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        buildDocumentIdentity(resultBuilder, cid, key,
+                              std::to_string(actualRevision), "");
+      }
       return res;
     }
 
@@ -1268,16 +1303,18 @@ OperationResult Transaction::allKeys(std::string const& collectionName,
   
   std::string prefix;
 
+  std::string realCollName = resolver()->getCollectionName(collectionName);
+
   if (type == "key") {
     prefix = "";
   } else if (type == "id") {
-    prefix = collectionName + "/";
+    prefix = realCollName + "/";
   } else {
     // default return type: paths to documents
     if (isEdgeCollection(collectionName)) {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + collectionName + "/";
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + realCollName + "/";
     } else {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + collectionName + "/";
+      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + realCollName + "/";
     }
   }
   

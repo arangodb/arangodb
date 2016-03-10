@@ -23,10 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Shaper.h"
-#include "Basics/associative.h"
-#include "Basics/hashes.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/tri-strings.h"
 
 // #define DEBUG_JSON_SHAPER 1
 
@@ -99,36 +95,3 @@ Shaper::Shaper() {}
 
 Shaper::~Shaper() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a shape is of primitive type
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_t const* Shaper::lookupSidBasicShape(TRI_shape_sid_t sid) {
-  if (sid > BasicShapes::TRI_SHAPE_SID_LIST) {
-    return nullptr;
-  }
-
-  return BasicShapes::ShapeAddresses[sid];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a shape is of primitive type
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_t const* Shaper::lookupBasicShape(TRI_shape_t const* shape) {
-  if (shape->_type == TRI_SHAPE_NULL) {
-    return &BasicShapes::_shapeNull;
-  } else if (shape->_type == TRI_SHAPE_BOOLEAN) {
-    return &BasicShapes::_shapeBoolean;
-  } else if (shape->_type == TRI_SHAPE_NUMBER) {
-    return &BasicShapes::_shapeNumber;
-  } else if (shape->_type == TRI_SHAPE_SHORT_STRING) {
-    return &BasicShapes::_shapeShortString;
-  } else if (shape->_type == TRI_SHAPE_LONG_STRING) {
-    return &BasicShapes::_shapeLongString;
-  } else if (shape->_type == TRI_SHAPE_LIST) {
-    return &BasicShapes::_shapeList;
-  }
-
-  return nullptr;
-}

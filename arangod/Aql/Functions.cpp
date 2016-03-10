@@ -71,8 +71,10 @@ thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertMasterPointer(TRI_doc_mptr_t const* mptr, VPackBuilder& builder) {
-  builder.add(VPackValue(static_cast<void const*>(mptr->vpack()),
-                         VPackValueType::External));
+  //builder.add(VPackValue(static_cast<void const*>(mptr->vpack()),
+  //                       VPackValueType::External));
+  // This is the future, for now we have to copy:
+  builder.add(VPackSlice(mptr->vpack()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -872,7 +874,7 @@ static AqlValue$ buildGeoResult(arangodb::aql::Query* query,
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   try {
     VPackArrayBuilder guard(b.get());
-    std::unordered_set<std::string> forbidden;
+    std::unordered_set<std::string> forbidden; // TODO: this variable is unusued
     if (!attributeName.empty()) {
       // We have to copy the entire document
       for (auto& it : distances) {

@@ -21,14 +21,13 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AqlItemBlock.h"
+#include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,11 +45,6 @@ AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
     TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
 
     _data.resize(nrItems * nrRegs);
-
-    _docColls.reserve(nrRegs);
-    for (size_t i = 0; i < nrRegs; ++i) {
-      _docColls.emplace_back(nullptr);
-    }
   }
 }
 
@@ -76,17 +70,13 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   // Initialize the data vector:
   if (_nrRegs > 0) {
     _data.resize(_nrItems * _nrRegs);
-    _docColls.reserve(_nrRegs);
-    for (size_t i = 0; i < _nrRegs; ++i) {
-      _docColls.emplace_back(nullptr);
-    }
   }
 
   // Now put in the data:
   VPackSlice data = slice.get("data");
   VPackSlice raw = slice.get("raw");
 
-  std::vector<AqlValue> madeHere;
+  std::vector<AqlValue$> madeHere;
   madeHere.reserve(raw.length());
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
@@ -124,7 +114,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
                 VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
             int64_t high =
                 VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-            AqlValue a(low, high);
+            AqlValue$ a(low, high);
             try {
               setValue(i, column, a);
             } catch (...) {
@@ -133,10 +123,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
             }
           } else if (n == 1) {
             // a VelocyPack value
-            VPackSlice x = raw.at(posInRaw++);
-#warning todo fix this to directly export the VPack AQLValue
-            AqlValue$ tmp(x);
-            AqlValue a(tmp);
+            AqlValue$ a(raw.at(posInRaw++));
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
             } catch (...) {
@@ -189,7 +176,7 @@ void AqlItemBlock::destroy() {
       }
       // Note that if we do not know it the thing it has been stolen from us!
     } else {
-      it.erase();
+      it.invalidate();
     }
   }
 
@@ -217,7 +204,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   // erase all stored values in the region that we freed
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
-      AqlValue& a(_data[_nrRegs * i + j]);
+      AqlValue$& a(_data[_nrRegs * i + j]);
 
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
@@ -234,7 +221,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
           }
         }
       }
-      a.erase();
+      a.invalidate();
     }
   }
 
@@ -251,7 +238,7 @@ void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
   for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
-      AqlValue& a(_data[_nrRegs * i + reg]);
+      AqlValue$& a(_data[_nrRegs * i + reg]);
 
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
@@ -269,7 +256,7 @@ void AqlItemBlock::clearRegisters(
           }
         }
       }
-      a.erase();
+      a.invalidate();
     }
   }
 }
@@ -281,24 +268,20 @@ void AqlItemBlock::clearRegisters(
 AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_map<AqlValue$, AqlValue$> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
-  for (RegisterId col = 0; col < _nrRegs; col++) {
-    res->_docColls[col] = _docColls[col];
-  }
-
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[row * _nrRegs + col]);
+      AqlValue$ const& a(_data[row * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         auto it = cache.find(a);
 
         if (it == cache.end()) {
-          AqlValue b = a.clone();
+          AqlValue$ b = a.clone();
           try {
             res->setValue(row - from, col, b);
           } catch (...) {
@@ -322,7 +305,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 
 AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_map<AqlValue$, AqlValue$> cache;
 
   auto res = std::make_unique<AqlItemBlock>(1, _nrRegs);
 
@@ -331,15 +314,13 @@ AqlItemBlock* AqlItemBlock::slice(
       continue;
     }
 
-    res->_docColls[col] = _docColls[col];
-
-    AqlValue const& a(_data[row * _nrRegs + col]);
+    AqlValue$ const& a(_data[row * _nrRegs + col]);
 
     if (!a.isEmpty()) {
       auto it = cache.find(a);
 
       if (it == cache.end()) {
-        AqlValue b = a.clone();
+        AqlValue$ b = a.clone();
         try {
           res->setValue(0, col, b);
         } catch (...) {
@@ -365,24 +346,20 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
                                   size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_map<AqlValue$, AqlValue$> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
-  for (RegisterId col = 0; col < _nrRegs; col++) {
-    res->_docColls[col] = _docColls[col];
-  }
-
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue$ const& a(_data[chosen[row] * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         auto it = cache.find(a);
 
         if (it == cache.end()) {
-          AqlValue b = a.clone();
+          AqlValue$ b = a.clone();
           try {
             res->setValue(row - from, col, b);
           } catch (...) {
@@ -415,13 +392,9 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
 
   auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
-  for (RegisterId col = 0; col < _nrRegs; col++) {
-    res->_docColls[col] = _docColls[col];
-  }
-
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue$& a(_data[chosen[row] * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         steal(a);
@@ -468,19 +441,6 @@ AqlItemBlock* AqlItemBlock::concatenate(
 
   size_t pos = 0;
   for (it = blocks.begin(); it != blocks.end(); ++it) {
-    // handle collections
-    if (it == blocks.begin()) {
-      // copy collection info over
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
-      }
-    } else {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        TRI_ASSERT(res->getDocumentCollection(col) ==
-                   (*it)->getDocumentCollection(col));
-      }
-    }
-
     TRI_ASSERT((*it) != res.get());
     size_t const n = (*it)->size();
     for (size_t row = 0; row < n; ++row) {
@@ -525,31 +485,28 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
 
-void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx, VPackBuilder& builder) const {
-#warning ToVelocyPack not implemented
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
+                                VPackBuilder& result) const {
+  VPackBuilder data;
+  data.openArray();
 
-Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
-  Json json(Json::Object, 6);
-  json("nrItems", Json(static_cast<double>(_nrItems)))(
-      "nrRegs", Json(static_cast<double>(_nrRegs)));
-  Json data(Json::Array, _data.size());
-  Json raw(Json::Array, _data.size() + 2);
-  raw(Json(Json::Null))(
-      Json(Json::Null));  // Two nulls in the beginning such that
-                          // indices start with 2
+  VPackBuilder raw;
+  raw.openArray();
+  // Two nulls in the beginning such that indices start with 2
+  raw.add(VPackValue(VPackValueType::Null));
+  raw.add(VPackValue(VPackValueType::Null));
 
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
+  std::unordered_map<AqlValue$, size_t> table;  // remember duplicates
 
   size_t emptyCount = 0;  // here we count runs of empty AqlValues
 
   auto commitEmpties = [&]() {  // this commits an empty run to the data
     if (emptyCount > 0) {
       if (emptyCount == 1) {
-        data(Json(0.0));
+        data.add(VPackValue(0));
       } else {
-        data(Json(-1.0))(Json(static_cast<double>(emptyCount)));
+        data.add(VPackValue(-1));
+        data.add(VPackValue(emptyCount));
       }
       emptyCount = 0;
     }
@@ -558,29 +515,40 @@ Json AqlItemBlock::toJson(arangodb::AqlTransaction* trx) const {
   size_t pos = 2;  // write position in raw
   for (RegisterId column = 0; column < _nrRegs; column++) {
     for (size_t i = 0; i < _nrItems; i++) {
-      AqlValue const& a(_data[i * _nrRegs + column]);
-      if (a.isEmpty()) {
+      AqlValue$ const& a(_data[i * _nrRegs + column]);
+      if (a.isNone()) {
         emptyCount++;
       } else {
         commitEmpties();
-        if (a._type == AqlValue::RANGE) {
-          data(Json(-2.0))(Json(static_cast<double>(a._range->_low)))(
-              Json(static_cast<double>(a._range->_high)));
+        if (a.type() == AqlValue$::AqlValueType::RANGE) {
+          data.add(VPackValue(-2));
+          data.add(VPackValue(a.range()->_low));
+          data.add(VPackValue(a.range()->_high));
         } else {
           auto it = table.find(a);
+
           if (it == table.end()) {
-            raw(a.toJson(trx, _docColls[column], true));
-            data(Json(1.0));
+            a.toVelocyPack(trx, raw); 
+            data.add(VPackValue(1));
             table.emplace(a, pos++);
           } else {
-            data(Json(static_cast<double>(it->second)));
+            data.add(VPackValue(it->second));
           }
         }
       }
     }
   }
   commitEmpties();
-  json("data", data)("raw", raw)("error", Json(false))("exhausted",
-                                                       Json(false));
-  return json;
+
+  raw.close();
+  data.close();
+
+  result.openObject();
+  result.add("nrItems", VPackValue(_nrItems));
+  result.add("nrRegs", VPackValue(_nrRegs));
+  result.add("data", data.slice());
+  result.add("raw", raw.slice());
+  result.add("error", VPackValue(false));
+  result.add("exhausted", VPackValue(false));
+  result.close();
 }

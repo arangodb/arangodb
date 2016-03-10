@@ -28,7 +28,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
-#include "VocBase/update-policy.h"
 
 class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
@@ -197,12 +196,6 @@ class Syncer {
     bool _active;
   }
   _masterInfo;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the update policy object (will be the same for all actions)
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_update_policy_t _policy;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the endpoint (master) we're connected to

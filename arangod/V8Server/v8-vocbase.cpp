@@ -65,6 +65,9 @@
 #include <unicode/smpdtfmt.h>
 #include <unicode/dtfmtsym.h>
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <v8.h>
 #include <iostream>
 
@@ -2044,11 +2047,11 @@ class HopWeightCalculator {
 ////////////////////////////////////////////////////////////////////////////////
 
 class AttributeWeightCalculator {
-  std::string const _key;
+  std::string const _attribute;
   double const _defaultWeight;
 
  public:
-  AttributeWeightCalculator(std::string const& keyWeight, double defaultWeight)
+  AttributeWeightCalculator(std::string const& attribute, double defaultWeight)
       : _key(keyWeight), _defaultWeight(defaultWeight) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -2056,7 +2059,11 @@ class AttributeWeightCalculator {
   //////////////////////////////////////////////////////////////////////////////
 
   double operator()(VPackSlice const edge) {
-    VPackSlice attr = edge.get(_key);
+    if (_attribute.empty()) {
+      return _defaultWeight;
+    }
+
+    VPackSlice attr = edge.get(_attribute);
     if (!attr.isNumber()) {
       return _defaultWeight;
     }
