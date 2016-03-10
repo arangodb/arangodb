@@ -32,6 +32,7 @@
 
 #include <chrono>
 #include <initializer_list>
+#include <list>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -71,9 +72,16 @@ enum AGENT_FAILURE {
 template<class T>
 inline std::ostream& operator<< (std::ostream& l, std::vector<T> const& v) {
   for (auto const& i : v)
-    l << i << " ";
+    l << i << "|";
   return l;
 }
+template<typename T>
+inline std::ostream& operator<< (std::ostream& os, std::list<T> const& l) {
+  for (auto const& i : l)
+    os << i << "|";
+  return os;
+}
+
 struct AgentConfiguration {               
   id_t id;
   float min_ping;

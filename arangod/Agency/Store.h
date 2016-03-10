@@ -33,6 +33,7 @@
 #include <cassert>
 #include <map>
 #include <vector>
+#include <list>
 #include <memory>
 #include <cstdint>
 
@@ -46,16 +47,9 @@ namespace consensus {
 
 enum NodeType {NODE, LEAF};
 
-inline std::ostream& operator<< (std::ostream& os, std::vector<std::string> const& sv) {
-  for (auto const& i : sv)
-    os << i << " ";
-  return os;
-}
-
-
 using namespace arangodb::velocypack;
 
-enum NODE_EXPECTION {PATH_NOT_FOUND};
+enum NODE_EXCEPTION {PATH_NOT_FOUND};
 
 class Node {
 public:
@@ -64,15 +58,17 @@ public:
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
   
   Node (std::string const& name);
-  
-  ~Node ();
+
+  Node (std::string const& name, Node const* parent);
+
+  virtual ~Node ();
   
   std::string const& name() const;
 
-  Node& operator= (arangodb::velocypack::Slice const& t);
-
   Node& operator= (Node const& node);
   
+  Node& operator= (arangodb::velocypack::Slice const& t);
+
   NodeType type() const;
 
   Node& operator [](std::string name);
@@ -94,12 +90,8 @@ public:
 
   friend std::ostream& operator<<(std::ostream& os, const Node& n);
 
-  std::vector<bool> apply (query_t const& query);
-
-  query_t read (query_t const& query) const;
-
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
-    Node* par = n._parent;
+    Node const* par = n._parent;
     while (par != 0) {
       par = par->_parent;
       os << "  ";
@@ -115,23 +107,16 @@ public:
     return os;
   }
 
+  virtual bool apply (arangodb::velocypack::Slice const&);
+
 protected:
-  Node* _parent;
+  Node const* _parent;
+  Children _children;
 
 private:
-
-  bool apply (arangodb::velocypack::Slice const&);
-  bool read  (arangodb::velocypack::Slice const&,
-              arangodb::velocypack::Builder&) const;
-  bool check (arangodb::velocypack::Slice const&) const;
-
-  typedef Buffer<uint8_t> value_t;
-
   NodeType _type;
   std::string _name;
-  value_t _value;
-  Children _children;
-  mutable arangodb::Mutex _storeLock;
+  Buffer<uint8_t> _value;
   
 };
 
@@ -139,9 +124,20 @@ private:
 class Store : public Node { // Root node
   
 public:
-  Store () : Node("root") {}
-  ~Store () {} 
+  Store ();
+  virtual ~Store ();
 
+  std::vector<bool> apply (query_t const& query);
+  query_t read (query_t const& query) const;
+  virtual bool apply (arangodb::velocypack::Slice const&);
+
+private:
+  bool read  (arangodb::velocypack::Slice const&,
+              arangodb::velocypack::Builder&) const;
+  bool check (arangodb::velocypack::Slice const&) const;
+
+  mutable arangodb::Mutex _storeLock;
+  
 };
 
 }}

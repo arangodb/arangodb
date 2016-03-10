@@ -34,6 +34,9 @@ using namespace arangodb::consensus;
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
 };
+struct Empty {
+  bool operator()(const std::string& s) { return s.empty(); }
+};
 
 std::vector<std::string> split(const std::string& value, char separator) {
   std::vector<std::string> result;
@@ -50,6 +53,7 @@ std::vector<std::string> split(const std::string& value, char separator) {
 }
 
 Node::Node (std::string const& name) : _parent(nullptr), _name(name) {}
+Node::Node (std::string const& name, Node const* parent) : _parent(parent), _name(name) {}
 
 Node::~Node() {}
 
@@ -63,7 +67,12 @@ Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
 }
 
 Node& Node::operator= (Node const& node) { // Assign node
-  *this = node;
+
+  _value.reset();
+  _value.append((char const*)node._value.data(),node._value.byteSize());
+  _name = node._name;
+  _type = node._type;
+  _children = node._children;
   return *this;
 }
 
@@ -84,13 +93,11 @@ bool Node::append (std::string const name, std::shared_ptr<Node> const node) {
 }
 
 Node& Node::operator ()(std::vector<std::string>& pv) {
-  std::cout << "const" << pv << pv.size() << std::endl;
   if (pv.size()) {
     auto found = _children.find(pv[0]);
     if (found == _children.end()) {
-      _children[pv[0]] = std::make_shared<Node>(pv[0]);
+      _children[pv[0]] = std::make_shared<Node>(pv[0], this);
       found = _children.find(pv[0]);
-      found->second->_parent = this;
     }
     pv.erase(pv.begin());
     return (*found->second)(pv);
@@ -100,7 +107,6 @@ Node& Node::operator ()(std::vector<std::string>& pv) {
 }
 
 Node const& Node::operator ()(std::vector<std::string>& pv) const {
-  std::cout << "non const" << std::endl;
   if (pv.size()) {
     auto found = _children.find(pv[0]);
     if (found == _children.end()) {
@@ -133,17 +139,38 @@ Node& Node::write (std::string const& path) {
   return this->operator()(pv);
 }
 
-std::vector<bool> Node::apply (query_t const& query) {    
+bool Node::apply (arangodb::velocypack::Slice const& slice) {
+  if (slice.type() == ValueType::Object) {
+    for (auto const& i : VPackObjectIterator(slice)) {
+      std::string key = i.key.toString();
+      key = key.substr(1,key.length()-2);
+      auto found = _children.find(key);
+      if (found == _children.end()) {
+        _children[key] = std::make_shared<Node>(key, this);
+        found = _children.find(key);
+      }
+      found->second->apply(i.value);
+    }
+  } else {
+    *this = slice;
+  }
+  return true;
+}
+
+Store::Store () : Node("root") {}
+Store::~Store () {}
+
+std::vector<bool> Store::apply (query_t const& query) {    
   std::vector<bool> applied;
   std::vector<std::string> path;
   MUTEX_LOCKER(storeLocker, _storeLock);
   for (auto const& i : VPackArrayIterator(query->slice())) {
     switch (i.length()) {
     case 1:
-      applied.push_back(apply(i[0])); break; // no precond
+      applied.push_back(this->apply(i[0])); break; // no precond
     case 2:
       if (check(i[0])) {
-        applied.push_back(apply(i[1]));      // precondition
+        applied.push_back(this->apply(i[1]));      // precondition
       } else {
         LOG(WARN) << "Precondition failed!";
         applied.push_back(false);
@@ -155,60 +182,85 @@ std::vector<bool> Node::apply (query_t const& query) {
       break;
     }
   }
+  std::cout << *this << std::endl;
   return applied;
 }
 
-bool Node::apply (arangodb::velocypack::Slice const& slice) {
-  if (slice.type() == ValueType::Object) {
-    for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = i.key.toString();
-      key = key.substr(1,key.length()-2);
-      auto found = _children.find(key);
-      if (found == _children.end()) {
-        _children[key] = std::make_shared<Node>(key);
-        found = _children.find(key);
-        found->second->_parent = this;
-      }
-      found->second->apply(i.value);
-    }
-  } else {
-    *this = slice;
-  }
+bool Store::apply (arangodb::velocypack::Slice const& slice) {
+  return Node::apply(slice);
+}
+
+bool Store::check (arangodb::velocypack::Slice const& slice) const{
   return true;
 }
 
-bool Node::check (arangodb::velocypack::Slice const& slice) const{
-  return true;
-}
-
-query_t Node::read (query_t const& query) const {
+query_t Store::read (query_t const& queries) const { // list of list of paths
   MUTEX_LOCKER(storeLocker, _storeLock);
   query_t result = std::make_shared<arangodb::velocypack::Builder>();
-  result->add(VPackValue(VPackValueType::Object));
-  for (auto const& i : VPackArrayIterator(query->slice())) {
-    read (i, *result);
-  }  
-  // TODO: Run through JSON and asseble result
-  result->close();
+  if (queries->slice().type() == VPackValueType::Array) {
+    for (auto const& query : VPackArrayIterator(queries->slice())) {
+      result->add(VPackValue(VPackValueType::Array)); // top node array
+      read (query, *result);
+      result->close();
+    } 
+    // TODO: Run through JSON and asseble result
+  } else {
+    LOG(FATAL) << "Read queries to stores must be arrays";
+  }
+
   return result;
 }
 
-bool Node::read (arangodb::velocypack::Slice const& slice,
+bool Store::read (arangodb::velocypack::Slice const& query, 
                  Builder& ret) const {
-  LOG(WARN)<<slice;
-  if (slice.type() == ValueType::Object) {
-    for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = i.key.toString();
-      auto found = _children.find(key);
-      if (found == _children.end()) {
-        return false;
-      }
-      found->second->read(i.value, ret);
-    }
+  std::list<std::string> query_strs;
+  if (query.type() == VPackValueType::Array) {
+    for (auto const& sub_query : VPackArrayIterator(query))
+      query_strs.push_back(sub_query.copyString());
+  } else if (query.type() == VPackValueType::String) {
+    query_strs.push_back(query.copyString());
   } else {
-    ret.add(slice);
+    return false;
   }
+  query_strs.sort();     // sort paths
+
+  // remove "double" entries
+  for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
+    if (i!=j && i->compare(0,j->size(),*j)==0) {
+      *i="";
+    } else {
+      j = i;
+    }
+  }
+  auto cut = std::remove_if(query_strs.begin(), query_strs.end(), Empty());
+  query_strs.erase (cut,query_strs.end());
+
+  Node node("root");
+  for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
+    node(*i) = (*this)(*i);
+  }
+
+  std::cout << node << std::endl;
   return true;
 }
+
+/*
+{
+  Node* par = n._parent;
+  while (par != 0) {
+    par = par->_parent;
+    os << "  ";
+  }
+  os << n._name << " : ";
+  if (n.type() == NODE) {
+    os << std::endl;
+    for (auto const& i : n._children)
+      os << *(i.second);
+  } else {
+    os << n._value.toString() << std::endl;
+  }
+  return os;
+}
+*/
 
 
