@@ -87,6 +87,19 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   void startPager();
   void stopPager();
 
+#ifdef _WIN32
+ private:
+  void _print2(std::string const&);
+  void _print(std::string const&);
+
+ private:
+  int _consoleAttribute;
+  int _consoleColor;
+  int _defaultAttribute;
+  int _defaultColor;
+  int _defaultBackground;
+#endif
+
  private:
   bool _promptError;
   bool _supportsColors;

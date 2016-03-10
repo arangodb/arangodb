@@ -35,6 +35,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+#ifdef _WIN32
+static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+#endif
+
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ConsoleFeature"),
 #ifdef _WIN32
@@ -63,6 +68,17 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 
 #if _WIN32
   _codePage = GetConsoleOutputCP();
+
+  
+  CONSOLE_SCREEN_BUFFER_INFO info;
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
+
+  _defaultAttribute = info.wAttributes & (FOREGROUND_INTENSITY | BACKGROUND_INTENSITY);
+  _defaultColor = info.wAttributes & FOREGROUND_WHITE;
+  _defaultBackground = info.wAttributes & BACKGROUND_WHITE;
+
+  _consoleAttribute = _defaultAttribute;
+  _consoleColor = _defaultColor | _defaultBackground;
 #endif
 }
 
@@ -132,10 +148,9 @@ void ConsoleFeature::stop() {
 }
 
 #ifdef _WIN32
-int CONSOLE_ATTRIBUTE = 0;
-int CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+static void _newLine() { fprintf(stdout, "\n"); }
 
-static void _print2(std::string const& s) {
+void ConsoleFeature::_print2(std::string const& s) {
   size_t sLen = s.size();
 
   if (sLen == 0) {
@@ -148,7 +163,7 @@ static void _print2(std::string const& s) {
 
   if (wLen) {
     auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
+    SetConsoleTextAttribute(handle, _consoleAttribute | _consoleColor);
 
     DWORD n;
     WriteConsoleW(handle, wBuf, (DWORD)wLen, &n, NULL);
@@ -162,9 +177,7 @@ static void _print2(std::string const& s) {
   }
 }
 
-static void _newLine() { fprintf(stdout, "\n"); }
-
-static void _print(std::string const& s) {
+void ConsoleFeature::_print(std::string const& s) {
   auto pos = s.find_first_of("\x1b");
 
   if (pos == std::string::npos) {
@@ -191,52 +204,45 @@ static void _print(std::string const& s) {
             } else if (c == 'm' || c == ';') {
               switch (code) {
                 case 0:
-                  CONSOLE_ATTRIBUTE = 0;
-                  CONSOLE_COLOR =
-                      FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+                  _consoleAttribute = _defaultAttribute;
+                  _consoleColor = _defaultColor | _defaultBackground;
                   break;
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  CONSOLE_ATTRIBUTE = FOREGROUND_INTENSITY;
+                  _consoleAttribute = FOREGROUND_INTENSITY;
                   break;
 
                 case 30:
-                  CONSOLE_COLOR =
-                      BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN;
+                  _consoleColor = BACKGROUND_WHITE;
                   break;
 
                 case 31:
-                  CONSOLE_COLOR = FOREGROUND_RED;
+                  _consoleColor = FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 32:
-                  CONSOLE_COLOR = FOREGROUND_GREEN;
+                  _consoleColor = FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 33:
-                  CONSOLE_COLOR = FOREGROUND_RED | FOREGROUND_GREEN;
+                  _consoleColor = FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 34:
-                  CONSOLE_COLOR = FOREGROUND_BLUE;
+                  _consoleColor = FOREGROUND_BLUE | _defaultBackground;
                   break;
 
                 case 35:
-                  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_RED;
+                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 36:
-                  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_GREEN;
+                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 37:
-                  CONSOLE_COLOR =
-                      FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-                  break;
-
-                case 39:
-                  CONSOLE_COLOR = 0;
+                  _consoleColor = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE | _defaultBackground;
                   break;
               }
 
@@ -258,7 +264,7 @@ static void _print(std::string const& s) {
   }
 
   auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-  SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
+  SetConsoleTextAttribute(handle, _consoleAttribute | _consoleColor);
 }
 
 #endif
