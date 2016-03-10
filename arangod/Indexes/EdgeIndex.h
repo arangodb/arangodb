@@ -125,6 +125,9 @@ class EdgeIndex final : public Index {
 
   ~EdgeIndex();
 
+  static void buildSearchValue(TRI_edge_direction_e, std::string const&,
+                               arangodb::velocypack::Builder&);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
