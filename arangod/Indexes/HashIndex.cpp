@@ -864,7 +864,9 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
     // Invalid searchValue
     return nullptr;
   }
-  return new HashIndexIterator(trx, this, searchValues);
+  auto builder = std::make_unique<VPackBuilder>();
+  builder->add(searchValues);
+  return new HashIndexIterator(trx, this, builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
