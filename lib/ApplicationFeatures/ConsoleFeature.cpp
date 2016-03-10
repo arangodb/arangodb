@@ -99,7 +99,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 #if _WIN32
   options->addHiddenOption("--console.code-page", "Windows code page to use",
-			   new Int16Parameter(&_codePage));
+                           new Int16Parameter(&_codePage));
 #endif
 }
 
@@ -141,7 +141,7 @@ static void _print2(std::string const& s) {
   if (sLen == 0) {
     return;
   }
-  
+
   LPWSTR wBuf = new WCHAR[sLen + 1];
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)sLen, wBuf,
                                  (int)((sizeof WCHAR) * (sLen + 1)));
@@ -151,7 +151,7 @@ static void _print2(std::string const& s) {
     SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
 
     DWORD n;
-    WriteConsoleW(handle, wBuf, (DWORD) wLen, &n, NULL);
+    WriteConsoleW(handle, wBuf, (DWORD)wLen, &n, NULL);
   } else {
     fprintf(stdout, "window error: '%d' \r\n", GetLastError());
     fprintf(stdout, "%s\r\n", s.c_str());
@@ -162,17 +162,14 @@ static void _print2(std::string const& s) {
   }
 }
 
-static void _newLine() {
-  fprintf(stdout, "\n");
-}
+static void _newLine() { fprintf(stdout, "\n"); }
 
 static void _print(std::string const& s) {
   auto pos = s.find_first_of("\x1b");
 
   if (pos == std::string::npos) {
     _print2(s);
-  }
-  else {
+  } else {
     std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
 
     int i = 0;
@@ -181,80 +178,81 @@ static void _print(std::string const& s) {
       size_t pos = 0;
 
       if (i++ != 0 && !line.empty()) {
-	char c = line[0];
-	
+        char c = line[0];
+
         if (c == '[') {
-	  int code = 0;
-	  
-	  for (++pos; pos < line.size(); ++pos) {
+          int code = 0;
+
+          for (++pos; pos < line.size(); ++pos) {
             c = line[pos];
 
-	    if ('0' <= c && c <= '9') {
-	      code = code * 10 + (c - '0');
-            }
-	    else if (c == 'm' || c == ';') {
-	      switch (code) {
-  	        case 0:
-		  CONSOLE_ATTRIBUTE = 0;
-		  CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-		  break;
-		  
-  	        case 1: // BOLD
-	        case 5: // BLINK
-		  CONSOLE_ATTRIBUTE = FOREGROUND_INTENSITY;
-		  break;
-		
-	        case 30:
-		  CONSOLE_COLOR = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN; 
-		  break;
+            if ('0' <= c && c <= '9') {
+              code = code * 10 + (c - '0');
+            } else if (c == 'm' || c == ';') {
+              switch (code) {
+                case 0:
+                  CONSOLE_ATTRIBUTE = 0;
+                  CONSOLE_COLOR =
+                      FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+                  break;
 
-	        case 31:
-		  CONSOLE_COLOR = FOREGROUND_RED;
-		  break;
+                case 1:  // BOLD
+                case 5:  // BLINK
+                  CONSOLE_ATTRIBUTE = FOREGROUND_INTENSITY;
+                  break;
+
+                case 30:
+                  CONSOLE_COLOR =
+                      BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN;
+                  break;
+
+                case 31:
+                  CONSOLE_COLOR = FOREGROUND_RED;
+                  break;
 
                 case 32:
-		  CONSOLE_COLOR = FOREGROUND_GREEN;
-		  break;
+                  CONSOLE_COLOR = FOREGROUND_GREEN;
+                  break;
 
                 case 33:
-		  CONSOLE_COLOR = FOREGROUND_RED | FOREGROUND_GREEN;
-		  break;
+                  CONSOLE_COLOR = FOREGROUND_RED | FOREGROUND_GREEN;
+                  break;
 
                 case 34:
-		  CONSOLE_COLOR = FOREGROUND_BLUE;
-		  break;
+                  CONSOLE_COLOR = FOREGROUND_BLUE;
+                  break;
 
                 case 35:
-		  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_RED;
-		  break;
+                  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_RED;
+                  break;
 
                 case 36:
-		  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_GREEN;
-		  break;
+                  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_GREEN;
+                  break;
 
                 case 37:
-		  CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-		  break;
+                  CONSOLE_COLOR =
+                      FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+                  break;
 
                 case 39:
-		  CONSOLE_COLOR = 0;
-		  break;
+                  CONSOLE_COLOR = 0;
+                  break;
               }
 
-	      code = 0;
+              code = 0;
             }
 
-	    if (c == 'm') {
-	      ++pos;
-	      break;
-	    }
-	  }
+            if (c == 'm') {
+              ++pos;
+              break;
+            }
+          }
         }
       }
 
-
       if (line.size() > pos) {
-	_print2(line.substr(pos));
+        _print2(line.substr(pos));
       }
     }
   }
@@ -262,7 +260,7 @@ static void _print(std::string const& s) {
   auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
   SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
 }
-  
+
 #endif
 
 // prints a string to stdout, without a newline
@@ -307,7 +305,6 @@ void ConsoleFeature::printLine(std::string const& s) {
   }
 
   if (true) {
-
     std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
 
     for (auto& line : lines) {
@@ -322,9 +319,7 @@ void ConsoleFeature::printLine(std::string const& s) {
   }
 }
 
-void ConsoleFeature::printErrorLine(std::string const& s) {
-  printLine(s);
-}
+void ConsoleFeature::printErrorLine(std::string const& s) { printLine(s); }
 
 std::string ConsoleFeature::readPassword(std::string const& message) {
   std::string password;
@@ -391,13 +386,7 @@ static std::string StripBinary(std::string const& value) {
 
 void ConsoleFeature::print(std::string const& message) {
   if (_toPager == stdout) {
-#ifdef _WIN32
-    // at moment the formating is ignored in windows
-    printLine(message);
-#else
-    fprintf(_toPager, "%s", message.c_str());
-#endif
-
+    printContinuous(message);
   } else {
     std::string sanitized = StripBinary(message.c_str());
     fprintf(_toPager, "%s", sanitized.c_str());
