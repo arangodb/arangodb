@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertTrue, assertEqual */
+/*global fail, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface
