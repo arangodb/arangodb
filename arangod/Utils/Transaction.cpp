@@ -894,11 +894,6 @@ OperationResult Transaction::update(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (newValue.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   OperationOptions optionsCopy = options;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -918,6 +913,12 @@ OperationResult Transaction::update(std::string const& collectionName,
 OperationResult Transaction::updateCoordinator(std::string const& collectionName,
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
+
+  if (newValue.isArray()) {
+    // multi-document variant is not yet implemented
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   arangodb::rest::HttpResponse::HttpResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
