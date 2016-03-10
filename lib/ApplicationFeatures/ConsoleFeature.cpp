@@ -98,8 +98,8 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_prompt));
 
 #if _WIN32
-  options->addOption("--console.code-page", "Windows code page to use",
-                     new Int16Parameter(&_codePage));
+  options->addHiddenOption("--console.code-page", "Windows code page to use",
+			   new Int16Parameter(&_codePage));
 #endif
 }
 
@@ -137,17 +137,17 @@ int CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
 
 static void _print2(std::string const& s) {
   size_t sLen = s.size();
+
+  if (sLen == 0) {
+    return;
+  }
+  
   LPWSTR wBuf = new WCHAR[sLen + 1];
-  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf,
+  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)sLen, wBuf,
                                  (int)((sizeof WCHAR) * (sLen + 1)));
 
   if (wLen) {
     auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-    GetConsoleScreenBufferInfo(handle, &bufferInfo);
-
-
     SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
 
     DWORD n;
@@ -253,21 +253,26 @@ static void _print(std::string const& s) {
       }
 
 
-      _print2(line.substr(pos));
+      if (line.size() > pos) {
+	_print2(line.substr(pos));
+      }
     }
   }
+
+  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
 }
   
 #endif
 
 // prints a string to stdout, without a newline
 void ConsoleFeature::printContinuous(std::string const& s) {
-#ifdef _WIN32
-  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
-
   if (s.empty()) {
     return;
   }
+
+#ifdef _WIN32
+  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
 
   if (!_cygwinShell) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
