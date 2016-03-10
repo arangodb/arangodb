@@ -115,7 +115,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     if (hasCondition) {
       AqlValue$ const& conditionResult = result->getValueReference(i, _conditionReg);
 
-      if (!conditionResult.isTrue()) {
+      if (!conditionResult.toBoolean()) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }

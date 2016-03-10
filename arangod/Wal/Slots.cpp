@@ -178,6 +178,11 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
             if (res != TRI_ERROR_NO_ERROR) {
               return SlotInfo(res);
             }
+         
+            // new datafile. must write a prologue 
+            if (databaseId > 0 && collectionId > 0) {
+              mustWritePrologue = true;
+            }
 
             // advance to next slot
             slot = &_slots[_handoutIndex];
@@ -210,6 +215,11 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
 
               if (res != TRI_ERROR_NO_ERROR) {
                 return SlotInfo(res);
+              }
+            
+              // new datafile. must write a prologue 
+              if (databaseId > 0 && collectionId > 0) {
+                mustWritePrologue = true;
               }
 
               // advance to next slot

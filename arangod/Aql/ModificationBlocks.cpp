@@ -158,12 +158,13 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 int ModificationBlock::extractKey(AqlValue$ const& value,
                                   std::string& key) {
   if (value.isObject()) {
-    VPackSlice const slice = value.get(TRI_VOC_ATTRIBUTE_KEY).slice();
-    if (slice.isString()) {
-      key.assign(slice.copyString());
+    AqlValue$ sub = value.get(TRI_VOC_ATTRIBUTE_KEY, false);
+    if (sub.isString()) {
+      key.assign(sub.slice().copyString());
+      sub.destroy();
       return TRI_ERROR_NO_ERROR;
     }
-  } else if (value.slice().isString()) {
+  } else if (value.isString()) {
     key.assign(value.slice().copyString());
     return TRI_ERROR_NO_ERROR;
   }

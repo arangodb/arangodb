@@ -53,11 +53,11 @@ AqlValue$ AttributeAccessor::get(arangodb::AqlTransaction* trx,
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
-      return argv->getValueReference(startPos, regs[i]).get(_attributeParts);
+      return argv->getValueReference(startPos, regs[i]).get(_attributeParts, true);
     }
     // fall-through intentional
   }
 
-  return AqlValueReference(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
 }
 

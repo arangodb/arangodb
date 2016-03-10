@@ -114,47 +114,49 @@ AqlValue$ AggregatorLength::stealValue() {
   return temp;
 }
 
-AggregatorMin::~AggregatorMin() { }
+AggregatorMin::~AggregatorMin() { value.destroy(); }
 
 void AggregatorMin::reset() { value.invalidate(); }
 
 void AggregatorMin::reduce(AqlValue$ const& cmpValue) {
-  if (value.isNone() ||
+  if (value.isEmpty() ||
       (!cmpValue.isNull(true) &&
        AqlValue$::Compare(trx, value, cmpValue, true) > 0)) {
     // the value `null` itself will not be used in MIN() to compare lower than
     // e.g. value `false`
-    value = cmpValue;
+    value.destroy();
+    value = cmpValue.clone();
   }
 }
 
 AqlValue$ AggregatorMin::stealValue() {
-  if (value.isNone()) {
+  if (value.isEmpty()) {
     return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
-  AqlValue$ temp(std::move(value));
-  reset();
-  return temp;
+  AqlValue$ copy = value;
+  value.erase();
+  return copy;
 }
 
-AggregatorMax::~AggregatorMax() { }
+AggregatorMax::~AggregatorMax() { value.destroy(); }
 
 void AggregatorMax::reset() { value.invalidate(); }
 
 void AggregatorMax::reduce(AqlValue$ const& cmpValue) {
-  if (value.isNone() ||
+  if (value.isEmpty() ||
       AqlValue$::Compare(trx, value, cmpValue, true) < 0) {
-    value = cmpValue;
+    value.destroy();
+    value = cmpValue.clone();
   }
 }
 
 AqlValue$ AggregatorMax::stealValue() {
-  if (value.isNone()) {
+  if (value.isEmpty()) {
     return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
   }
-  AqlValue$ temp(std::move(value));
-  reset();
-  return temp;
+  AqlValue$ copy = value;
+  value.erase();
+  return copy;
 }
 
 void AggregatorSum::reset() {

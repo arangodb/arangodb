@@ -1028,32 +1028,6 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the value that is used to determine the initial shard
-////////////////////////////////////////////////////////////////////////////////
-
-VPackSlice DistributeBlock::getInput(AqlItemBlock const* cur) const {
-  auto const& val = cur->getValueReference(_pos, _regId);
-
-  if (val.type() == AqlValue$::AqlValueType::RANGE) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  VPackSlice slice = val.slice();
-
-  if (slice.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
-    // value is set, but null
-    // check if there is a second input register available (UPSERT makes use of
-    // two input registers,
-    // one for the search document, the other for the insert document)
-    auto const& val = cur->getValueReference(_pos, _alternativeRegId);
-
-    slice = val.slice();
-  }
-
-  return slice;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
@@ -1063,7 +1037,20 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   ENTER_BLOCK
 
   // inspect cur in row _pos and check to which shard it should be sent . .
-  VPackSlice input = getInput(cur);
+  AqlValue$ val = cur->getValueReference(_pos, _regId);
+
+  VPackSlice input = val.slice(); // will throw when wrong type
+
+  if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
+    // value is set, but null
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
+    // one for the search document, the other for the insert document)
+    val = cur->getValueReference(_pos, _alternativeRegId);
+
+    input = val.slice(); // will throw when wrong type
+  }
+
   VPackSlice value = input;
 
   VPackBuilder builder;

@@ -516,11 +516,11 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
   for (RegisterId column = 0; column < _nrRegs; column++) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue$ const& a(_data[i * _nrRegs + column]);
-      if (a.isNone()) {
+      if (a.isEmpty()) {
         emptyCount++;
       } else {
         commitEmpties();
-        if (a.type() == AqlValue$::AqlValueType::RANGE) {
+        if (a.isRange()) {
           data.add(VPackValue(-2));
           data.add(VPackValue(a.range()->_low));
           data.add(VPackValue(a.range()->_high));
@@ -528,7 +528,7 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
           auto it = table.find(a);
 
           if (it == table.end()) {
-            a.toVelocyPack(trx, raw); 
+            a.toVelocyPack(trx, raw);
             data.add(VPackValue(1));
             table.emplace(a, pos++);
           } else {

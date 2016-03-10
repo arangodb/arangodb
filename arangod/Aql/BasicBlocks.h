@@ -96,7 +96,7 @@ class FilterBlock : public ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool takeItem(AqlItemBlock* items, size_t index) const {
-    return items->getValueReference(index, _inReg).isTrue();
+    return items->getValueReference(index, _inReg).toBoolean();
   }
 
   //////////////////////////////////////////////////////////////////////////////

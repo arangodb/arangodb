@@ -107,12 +107,16 @@ void IndexBlock::executeExpressions() {
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
+
     AqlValue$ a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
                               _inRegs[posInExpressions]);
-    VPackSlice slice = a.slice();
-    //AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
-    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
-    a.destroy();
+    AqlValueGuard guard(a);
+
+    AstNode* evaluatedNode = nullptr;
+    
+    AqlValueMaterializer materializer(_trx); 
+    VPackSlice slice = materializer.slice(a);
+    evaluatedNode = ast->nodeFromVPack(slice, true);
 
     _condition->getMember(toReplace->orMember)
         ->getMember(toReplace->andMember)
@@ -508,7 +512,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValueDocument(VPackSlice(_documents[_posInDocs++].vpack())));
+                      AqlValue$(VPackSlice(_documents[_posInDocs++].vpack())));
         // No harm done, if the setValue throws!
       }
     }

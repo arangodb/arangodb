@@ -439,7 +439,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   for (size_t i = 0; i < n; i++) {
     AqlValue$ const& a = res->getValueReference(i, registerId);
 
-    if (!a.isNone()) {
+    if (!a.isEmpty()) {
       if (a.requiresDestruction()) {
         res->steal(a);
 

@@ -386,12 +386,6 @@ class DistributeBlock : public BlockWithClients {
   bool getBlockForClient(size_t atLeast, size_t atMost, size_t clientId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the value that is used to determine the initial shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Slice getInput(AqlItemBlock const*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
   /// the

@@ -848,7 +848,7 @@ size_t HashedCollectBlock::GroupKeyHash::operator()(
   TRI_ASSERT(value.size() == _num);
 
   for (auto const& it : value) {
-    hash ^= it.hash();
+    hash ^= it.hash(_trx);
   }
 
   return static_cast<size_t>(hash);

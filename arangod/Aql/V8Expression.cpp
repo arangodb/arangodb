@@ -79,7 +79,7 @@ AqlValue$ V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     AqlValue$ const& value = argv->getValueReference(startPos, reg);
 
-    if (value.isNone()) {
+    if (value.isEmpty()) {
       continue;
     }
 
