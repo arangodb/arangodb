@@ -2052,7 +2052,7 @@ class AttributeWeightCalculator {
 
  public:
   AttributeWeightCalculator(std::string const& attribute, double defaultWeight)
-      : _key(keyWeight), _defaultWeight(defaultWeight) {}
+      : _attribute(attribute), _defaultWeight(defaultWeight) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Callable weight calculator for edge
