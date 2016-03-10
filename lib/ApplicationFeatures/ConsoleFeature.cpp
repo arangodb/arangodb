@@ -132,94 +132,26 @@ void ConsoleFeature::stop() {
 }
 
 #ifdef _WIN32
-static bool _newLine() {
-  COORD pos;
-  CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-  GetConsoleScreenBufferInfo(handle, &bufferInfo);
+int CONSOLE_ATTRIBUTE = 0;
+int CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
 
-  if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
-    // when we are at the last visible line of the console
-    // the first line of console is deleted (the content of the console
-    // is scrolled one line above
-    SMALL_RECT srctScrollRect;
-    srctScrollRect.Top = 0;
-    srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
-    srctScrollRect.Left = 0;
-    srctScrollRect.Right = bufferInfo.dwSize.X;
-
-    COORD coordDest;
-    coordDest.X = 0;
-    coordDest.Y = -1;
-
-    CONSOLE_SCREEN_BUFFER_INFO consoleScreenBufferInfo;
-    CHAR_INFO chiFill;
-    chiFill.Char.AsciiChar = (char)' ';
-
-    if (GetConsoleScreenBufferInfo(handle, &consoleScreenBufferInfo)) {
-      chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
-    } else {
-      // Fill the bottom row with green blanks.
-      chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
-    }
-    ScrollConsoleScreenBuffer(handle, &srctScrollRect,
-                              nullptr, coordDest, &chiFill);
-    pos.Y = bufferInfo.dwCursorPosition.Y;
-    pos.X = 0;
-    SetConsoleCursorPosition(handle, pos);
-    return true;
-  } else {
-    pos.Y = bufferInfo.dwCursorPosition.Y + 1;
-    pos.X = 0;
-    SetConsoleCursorPosition(handle, pos);
-    return false;
-  }
-}
-#endif
-
-#ifdef _WIN32
-static void _print2(std::string const& s, int attr) {
+static void _print2(std::string const& s) {
   size_t sLen = s.size();
   LPWSTR wBuf = new WCHAR[sLen + 1];
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf,
                                  (int)((sizeof WCHAR) * (sLen + 1)));
 
   if (wLen) {
-    DWORD n;
-    COORD pos;
-    CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
     auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
     GetConsoleScreenBufferInfo(handle, &bufferInfo);
 
-    // save old cursor position
-    pos = bufferInfo.dwCursorPosition;
 
-    size_t newX = static_cast<size_t>(pos.X) + wLen;
+    SetConsoleTextAttribute(handle, CONSOLE_ATTRIBUTE | CONSOLE_COLOR);
 
-    if (newX >= static_cast<size_t>(bufferInfo.dwSize.X)) {
-      for (size_t i = 0; i <= newX / bufferInfo.dwSize.X; ++i) {
-        // insert as many newlines as we need. this prevents running out of
-        // buffer space when printing lines
-        // at the end of the console output buffer
-        if (_newLine()) {
-          pos.Y = pos.Y - 1;
-        }
-      }
-    }
-
-    // save new cursor position
-    GetConsoleScreenBufferInfo(handle, &bufferInfo);
-    auto newPos = bufferInfo.dwCursorPosition;
-
-    // print the actual string. note: printing does not advance the cursor
-    // position
-    SetConsoleCursorPosition(handle, pos);
-    SetConsoleTextAttribute(handle, attr);
-    WriteConsoleOutputCharacterW(handle, wBuf, (DWORD)wLen, pos, &n);
-
-    // finally set the cursor position to where the printing should have
-    // stopped
-    SetConsoleCursorPosition(handle, newPos);
+    DWORD n;
+    WriteConsoleW(handle, wBuf, (DWORD) wLen, &n, NULL);
   } else {
     fprintf(stdout, "window error: '%d' \r\n", GetLastError());
     fprintf(stdout, "%s\r\n", s.c_str());
@@ -230,19 +162,59 @@ static void _print2(std::string const& s, int attr) {
   }
 }
 
+static void _newLine() {
+  COORD pos;
+  CONSOLE_SCREEN_BUFFER_INFO console1;
+  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  GetConsoleScreenBufferInfo(handle, &console1);
+
+  if (console1.dwCursorPosition.Y + 1 >= console1.dwSize.Y) {
+    // when we are at the last visible line of the console
+    // the first line of console is deleted (the content of the console
+    // is scrolled one line above
+    SMALL_RECT srctScrollRect;
+    srctScrollRect.Top = 0;
+    srctScrollRect.Bottom = console1.dwCursorPosition.Y + 1;
+    srctScrollRect.Left = 0;
+    srctScrollRect.Right = console1.dwSize.X;
+
+    COORD coordDest;
+    coordDest.X = 0;
+    coordDest.Y = -1;
+
+    CONSOLE_SCREEN_BUFFER_INFO console2;
+    CHAR_INFO chiFill;
+    chiFill.Char.AsciiChar = (char)' ';
+
+    if (GetConsoleScreenBufferInfo(handle, &console2)) {
+      chiFill.Attributes = console2.wAttributes;
+    } else {
+      // Fill the bottom row with green blanks.
+      chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
+    }
+
+    ScrollConsoleScreenBuffer(handle, &srctScrollRect, nullptr, coordDest, &chiFill);
+
+    pos.Y = console1.dwCursorPosition.Y;
+    pos.X = 0;
+    SetConsoleCursorPosition(handle, pos);
+  } else {
+    pos.Y = console1.dwCursorPosition.Y + 1;
+    pos.X = 0;
+    SetConsoleCursorPosition(handle, pos);
+  }
+}
+
 static void _print(std::string const& s) {
   auto pos = s.find_first_of("\x1b");
 
   if (pos == std::string::npos) {
-    int color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-    _print2(s, color);
+    _print2(s);
   }
   else {
     std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
 
     int i = 0;
-    int color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-    int attr = 0;
 
     for (auto line : lines) {
       size_t pos = 0;
@@ -262,49 +234,49 @@ static void _print(std::string const& s) {
 	    else if (c == 'm' || c == ';') {
 	      switch (code) {
   	        case 0:
-		  attr = 0;
-		  color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+		  CONSOLE_ATTRIBUTE = 0;
+		  CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
 		  break;
 		  
   	        case 1: // BOLD
 	        case 5: // BLINK
-		  attr = FOREGROUND_INTENSITY;
+		  CONSOLE_ATTRIBUTE = FOREGROUND_INTENSITY;
 		  break;
 		
 	        case 30:
-		  color = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN; 
+		  CONSOLE_COLOR = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN; 
 		  break;
 
 	        case 31:
-		  color = FOREGROUND_RED;
+		  CONSOLE_COLOR = FOREGROUND_RED;
 		  break;
 
                 case 32:
-		  color = FOREGROUND_GREEN;
+		  CONSOLE_COLOR = FOREGROUND_GREEN;
 		  break;
 
                 case 33:
-		  color = FOREGROUND_RED | FOREGROUND_GREEN;
+		  CONSOLE_COLOR = FOREGROUND_RED | FOREGROUND_GREEN;
 		  break;
 
                 case 34:
-		  color = FOREGROUND_BLUE;
+		  CONSOLE_COLOR = FOREGROUND_BLUE;
 		  break;
 
                 case 35:
-		  color = FOREGROUND_BLUE | FOREGROUND_RED;
+		  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_RED;
 		  break;
 
                 case 36:
-		  color = FOREGROUND_BLUE | FOREGROUND_GREEN;
+		  CONSOLE_COLOR = FOREGROUND_BLUE | FOREGROUND_GREEN;
 		  break;
 
                 case 37:
-		  color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+		  CONSOLE_COLOR = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
 		  break;
 
                 case 39:
-		  color = 0;
+		  CONSOLE_COLOR = 0;
 		  break;
               }
 
@@ -320,7 +292,7 @@ static void _print(std::string const& s) {
       }
 
 
-      _print2(line.substr(pos), attr | color);
+      _print2(line.substr(pos));
     }
   }
 }
