@@ -234,13 +234,17 @@ class Transaction {
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              std::string const& rid,
-                             std::string const& oldRid);
+                             std::string const& oldRid,
+                             TRI_doc_mptr_t const* oldMptr,
+                             TRI_doc_mptr_t const* newMptr);
 
   void buildDocumentIdentity(VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              TRI_voc_rid_t rid,
-                             std::string const& oldRid);
+                             std::string const& oldRid,
+                             TRI_doc_mptr_t const* oldMptr,
+                             TRI_doc_mptr_t const* newMptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document

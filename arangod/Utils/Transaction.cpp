@@ -248,7 +248,9 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
                                         std::string const& key,
                                         std::string const& rid,
-                                        std::string const& oldRid) {
+                                        std::string const& oldRid,
+                                        TRI_doc_mptr_t const* oldMptr,
+                                        TRI_doc_mptr_t const* newMptr) {
   std::string collectionName = resolver()->getCollectionName(cid);
 
   builder.openObject();
@@ -258,6 +260,16 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
   if (!oldRid.empty()) {
     builder.add("_oldRev", VPackValue(oldRid));
   }
+  if (oldMptr != nullptr) {
+    builder.add("old", VPackSlice(oldMptr->vpack()));
+#warning Add externals later.
+    //builder.add("old", VPackValue(VPackValueType::External, oldMptr->vpack()));
+  }
+  if (newMptr != nullptr) {
+    builder.add("new", VPackSlice(newMptr->vpack()));
+#warning Add externals later.
+    //builder.add("new", VPackValue(VPackValueType::External, newMptr->vpack()));
+  }
   builder.close();
 }
 
@@ -265,9 +277,11 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
                                         std::string const& key,
                                         TRI_voc_rid_t rid,
-                                        std::string const& oldRid) {
+                                        std::string const& oldRid,
+                                        TRI_doc_mptr_t const* oldMptr,
+                                        TRI_doc_mptr_t const* newMptr) {
   std::string ridSt = std::to_string(rid);
-  buildDocumentIdentity(builder, cid, key, ridSt, oldRid);
+  buildDocumentIdentity(builder, cid, key, ridSt, oldRid, oldMptr, newMptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,7 +644,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     if (expectedRevision != 0 && expectedRevision != mptr.revisionId()) {
       // still return 
-      buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "");
+      buildDocumentIdentity(resultBuilder, cid, key, mptr.revisionId(), "",
+                            nullptr, nullptr);
       return TRI_ERROR_ARANGO_CONFLICT;
     }
   
@@ -857,7 +872,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     
-    buildDocumentIdentity(resultBuilder, cid, keyString, mptr.revisionId(), "");
+    buildDocumentIdentity(resultBuilder, cid, keyString, mptr.revisionId(), "",
+                          nullptr, nullptr);
     return TRI_ERROR_NO_ERROR;
   };
 
@@ -1104,7 +1120,8 @@ OperationResult Transaction::modifyLocal(
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
-      buildDocumentIdentity(resultBuilder, cid, key, actualRevision, "");
+      buildDocumentIdentity(resultBuilder, cid, key, actualRevision, "",
+                            nullptr, nullptr);
       return TRI_ERROR_ARANGO_CONFLICT;
     } else if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1115,7 +1132,8 @@ OperationResult Transaction::modifyLocal(
     if (!options.silent) {
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, 
-          std::to_string(mptr.revisionId()), std::to_string(actualRevision));
+          std::to_string(mptr.revisionId()), std::to_string(actualRevision),
+          nullptr, nullptr);
     }
     return TRI_ERROR_NO_ERROR;
   };
@@ -1253,7 +1271,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       if (res == TRI_ERROR_ARANGO_CONFLICT) {
         std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key,
-                              std::to_string(actualRevision), "");
+                              std::to_string(actualRevision), "",
+                              nullptr, nullptr);
       }
       return res;
     }
@@ -1264,7 +1283,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
     std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
     buildDocumentIdentity(resultBuilder, cid, key,
-                          std::to_string(actualRevision), "");
+                          std::to_string(actualRevision), "",
+                          nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
