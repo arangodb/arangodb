@@ -27,6 +27,15 @@
 using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
+void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder&) {
+}
+
+void ClusterTraversalPath::lastVertexToVelocyPack(Transaction*, VPackBuilder&) {
+}
+
+void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder&) {
+}
+
 arangodb::basics::Json* ClusterTraversalPath::pathToJson(
     arangodb::Transaction*, arangodb::CollectionNameResolver*) {
   auto result =
@@ -79,18 +88,18 @@ arangodb::basics::Json* ClusterTraversalPath::lastVertexToJson(
   // return _traverser->vertexToJson(_path.vertices.back());
 }
 
-bool ClusterTraverser::VertexGetter::operator()(VPackSlice const& edgeId,
-                                                VPackSlice const& vertexId,
+bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
+                                                std::string const& vertexId,
                                                 size_t depth,
-                                                VPackSlice& result) {
+                                                std::string& result) {
   auto it = _traverser->_edges.find(edgeId);
   if (it != _traverser->_edges.end()) {
-    VPackSlice from = it->second.get(TRI_VOC_ATTRIBUTE_FROM);
+    std::string from = it->second.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
     if (from != vertexId) {
-      result.set(from.start());
+      result = from;
     } else {
-      VPackSlice to = it->second.get(TRI_VOC_ATTRIBUTE_TO);
-      result.set(to.start());
+      std::string to = it->second.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+      result = to;
     }
     auto exp = _traverser->_expressions->find(depth);
     if (exp != _traverser->_expressions->end()) {
@@ -108,16 +117,15 @@ bool ClusterTraverser::VertexGetter::operator()(VPackSlice const& edgeId,
     return true;
   }
   // This should never be reached
-  // Set it to velocypack NONE
-  VPackSlice def("\x00");
-  result.set(def.start());
+  result = "";
   return false;
 }
 
-void ClusterTraverser::EdgeGetter::operator()(VPackSlice const& startVertex,
-                                              std::vector<VPackSlice>& result,
+void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
+                                              std::vector<std::string>& result,
                                               size_t*& last, size_t& eColIdx,
                                               bool& unused) {
+#warning IMPLEMENT
   std::string collName;
   TRI_edge_direction_e dir;
   if (!_traverser->_opts.getCollection(eColIdx, collName, dir)) {
@@ -229,7 +237,7 @@ void ClusterTraverser::EdgeGetter::operator()(VPackSlice const& startVertex,
       last = nullptr;
       return;
     }
-    std::stack<VPackSlice>& tmp = _traverser->_iteratorCache.top();
+    std::stack<std::string>& tmp = _traverser->_iteratorCache.top();
     if (tmp.empty()) {
       _traverser->_iteratorCache.pop();
       last = nullptr;
@@ -237,7 +245,7 @@ void ClusterTraverser::EdgeGetter::operator()(VPackSlice const& startVertex,
       operator()(startVertex, result, last, eColIdx, unused);
       return;
     } else {
-      VPackSlice const next = tmp.top();
+      std::string const next = tmp.top();
       tmp.pop();
       auto search = std::find(result.begin(), result.end(), next);
       if (search != result.end()) {
@@ -251,11 +259,12 @@ void ClusterTraverser::EdgeGetter::operator()(VPackSlice const& startVertex,
 }
 
 void ClusterTraverser::setStartVertex(VPackSlice const& v) {
+  std::string start = v.get(TRI_VOC_ATTRIBUTE_ID).copyString();
   _enumerator.reset(
-      new arangodb::basics::PathEnumerator<VPackSlice, VPackSlice, size_t>(
-          _edgeGetter, _vertexGetter, v));
+      new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
+          _edgeGetter, _vertexGetter, start));
   _done = false;
-  auto it = _vertices.find(v);
+  auto it = _vertices.find(start);
   if (it == _vertices.end()) {
     /* TODO DEPRECATED: Get Document
     arangodb::rest::HttpResponse::HttpResponseCode responseCode;
@@ -312,7 +321,7 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const arangodb::basics::EnumeratedPath<VPackSlice, VPackSlice>& path =
+  const arangodb::basics::EnumeratedPath<std::string, std::string>& path =
       _enumerator->next();
   size_t countEdges = path.edges.size();
   if (countEdges == 0) {

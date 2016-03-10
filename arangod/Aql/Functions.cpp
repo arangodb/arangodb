@@ -477,37 +477,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
   }
 
   VPackBuilder searchValueBuilder;
-  searchValueBuilder.openArray();
-  switch (direction) {
-    case TRI_EDGE_OUT:
-      searchValueBuilder.openArray();
-      searchValueBuilder.openObject();
-      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
-      searchValueBuilder.close();
-      searchValueBuilder.close();
-      searchValueBuilder.add(VPackValue(VPackValueType::None));
-      break;
-    case TRI_EDGE_IN:
-      searchValueBuilder.add(VPackValue(VPackValueType::None));
-      searchValueBuilder.openArray();
-      searchValueBuilder.openObject();
-      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
-      searchValueBuilder.close();
-      searchValueBuilder.close();
-      break;
-    case TRI_EDGE_ANY:
-      searchValueBuilder.openArray();
-      searchValueBuilder.openObject();
-      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
-      searchValueBuilder.close();
-      searchValueBuilder.close();
-      searchValueBuilder.openArray();
-      searchValueBuilder.openObject();
-      searchValueBuilder.add(TRI_SLICE_KEY_EQUAL, VPackValue(vertexId));
-      searchValueBuilder.close();
-      searchValueBuilder.close();
-  }
-  searchValueBuilder.close();
+  EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
   OperationCursor cursor = trx->indexScan(
       collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
@@ -2279,11 +2249,9 @@ AqlValue$ Functions::Neighbors(arangodb::aql::Query* query,
                                     "'%s'", collectionName.c_str());
     }
 
-    VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
-    opts.start = v;
+    opts.start = vertexId;
   } else {
-    VertexId v(resolver->getCollectionIdLocal(vColName), vertexId.c_str());
-    opts.start = v;
+    opts.start = vertexId;
   }
 
   VPackSlice direction = ExtractFunctionParameter(trx, parameters, 3);
@@ -2335,10 +2303,10 @@ AqlValue$ Functions::Neighbors(arangodb::aql::Query* query,
   trx->addCollectionAtRuntime(eCid);
 
   // Function to return constant distance
-  auto wc = [](TRI_doc_mptr_t&) -> double { return 1; };
+  auto wc = [](VPackSlice) -> double { return 1; };
 
   auto eci = std::make_unique<EdgeCollectionInfo>(
-      trx, eCid, trx->documentCollection(eCid), wc);
+      trx, eColName, wc);
   TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -2346,7 +2314,7 @@ AqlValue$ Functions::Neighbors(arangodb::aql::Query* query,
   if (n > 4) {
     auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4);
     if (!(edgeExamples.isArray() && edgeExamples.length() == 0)) {
-      opts.addEdgeFilter(edgeExamples, eCid);
+      opts.addEdgeFilter(edgeExamples, eColName);
     }
   }
 
@@ -2364,7 +2332,7 @@ AqlValue$ Functions::Neighbors(arangodb::aql::Query* query,
   }
 
   std::unordered_set<std::string> neighbors;
-#warning TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
+  TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
 
   return VertexIdsToAqlValueVPack(query, trx, neighbors, includeData);
 }
