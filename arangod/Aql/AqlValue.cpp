@@ -72,7 +72,7 @@ bool AqlValue$::isNull(bool emptyIsNull) const {
     return false;
   }
  
-  VPackSlice s = slice();
+  VPackSlice s(slice());
   return (s.isNull() || (emptyIsNull && s.isNone()));
 }
 
@@ -158,7 +158,7 @@ AqlValue$ AqlValue$::at(int64_t position, bool copy) const {
       copy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isArray()) {
         int64_t const n = static_cast<int64_t>(s.length());
         if (position < 0) {
@@ -232,11 +232,11 @@ AqlValue$ AqlValue$::get(std::string const& name, bool copy) const {
       copy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = s.get(name);
+        VPackSlice found(s.get(name));
         if (!found.isNone()) {
-          if (copy || found.byteSize() < 16) {
+          if (copy || found.byteSize() < sizeof(_data.internal)) {
             return AqlValue$(found);
           }
           return AqlValue$(found.begin());
@@ -268,9 +268,9 @@ AqlValue$ AqlValue$::get(std::vector<char const*> const& names, bool copy) const
       copy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isObject()) {
-        VPackSlice found = s.get(names);
+        VPackSlice found(s.get(names));
         if (!found.isNone()) {
           if (copy || found.byteSize() < 16) {
             return AqlValue$(found);
@@ -308,7 +308,7 @@ double AqlValue$::toDouble(bool& failed) const {
     case DOCUMENT: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isNumber()) {
         return s.getNumber<double>();
       }
@@ -354,7 +354,7 @@ int64_t AqlValue$::toInt64() const {
     case DOCUMENT: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isNumber()) {
         return s.getNumber<int64_t>();
       }
@@ -399,7 +399,7 @@ bool AqlValue$::toBoolean() const {
     case DOCUMENT: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
-      VPackSlice s = slice();
+      VPackSlice s(slice());
       if (s.isBoolean()) {
         return s.getBoolean();
       } 
@@ -452,7 +452,7 @@ v8::Handle<v8::Value> AqlValue$::toV8Partial(
   }
 
   VPackOptions* options = trx->transactionContext()->getVPackOptions();
-  VPackSlice s = slice();
+  VPackSlice s(slice());
 
   if (s.isObject()) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -545,16 +545,10 @@ v8::Handle<v8::Value> AqlValue$::toV8(
 void AqlValue$::toVelocyPack(AqlTransaction* trx, 
                              arangodb::velocypack::Builder& builder) const {
   switch (type()) {
-    case DOCUMENT: {
-      builder.add(VPackSlice(_data.document));
-      break;
-    }
-    case VPACK_INLINE: {
-      builder.add(VPackSlice(&_data.internal[0]));
-      break;
-    }
+    case DOCUMENT: 
+    case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
-      builder.add(VPackSlice(_data.buffer->data()));
+      builder.add(slice());
       break;
     }
     case DOCVEC: {
@@ -697,13 +691,21 @@ void AqlValue$::destroy() {
 VPackSlice AqlValue$::slice() const {
   switch (type()) {
     case DOCUMENT: {
-      return arangodb::velocypack::Slice(_data.document);
+      return VPackSlice(_data.document);
     }
     case VPACK_INLINE: {
-      return arangodb::velocypack::Slice(&_data.internal[0]);
+      VPackSlice s(&_data.internal[0]);
+      if (s.isExternal()) {
+        s = VPackSlice(s.getExternal());
+      }
+      return s;
     }
     case VPACK_EXTERNAL: {
-      return arangodb::velocypack::Slice(_data.buffer->data());
+      VPackSlice s(_data.buffer->data());
+      if (s.isExternal()) {
+        s = VPackSlice(s.getExternal());
+      }
+      return s;
     }
     case DOCVEC:
     case RANGE: {
