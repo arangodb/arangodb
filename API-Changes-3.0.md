@@ -20,6 +20,12 @@ Overview
 
  6. /_api/edge withdrawn
 
+ 7. <collection>.BY_EXAMPLE_HASH , <collection>.BY_EXAMPLE_SKIPLIST,
+    <collection>.BY_CONDITION_SKIPLIST deleted.
+    SimpleQuery.byCondition withdrawn.
+
+ 8. `arangodump` arguments `translateIDs`, `failOnUnknown` withdrawn.
+
 ### New capabilities:
 
  1. Babies for document queries.
@@ -65,6 +71,19 @@ Explanations
     This is much cleaner and one can use the new baby-capabilities for
     edges. Less code, drivers can be adjusted relatively easily by switching
     to /_api/document.
+
+ 7. <collection>.BY_EXAMPLE_HASH , <collection>.BY_EXAMPLE_SKIPLIST,
+    <collection>.BY_CONDITION_SKIPLIST deleted
+
+    These were never documented.
+
+    <collection>.{byExample,byExampleHash,byExampleSkiplist,byConditionSkiplist}
+    are still there and now do AQL internally. byExampleHash and
+    byExampleSkiplist just call byExample.
+    
+    SimpleQuery.byCondition withdrawn.
+
+ 8. `arangodump` arguments `translateIDs`, `failOnUnknown` withdrawn.
 
     
 ### New capabilities:
