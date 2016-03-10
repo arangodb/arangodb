@@ -51,6 +51,7 @@ namespace triagens {
           SSL_V23     = 2,
           SSL_V3      = 3,
           TLS_V1      = 4,
+          TLS_V12     = 5,
 
           SSL_LAST
         };
