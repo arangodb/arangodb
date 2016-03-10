@@ -135,22 +135,23 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
     // We are exhausted already, sorry
     return nullptr;
   }
+  Node* tmp = _cursor;
   if (_reverse) {
     if (_cursor == _leftEndPoint) {
       _cursor = nullptr;
-      return nullptr;
+    } else {
+      _cursor = _cursor->prevNode();
     }
-    _cursor = _index->_skiplistIndex->prevNode(_cursor);
   } else {
     if (_cursor == _rightEndPoint) {
       _cursor = nullptr;
-      return nullptr;
+    } else {
+      _cursor = _cursor->nextNode();
     }
-    _cursor = _cursor->nextNode();
   }
-  TRI_ASSERT(_cursor != nullptr);
-  TRI_ASSERT(_cursor->document() != nullptr);
-  return _cursor->document()->document();
+  TRI_ASSERT(tmp != nullptr);
+  TRI_ASSERT(tmp->document() != nullptr);
+  return tmp->document()->document();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,6 +313,10 @@ bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
   if (right == nullptr) {
     return false;
   }
+  if (left == right) {
+    // Exactly one result. Improve speed on unique indexes
+    return true;
+  }
   if (CmpElmElm(left->document(), right->document(),
                 arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
     return false;
@@ -327,6 +332,7 @@ bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
                                         VPackSlice const searchValues,
                                         bool reverse) const {
@@ -353,23 +359,16 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
     // We only have equality!
     leftSearch.close();
     VPackSlice search = leftSearch.slice();
-    leftBorder = _skiplistIndex->leftKeyLookup(&search);
-    bool allAttributesCoveredByCondition =
-        searchValues.length() == _fields.size();
-
-    if (unique() && allAttributesCoveredByCondition) {
-      // At most one hit:
-      Node* temp = leftBorder->nextNode();
-      if (nullptr != temp) {
-        if (0 == CmpKeyElm(&search, temp->document())) {
-          rightBorder = temp->nextNode();
-        }
-      }
+    rightBorder = _skiplistIndex->rightKeyLookup(&search);
+    if (rightBorder == _skiplistIndex->startNode()) {
+      // No matching elements
+      rightBorder = nullptr;
+      leftBorder = nullptr;
     } else {
-      rightBorder = _skiplistIndex->rightKeyLookup(&search);
-      if (rightBorder != nullptr) {
-        rightBorder = rightBorder->nextNode();
-      }
+      leftBorder = _skiplistIndex->leftKeyLookup(&search);
+      leftBorder = leftBorder->nextNode();
+      // NOTE: rightBorder < leftBorder => no Match.
+      // Will be checked by interval valid
     }
   } else {
     // Copy rightSearch = leftSearch for right border
@@ -503,7 +502,7 @@ int SkiplistIndex::KeyElementComparator::operator()(
   TRI_ASSERT(leftKey->isArray());
   size_t numFields = leftKey->length();
   for (size_t j = 0; j < numFields; j++) {
-    VPackSlice field = leftKey[j];
+    VPackSlice field = leftKey->at(j);
     int compareResult =
         CompareKeyElement(&field, rightElement, j);
     if (compareResult != 0) {
