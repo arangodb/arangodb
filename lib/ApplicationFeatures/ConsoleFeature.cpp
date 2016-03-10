@@ -23,6 +23,7 @@
 #include "ApplicationFeatures/ConsoleFeature.h"
 
 #include "ApplicationFeatures/ClientFeature.h"
+#include "Basics/StringUtils.h"
 #include "Basics/messages.h"
 #include "Basics/shell-colors.h"
 #include "Basics/terminal-utils.h"
@@ -31,6 +32,7 @@
 #include "ProgramOptions2/Section.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
@@ -48,12 +50,20 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _pagerCommand("less -X -R -F -L"),
       _prompt("%E@%d> "),
       _promptError(false),
-      _supportsColors(isatty(STDIN_FILENO)),
+      _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
       _toAuditFile(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("LoggerFeature");
+
+  if (!_supportsColors) {
+    _colors = false;
+  }
+
+#if _WIN32
+  _codePage = GetConsoleOutputCP();
+#endif
 }
 
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -107,6 +117,12 @@ void ConsoleFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   openLog();
+
+#if _WIN32
+  if (_codePage != -1) {
+    SetConsoleOutputCP(_codePage);
+  }
+#endif
 }
 
 void ConsoleFeature::stop() {
@@ -115,25 +131,13 @@ void ConsoleFeature::stop() {
   closeLog();
 }
 
-// prints a string to stdout, without a newline (Non-Windows only) on
-// Windows, we'll print the line and a newline.  No, we cannot use
-// std::cout as this doesn't support UTF-8 on Windows.
-
-void ConsoleFeature::printContinuous(std::string const& s) {
-#ifdef _WIN32
-  // On Windows, we just print the line followed by a newline
-  printLine(s, true);
-#else
-  fprintf(stdout, "%s", s.c_str());
-  fflush(stdout);
-#endif
-}
-
 #ifdef _WIN32
 static bool _newLine() {
   COORD pos;
   CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  GetConsoleScreenBufferInfo(handle, &bufferInfo);
+
   if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
     // when we are at the last visible line of the console
     // the first line of console is deleted (the content of the console
@@ -143,51 +147,55 @@ static bool _newLine() {
     srctScrollRect.Bottom = bufferInfo.dwCursorPosition.Y + 1;
     srctScrollRect.Left = 0;
     srctScrollRect.Right = bufferInfo.dwSize.X;
+
     COORD coordDest;
     coordDest.X = 0;
     coordDest.Y = -1;
+
     CONSOLE_SCREEN_BUFFER_INFO consoleScreenBufferInfo;
     CHAR_INFO chiFill;
     chiFill.Char.AsciiChar = (char)' ';
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),
-                                   &consoleScreenBufferInfo)) {
+
+    if (GetConsoleScreenBufferInfo(handle, &consoleScreenBufferInfo)) {
       chiFill.Attributes = consoleScreenBufferInfo.wAttributes;
     } else {
       // Fill the bottom row with green blanks.
       chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
     }
-    ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect,
+    ScrollConsoleScreenBuffer(handle, &srctScrollRect,
                               nullptr, coordDest, &chiFill);
     pos.Y = bufferInfo.dwCursorPosition.Y;
     pos.X = 0;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    SetConsoleCursorPosition(handle, pos);
     return true;
   } else {
     pos.Y = bufferInfo.dwCursorPosition.Y + 1;
     pos.X = 0;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    SetConsoleCursorPosition(handle, pos);
     return false;
   }
 }
 #endif
 
 #ifdef _WIN32
-static void _printLine(std::string const& s) {
-  LPWSTR wBuf = (LPWSTR)TRI_Allocate(TRI_CORE_MEM_ZONE,
-                                     (sizeof WCHAR) * (s.size() + 1), true);
+static void _print2(std::string const& s, int attr) {
+  size_t sLen = s.size();
+  LPWSTR wBuf = new WCHAR[sLen + 1];
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf,
-                                 (int)((sizeof WCHAR) * (s.size() + 1)));
+                                 (int)((sizeof WCHAR) * (sLen + 1)));
 
   if (wLen) {
     DWORD n;
     COORD pos;
     CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(handle, &bufferInfo);
+
     // save old cursor position
     pos = bufferInfo.dwCursorPosition;
 
-    size_t newX = static_cast<size_t>(pos.X) + s.size();
-    // size_t oldY = static_cast<size_t>(pos.Y);
+    size_t newX = static_cast<size_t>(pos.X) + wLen;
+
     if (newX >= static_cast<size_t>(bufferInfo.dwSize.X)) {
       for (size_t i = 0; i <= newX / bufferInfo.dwSize.X; ++i) {
         // insert as many newlines as we need. this prevents running out of
@@ -200,62 +208,179 @@ static void _printLine(std::string const& s) {
     }
 
     // save new cursor position
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    GetConsoleScreenBufferInfo(handle, &bufferInfo);
     auto newPos = bufferInfo.dwCursorPosition;
 
     // print the actual string. note: printing does not advance the cursor
     // position
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
-    WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf,
-                                 (DWORD)s.size(), pos, &n);
+    SetConsoleCursorPosition(handle, pos);
+    SetConsoleTextAttribute(handle, attr);
+    WriteConsoleOutputCharacterW(handle, wBuf, (DWORD)wLen, pos, &n);
 
     // finally set the cursor position to where the printing should have
     // stopped
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), newPos);
+    SetConsoleCursorPosition(handle, newPos);
   } else {
     fprintf(stdout, "window error: '%d' \r\n", GetLastError());
     fprintf(stdout, "%s\r\n", s.c_str());
   }
 
   if (wBuf) {
-    TRI_Free(TRI_CORE_MEM_ZONE, wBuf);
+    delete[] wBuf;
   }
 }
+
+static void _print(std::string const& s) {
+  auto pos = s.find_first_of("\x1b");
+
+  if (pos == std::string::npos) {
+    int color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+    _print2(s, color);
+  }
+  else {
+    std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
+
+    int i = 0;
+    int color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+    int attr = 0;
+
+    for (auto line : lines) {
+      size_t pos = 0;
+
+      if (i++ != 0 && !line.empty()) {
+	char c = line[0];
+	
+        if (c == '[') {
+	  int code = 0;
+	  
+	  for (++pos; pos < line.size(); ++pos) {
+            c = line[pos];
+
+	    if ('0' <= c && c <= '9') {
+	      code = code * 10 + (c - '0');
+            }
+	    else if (c == 'm' || c == ';') {
+	      switch (code) {
+  	        case 0:
+		  attr = 0;
+		  color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+		  break;
+		  
+  	        case 1: // BOLD
+	        case 5: // BLINK
+		  attr = FOREGROUND_INTENSITY;
+		  break;
+		
+	        case 30:
+		  color = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN; 
+		  break;
+
+	        case 31:
+		  color = FOREGROUND_RED;
+		  break;
+
+                case 32:
+		  color = FOREGROUND_GREEN;
+		  break;
+
+                case 33:
+		  color = FOREGROUND_RED | FOREGROUND_GREEN;
+		  break;
+
+                case 34:
+		  color = FOREGROUND_BLUE;
+		  break;
+
+                case 35:
+		  color = FOREGROUND_BLUE | FOREGROUND_RED;
+		  break;
+
+                case 36:
+		  color = FOREGROUND_BLUE | FOREGROUND_GREEN;
+		  break;
+
+                case 37:
+		  color = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+		  break;
+
+                case 39:
+		  color = 0;
+		  break;
+              }
+
+	      code = 0;
+            }
+
+	    if (c == 'm') {
+	      ++pos;
+	      break;
+	    }
+	  }
+        }
+      }
+
+
+      _print2(line.substr(pos), attr | color);
+    }
+  }
+}
+  
 #endif
 
-void ConsoleFeature::printLine(std::string const& s, bool forceNewLine) {
+// prints a string to stdout, without a newline
+void ConsoleFeature::printContinuous(std::string const& s) {
 #ifdef _WIN32
-//#warning do we need forceNewLine
+  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
 
-  if (!cygwinShell) {
+  if (s.empty()) {
+    return;
+  }
+
+  if (/*!_cygwinShell*/ true) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
     // fprintf(stdout, "%s\r\n", s.c_str());
-    TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
-    bool hasNewLines = (s.find("\n") != std::string::npos) | forceNewLine;
 
-    if (hasNewLines) {
-      for (size_t i = 0; i < subStrings._length; i++) {
-        _printLine(subStrings._buffer[i]);
-        _newLine();
-      }
-    } else {
-      _printLine(s);
+    std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
+
+    auto last = lines.back();
+    lines.pop_back();
+
+    for (auto& line : lines) {
+      _print(line);
+      _newLine();
     }
-    TRI_DestroyVectorString(&subStrings);
+
+    _print(last);
+  } else
+#endif
+  {
+    fprintf(stdout, "%s", s.c_str());
+    fflush(stdout);
+  }
+}
+
+void ConsoleFeature::printLine(std::string const& s) {
+#ifdef _WIN32
+  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
+
+  if (/*!_cygwinShell*/ true) {
+
+    std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
+
+    for (auto& line : lines) {
+      _print(line);
+      _newLine();
+    }
   } else
 #endif
   {
     fprintf(stdout, "%s\n", s.c_str());
+    fflush(stdout);
   }
 }
 
 void ConsoleFeature::printErrorLine(std::string const& s) {
-#ifdef _WIN32
-  // no, we can use std::cerr as this doesn't support UTF-8 on Windows
   printLine(s);
-#else
-  fprintf(stderr, "%s\n", s.c_str());
-#endif
 }
 
 std::string ConsoleFeature::readPassword(std::string const& message) {

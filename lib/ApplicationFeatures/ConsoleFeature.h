@@ -50,7 +50,7 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   std::string const& prompt() const { return _prompt; }
 
  private:
-#ifdef WIN32
+#ifdef _WIN32
   int16_t _codePage;
   bool _cygwinShell;
 #endif
@@ -64,16 +64,14 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   std::string _prompt;
 
  public:
-  static void printContinuous(std::string const&);
-  static void printLine(std::string const&, bool forceNewLine = false);
-  static void printErrorLine(std::string const&);
-  static std::string readPassword(std::string const& message);
-
- public:
   void setPromptError(bool value) { _promptError = value; }
   void setSupportsColors(bool value) { _supportsColors = value; }
   void printWelcomeInfo();
   void printByeBye();
+  std::string readPassword(std::string const& message);
+  void printContinuous(std::string const&);
+  void printLine(std::string const&);
+  void printErrorLine(std::string const&);
   void print(std::string const&);
   void openLog();
   void closeLog();

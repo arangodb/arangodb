@@ -101,6 +101,7 @@ const optionsDocumentation = [
   '   - `benchargs`: additional commandline arguments to arangob',
   '',
   '   - `build`: the directory containing the binaries',
+  '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
@@ -121,6 +122,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   "build": "",
+  "buildType": "",    
   "cleanup": true,
   "cluster": false,
   "clusterNodes": 2,
@@ -4164,6 +4166,13 @@ function unitTest(cases, options) {
   }
 
   BIN_DIR = fs.join(TOP_DIR, builddir, "bin");
+  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, "tests"));
+
+  if (options.buildType !== "")  {
+    BIN_DIR = fs.join(BIN_DIR, options.buildType);
+    UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
+  }
+	
   CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
   ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
   ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
@@ -4176,7 +4185,6 @@ function unitTest(cases, options) {
   JS_DIR = fs.join(TOP_DIR, "js");
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
-  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, "tests"));
 
   const jsonReply = options.jsonReply;
   delete options.jsonReply;

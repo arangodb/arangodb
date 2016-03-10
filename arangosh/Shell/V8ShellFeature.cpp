@@ -178,8 +178,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     s << "arangosh (" << rest::Version::getVerboseVersionString() << ")\n"
       << "Copyright (c) ArangoDB GmbH";
 
-    _console->printLine(s.str(), true);
-    _console->printLine("", true);
+    _console->printLine(s.str());
+    _console->printLine("");
 
     _console->printWelcomeInfo();
 
@@ -194,7 +194,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
            << v8connection->databaseName() << "', username: '"
            << v8connection->username() << "'";
 
-        _console->printLine(is.str(), true);
+        _console->printLine(is.str());
       } else {
         std::ostringstream is;
 
@@ -216,7 +216,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         promptError = true;
       }
 
-      _console->printLine("", true);
+      _console->printLine("");
     }
   }
 
