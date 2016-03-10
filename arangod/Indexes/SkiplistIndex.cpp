@@ -392,9 +392,10 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
         leftSearch.close();
         VPackSlice search = leftSearch.slice();
         leftBorder = _skiplistIndex->rightKeyLookup(&search);
-        if (leftBorder == _skiplistIndex->startNode() ||
-            CmpKeyElm(&search, leftBorder->document()) == 0) {
-          // leftBorder is identical, to search, skip it.
+        if (leftBorder == _skiplistIndex->startNode()) {
+          leftBorder = nullptr;
+        } else {
+          // leftBorder is identical or smaller than search, skip it.
           // It is guaranteed that the next element is greater than search
           leftBorder = leftBorder->nextNode();
         }
