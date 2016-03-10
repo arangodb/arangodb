@@ -776,6 +776,19 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       }
       endpoint = "ssl://" + endpoint;
     }
+    else if (url.substr(0, 6) == "srv://") {
+      size_t found = url.find('/', 6);
+
+      relative = "/";
+      if (found != string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = url.substr(6, found - 6);
+      }
+      else {
+        endpoint = url.substr(6);
+      }
+      endpoint = "srv://" + endpoint;
+    }
     else if (! url.empty() && url[0] == '/') {
       // relative URL. prefix it with last endpoint
       relative = url;
