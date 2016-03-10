@@ -178,7 +178,6 @@ std::vector<SrvRecord> srvRecords(std::string specification) {
 
 EndpointSrv::EndpointSrv(std::string const& specification)
     : Endpoint(ENDPOINT_CLIENT, DOMAIN_SRV, ENCRYPTION_NONE, specification, 0) {
-  LOG_ERROR("%s", specification.c_str());
 }
 
 EndpointSrv::~EndpointSrv() {}
@@ -193,8 +192,6 @@ bool EndpointSrv::isConnected() const {
 
 TRI_socket_t EndpointSrv::connect(double connectTimeout,
                                   double requestTimeout) {
-  LOG_ERROR("connecting to ip endpoint '%s'", _specification.c_str());
-
   auto services = srvRecords(_specification);
 
   TRI_socket_t res;
