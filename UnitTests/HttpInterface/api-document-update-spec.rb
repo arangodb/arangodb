@@ -29,7 +29,7 @@ describe ArangoDB do
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1227)
+        doc.parsed_response['errorNum'].should eq(400)
         doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -43,7 +43,7 @@ describe ArangoDB do
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1227)
         doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -231,7 +231,6 @@ describe ArangoDB do
 
         doc3.code.should eq(202)
         doc3.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc3.parsed_response['error'].should eq(false)
         rev3 = doc3.parsed_response['_rev']
 
         # update document 
@@ -242,7 +241,6 @@ describe ArangoDB do
 
         doc4.code.should eq(201)
         doc4.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc4.parsed_response['error'].should eq(false)
         rev4 = doc4.parsed_response['_rev']
 
         ArangoDB.delete(location)
@@ -250,128 +248,6 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "create a document and update it, using if-match and last-write wins" do
-        cmd = "/_api/document?collection=#{@cid}"
-        body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.post(cmd, :body => body)
-
-        doc.code.should eq(201)
-
-        location = doc.headers['location']
-        location.should be_kind_of(String)
-
-        did = doc.parsed_response['_id']
-        rev = doc.parsed_response['_rev']
-
-        # update document, different revision
-        cmd = "/_api/document/#{did}?policy=last"
-        hdr = { "if-match" => "\"390876#{rev}\"" }
-        body = "{ \"World\" : \"Hallo\" }"
-        doc = ArangoDB.log_put("#{prefix}-if-match-other-last-write", cmd, :headers => hdr, :body => body)
-
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        did2 = doc.parsed_response['_id']
-        did2.should be_kind_of(String)
-        did2.should eq(did)
-        
-        rev2 = doc.parsed_response['_rev']
-        rev2.should be_kind_of(String)
-        rev2.should_not eq(rev)
-
-        ArangoDB.delete(location)
-
-        ArangoDB.size_collection(@cid).should eq(0)
-      end
-
-      it "create a document and update it, using rev" do
-        cmd = "/_api/document?collection=#{@cid}"
-        body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.post(cmd, :body => body)
-
-        doc.code.should eq(201)
-
-        location = doc.headers['location']
-        location.should be_kind_of(String)
-
-        did = doc.parsed_response['_id']
-        rev = doc.parsed_response['_rev']
-
-        # update document, different revision
-        cmd = "/_api/document/#{did}?rev=858976#{rev}"
-        body = "{ \"World\" : \"Hallo\" }"
-        doc = ArangoDB.log_put("#{prefix}-rev-other", cmd, :body => body)
-
-        doc.code.should eq(412)
-        doc.parsed_response['error'].should eq(true)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        did2 = doc.parsed_response['_id']
-        did2.should be_kind_of(String)
-        did2.should eq(did)
-        
-        rev2 = doc.parsed_response['_rev']
-        rev2.should be_kind_of(String)
-        rev2.should eq(rev)
-
-        # update document, same revision
-        cmd = "/_api/document/#{did}?rev=#{rev}"
-        body = "{ \"World\" : \"Hallo\" }"
-        doc = ArangoDB.log_put("#{prefix}-rev", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-
-        did2 = doc.parsed_response['_id']
-        did2.should be_kind_of(String)
-        did2.should eq(did)
-
-        rev2 = doc.parsed_response['_rev']
-        rev2.should be_kind_of(String)
-        rev2.should_not eq(rev)
-
-        ArangoDB.delete(location)
-
-        ArangoDB.size_collection(@cid).should eq(0)
-      end
-
-      it "create a document and update it, using rev and last-write wins" do
-        cmd = "/_api/document?collection=#{@cid}"
-        body = "{ \"Hallo\" : \"World\" }"
-        doc = ArangoDB.post(cmd, :body => body)
-
-        doc.code.should eq(201)
-
-        location = doc.headers['location']
-        location.should be_kind_of(String)
-
-        did = doc.parsed_response['_id']
-        rev = doc.parsed_response['_rev']
-
-        # update document, different revision
-        cmd = "/_api/document/#{did}?policy=last&rev=38964836#{rev}"
-        body = "{ \"World\" : \"Hallo\" }"
-        doc = ArangoDB.log_put("#{prefix}-rev-other-last-write", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-
-        did2 = doc.parsed_response['_id']
-        did2.should be_kind_of(String)
-        did2.should eq(did)
-        
-        rev2 = doc.parsed_response['_rev']
-        rev2.should be_kind_of(String)
-        rev2.should_not eq(rev)
-
-        ArangoDB.delete(location)
-
-        ArangoDB.size_collection(@cid).should eq(0)
-      end
-      
       it "create a document and update it, using an invalid revision" do
         cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"Hallo\" : \"World\" }"
@@ -385,16 +261,6 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         rev = doc.parsed_response['_rev']
 
-        # update document, invalid revision
-        cmd = "/_api/document/#{did}?rev=abcd"
-        body = "{ \"World\" : \"Hallo\" }"
-        doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :body => body)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
-        
         # update document, invalid revision
         cmd = "/_api/document/#{did}"
         hdr = { "if-match" => "\"abcd\"" }
@@ -421,7 +287,6 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-rev-invalid", cmd, :headers => hdr, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
       end
       
       it "create a document and update it, waitForSync URL param=false" do
@@ -443,7 +308,6 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-sync-false", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
@@ -478,7 +342,6 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-sync-true", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
@@ -513,7 +376,6 @@ describe ArangoDB do
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
@@ -553,7 +415,6 @@ describe ArangoDB do
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
@@ -593,7 +454,6 @@ describe ArangoDB do
         doc = ArangoDB.log_patch("#{prefix}-patch", cmd, :body => body)
 
         doc.code.should eq(201)
-        doc.parsed_response['error'].should eq(false)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         did2 = doc.parsed_response['_id']
