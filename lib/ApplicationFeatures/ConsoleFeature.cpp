@@ -163,46 +163,7 @@ static void _print2(std::string const& s) {
 }
 
 static void _newLine() {
-  COORD pos;
-  CONSOLE_SCREEN_BUFFER_INFO console1;
-  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-  GetConsoleScreenBufferInfo(handle, &console1);
-
-  if (console1.dwCursorPosition.Y + 1 >= console1.dwSize.Y) {
-    // when we are at the last visible line of the console
-    // the first line of console is deleted (the content of the console
-    // is scrolled one line above
-    SMALL_RECT srctScrollRect;
-    srctScrollRect.Top = 0;
-    srctScrollRect.Bottom = console1.dwCursorPosition.Y + 1;
-    srctScrollRect.Left = 0;
-    srctScrollRect.Right = console1.dwSize.X;
-
-    COORD coordDest;
-    coordDest.X = 0;
-    coordDest.Y = -1;
-
-    CONSOLE_SCREEN_BUFFER_INFO console2;
-    CHAR_INFO chiFill;
-    chiFill.Char.AsciiChar = (char)' ';
-
-    if (GetConsoleScreenBufferInfo(handle, &console2)) {
-      chiFill.Attributes = console2.wAttributes;
-    } else {
-      // Fill the bottom row with green blanks.
-      chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
-    }
-
-    ScrollConsoleScreenBuffer(handle, &srctScrollRect, nullptr, coordDest, &chiFill);
-
-    pos.Y = console1.dwCursorPosition.Y;
-    pos.X = 0;
-    SetConsoleCursorPosition(handle, pos);
-  } else {
-    pos.Y = console1.dwCursorPosition.Y + 1;
-    pos.X = 0;
-    SetConsoleCursorPosition(handle, pos);
-  }
+  fprintf(stdout, "\n");
 }
 
 static void _print(std::string const& s) {
@@ -308,7 +269,7 @@ void ConsoleFeature::printContinuous(std::string const& s) {
     return;
   }
 
-  if (/*!_cygwinShell*/ true) {
+  if (!_cygwinShell) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
     // fprintf(stdout, "%s\r\n", s.c_str());
 
@@ -335,7 +296,12 @@ void ConsoleFeature::printLine(std::string const& s) {
 #ifdef _WIN32
   // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
 
-  if (/*!_cygwinShell*/ true) {
+  if (s.empty()) {
+    _newLine();
+    return;
+  }
+
+  if (true) {
 
     std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
 
