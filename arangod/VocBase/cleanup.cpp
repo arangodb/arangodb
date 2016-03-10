@@ -23,7 +23,7 @@
 
 #include "cleanup.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/compactor.h"

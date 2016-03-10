@@ -23,7 +23,7 @@
 
 #include "V8Job.h"
 #include "Basics/json.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"

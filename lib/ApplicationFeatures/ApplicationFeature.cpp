@@ -23,7 +23,7 @@
 #include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -40,36 +40,34 @@ ApplicationFeature::~ApplicationFeature() {}
 
 // add the feature's options to the global list of options. this method will be
 // called regardless of whether to feature is enabled or disabled
-void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {
-  LOG(TRACE) << name() << "::collectOptions";
-}
+void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
+
+// load options from somewhere. this method will only be called for enabled
+// features
+void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>) {}
 
 // validate the feature's options. this method will only be called for active
 // features, after the ApplicationServer has determined which features should be
 // turned off globally. in order to abort further processing in case of invalid
 // parameter values, the feature should bail out by calling
 // `abortInvalidParameters()`
-void ApplicationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG(TRACE) << name() << "::validateOptions";
-}
+void ApplicationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
 // preparation phase for feature
 // in the preparation phase, the features must not start any threads
 // furthermore, they must not write any files under elevated privileges
 // if they want other features to access them, or if they want to access
 // these files with dropped privileges
-void ApplicationFeature::prepare() { LOG(TRACE) << name() << "::prepare"; }
+void ApplicationFeature::prepare() {}
 
 // start the feature
-void ApplicationFeature::start() { LOG(TRACE) << name() << "::start"; }
+void ApplicationFeature::start() {}
 
 // notify the feature about a shutdown request
-void ApplicationFeature::beginShutdown() {
-  LOG(TRACE) << name() << "::beginShutdown";
-}
+void ApplicationFeature::beginShutdown() {}
 
 // stop and shut down the feature
-void ApplicationFeature::stop() { LOG(TRACE) << name() << "::stop"; }
+void ApplicationFeature::stop() {}
 
 // determine all direct and indirect ancestors of a feature
 std::unordered_set<std::string> ApplicationFeature::ancestors() const {

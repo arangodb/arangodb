@@ -24,7 +24,7 @@
 #include "HeartbeatThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"

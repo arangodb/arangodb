@@ -28,7 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"

@@ -26,7 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
@@ -122,7 +122,7 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 }
 
 namespace arangodb {
-namespace v8client {
+namespace import {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports

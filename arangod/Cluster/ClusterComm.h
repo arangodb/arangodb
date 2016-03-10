@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Rest/HttpRequest.h"

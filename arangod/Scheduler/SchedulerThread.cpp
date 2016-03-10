@@ -24,7 +24,7 @@
 
 #include "SchedulerThread.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 
 #ifdef _WIN32

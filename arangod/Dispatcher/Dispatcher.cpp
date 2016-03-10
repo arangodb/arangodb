@@ -24,7 +24,7 @@
 
 #include "Dispatcher.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"

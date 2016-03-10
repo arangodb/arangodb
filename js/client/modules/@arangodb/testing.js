@@ -98,8 +98,10 @@ const optionsDocumentation = [
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
-  '   - benchargs : additional commandline arguments to arangob',
+  '   - `benchargs`: additional commandline arguments to arangob',
   '',
+  '   - `build`: the directory containing the binaries',
+  '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
@@ -119,6 +121,8 @@ const optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  "build": "",
+  "buildType": "",    
   "cleanup": true,
   "cluster": false,
   "clusterNodes": 2,
@@ -190,26 +194,20 @@ const TOP_DIR = (function findTopDir() {
   return topDir;
 }());
 
-const BIN_DIR = (fs.exists("build") && fs.exists(fs.join("build", "bin"))) ?
-  fs.join(TOP_DIR, "build", "bin") :
-  fs.join(TOP_DIR, "bin");
-
-const CONFIG_DIR = (fs.exists("build") && fs.exists(fs.join("build", "etc"))) ?
-  fs.join(TOP_DIR, "build", "etc", "arangodb") :
-  fs.join(TOP_DIR, "etc", "arangodb");
-
-const ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
-const ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
-const ARANGOD_BIN = fs.join(BIN_DIR, "arangod");
-const ARANGOIMP_BIN = fs.join(BIN_DIR, "arangoimp");
-const ARANGORESTORE_BIN = fs.join(BIN_DIR, "arangorestore");
-const ARANGOSH_BIN = fs.join(BIN_DIR, "arangosh");
-const CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
-const ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
-const JS_DIR = fs.join(TOP_DIR, "js");
-const LOGS_DIR = fs.join(TOP_DIR, "logs");
-const PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
-const UNITTESTS_DIR = fs.join(TOP_DIR, fs.join("build", "tests"));
+let BIN_DIR;
+let CONFIG_DIR;
+let ARANGOB_BIN;
+let ARANGODUMP_BIN;
+let ARANGOD_BIN;
+let ARANGOIMP_BIN;
+let ARANGORESTORE_BIN;
+let ARANGOSH_BIN;
+let CONFIG_RELATIVE_DIR;
+let ETCD_ARANGO_BIN;
+let JS_DIR;
+let LOGS_DIR;
+let PEM_FILE;
+let UNITTESTS_DIR;
 
 function makeResults(testname) {
   const startTime = time();
@@ -291,7 +289,7 @@ function makeArgsArangosh(options) {
     "javascript.startup-directory": JS_DIR,
     "server.username": options.username,
     "server.password": options.password,
-    "flatCommands": ["--no-colors", "--quiet"]
+    "flatCommands": ["--console.colors", "false", "--quiet"]
   };
 }
 
@@ -976,7 +974,11 @@ function runStressTest(options, command, testname) {
 /// @brief executes a command and wait for result
 ////////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait(cmd, args) {
+function executeAndWait(cmd, args, options) {
+  if (options.extremeVerbosity) {
+    print("executeAndWait: cmd =", cmd, "args =", args);
+  }
+
   const startTime = time();
   const res = executeExternalAndWait(cmd, args);
   const deltaTime = time() - startTime;
@@ -1052,7 +1054,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
     args = _.extend(args, addArgs);
   }
 
-  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args));
+  let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
 
   let result;
 
@@ -1083,7 +1085,7 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
   }
 
   const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv);
+  return executeAndWait(ARANGOSH_BIN, argv, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1112,7 +1114,7 @@ function runArangoImp(options, instanceInfo, what) {
     args["separator"] = what.separator;
   }
 
-  return executeAndWait(ARANGOIMP_BIN, toArgv(args));
+  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1139,7 +1141,7 @@ function runArangoDumpRestore(options, instanceInfo, which, database) {
     exe = ARANGORESTORE_BIN;
   }
 
-  return executeAndWait(exe, toArgv(args));
+  return executeAndWait(exe, toArgv(args), options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1153,7 +1155,7 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     "server.password": options.password,
     "server.endpoint": instanceInfo.endpoint,
     // "server.request-timeout": 1200 // default now. 
-    "server.connect-timeout": 10 // 5s default
+    "server.connection-timeout": 10 // 5s default
   };
 
   args = _.extend(args, cmds);
@@ -1162,7 +1164,7 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     args.quiet = true;
   }
 
-  return executeAndWait(ARANGOB_BIN, toArgv(args));
+  return executeAndWait(ARANGOB_BIN, toArgv(args), options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1561,13 +1563,13 @@ function startInstanceAgency(instanceInfo, protocol, options,
   instanceInfo.ports = ports;
 
   const endpoints = ports.map(function(port) {
-                                return protocol + "://127.0.0.1:" + port;
-                              });
+    return protocol + "://127.0.0.1:" + port;
+  });
   instanceInfo.endpoints = endpoints;
 
   let td = ports.map(function(port) {
-                       return fs.join(tmpDataDir, "data" + port);
-                     });
+    return fs.join(tmpDataDir, "data" + port);
+  });
   for (let i = 0; i < N; i++) {
     fs.makeDirectoryRecursive(td[i]);
   }
@@ -1590,8 +1592,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     if (addArgs !== undefined) {
       args = _.extend(args, addArgs);
     }
-    
-    if (i === N-1) {
+
+    if (i === N - 1) {
       let l = [];
       for (let j = 0; j < N; j++) {
         l.push("--agency.endpoint");
@@ -1856,7 +1858,7 @@ function rubyTests(options, ssl) {
 
         print("\n" + Date() + " rspec trying", te, "...");
 
-        const res = executeAndWait(command, args);
+        const res = executeAndWait(command, args, options);
 
         result[te] = {
           total: 0,
@@ -2198,90 +2200,90 @@ testFuncs.arangosh = function(options) {
 const benchTodos = [{
   "requests": "10000",
   "concurrency": "2",
-  "test": "version",
+  "test-case": "version",
   "keep-alive": "false"
 }, {
   "requests": "10000",
   "concurrency": "2",
-  "test": "version",
+  "test-case": "version",
   "async": "true"
 }, {
   "requests": "20000",
   "concurrency": "1",
-  "test": "version",
+  "test-case": "version",
   "async": "true"
 }, {
   "requests": "100000",
   "concurrency": "2",
-  "test": "shapes",
+  "test-case": "shapes",
   "batch-size": "16",
   "complexity": "2"
 }, {
   "requests": "100000",
   "concurrency": "2",
-  "test": "shapes-append",
+  "test-case": "shapes-append",
   "batch-size": "16",
   "complexity": "4"
 }, {
   "requests": "100000",
   "concurrency": "2",
-  "test": "random-shapes",
+  "test-case": "random-shapes",
   "batch-size": "16",
   "complexity": "2"
 }, {
   "requests": "1000",
   "concurrency": "2",
-  "test": "version",
+  "test-case": "version",
   "batch-size": "16"
 }, {
   "requests": "100",
   "concurrency": "1",
-  "test": "version",
+  "test-case": "version",
   "batch-size": "0"
 }, {
   "requests": "100",
   "concurrency": "2",
-  "test": "document",
+  "test-case": "document",
   "batch-size": "10",
   "complexity": "1"
 }, {
   "requests": "2000",
   "concurrency": "2",
-  "test": "crud",
+  "test-case": "crud",
   "complexity": "1"
 }, {
   "requests": "4000",
   "concurrency": "2",
-  "test": "crud-append",
+  "test-case": "crud-append",
   "complexity": "4"
 }, {
   "requests": "4000",
   "concurrency": "2",
-  "test": "edge",
+  "test-case": "edge",
   "complexity": "4"
 }, {
   "requests": "5000",
   "concurrency": "2",
-  "test": "hash",
+  "test-case": "hash",
   "complexity": "1"
 }, {
   "requests": "5000",
   "concurrency": "2",
-  "test": "skiplist",
+  "test-case": "skiplist",
   "complexity": "1"
 }, {
   "requests": "500",
   "concurrency": "3",
-  "test": "aqltrx",
+  "test-case": "aqltrx",
   "complexity": "1"
 }, {
   "requests": "100",
   "concurrency": "3",
-  "test": "counttrx"
+  "test-case": "counttrx"
 }, {
   "requests": "500",
   "concurrency": "3",
-  "test": "multitrx"
+  "test-case": "multitrx"
 }];
 
 testFuncs.arangob = function(options) {
@@ -2601,9 +2603,9 @@ testFuncs.boost = function(options) {
       const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
       const newargs = valgrindArgs.concat(args);
 
-      results.basics = executeAndWait(options.valgrind, newargs);
+      results.basics = executeAndWait(options.valgrind, newargs, options);
     } else {
-      results.basics = executeAndWait(run, args);
+      results.basics = executeAndWait(run, args, options);
     }
   }
 
@@ -2614,9 +2616,9 @@ testFuncs.boost = function(options) {
       const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
       const newargs = valgrindArgs.concat(args);
 
-      results.geo_suite = executeAndWait(options.valgrind, newargs);
+      results.geo_suite = executeAndWait(options.valgrind, newargs, options);
     } else {
-      results.geo_suite = executeAndWait(run, args);
+      results.geo_suite = executeAndWait(run, args, options);
     }
   }
 
@@ -2674,9 +2676,9 @@ testFuncs.config = function(options) {
       const valgrindArgs = valgrindArgsSingleServer(options, test, run);
       const newargs = valgrindArgs.concat(toArgv(args));
 
-      results.absolut[test] = executeAndWait(options.valgrind, newargs);
+      results.absolut[test] = executeAndWait(options.valgrind, newargs, options);
     } else {
-      results.absolut[test] = executeAndWait(run, toArgv(args));
+      results.absolut[test] = executeAndWait(run, toArgv(args), options);
     }
 
     if (!results.absolut[test].status) {
@@ -2708,13 +2710,13 @@ testFuncs.config = function(options) {
       const valgrindArgs = valgrindArgsSingleServer(options, test, run);
       const newargs = valgrindArgs.concat(toArgv(args));
 
-      results.relative[test] = executeAndWait(options.valgrind, newargs);
+      results.relative[test] = executeAndWait(options.valgrind, newargs, options);
     } else {
-      results.relative[test] = executeAndWait(run, toArgv(args));
+      results.relative[test] = executeAndWait(run, toArgv(args), options);
     }
 
     results.relative[test] = executeAndWait(fs.join(BIN_DIR, test),
-      toArgv(args));
+      toArgv(args), options);
 
     if (!results.relative[test].status) {
       results.relative.status = false;
@@ -2744,9 +2746,9 @@ testFuncs.dfdb = function(options) {
     const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(args);
 
-    results.dfdb = executeAndWait(options.valgrind, newargs);
+    results.dfdb = executeAndWait(options.valgrind, newargs, options);
   } else {
-    results.dfdb = executeAndWait(ARANGOD_BIN, args);
+    results.dfdb = executeAndWait(ARANGOD_BIN, args, options);
   }
 
   return results;
@@ -2853,13 +2855,17 @@ testFuncs.dump_authentication = function(options) {
 
   print("dump_authentication tests...");
 
-  const auth = {
+  const auth1 = {
     "server.disable-authentication": "false"
   };
 
-  print(JSON.stringify(auth));
+  const auth2 = {
+    "server.authentication": "true"
+  };
 
-  let instanceInfo = startInstance("tcp", options, auth, "dump_authentication");
+  print(JSON.stringify(auth1));
+
+  let instanceInfo = startInstance("tcp", options, auth1, "dump_authentication");
 
   if (instanceInfo === false) {
     return {
@@ -2875,7 +2881,7 @@ testFuncs.dump_authentication = function(options) {
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
     makePathUnix("js/server/tests/dump/dump-authentication-setup.js"),
-    auth);
+    auth2);
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
@@ -2912,7 +2918,7 @@ testFuncs.dump_authentication = function(options) {
           print(Date() + ": Dump and Restore - teardown");
 
           results.tearDown = runInArangosh(options, instanceInfo,
-            makePathUnix("js/server/tests/dump/dump-teardown.js"), auth);
+            makePathUnix("js/server/tests/dump/dump-teardown.js"), auth2);
         }
       }
     }
@@ -3198,7 +3204,7 @@ function runArangodRecovery(instanceInfo, options, script, setup) {
     fs.join(".", "js", "server", "tests", "recovery", script + ".js")
   ]);
 
-  instanceInfo.pid = executeAndWait(ARANGOD_BIN, argv);
+  instanceInfo.pid = executeAndWait(ARANGOD_BIN, argv, options);
 }
 
 const recoveryTests = [
@@ -3793,9 +3799,9 @@ testFuncs.upgrade = function(options) {
     const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(argv);
 
-    result.upgrade.first = executeAndWait(options.valgrind, newargs);
+    result.upgrade.first = executeAndWait(options.valgrind, newargs, options);
   } else {
-    result.upgrade.first = executeAndWait(ARANGOD_BIN, argv);
+    result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options);
   }
 
   if (result.upgrade.first !== 0 && !options.force) {
@@ -3809,9 +3815,9 @@ testFuncs.upgrade = function(options) {
     const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
     const newargs = valgrindArgs.concat(argv);
 
-    result.upgrade.second = executeAndWait(options.valgrind, newargs);
+    result.upgrade.second = executeAndWait(options.valgrind, newargs, options);
   } else {
-    result.upgrade.second = executeAndWait(ARANGOD_BIN, argv);
+    result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options);
   }
 
   cleanupDirectories.push(tmpDataDir);
@@ -4142,6 +4148,43 @@ function unitTest(cases, options) {
       status: false
     };
   }
+
+  let builddir = options.build;
+
+  if (builddir === "") {
+    if (fs.exists("build") && fs.exists(fs.join("build", "bin"))) {
+      builddir = "build";
+    } else if (fs.exists("bin")) {
+      builddir = ".";
+    } else {
+      print('FATAL: cannot find binaries, use "--build"\n');
+
+      return {
+        status: false
+      };
+    }
+  }
+
+  BIN_DIR = fs.join(TOP_DIR, builddir, "bin");
+  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, "tests"));
+
+  if (options.buildType !== "")  {
+    BIN_DIR = fs.join(BIN_DIR, options.buildType);
+    UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
+  }
+	
+  CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
+  ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
+  ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
+  ARANGOD_BIN = fs.join(BIN_DIR, "arangod");
+  ARANGOIMP_BIN = fs.join(BIN_DIR, "arangoimp");
+  ARANGORESTORE_BIN = fs.join(BIN_DIR, "arangorestore");
+  ARANGOSH_BIN = fs.join(BIN_DIR, "arangosh");
+  CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
+  ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
+  JS_DIR = fs.join(TOP_DIR, "js");
+  LOGS_DIR = fs.join(TOP_DIR, "logs");
+  PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
 
   const jsonReply = options.jsonReply;
   delete options.jsonReply;

@@ -26,7 +26,7 @@
 #include <math.h>
 #include <time.h>
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"

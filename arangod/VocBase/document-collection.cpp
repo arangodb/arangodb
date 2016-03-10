@@ -28,7 +28,7 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
 #include "Cluster/ServerState.h"

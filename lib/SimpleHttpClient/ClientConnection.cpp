@@ -64,6 +64,12 @@ ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
+ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint,
+                                   double requestTimeout, double connectTimeout,
+                                   size_t connectRetries)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////

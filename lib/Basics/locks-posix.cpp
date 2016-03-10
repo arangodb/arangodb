@@ -25,7 +25,7 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 #define BUSY_LOCK_DELAY (10 * 1000)
 

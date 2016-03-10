@@ -211,6 +211,9 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#else
+inline void ADB_WindowsEntryFunction() {}
+inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

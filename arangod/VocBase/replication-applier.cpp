@@ -23,7 +23,6 @@
 
 #include "replication-applier.h"
 
-#include "Basics/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -33,6 +32,7 @@
 #include "Basics/files.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 #include "Replication/ContinuousSyncer.h"
 #include "Rest/Version.h"
 #include "VocBase/collection.h"

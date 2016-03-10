@@ -23,7 +23,7 @@
 
 #include "Cluster/ClusterComm.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"

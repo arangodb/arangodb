@@ -23,7 +23,7 @@ endif ()
 add_executable(${BIN_ARANGOB}
   ${ProductVersionFiles_arangob}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-  ArangoShell/ArangoClient.cpp
+  Benchmark/ArangobFeature.cpp
   Benchmark/arangob.cpp
 )
 
@@ -40,7 +40,11 @@ install(
 
 install_config(arangob)
 
-add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangob zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangob zlibstatic)
+endif ()
 
 ################################################################################
 ## arangodump
@@ -61,8 +65,9 @@ endif ()
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-  ArangoShell/ArangoClient.cpp
-  V8Client/arangodump.cpp
+  Dump/ArangodumpFeature.cpp
+  Dump/arangodump.cpp
+  V8Client/ArangoClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGODUMP}
@@ -78,7 +83,11 @@ install(
 
 install_config(arangodump)
 
-add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangodump zlibstatic)
+endif ()
 
 ################################################################################
 ## arangoimp
@@ -99,10 +108,12 @@ endif ()
 add_executable(${BIN_ARANGOIMP}
   ${ProductVersionFiles_arangoimp}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-  ArangoShell/ArangoClient.cpp
-  V8Client/ImportHelper.cpp
-  V8Client/arangoimp.cpp
+  Import/ArangoimpFeature.cpp
+  Import/ImportHelper.cpp
+  Import/arangoimp.cpp
+  V8Client/ArangoClientHelper.cpp
 )
+
 target_link_libraries(${BIN_ARANGOIMP}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
@@ -116,7 +127,11 @@ install(
 
 install_config(arangoimp)
 
-add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangoimp zlibstatic) # v8_build includes ICU build
+endif ()
 
 ################################################################################
 ## arangorestore
@@ -137,8 +152,9 @@ endif ()
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-  ArangoShell/ArangoClient.cpp
-  V8Client/arangorestore.cpp
+  Restore/ArangorestoreFeature.cpp
+  Restore/arangorestore.cpp
+  V8Client/ArangoClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGORESTORE}
@@ -154,7 +170,11 @@ install(
 
 install_config(arangorestore)
 
-add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
+else ()
+  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+endif ()
 
 ################################################################################
 ## arangosh
@@ -175,10 +195,12 @@ endif ()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
-  ArangoShell/ArangoClient.cpp
-  V8Client/ImportHelper.cpp
-  V8Client/V8ClientConnection.cpp
-  V8Client/arangosh.cpp
+  Import/ImportHelper.cpp
+  Shell/ArangoshFeature.cpp
+  Shell/V8ClientConnection.cpp
+  Shell/V8ShellFeature.cpp
+  Shell/arangosh.cpp
+  V8Client/ArangoClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGOSH}
@@ -196,7 +218,11 @@ install(
 
 install_config(arangosh)
 
-add_dependencies(arangosh zlibstatic v8_build)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangosh zlibstatic v8_build)
+else ()
+  add_dependencies(arangosh zlibstatic)
+endif ()
 
 ################################################################################
 ## foxx-manager

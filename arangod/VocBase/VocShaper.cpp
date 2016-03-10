@@ -32,7 +32,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "VocBase/document-collection.h"

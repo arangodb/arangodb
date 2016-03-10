@@ -23,7 +23,7 @@
 
 #include "V8LineEditor.h"
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Utilities/Completer.h"
 #include "Utilities/ShellBase.h"

@@ -25,7 +25,7 @@
 #include "MutexLocker.h"
 
 #ifdef TRI_SHOW_LOCK_TIME
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #endif
 
 using namespace arangodb;

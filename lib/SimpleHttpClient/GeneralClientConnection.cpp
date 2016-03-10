@@ -38,6 +38,19 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
                                                  double connectTimeout,
                                                  size_t connectRetries)
     : _endpoint(endpoint),
+      _freeEndpointOnDestruction(false),
+      _requestTimeout(requestTimeout),
+      _connectTimeout(connectTimeout),
+      _connectRetries(connectRetries),
+      _numConnectRetries(0),
+      _isConnected(false),
+      _isInterrupted(false) {}
+
+GeneralClientConnection::GeneralClientConnection(
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t connectRetries)
+    : _endpoint(endpoint.release()),
+      _freeEndpointOnDestruction(true),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
@@ -49,7 +62,11 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::~GeneralClientConnection() {}
+GeneralClientConnection::~GeneralClientConnection() {
+  if (_freeEndpointOnDestruction) {
+    delete _endpoint;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new connection from an endpoint
@@ -57,6 +74,20 @@ GeneralClientConnection::~GeneralClientConnection() {}
 
 GeneralClientConnection* GeneralClientConnection::factory(
     Endpoint* endpoint, double requestTimeout, double connectTimeout,
+    size_t numRetries, uint32_t sslProtocol) {
+  if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
+                                numRetries);
+  } else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
+    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
+                                   numRetries, sslProtocol);
+  }
+
+  return nullptr;
+}
+
+GeneralClientConnection* GeneralClientConnection::factory(
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout, double connectTimeout,
     size_t numRetries, uint32_t sslProtocol) {
   if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout,

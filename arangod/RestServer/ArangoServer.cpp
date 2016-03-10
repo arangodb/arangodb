@@ -43,7 +43,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -1005,31 +1005,10 @@ void ArangoServer::buildApplicationServer() {
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
-  // MRuby engine (this has been removed from arangod in version 2.2)
-  // .............................................................................
-
-  std::string ignoreOpt;
-  std::map<std::string, ProgramOptionsDescription> additional;
-
-  additional["Hidden Options"](
-      "ruby.gc-interval", &ignoreOpt,
-      "Ruby garbage collection interval (each x requests)")(
-      "ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")(
-      "ruby.modules-path", &ignoreOpt,
-      "one or more directories separated by (semi-) colons")(
-      "ruby.startup-directory", &ignoreOpt,
-      "path to the directory containing alternate Ruby startup scripts")(
-      "server.disable-replication-logger", &ignoreOpt,
-      "start with replication logger turned off")(
-      "database.force-sync-shapes", &ignoreOpt,
-      "force syncing of shape data to disk, will use waitForSync value of "
-      "collection when turned off (deprecated)")(
-      "database.remove-on-drop", &ignoreOpt,
-      "wipe a collection from disk after dropping");
-
-  // .............................................................................
   // define server options
   // .............................................................................
+
+  std::map<std::string, ProgramOptionsDescription> additional;
 
   // command-line only options
   additional["General Options:help-default"](

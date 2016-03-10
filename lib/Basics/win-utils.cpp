@@ -32,7 +32,7 @@
 #include <malloc.h>
 #include <crtdbg.h>
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -94,7 +94,8 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG(FATAL) << "internal error in TRI_usleep()"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "internal error in TRI_usleep()";
+    FATAL_ERROR_EXIT();
   }
 
   // Set timer to wait for indicated micro seconds.
@@ -109,7 +110,8 @@ void TRI_usleep(unsigned long waitTime) {
 
   if (result != WAIT_OBJECT_0) {
     CloseHandle(hTimer);
-    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "couldn't wait for timer in TRI_usleep()";
+    FATAL_ERROR_EXIT();
   }
 
   CloseHandle(hTimer);
@@ -219,12 +221,14 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup returned an error.";
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup returned "
+                    "an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup did not return version 2.2.";
+        LOG(ERR) << "Could not find a usable Winsock DLL. WSAStartup did not "
+                    "return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -531,10 +535,11 @@ void TRI_CloseWindowsEventlog(void) {
 // No clue why there is no header for these...
 #define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
 #define UI_CATEGORY ((WORD)0x00000003L)
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const& message) {
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            std::string const& message) {
   char buf[1024];
   char linebuf[32];
-  LPCSTR logBuffers[] = { buf, file, func, linebuf, NULL };
+  LPCSTR logBuffers[] = {buf, file, func, linebuf, NULL};
 
   TRI_ASSERT(hEventLog != INVALID_HANDLE_VALUE);
 
@@ -545,8 +550,8 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::s
 
   // Try to get messages through to windows syslog...
   if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-    MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
-    NULL)) {
+                   MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
+                   NULL)) {
     // well, fail then...
   }
 }
@@ -579,4 +584,47 @@ void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
   va_start(ap, fmt);
   TRI_LogWindowsEventlog(func, file, line, fmt, ap);
   va_end(ap);
+}
+
+void ADB_WindowsEntryFunction() {
+  int maxOpenFiles = 1024;
+  int res = 0;
+
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
+                          (char const*)(&maxOpenFiles));
+
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+
+  if (res != 0) {
+    _exit(1);
+  }
+
+  TRI_Application_Exit_SetExit(ADB_WindowsExitFunction);
+}
+
+void ADB_WindowsExitFunction(int exitCode, void* data) {
+  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+
+  if (res != 0) {
+    exit(1);
+  }
+
+  exit(exitCode);
 }

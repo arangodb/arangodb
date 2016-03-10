@@ -28,7 +28,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Cluster/AgencyComm.h"
 
 struct TRI_server_t;

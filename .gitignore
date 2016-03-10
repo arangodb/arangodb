@@ -16,6 +16,7 @@
 *.diff
 *.patch
 *.lnk
+Thumbs.db
 
 testresult.json
 

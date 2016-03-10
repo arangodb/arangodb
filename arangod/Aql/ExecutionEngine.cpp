@@ -41,7 +41,7 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Cluster/ClusterComm.h"
 #include "VocBase/server.h"
 

@@ -80,6 +80,7 @@ function RequestSuite () {
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
+      expect(obj.headers).not.to.have.property('content-type');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
