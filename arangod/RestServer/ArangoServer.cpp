@@ -70,7 +70,6 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
@@ -728,10 +727,6 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
       RestHandlerCreator<RestDocumentHandler>::createNoData);
-
-  // add "/edge" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
-                            RestHandlerCreator<RestEdgeHandler>::createNoData);
 
   // add "/edges" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
