@@ -54,14 +54,16 @@ class HashIndexIterator final : public IndexIterator {
 ////////////////////////////////////////////////////////////////////////////////
 
   HashIndexIterator(arangodb::Transaction* trx, HashIndex const* index,
-                    arangodb::velocypack::Slice searchValues)
+                    std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
       : _trx(trx),
         _index(index),
-        _searchKeys(searchValues),
+        _searchValues(searchValues.get()),
         _position(0),
         _buffer(),
         _posInBuffer(0) {
-          _numLookups = static_cast<size_t>(searchValues.length());
+          searchValues.release(); // now we have ownership for searchValues
+          _searchKeys = _searchValues->slice();
+          _numLookups = static_cast<size_t>(_searchKeys.length());
         }
 
   ~HashIndexIterator() {
@@ -74,6 +76,7 @@ class HashIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   HashIndex const* _index;
+  std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
   arangodb::velocypack::Slice _searchKeys;
   size_t _position;
   size_t _numLookups;
