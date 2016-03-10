@@ -1667,6 +1667,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   };
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
+    if (!newVal->IsObject() || newVal->IsArray()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
     int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
