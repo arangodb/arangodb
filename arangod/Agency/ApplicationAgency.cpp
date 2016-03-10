@@ -25,7 +25,7 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 
 #include "ApplicationAgency.h"

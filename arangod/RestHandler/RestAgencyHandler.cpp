@@ -32,7 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Logger.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 

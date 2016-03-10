@@ -24,7 +24,7 @@
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
-#include <Basics/Logger.h>
+#include <Logger/Logger.h>
 #include <Basics/VelocyPackHelper.h>
 
 #include <velocypack/Buffer.h>

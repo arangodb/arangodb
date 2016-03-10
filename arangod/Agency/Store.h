@@ -88,8 +88,6 @@ public:
 
   Node& write (std::string const& path);
 
-  friend std::ostream& operator<<(std::ostream& os, const Node& n);
-
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
     Node const* par = n._parent;
     while (par != 0) {
