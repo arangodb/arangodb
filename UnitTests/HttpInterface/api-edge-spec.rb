@@ -17,29 +17,14 @@ describe ArangoDB do
       it "returns an error if collection does not exist" do
         cn = "UnitTestsCollectionEdge"
         ArangoDB.drop_collection(cn)
-        cmd = "/_api/edge?collection=#{cn}&from=test&to=test"
-        body = "{}"
+        cmd = "/_api/document?collection=#{cn}"
+        body = "{\"_from\":\"test\",\"_to\":\"test\"}"
         doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorNum'].should eq(1203)
         doc.parsed_response['code'].should eq(404)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      end
-      
-      it "returns an error if document handler is used to create an edge" do
-        cn = "UnitTestsCollectionEdge"
-        ArangoDB.drop_collection(cn)
-        ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
-        cmd = "/_api/document?collection=#{cn}&from=test&to=test"
-        body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-wrong-type", cmd, :body => body)
-
-        doc.code.should eq(400)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1218)
-        doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end
@@ -93,8 +78,8 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{id1}\" , \"_to\" : \"#{id2}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -106,7 +91,7 @@ describe ArangoDB do
         id3 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id3}"
+        cmd = "/_api/document/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -116,8 +101,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         
         # create another edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-        body = "{ \"e\" : 1 }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"e\" : 1, \"_from\" : \"#{id1}\", \"_to\" : \"#{id2}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -127,7 +112,7 @@ describe ArangoDB do
         id4 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id4}"
+        cmd = "/_api/document/#{id4}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -144,8 +129,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create third edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id2}&to=#{id1}"
-        body = "{ \"e\" : 2 }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"e\" : 2, \"_from\" : \"#{id2}\", \"_to\" : \"#{id1}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -157,7 +142,7 @@ describe ArangoDB do
         id5 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id5}"
+        cmd = "/_api/document/#{id5}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -192,8 +177,8 @@ describe ArangoDB do
         translated = URI.escape(id.gsub /^\d+\//, 'UnitTestsCollectionVertex/')
   
         # create edge, using collection id
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id}&to=#{id}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{id}\", \"_to\" : \"#{id}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -203,8 +188,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create edge, using collection names
-        cmd = "/_api/edge?collection=#{@ce}&from=#{translated}&to=#{translated}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{translated}\", \"_to\" : \"#{translated}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -214,8 +199,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
               
         # create edge, using mix of collection names and ids
-        cmd = "/_api/edge?collection=#{@ce}&from=#{translated}&to=#{id}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{translated}\", \"_to\" : \"#{id}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -225,8 +210,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
   
         # turn parameters around
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id}&to=#{translated}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{id}\", \"_to\" : \"#{translated}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -236,32 +221,6 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
             
-      it "using invalid collection names" do
-        cmd = "/_api/document?collection=#{@cv}"
-
-        # create a vertex
-        body = "{ \"a\" : 1 }"
-        doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-name", cmd, :body => body)
-
-        doc.code.should eq(201)
-        doc.parsed_response['_id'].should be_kind_of(String)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-        from = URI.escape("thefox/12345")
-        to   = URI.escape("thefox/13443466")
-        
-        # create edge, using invalid collection names
-        cmd = "/_api/edge?collection=#{@ce}&from=#{from}&to=#{to}"
-        body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-name", cmd, :body => body)
-
-        doc.code.should eq(404)
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1203)
-        doc.parsed_response['code'].should eq(404)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      end
-
       it "using collection ids in collection, from and to" do
         cmd = "/_api/document?collection=#{@vid}"
 
@@ -280,8 +239,8 @@ describe ArangoDB do
         translated = URI.escape(id.gsub /UnitTestsCollectionVertex/, @vid)
   
         # create edge, using collection id
-        cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{id}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@eid}"
+        body = "{ \"_from\" : \"#{id}\", \"_to\" : \"#{id}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -325,8 +284,8 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-        body = "{ \"what\" : \"fred->john\", \"_key\" : \"edge1\" }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{id1}\", \"_to\" : \"#{id2}\", \"what\" : \"fred->john\", \"_key\" : \"edge1\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-key", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -339,7 +298,7 @@ describe ArangoDB do
         id3 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id3}"
+        cmd = "/_api/document/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-create-edge-key", cmd)
 
         doc.code.should eq(200)
@@ -379,19 +338,19 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge, 1st try
-        cmd = "/_api/edge?collection=#{@ce}&from=#{@cv}/rak/ov&to=#{@cv}/pj/otr"
-        body = "{ }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{@cv}/rak/ov\", \"_to\" : \"#{@cv}/pj/otr\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1205)
+        doc.parsed_response['errorNum'].should eq(1233)
         doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         
         # create edge, 2nd try
-        cmd = "/_api/edge?collection=#{@ce}&from=#{@cv}/rakov&to=#{@cv}/pjotr"
-        body = "{ \"_key\" : \"the fox\" }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"_from\" : \"#{@cv}/rakov\", \"_to\" : \"#{@cv}/pjotr\", \"_key\" : \"the fox\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
 
         doc.code.should eq(400)
@@ -443,8 +402,8 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}&waitForSync=false"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}&waitForSync=false"
+        body = "{ \"_from\" : \"#{id1}\", \"_to\" : \"#{id2}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(202)
@@ -454,7 +413,7 @@ describe ArangoDB do
         id3 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id3}"
+        cmd = "/_api/document/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -487,8 +446,8 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}&waitForSync=true"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}&waitForSync=true"
+        body = "{ \"_from\" : \"#{id1}\", \"_to\" : \"#{id2}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -498,7 +457,7 @@ describe ArangoDB do
         id3 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id3}"
+        cmd = "/_api/document/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)

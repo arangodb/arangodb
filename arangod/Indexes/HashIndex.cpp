@@ -812,6 +812,7 @@ IndexIterator* HashIndex::iteratorForCondition(
 
   bool needNormalize = false;
   VPackBuilder searchValues;
+  searchValues.openArray();
   {
     // Create the search Values for the lookup
     VPackArrayBuilder guard(&searchValues);
@@ -829,6 +830,7 @@ IndexIterator* HashIndex::iteratorForCondition(
       pair.second->toVelocyPackValue(searchValues);
     }
   }
+  searchValues.close();
 
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
@@ -862,7 +864,9 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
     // Invalid searchValue
     return nullptr;
   }
-  return new HashIndexIterator(trx, this, searchValues);
+  auto builder = std::make_unique<VPackBuilder>();
+  builder->add(searchValues);
+  return new HashIndexIterator(trx, this, builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

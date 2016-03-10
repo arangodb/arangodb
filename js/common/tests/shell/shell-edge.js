@@ -313,13 +313,12 @@ function CollectionEdgeSuite () {
       [ "UnitTestsCollectionNonExistingVertex/12345", 
         "UnitTestsCollectionNonExistingVertex/456745" 
       ].forEach(function(key) {
-        try {
-          edge.save(key, key, { });
-          fail();
-        }
-        catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
-        }
+        var doc = edge.save(key, key, { });
+        assertTypeOf("string", doc._id);
+        assertTypeOf("string", doc._rev);
+        doc = edge.document(doc);
+        assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._from);
+        assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._to);
       });
     },
 

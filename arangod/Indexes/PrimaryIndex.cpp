@@ -537,12 +537,16 @@ IndexIterator* PrimaryIndex::createIterator(
       }
 
       // use _key value from _id
+      keys->openArray();
       keys->openObject();
       keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(key));
       keys->close();
+      keys->close();
     } else {
+      keys->openArray();
       keys->openObject();
       keys->add(TRI_SLICE_KEY_EQUAL, VPackValue(valNode->getStringValue()));
+      keys->close();
       keys->close();
     }
   }

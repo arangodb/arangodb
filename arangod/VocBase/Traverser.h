@@ -140,30 +140,39 @@ class TraversalPath {
   virtual ~TraversalPath() {}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds the complete path as Json
+  /// @brief Builds the complete path as VelocyPack
   ///        Has the format:
   ///        {
-  ///           vertices: [<vertex-as-json>],
-  ///           edges: [<edge-as-json>]
+  ///           vertices: [<vertex-as-velocypack>],
+  ///           edges: [<edge-as-velocypack>]
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
+  virtual void pathToVelocyPack(Transaction*,
+                                arangodb::velocypack::Builder&) = 0;
+
   virtual arangodb::basics::Json* pathToJson(Transaction*,
-                                             CollectionNameResolver*) = 0;
+                                             CollectionNameResolver*) { return nullptr;}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last edge on the path as Json
+  /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
+
+  virtual void lastEdgeToVelocyPack(Transaction*,
+                                    arangodb::velocypack::Builder&) = 0;
 
   virtual arangodb::basics::Json* lastEdgeToJson(Transaction*,
-                                                 CollectionNameResolver*) = 0;
+                                                 CollectionNameResolver*) { return nullptr;}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last vertex as Json
+  /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
+
+  virtual void lastVertexToVelocyPack(Transaction*,
+                                      arangodb::velocypack::Builder&) = 0;
 
   virtual arangodb::basics::Json* lastVertexToJson(Transaction*,
-                                                   CollectionNameResolver*) = 0;
+                                                   CollectionNameResolver*) { return nullptr;}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents

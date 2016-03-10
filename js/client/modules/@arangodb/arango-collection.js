@@ -970,9 +970,10 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
       to = to._id;
     }
 
-    url = "/_api/edge?collection=" + encodeURIComponent(this.name())
-        + "&from=" + encodeURIComponent(from)
-        + "&to=" + encodeURIComponent(to);
+    data._from = from;
+    data._to = to;
+
+    url = "/_api/collection?collection=" + encodeURIComponent(this.name());
   }
 
   url = this._appendSyncParameter(url, waitForSync);

@@ -307,6 +307,41 @@ EdgeIndex::~EdgeIndex() {
   delete _edgesFrom;
 }
 
+void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
+                                 std::string const& id, VPackBuilder& builder) {
+  builder.openArray();
+  switch (dir) {
+    case TRI_EDGE_OUT:
+      builder.openArray();
+      builder.openObject();
+      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.close();
+      builder.close();
+      builder.add(VPackValue(VPackValueType::None));
+      break;
+    case TRI_EDGE_IN:
+      builder.add(VPackValue(VPackValueType::None));
+      builder.openArray();
+      builder.openObject();
+      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.close();
+      builder.close();
+      break;
+    case TRI_EDGE_ANY:
+      builder.openArray();
+      builder.openObject();
+      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.close();
+      builder.close();
+      builder.openArray();
+      builder.openObject();
+      builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
+      builder.close();
+      builder.close();
+  }
+  builder.close();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
