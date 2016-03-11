@@ -131,7 +131,8 @@ bool RestDocumentHandler::createDocument() {
   }
 
   arangodb::OperationOptions opOptions;
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
@@ -398,13 +399,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = true;
-  bool found;
-  char const* ignoreRevsStr = _request->value("ignoreRevs", found);
-  if (found) {
-    opOptions.ignoreRevs = StringUtils::boolean(ignoreRevsStr);
-  }
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder(nullptr);
@@ -460,24 +456,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    bool found;
-    char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
-      // default: null values are saved as Null
-      opOptions.keepNull = true;
-    } else {
-      // delete null attributes
-      opOptions.keepNull = false;
-    }
-
-    valueStr = _request->value("mergeObjects", found);
-    if (!found || StringUtils::boolean(valueStr)) {
-      // the default is true
-      opOptions.mergeObjects = true;
-    } else {
-      opOptions.mergeObjects = false;
-    }
-
+    opOptions.keepNull = extractBooleanParameter("keepNull", true);
+    opOptions.mergeObjects = extractBooleanParameter("mergeObjects", true);
     result = trx.update(collectionName, body, opOptions);
   } else {
     result = trx.replace(collectionName, body, opOptions);

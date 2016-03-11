@@ -632,18 +632,19 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the waitForSync value
+/// @brief extracts a boolean parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::extractWaitForSync() const {
+bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
+                                                     bool def) const {
   bool found;
-  char const* forceStr = _request->value("waitForSync", found);
+  char const* forceStr = _request->value(name, found);
 
   if (found) {
     return StringUtils::boolean(forceStr);
   }
 
-  return false;
+  return def;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

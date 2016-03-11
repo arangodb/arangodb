@@ -866,8 +866,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     
     buildDocumentIdentity(resultBuilder, cid, keyString, 
-                          mptr.revisionIdAsSlice(), VPackSlice(),
-                          nullptr, nullptr);
+        mptr.revisionIdAsSlice(), VPackSlice(),
+        nullptr, options.returnNew ? &mptr : nullptr);
+
     return TRI_ERROR_NO_ERROR;
   };
 

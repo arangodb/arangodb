@@ -89,6 +89,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       RequestBodyKey(),
       RequestTypeKey(),
       ResponseCodeKey(),
+      ReturnNewKey(),
+      ReturnOldKey(),
       SecureKey(),
       ServerKey(),
       ShardIDKey(),
@@ -181,6 +183,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING("requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING("responseCode"));
+  ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING("returnNew"));
+  ReturnOldKey.Reset(isolate, TRI_V8_ASCII_STRING("returnOld"));
   SecureKey.Reset(isolate, TRI_V8_ASCII_STRING("secure"));
   ServerKey.Reset(isolate, TRI_V8_ASCII_STRING("server"));
   ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING("shardID"));
