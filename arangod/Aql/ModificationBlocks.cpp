@@ -600,6 +600,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
   options.ignoreRevs = true;
+  
+  VPackBuilder keyBuilder;
+  VPackBuilder object;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -630,6 +633,14 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
+         
+            keyBuilder.clear();
+            keyBuilder.openObject();
+            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+            keyBuilder.close();
+
+            object = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+            toUpdate = object.slice();
 
             OperationResult opRes;
             if (ep->_isReplace) {
