@@ -1103,20 +1103,24 @@ OperationResult Transaction::modifyLocal(
     }
     TRI_doc_mptr_t mptr;
     VPackSlice actualRevision;
+    TRI_doc_mptr_t* previous = nullptr;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = document->replace(this, newVal, &mptr, options,
-          !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision);
+          !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
+          previous);
     } else {
       res = document->update(this, newVal, &mptr, options,
-          !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision);
+          !isLocked(document, TRI_TRANSACTION_WRITE), actualRevision,
+          previous);
     }
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
-                            VPackSlice(), nullptr, nullptr);
+                            VPackSlice(), 
+                            options.returnOld ? previous : nullptr, nullptr);
       return TRI_ERROR_ARANGO_CONFLICT;
     } else if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1127,7 +1131,9 @@ OperationResult Transaction::modifyLocal(
     if (!options.silent) {
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, 
-          mptr.revisionIdAsSlice(), actualRevision, nullptr, nullptr);
+          mptr.revisionIdAsSlice(), actualRevision, 
+          options.returnOld ? previous : nullptr , 
+          options.returnNew ? &mptr : nullptr);
     }
     return TRI_ERROR_NO_ERROR;
   };
@@ -1257,15 +1263,17 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
   auto workOnOneDocument = [&](VPackSlice const value) -> int {
     VPackSlice actualRevision;
+    TRI_doc_mptr_t* previous;
     int res = document->remove(this, value, options,
                                !isLocked(document, TRI_TRANSACTION_WRITE),
-                               actualRevision);
+                               actualRevision, previous);
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT) {
         std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key,
-                              actualRevision, VPackSlice(), nullptr, nullptr);
+                              actualRevision, VPackSlice(), 
+                              options.returnOld ? previous : nullptr, nullptr);
       }
       return res;
     }
@@ -1276,7 +1284,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
     std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
     buildDocumentIdentity(resultBuilder, cid, key,
-                          actualRevision, VPackSlice(), nullptr, nullptr);
+                          actualRevision, VPackSlice(),
+                          options.returnOld ? previous : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -1542,8 +1551,9 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 
   auto callback = [&](TRI_doc_mptr_t const* mptr) {
     VPackSlice actualRevision;
+    TRI_doc_mptr_t* previous;
     int res = document->remove(this, VPackSlice(mptr->vpack()), options, false,
-                               actualRevision);
+                               actualRevision, previous);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
