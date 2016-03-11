@@ -116,8 +116,9 @@ bool RestDocumentHandler::createDocument() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   VPackSlice body = parsedBody->slice();
   if (!body.isArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
@@ -150,7 +151,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
   return true;
 }
 
@@ -438,8 +439,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   if (!isArrayCase) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
@@ -481,7 +483,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
   return true;
 }
 
@@ -515,8 +517,9 @@ bool RestDocumentHandler::deleteDocument() {
   opOptions.ignoreRevs = false;
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
 
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // ...........................................................................
@@ -556,7 +559,8 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   generateDeleted(result, collectionName,
-                  TRI_col_type_e(trx.getCollectionType(collectionName)));
+                  TRI_col_type_e(trx.getCollectionType(collectionName)),
+                  transactionContext->getVPackOptions());
   return true;
 }
 

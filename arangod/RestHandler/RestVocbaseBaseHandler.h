@@ -152,7 +152,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e);
+                   TRI_col_type_e, arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message without content
@@ -173,14 +173,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName, TRI_col_type_e type);
+                     std::string const& collectionName, TRI_col_type_e type,
+                     arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDeleted(arangodb::OperationResult const& result,
-                       std::string const& collectionName, TRI_col_type_e type);
+                       std::string const& collectionName, TRI_col_type_e type,
+                       arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info

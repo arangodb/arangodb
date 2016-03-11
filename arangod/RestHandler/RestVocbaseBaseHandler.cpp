@@ -148,13 +148,14 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type,
+    VPackOptions const* options) {
   if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::CREATED);
   } else {
     createResponse(rest::HttpResponse::ACCEPTED);
   }
-  generate20x(result, collectionName, type);
+  generate20x(result, collectionName, type, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,13 +164,13 @@ void RestVocbaseBaseHandler::generateSaved(
 
 void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type, VPackOptions const* options) {
   if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::OK);
   } else {
     createResponse(rest::HttpResponse::ACCEPTED);
   }
-  generate20x(result, collectionName, type);
+  generate20x(result, collectionName, type, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +223,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 void RestVocbaseBaseHandler::generate20x(
     arangodb::OperationResult const& result,
     std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type,
+    VPackOptions const* options) {
 
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
@@ -243,7 +245,7 @@ void RestVocbaseBaseHandler::generate20x(
     }
   }
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
+  VPackDumper dumper(&buffer, options);
   try {
     dumper.dump(slice);
   } catch (...) {
