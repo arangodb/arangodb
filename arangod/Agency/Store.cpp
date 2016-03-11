@@ -52,10 +52,19 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
-Node::Node (std::string const& name) : _parent(nullptr), _name(name) {}
-Node::Node (std::string const& name, Node const* parent) : _parent(parent), _name(name) {}
+Node::Node (std::string const& name) : _parent(nullptr), _name(name) {
+  _value.clear();
+}
+Node::Node (std::string const& name, Node const* parent) :
+  _parent(parent), _name(name) {
+  _value.clear();
+}
 
 Node::~Node() {}
+
+Slice Node::slice() const {
+  return (_value.size()==0) ? Slice() : Slice(_value.data());
+}
 
 std::string const& Node::name() const {return _name;}
 
@@ -78,6 +87,16 @@ NodeType Node::type() const {return _children.size() ? NODE : LEAF;}
 
 Node& Node::operator [](std::string name) {
   return *_children[name];
+}
+
+bool Node::isSingular () const {
+  if (type() == LEAF) {
+    return true;
+  } else if (_children.size()==1) {
+    return _children.begin()->second->isSingular();
+  } else {
+    return false;
+  }
 }
 
 bool Node::append (std::string const name, std::shared_ptr<Node> const node) {
@@ -160,15 +179,14 @@ void Node::toBuilder (Builder& builder) const {
     if (type()==NODE) {
       VPackObjectBuilder guard(&builder);
       for (auto const& child : _children) {
-        std::cout << _name << " : " <<std::endl;
-        builder.add(VPackValue(_name));
+        builder.add(VPackValue(child.first));
         child.second->toBuilder(builder);
       }
     } else {
-      builder.add(Slice(_value.data()));
+      builder.add(slice());
     }
   } catch (std::exception const& e) {
-    LOG(FATAL) << e.what();
+    std::cout << e.what() << std::endl;
   }
 }
 
@@ -205,6 +223,10 @@ bool Store::apply (arangodb::velocypack::Slice const& slice) {
   return Node::apply(slice);
 }
 
+Node const& Store::read (std::string const& path) const {
+  return Node::read(path);
+}
+
 bool Store::check (arangodb::velocypack::Slice const& slice) const{
   return true;
 }
@@ -213,16 +235,14 @@ query_t Store::read (query_t const& queries) const { // list of list of paths
   MUTEX_LOCKER(storeLocker, _storeLock);
   query_t result = std::make_shared<arangodb::velocypack::Builder>();
   if (queries->slice().type() == VPackValueType::Array) {
-    for (auto const& query : VPackArrayIterator(queries->slice())) {
       result->add(VPackValue(VPackValueType::Array)); // top node array
-      read (query, *result);
+      for (auto const& query : VPackArrayIterator(queries->slice())) {
+        read (query, *result);
+      } 
       result->close();
-    } 
-    // TODO: Run through JSON and asseble result
   } else {
     LOG(FATAL) << "Read queries to stores must be arrays";
   }
-
   return result;
 }
 
@@ -254,11 +274,15 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
   // Create response tree 
   Node node("root");
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
-    node(*i) = (*this)(*i);
+    node(*i) = (*this).read(*i);
   }
   
   // Assemble builder from node
-  node.toBuilder(ret);
+  if (query_strs.size() == 1 && node(*query_strs.begin()).type() == LEAF) {
+    ret.add(node(*query_strs.begin()).slice());
+  } else {
+    node.toBuilder(ret);
+  }
   
   return true;
 }

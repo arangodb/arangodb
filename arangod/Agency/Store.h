@@ -100,7 +100,7 @@ public:
       for (auto const& i : n._children)
         os << *(i.second);
     } else {
-      os << Slice(n._value.data()).toJson() << std::endl;
+      os << n.slice().toJson() << std::endl;
     }
     return os;
   }
@@ -109,14 +109,22 @@ public:
 
   void toBuilder (Builder&) const;
 
+  Buffer<uint8_t> const& value() const {
+    return _value;
+  }
+
+  bool isSingular () const;
+
+  Slice slice() const;
+
 protected:
   Node const* _parent;
   Children _children;
+  Buffer<uint8_t> _value;
 
 private:
   NodeType _type;
   std::string _name;
-  Buffer<uint8_t> _value;
   
 };
 
@@ -130,6 +138,7 @@ public:
   std::vector<bool> apply (query_t const& query);
   query_t read (query_t const& query) const;
   virtual bool apply (arangodb::velocypack::Slice const&);
+  Node const& read (std::string const&) const;
 
 private:
   bool read  (arangodb::velocypack::Slice const&,
