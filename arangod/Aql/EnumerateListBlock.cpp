@@ -138,19 +138,18 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
           }
         }
         // add the new register value . . .
-        AqlValue a = getAqlValue(inVarReg);
+        bool mustDestroy;
+        AqlValue a = getAqlValue(inVarReg, mustDestroy);
+        AqlValueGuard guard(a, mustDestroy);
+
         // deep copy of the inVariable.at(_pos) with correct memory
         // requirements
         // Note that _index has been increased by 1 by getAqlValue!
-        try {
-          TRI_IF_FAILURE("EnumerateListBlock::getSome") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          res->setValue(j, cur->getNrRegs(), a);
-        } catch (...) {
-          a.destroy();
-          throw;
+        TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        res->setValue(j, cur->getNrRegs(), a);
+        guard.steal(); // itemblock is now responsible for value
       }
     }
 
@@ -234,7 +233,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg) {
+AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -247,10 +246,10 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg) {
       _seen += block->size();
       _thisBlock++;
     }
+    mustDestroy = true;
     return out;
   }
 
-  bool mustDestroy; // we can ignore destruction here
   return inVarReg.at(_index++, mustDestroy, true);
 }
 

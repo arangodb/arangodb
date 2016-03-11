@@ -944,7 +944,7 @@ QueryResult Query::explain() {
 
           it->findVarUsage();
           it->planRegisters();
-          it->toVelocyPack(parser.ast(), verbosePlans(), *result.result);
+          result.result = it->toVelocyPack(parser.ast(), verbosePlans());
         }
       }
       // cacheability not available here
@@ -957,7 +957,8 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
-      bestPlan->toVelocyPack(parser.ast(), verbosePlans(), *result.result);
+
+      result.result = bestPlan->toVelocyPack(parser.ast(), verbosePlans());
 
       // cacheability
       result.cached = (_queryString != nullptr && _queryLength > 0 &&
@@ -1372,7 +1373,7 @@ std::vector<std::string> Query::getRulesFromOptions() const {
 
   VPackSlice options = _options->slice();
 
-  if (!options.isObject()){
+  if (!options.isObject()) {
     return rules;
   }
 
@@ -1389,7 +1390,7 @@ std::vector<std::string> Query::getRulesFromOptions() const {
   }
 
   for (auto const& rule : VPackArrayIterator(rulesList)) {
-    if (rule.isString()){
+    if (rule.isString()) {
       rules.emplace_back(rule.copyString());
     }
   }

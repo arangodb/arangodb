@@ -38,7 +38,6 @@ class ExecutionEngine;
 class EnumerateListBlock : public ExecutionBlock {
  public:
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
-
   ~EnumerateListBlock();
 
   int initialize() override;
@@ -60,11 +59,12 @@ class EnumerateListBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a value from the inVariable using the current _index
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue getAqlValue(AqlValue const&);
+  AqlValue getAqlValue(AqlValue const&, bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief throws an "array expected" exception
@@ -73,6 +73,7 @@ class EnumerateListBlock : public ExecutionBlock {
   void throwArrayExpectedException();
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in the _inVariable
   //////////////////////////////////////////////////////////////////////////////
