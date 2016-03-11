@@ -30,9 +30,7 @@
 
 #include <v8.h>
 
-struct TRI_df_marker_t;
 struct TRI_doc_mptr_t;
-struct TRI_document_collection_t;
 
 namespace arangodb {
 class DocumentDitch;

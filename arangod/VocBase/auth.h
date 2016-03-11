@@ -70,8 +70,6 @@ class VocbaseAuthInfo {
   /// @brief Checks if the given string is equal to the username
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isEqualName(char const*) const;
-
   bool isEqualPasswordHash(char const*) const;
 
   char const* username() const;

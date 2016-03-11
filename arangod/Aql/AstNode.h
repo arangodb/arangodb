@@ -864,9 +864,8 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void setStringValue(char const* v, size_t length) {
-    // note: v may contain the NUL byte
-    TRI_ASSERT(v == nullptr || strlen(v) <= length);
-
+    // note: v may contain the NUL byte and is not necessarily
+    // null-terminated itself (if from VPack)
     value.value._string = v;
     value.length = static_cast<uint32_t>(length);
   }
