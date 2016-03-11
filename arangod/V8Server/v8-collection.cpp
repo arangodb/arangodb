@@ -553,10 +553,8 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
-
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
+      transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -702,6 +700,14 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(WaitForSyncKey)) {
         options.waitForSync =
             TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+      }
+      TRI_GET_GLOBAL_STRING(ReturnNewKey);
+      if (optionsObject->Has(ReturnNewKey)) {
+        options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+      }
+      TRI_GET_GLOBAL_STRING(ReturnOldKey);
+      if (optionsObject->Has(ReturnOldKey)) {
+        options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
       }
     } else {  // old variant replace(<document>, <data>, <overwrite>,
               // <waitForSync>)
@@ -1546,6 +1552,14 @@ static void parseReplaceAndUpdateOptions(
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
+    TRI_GET_GLOBAL_STRING(ReturnNewKey);
+    if (optionsObject->Has(ReturnNewKey)) {
+      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
+    TRI_GET_GLOBAL_STRING(ReturnOldKey);
+    if (optionsObject->Has(ReturnOldKey)) {
+      options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
+    }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
       // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
@@ -1716,7 +1730,8 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1840,7 +1855,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2041,8 +2057,9 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // load collection
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(V8TransactionContext::Create(vocbase, true));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
@@ -2061,7 +2078,8 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2202,7 +2220,7 @@ static void JS_InsertVocbaseVPack(
   VPackSlice resultSlice = result.slice();
   
   TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
-                transactionContext->getVPackOptions()));
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 

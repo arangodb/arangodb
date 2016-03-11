@@ -1103,7 +1103,7 @@ OperationResult Transaction::modifyLocal(
     }
     TRI_doc_mptr_t mptr;
     VPackSlice actualRevision;
-    TRI_doc_mptr_t* previous = nullptr;
+    TRI_doc_mptr_t previous;
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = document->replace(this, newVal, &mptr, options,
@@ -1120,7 +1120,7 @@ OperationResult Transaction::modifyLocal(
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
                             VPackSlice(), 
-                            options.returnOld ? previous : nullptr, nullptr);
+                            options.returnOld ? &previous : nullptr, nullptr);
       return TRI_ERROR_ARANGO_CONFLICT;
     } else if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1132,7 +1132,7 @@ OperationResult Transaction::modifyLocal(
       std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, 
           mptr.revisionIdAsSlice(), actualRevision, 
-          options.returnOld ? previous : nullptr , 
+          options.returnOld ? &previous : nullptr , 
           options.returnNew ? &mptr : nullptr);
     }
     return TRI_ERROR_NO_ERROR;

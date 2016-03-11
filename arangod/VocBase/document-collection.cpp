@@ -3371,12 +3371,11 @@ int TRI_document_collection_t::update(Transaction* trx,
                                       OperationOptions& options,
                                       bool lock,
                                       VPackSlice& prevRev,
-                                      TRI_doc_mptr_t*& previous) {
+                                      TRI_doc_mptr_t& previous) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
   prevRev = VPackSlice();
-  previous = nullptr;
 
   TRI_voc_rid_t revisionId = TRI_NewTickServer();
   
@@ -3407,7 +3406,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
-    previous = oldHeader;
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3477,9 +3476,8 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        OperationOptions& options,
                                        bool lock,
                                        VPackSlice& prevRev,
-                                       TRI_doc_mptr_t*& previous) {
+                                       TRI_doc_mptr_t& previous) {
   prevRev = VPackSlice();
-  previous = nullptr;
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     VPackSlice s = newSlice.get(TRI_VOC_ATTRIBUTE_FROM);
@@ -3525,7 +3523,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
-    previous = oldHeader;
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {

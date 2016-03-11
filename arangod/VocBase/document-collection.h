@@ -219,10 +219,10 @@ struct TRI_document_collection_t : public TRI_collection_t {
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             VPackSlice&, TRI_doc_mptr_t*&);
+             VPackSlice&, TRI_doc_mptr_t&);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             VPackSlice&, TRI_doc_mptr_t*&);
+             VPackSlice&, TRI_doc_mptr_t&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
              arangodb::OperationOptions&, bool, VPackSlice&, TRI_doc_mptr_t*&);
 
