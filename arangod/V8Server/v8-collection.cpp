@@ -590,6 +590,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
         options.waitForSync =
             TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
       }
+      TRI_GET_GLOBAL_STRING(ReturnOldKey);
+      if (optionsObject->Has(ReturnOldKey)) {
+        options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
+      }
     } else {  // old variant remove(<document>, <overwrite>, <waitForSync>)
       options.ignoreRevs = TRI_ObjectToBoolean(args[1]);
       if (argLength > 2) {
@@ -655,19 +659,17 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   res = trx.finish(result.code);
 
   if (!result.successful()) {
-    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
-        options.ignoreRevs && !args[0]->IsArray()) {
-      TRI_V8_RETURN_FALSE();
-    } else {
-      TRI_V8_THROW_EXCEPTION(result.code);
-    }
+    TRI_V8_THROW_EXCEPTION(result.code);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_TRUE();
+  v8::Handle<v8::Value> finalResult = TRI_VPackToV8(isolate, result.slice(),
+      transactionContext->getVPackOptions());
+
+  TRI_V8_RETURN(finalResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

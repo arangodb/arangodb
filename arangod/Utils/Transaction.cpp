@@ -1263,7 +1263,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
 
   auto workOnOneDocument = [&](VPackSlice const value) -> int {
     VPackSlice actualRevision;
-    TRI_doc_mptr_t* previous;
+    TRI_doc_mptr_t previous;
     int res = document->remove(this, value, options,
                                !isLocked(document, TRI_TRANSACTION_WRITE),
                                actualRevision, previous);
@@ -1273,7 +1273,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
         std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
-                              options.returnOld ? previous : nullptr, nullptr);
+                              options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
     }
@@ -1285,7 +1285,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
     buildDocumentIdentity(resultBuilder, cid, key,
                           actualRevision, VPackSlice(),
-                          options.returnOld ? previous : nullptr, nullptr);
+                          options.returnOld ? &previous : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
@@ -1551,7 +1551,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 
   auto callback = [&](TRI_doc_mptr_t const* mptr) {
     VPackSlice actualRevision;
-    TRI_doc_mptr_t* previous;
+    TRI_doc_mptr_t previous;
     int res = document->remove(this, VPackSlice(mptr->vpack()), options, false,
                                actualRevision, previous);
 
