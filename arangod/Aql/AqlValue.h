@@ -221,16 +221,17 @@ struct AqlValue final {
   /// @brief get the (array) element at position 
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue at(int64_t position, bool copy) const;
+  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the (object) element by name(s)
   //////////////////////////////////////////////////////////////////////////////
   
   AqlValue get(arangodb::AqlTransaction* trx,
-               std::string const& name, bool copy) const;
+               std::string const& name, bool& mustDestroy, bool copy) const;
   AqlValue get(arangodb::AqlTransaction* trx,
-               std::vector<char const*> const& names, bool copy) const;
+               std::vector<char const*> const& names, bool& mustDestroy,
+               bool copy) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the numeric value of an AqlValue

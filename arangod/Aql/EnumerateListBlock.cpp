@@ -250,7 +250,8 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg) {
     return out;
   }
 
-  return inVarReg.at(_index++, true);
+  bool mustDestroy; // we can ignore destruction here
+  return inVarReg.at(_index++, mustDestroy, true);
 }
 
 void EnumerateListBlock::throwArrayExpectedException() {

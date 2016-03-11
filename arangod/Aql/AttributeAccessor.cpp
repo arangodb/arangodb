@@ -55,8 +55,7 @@ AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
-      mustDestroy = true;
-      return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, true);
+      return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, mustDestroy, true);
     }
     // fall-through intentional
   }
