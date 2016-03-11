@@ -273,10 +273,10 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
   options.waitForSync = ep->_options.waitForSync;
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
+  options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
+  options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
         
-  OperationResult opResOld; // old document ($OLD)
-
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -315,38 +315,34 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
         keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
         keyBuilder.close();
 
-        VPackSlice toInsert;
+        VPackSlice toUpdate;
 
         if (hasKeyVariable) {
           object = VPackCollection::merge(a.slice(), keyBuilder.slice(), false, false);
-          toInsert = object.slice();
+          toUpdate = object.slice();
         }
         else {
-          // use original slice for inserting
-          toInsert = a.slice();
+          // use original slice for updating
+          toUpdate = a.slice();
         }
 
         // fetch old revision
-        if (producesOutput && ep->_outVariableOld != nullptr) {
-          opResOld = _trx->document(_collection->name, keyBuilder.slice(), options);
+        OperationResult opRes;
+        if (isReplace) {
+          opRes = _trx->replace(_collection->name, toUpdate, options); 
+        } else {
+          opRes = _trx->update(_collection->name, toUpdate, options); 
         }
-
-        OperationResult opRes = _trx->update(_collection->name, toInsert, options); 
         errorCode = opRes.code;
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           if (ep->_outVariableOld != nullptr) {
             // store $OLD
-            result->setValue(dstRow, _outRegOld, AqlValue(opResOld.slice()));
+            result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
           }
-
           if (ep->_outVariableNew != nullptr) {
             // store $NEW
-            OperationResult opResNew = _trx->document(_collection->name, keyBuilder.slice(), options);
-
-            if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
-            }
+            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
           }
         }
 
@@ -602,12 +598,13 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.waitForSync = ep->_options.waitForSync;
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
+  options.returnNew = producesOutput;
   options.ignoreRevs = true;
 
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);  // This is intentionally a copy!
+    auto* res = *it; 
 
     throwIfKilled();  // check if we were aborted
 
@@ -634,23 +631,19 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
 
+            OperationResult opRes;
             if (ep->_isReplace) {
               // replace
-              OperationResult opRes = _trx->replace(_collection->name, toUpdate, options);
-              errorCode = opRes.code;
+              opRes = _trx->replace(_collection->name, toUpdate, options);
             } else {
               // update
-              OperationResult opRes = _trx->update(_collection->name, toUpdate, options);
-              errorCode = opRes.code;
+              opRes = _trx->update(_collection->name, toUpdate, options);
             }
+            errorCode = opRes.code;
 
             if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
               // store $NEW
-              OperationResult opResNew = _trx->document(_collection->name, toUpdate, options);
-
-              if (opResNew.successful()) {
-                result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
-              }
+              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
             }
           } else {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -666,11 +659,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           errorCode = opRes.code; 
 
           if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-            OperationResult opResNew = _trx->document(_collection->name, insertDoc.slice(), options);
-
-            if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
-            }
+            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
