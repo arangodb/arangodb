@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "Basics/Common.h"
+#include "Basics/build.h"
 #include "Basics/files.h"
 #include "Basics/messages.h"
 #include "Logger/Logger.h"

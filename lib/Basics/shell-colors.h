@@ -24,8 +24,6 @@
 #ifndef LIB_BASICS_SHELL_COLORS_H
 #define LIB_BASICS_SHELL_COLORS_H 1
 
-#ifndef _WIN32
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief color red
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +94,7 @@
 /// @brief color bold black
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SHELL_COLOR_BOLD_BLACK "\x1b[1;39m"
+#define TRI_SHELL_COLOR_BOLD_BLACK "\x1b[1;30m"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief color cyan
@@ -139,32 +137,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SHELL_COLOR_RESET "\x1b[0m"
-
-#else
-// .............................................................................
-// Quick hack for windows
-// .............................................................................
-
-#define TRI_SHELL_COLOR_RED ""
-#define TRI_SHELL_COLOR_BOLD_RED ""
-#define TRI_SHELL_COLOR_GREEN ""
-#define TRI_SHELL_COLOR_BOLD_GREEN ""
-#define TRI_SHELL_COLOR_BLUE ""
-#define TRI_SHELL_COLOR_BOLD_BLUE ""
-#define TRI_SHELL_COLOR_YELLOW ""
-#define TRI_SHELL_COLOR_BOLD_YELLOW ""
-#define TRI_SHELL_COLOR_WHITE ""
-#define TRI_SHELL_COLOR_BOLD_WHITE ""
-#define TRI_SHELL_COLOR_CYAN ""
-#define TRI_SHELL_COLOR_BOLD_CYAN ""
-#define TRI_SHELL_COLOR_MAGENTA ""
-#define TRI_SHELL_COLOR_BOLD_MAGENTA ""
-#define TRI_SHELL_COLOR_BLACK ""
-#define TRI_SHELL_COLOR_BOLD_BLACK ""
-#define TRI_SHELL_COLOR_BLINK ""
-#define TRI_SHELL_COLOR_BRIGHT ""
-#define TRI_SHELL_COLOR_RESET ""
-
-#endif
 
 #endif

@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/ClientFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ConsoleFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions2/ProgramOptions.h"
@@ -31,6 +32,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
@@ -134,7 +136,15 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_authentication &&
       !options->processingResult().touched(_section + ".password")) {
     usleep(10 * 1000);
-    _password = ConsoleFeature::readPassword("Please specify a password: ");
+
+    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(ApplicationServer::lookupFeature("ConsoleFeature"));
+
+    if (console != nullptr) {
+      _password = console->readPassword("Please specify a password: ");
+    } else  {
+      std::cout << "Please specify a password: " << std::flush;
+      std::getline(std::cin, _password);
+    }
   }
 }
 
