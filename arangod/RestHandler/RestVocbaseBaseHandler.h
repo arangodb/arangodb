@@ -253,10 +253,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_voc_rid_t extractRevision(char const*, char const*, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the waitForSync value
+  /// @brief extracts a boolean parameter value
   //////////////////////////////////////////////////////////////////////////////
 
-  bool extractWaitForSync() const;
+  bool extractBooleanParameter(char const* name, bool def) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses the body as VelocyPack

@@ -478,10 +478,8 @@ static void DocumentVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
-
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
+      transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -2119,6 +2117,10 @@ static void JS_InsertVocbaseVPack(
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
+    TRI_GET_GLOBAL_STRING(ReturnNewKey);
+    if (optionsObject->Has(ReturnNewKey)) {
+      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
   } else {
     options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
   }
@@ -2199,7 +2201,8 @@ static void JS_InsertVocbaseVPack(
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
