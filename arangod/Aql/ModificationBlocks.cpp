@@ -531,11 +531,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           // return $NEW
-          OperationResult opResNew = _trx->document(_collection->name, a.slice(), options);
-
-          if (opResNew.successful()) {
-            result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
-          }
+          result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
         }
       }
 
