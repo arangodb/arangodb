@@ -1158,12 +1158,20 @@ function CollectionDocumentSuite () {
 
       var a3 = collection.remove(a1, true);
 
-      assertEqual(a3, true);
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      var a4 = collection.remove(a1, true);
-
-      assertEqual(a4, false);
+      try {
+        collection.remove(a1, true);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1188,12 +1196,19 @@ function CollectionDocumentSuite () {
       }
 
       var a3 = collection.remove(a1, {"overwrite": true});
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      assertEqual(a3, true);
+      try {
+        collection.remove(a1, {"overwrite": true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
 
-      var a4 = collection.remove(a1, {"overwrite": true});
-
-      assertEqual(a4, false);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1270,8 +1285,12 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, false);
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, waitForSync=false , using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1283,7 +1302,10 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": false});
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1297,8 +1319,12 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, true);
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, waitForSync=true , using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1310,7 +1336,10 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": true});
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

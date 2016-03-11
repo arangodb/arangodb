@@ -3590,9 +3590,8 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       OperationOptions& options,
                                       bool lock,
                                       VPackSlice& prevRev,
-                                      TRI_doc_mptr_t*& previous) {
+                                      TRI_doc_mptr_t& previous) {
   prevRev = VPackSlice();
-  previous = nullptr;
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
@@ -3641,7 +3640,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
-    previous = oldHeader;
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
