@@ -219,8 +219,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_READ);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collection, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // ...........................................................................
@@ -262,9 +263,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     generateNotModified(rid);
   } else {
     // copy default options
-    VPackOptions options = VPackOptions::Defaults;
-    options.customTypeHandler = result.customTypeHandler.get();
-    generateDocument(result.slice(), generateBody, &options);
+    generateDocument(result.slice(), generateBody,
+                     transactionContext.getVPackOptions());
   }
   return true;
 }
@@ -401,6 +401,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationOptions opOptions;
   opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder(nullptr);
@@ -511,6 +513,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
   OperationOptions opOptions;
   opOptions.ignoreRevs = false;
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
                                           collectionName, TRI_TRANSACTION_WRITE);

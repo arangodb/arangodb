@@ -346,15 +346,17 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
                                               bool generateBody,
                                               VPackOptions const* options) {
-  TRI_ASSERT(document.isObject());
-  TRI_ASSERT(document.hasKey(TRI_VOC_ATTRIBUTE_REV));
-
-  std::string rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+  std::string rev;
+  if (document.isObject()) {
+    rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+  }
 
   // and generate a response
   createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  if (!rev.empty()) {
+    _response->setHeader("etag", 4, "\"" + rev + "\"");
+  }
 
   if (generateBody) {
     VPackStringBufferAdapter buffer(_response->body().stringBuffer());
