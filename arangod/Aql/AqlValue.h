@@ -104,6 +104,13 @@ struct AqlValue final {
     initFromSlice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
   }
   
+  // construct from std::string
+  explicit AqlValue(std::string const& value) {
+    VPackBuilder builder;
+    builder.add(VPackValue(value));
+    initFromSlice(builder.slice());
+  }
+  
   // construct from Buffer, taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
     _data.buffer = buffer;
@@ -214,14 +221,17 @@ struct AqlValue final {
   /// @brief get the (array) element at position 
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue at(int64_t position, bool copy) const;
+  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the (object) element by name(s)
   //////////////////////////////////////////////////////////////////////////////
   
-  AqlValue get(std::string const& name, bool copy) const;
-  AqlValue get(std::vector<char const*> const& names, bool copy) const;
+  AqlValue get(arangodb::AqlTransaction* trx,
+               std::string const& name, bool& mustDestroy, bool copy) const;
+  AqlValue get(arangodb::AqlTransaction* trx,
+               std::vector<char const*> const& names, bool& mustDestroy,
+               bool copy) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the numeric value of an AqlValue
@@ -387,7 +397,11 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) : value(value), destroy(destroy) {}
-  ~AqlValueGuard() { if (destroy) { value.destroy(); } }
+  ~AqlValueGuard() { 
+    if (destroy) { 
+      value.destroy();
+    } 
+  }
   void steal() { destroy = false; }
  private:
   AqlValue& value;

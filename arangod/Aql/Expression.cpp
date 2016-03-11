@@ -272,7 +272,11 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
       // determine midpoint
       size_t m = l + ((r - l) / 2);
 
-      int compareResult = AqlValue::Compare(trx, left, right.at(m, false), true);
+      bool localMustDestroy;
+      AqlValue a = right.at(m, localMustDestroy, false);
+      AqlValueGuard guard(a, localMustDestroy);
+
+      int compareResult = AqlValue::Compare(trx, left, a, true);
 
       if (compareResult == 0) {
         // item found in the list
@@ -296,7 +300,11 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
     
   // use linear search
   for (size_t i = 0; i < n; ++i) {
-    int compareResult = AqlValue::Compare(trx, left, right.at(i, false), false);
+    bool mustDestroy;
+    AqlValue a = right.at(i, mustDestroy, false);
+    AqlValueGuard guard(a, mustDestroy);
+
+    int compareResult = AqlValue::Compare(trx, left, a, false);
 
     if (compareResult == 0) {
       // item found in the list
@@ -559,8 +567,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 
   AqlValueGuard guard(result, mustDestroy);
 
-  AqlValue a = result.get(name, true);
-  mustDestroy = true; // result may be dynamic
+  AqlValue a = result.get(trx, name, mustDestroy, true);
 
   return a;
 }
@@ -602,8 +609,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      mustDestroy = true; // as we are copying
-      return result.at(indexResult.toInt64(), true);
+      return result.at(indexResult.toInt64(), mustDestroy, true);
     }
      
     if (indexResult.isString()) {
@@ -612,8 +618,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
       try {
         // stoll() might throw an exception if the string is not a number
         int64_t position = static_cast<int64_t>(std::stoll(value));
-        mustDestroy = true; // as we are copying
-        return result.at(position, true);
+        return result.at(position, mustDestroy, true);
       } catch (...) {
         // no number found.
       }
@@ -628,14 +633,12 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 
     if (indexResult.isNumber()) {
       std::string const indexString = std::to_string(indexResult.toInt64());
-      mustDestroy = true; // as we are copying
-      return result.get(indexString, true);
+      return result.get(trx, indexString, mustDestroy, true);
     }
      
     if (indexResult.isString()) {
       std::string const indexString = indexResult.slice().copyString();
-      mustDestroy = true; // as we are copying
-      return result.get(indexString, true);
+      return result.get(trx, indexString, mustDestroy, true);
     } 
 
     // fall-through to returning null
@@ -1054,7 +1057,10 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   size_t numLeft = n;
 
   for (size_t i = 0; i < n; ++i) {
-    AqlValue leftItemValue = left.at(i, false);
+    bool localMustDestroy;
+    AqlValue leftItemValue = left.at(i, localMustDestroy, false);
+    AqlValueGuard guard(leftItemValue, localMustDestroy);
+
     bool result;
 
     // IN and NOT IN
@@ -1239,7 +1245,10 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
           size_t const n = v.length();
           for (size_t i = 0; i < n; ++i) {
-            AqlValue item = v.at(i, false);
+            bool localMustDestroy;
+            AqlValue item = v.at(i, localMustDestroy, false);
+            AqlValueGuard guard(item, localMustDestroy);
+
             bool const isArray = item.isArray();
 
             if (!isArray || level == levels) {
@@ -1247,7 +1256,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(
             } else if (isArray && level < levels) {
               flatten(item, level + 1);
             }
-            // item.destroy(); TODO: check if we need to destroy the item??
           }
         };
 
@@ -1289,7 +1297,10 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   size_t const n = value.length();
   for (size_t i = 0; i < n; ++i) {
-    AqlValue item = value.at(i, false);
+    bool localMustDestroy;
+    AqlValue item = value.at(i, localMustDestroy, false);
+    AqlValueGuard guard(item, localMustDestroy);
+
     AqlValueMaterializer materializer(trx);
     setVariable(variable, materializer.slice(item));
 
@@ -1321,7 +1332,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(
     }
 
     clearVariable(variable);
-    //item.destroy(); // TODO: do we need to destroy here?
 
     if (takeItem && count > 0) {
       // number of items to pick was restricted

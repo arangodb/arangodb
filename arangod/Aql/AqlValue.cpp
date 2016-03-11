@@ -64,7 +64,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
 
 bool AqlValue::isNull(bool emptyIsNull) const {
   AqlValueType t = type();
-  if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
+  if (t == DOCVEC || t == RANGE) {
     return false;
   }
  
@@ -78,7 +78,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
  
 bool AqlValue::isNumber() const {
   AqlValueType t = type();
-  if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
+  if (t == DOCVEC || t == RANGE) {
     return false;
   }
   return slice().isNumber();
@@ -90,7 +90,7 @@ bool AqlValue::isNumber() const {
  
 bool AqlValue::isString() const {
   AqlValueType t = type();
-  if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
+  if (t == DOCVEC || t == RANGE) {
     return false;
   }
   return slice().isString();
@@ -147,11 +147,13 @@ size_t AqlValue::length() const {
 /// @brief get the (array) element at position 
 //////////////////////////////////////////////////////////////////////////////
 
-AqlValue AqlValue::at(int64_t position, bool copy) const {
+AqlValue AqlValue::at(int64_t position, bool& mustDestroy, 
+                      bool doCopy) const {
+  mustDestroy = false;
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
-      copy = false; 
+      doCopy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
@@ -162,7 +164,8 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
           position = n + position;
         }
         if (position >= 0 && position < n) {
-          if (copy || s.byteSize() < sizeof(_data.internal)) {
+          if (doCopy || s.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
             return AqlValue(s.at(position));
           }
           // return a reference to an existing slice
@@ -172,7 +175,6 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
       // fall-through intentional
       break;
     }
-
     case DOCVEC: {
       size_t const n = docvecSize();
       if (position < 0) {
@@ -185,7 +187,8 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
         for (auto const& it : *_data.docvec) {
           if (position < static_cast<int64_t>(total + it->size())) {
             // found the correct vector
-            if (copy) {
+            if (doCopy) {
+              mustDestroy = true;
               return it->getValueReference(position - total, 0).clone();
             }
             return it->getValue(position - total, 0);
@@ -207,6 +210,7 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
         // only look up the value if it is within array bounds
         VPackBuilder builder;
         builder.add(VPackValue(_data.range->at(static_cast<size_t>(position))));
+        mustDestroy = true;
         return AqlValue(builder);
       }
       // fall-through intentional
@@ -222,18 +226,26 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
 /// @brief get the (object) element by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue AqlValue::get(std::string const& name, bool copy) const {
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::string const& name, bool& mustDestroy,
+                       bool doCopy) const {
+  mustDestroy = false;
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
-      copy = false; 
+      doCopy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found(s.get(name));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          return AqlValue(trx->extractIdString(s));
+        }
         if (!found.isNone()) {
-          if (copy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -243,7 +255,6 @@ AqlValue AqlValue::get(std::string const& name, bool copy) const {
       // fall-through intentional
       break;
     }
-
     case DOCVEC: 
     case RANGE: {
       // will return null
@@ -259,18 +270,26 @@ AqlValue AqlValue::get(std::string const& name, bool copy) const {
 /// @brief get the (object) element(s) by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue AqlValue::get(std::vector<char const*> const& names, bool copy) const {
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::vector<char const*> const& names, 
+                       bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
-      copy = false; 
+      doCopy = false; 
       // fall-through intentional
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found(s.get(names));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          return AqlValue(trx->extractIdString(s));
+        }
         if (!found.isNone()) {
-          if (copy || found.byteSize() < sizeof(_data.internal)) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
             return AqlValue(found);
           }
           // return a reference to an existing slice
@@ -280,7 +299,6 @@ AqlValue AqlValue::get(std::vector<char const*> const& names, bool copy) const {
       // fall-through intentional
       break;
     }
-
     case DOCVEC: 
     case RANGE: {
       // will return null
@@ -324,17 +342,18 @@ double AqlValue::toDouble(bool& failed) const {
       }
       else if (s.isArray()) {
         if (s.length() == 1) {
-          return at(0, false).toDouble();
+          bool mustDestroy; // we can ignore destruction here
+          return at(0, mustDestroy, false).toDouble();
         }
       }
       // fall-through intentional
       break;
     }
-
     case DOCVEC:
     case RANGE: {
       if (length() == 1) {
-        return at(0, false).toDouble();
+        bool mustDestroy; // we can ignore destruction here
+        return at(0, mustDestroy, false).toDouble();
       }
       // will return 0
       break;
@@ -369,17 +388,19 @@ int64_t AqlValue::toInt64() const {
       }
       else if (s.isArray()) {
         if (s.length() == 1) {
-          return at(0, false).toInt64();
+          // we can ignore destruction here
+          bool mustDestroy;
+          return at(0, mustDestroy, false).toInt64();
         }
       }
       // fall-through intentional
       break;
     }
-
     case DOCVEC:
     case RANGE: {
       if (length() == 1) {
-        return at(0, false).toInt64();
+        bool mustDestroy;
+        return at(0, mustDestroy, false).toInt64();
       }
       // will return 0
       break;
@@ -408,7 +429,8 @@ bool AqlValue::toBoolean() const {
       if (s.isString()) {
         return (s.getStringLength() > 0);
       } 
-      if (s.isArray() || s.isObject()) {
+      if (s.isArray() || s.isObject() || s.isCustom()) {
+        // custom _id type is also true
         return true;
       }
       // all other cases, including Null and None
@@ -510,7 +532,6 @@ v8::Handle<v8::Value> AqlValue::toV8(
       v8::Handle<v8::Array> result =
           v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
-
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
@@ -686,7 +707,7 @@ void AqlValue::destroy() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the slice from the value
 ////////////////////////////////////////////////////////////////////////////////
-  
+ 
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case DOCUMENT: {

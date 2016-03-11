@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vpack.h"
-
 #include "Basics/Exceptions.h"
 #include "V8/v8-utils.h"
 
@@ -128,7 +127,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     case VPackValueType::Array:
       return ObjectVPackArray(isolate, slice, options, base);
     case VPackValueType::Custom: {
-      if (options->customTypeHandler == nullptr || base == nullptr) {
+      if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Could not extract custom attribute.");
       }
