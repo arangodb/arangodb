@@ -29,6 +29,9 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +121,16 @@ struct TRI_doc_mptr_t {
   }
 
   // return the marker's revision id
-  TRI_voc_rid_t revisionId() const;
+  VPackSlice revisionIdAsSlice() const {
+    VPackSlice const slice(vpack());
+    return slice.get(TRI_VOC_ATTRIBUTE_REV);
+  }
+
+  // return the marker's revision id as string slice or None slice if not there
+  TRI_voc_rid_t revisionId() const {
+    VPackSlice const slice(vpack());
+    return TRI_ExtractRevisionId(slice);
+  }
 };
 
 #endif

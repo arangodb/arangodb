@@ -212,7 +212,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     if (ifRid != 0) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(ifRid));
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(ifRid)));
     }
   }
   VPackSlice search = builder.slice();
@@ -553,7 +553,7 @@ bool RestDocumentHandler::deleteDocument() {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     if (revision != 0) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
     }
   }
   VPackSlice search = builder.slice();

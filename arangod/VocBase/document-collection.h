@@ -219,12 +219,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             TRI_voc_rid_t&);
+             VPackSlice&);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             TRI_voc_rid_t&);
+             VPackSlice&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, bool, TRI_voc_rid_t&);
+             arangodb::OperationOptions&, bool, VPackSlice&);
 
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
@@ -237,7 +237,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                    TRI_voc_rid_t);
+                    arangodb::velocypack::Slice const);
   int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
                      arangodb::wal::DocumentOperation&,
                      TRI_doc_mptr_t*, bool&);

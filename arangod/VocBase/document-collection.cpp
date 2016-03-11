@@ -3370,7 +3370,7 @@ int TRI_document_collection_t::update(Transaction* trx,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock,
-                                      TRI_voc_rid_t& prevRev) {
+                                      VPackSlice& prevRev) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
@@ -3403,7 +3403,7 @@ int TRI_document_collection_t::update(Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3472,7 +3472,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        TRI_doc_mptr_t* mptr,
                                        OperationOptions& options,
                                        bool lock,
-                                       TRI_voc_rid_t& prevRev) {
+                                       VPackSlice& prevRev) {
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     VPackSlice s = newSlice.get(TRI_VOC_ATTRIBUTE_FROM);
@@ -3517,7 +3517,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3583,7 +3583,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       VPackSlice const slice,
                                       OperationOptions& options,
                                       bool lock,
-                                      TRI_voc_rid_t& prevRev) {
+                                      VPackSlice& prevRev) {
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
@@ -3630,7 +3630,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       return res;
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3789,14 +3789,8 @@ int TRI_document_collection_t::lookupDocument(
 
 int TRI_document_collection_t::checkRevision(Transaction* trx,
                                              VPackSlice const expected,
-                                             TRI_voc_rid_t found) {
-  TRI_voc_rid_t expectedRev = 0;
-  if (expected.isString()) {
-    expectedRev = arangodb::basics::VelocyPackHelper::stringUInt64(expected);
-  } else if (expected.isNumber()) {
-    expectedRev = expected.getNumber<TRI_voc_rid_t>();
-  }
-  if (expectedRev != 0 && found != expectedRev) {
+                                             VPackSlice const found) {
+  if (!expected.isNone() && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
   }
   return TRI_ERROR_NO_ERROR;
