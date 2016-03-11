@@ -110,6 +110,7 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
+  DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
 
@@ -141,6 +142,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +150,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);
 
   if (_isReference) {
@@ -199,9 +202,11 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // the V8 handle scope and the scope guard
     executeExpression(result);
   }
+  DEBUG_END_BLOCK();
 }
 
 AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
@@ -213,4 +218,5 @@ AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }

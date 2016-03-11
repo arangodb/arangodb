@@ -54,6 +54,7 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
   _documents = VPackSlice();
+  _documentsSize = 0;
   _posInDocuments = 0;
 }
 
@@ -102,8 +103,10 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   }
 
   _documents = _scanner->scan(hint);
+
   TRI_ASSERT(_documents.isArray());
   VPackValueLength count = _documents.length();
+  _documentsSize = static_cast<size_t>(count);
 
   if (count == 0) {
     _documents = VPackSlice();
@@ -112,7 +115,6 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
 
   _engine->_stats.scannedFull += static_cast<int64_t>(count);
 
-  _documentsSize = static_cast<size_t>(count);
   _posInDocuments = 0;
 
   return true;
@@ -144,6 +146,7 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 
 AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -229,9 +232,11 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   clearRegisters(res.get());
 
   return res.release();
+  DEBUG_END_BLOCK(); 
 }
 
 size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   size_t skipped = 0;
 
   if (_done) {
@@ -285,4 +290,5 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
   // We skipped atLeast documents
   return skipped;
+  DEBUG_END_BLOCK(); 
 }

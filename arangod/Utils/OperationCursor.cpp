@@ -28,7 +28,13 @@
 using namespace arangodb;
 
 void OperationCursor::reset() {
-  _indexIterator->reset();
+  _builder.clear();
+
+  if (_indexIterator != nullptr) {
+    _indexIterator->reset();
+    _hasMore = true;
+    _limit = _originalLimit;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
