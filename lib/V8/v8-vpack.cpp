@@ -179,7 +179,7 @@ static int V8ToVPack(BuilderContext& context,
   v8::Isolate* isolate = context.isolate;
   v8::HandleScope scope(isolate);
 
-  if (parameter->IsNull()) {
+  if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,
              VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
@@ -219,8 +219,12 @@ static int V8ToVPack(BuilderContext& context,
     uint32_t const n = array->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
-      // get address of next element
-      int res = V8ToVPack(context, array->Get(i), "", false);
+      v8::Handle<v8::Value> value = array->Get(i);
+      if (value->IsUndefined()) {
+        // ignore object values which are undefined
+        continue;
+      }
+      int res = V8ToVPack(context, value, "", false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -328,7 +332,13 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      int res = V8ToVPack(context, o->Get(key), *str, true);
+      v8::Handle<v8::Value> value = o->Get(key);
+      if (value->IsUndefined()) {
+        // ignore object values which are undefined
+        continue;
+      }
+
+      int res = V8ToVPack(context, value, *str, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
