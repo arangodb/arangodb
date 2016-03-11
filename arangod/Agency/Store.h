@@ -100,12 +100,14 @@ public:
       for (auto const& i : n._children)
         os << *(i.second);
     } else {
-      os << n._value.toString() << std::endl;
+      os << Slice(n._value.data()).toJson() << std::endl;
     }
     return os;
   }
 
   virtual bool apply (arangodb::velocypack::Slice const&);
+
+  void toBuilder (Builder&) const;
 
 protected:
   Node const* _parent;

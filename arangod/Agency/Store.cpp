@@ -67,11 +67,9 @@ Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
 }
 
 Node& Node::operator= (Node const& node) { // Assign node
-
-  _value.reset();
-  _value.append((char const*)node._value.data(),node._value.byteSize());
   _name = node._name;
   _type = node._type;
+  _value = node._value;
   _children = node._children;
   return *this;
 }
@@ -157,6 +155,23 @@ bool Node::apply (arangodb::velocypack::Slice const& slice) {
   return true;
 }
 
+void Node::toBuilder (Builder& builder) const {
+  try {
+    if (type()==NODE) {
+      VPackObjectBuilder guard(&builder);
+      for (auto const& child : _children) {
+        std::cout << _name << " : " <<std::endl;
+        builder.add(VPackValue(_name));
+        child.second->toBuilder(builder);
+      }
+    } else {
+      builder.add(Slice(_value.data()));
+    }
+  } catch (std::exception const& e) {
+    LOG(FATAL) << e.what();
+  }
+}
+
 Store::Store () : Node("root") {}
 Store::~Store () {}
 
@@ -211,8 +226,9 @@ query_t Store::read (query_t const& queries) const { // list of list of paths
   return result;
 }
 
-bool Store::read (arangodb::velocypack::Slice const& query, 
-                 Builder& ret) const {
+bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const {
+
+  // Collect all paths
   std::list<std::string> query_strs;
   if (query.type() == VPackValueType::Array) {
     for (auto const& sub_query : VPackArrayIterator(query))
@@ -224,7 +240,7 @@ bool Store::read (arangodb::velocypack::Slice const& query,
   }
   query_strs.sort();     // sort paths
 
-  // remove "double" entries
+  // Remove double ranges (inclusion / identity)
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
     if (i!=j && i->compare(0,j->size(),*j)==0) {
       *i="";
@@ -235,32 +251,17 @@ bool Store::read (arangodb::velocypack::Slice const& query,
   auto cut = std::remove_if(query_strs.begin(), query_strs.end(), Empty());
   query_strs.erase (cut,query_strs.end());
 
+  // Create response tree 
   Node node("root");
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
     node(*i) = (*this)(*i);
   }
-
-  std::cout << node << std::endl;
+  
+  // Assemble builder from node
+  node.toBuilder(ret);
+  
   return true;
 }
 
-/*
-{
-  Node* par = n._parent;
-  while (par != 0) {
-    par = par->_parent;
-    os << "  ";
-  }
-  os << n._name << " : ";
-  if (n.type() == NODE) {
-    os << std::endl;
-    for (auto const& i : n._children)
-      os << *(i.second);
-  } else {
-    os << n._value.toString() << std::endl;
-  }
-  return os;
-}
-*/
 
 
