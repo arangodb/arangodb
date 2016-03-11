@@ -59,6 +59,10 @@ SSL_CTX* arangodb::sslContext(protocol_e protocol, std::string const& keyfile) {
       meth = TLSv1_method();
       break;
 
+    case TLS_V12:
+      meth = TLSv1_2_method();
+      break;
+
     default:
       LOG(ERR) << "unknown SSL protocol method";
       return nullptr;
@@ -103,6 +107,9 @@ std::string arangodb::protocolName(protocol_e protocol) {
 
     case TLS_V1:
       return "TLSv1";
+
+    case TLS_V12:
+      return "TLSv12";
 
     default:
       return "unknown";
