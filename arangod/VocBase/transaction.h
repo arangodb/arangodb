@@ -258,4 +258,10 @@ int TRI_CommitTransaction(TRI_transaction_t*, int);
 
 int TRI_AbortTransaction(TRI_transaction_t*, int);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSingleOperationTransaction(TRI_transaction_t const*);
+
 #endif

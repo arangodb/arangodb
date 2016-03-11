@@ -107,6 +107,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       WaitForSyncKey(),
 
       _FromKey(),
+      _DbCacheKey(),
       _DbNameKey(),
       _IdKey(),
       _KeyKey(),
@@ -198,6 +199,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
 
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
+  _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING("__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING("_dbName"));
   _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
   _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
