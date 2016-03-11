@@ -154,7 +154,7 @@ bool Query::DoDisableQueryTracking = false;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
-#include <iostream>
+
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
@@ -189,7 +189,6 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
 
-std::cout << "query: " << _queryString << "\n";
   TRI_ASSERT(_vocbase != nullptr);
 }
 
