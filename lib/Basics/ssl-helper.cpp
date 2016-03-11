@@ -68,6 +68,10 @@ SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfil
       meth = TLSv1_method();
       break;
 
+    case TLS_V12:
+      meth = TLSv1_2_method();
+      break;
+
     default:
       LOG_ERROR("unknown SSL protocol method");
       return nullptr;
@@ -110,6 +114,9 @@ string triagens::basics::protocolName (const protocol_e protocol) {
 
     case TLS_V1:
       return "TLSv1";
+
+    case TLS_V12:
+      return "TLSv12";
 
     default:
       return "unknown";
