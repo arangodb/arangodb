@@ -404,8 +404,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
   options.ignoreRevs = true;
-
-  OperationResult opResOld; // old document ($OLD)
+  options.returnOld = producesOutput;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -429,7 +428,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (a.isObject()) {
         // value is an array. now extract the _key attribute
         errorCode = extractKey(a, key);
-      } else if (a.slice().isString()) {
+      } else if (a.isString()) {
         // value is a string
         key = a.slice().copyString();
       } else {
@@ -441,17 +440,11 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // create a slice for the key
         keyBuilder.clear();
         keyBuilder.openObject();
-        keyBuilder.add(VPackValue(key));
+        keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
         keyBuilder.close();
 
         VPackSlice toRemove = keyBuilder.slice();
       
-        if (producesOutput) {
-          // read "old" version
-          // need to fetch the old document
-          opResOld = _trx->document(_collection->name, toRemove, options);
-        }
-
         // all exceptions are caught in _trx->remove()
         OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
         errorCode = opRes.code;
@@ -462,8 +455,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           errorCode = TRI_ERROR_NO_ERROR;
         }
 
-        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR && opResOld.successful()) {
-          result->setValue(dstRow, _outRegOld, AqlValue(opResOld.slice()));
+        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+          result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
         }
       }
 
@@ -510,6 +503,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
+  options.returnNew = producesOutput;
 
   // loop over all blocks
   size_t dstRow = 0;
