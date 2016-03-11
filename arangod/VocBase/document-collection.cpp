@@ -3370,10 +3370,12 @@ int TRI_document_collection_t::update(Transaction* trx,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock,
-                                      VPackSlice& prevRev) {
+                                      VPackSlice& prevRev,
+                                      TRI_doc_mptr_t& previous) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
+  prevRev = VPackSlice();
 
   TRI_voc_rid_t revisionId = TRI_NewTickServer();
   
@@ -3404,6 +3406,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3472,7 +3475,9 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        TRI_doc_mptr_t* mptr,
                                        OperationOptions& options,
                                        bool lock,
-                                       VPackSlice& prevRev) {
+                                       VPackSlice& prevRev,
+                                       TRI_doc_mptr_t& previous) {
+  prevRev = VPackSlice();
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     VPackSlice s = newSlice.get(TRI_VOC_ATTRIBUTE_FROM);
@@ -3518,6 +3523,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3583,7 +3589,11 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       VPackSlice const slice,
                                       OperationOptions& options,
                                       bool lock,
-                                      VPackSlice& prevRev) {
+                                      VPackSlice& prevRev,
+                                      TRI_doc_mptr_t*& previous) {
+  prevRev = VPackSlice();
+  previous = nullptr;
+
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
@@ -3631,6 +3641,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
 
     prevRev = oldHeader->revisionIdAsSlice();
+    previous = oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
