@@ -304,7 +304,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
-  std::unordered_map<AqlValue$, AqlValue$> cache;
+  std::unordered_map<AqlValue, AqlValue> cache;
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
@@ -322,13 +322,13 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
-      AqlValue$ const& x(
+      AqlValue const& x(
           _gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
       if (!x.isEmpty()) {
         auto it = cache.find(x);
 
         if (it == cache.end()) {
-          AqlValue$ y = x.clone();
+          AqlValue y = x.clone();
           try {
             res->setValue(i, col, y);
           } catch (...) {
@@ -471,7 +471,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 
   size_t i = 0;
   for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue$::Compare(
+    int cmp = AqlValue::Compare(
         _trx,
         _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
         _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first), true);
@@ -1037,7 +1037,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   ENTER_BLOCK
 
   // inspect cur in row _pos and check to which shard it should be sent . .
-  AqlValue$ val = cur->getValueReference(_pos, _regId);
+  AqlValue val = cur->getValueReference(_pos, _regId);
 
   VPackSlice input = val.slice(); // will throw when wrong type
 
@@ -1069,7 +1069,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue$(builder));
+    cur->setValue(_pos, _regId, AqlValue(builder));
 
     value = builder.slice();
     hasCreatedKeyAttribute = true;
@@ -1099,7 +1099,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         cur->destroyValue(_pos, _regId);
 
         // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue$(builder2));
+        cur->setValue(_pos, _regId, AqlValue(builder2));
         value = builder2.slice();
       }
     } else {
@@ -1121,7 +1121,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
       cur->destroyValue(_pos, _regId);
 
       // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue$(builder2.slice()));
+      cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
       value = builder2.slice();
     }
   }

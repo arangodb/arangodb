@@ -40,16 +40,12 @@ using namespace arangodb::aql;
 /// @brief hashes the value
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t AqlValue$::hash(arangodb::AqlTransaction* trx) const {
+uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   switch (type()) {
-    case DOCUMENT: { 
-      return VPackSlice(_data.document).hash();
-    }
-    case VPACK_INLINE: {
-      return VPackSlice(_data.internal).hash();
-    }
+    case DOCUMENT:  
+    case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
-      return VPackSlice(_data.buffer->data()).hash();
+      return slice().hash();
     }
     case DOCVEC:
     case RANGE: { 
@@ -66,7 +62,7 @@ uint64_t AqlValue$::hash(arangodb::AqlTransaction* trx) const {
 /// @brief whether or not the value contains a null value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AqlValue$::isNull(bool emptyIsNull) const {
+bool AqlValue::isNull(bool emptyIsNull) const {
   AqlValueType t = type();
   if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
     return false;
@@ -80,7 +76,7 @@ bool AqlValue$::isNull(bool emptyIsNull) const {
 /// @brief whether or not the value is a number
 //////////////////////////////////////////////////////////////////////////////
  
-bool AqlValue$::isNumber() const {
+bool AqlValue::isNumber() const {
   AqlValueType t = type();
   if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
     return false;
@@ -92,7 +88,7 @@ bool AqlValue$::isNumber() const {
 /// @brief whether or not the value is a string
 //////////////////////////////////////////////////////////////////////////////
  
-bool AqlValue$::isString() const {
+bool AqlValue::isString() const {
   AqlValueType t = type();
   if (t == DOCUMENT || t == DOCVEC || t == RANGE) {
     return false;
@@ -104,7 +100,7 @@ bool AqlValue$::isString() const {
 /// @brief whether or not the value is an object
 //////////////////////////////////////////////////////////////////////////////
  
-bool AqlValue$::isObject() const {
+bool AqlValue::isObject() const {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
     return false;
@@ -117,7 +113,7 @@ bool AqlValue$::isObject() const {
 /// as arrays, too!)
 //////////////////////////////////////////////////////////////////////////////
  
-bool AqlValue$::isArray() const {
+bool AqlValue::isArray() const {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
     return true;
@@ -129,7 +125,7 @@ bool AqlValue$::isArray() const {
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
 //////////////////////////////////////////////////////////////////////////////
 
-size_t AqlValue$::length() const {
+size_t AqlValue::length() const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -151,7 +147,7 @@ size_t AqlValue$::length() const {
 /// @brief get the (array) element at position 
 //////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AqlValue$::at(int64_t position, bool copy) const {
+AqlValue AqlValue::at(int64_t position, bool copy) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -166,10 +162,11 @@ AqlValue$ AqlValue$::at(int64_t position, bool copy) const {
           position = n + position;
         }
         if (position >= 0 && position < n) {
-          if (copy || s.byteSize() < 16) {
-            return AqlValue$(s.at(position));
+          if (copy || s.byteSize() < sizeof(_data.internal)) {
+            return AqlValue(s.at(position));
           }
-          return AqlValue$(s.at(position).begin());
+          // return a reference to an existing slice
+          return AqlValue(s.at(position).begin());
         }
       }
       // fall-through intentional
@@ -210,7 +207,7 @@ AqlValue$ AqlValue$::at(int64_t position, bool copy) const {
         // only look up the value if it is within array bounds
         VPackBuilder builder;
         builder.add(VPackValue(_data.range->at(static_cast<size_t>(position))));
-        return AqlValue$(builder);
+        return AqlValue(builder);
       }
       // fall-through intentional
       break;
@@ -218,14 +215,14 @@ AqlValue$ AqlValue$::at(int64_t position, bool copy) const {
   }
 
   // default is to return null
-  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the (object) element by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue$ AqlValue$::get(std::string const& name, bool copy) const {
+AqlValue AqlValue::get(std::string const& name, bool copy) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -237,9 +234,10 @@ AqlValue$ AqlValue$::get(std::string const& name, bool copy) const {
         VPackSlice found(s.get(name));
         if (!found.isNone()) {
           if (copy || found.byteSize() < sizeof(_data.internal)) {
-            return AqlValue$(found);
+            return AqlValue(found);
           }
-          return AqlValue$(found.begin());
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
         }
       }
       // fall-through intentional
@@ -254,14 +252,14 @@ AqlValue$ AqlValue$::get(std::string const& name, bool copy) const {
   }
 
   // default is to return null
-  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the (object) element(s) by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue$ AqlValue$::get(std::vector<char const*> const& names, bool copy) const {
+AqlValue AqlValue::get(std::vector<char const*> const& names, bool copy) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -272,10 +270,11 @@ AqlValue$ AqlValue$::get(std::vector<char const*> const& names, bool copy) const
       if (s.isObject()) {
         VPackSlice found(s.get(names));
         if (!found.isNone()) {
-          if (copy || found.byteSize() < 16) {
-            return AqlValue$(found);
+          if (copy || found.byteSize() < sizeof(_data.internal)) {
+            return AqlValue(found);
           }
-          return AqlValue$(found.begin());
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
         }
       }
       // fall-through intentional
@@ -290,19 +289,19 @@ AqlValue$ AqlValue$::get(std::vector<char const*> const& names, bool copy) const
   }
 
   // default is to return null
-  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the numeric value of an AqlValue
 //////////////////////////////////////////////////////////////////////////////
  
-double AqlValue$::toDouble() const {
+double AqlValue::toDouble() const {
   bool failed; // will be ignored
   return toDouble(failed);
 }
 
-double AqlValue$::toDouble(bool& failed) const {
+double AqlValue::toDouble(bool& failed) const {
   failed = false;
   switch (type()) {
     case DOCUMENT: 
@@ -349,7 +348,7 @@ double AqlValue$::toDouble(bool& failed) const {
 /// @brief get the numeric value of an AqlValue
 //////////////////////////////////////////////////////////////////////////////
  
-int64_t AqlValue$::toInt64() const {
+int64_t AqlValue::toInt64() const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -394,7 +393,7 @@ int64_t AqlValue$::toInt64() const {
 /// @brief whether or not the contained value evaluates to true
 //////////////////////////////////////////////////////////////////////////////
 
-bool AqlValue$::toBoolean() const {
+bool AqlValue::toBoolean() const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -427,7 +426,7 @@ bool AqlValue$::toBoolean() const {
 /// @brief return the total size of the docvecs
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t AqlValue$::docvecSize() const {
+size_t AqlValue::docvecSize() const {
   TRI_ASSERT(type() == DOCVEC);
   size_t s = 0;
   for (auto const& it : *_data.docvec) {
@@ -441,7 +440,7 @@ size_t AqlValue$::docvecSize() const {
 /// only construct those attributes that are needed in the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue$::toV8Partial(
+v8::Handle<v8::Value> AqlValue::toV8Partial(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     std::unordered_set<std::string> const& attributes) const {
   AqlValueType t = type();
@@ -494,7 +493,7 @@ v8::Handle<v8::Value> AqlValue$::toV8Partial(
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue$::toV8(
+v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
   
   switch (type()) {
@@ -542,7 +541,7 @@ v8::Handle<v8::Value> AqlValue$::toV8(
 /// @brief materializes a value into the builder
 //////////////////////////////////////////////////////////////////////////////
 
-void AqlValue$::toVelocyPack(AqlTransaction* trx, 
+void AqlValue::toVelocyPack(AqlTransaction* trx, 
                              arangodb::velocypack::Builder& builder) const {
   switch (type()) {
     case DOCUMENT: 
@@ -578,7 +577,7 @@ void AqlValue$::toVelocyPack(AqlTransaction* trx,
 /// @brief materializes a value into the builder
 //////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AqlValue$::materialize(AqlTransaction* trx, bool& hasCopied) const {
+AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE: 
@@ -590,43 +589,43 @@ AqlValue$ AqlValue$::materialize(AqlTransaction* trx, bool& hasCopied) const {
       VPackBuilder builder;
       toVelocyPack(trx, builder);
       hasCopied = true;
-      return AqlValue$(builder);
+      return AqlValue(builder);
     }
     case RANGE: {
       VPackBuilder builder;
       toVelocyPack(trx, builder);
       hasCopied = true;
-      return AqlValue$(builder);
+      return AqlValue(builder);
     }
   }
 
   // we shouldn't get here
   hasCopied = false;
-  return AqlValue$();
+  return AqlValue();
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief clone a value
 //////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AqlValue$::clone() const {
+AqlValue AqlValue::clone() const {
   switch (type()) {
     case DOCUMENT: {
-      AqlValue$ copy;
+      AqlValue copy;
       copy._data.document = _data.document;
       copy.setType(AqlValueType::DOCUMENT);
       return copy;
     }
     case VPACK_INLINE: {
       // copy internal data
-      return AqlValue$(slice());
+      return AqlValue(slice());
     }
     case VPACK_EXTERNAL: {
       // copy buffer
       VPackValueLength length = _data.buffer->size();
       auto buffer = new VPackBuffer<uint8_t>(length);
       buffer->append(reinterpret_cast<char const*>(_data.buffer->data()), length);
-      return AqlValue$(buffer);
+      return AqlValue(buffer);
     }
     case DOCVEC: {
       auto c = std::make_unique<std::vector<AqlItemBlock*>>();
@@ -641,23 +640,23 @@ AqlValue$ AqlValue$::clone() const {
         }
         throw;
       }
-      return AqlValue$(c.release());
+      return AqlValue(c.release());
     }
     case RANGE: {
       // create a new value with a new range
-      return AqlValue$(range()->_low, range()->_high);
+      return AqlValue(range()->_low, range()->_high);
     }
   }
 
   TRI_ASSERT(false);
-  return AqlValue$();
+  return AqlValue();
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the value's internals
 //////////////////////////////////////////////////////////////////////////////
 
-void AqlValue$::destroy() {
+void AqlValue::destroy() {
   switch (type()) { 
     case DOCUMENT: 
     case VPACK_INLINE: {
@@ -666,7 +665,7 @@ void AqlValue$::destroy() {
     }
     case VPACK_EXTERNAL: {
       delete _data.buffer;
-      invalidate(); // to prevent duplicate deletion
+      erase(); // to prevent duplicate deletion
       break;
     }
     case DOCVEC: {
@@ -674,12 +673,12 @@ void AqlValue$::destroy() {
         delete it;
       }
       delete _data.docvec;
-      invalidate(); // to prevent duplicate deletion
+      erase(); // to prevent duplicate deletion
       break;
     }
     case RANGE: {
       delete _data.range;
-      invalidate(); // to prevent duplicate deletion
+      erase(); // to prevent duplicate deletion
     }
   }
 }
@@ -688,7 +687,7 @@ void AqlValue$::destroy() {
 /// @brief return the slice from the value
 ////////////////////////////////////////////////////////////////////////////////
   
-VPackSlice AqlValue$::slice() const {
+VPackSlice AqlValue::slice() const {
   switch (type()) {
     case DOCUMENT: {
       return VPackSlice(_data.document);
@@ -719,7 +718,7 @@ VPackSlice AqlValue$::slice() const {
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AqlValue$::CreateFromBlocks(
+AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
 
@@ -751,14 +750,14 @@ AqlValue$ AqlValue$::CreateFromBlocks(
   }
 
   builder.close();
-  return AqlValue$(builder);
+  return AqlValue(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AqlValue$::CreateFromBlocks(
+AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
 
@@ -772,18 +771,18 @@ AqlValue$ AqlValue$::CreateFromBlocks(
   }
 
   builder.close();
-  return AqlValue$(builder);
+  return AqlValue(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue$::Compare(arangodb::AqlTransaction* trx, AqlValue$ const& left,
-                       AqlValue$ const& right,
+int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
+                       AqlValue const& right,
                        bool compareUtf8) {
-  AqlValue$::AqlValueType const leftType = left.type();
-  AqlValue$::AqlValueType const rightType = right.type();
+  AqlValue::AqlValueType const leftType = left.type();
+  AqlValue::AqlValueType const rightType = right.type();
 
   if (leftType != rightType) {
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
@@ -818,8 +817,8 @@ int AqlValue$::Compare(arangodb::AqlTransaction* trx, AqlValue$ const& left,
       size_t const rsize = right._data.docvec->size();
 
       while (lblock < lsize && rblock < rsize) {
-        AqlValue$ const& lval = left._data.docvec->at(lblock)->getValueReference(litem, 0);
-        AqlValue$ const& rval = right._data.docvec->at(rblock)->getValueReference(ritem, 0);
+        AqlValue const& lval = left._data.docvec->at(lblock)->getValueReference(litem, 0);
+        AqlValue const& rval = right._data.docvec->at(rblock)->getValueReference(ritem, 0);
 
         int cmp = Compare(trx, lval, rval, compareUtf8);
 

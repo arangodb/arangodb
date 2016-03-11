@@ -85,8 +85,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
     if (i > 0 && subqueryIsConst) {
       // re-use already calculated subquery result
       TRI_ASSERT(subqueryResults != nullptr);
-//      res->setValue(i, _outReg, subqueryResults);
-#warning FIX AQLVALUE CONSTRUCTION FROM ITEMBLOCKS
+      res->setValue(i, _outReg, AqlValue(subqueryResults));
     } else {
       // initial subquery execution or subquery is not constant
 
@@ -102,8 +101,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
           delete x;
         }
         subqueryResults->clear();
-//        res->setValue(i, _outReg, subqueryResults);
-#warning FIX AQLVALUE CONSTRUCTION FROM ITEMBLOCKS
+        res->setValue(i, _outReg, AqlValue(subqueryResults));
         continue;
       }
 
@@ -111,8 +109,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
         TRI_IF_FAILURE("SubqueryBlock::getSome") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-//        res->setValue(i, _outReg, subqueryResults);
-#warning FIX AQLVALUE CONSTRUCTION FROM ITEMBLOCKS
+        res->setValue(i, _outReg, AqlValue(subqueryResults));
       } catch (...) {
         destroySubqueryResults(subqueryResults);
         throw;

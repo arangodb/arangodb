@@ -127,7 +127,7 @@ void SortBlock::doSorting() {
         throw;
       }
 
-      std::unordered_map<AqlValue$, AqlValue$> cache;
+      std::unordered_map<AqlValue, AqlValue> cache;
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrregs; j++) {
@@ -139,7 +139,7 @@ void SortBlock::doSorting() {
             auto it = cache.find(a);
 
             if (it != cache.end()) {
-              AqlValue$ const& b = it->second;
+              AqlValue const& b = it->second;
               // If one of the following throws, all is well, because
               // the new block already has either a copy or stolen
               // the AqlValue:
@@ -153,7 +153,7 @@ void SortBlock::doSorting() {
 
               if (vCount == 0) {
                 // Was already stolen for another block
-                AqlValue$ b = a.clone();
+                AqlValue b = a.clone();
                 try {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -227,7 +227,7 @@ bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                         std::pair<size_t, size_t> const& b) {
   size_t i = 0;
   for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue$::Compare(
+    int cmp = AqlValue::Compare(
         _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
         _buffer[b.first]->getValueReference(b.second, reg.first), true);
 

@@ -154,7 +154,7 @@ bool Query::DoDisableQueryTracking = false;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
-
+#include <iostream>
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
@@ -189,6 +189,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
 
+std::cout << "query: " << _queryString << "\n";
   TRI_ASSERT(_vocbase != nullptr);
 }
 
@@ -631,7 +632,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               val.toVelocyPack(_trx, *resultBuilder);
@@ -658,7 +659,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               val.toVelocyPack(_trx, *resultBuilder);
@@ -779,7 +780,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx));
@@ -805,7 +806,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx));

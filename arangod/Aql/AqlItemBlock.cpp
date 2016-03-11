@@ -76,7 +76,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   VPackSlice data = slice.get("data");
   VPackSlice raw = slice.get("raw");
 
-  std::vector<AqlValue$> madeHere;
+  std::vector<AqlValue> madeHere;
   madeHere.reserve(raw.length());
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
@@ -114,7 +114,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
                 VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
             int64_t high =
                 VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
-            AqlValue$ a(low, high);
+            AqlValue a(low, high);
             try {
               setValue(i, column, a);
             } catch (...) {
@@ -123,7 +123,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
             }
           } else if (n == 1) {
             // a VelocyPack value
-            AqlValue$ a(raw.at(posInRaw++));
+            AqlValue a(raw.at(posInRaw++));
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
             } catch (...) {
@@ -160,8 +160,7 @@ void AqlItemBlock::destroy() {
     if (it.requiresDestruction()) {
       try {  // can find() really throw???
         auto it2 = _valueCount.find(it);
-        if (it2 !=
-            _valueCount.end()) {  // if we know it, we are still responsible
+        if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
           TRI_ASSERT(it2->second > 0);
 
           if (--(it2->second) == 0) {
@@ -176,7 +175,7 @@ void AqlItemBlock::destroy() {
       }
       // Note that if we do not know it the thing it has been stolen from us!
     } else {
-      it.invalidate();
+      it.erase();
     }
   }
 
@@ -204,7 +203,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   // erase all stored values in the region that we freed
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
-      AqlValue$& a(_data[_nrRegs * i + j]);
+      AqlValue& a(_data[_nrRegs * i + j]);
 
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
@@ -221,7 +220,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
           }
         }
       }
-      a.invalidate();
+      a.erase();
     }
   }
 
@@ -238,7 +237,7 @@ void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
   for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
-      AqlValue$& a(_data[_nrRegs * i + reg]);
+      AqlValue& a(_data[_nrRegs * i + reg]);
 
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
@@ -256,7 +255,7 @@ void AqlItemBlock::clearRegisters(
           }
         }
       }
-      a.invalidate();
+      a.erase();
     }
   }
 }
@@ -268,20 +267,20 @@ void AqlItemBlock::clearRegisters(
 AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
-  std::unordered_map<AqlValue$, AqlValue$> cache;
+  std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue$ const& a(_data[row * _nrRegs + col]);
+      AqlValue const& a(_data[row * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         auto it = cache.find(a);
 
         if (it == cache.end()) {
-          AqlValue$ b = a.clone();
+          AqlValue b = a.clone();
           try {
             res->setValue(row - from, col, b);
           } catch (...) {
@@ -305,7 +304,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 
 AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
-  std::unordered_map<AqlValue$, AqlValue$> cache;
+  std::unordered_map<AqlValue, AqlValue> cache;
 
   auto res = std::make_unique<AqlItemBlock>(1, _nrRegs);
 
@@ -314,13 +313,13 @@ AqlItemBlock* AqlItemBlock::slice(
       continue;
     }
 
-    AqlValue$ const& a(_data[row * _nrRegs + col]);
+    AqlValue const& a(_data[row * _nrRegs + col]);
 
     if (!a.isEmpty()) {
       auto it = cache.find(a);
 
       if (it == cache.end()) {
-        AqlValue$ b = a.clone();
+        AqlValue b = a.clone();
         try {
           res->setValue(0, col, b);
         } catch (...) {
@@ -346,20 +345,20 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
                                   size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  std::unordered_map<AqlValue$, AqlValue$> cache;
+  std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue$ const& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         auto it = cache.find(a);
 
         if (it == cache.end()) {
-          AqlValue$ b = a.clone();
+          AqlValue b = a.clone();
           try {
             res->setValue(row - from, col, b);
           } catch (...) {
@@ -394,7 +393,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue$& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue& a(_data[chosen[row] * _nrRegs + col]);
 
       if (!a.isEmpty()) {
         steal(a);
@@ -496,7 +495,7 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
   raw.add(VPackValue(VPackValueType::Null));
   raw.add(VPackValue(VPackValueType::Null));
 
-  std::unordered_map<AqlValue$, size_t> table;  // remember duplicates
+  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
 
   size_t emptyCount = 0;  // here we count runs of empty AqlValues
 
@@ -515,7 +514,7 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
   size_t pos = 2;  // write position in raw
   for (RegisterId column = 0; column < _nrRegs; column++) {
     for (size_t i = 0; i < _nrItems; i++) {
-      AqlValue$ const& a(_data[i * _nrRegs + column]);
+      AqlValue const& a(_data[i * _nrRegs + column]);
       if (a.isEmpty()) {
         emptyCount++;
       } else {

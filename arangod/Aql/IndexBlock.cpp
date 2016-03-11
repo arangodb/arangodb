@@ -108,9 +108,10 @@ void IndexBlock::executeExpressions() {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
 
-    AqlValue$ a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions]);
-    AqlValueGuard guard(a);
+    bool mustDestroy;
+    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
+                              _inRegs[posInExpressions], mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
 
     AstNode* evaluatedNode = nullptr;
     
@@ -512,7 +513,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue$(VPackSlice(_documents[_posInDocs++].vpack())));
+                      AqlValue(VPackSlice(_documents[_posInDocs++].vpack())));
         // No harm done, if the setValue throws!
       }
     }

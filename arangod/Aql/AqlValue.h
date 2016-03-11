@@ -40,11 +40,10 @@ class AqlTransaction;
 
 namespace aql {
 class AqlItemBlock;
-class Range;
 
-struct AqlValue$ final {
- friend struct std::hash<arangodb::aql::AqlValue$>;
- friend struct std::equal_to<arangodb::aql::AqlValue$>;
+struct AqlValue final {
+ friend struct std::hash<arangodb::aql::AqlValue>;
+ friend struct std::equal_to<arangodb::aql::AqlValue>;
 
  public:
 
@@ -84,53 +83,53 @@ struct AqlValue$ final {
 
  public:
   // construct an empty AqlValue
-  AqlValue$() {
+  AqlValue() {
     initFromSlice(arangodb::velocypack::Slice());
   }
   
   // construct from document
-  explicit AqlValue$(uint8_t const* document) {
+  explicit AqlValue(uint8_t const* document) {
     _data.document = document;
     setType(AqlValueType::DOCUMENT);
   }
   
   // construct from docvec, taking over its ownership
-  explicit AqlValue$(std::vector<AqlItemBlock*>* docvec) {
+  explicit AqlValue(std::vector<AqlItemBlock*>* docvec) {
     _data.docvec = docvec;
     setType(AqlValueType::DOCVEC);
   }
 
   // construct boolean value type
-  explicit AqlValue$(bool value) {
+  explicit AqlValue(bool value) {
     initFromSlice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
   }
   
   // construct from Buffer, taking over its ownership
-  explicit AqlValue$(arangodb::velocypack::Buffer<uint8_t>* buffer) {
+  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
     _data.buffer = buffer;
     setType(AqlValueType::VPACK_EXTERNAL);
   }
   
   // construct from Builder
-  explicit AqlValue$(arangodb::velocypack::Builder const& builder) {
+  explicit AqlValue(arangodb::velocypack::Builder const& builder) {
     TRI_ASSERT(builder.isClosed());
     initFromSlice(builder.slice());
   }
   
-  explicit AqlValue$(arangodb::velocypack::Builder const* builder) : AqlValue$(*builder) {}
+  explicit AqlValue(arangodb::velocypack::Builder const* builder) : AqlValue(*builder) {}
 
   // construct from Slice
-  explicit AqlValue$(arangodb::velocypack::Slice const& slice) {
+  explicit AqlValue(arangodb::velocypack::Slice const& slice) {
     initFromSlice(slice);
   }
   
   // construct range type
-  AqlValue$(int64_t low, int64_t high) {
+  AqlValue(int64_t low, int64_t high) {
     _data.range = new Range(low, high);
     setType(AqlValueType::RANGE);
   }
   
-  ~AqlValue$() = default;
+  ~AqlValue() = default;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the value must be destroyed
@@ -215,14 +214,14 @@ struct AqlValue$ final {
   /// @brief get the (array) element at position 
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ at(int64_t position, bool copy) const;
+  AqlValue at(int64_t position, bool copy) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the (object) element by name(s)
   //////////////////////////////////////////////////////////////////////////////
   
-  AqlValue$ get(std::string const& name, bool copy) const;
-  AqlValue$ get(std::vector<char const*> const& names, bool copy) const;
+  AqlValue get(std::string const& name, bool copy) const;
+  AqlValue get(std::vector<char const*> const& names, bool copy) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the numeric value of an AqlValue
@@ -288,25 +287,16 @@ struct AqlValue$ final {
   /// ranges
   //////////////////////////////////////////////////////////////////////////////
   
-  AqlValue$ materialize(arangodb::AqlTransaction*, bool& hasCopied) const;
+  AqlValue materialize(arangodb::AqlTransaction*, bool& hasCopied) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone a value
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ clone() const;
+  AqlValue clone() const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates/resets a value to None, not freeing any memory
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidate() {
-    initFromSlice(arangodb::velocypack::Slice());
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidates/resets a value to None, not freeing any memory
-  /// this is an alias for invalidate
   //////////////////////////////////////////////////////////////////////////////
 
   void erase() {
@@ -323,7 +313,7 @@ struct AqlValue$ final {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue$ CreateFromBlocks(arangodb::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
                                     std::vector<AqlItemBlock*> const&,
                                     std::vector<std::string> const&);
 
@@ -331,7 +321,7 @@ struct AqlValue$ final {
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   //////////////////////////////////////////////////////////////////////////////
 
-  static AqlValue$ CreateFromBlocks(arangodb::AqlTransaction*,
+  static AqlValue CreateFromBlocks(arangodb::AqlTransaction*,
                                     std::vector<AqlItemBlock*> const&,
                                     arangodb::aql::RegisterId);
   
@@ -341,7 +331,7 @@ struct AqlValue$ final {
   //////////////////////////////////////////////////////////////////////////////
 
   static int Compare(arangodb::AqlTransaction*, 
-                     AqlValue$ const& left, AqlValue$ const& right, bool useUtf8);
+                     AqlValue const& left, AqlValue const& right, bool useUtf8);
 
  private:
   
@@ -351,7 +341,7 @@ struct AqlValue$ final {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValueType type() const {
-    return static_cast<AqlValueType>(_data.internal[15]);
+    return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
   }
   
   //////////////////////////////////////////////////////////////////////////////
@@ -360,7 +350,7 @@ struct AqlValue$ final {
   
   void initFromSlice(arangodb::velocypack::Slice const& slice) {
     arangodb::velocypack::ValueLength length = slice.byteSize();
-    if (length < 16) {
+    if (length < sizeof(_data.internal)) {
       // Use internal
       memcpy(_data.internal, slice.begin(), length);
       setType(AqlValueType::VPACK_INLINE);
@@ -386,18 +376,26 @@ struct AqlValue$ final {
   //////////////////////////////////////////////////////////////////////////////
 
   void setType(AqlValueType type) {
-    _data.internal[15] = type;
+    _data.internal[sizeof(_data.internal) - 1] = type;
   }
 };
 
-struct AqlValueGuard {
-  AqlValueGuard(AqlValue$& value) : value(value) {}
-  ~AqlValueGuard() { value.destroy(); }
-  AqlValue$& value;
+class AqlValueGuard {
+ public:
+  AqlValueGuard() = delete;
+  AqlValueGuard(AqlValueGuard const&) = delete;
+  AqlValueGuard& operator=(AqlValueGuard const&) = delete;
+
+  AqlValueGuard(AqlValue& value, bool destroy) : value(value), destroy(destroy) {}
+  ~AqlValueGuard() { if (destroy) { value.destroy(); } }
+  void steal() { destroy = false; }
+ private:
+  AqlValue& value;
+  bool destroy;
 };
 
 struct AqlValueMaterializer {
-  AqlValueMaterializer(arangodb::AqlTransaction* trx) 
+  explicit AqlValueMaterializer(arangodb::AqlTransaction* trx) 
       : trx(trx), materialized(), hasCopied(false) {}
 
   ~AqlValueMaterializer() { 
@@ -406,17 +404,17 @@ struct AqlValueMaterializer {
     } 
   }
 
-  arangodb::velocypack::Slice slice(AqlValue$ const& value) {
+  arangodb::velocypack::Slice slice(AqlValue const& value) {
     materialized = value.materialize(trx, hasCopied);
     return materialized.slice();
   }
 
   arangodb::AqlTransaction* trx;
-  AqlValue$ materialized;
+  AqlValue materialized;
   bool hasCopied;
 };
 
-static_assert(sizeof(AqlValue$) == 16, "invalid AqlValue$ size");
+static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // closes namespace arangodb::aql
 }  // closes namespace arangodb
@@ -428,26 +426,26 @@ static_assert(sizeof(AqlValue$) == 16, "invalid AqlValue$ size");
 namespace std {
 
 template <>
-struct hash<arangodb::aql::AqlValue$> {
-  size_t operator()(arangodb::aql::AqlValue$ const& x) const {
+struct hash<arangodb::aql::AqlValue> {
+  size_t operator()(arangodb::aql::AqlValue const& x) const {
     std::hash<uint8_t> intHash;
     std::hash<void const*> ptrHash;
-    arangodb::aql::AqlValue$::AqlValueType type = x.type();
+    arangodb::aql::AqlValue::AqlValueType type = x.type();
     size_t res = intHash(type);
     switch (type) {
-      case arangodb::aql::AqlValue$::DOCUMENT: {
+      case arangodb::aql::AqlValue::DOCUMENT: {
         return res ^ ptrHash(x._data.document);
       }
-      case arangodb::aql::AqlValue$::VPACK_INLINE: {
+      case arangodb::aql::AqlValue::VPACK_INLINE: {
         return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
       }
-      case arangodb::aql::AqlValue$::VPACK_EXTERNAL: {
+      case arangodb::aql::AqlValue::VPACK_EXTERNAL: {
         return res ^ ptrHash(x._data.buffer);
       }
-      case arangodb::aql::AqlValue$::DOCVEC: {
+      case arangodb::aql::AqlValue::DOCVEC: {
         return res ^ ptrHash(x._data.docvec);
       }
-      case arangodb::aql::AqlValue$::RANGE: {
+      case arangodb::aql::AqlValue::RANGE: {
         return res ^ ptrHash(x._data.range);
       }
     }
@@ -458,27 +456,27 @@ struct hash<arangodb::aql::AqlValue$> {
 };
 
 template <>
-struct equal_to<arangodb::aql::AqlValue$> {
-  bool operator()(arangodb::aql::AqlValue$ const& a,
-                  arangodb::aql::AqlValue$ const& b) const {
-    arangodb::aql::AqlValue$::AqlValueType type = a.type();
+struct equal_to<arangodb::aql::AqlValue> {
+  bool operator()(arangodb::aql::AqlValue const& a,
+                  arangodb::aql::AqlValue const& b) const {
+    arangodb::aql::AqlValue::AqlValueType type = a.type();
     if (type != b.type()) {
       return false;
     }
     switch (type) {
-      case arangodb::aql::AqlValue$::DOCUMENT: {
+      case arangodb::aql::AqlValue::DOCUMENT: {
         return a._data.document == b._data.document;
       }
-      case arangodb::aql::AqlValue$::VPACK_INLINE: {
+      case arangodb::aql::AqlValue::VPACK_INLINE: {
         return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
       }
-      case arangodb::aql::AqlValue$::VPACK_EXTERNAL: {
+      case arangodb::aql::AqlValue::VPACK_EXTERNAL: {
         return a._data.buffer == b._data.buffer;
       }
-      case arangodb::aql::AqlValue$::DOCVEC: {
+      case arangodb::aql::AqlValue::DOCVEC: {
         return a._data.docvec == b._data.docvec;
       }
-      case arangodb::aql::AqlValue$::RANGE: {
+      case arangodb::aql::AqlValue::RANGE: {
         return a._data.range == b._data.range;
       }
     }

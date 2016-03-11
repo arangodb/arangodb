@@ -97,7 +97,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
 
     // get the thing we are looping over
-    AqlValue$ const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
+    AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
 
     if (!inVarReg.isArray()) {
       throwArrayExpectedException();
@@ -138,7 +138,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
           }
         }
         // add the new register value . . .
-        AqlValue$ a = getAqlValue(inVarReg);
+        AqlValue a = getAqlValue(inVarReg);
         // deep copy of the inVariable.at(_pos) with correct memory
         // requirements
         // Note that _index has been increased by 1 by getAqlValue!
@@ -193,7 +193,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
 
     // get the thing we are looping over
-    AqlValue$ const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
+    AqlValue const& inVarReg = cur->getValueReference(_pos, _inVarRegId);
     // get the size of the thing we are looping over
     if (!inVarReg.isArray()) {
       throwArrayExpectedException();
@@ -234,7 +234,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ EnumerateListBlock::getAqlValue(AqlValue$ const& inVarReg) {
+AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -242,7 +242,7 @@ AqlValue$ EnumerateListBlock::getAqlValue(AqlValue$ const& inVarReg) {
   if (inVarReg.isDocvec()) {
     // special handling here, to save repeated evaluation of all itemblocks
     AqlItemBlock* block = inVarReg.docvecAt(_thisBlock);
-    AqlValue$ out = block->getValueReference(_index - _seen, 0).clone();
+    AqlValue out = block->getValueReference(_index - _seen, 0).clone();
     if (++_index == block->size() + _seen) {
       _seen += block->size();
       _thisBlock++;
