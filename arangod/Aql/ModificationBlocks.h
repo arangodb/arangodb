@@ -64,7 +64,7 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief extract a key from the AqlValue passed
   //////////////////////////////////////////////////////////////////////////////
 
-  int extractKey(AqlValue$ const&, std::string&);
+  int extractKey(AqlValue const&, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether a shard key value has changed

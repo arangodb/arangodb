@@ -50,7 +50,7 @@ class SortedCollectBlock : public ExecutionBlock {
   typedef std::vector<Aggregator*> AggregateValuesType;
 
   struct CollectGroup {
-    std::vector<AqlValue$> groupValues;
+    std::vector<AqlValue> groupValues;
 
     std::vector<AqlItemBlock*> groupBlocks;
     AggregateValuesType aggregators;
@@ -186,7 +186,7 @@ class HashedCollectBlock : public ExecutionBlock {
     GroupKeyHash(arangodb::AqlTransaction* trx, size_t num)
         : _trx(trx), _num(num) {}
 
-    size_t operator()(std::vector<AqlValue$> const& value) const;
+    size_t operator()(std::vector<AqlValue> const& value) const;
 
     arangodb::AqlTransaction* _trx;
     size_t const _num;
@@ -200,8 +200,8 @@ class HashedCollectBlock : public ExecutionBlock {
     explicit GroupKeyEqual(arangodb::AqlTransaction* trx)
         : _trx(trx) {}
 
-    bool operator()(std::vector<AqlValue$> const&,
-                    std::vector<AqlValue$> const&) const;
+    bool operator()(std::vector<AqlValue> const&,
+                    std::vector<AqlValue> const&) const;
 
     arangodb::AqlTransaction* _trx;
   };

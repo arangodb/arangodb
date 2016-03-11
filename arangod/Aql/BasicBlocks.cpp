@@ -97,7 +97,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
-          AqlValue$ a = _inputRegisterValues->getValue(0, reg);
+          AqlValue a = _inputRegisterValues->getValue(0, reg);
           _inputRegisterValues->steal(a);
 
           try {
@@ -437,17 +437,22 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   auto stripped = std::make_unique<AqlItemBlock>(n, 1);
 
   for (size_t i = 0; i < n; i++) {
-    AqlValue$ const& a = res->getValueReference(i, registerId);
+    auto a = res->getValueReference(i, registerId);
 
     if (!a.isEmpty()) {
       if (a.requiresDestruction()) {
         res->steal(a);
 
-        TRI_IF_FAILURE("ReturnBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+        try {
+          TRI_IF_FAILURE("ReturnBlock::getSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
 
-        stripped->setValue(i, 0, a);
+          stripped->setValue(i, 0, a);
+        } catch (...) {
+          a.destroy();
+          throw;
+        }
         // If the following does not go well, we do not care, since
         // the value is already stolen and installed in stripped
         res->eraseValue(i, registerId);

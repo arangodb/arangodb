@@ -45,8 +45,8 @@ struct Aggregator {
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
-  virtual void reduce(AqlValue$ const&) = 0;
-  virtual AqlValue$ stealValue() = 0;
+  virtual void reduce(AqlValue const&) = 0;
+  virtual AqlValue stealValue() = 0;
 
   static Aggregator* fromTypeString(arangodb::AqlTransaction*,
                                     std::string const&);
@@ -70,8 +70,8 @@ struct AggregatorLength final : public Aggregator {
   char const* name() const override final { return "LENGTH"; }
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
-  AqlValue$ stealValue() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
 
   uint64_t count;
 };
@@ -85,10 +85,10 @@ struct AggregatorMin final : public Aggregator {
   char const* name() const override final { return "MIN"; }
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
-  AqlValue$ stealValue() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
 
-  AqlValue$ value;
+  AqlValue value;
 };
 
 struct AggregatorMax final : public Aggregator {
@@ -100,10 +100,10 @@ struct AggregatorMax final : public Aggregator {
   char const* name() const override final { return "MAX"; }
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
-  AqlValue$ stealValue() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
 
-  AqlValue$ value;
+  AqlValue value;
 };
 
 struct AggregatorSum final : public Aggregator {
@@ -113,8 +113,8 @@ struct AggregatorSum final : public Aggregator {
   char const* name() const override final { return "SUM"; }
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
-  AqlValue$ stealValue() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
 
   double sum;
   bool invalid;
@@ -127,8 +127,8 @@ struct AggregatorAverage final : public Aggregator {
   char const* name() const override final { return "AVERAGE"; }
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
-  AqlValue$ stealValue() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
 
   uint64_t count;
   double sum;
@@ -145,7 +145,7 @@ struct AggregatorVarianceBase : public Aggregator {
         invalid(false) {}
 
   void reset() override final;
-  void reduce(AqlValue$ const&) override final;
+  void reduce(AqlValue const&) override final;
 
   bool const population;
   uint64_t count;
@@ -165,7 +165,7 @@ struct AggregatorVariance final : public AggregatorVarianceBase {
     return "VARIANCE_SAMPLE";
   }
 
-  AqlValue$ stealValue() override final;
+  AqlValue stealValue() override final;
 };
 
 struct AggregatorStddev final : public AggregatorVarianceBase {
@@ -179,7 +179,7 @@ struct AggregatorStddev final : public AggregatorVarianceBase {
     return "STDDEV_SAMPLE";
   }
 
-  AqlValue$ stealValue() override final;
+  AqlValue stealValue() override final;
 };
 
 }  // namespace arangodb::aql

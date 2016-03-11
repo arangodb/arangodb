@@ -91,12 +91,17 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
     // care of correct freeing:
-    AqlValue$ const& a = result->getValueReference(i, _inRegs[0]);
+    auto a = result->getValueReference(i, _inRegs[0]);
 
-    TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    try {
+      TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      result->setValue(i, _outReg, a);
+    } catch (...) {
+      a.destroy();
+      throw;
     }
-    result->setValue(i, _outReg, a);
   }
 }
 
@@ -113,29 +118,27 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // check the condition variable (if any)
     if (hasCondition) {
-      AqlValue$ const& conditionResult = result->getValueReference(i, _conditionReg);
+      AqlValue const& conditionResult = result->getValueReference(i, _conditionReg);
 
       if (!conditionResult.toBoolean()) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->setValue(i, _outReg, AqlValue$(arangodb::basics::VelocyPackHelper::NullValue()));
+        result->setValue(i, _outReg, AqlValue(arangodb::basics::VelocyPackHelper::NullValue()));
         continue;
       }
     }
 
     // execute the expression
-    AqlValue$ a = _expression->execute(_trx, result, i, _inVars, _inRegs);
+    bool mustDestroy;
+    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
 
-    try {
-      TRI_IF_FAILURE("CalculationBlock::executeExpression") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      result->setValue(i, _outReg, a);
-    } catch (...) {
-      a.destroy();
-      throw;
+    TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    result->setValue(i, _outReg, a);
+    guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
 }

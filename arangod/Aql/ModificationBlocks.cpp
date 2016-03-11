@@ -152,13 +152,13 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a key from the AqlValue$ passed
+/// @brief extract a key from the AqlValue passed
 ////////////////////////////////////////////////////////////////////////////////
 
-int ModificationBlock::extractKey(AqlValue$ const& value,
+int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
-    AqlValue$ sub = value.get(TRI_VOC_ATTRIBUTE_KEY, false);
+    AqlValue sub = value.get(TRI_VOC_ATTRIBUTE_KEY, false);
     if (sub.isString()) {
       key.assign(sub.slice().copyString());
       sub.destroy();
@@ -286,7 +286,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, docRegisterId);
+      AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       int errorCode = TRI_ERROR_NO_ERROR;
       std::string key;
@@ -295,7 +295,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
         // value is an object
         if (hasKeyVariable) {
           // seperate key specification
-          AqlValue$ const& k = res->getValueReference(i, keyRegisterId);
+          AqlValue const& k = res->getValueReference(i, keyRegisterId);
           errorCode = extractKey(k, key);
         } else {
           errorCode = extractKey(a, key);
@@ -335,7 +335,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           if (ep->_outVariableOld != nullptr) {
             // store $OLD
-            result->setValue(dstRow, _outRegOld, AqlValue$(opResOld.slice()));
+            result->setValue(dstRow, _outRegOld, AqlValue(opResOld.slice()));
           }
 
           if (ep->_outVariableNew != nullptr) {
@@ -343,7 +343,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
             OperationResult opResNew = _trx->document(_collection->name, keyBuilder.slice(), options);
 
             if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
+              result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
             }
           }
         }
@@ -416,7 +416,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, registerId);
+      AqlValue const& a = res->getValueReference(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -461,7 +461,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR && opResOld.successful()) {
-          result->setValue(dstRow, _outRegOld, AqlValue$(opResOld.slice()));
+          result->setValue(dstRow, _outRegOld, AqlValue(opResOld.slice()));
         }
       }
 
@@ -519,7 +519,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ a = res->getValue(i, registerId);
+      AqlValue a = res->getValue(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -538,7 +538,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           OperationResult opResNew = _trx->document(_collection->name, a.slice(), options);
 
           if (opResNew.successful()) {
-            result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
+            result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
           }
         }
       }
@@ -623,7 +623,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, docRegisterId);
+      AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -637,7 +637,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         errorCode = extractKey(a, key);
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
-          AqlValue$ const& updateDoc = res->getValueReference(i, updateRegisterId);
+          AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
 
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
@@ -657,7 +657,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               OperationResult opResNew = _trx->document(_collection->name, toUpdate, options);
 
               if (opResNew.successful()) {
-                result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
+                result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
               }
             }
           } else {
@@ -667,7 +667,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       } else {
         // no document found => insert case
-        AqlValue$ const& insertDoc = res->getValueReference(i, insertRegisterId);
+        AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
 
         if (insertDoc.isObject()) {
           OperationResult opRes = _trx->insert(_collection->name, insertDoc.slice(), options);
@@ -677,7 +677,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             OperationResult opResNew = _trx->document(_collection->name, insertDoc.slice(), options);
 
             if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
+              result->setValue(dstRow, _outRegNew, AqlValue(opResNew.slice()));
             }
           }
         } else {

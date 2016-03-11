@@ -64,7 +64,7 @@ class EnumerateListBlock : public ExecutionBlock {
   /// @brief create a value from the inVariable using the current _index
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ getAqlValue(AqlValue$ const&);
+  AqlValue getAqlValue(AqlValue const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief throws an "array expected" exception

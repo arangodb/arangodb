@@ -45,19 +45,22 @@ AttributeAccessor::AttributeAccessor(
 /// @brief execute the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ AttributeAccessor::get(arangodb::AqlTransaction* trx,
+AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
                                  AqlItemBlock const* argv, size_t startPos,
                                  std::vector<Variable const*> const& vars,
-                                 std::vector<RegisterId> const& regs) {
+                                 std::vector<RegisterId> const& regs,
+                                 bool& mustDestroy) {
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
+      mustDestroy = true;
       return argv->getValueReference(startPos, regs[i]).get(_attributeParts, true);
     }
     // fall-through intentional
   }
 
-  return AqlValue$(arangodb::basics::VelocyPackHelper::NullValue());
+  mustDestroy = false;
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 

@@ -631,7 +631,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               val.toVelocyPack(_trx, *resultBuilder);
@@ -658,7 +658,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               val.toVelocyPack(_trx, *resultBuilder);
@@ -779,7 +779,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx));
@@ -805,7 +805,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ const& val = value->getValueReference(i, resultRegister);
+            AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
               result.result->Set(j++, val.toV8(isolate, _trx));

@@ -53,8 +53,7 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
-  VPackSlice none;
-  _documents = none;
+  _documents = VPackSlice();
   _posInDocuments = 0;
 }
 
@@ -74,8 +73,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 
   skipped += skippedHere;
 
-  VPackSlice none;
-  _documents = none;
+  _documents = VPackSlice();
   _posInDocuments = 0;
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
@@ -108,8 +106,7 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   VPackValueLength count = _documents.length();
 
   if (count == 0) {
-    VPackSlice none;
-    _documents = none;
+    _documents = VPackSlice();
     return false;
   }
 
@@ -205,7 +202,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
       res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                    AqlValue$(_documents.at(_posInDocuments)));
+                    AqlValue(_documents.at(_posInDocuments)));
       // No harm done, if the setValue throws!
     }
 
@@ -252,8 +249,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
         return atMost;
       }
       // Skip entire buffer
-      VPackSlice none;
-      _documents = none;
+      _documents = VPackSlice();
       _posInDocuments = 0;
       skipped += couldSkip;
     }

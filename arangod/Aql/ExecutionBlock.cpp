@@ -223,7 +223,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
       auto const& value = src->getValueReference(srcRow, i);
 
       if (!value.isEmpty()) {
-        AqlValue$ a = value.clone();
+        AqlValue a = value.clone();
         try {
           dst->setValue(dstRow, i, a);
         } catch (...) {
@@ -250,7 +250,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
       auto const& value = src->getValueReference(row, i);
 
       if (!value.isEmpty()) {
-        AqlValue$ a = value.clone();
+        AqlValue a = value.clone();
         try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

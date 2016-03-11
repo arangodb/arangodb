@@ -179,12 +179,14 @@ void TraversalBlock::executeExpressions() {
           dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
       if (it != nullptr && it->expression != nullptr) {
         // inVars and inRegs needs fixx
-        AqlValue$ a = it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i]);
+        bool mustDestroy;
+        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i],
+                                             _inRegs[i], mustDestroy);
+
+        AqlValueGuard guard(a, mustDestroy);
         // TODO FIX setting compareTo value!!
 //      it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
 #warning FIX setting compareTo value        
-        a.destroy();
       }
     }
   }
@@ -269,10 +271,10 @@ bool TraversalBlock::morePaths(size_t hint) {
       break;
     }
 
-    AqlValue$ pathValue;
+    AqlValue pathValue;
 
     if (usesPathOutput() || (en->condition() != nullptr)) {
-      // pathValue = AqlValue$(p->pathToJson(_trx, _resolver));
+      // pathValue = AqlValue(p->pathToJson(_trx, _resolver));
 #warning FIX PATH CREATION
     }
 
@@ -332,7 +334,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       }
     }
   } else {
-    AqlValue$ const& in = items->getValueReference(_pos, _reg);
+    AqlValue const& in = items->getValueReference(_pos, _reg);
     if (in.isObject()) {
       try {
         std::string idString = _trx->extractIdString(in.slice());
