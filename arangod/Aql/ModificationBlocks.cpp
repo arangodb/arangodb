@@ -158,7 +158,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
-    AqlValue sub = value.get(TRI_VOC_ATTRIBUTE_KEY, false);
+    AqlValue sub = value.get(_trx, TRI_VOC_ATTRIBUTE_KEY, false);
     if (sub.isString()) {
       key.assign(sub.slice().copyString());
       sub.destroy();

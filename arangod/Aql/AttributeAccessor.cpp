@@ -38,6 +38,7 @@ AttributeAccessor::AttributeAccessor(
     : _attributeParts(attributeParts),
       _combinedName(),
       _variable(variable) {
+
   TRI_ASSERT(_variable != nullptr);
 }
 
@@ -46,16 +47,16 @@ AttributeAccessor::AttributeAccessor(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
-                                 AqlItemBlock const* argv, size_t startPos,
-                                 std::vector<Variable const*> const& vars,
-                                 std::vector<RegisterId> const& regs,
-                                 bool& mustDestroy) {
+                                AqlItemBlock const* argv, size_t startPos,
+                                std::vector<Variable const*> const& vars,
+                                std::vector<RegisterId> const& regs,
+                                bool& mustDestroy) {
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
       mustDestroy = true;
-      return argv->getValueReference(startPos, regs[i]).get(_attributeParts, true);
+      return argv->getValueReference(startPos, regs[i]).get(trx, _attributeParts, true);
     }
     // fall-through intentional
   }

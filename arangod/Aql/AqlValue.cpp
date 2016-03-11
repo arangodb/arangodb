@@ -222,7 +222,8 @@ AqlValue AqlValue::at(int64_t position, bool copy) const {
 /// @brief get the (object) element by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue AqlValue::get(std::string const& name, bool copy) const {
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::string const& name, bool copy) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -232,6 +233,10 @@ AqlValue AqlValue::get(std::string const& name, bool copy) const {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found(s.get(name));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          return AqlValue(trx->extractIdString(s));
+        }
         if (!found.isNone()) {
           if (copy || found.byteSize() < sizeof(_data.internal)) {
             return AqlValue(found);
@@ -259,7 +264,8 @@ AqlValue AqlValue::get(std::string const& name, bool copy) const {
 /// @brief get the (object) element(s) by name
 //////////////////////////////////////////////////////////////////////////////
   
-AqlValue AqlValue::get(std::vector<char const*> const& names, bool copy) const {
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::vector<char const*> const& names, bool copy) const {
   switch (type()) {
     case DOCUMENT: 
     case VPACK_INLINE:
@@ -269,6 +275,10 @@ AqlValue AqlValue::get(std::vector<char const*> const& names, bool copy) const {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found(s.get(names));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          return AqlValue(trx->extractIdString(s));
+        }
         if (!found.isNone()) {
           if (copy || found.byteSize() < sizeof(_data.internal)) {
             return AqlValue(found);
@@ -408,7 +418,8 @@ bool AqlValue::toBoolean() const {
       if (s.isString()) {
         return (s.getStringLength() > 0);
       } 
-      if (s.isArray() || s.isObject()) {
+      if (s.isArray() || s.isObject() || s.isCustom()) {
+        // custom _id type is also true
         return true;
       }
       // all other cases, including Null and None
@@ -510,7 +521,6 @@ v8::Handle<v8::Value> AqlValue::toV8(
       v8::Handle<v8::Array> result =
           v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
-
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
@@ -686,7 +696,7 @@ void AqlValue::destroy() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the slice from the value
 ////////////////////////////////////////////////////////////////////////////////
-  
+ 
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case DOCUMENT: {

@@ -559,7 +559,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 
   AqlValueGuard guard(result, mustDestroy);
 
-  AqlValue a = result.get(name, true);
+  AqlValue a = result.get(trx, name, true);
   mustDestroy = true; // result may be dynamic
 
   return a;
@@ -629,13 +629,13 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     if (indexResult.isNumber()) {
       std::string const indexString = std::to_string(indexResult.toInt64());
       mustDestroy = true; // as we are copying
-      return result.get(indexString, true);
+      return result.get(trx, indexString, true);
     }
      
     if (indexResult.isString()) {
       std::string const indexString = indexResult.slice().copyString();
       mustDestroy = true; // as we are copying
-      return result.get(indexString, true);
+      return result.get(trx, indexString, true);
     } 
 
     // fall-through to returning null
