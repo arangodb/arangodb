@@ -70,23 +70,42 @@ if(OPENSSL_USE_STATIC_LIBS)
 endif()
 
 if (WIN32)
-  # http://www.slproweb.com/products/Win32OpenSSL.html
-  set(_OPENSSL_ROOT_HINTS
-    ${OPENSSL_ROOT_DIR}
-    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
-    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
-    ENV OPENSSL_ROOT_DIR
-    )
-  file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
-  set(_OPENSSL_ROOT_PATHS
-    "${_programfiles}/OpenSSL"
-    "${_programfiles}/OpenSSL-Win32"
-    "${_programfiles}/OpenSSL-Win64"
-    "C:/OpenSSL/"
-    "C:/OpenSSL-Win32/"
-    "C:/OpenSSL-Win64/"
-    )
-  unset(_programfiles)
+  if (IS_DIRECTORY "${OPENSSL_ROOT_DIR}/build/native/")
+    set(NUGET TRUE)
+  else()
+    set(NUGET FALSE)
+  endif()
+  if (OPENSSL_ROOT_DIR AND NUGET)
+    message("Found nuGET installation of OpenSSL!")
+    # its an openssl downloaded via nuget!
+    set(OPENSSL_INCLUDE "${OPENSSL_ROOT_DIR}/build/native/include")
+    set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
+
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/x64/release/")
+    set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
+
+    set(_OPENSSL_ROOT_PATHS
+      "${OPENSSL_ROOT_DIR}/build/native/include"
+      "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/x64/release/")
+  else()
+    # http://www.slproweb.com/products/Win32OpenSSL.html
+    set(_OPENSSL_ROOT_HINTS
+      ${OPENSSL_ROOT_DIR}
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
+      ENV OPENSSL_ROOT_DIR
+      )
+    file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
+    set(_OPENSSL_ROOT_PATHS
+      "${_programfiles}/OpenSSL"
+      "${_programfiles}/OpenSSL-Win32"
+      "${_programfiles}/OpenSSL-Win64"
+      "C:/OpenSSL/"
+      "C:/OpenSSL-Win32/"
+      "C:/OpenSSL-Win64/"
+      )
+    unset(_programfiles)
+  endif()
 else ()
   set(_OPENSSL_ROOT_HINTS
     ${OPENSSL_ROOT_DIR}
