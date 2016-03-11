@@ -39,7 +39,10 @@
 #endif
 #include "Rest/EndpointIpV4.h"
 #include "Rest/EndpointIpV6.h"
+
+#ifndef _WIN32
 #include "Rest/EndpointSrv.h"
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -241,6 +244,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   }
 #endif
 
+#ifndef _WIN32
   else if (StringUtils::isPrefix(domainType, "srv://")) {
     if (type != ENDPOINT_CLIENT) {
       return nullptr;
@@ -248,6 +252,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     
     return new EndpointSrv(specification.substr(6));
   }
+#endif
 
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type

@@ -70,6 +70,13 @@ target_link_libraries(
     ${Boost_LIBRARIES}
 )
 
+if (NOT MSVC)
+  target_link_libraries(
+    ${TEST_BASICS_SUITE}
+    "resolv"
+  )
+endif ()
+
 endif ()
 
 ################################################################################
@@ -93,6 +100,13 @@ target_link_libraries(
     ${ZLIB_LIBS}
     ${Boost_LIBRARIES}
 )
+
+if (NOT MSVC)
+  target_link_libraries(
+    ${TEST_GEO_SUITE}
+    "resolv"
+  )
+endif ()
 
 endif ()
 
