@@ -3345,8 +3345,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
     } else {
-      TRI_ASSERT(mptr->getDataPtr() !=
-                 nullptr);  // PROTECTED by trx in trxCollection
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  
 
       if (options.waitForSync) {
         markerTick = operation.tick;
@@ -3354,7 +3353,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     }
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3456,7 +3455,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3568,7 +3567,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3680,7 +3679,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
   }
   
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
