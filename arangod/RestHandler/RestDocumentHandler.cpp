@@ -264,7 +264,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   } else {
     // copy default options
     generateDocument(result.slice(), generateBody,
-                     transactionContext.getVPackOptions());
+                     transactionContext->getVPackOptions());
   }
   return true;
 }
