@@ -2747,15 +2747,16 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   }
+  
+  TRI_GET_GLOBALS();
 
   auto globals = isolate->GetCurrentContext()->Global();
 
   v8::Handle<v8::Object> cacheObject;
-  if (globals->Has(TRI_V8_ASCII_STRING("__dbcache__"))) {
-    cacheObject = globals->Get(TRI_V8_ASCII_STRING("__dbcache__"))->ToObject();
-  } else {
-    cacheObject = v8::Object::New(isolate);
-  }
+  TRI_GET_GLOBAL_STRING(_DbCacheKey);
+  if (globals->Has(_DbCacheKey)) {
+    cacheObject = globals->Get(_DbCacheKey)->ToObject();
+  } 
 
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
@@ -2766,8 +2767,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->_vocbase == vocbase) {
-      TRI_GET_GLOBALS();
-
       bool lock = true;
       auto ctx = static_cast<arangodb::V8TransactionContext*>(
           v8g->_transactionContext);

@@ -1271,3 +1271,12 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
+  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+}
+
