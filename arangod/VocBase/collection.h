@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
@@ -45,9 +46,6 @@
 ///
 /// - index-NNN.json: An index description. The number NNN is the index
 ///     identifier, see @ref TRI_index_t.
-///
-/// The structure @ref TRI_collection_t is abstract. Currently, there is one
-/// concrete sub-class @ref TRI_document_collection_t.
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
@@ -58,12 +56,6 @@ class Buffer;
 class Slice;
 }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name regex
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_COL_NAME_REGEX "[a-zA-Z_][0-9a-zA-Z_-]*"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection version for ArangoDB >= 2.0
@@ -313,13 +305,29 @@ struct TRI_collection_t {
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
   std::vector<std::string> _indexFiles;   // all index filenames
 
+  TRI_collection_t(TRI_collection_t const&) = delete;
+  TRI_collection_t& operator=(TRI_collection_t const&) = delete;
+
   TRI_collection_t()
       : _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
       : _info(info), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
-  ~TRI_collection_t() {}
+  ~TRI_collection_t() = default;
+
+ public:
+  // datafile management
+  void addJournal(TRI_datafile_t*);
+  void addDatafile(TRI_datafile_t*);
+  void addCompactor(TRI_datafile_t*);
+  bool hasCompactor();
+  bool compactorToDatafile(TRI_datafile_t*);
+  bool journalToDatafile(TRI_datafile_t*);
+  bool removeCompactor(TRI_datafile_t*);
+
+ private:
+  arangodb::basics::ReadWriteLock _filesLock;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

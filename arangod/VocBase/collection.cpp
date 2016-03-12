@@ -25,6 +25,8 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -42,6 +44,110 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a journal
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addJournal(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  TRI_ASSERT(_journals.empty());
+  _journals.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+  _datafiles.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a compactor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addCompactor(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  TRI_ASSERT(_compactors.empty());
+  _compactors.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if there's a compactor
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::hasCompactor() {
+  READ_LOCKER(readLocker, _filesLock);
+
+  return !_compactors.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a compactor into a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::compactorToDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
+    if ((*it) == df) {
+      // if the following fails, we just throw, but no harm is done
+      _datafiles.push_back(df);
+
+      // and finally remove the file from the _compactors vector
+      _compactors.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a journal into a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::journalToDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _journals.begin(); it != _journals.end(); ++it) {
+    if ((*it) == df) {
+      // if the following fails, we just throw, but no harm is done
+      _datafiles.push_back(df);
+
+      // and finally remove the file from the _compactors vector
+      _journals.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief remove a compactor file
+//////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::removeCompactor(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
+    if ((*it) == df) {
+      // and finally remove the file from the _compactors vector
+      _compactors.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
