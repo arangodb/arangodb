@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 
 uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   switch (type()) {
-    case DOCUMENT:  
+    case VPACK_POINTER:  
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
       return slice().hash();
@@ -127,7 +127,7 @@ bool AqlValue::isArray() const {
 
 size_t AqlValue::length() const {
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       return slice().length();
@@ -151,7 +151,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
                       bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
@@ -231,7 +231,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
@@ -275,7 +275,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
       // fall-through intentional
@@ -322,7 +322,7 @@ double AqlValue::toDouble() const {
 double AqlValue::toDouble(bool& failed) const {
   failed = false;
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
@@ -369,7 +369,7 @@ double AqlValue::toDouble(bool& failed) const {
  
 int64_t AqlValue::toInt64() const {
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
@@ -416,7 +416,7 @@ int64_t AqlValue::toInt64() const {
 
 bool AqlValue::toBoolean() const {
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
@@ -519,7 +519,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
   
   switch (type()) {
-    case DOCUMENT:
+    case VPACK_POINTER:
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       VPackOptions* options = trx->transactionContext()->getVPackOptions();
@@ -565,7 +565,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
                              arangodb::velocypack::Builder& builder) const {
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
       builder.add(slice());
@@ -600,7 +600,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
 
 AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
   switch (type()) {
-    case DOCUMENT: 
+    case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
       hasCopied = false;
@@ -631,11 +631,8 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
 
 AqlValue AqlValue::clone() const {
   switch (type()) {
-    case DOCUMENT: {
-      AqlValue copy;
-      copy._data.document = _data.document;
-      copy.setType(AqlValueType::DOCUMENT);
-      return copy;
+    case VPACK_POINTER: {
+      return AqlValue(_data.pointer);
     }
     case VPACK_INLINE: {
       // copy internal data
@@ -679,7 +676,7 @@ AqlValue AqlValue::clone() const {
 
 void AqlValue::destroy() {
   switch (type()) { 
-    case DOCUMENT: 
+    case VPACK_POINTER:
     case VPACK_INLINE: {
       // nothing to do
       break;
@@ -710,8 +707,8 @@ void AqlValue::destroy() {
  
 VPackSlice AqlValue::slice() const {
   switch (type()) {
-    case DOCUMENT: {
-      return VPackSlice(_data.document);
+    case VPACK_POINTER: {
+      return VPackSlice(_data.pointer);
     }
     case VPACK_INLINE: {
       VPackSlice s(&_data.internal[0]);
@@ -822,7 +819,7 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
-    case DOCUMENT:
+    case VPACK_POINTER:
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(), compareUtf8);

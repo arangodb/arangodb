@@ -52,30 +52,36 @@ struct AqlValue final {
   //////////////////////////////////////////////////////////////////////////////
 
   enum AqlValueType : uint8_t { 
-    DOCUMENT, // contains a pointer to a document in the database
-    VPACK_INLINE, // contains vpack, inline
-    VPACK_EXTERNAL, // contains vpack, via pointer to a Buffer
-    DOCVEC, // a vector of blocks of results coming from a subquery
-    RANGE // a pointer to a range remembering lower and upper bound
+    VPACK_POINTER, // contains a pointer to a vpack value, memory is not managed!
+    VPACK_INLINE, // contains vpack data, inline
+    VPACK_EXTERNAL, // contains vpack, via pointer to a managed buffer
+    DOCVEC, // a vector of blocks of results coming from a subquery, managed
+    RANGE // a pointer to a range remembering lower and upper bound, managed
   };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Holds the actual data for this AqlValue
-  /// it has the following semantics:
+  /// The last byte of this union (_data.internal[15]) will be used to identify 
+  /// the type of the contained data:
   ///
-  /// All values with a size less than 16 will be stored directly in this
-  /// AqlValue using the data.internal structure.
-  /// All values of a larger size will be stored in _data.external.
-  /// The last byte of this union will be used to identify if we have to use
-  /// internal or external.
-  /// Delete of the Buffer should free every structure that is not using the
-  /// VPack external or reference value type.
+  /// VPACK_POINTER: data may be referenced via a pointer to a VPack slice
+  /// existing somewhere in memory. The AqlValue is not responsible for managing
+  /// this memory.
+  /// VPACK_INLINE: VPack values with a size less than 16 bytes can be stored 
+  /// directly inside the data.internal structure. All data is stored inline, 
+  /// so there is no need for memory management.
+  /// VPACK_EXTERNAL: all values of a larger size will be stored in 
+  /// _data.external via a managed VPackBuffer object. The Buffer is managed
+  /// by the AqlValue.
+  /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
+  /// The vector and ItemBlocks are managed by the AqlValue
+  /// RANGE: a managed range object. The memory is managed by the AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
  private:
   union {
     uint8_t internal[16];
-    uint8_t const* document;
+    uint8_t const* pointer;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
     std::vector<AqlItemBlock*>* docvec;
     Range const* range;
@@ -87,10 +93,10 @@ struct AqlValue final {
     initFromSlice(arangodb::velocypack::Slice());
   }
   
-  // construct from document
-  explicit AqlValue(uint8_t const* document) {
-    _data.document = document;
-    setType(AqlValueType::DOCUMENT);
+  // construct from pointer
+  explicit AqlValue(uint8_t const* pointer) {
+    _data.pointer = pointer;
+    setType(AqlValueType::VPACK_POINTER);
   }
   
   // construct from docvec, taking over its ownership
@@ -142,22 +148,16 @@ struct AqlValue final {
   /// @brief whether or not the value must be destroyed
   //////////////////////////////////////////////////////////////////////////////
 
-  bool requiresDestruction() const {
+  inline bool requiresDestruction() const {
     AqlValueType t = type();
     return (t == VPACK_EXTERNAL || t == DOCVEC || t == RANGE);
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief hashes the value
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint64_t hash(arangodb::AqlTransaction*) const;
-  
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the value is empty / none
   //////////////////////////////////////////////////////////////////////////////
   
-  bool isEmpty() const { 
+  inline bool isEmpty() const { 
     if (type() != VPACK_INLINE) {
       return false;
     }
@@ -179,6 +179,12 @@ struct AqlValue final {
   bool isDocvec() const {
     return type() == DOCVEC;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief hashes the value
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t hash(arangodb::AqlTransaction*) const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the value contains a null value
@@ -350,7 +356,7 @@ struct AqlValue final {
   /// if false it uses the internal data structure
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValueType type() const {
+  inline AqlValueType type() const {
     return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
   }
   
@@ -385,7 +391,7 @@ struct AqlValue final {
   /// @brief sets the value type
   //////////////////////////////////////////////////////////////////////////////
 
-  void setType(AqlValueType type) {
+  inline void setType(AqlValueType type) {
     _data.internal[sizeof(_data.internal) - 1] = type;
   }
 };
@@ -447,8 +453,8 @@ struct hash<arangodb::aql::AqlValue> {
     arangodb::aql::AqlValue::AqlValueType type = x.type();
     size_t res = intHash(type);
     switch (type) {
-      case arangodb::aql::AqlValue::DOCUMENT: {
-        return res ^ ptrHash(x._data.document);
+      case arangodb::aql::AqlValue::VPACK_POINTER: {
+        return res ^ ptrHash(x._data.pointer);
       }
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
@@ -478,8 +484,8 @@ struct equal_to<arangodb::aql::AqlValue> {
       return false;
     }
     switch (type) {
-      case arangodb::aql::AqlValue::DOCUMENT: {
-        return a._data.document == b._data.document;
+      case arangodb::aql::AqlValue::VPACK_POINTER: {
+        return a._data.pointer == b._data.pointer;
       }
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
