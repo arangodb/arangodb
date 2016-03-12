@@ -137,6 +137,13 @@ void V8ShellFeature::stop() {
   {
     v8::Locker locker{_isolate};
     v8::Isolate::Scope isolate_scope{_isolate};
+
+    TRI_v8_global_t* v8g =                                              \
+      static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
+    _isolate->SetData(V8DataSlot, nullptr);
+
+    delete v8g;
+
     _context.Reset();
   }
 
