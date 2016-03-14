@@ -35,8 +35,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a document
+////////////////////////////////////////////////////////////////////////////////
   
-// construct from document
 AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
   _data.pointer = mptr->vpack();
   setType(AqlValueType::VPACK_DOCUMENT);
@@ -77,6 +80,20 @@ bool AqlValue::isNull(bool emptyIsNull) const {
  
   VPackSlice s(slice());
   return (s.isNull() || (emptyIsNull && s.isNone()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value contains a null value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isBoolean() const {
+  AqlValueType t = type();
+  if (t == VPACK_DOCUMENT || t == DOCVEC || t == RANGE) {
+    return false;
+  }
+ 
+  VPackSlice s(slice());
+  return s.isBoolean();
 }
 
 //////////////////////////////////////////////////////////////////////////////
