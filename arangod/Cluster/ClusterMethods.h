@@ -60,15 +60,6 @@ std::map<std::string, std::string> getForwardableRequestHeaders(
     arangodb::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two JSON
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
-                      struct TRI_json_t const* oldJson,
-                      struct TRI_json_t const* newJson, bool isPatch);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
 /// documents
 ////////////////////////////////////////////////////////////////////////////////

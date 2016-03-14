@@ -179,58 +179,6 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two JSON
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
-                      TRI_json_t const* oldJson, TRI_json_t const* newJson,
-                      bool isPatch) {
-  if (!TRI_IsObjectJson(oldJson) || !TRI_IsObjectJson(newJson)) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  TRI_json_t nullJson;
-  TRI_InitNullJson(&nullJson);
-
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
-  std::vector<std::string> const& shardKeys = c->shardKeys();
-
-  for (size_t i = 0; i < shardKeys.size(); ++i) {
-    if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {
-      continue;
-    }
-
-    TRI_json_t const* n = TRI_LookupObjectJson(newJson, shardKeys[i].c_str());
-
-    if (n == nullptr && isPatch) {
-      // attribute not set in patch document. this means no update
-      continue;
-    }
-
-    TRI_json_t const* o = TRI_LookupObjectJson(oldJson, shardKeys[i].c_str());
-
-    if (o == nullptr) {
-      // if attribute is undefined, use "null" instead
-      o = &nullJson;
-    }
-
-    if (n == nullptr) {
-      // if attribute is undefined, use "null" instead
-      n = &nullJson;
-    }
-
-    if (!TRI_CheckSameValueJson(o, n)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 

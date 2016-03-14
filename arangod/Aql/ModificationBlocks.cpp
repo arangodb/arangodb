@@ -175,21 +175,6 @@ int ModificationBlock::extractKey(AqlValue const& value,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a shard key value has changed
-////////////////////////////////////////////////////////////////////////////////
-
-bool ModificationBlock::isShardKeyChange(TRI_json_t const* oldJson,
-                                         TRI_json_t const* newJson,
-                                         bool isPatch) const {
-  TRI_ASSERT(_isDBServer);
-
-  auto planId = _collection->documentCollection()->_info.planId();
-  auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
-  return arangodb::shardKeysChanged(vocbase->_name, std::to_string(planId),
-                                    oldJson, newJson, isPatch);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the _key attribute is specified when it must not be
 /// specified
 ////////////////////////////////////////////////////////////////////////////////
