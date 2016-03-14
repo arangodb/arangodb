@@ -952,7 +952,7 @@ AqlValue Functions::IsNull(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNull(true)));
 }
@@ -965,7 +965,7 @@ AqlValue Functions::IsBool(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isBoolean()));
 }
@@ -978,7 +978,7 @@ AqlValue Functions::IsNumber(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNumber()));
 }
@@ -991,7 +991,7 @@ AqlValue Functions::IsString(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isString()));
 }
@@ -1004,7 +1004,7 @@ AqlValue Functions::IsArray(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isArray()));
 }
@@ -1017,7 +1017,7 @@ AqlValue Functions::IsObject(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isObject()));
 }
@@ -1030,7 +1030,7 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   bool failed;
   double value = a.toDouble(failed);
@@ -1051,7 +1051,7 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto const value = ExtractFunctionParameter(trx, parameters, 0);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
@@ -1075,7 +1075,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   b->add(VPackValue(a.toBoolean()));
@@ -1090,7 +1090,7 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto const value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (value.isArray()) {
@@ -1123,7 +1123,7 @@ AqlValue Functions::Length(arangodb::aql::Query* q,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto const value = ExtractFunctionParameter(trx, parameters, 0);
   std::shared_ptr<VPackBuilder> builder = q->getSharedBuilder();
   if (value.isArray()) {
@@ -1166,7 +1166,7 @@ AqlValue Functions::First(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FIRST", (int)1,
@@ -1196,7 +1196,7 @@ AqlValue Functions::Last(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() < 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)1,
@@ -1227,7 +1227,7 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         VPackFunctionParameters const& parameters,
                         bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)2,
@@ -1266,7 +1266,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
@@ -1314,7 +1314,7 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() < 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int)2,
@@ -1395,7 +1395,7 @@ AqlValue Functions::Passthru(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.empty()) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
@@ -1412,7 +1412,7 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isObject()) {
@@ -1440,7 +1440,7 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
                                     arangodb::AqlTransaction* trx,
                                     VPackFunctionParameters const& parameters,
                                     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isObject()) {
@@ -1468,7 +1468,7 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isObject()) {
@@ -1496,7 +1496,7 @@ AqlValue Functions::Merge(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   return MergeParameters(query, trx, parameters, "MERGE", false);
 }
 
@@ -1508,7 +1508,7 @@ AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
                                     arangodb::AqlTransaction* trx,
                                     VPackFunctionParameters const& parameters,
                                     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   return MergeParameters(query, trx, parameters, "MERGE_RECURSIVE", true);
 }
 
@@ -1520,7 +1520,7 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n < 2) {
     // no parameters
@@ -1561,7 +1561,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
                                 arangodb::AqlTransaction* trx,
                                 VPackFunctionParameters const& parameters,
                                 bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 1) {
@@ -1633,7 +1633,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 1) {
@@ -1686,7 +1686,7 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1718,7 +1718,7 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1746,7 +1746,7 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1786,7 +1786,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1832,7 +1832,7 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
@@ -1866,7 +1866,7 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   auto value = ExtractFunctionParameter(trx, parameters, 0);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
@@ -1901,7 +1901,7 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int)1,
@@ -1948,7 +1948,7 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
                                   arangodb::AqlTransaction* trx,
                                   VPackFunctionParameters const& parameters,
                                   bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SORTED_UNIQUE",
@@ -1990,7 +1990,7 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -2046,7 +2046,7 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
                                    arangodb::AqlTransaction* trx,
                                    VPackFunctionParameters const& parameters,
                                    bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -2111,7 +2111,7 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
                                   arangodb::AqlTransaction* trx,
                                   VPackFunctionParameters const& parameters,
                                   bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -2188,7 +2188,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
                                arangodb::AqlTransaction* trx,
                                VPackFunctionParameters const& parameters,
                                bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   arangodb::traverser::NeighborsOptions opts;
 
@@ -2358,7 +2358,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 3 || n > 5) {
@@ -2434,7 +2434,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 4 || n > 5) {
@@ -2498,7 +2498,7 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n == 0 || n > 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -2543,7 +2543,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ZIP", (int)2,
@@ -2588,7 +2588,7 @@ AqlValue Functions::ParseIdentifier(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER",
@@ -2635,7 +2635,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -2700,7 +2700,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 1 || 2 < n) {
@@ -2782,7 +2782,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 3 || 5 < n) {
@@ -2907,7 +2907,7 @@ AqlValue Functions::Round(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -2935,7 +2935,7 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         VPackFunctionParameters const& parameters,
                         bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -2963,7 +2963,7 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -2991,7 +2991,7 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -3019,7 +3019,7 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -3050,7 +3050,7 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 2) {
@@ -3083,7 +3083,7 @@ AqlValue Functions::Rand(arangodb::aql::Query* query,
                           arangodb::AqlTransaction*,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 0) {
@@ -3107,7 +3107,7 @@ AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
                                    arangodb::AqlTransaction* trx,
                                    VPackFunctionParameters const& parameters,
                                    bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
     VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
@@ -3126,7 +3126,7 @@ AqlValue Functions::FirstList(arangodb::aql::Query* query,
                                arangodb::AqlTransaction* trx,
                                VPackFunctionParameters const& parameters,
                                bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
     VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
@@ -3145,7 +3145,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3188,7 +3188,7 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
                          arangodb::AqlTransaction* trx,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3228,7 +3228,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3280,7 +3280,7 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3327,7 +3327,7 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -3367,7 +3367,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  VPackFunctionParameters const& parameters,
                                  bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3431,7 +3431,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
                                   arangodb::AqlTransaction* trx,
                                   VPackFunctionParameters const& parameters,
                                   bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3480,7 +3480,7 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
                                arangodb::AqlTransaction* trx,
                                VPackFunctionParameters const& parameters,
                                bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3538,7 +3538,7 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
     VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
@@ -3557,7 +3557,7 @@ AqlValue Functions::CurrentDatabase(
     arangodb::aql::Query* query, arangodb::AqlTransaction*,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 0) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3577,7 +3577,7 @@ AqlValue Functions::CollectionCount(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3619,7 +3619,7 @@ AqlValue Functions::VarianceSample(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3660,7 +3660,7 @@ AqlValue Functions::VariancePopulation(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3705,7 +3705,7 @@ AqlValue Functions::StdDevSample(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3746,7 +3746,7 @@ AqlValue Functions::StdDevPopulation(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3787,7 +3787,7 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
                             arangodb::AqlTransaction* trx,
                             VPackFunctionParameters const& parameters,
                             bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 1) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3831,7 +3831,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
                                 arangodb::AqlTransaction* trx,
                                 VPackFunctionParameters const& parameters,
                                 bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -3940,7 +3940,7 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n != 2 && n != 3) {
@@ -4010,7 +4010,7 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
   if (n != 2 && n != 3) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -4067,7 +4067,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
                               arangodb::AqlTransaction* trx,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 3 || n > 4) {
@@ -4203,7 +4203,7 @@ AqlValue Functions::IsSameCollection(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   if (parameters.size() != 2) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION",
