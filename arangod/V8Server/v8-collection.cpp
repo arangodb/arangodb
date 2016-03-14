@@ -993,31 +993,6 @@ static void JS_FiguresVocbaseCol(
   cs->Set(TRI_V8_ASCII_STRING("fileSize"),
           v8::Number::New(isolate, (double)info->_compactorfileSize));
 
-  // shapefiles info
-  v8::Handle<v8::Object> sf = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("shapefiles"), sf);
-  sf->Set(TRI_V8_ASCII_STRING("count"),
-          v8::Number::New(isolate, (double)info->_numberShapefiles));
-  sf->Set(TRI_V8_ASCII_STRING("fileSize"),
-          v8::Number::New(isolate, (double)info->_shapefileSize));
-
-  // shape info
-  v8::Handle<v8::Object> shapes = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("shapes"), shapes);
-  shapes->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, (double)info->_numberShapes));
-  shapes->Set(TRI_V8_ASCII_STRING("size"),
-              v8::Number::New(isolate, (double)info->_sizeShapes));
-
-  // attributes info
-  v8::Handle<v8::Object> attributes = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("attributes"), attributes);
-  attributes->Set(TRI_V8_ASCII_STRING("count"),
-                  v8::Number::New(isolate, (double)info->_numberAttributes));
-  attributes->Set(TRI_V8_ASCII_STRING("size"),
-                  v8::Number::New(isolate, (double)info->_sizeAttributes));
-
   v8::Handle<v8::Object> indexes = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
   indexes->Set(TRI_V8_ASCII_STRING("count"),

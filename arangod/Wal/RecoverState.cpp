@@ -794,7 +794,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           ++state->errorCount;
           return state->canContinue();
         } else {
-          document->_indexFiles.emplace_back(filename);
+          document->addIndexFile(filename);
         }
 
         break;
@@ -1006,7 +1006,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         // ignore any potential error returned by this call
         TRI_DropIndexDocumentCollection(document, indexId, false);
-        TRI_RemoveFileIndexCollection(document, indexId);
+        document->removeIndexFile(indexId);
 
         // additionally remove the index file
         std::string const indexName("index-" + std::to_string(indexId) + ".json");

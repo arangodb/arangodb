@@ -316,10 +316,10 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for read-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for read-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -327,7 +327,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -350,7 +350,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -402,10 +402,10 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for write-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for write-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -413,7 +413,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -436,7 +436,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -482,13 +482,9 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   info->_numberAlive += static_cast<TRI_voc_ssize_t>(dfi.numberAlive);
   info->_numberDead += static_cast<TRI_voc_ssize_t>(dfi.numberDead);
   info->_numberDeletions += static_cast<TRI_voc_ssize_t>(dfi.numberDeletions);
-  info->_numberShapes += static_cast<TRI_voc_ssize_t>(dfi.numberShapes);
-  info->_numberAttributes += static_cast<TRI_voc_ssize_t>(dfi.numberAttributes);
 
   info->_sizeAlive += dfi.sizeAlive;
   info->_sizeDead += dfi.sizeDead;
-  info->_sizeShapes += dfi.sizeShapes;
-  info->_sizeAttributes += dfi.sizeAttributes;
 
   // add the file sizes for datafiles and journals
   TRI_collection_t* base = this;
@@ -518,10 +514,6 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
     info->_sizeIndexes += idx->memory();
     info->_numberIndexes++;
   }
-
-  // get information about shape files (DEPRECATED, thus hard-coded to 0)
-  info->_shapefileSize = 0;
-  info->_numberShapefiles = 0;
 
   info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
   info->_tickMax = _tickMax;
@@ -1033,11 +1025,11 @@ struct OpenIndexIteratorContext {
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndexIterator(char const* filename, void* data) {
+static bool OpenIndexIterator(std::string const& filename, void* data) {
   // load VelocyPack description of the index
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename.c_str());
   } catch (...) {
     // Failed to parse file
     LOG(ERR) << "failed to parse index definition from '" << filename << "'";
@@ -1190,7 +1182,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
-  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.namec_str() << "'";
+  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
 
   // update the real statistics for the collection
   try {
@@ -1676,8 +1668,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
     ctx.trx = trx;
     ctx.collection = document;
 
-    TRI_IterateIndexCollection(reinterpret_cast<TRI_collection_t*>(document),
-                               OpenIndexIterator, static_cast<void*>(&ctx));
+    document->iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
     document->useSecondaryIndexes(old);
   } catch (...) {
     document->useSecondaryIndexes(old);
@@ -2297,7 +2288,7 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   if (idx == nullptr) {
-    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
+    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.name() << "'";
     return TRI_errno();
   }
 
