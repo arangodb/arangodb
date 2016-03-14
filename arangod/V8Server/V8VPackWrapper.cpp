@@ -533,5 +533,13 @@ void V8VPackWrapper::initialize(v8::Isolate* isolate, v8::Handle<v8::Context> co
   v8g->VPackTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("VPack"), ft->GetFunction());
+ 
+  {
+    // add legacy ShapedJson object 
+    v8::Handle<v8::FunctionTemplate> ft = v8::FunctionTemplate::New(isolate);
+    ft->SetClassName(TRI_V8_ASCII_STRING("ShapedJson"));
+    TRI_AddGlobalFunctionVocbase(
+        isolate, context, TRI_V8_ASCII_STRING("ShapedJson"), ft->GetFunction());
+  }
 }
 
