@@ -3272,12 +3272,24 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       bool lock) {
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
+    // _from:
     VPackSlice s = slice.get(TRI_VOC_ATTRIBUTE_FROM);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
+    VPackValueLength len;
+    char const* docId = s.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
     s = slice.get(TRI_VOC_ATTRIBUTE_TO);
     if (!s.isString()) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    docId = s.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
   }

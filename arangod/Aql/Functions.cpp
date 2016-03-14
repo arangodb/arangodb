@@ -2233,7 +2233,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     size_t split;
     char const* str = vertexId.c_str();
 
-    if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    if (!TRI_ValidateDocumentIdKeyGenerator(str, vertexId.size(), &split)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
 

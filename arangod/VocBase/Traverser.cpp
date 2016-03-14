@@ -39,7 +39,7 @@ arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
   size_t split;
   char const* str = vertex.c_str();
 
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, vertex.size(), &split)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 

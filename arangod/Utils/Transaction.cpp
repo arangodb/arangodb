@@ -695,7 +695,8 @@ OperationResult Transaction::insert(std::string const& collectionName,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
       }
       std::string docId = from.copyString();
-      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), docId.size(),
+                                              &split)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
       }
     };
@@ -708,7 +709,8 @@ OperationResult Transaction::insert(std::string const& collectionName,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
       }
       std::string docId = to.copyString();
-      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
+      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), docId.size(),
+                                              &split)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
       }
     };
