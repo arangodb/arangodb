@@ -26,6 +26,9 @@ Overview
 
  8. `arangodump` arguments `translateIDs`, `failOnUnknown` withdrawn.
 
+ 9. <collection>.exists now throws an error if there is a revision
+    conflict
+
 ### New capabilities:
 
  1. Babies for document queries.
@@ -85,6 +88,11 @@ Explanations
 
  8. `arangodump` arguments `translateIDs`, `failOnUnknown` withdrawn.
 
+ 9. <collection>.exists now throws an error if there is a revision conflict
+
+    With the old behaviour (return false) one cannot distinguish whether
+    a document does not exist at all or whether the queries revision is
+    outdated.
     
 ### New capabilities:
 
