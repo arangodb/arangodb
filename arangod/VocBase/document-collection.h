@@ -267,22 +267,24 @@ struct TRI_document_collection_t : public TRI_collection_t {
 /// @brief new object for Replace
 ////////////////////////////////////////////////////////////////////////////////
     
-  arangodb::velocypack::Builder newObjectForReplace(
+  void newObjectForReplace(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
-      std::string const& rev);
+      std::string const& rev,
+      arangodb::velocypack::Builder& builder);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two objects for update
 ////////////////////////////////////////////////////////////////////////////////
     
-  arangodb::velocypack::Builder mergeObjectsForUpdate(
+  void mergeObjectsForUpdate(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
       std::string const& rev,
-      bool mergeObjects, bool keepNull);
+      bool mergeObjects, bool keepNull,
+      arangodb::velocypack::Builder& b);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

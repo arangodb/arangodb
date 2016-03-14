@@ -3297,11 +3297,18 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
 
   uint64_t hash = 0;
   VPackBuilder builder;
-  int res = newObjectForInsert(trx, slice, hash, builder);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  VPackSlice newSlice;
+  int res = TRI_ERROR_NO_ERROR;
+  if (options.recoveryMarker == nullptr) {
+    res = newObjectForInsert(trx, slice, hash, builder);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    newSlice = builder.slice();
+  } else {
+    newSlice = slice;
+    hash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
   }
-  VPackSlice newSlice = builder.slice();
 
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
@@ -3435,17 +3442,21 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder = mergeObjectsForUpdate(
+    VPackBuilder builder;
+    if (options.recoveryMarker == nullptr) {
+      mergeObjectsForUpdate(
         trx, VPackSlice(oldHeader->vpack()), newSlice, 
-        std::to_string(revisionId), options.mergeObjects, options.keepNull);
+        std::to_string(revisionId), options.mergeObjects, options.keepNull,
+        builder);
  
-    if (ServerState::instance()->isDBServer()) {
-      // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_vocbase->_name,
-                                     _info.name(),
-                                     VPackSlice(oldHeader->vpack()),
-                                     builder.slice(), false)) {
-        return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      if (ServerState::instance()->isDBServer()) {
+        // Need to check that no sharding keys have changed:
+        if (arangodb::shardKeysChanged(_vocbase->_name,
+                                       _info.name(),
+                                       VPackSlice(oldHeader->vpack()),
+                                       builder.slice(), false)) {
+          return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+        }
       }
     }
 
@@ -3562,9 +3573,10 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder = newObjectForReplace(
+    VPackBuilder builder;
+    newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
-        newSlice, std::to_string(revisionId));
+        newSlice, std::to_string(revisionId), builder);
 
     if (ServerState::instance()->isDBServer()) {
       // Need to check that no sharding keys have changed:
@@ -4117,12 +4129,12 @@ int TRI_document_collection_t::newObjectForInsert(
 /// set.
 ////////////////////////////////////////////////////////////////////////////////
     
-VPackBuilder TRI_document_collection_t::newObjectForReplace(
+void TRI_document_collection_t::newObjectForReplace(
     Transaction* trx,
     VPackSlice const& oldValue,
     VPackSlice const& newValue,
-    std::string const& rev) {
-  VPackBuilder builder;
+    std::string const& rev,
+    VPackBuilder& builder) {
   { VPackObjectBuilder guard(&builder);
 
     TRI_SanitizeObject(newValue, builder);
@@ -4134,7 +4146,6 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
     builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
     builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
   }
-  return builder;
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4142,14 +4153,14 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
 /// _key and _id attributes
 ////////////////////////////////////////////////////////////////////////////////
     
-VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
+void TRI_document_collection_t::mergeObjectsForUpdate(
       arangodb::Transaction* trx,
       VPackSlice const& oldValue,
       VPackSlice const& newValue,
       std::string const& rev,
-      bool mergeObjects, bool keepNull) {
+      bool mergeObjects, bool keepNull,
+      VPackBuilder& b) {
 
-  VPackBuilder b;
   { 
     VPackObjectBuilder guard(&b);
 
@@ -4218,5 +4229,4 @@ VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
     // Finally, add the new revision:
     b.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
   }
-  return b;
 }

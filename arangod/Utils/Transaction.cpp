@@ -1043,10 +1043,12 @@ OperationResult Transaction::modifyLocal(
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
-      std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
-      buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
-                            VPackSlice(), 
-                            options.returnOld ? &previous : nullptr, nullptr);
+      if (!options.silent) {
+        std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
+                              VPackSlice(), 
+                              options.returnOld ? &previous : nullptr, nullptr);
+      }
       return TRI_ERROR_ARANGO_CONFLICT;
     } else if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -1195,7 +1197,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                actualRevision, previous);
     
     if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_CONFLICT) {
+      if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent) {
         std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
@@ -1204,14 +1206,12 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       return res;
     }
 
-    if (options.silent) {
-      return TRI_ERROR_NO_ERROR;
+    if (!options.silent) {
+      std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      buildDocumentIdentity(resultBuilder, cid, key,
+                            actualRevision, VPackSlice(),
+                            options.returnOld ? &previous : nullptr, nullptr);
     }
-
-    std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
-    buildDocumentIdentity(resultBuilder, cid, key,
-                          actualRevision, VPackSlice(),
-                          options.returnOld ? &previous : nullptr, nullptr);
 
     return TRI_ERROR_NO_ERROR;
   };
