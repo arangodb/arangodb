@@ -422,6 +422,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(HttpResponse::BAD, res, "invalid document key");
       return;
 
+    case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+      generateError(HttpResponse::BAD, res, "invalid edge attribute");
+      return;
+
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
       generateError(HttpResponse::SERVER_ERROR, res, "out of keys");
       return;
@@ -503,6 +507,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, result.code, "invalid document key");
+      return;
+
+    case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+      generateError(HttpResponse::BAD, result.code, "invalid edge attribute");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
