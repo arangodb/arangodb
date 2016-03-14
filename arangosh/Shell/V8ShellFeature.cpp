@@ -137,6 +137,13 @@ void V8ShellFeature::stop() {
   {
     v8::Locker locker{_isolate};
     v8::Isolate::Scope isolate_scope{_isolate};
+
+    TRI_v8_global_t* v8g =                                              \
+      static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
+    _isolate->SetData(V8DataSlot, nullptr);
+
+    delete v8g;
+
     _context.Reset();
   }
 
@@ -274,6 +281,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
 
@@ -400,7 +408,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, execute, positionals);
+  auto v8connection = setup(context, execute, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -477,7 +486,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  auto v8connection = setup(context, true, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -580,7 +590,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  auto v8connection = setup(context, true, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
