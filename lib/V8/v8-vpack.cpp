@@ -149,6 +149,7 @@ struct BuilderContext {
         keepTopLevelOpen(keepTopLevelOpen) {}
 
   v8::Isolate* isolate;
+  v8::Handle<v8::Value> toJsonKey;
   VPackBuilder& builder;
   std::unordered_set<int> seenHashes;
   std::vector<v8::Handle<v8::Object>> seenObjects;
@@ -189,7 +190,7 @@ static inline void AddValuePair(BuilderContext& context, std::string const& attr
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      std::string const& attributeName, bool inObject) {
-  v8::Isolate* isolate = context.isolate;
+  //v8::Isolate* isolate = context.isolate;
 
   if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,
@@ -285,10 +286,10 @@ static int V8ToVPack(BuilderContext& context,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
-    if (o->Has(toJsonString)) {
+//    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
+    if (o->Has(context.toJsonKey)) {
       // call it if yes
-      v8::Handle<v8::Value> func = o->Get(toJsonString);
+      v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
       if (func->IsFunction()) {
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
@@ -374,6 +375,9 @@ static int V8ToVPack(BuilderContext& context,
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
   v8::HandleScope scope(isolate);
+  TRI_GET_GLOBALS();
   BuilderContext context(isolate, builder, keepTopLevelOpen);
+  TRI_GET_GLOBAL_STRING(ToJsonKey);
+  context.toJsonKey = ToJsonKey;
   return V8ToVPack(context, value, "", false);
 }
