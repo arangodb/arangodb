@@ -32,8 +32,8 @@
 /// @brief converts a VelocyValueType::String into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
-                                               VPackSlice const& slice) {
+static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
+                                                      VPackSlice const& slice) {
   arangodb::velocypack::ValueLength l;
   char const* val = slice.getString(l);
   return TRI_V8_PAIR_STRING(val, l);
@@ -160,8 +160,21 @@ struct BuilderContext {
 /// @brief adds a VPackValue to either an array or an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddValue(BuilderContext& context, std::string const& attributeName,
-                     bool inObject, VPackValue const& value) {
+static inline void AddValue(BuilderContext& context, std::string const& attributeName,
+                            bool inObject, VPackValue const& value) {
+  if (inObject) {
+    context.builder.add(attributeName, value);
+  } else {
+    context.builder.add(value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a VPackValue to either an array or an object
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void AddValuePair(BuilderContext& context, std::string const& attributeName,
+                                bool inObject, VPackValuePair const& value) {
   if (inObject) {
     context.builder.add(attributeName, value);
   } else {
@@ -177,7 +190,6 @@ static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      std::string const& attributeName, bool inObject) {
   v8::Isolate* isolate = context.isolate;
-  v8::HandleScope scope(isolate);
 
   if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,
@@ -201,13 +213,13 @@ static int V8ToVPack(BuilderContext& context,
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter = parameter->ToString();
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
+    v8::String::Utf8Value str(stringParameter);
 
     if (*str == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    AddValue(context, attributeName, inObject, VPackValue(*str));
+    AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -254,13 +266,13 @@ static int V8ToVPack(BuilderContext& context,
 
     if (parameter->IsStringObject()) {
       v8::Handle<v8::String> stringParameter(parameter->ToString());
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
+      v8::String::Utf8Value str(stringParameter);
 
       if (*str == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      AddValue(context, attributeName, inObject, VPackValue(*str));
+      AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -285,14 +297,14 @@ static int V8ToVPack(BuilderContext& context,
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
-          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, converted->ToString());
+          v8::String::Utf8Value str(converted->ToString());
 
           if (*str == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
           // this passes ownership for the utf8 string to the JSON object
-          AddValue(context, attributeName, inObject, VPackValue(*str));
+          AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
           return TRI_ERROR_NO_ERROR;
         }
       }
@@ -326,7 +338,7 @@ static int V8ToVPack(BuilderContext& context,
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
       v8::Handle<v8::Value> key = names->Get(i);
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+      v8::String::Utf8Value str(key);
 
       if (*str == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -361,8 +373,7 @@ static int V8ToVPack(BuilderContext& context,
 
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
+  v8::HandleScope scope(isolate);
   BuilderContext context(isolate, builder, keepTopLevelOpen);
-  int res = V8ToVPack(context, value, "", false);
-
-  return res;
+  return V8ToVPack(context, value, "", false);
 }
