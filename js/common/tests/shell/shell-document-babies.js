@@ -667,11 +667,318 @@ function CollectionDocumentSuiteBabies() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: returnNew and returnOld options
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionDocumentSuiteReturnStuff () {
+  'use strict';
+  var cn = "UnitTestsCollectionBasics";
+  var ERRORS = require("internal").errors;
+  var collection = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
+
+      collection.load();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+      wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with and without returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateMultiReturnNew : function () {
+      var res = collection.insert([{"Hallo":12}]);
+      assertTypeOf("object", res);
+      assertTrue(Array.isArray(res));
+      assertEqual(res.length, 1);
+      assertTypeOf("object", res[0]);
+      assertEqual(3, Object.keys(res[0]).length);
+      assertTypeOf("string", res[0]._id);
+      assertTypeOf("string", res[0]._key);
+      assertTypeOf("string", res[0]._rev);
+
+      // Now with returnNew: true
+      res = collection.insert([{"Hallo":12}], {returnNew: true});
+      assertTypeOf("object", res);
+      assertTrue(Array.isArray(res));
+      assertTypeOf("object", res[0]);
+      assertEqual(4, Object.keys(res[0]).length);
+      assertTypeOf("string", res[0]._id);
+      assertTypeOf("string", res[0]._key);
+      assertTypeOf("string", res[0]._rev);
+      assertTypeOf("object", res[0]["new"]);
+      assertEqual(12, res[0]["new"].Hallo);
+      assertEqual(4, Object.keys(res[0]["new"]).length);
+
+      // Now with returnNew: false
+      res = collection.insert([{"Hallo":12}], {returnNew: false});
+      assertTypeOf("object", res);
+      assertTrue(Array.isArray(res));
+      assertTypeOf("object", res[0]);
+      assertEqual(3, Object.keys(res[0]).length);
+      assertTypeOf("string", res[0]._id);
+      assertTypeOf("string", res[0]._key);
+      assertTypeOf("string", res[0]._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove with and without returnOld
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveMultiReturnOld : function () {
+      var res = collection.insert([{"Hallo":12}]);
+      var res2 = collection.remove([res[0]._key]);
+
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(3, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnOld: true
+      res = collection.insert([{"Hallo":12}]);
+      res2 = collection.remove([res[0]._key], {returnOld: true});
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0].old);
+      assertEqual(12, res2[0].old.Hallo);
+      assertEqual(4, Object.keys(res2[0].old).length);
+
+      // Now with returnOld: false
+      res = collection.insert([{"Hallo":12}]);
+      res2 = collection.remove([res[0]._key], {returnOld: false});
+      assertTypeOf("object", res2[0]);
+      assertEqual(3, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace with and without returnOld and returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceMultiReturnOldNew : function () {
+      var res = collection.insert({"Hallo":12});
+      var res2 = collection.replace([res._key],[{"Hallo":13}]);
+
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnOld: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":13}], {returnOld: true});
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertTypeOf("object", res2[0]);
+      assertEqual(5, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0].old);
+      assertEqual(12, res2[0].old.Hallo);
+      assertEqual(4, Object.keys(res2[0].old).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":14}], {returnOld: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnNew: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":14}], {returnNew: true});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(5, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0]["new"]);
+      assertEqual(14, res2[0]["new"].Hallo);
+      assertEqual(4, Object.keys(res2[0]["new"]).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":15}], {returnNew: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnNew: true and returnOld:true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":16}],
+                                {returnNew: true, returnOld: true});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(6, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0].old);
+      assertTypeOf("object", res2[0]["new"]);
+      assertEqual(16, res2[0]["new"].Hallo);
+      assertEqual(12, res2[0].old.Hallo);
+      assertEqual(4, Object.keys(res2[0]["new"]).length);
+      assertEqual(4, Object.keys(res2[0].old).length);
+
+      // Now with returnOld: false and returnNew: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace([res._key], [{"Hallo":15}],
+                                {returnNew: false, returnOld: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update with and without returnOld and returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateMultiReturnOldNew : function () {
+      var res = collection.insert({"Hallo":12});
+      var res2 = collection.update([res._key],[{"Hallo":13}]);
+
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnOld: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":13}], {returnOld: true});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(5, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0].old);
+      assertEqual(12, res2[0].old.Hallo);
+      assertEqual(4, Object.keys(res2[0].old).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":14}], {returnOld: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnNew: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":14}], {returnNew: true});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(5, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0]["new"]);
+      assertEqual(14, res2[0]["new"].Hallo);
+      assertEqual(4, Object.keys(res2[0]["new"]).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":15}], {returnNew: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+
+      // Now with returnNew: true and returnOld:true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":16}],
+                                {returnNew: true, returnOld: true});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(6, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+      assertTypeOf("object", res2[0].old);
+      assertTypeOf("object", res2[0]["new"]);
+      assertEqual(16, res2[0]["new"].Hallo);
+      assertEqual(12, res2[0].old.Hallo);
+      assertEqual(4, Object.keys(res2[0]["new"]).length);
+      assertEqual(4, Object.keys(res2[0].old).length);
+
+      // Now with returnOld: false and returnNew: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update([res._key], [{"Hallo":15}],
+                                {returnNew: false, returnOld: false});
+      assertTypeOf("object", res2);
+      assertTrue(Array.isArray(res2));
+      assertTypeOf("object", res2[0]);
+      assertEqual(4, Object.keys(res2[0]).length);
+      assertTypeOf("string", res2[0]._id);
+      assertTypeOf("string", res2[0]._key);
+      assertTypeOf("string", res2[0]._rev);
+    }
+
+  };
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionDocumentSuiteBabies);
+jsunity.run(CollectionDocumentSuiteReturnStuff);
 
 return jsunity.done();
