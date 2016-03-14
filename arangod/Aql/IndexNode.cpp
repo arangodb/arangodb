@@ -27,10 +27,19 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Index.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 
 using JsonHelper = arangodb::basics::JsonHelper;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the transaction for the node
+//////////////////////////////////////////////////////////////////////////////
+
+arangodb::Transaction* IndexNode::trx() const {
+  return _plan->getAst()->query()->trx();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for IndexNode
@@ -48,9 +57,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   nodes.add(VPackValue("indexes"));
   {
+#warning Old Implementation did use AqlIndex -> toVelocyPack, that contained unique, sparse, selectivity etc.
     VPackArrayBuilder guard(&nodes);
     for (auto& index : _indexes) {
-      index->toVelocyPack(nodes);
+      nodes.add(VPackValue(index));
     }
   }
   nodes.add(VPackValue("condition"));
@@ -97,15 +107,13 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
   _indexes.reserve(length);
 
   for (size_t i = 0; i < length; ++i) {
-    auto iid = JsonHelper::checkAndGetStringValue(
-        TRI_LookupArrayJson(indexes, i), "id");
-    auto index = _collection->getIndex(iid);
-
-    if (index == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
+    auto entry = TRI_LookupArrayJson(indexes, i);
+    if (!TRI_IsStringJson(entry)) {
+      std::string msg = "The attribute index id is not a string.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
     }
-
-    _indexes.emplace_back(index);
+    _indexes.emplace_back(
+        std::string(entry->_value._string.data, entry->_value._string.length - 1));
   }
 
   TRI_json_t const* condition =
@@ -137,6 +145,8 @@ double IndexNode::estimateCost(size_t& nrItems) const {
   double totalCost = 0.0;
 
   auto root = _condition->root();
+  auto transaction = trx();
+  std::string const collectionName = _collection->getName();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
     double estimatedCost = 0.0;
@@ -150,9 +160,9 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
 
     if (condition != nullptr &&
-        _indexes[i]->supportsFilterCondition(condition, _outVariable,
-                                             itemsInCollection, estimatedItems,
-                                             estimatedCost)) {
+        transaction->supportsFilterCondition(collectionName, _indexes[i], condition,
+                                     _outVariable, itemsInCollection,
+                                     estimatedItems, estimatedCost)) {
       totalItems += estimatedItems;
       totalCost += estimatedCost;
     } else {

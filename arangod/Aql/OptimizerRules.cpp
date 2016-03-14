@@ -1757,7 +1757,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable,
-            std::vector<Index const*>({bestIndex}), condition.get(),
+            std::vector<std::string>{arangodb::basics::StringUtils::itoa(bestIndex->id)}, condition.get(),
             sortCondition.isDescending()));
 
         condition.release();
@@ -1789,6 +1789,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
+#warning Reimplement this rule
+    /*
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
     TRI_ASSERT(cond != nullptr);
@@ -1880,6 +1882,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
       }
     }
+*/
 
     return true;  // always abort after we found an IndexNode
   }

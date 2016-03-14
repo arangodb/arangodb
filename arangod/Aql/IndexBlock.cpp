@@ -31,7 +31,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
-#include "Indexes/IndexIterator.h"
+#include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -45,25 +45,11 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
-      _context(nullptr),
-      _iterator(nullptr),
       _condition(en->_condition->root()),
       _hasV8Expression(false) {
-  _context = new IndexIteratorContext(en->_vocbase);
-
-  try {
-    _trx->orderDitch(_collection->cid());
-  }
-  catch (...) {
-    delete _context;
-    throw;
-  }
 }
 
 IndexBlock::~IndexBlock() {
-  delete _iterator;
-  delete _context;
-
   cleanupNonConstExpressions();
 }
 
@@ -81,7 +67,8 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto ast = en->_plan->getAst();
     auto array = ast->createNodeArray();
     array->addMember(node);
-    if (_indexes[_currentIndex]->isSorted()) {
+    auto trx = ast->query()->trx();
+    if (trx->isIndexSorted(_collection->getName(), _indexes[_currentIndex])) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
       return ast->createNodeFunctionCall("SORTED_UNIQUE", array);
@@ -284,12 +271,9 @@ bool IndexBlock::initIndexes() {
     _currentIndex = 0;
   }
 
-  delete _iterator;
-  _iterator = nullptr;
+  _cursor = createCursor();
 
-  _iterator = createIterator();
-
-  while (_iterator == nullptr) {
+  while (!_cursor->hasMore()) {
     if (node->_reverse) {
       --_currentIndex;
     } else {
@@ -297,8 +281,7 @@ bool IndexBlock::initIndexes() {
     }
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
-      TRI_ASSERT(_iterator == nullptr);
-      _iterator = createIterator();
+      _cursor = createCursor();
     } else {
       // We were not able to initialize any index with this condition
       return false;
@@ -308,32 +291,35 @@ bool IndexBlock::initIndexes() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an iterator object
+/// @brief create an OperationCursor object
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::IndexIterator* IndexBlock::createIterator() {
+std::unique_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
 
   if (_condition == nullptr) {
-    return _indexes[_currentIndex]->getIterator(_trx, _context, ast, nullptr,
-                                                outVariable, node->_reverse);
+    return std::make_unique<arangodb::OperationCursor>(
+        ast->query()->trx()->indexScanForCondition(
+            _collection->getName(), _indexes[_currentIndex], ast, nullptr,
+            outVariable, 0, TRI_DEFAULT_BATCH_SIZE, node->_reverse));
   }
 
   TRI_ASSERT(_indexes.size() == _condition->numMembers());
-  return _indexes[_currentIndex]->getIterator(
-      _trx, _context, ast, _condition->getMember(_currentIndex), outVariable,
-      node->_reverse);
+
+  return std::make_unique<arangodb::OperationCursor>(
+      ast->query()->trx()->indexScanForCondition(
+          _collection->getName(), _indexes[_currentIndex], ast,
+          _condition->getMember(_currentIndex), outVariable, 0,
+          TRI_DEFAULT_BATCH_SIZE, node->_reverse));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Forwards _iterator to the next available index
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexBlock::startNextIterator() {
-  delete _iterator;
-  _iterator = nullptr;
+void IndexBlock::startNextCursor() {
 
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   if (node->_reverse) {
@@ -343,8 +329,7 @@ void IndexBlock::startNextIterator() {
   }
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
-    TRI_ASSERT(_iterator == nullptr);
-    _iterator = createIterator();
+    _cursor = createCursor();
   }
 }
 
@@ -368,7 +353,7 @@ bool IndexBlock::readIndex(size_t atMost) {
     _documents.clear();
   }
 
-  if (_iterator == nullptr) {
+  if (_cursor == nullptr) {
     // All indexes exhausted
     return false;
   }
@@ -378,30 +363,46 @@ bool IndexBlock::readIndex(size_t atMost) {
   bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
                      (_currentIndex == 0 && isReverse);
   try {
-    size_t nrSent = 0;
-    while (nrSent < atMost && _iterator != nullptr) {
-      TRI_doc_mptr_t* indexElement = _iterator->next();
-      if (indexElement == nullptr) {
-        startNextIterator();
-      } else {
-        TRI_IF_FAILURE("IndexBlock::readIndex") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        if (_alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
-          if (!isLastIndex) {
-            _alreadyReturned.emplace(indexElement);
-          }
-
-          _documents.emplace_back(*indexElement);
-          ++nrSent;
-        }
-        ++_engine->_stats.scannedIndex;
+    while (_cursor != nullptr) {
+      if (!_cursor->hasMore()) {
+        startNextCursor();
+        continue;
       }
+      int res = _cursor->getMore(atMost, true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      VPackSlice slice = _cursor->slice();
+      TRI_ASSERT(slice.isArray());
+      size_t length = static_cast<size_t>(slice.length());
+
+      if (length == 0) {
+        startNextCursor();
+        continue;
+      }
+
+      _engine->_stats.scannedIndex += length;
+
+      TRI_IF_FAILURE("IndexBlock::readIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      for (auto const& doc : VPackArrayIterator(slice)) {
+        std::string key =
+            arangodb::basics::VelocyPackHelper::getStringValue(doc, "_key", "");
+        if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
+          if (!isLastIndex) {
+            _alreadyReturned.emplace(key);
+          }
+          _documents.emplace_back(doc);
+        }
+      }
+      // Leave the loop here, we can only exhaust one cursor at a time, otherwise slices are lost
+      break;
     }
   } catch (...) {
-    if (_iterator != nullptr) {
-      delete _iterator;
-      _iterator = nullptr;
+    if (_cursor != nullptr) {
+      _cursor.release();
     }
   }
   _posInDocs = 0;
@@ -508,7 +509,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValueDocument(VPackSlice(_documents[_posInDocs++].vpack())));
+                      AqlValueDocument(_documents[_posInDocs++]));
         // No harm done, if the setValue throws!
       }
     }
