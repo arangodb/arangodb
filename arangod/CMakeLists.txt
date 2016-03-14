@@ -249,7 +249,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  V8Server/v8-wrapshapedjson.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
   VocBase/DocumentAccessor.cpp

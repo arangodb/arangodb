@@ -35,6 +35,8 @@
 
 #include <v8.h>
 
+struct TRI_doc_mptr_t;
+
 namespace arangodb {
 class AqlTransaction;
 
@@ -52,6 +54,7 @@ struct AqlValue final {
   //////////////////////////////////////////////////////////////////////////////
 
   enum AqlValueType : uint8_t { 
+    VPACK_DOCUMENT, // contains a pointer to a vpack document, memory is not managed!
     VPACK_POINTER, // contains a pointer to a vpack value, memory is not managed!
     VPACK_INLINE, // contains vpack data, inline
     VPACK_EXTERNAL, // contains vpack, via pointer to a managed buffer
@@ -92,6 +95,9 @@ struct AqlValue final {
   AqlValue() {
     initFromSlice(arangodb::velocypack::Slice());
   }
+
+  // construct from document
+  explicit AqlValue(TRI_doc_mptr_t const* mptr);
   
   // construct from pointer
   explicit AqlValue(uint8_t const* pointer) {
@@ -452,6 +458,7 @@ struct hash<arangodb::aql::AqlValue> {
     arangodb::aql::AqlValue::AqlValueType type = x.type();
     size_t res = intHash(type);
     switch (type) {
+      case arangodb::aql::AqlValue::VPACK_DOCUMENT: 
       case arangodb::aql::AqlValue::VPACK_POINTER: {
         return res ^ ptrHash(x._data.pointer);
       }
@@ -483,6 +490,7 @@ struct equal_to<arangodb::aql::AqlValue> {
       return false;
     }
     switch (type) {
+      case arangodb::aql::AqlValue::VPACK_DOCUMENT: 
       case arangodb::aql::AqlValue::VPACK_POINTER: {
         return a._data.pointer == b._data.pointer;
       }
