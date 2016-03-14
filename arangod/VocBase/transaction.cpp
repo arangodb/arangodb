@@ -692,7 +692,7 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
 
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -1271,3 +1271,12 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
+  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+}
+

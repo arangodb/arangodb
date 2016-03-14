@@ -164,6 +164,14 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool isEmbeddedTransaction() const { return (_nestingLevel > 0); }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the transaction consists of a single operation only
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isSingleOperationTransaction() const {
+    return TRI_IsSingleOperationTransaction(this->getInternals());
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the status of the transaction
@@ -213,9 +221,9 @@ class Transaction {
     return c->_collection->_name;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief order a ditch for a collection
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   arangodb::DocumentDitch* orderDitch(TRI_voc_cid_t);
 
@@ -231,24 +239,6 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string extractIdString(VPackSlice const);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief build a VPack object with _id, _key and _rev and possibly
-  /// oldRef (if given), the result is added to the builder in the
-  /// argument as a single object.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void buildDocumentIdentity(VPackBuilder& builder,
-                             TRI_voc_cid_t cid,
-                             std::string const& key,
-                             std::string const& rid,
-                             std::string const& oldRid);
-
-  void buildDocumentIdentity(VPackBuilder& builder,
-                             TRI_voc_cid_t cid,
-                             std::string const& key,
-                             TRI_voc_rid_t rid,
-                             std::string const& oldRid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -479,6 +469,20 @@ class Transaction {
 
  private:
   
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VPack object with _id, _key and _rev and possibly
+  /// oldRef (if given), the result is added to the builder in the
+  /// argument as a single object.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildDocumentIdentity(VPackBuilder& builder,
+                             TRI_voc_cid_t cid,
+                             std::string const& key,
+                             VPackSlice const rid,
+                             VPackSlice const oldRid,
+                             TRI_doc_mptr_t const* oldMptr,
+                             TRI_doc_mptr_t const* newMptr);
+
   OperationResult documentCoordinator(std::string const& collectionName,
                                       VPackSlice const value,
                                       OperationOptions& options);

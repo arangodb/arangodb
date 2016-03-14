@@ -53,8 +53,8 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
-  VPackSlice none;
-  _documents = none;
+  _documents = VPackSlice();
+  _documentsSize = 0;
   _posInDocuments = 0;
 }
 
@@ -74,8 +74,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 
   skipped += skippedHere;
 
-  VPackSlice none;
-  _documents = none;
+  _documents = VPackSlice();
   _posInDocuments = 0;
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
@@ -104,18 +103,18 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   }
 
   _documents = _scanner->scan(hint);
+
   TRI_ASSERT(_documents.isArray());
   VPackValueLength count = _documents.length();
+  _documentsSize = static_cast<size_t>(count);
 
   if (count == 0) {
-    VPackSlice none;
-    _documents = none;
+    _documents = VPackSlice();
     return false;
   }
 
   _engine->_stats.scannedFull += static_cast<int64_t>(count);
 
-  _documentsSize = static_cast<size_t>(count);
   _posInDocuments = 0;
 
   return true;
@@ -147,6 +146,7 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 
 AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -205,7 +205,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
       res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs),
-                    AqlValue$(_documents.at(_posInDocuments)));
+                    AqlValue(_documents.at(_posInDocuments)));
       // No harm done, if the setValue throws!
     }
 
@@ -232,9 +232,11 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   clearRegisters(res.get());
 
   return res.release();
+  DEBUG_END_BLOCK(); 
 }
 
 size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   size_t skipped = 0;
 
   if (_done) {
@@ -252,8 +254,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
         return atMost;
       }
       // Skip entire buffer
-      VPackSlice none;
-      _documents = none;
+      _documents = VPackSlice();
       _posInDocuments = 0;
       skipped += couldSkip;
     }
@@ -289,4 +290,5 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
   // We skipped atLeast documents
   return skipped;
+  DEBUG_END_BLOCK(); 
 }

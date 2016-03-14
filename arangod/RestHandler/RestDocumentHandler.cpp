@@ -116,8 +116,9 @@ bool RestDocumentHandler::createDocument() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   VPackSlice body = parsedBody->slice();
   if (!body.isArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
@@ -131,7 +132,8 @@ bool RestDocumentHandler::createDocument() {
   }
 
   arangodb::OperationOptions opOptions;
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.
@@ -149,7 +151,7 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
   return true;
 }
 
@@ -212,14 +214,15 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     if (ifRid != 0) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(ifRid));
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(ifRid)));
     }
   }
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collection, TRI_TRANSACTION_READ);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collection, TRI_TRANSACTION_READ);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // ...........................................................................
@@ -261,9 +264,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     generateNotModified(rid);
   } else {
     // copy default options
-    VPackOptions options = VPackOptions::Defaults;
-    options.customTypeHandler = result.customTypeHandler.get();
-    generateDocument(result.slice(), generateBody, &options);
+    generateDocument(result.slice(), generateBody,
+                     transactionContext->getVPackOptions());
   }
   return true;
 }
@@ -398,13 +400,10 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = true;
-  bool found;
-  char const* ignoreRevsStr = _request->value("ignoreRevs", found);
-  if (found) {
-    opOptions.ignoreRevs = StringUtils::boolean(ignoreRevsStr);
-  }
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder(nullptr);
@@ -440,8 +439,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   if (!isArrayCase) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
@@ -460,24 +460,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    bool found;
-    char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
-      // default: null values are saved as Null
-      opOptions.keepNull = true;
-    } else {
-      // delete null attributes
-      opOptions.keepNull = false;
-    }
-
-    valueStr = _request->value("mergeObjects", found);
-    if (!found || StringUtils::boolean(valueStr)) {
-      // the default is true
-      opOptions.mergeObjects = true;
-    } else {
-      opOptions.mergeObjects = false;
-    }
-
+    opOptions.keepNull = extractBooleanParameter("keepNull", true);
+    opOptions.mergeObjects = extractBooleanParameter("mergeObjects", true);
     result = trx.update(collectionName, body, opOptions);
   } else {
     result = trx.replace(collectionName, body, opOptions);
@@ -499,7 +483,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)));
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
   return true;
 }
 
@@ -531,9 +515,11 @@ bool RestDocumentHandler::deleteDocument() {
   }
   OperationOptions opOptions;
   opOptions.ignoreRevs = false;
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
 
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   // ...........................................................................
@@ -553,7 +539,7 @@ bool RestDocumentHandler::deleteDocument() {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     if (revision != 0) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(revision));
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
     }
   }
   VPackSlice search = builder.slice();
@@ -573,7 +559,8 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   generateDeleted(result, collectionName,
-                  TRI_col_type_e(trx.getCollectionType(collectionName)));
+                  TRI_col_type_e(trx.getCollectionType(collectionName)),
+                  transactionContext->getVPackOptions());
   return true;
 }
 

@@ -65,27 +65,19 @@ struct TRI_doc_collection_info_t {
   TRI_voc_ssize_t _numberDatafiles;
   TRI_voc_ssize_t _numberJournalfiles;
   TRI_voc_ssize_t _numberCompactorfiles;
-  TRI_voc_ssize_t _numberShapefiles;
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
   TRI_voc_ssize_t _numberDeletions;
-  TRI_voc_ssize_t _numberShapes;
-  TRI_voc_ssize_t _numberAttributes;
-  TRI_voc_ssize_t _numberTransactions;
   TRI_voc_ssize_t _numberIndexes;
 
   int64_t _sizeAlive;
   int64_t _sizeDead;
-  int64_t _sizeShapes;
-  int64_t _sizeAttributes;
-  int64_t _sizeTransactions;
   int64_t _sizeIndexes;
 
   int64_t _datafileSize;
   int64_t _journalfileSize;
   int64_t _compactorfileSize;
-  int64_t _shapefileSize;
 
   TRI_voc_tick_t _tickMax;
   uint64_t _uncollectedLogfileEntries;
@@ -219,12 +211,12 @@ struct TRI_document_collection_t : public TRI_collection_t {
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             TRI_voc_rid_t&);
+             VPackSlice&, TRI_doc_mptr_t&);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
              TRI_doc_mptr_t*, arangodb::OperationOptions&, bool,
-             TRI_voc_rid_t&);
+             VPackSlice&, TRI_doc_mptr_t&);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, bool, TRI_voc_rid_t&);
+             arangodb::OperationOptions&, bool, VPackSlice&, TRI_doc_mptr_t&);
 
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
                         TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
@@ -237,7 +229,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
                      TRI_doc_mptr_t*&);
   int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                    TRI_voc_rid_t);
+                    arangodb::velocypack::Slice const);
   int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
                      arangodb::wal::DocumentOperation&,
                      TRI_doc_mptr_t*, bool&);
@@ -254,25 +246,37 @@ struct TRI_document_collection_t : public TRI_collection_t {
                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief new object for insert, value must have _key set correctly.
+////////////////////////////////////////////////////////////////////////////////
+    
+  int newObjectForInsert(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& value,
+      uint64_t& hash,
+      arangodb::velocypack::Builder& builder);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief new object for Replace
 ////////////////////////////////////////////////////////////////////////////////
     
-  arangodb::velocypack::Builder newObjectForReplace(
+  void newObjectForReplace(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
-      std::string const& rev);
+      std::string const& rev,
+      arangodb::velocypack::Builder& builder);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two objects for update
 ////////////////////////////////////////////////////////////////////////////////
     
-  arangodb::velocypack::Builder mergeObjectsForUpdate(
+  void mergeObjectsForUpdate(
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& oldValue,
       arangodb::velocypack::Slice const& newValue,
       std::string const& rev,
-      bool mergeObjects, bool keepNull);
+      bool mergeObjects, bool keepNull,
+      arangodb::velocypack::Builder& b);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

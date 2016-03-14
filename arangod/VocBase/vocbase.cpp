@@ -731,14 +731,14 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             // collection is too "old"
 
             if (!isUpgrade) {
-              LOG(ERR) << "collection '" << info.namec_str()
+              LOG(ERR) << "collection '" << info.name()
                        << "' has a too old version. Please start the server "
                           "with the --upgrade option.";
 
               return TRI_set_errno(res);
             } else {
               if (info.version() < TRI_COL_VERSION_20) {
-                LOG(ERR) << "collection '" << info.namec_str()
+                LOG(ERR) << "collection '" << info.name()
                          << "' is too old to be upgraded with this ArangoDB "
                             "version.";
                 res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
@@ -776,7 +776,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             TRI_UpdateTickServer(tick);
           }
 
-          LOG(DEBUG) << "added document collection '" << info.namec_str()
+          LOG(DEBUG) << "added document collection '" << info.name()
                      << "' from '" << file << "'";
         }
 
@@ -2336,6 +2336,16 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice) {
   return 0;
 }
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice as a slice
+////////////////////////////////////////////////////////////////////////////////
+
+VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
+  TRI_ASSERT(slice.isObject());
+
+  return slice.get(TRI_VOC_ATTRIBUTE_REV);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

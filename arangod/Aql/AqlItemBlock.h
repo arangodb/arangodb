@@ -77,7 +77,7 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ getValue(size_t index, RegisterId varNr) const {
+  AqlValue getValue(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -86,7 +86,7 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register by reference
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ const& getValueReference(size_t index, RegisterId varNr) const {
+  AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
@@ -95,7 +95,7 @@ class AqlItemBlock {
   /// @brief setValue, set the current value of a register
   //////////////////////////////////////////////////////////////////////////////
 
-  void setValue(size_t index, RegisterId varNr, AqlValue$ const& value) {
+  void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
@@ -143,7 +143,7 @@ class AqlItemBlock {
       }
     }
 
-    element.invalidate();
+    element.erase();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -168,7 +168,7 @@ class AqlItemBlock {
       }
     }
 
-    element.invalidate();
+    element.erase();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -179,7 +179,7 @@ class AqlItemBlock {
   void eraseAll() {
     for (auto& it : _data) {
       if (!it.isEmpty()) {
-        it.invalidate();
+        it.erase();
       }
     }
 
@@ -191,7 +191,7 @@ class AqlItemBlock {
   /// this is used if the value is stolen and later released from elsewhere
   //////////////////////////////////////////////////////////////////////////////
 
-  uint32_t valueCount(AqlValue$ const& v) const {
+  uint32_t valueCount(AqlValue const& v) const {
     auto it = _valueCount.find(v);
 
     if (it == _valueCount.end()) {
@@ -207,7 +207,7 @@ class AqlItemBlock {
   /// might be deleted at any time!
   //////////////////////////////////////////////////////////////////////////////
 
-  void steal(AqlValue$ const& v) {
+  void steal(AqlValue const& v) {
     if (v.requiresDestruction()) {
       auto it = _valueCount.find(v);
 
@@ -295,7 +295,7 @@ class AqlItemBlock {
   /// times _nrRegs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<AqlValue$> _data;
+  std::vector<AqlValue> _data;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _valueCount, since we have to allow for identical AqlValues
@@ -306,7 +306,7 @@ class AqlItemBlock {
   /// count with valueCount.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<AqlValue$, uint32_t> _valueCount;
+  std::unordered_map<AqlValue, uint32_t> _valueCount;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nrItems, number of rows

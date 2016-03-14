@@ -53,7 +53,6 @@
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
-#include "V8Server/v8-wrapshapedjson.h"
 #include "V8Server/V8Traverser.h"
 #include "V8Server/V8VPackWrapper.h"
 #include "VocBase/auth.h"
@@ -2747,15 +2746,16 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   }
+  
+  TRI_GET_GLOBALS();
 
   auto globals = isolate->GetCurrentContext()->Global();
 
   v8::Handle<v8::Object> cacheObject;
-  if (globals->Has(TRI_V8_ASCII_STRING("__dbcache__"))) {
-    cacheObject = globals->Get(TRI_V8_ASCII_STRING("__dbcache__"))->ToObject();
-  } else {
-    cacheObject = v8::Object::New(isolate);
-  }
+  TRI_GET_GLOBAL_STRING(_DbCacheKey);
+  if (globals->Has(_DbCacheKey)) {
+    cacheObject = globals->Get(_DbCacheKey)->ToObject();
+  } 
 
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
@@ -2766,8 +2766,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->_vocbase == vocbase) {
-      TRI_GET_GLOBALS();
-
       bool lock = true;
       auto ctx = static_cast<arangodb::V8TransactionContext*>(
           v8g->_transactionContext);
@@ -3764,8 +3762,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("ArangoDatabase"),
                                ft->GetFunction());
-
-  TRI_InitV8ShapedJson(isolate, context, threadNumber, v8g);
 
   arangodb::V8VPackWrapper::initialize(isolate, context, v8g);
 

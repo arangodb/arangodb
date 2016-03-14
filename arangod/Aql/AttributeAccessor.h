@@ -48,9 +48,9 @@ class AttributeAccessor {
   /// @brief execute the accessor
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
-                std::vector<Variable const*> const&,
-                std::vector<RegisterId> const&);
+  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
+               std::vector<Variable const*> const&,
+               std::vector<RegisterId> const&, bool& mustDestroy);
 
  private:
 

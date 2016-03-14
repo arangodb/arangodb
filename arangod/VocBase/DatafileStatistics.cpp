@@ -38,12 +38,8 @@ DatafileStatisticsContainer::DatafileStatisticsContainer()
     : numberAlive(0),
       numberDead(0),
       numberDeletions(0),
-      numberShapes(0),
-      numberAttributes(0),
       sizeAlive(0),
       sizeDead(0),
-      sizeShapes(0),
-      sizeAttributes(0),
       numberUncollected(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,12 +51,8 @@ void DatafileStatisticsContainer::update(
   numberAlive += other.numberAlive;
   numberDead += other.numberDead;
   numberDeletions += other.numberDeletions;
-  numberShapes += other.numberShapes;
-  numberAttributes += other.numberAttributes;
   sizeAlive += other.sizeAlive;
   sizeDead += other.sizeDead;
-  sizeShapes += other.sizeShapes;
-  sizeAttributes += other.sizeAttributes;
   numberUncollected += other.numberUncollected;
 }
 
@@ -72,12 +64,8 @@ void DatafileStatisticsContainer::reset() {
   numberAlive = 0;
   numberDead = 0;
   numberDeletions = 0;
-  numberShapes = 0;
-  numberAttributes = 0;
   sizeAlive = 0;
   sizeDead = 0;
-  sizeShapes = 0;
-  sizeAttributes = 0;
   numberUncollected = 0;
 }
 

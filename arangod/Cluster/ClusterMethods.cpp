@@ -179,58 +179,6 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two JSON
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
-                      TRI_json_t const* oldJson, TRI_json_t const* newJson,
-                      bool isPatch) {
-  if (!TRI_IsObjectJson(oldJson) || !TRI_IsObjectJson(newJson)) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  TRI_json_t nullJson;
-  TRI_InitNullJson(&nullJson);
-
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
-  std::vector<std::string> const& shardKeys = c->shardKeys();
-
-  for (size_t i = 0; i < shardKeys.size(); ++i) {
-    if (shardKeys[i] == TRI_VOC_ATTRIBUTE_KEY) {
-      continue;
-    }
-
-    TRI_json_t const* n = TRI_LookupObjectJson(newJson, shardKeys[i].c_str());
-
-    if (n == nullptr && isPatch) {
-      // attribute not set in patch document. this means no update
-      continue;
-    }
-
-    TRI_json_t const* o = TRI_LookupObjectJson(oldJson, shardKeys[i].c_str());
-
-    if (o == nullptr) {
-      // if attribute is undefined, use "null" instead
-      o = &nullJson;
-    }
-
-    if (n == nullptr) {
-      // if attribute is undefined, use "null" instead
-      n = &nullJson;
-    }
-
-    if (!TRI_CheckSameValueJson(o, n)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -439,10 +387,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
             result->_numberDeletions +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
-            result->_numberShapes +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");
-            result->_numberAttributes +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "attributes", "count");
             result->_numberIndexes +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "indexes", "count");
 
@@ -450,10 +394,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "alive", "size");
             result->_sizeDead +=
                 ExtractFigure<int64_t>(figures, "dead", "size");
-            result->_sizeShapes +=
-                ExtractFigure<int64_t>(figures, "shapes", "size");
-            result->_sizeAttributes +=
-                ExtractFigure<int64_t>(figures, "attributes", "size");
             result->_sizeIndexes +=
                 ExtractFigure<int64_t>(figures, "indexes", "size");
 
@@ -463,8 +403,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "journals", "count");
             result->_numberCompactorfiles +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "compactors", "count");
-            result->_numberShapefiles +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "shapefiles", "count");
 
             result->_datafileSize +=
                 ExtractFigure<int64_t>(figures, "datafiles", "fileSize");
@@ -472,8 +410,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "journals", "fileSize");
             result->_compactorfileSize +=
                 ExtractFigure<int64_t>(figures, "compactors", "fileSize");
-            result->_shapefileSize +=
-                ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
 
             result->_numberDocumentDitches +=
                 arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(

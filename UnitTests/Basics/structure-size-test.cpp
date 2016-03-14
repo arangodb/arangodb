@@ -135,6 +135,20 @@ BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test sizeof TRI_df_prologue_marker_t
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_df_prologue_marker) {
+  size_t s = sizeof(TRI_df_prologue_marker_t);
+
+  BOOST_CHECK_EQUAL(16 + 16, (int) s);
+  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+
+  BOOST_CHECK_EQUAL(16, (int) offsetOf(&TRI_df_prologue_marker_t::_databaseId));
+  BOOST_CHECK_EQUAL(24, (int) offsetOf(&TRI_df_prologue_marker_t::_collectionId));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 

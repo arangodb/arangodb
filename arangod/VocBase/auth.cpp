@@ -128,29 +128,19 @@ static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
 static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   // clear auth info table
   for (auto& it : vocbase->_authInfo) {
-    if (it.second != nullptr) {
-      delete it.second;
-      it.second = nullptr;
-    }
+    delete it.second;
   }
   vocbase->_authInfo.clear();
 
   // clear cache
   for (auto& it : vocbase->_authCache) {
-    if (it.second != nullptr) {
-      delete it.second;
-      it.second = nullptr;
-    }
+    delete it.second;
   }
   vocbase->_authCache.clear();
 }
 
 uint64_t VocbaseAuthInfo::hash() const {
   return TRI_FnvHashString(_username.c_str());
-}
-
-bool VocbaseAuthInfo::isEqualName(char const* compare) const {
-  return TRI_EqualString(compare, _username.c_str());
 }
 
 bool VocbaseAuthInfo::isEqualPasswordHash(char const* compare) const {
@@ -221,6 +211,8 @@ bool TRI_InsertInitialAuthInfo(TRI_vocbase_t* vocbase) {
 
 bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
   LOG(DEBUG) << "starting to load authentication and authorization information";
+  
+  WRITE_LOCKER(writeLocker, vocbase->_authInfoLock);
 
   TRI_vocbase_col_t* collection =
       TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
@@ -231,7 +223,7 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
   }
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                          collection->_cid, TRI_TRANSACTION_READ);
+                                  collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -245,12 +237,14 @@ bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
     std::unique_ptr<VocbaseAuthInfo> auth(ConvertAuthInfo(vocbase, ptr));
 
     if (auth != nullptr) {
-      VocbaseAuthInfo* old = vocbase->_authInfo.at(auth->username());
+      auto it = vocbase->_authInfo.find(auth->username());
 
-      if (old != nullptr) {
-        delete old;
+      if (it != vocbase->_authInfo.end()) {
+        delete (*it).second;
+        (*it).second = nullptr;
       }
-      vocbase->_authInfo.erase(auth->username());
+
+      vocbase->_authInfo[auth->username()] = auth.get();
       auth.release();
     }
     return true;
@@ -278,12 +272,8 @@ bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
     std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(authSlice));
 
     if (auth != nullptr) {
-      auto it = vocbase->_authInfo.find(auth->username());
-
-      if (it == vocbase->_authInfo.end()) {
-        vocbase->_authInfo.emplace(auth->username(), auth.get());
-        auth.release();
-      }
+      vocbase->_authInfo.emplace(auth->username(), auth.get());
+      auth.release();
     }
   }
 
@@ -468,11 +458,13 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
 
     auto it = vocbase->_authCache.find(cached->_hash);
 
-    if (it == vocbase->_authCache.end()) {
-      vocbase->_authCache.emplace(cached->_hash, cached.get());
-      cached.release();
+    if (it != vocbase->_authCache.end()) {
+      delete (*it).second;
+      (*it).second = nullptr;
     }
-    // else: duplicate entry unique-ptr retains and goes out of scope
+
+    vocbase->_authCache[cached->_hash] = cached.get();
+    cached.release();
   }
 
   return res;

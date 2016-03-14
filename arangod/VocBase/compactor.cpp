@@ -742,8 +742,7 @@ static void CompactifyDatafiles(
   TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   if (context._dfi.numberAlive == 0 && context._dfi.numberDead == 0 &&
-      context._dfi.numberDeletions == 0 && context._dfi.numberShapes == 0 &&
-      context._dfi.numberAttributes == 0) {
+      context._dfi.numberDeletions == 0) {
     if (n > 1) {
       // create .dead files for all collected files
       for (i = 0; i < n; ++i) {
@@ -995,7 +994,7 @@ static bool CompactifyDocumentCollection(TRI_document_collection_t* document) {
 
     TRI_ASSERT(reason != nullptr);
 
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->_fid << ", size: " << df->_maximalSize << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberShapes: " << dfi.numberShapes << ", numberAttributes: " << dfi.numberAttributes << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive << ", sizeShapes " << dfi.sizeShapes << ", sizeAttributes: " << dfi.sizeAttributes;
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->_fid << ", size: " << df->_maximalSize << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive;
     totalSize += static_cast<uint64_t>(df->_maximalSize);
 
     compaction_info_t compaction;

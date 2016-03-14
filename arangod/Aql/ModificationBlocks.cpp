@@ -152,38 +152,26 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a key from the AqlValue$ passed
+/// @brief extract a key from the AqlValue passed
 ////////////////////////////////////////////////////////////////////////////////
 
-int ModificationBlock::extractKey(AqlValue$ const& value,
+int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
-    VPackSlice const slice = value.get(TRI_VOC_ATTRIBUTE_KEY).slice();
-    if (slice.isString()) {
-      key.assign(slice.copyString());
+    bool mustDestroy;
+    AqlValue sub = value.get(_trx, TRI_VOC_ATTRIBUTE_KEY, mustDestroy, false);
+    AqlValueGuard guard(sub, mustDestroy);
+
+    if (sub.isString()) {
+      key.assign(sub.slice().copyString());
       return TRI_ERROR_NO_ERROR;
     }
-  } else if (value.slice().isString()) {
+  } else if (value.isString()) {
     key.assign(value.slice().copyString());
     return TRI_ERROR_NO_ERROR;
   }
 
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a shard key value has changed
-////////////////////////////////////////////////////////////////////////////////
-
-bool ModificationBlock::isShardKeyChange(TRI_json_t const* oldJson,
-                                         TRI_json_t const* newJson,
-                                         bool isPatch) const {
-  TRI_ASSERT(_isDBServer);
-
-  auto planId = _collection->documentCollection()->_info.planId();
-  auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
-  return arangodb::shardKeysChanged(vocbase->_name, std::to_string(planId),
-                                    oldJson, newJson, isPatch);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,10 +258,10 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
   options.waitForSync = ep->_options.waitForSync;
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
+  options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
+  options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
         
-  OperationResult opResOld; // old document ($OLD)
-
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -285,7 +273,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, docRegisterId);
+      AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       int errorCode = TRI_ERROR_NO_ERROR;
       std::string key;
@@ -294,7 +282,7 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
         // value is an object
         if (hasKeyVariable) {
           // seperate key specification
-          AqlValue$ const& k = res->getValueReference(i, keyRegisterId);
+          AqlValue const& k = res->getValueReference(i, keyRegisterId);
           errorCode = extractKey(k, key);
         } else {
           errorCode = extractKey(a, key);
@@ -312,38 +300,34 @@ AqlItemBlock* ModificationBlock::modify(std::vector<AqlItemBlock*>& blocks,
         keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
         keyBuilder.close();
 
-        VPackSlice toInsert;
+        VPackSlice toUpdate;
 
         if (hasKeyVariable) {
           object = VPackCollection::merge(a.slice(), keyBuilder.slice(), false, false);
-          toInsert = object.slice();
+          toUpdate = object.slice();
         }
         else {
-          // use original slice for inserting
-          toInsert = a.slice();
+          // use original slice for updating
+          toUpdate = a.slice();
         }
 
         // fetch old revision
-        if (producesOutput && ep->_outVariableOld != nullptr) {
-          opResOld = _trx->document(_collection->name, keyBuilder.slice(), options);
+        OperationResult opRes;
+        if (isReplace) {
+          opRes = _trx->replace(_collection->name, toUpdate, options); 
+        } else {
+          opRes = _trx->update(_collection->name, toUpdate, options); 
         }
-
-        OperationResult opRes = _trx->update(_collection->name, toInsert, options); 
         errorCode = opRes.code;
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           if (ep->_outVariableOld != nullptr) {
             // store $OLD
-            result->setValue(dstRow, _outRegOld, AqlValue$(opResOld.slice()));
+            result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
           }
-
           if (ep->_outVariableNew != nullptr) {
             // store $NEW
-            OperationResult opResNew = _trx->document(_collection->name, keyBuilder.slice(), options);
-
-            if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
-            }
+            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
           }
         }
 
@@ -401,8 +385,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
   options.ignoreRevs = true;
-
-  OperationResult opResOld; // old document ($OLD)
+  options.returnOld = producesOutput;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -415,7 +398,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, registerId);
+      AqlValue const& a = res->getValueReference(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -426,7 +409,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (a.isObject()) {
         // value is an array. now extract the _key attribute
         errorCode = extractKey(a, key);
-      } else if (a.slice().isString()) {
+      } else if (a.isString()) {
         // value is a string
         key = a.slice().copyString();
       } else {
@@ -438,17 +421,11 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // create a slice for the key
         keyBuilder.clear();
         keyBuilder.openObject();
-        keyBuilder.add(VPackValue(key));
+        keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
         keyBuilder.close();
 
         VPackSlice toRemove = keyBuilder.slice();
       
-        if (producesOutput) {
-          // read "old" version
-          // need to fetch the old document
-          opResOld = _trx->document(_collection->name, toRemove, options);
-        }
-
         // all exceptions are caught in _trx->remove()
         OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
         errorCode = opRes.code;
@@ -459,8 +436,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           errorCode = TRI_ERROR_NO_ERROR;
         }
 
-        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR && opResOld.successful()) {
-          result->setValue(dstRow, _outRegOld, AqlValue$(opResOld.slice()));
+        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+          result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
         }
       }
 
@@ -507,6 +484,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
+  options.returnNew = producesOutput;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -518,7 +496,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ a = res->getValue(i, registerId);
+      AqlValue a = res->getValue(i, registerId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -534,11 +512,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           // return $NEW
-          OperationResult opResNew = _trx->document(_collection->name, a.slice(), options);
-
-          if (opResNew.successful()) {
-            result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
-          }
+          result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
         }
       }
 
@@ -609,12 +583,16 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.waitForSync = ep->_options.waitForSync;
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
+  options.returnNew = producesOutput;
   options.ignoreRevs = true;
+  
+  VPackBuilder keyBuilder;
+  VPackBuilder object;
 
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);  // This is intentionally a copy!
+    auto* res = *it; 
 
     throwIfKilled();  // check if we were aborted
 
@@ -622,7 +600,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      AqlValue$ const& a = res->getValueReference(i, docRegisterId);
+      AqlValue const& a = res->getValueReference(i, docRegisterId);
 
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
@@ -636,28 +614,32 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         errorCode = extractKey(a, key);
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
-          AqlValue$ const& updateDoc = res->getValueReference(i, updateRegisterId);
+          AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
 
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
+         
+            keyBuilder.clear();
+            keyBuilder.openObject();
+            keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+            keyBuilder.close();
 
+            object = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+            toUpdate = object.slice();
+
+            OperationResult opRes;
             if (ep->_isReplace) {
               // replace
-              OperationResult opRes = _trx->replace(_collection->name, toUpdate, options);
-              errorCode = opRes.code;
+              opRes = _trx->replace(_collection->name, toUpdate, options);
             } else {
               // update
-              OperationResult opRes = _trx->update(_collection->name, toUpdate, options);
-              errorCode = opRes.code;
+              opRes = _trx->update(_collection->name, toUpdate, options);
             }
+            errorCode = opRes.code;
 
             if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
               // store $NEW
-              OperationResult opResNew = _trx->document(_collection->name, toUpdate, options);
-
-              if (opResNew.successful()) {
-                result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
-              }
+              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
             }
           } else {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -666,18 +648,14 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       } else {
         // no document found => insert case
-        AqlValue$ const& insertDoc = res->getValueReference(i, insertRegisterId);
+        AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
 
         if (insertDoc.isObject()) {
           OperationResult opRes = _trx->insert(_collection->name, insertDoc.slice(), options);
           errorCode = opRes.code; 
 
           if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-            OperationResult opResNew = _trx->document(_collection->name, insertDoc.slice(), options);
-
-            if (opResNew.successful()) {
-              result->setValue(dstRow, _outRegNew, AqlValue$(opResNew.slice()));
-            }
+            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;

@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
@@ -315,10 +316,10 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for read-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for read-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -326,7 +327,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -349,7 +350,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -401,10 +402,10 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for write-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for write-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -412,7 +413,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -435,7 +436,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -481,13 +482,9 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
   info->_numberAlive += static_cast<TRI_voc_ssize_t>(dfi.numberAlive);
   info->_numberDead += static_cast<TRI_voc_ssize_t>(dfi.numberDead);
   info->_numberDeletions += static_cast<TRI_voc_ssize_t>(dfi.numberDeletions);
-  info->_numberShapes += static_cast<TRI_voc_ssize_t>(dfi.numberShapes);
-  info->_numberAttributes += static_cast<TRI_voc_ssize_t>(dfi.numberAttributes);
 
   info->_sizeAlive += dfi.sizeAlive;
   info->_sizeDead += dfi.sizeDead;
-  info->_sizeShapes += dfi.sizeShapes;
-  info->_sizeAttributes += dfi.sizeAttributes;
 
   // add the file sizes for datafiles and journals
   TRI_collection_t* base = this;
@@ -517,10 +514,6 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
     info->_sizeIndexes += idx->memory();
     info->_numberIndexes++;
   }
-
-  // get information about shape files (DEPRECATED, thus hard-coded to 0)
-  info->_shapefileSize = 0;
-  info->_numberShapefiles = 0;
 
   info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
   info->_tickMax = _tickMax;
@@ -1032,11 +1025,11 @@ struct OpenIndexIteratorContext {
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OpenIndexIterator(char const* filename, void* data) {
+static bool OpenIndexIterator(std::string const& filename, void* data) {
   // load VelocyPack description of the index
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename.c_str());
   } catch (...) {
     // Failed to parse file
     LOG(ERR) << "failed to parse index definition from '" << filename << "'";
@@ -1189,7 +1182,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
-  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.namec_str() << "'";
+  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
 
   // update the real statistics for the collection
   try {
@@ -1675,8 +1668,7 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
     ctx.trx = trx;
     ctx.collection = document;
 
-    TRI_IterateIndexCollection(reinterpret_cast<TRI_collection_t*>(document),
-                               OpenIndexIterator, static_cast<void*>(&ctx));
+    document->iterateIndexes(OpenIndexIterator, static_cast<void*>(&ctx));
     document->useSecondaryIndexes(old);
   } catch (...) {
     document->useSecondaryIndexes(old);
@@ -2296,7 +2288,7 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   if (idx == nullptr) {
-    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
+    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.name() << "'";
     return TRI_errno();
   }
 
@@ -3272,29 +3264,52 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       bool lock) {
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
+    // _from:
     VPackSlice s = slice.get(TRI_VOC_ATTRIBUTE_FROM);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
+    VPackValueLength len;
+    char const* docId = s.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
     s = slice.get(TRI_VOC_ATTRIBUTE_TO);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
+    docId = s.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+  }
+
+  uint64_t hash = 0;
+  VPackBuilder builder;
+  VPackSlice newSlice;
+  int res = TRI_ERROR_NO_ERROR;
+  if (options.recoveryMarker == nullptr) {
+    res = newObjectForInsert(trx, slice, hash, builder);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    newSlice = builder.slice();
+  } else {
+    newSlice = slice;
+    hash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
   }
 
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  VPackSlice const key(slice.get(TRI_VOC_ATTRIBUTE_KEY));
-  uint64_t const hash = key.hash();
-
   std::unique_ptr<arangodb::wal::Marker> marker;
   if (options.recoveryMarker == nullptr) {
-    marker.reset(createVPackInsertMarker(trx, slice));
+    marker.reset(createVPackInsertMarker(trx, newSlice));
   }
 
   TRI_voc_tick_t markerTick = 0;
-  int res;
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
@@ -3345,8 +3360,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
     } else {
-      TRI_ASSERT(mptr->getDataPtr() !=
-                 nullptr);  // PROTECTED by trx in trxCollection
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  
 
       if (options.waitForSync) {
         markerTick = operation.tick;
@@ -3354,7 +3368,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     }
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3371,10 +3385,12 @@ int TRI_document_collection_t::update(Transaction* trx,
                                       TRI_doc_mptr_t* mptr,
                                       OperationOptions& options,
                                       bool lock,
-                                      TRI_voc_rid_t& prevRev) {
+                                      VPackSlice& prevRev,
+                                      TRI_doc_mptr_t& previous) {
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
+  prevRev = VPackSlice();
 
   TRI_voc_rid_t revisionId = TRI_NewTickServer();
   
@@ -3404,7 +3420,8 @@ int TRI_document_collection_t::update(Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3416,10 +3433,24 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder = mergeObjectsForUpdate(
+    VPackBuilder builder;
+    if (options.recoveryMarker == nullptr) {
+      mergeObjectsForUpdate(
         trx, VPackSlice(oldHeader->vpack()), newSlice, 
-        std::to_string(revisionId), options.mergeObjects, options.keepNull);
+        std::to_string(revisionId), options.mergeObjects, options.keepNull,
+        builder);
  
+      if (ServerState::instance()->isDBServer()) {
+        // Need to check that no sharding keys have changed:
+        if (arangodb::shardKeysChanged(_vocbase->_name,
+                                       _info.name(),
+                                       VPackSlice(oldHeader->vpack()),
+                                       builder.slice(), false)) {
+          return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+        }
+      }
+    }
+
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {
@@ -3456,7 +3487,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3473,7 +3504,9 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        TRI_doc_mptr_t* mptr,
                                        OperationOptions& options,
                                        bool lock,
-                                       TRI_voc_rid_t& prevRev) {
+                                       VPackSlice& prevRev,
+                                       TRI_doc_mptr_t& previous) {
+  prevRev = VPackSlice();
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
     VPackSlice s = newSlice.get(TRI_VOC_ATTRIBUTE_FROM);
@@ -3518,7 +3551,8 @@ int TRI_document_collection_t::replace(Transaction* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3530,9 +3564,20 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder = newObjectForReplace(
+    VPackBuilder builder;
+    newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
-        newSlice, std::to_string(revisionId));
+        newSlice, std::to_string(revisionId), builder);
+
+    if (ServerState::instance()->isDBServer()) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(_vocbase->_name,
+                                     _info.name(),
+                                     VPackSlice(oldHeader->vpack()),
+                                     builder.slice(), false)) {
+        return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      }
+    }
 
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
@@ -3568,7 +3613,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     TRI_ASSERT(mptr->getDataPtr() != nullptr); 
   }
 
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3584,7 +3629,10 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       VPackSlice const slice,
                                       OperationOptions& options,
                                       bool lock,
-                                      TRI_voc_rid_t& prevRev) {
+                                      VPackSlice& prevRev,
+                                      TRI_doc_mptr_t& previous) {
+  prevRev = VPackSlice();
+
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
@@ -3631,7 +3679,8 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       return res;
     }
 
-    prevRev = oldHeader->revisionId();
+    prevRev = oldHeader->revisionIdAsSlice();
+    previous = *oldHeader;
 
     // Check old revision:
     if (!options.ignoreRevs) {
@@ -3680,7 +3729,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
   }
   
-  if (markerTick > 0) {
+  if (markerTick > 0 && trx->isSingleOperationTransaction()) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
@@ -3790,14 +3839,8 @@ int TRI_document_collection_t::lookupDocument(
 
 int TRI_document_collection_t::checkRevision(Transaction* trx,
                                              VPackSlice const expected,
-                                             TRI_voc_rid_t found) {
-  TRI_voc_rid_t expectedRev = 0;
-  if (expected.isString()) {
-    expectedRev = arangodb::basics::VelocyPackHelper::stringUInt64(expected);
-  } else if (expected.isNumber()) {
-    expectedRev = expected.getNumber<TRI_voc_rid_t>();
-  }
-  if (expectedRev != 0 && found != expectedRev) {
+                                             VPackSlice const found) {
+  if (!expected.isNone() && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
   }
   return TRI_ERROR_NO_ERROR;
@@ -4032,17 +4075,57 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief new object for insert, computes the hash of the key
+////////////////////////////////////////////////////////////////////////////////
+    
+int TRI_document_collection_t::newObjectForInsert(
+    Transaction* trx,
+    VPackSlice const& value,
+    uint64_t& hash,
+    VPackBuilder& builder) {
+  // insert
+  { VPackObjectBuilder guard(&builder);
+
+    TRI_SanitizeObject(value, builder);
+    uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, 
+        VPackValuePair(9ULL, VPackValueType::Custom));
+    *p++ = 0xf3;  // custom type for _id
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+    VPackSlice s = value.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_voc_tick_t const newRev = TRI_NewTickServer();
+    if (s.isNone()) {
+      std::string keyString = _keyGenerator->generate(newRev);
+      uint8_t* where = builder.add(TRI_VOC_ATTRIBUTE_KEY,
+                                   VPackValue(keyString));
+      s = VPackSlice(where);  // point to newly built value, the string
+    } else if (!s.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    } else {
+      std::string keyString = s.copyString();
+      int res = _keyGenerator->validate(keyString, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+      builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+    }
+    hash = s.hash();
+    std::string rev = std::to_string(newRev);
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+  }
+  return TRI_ERROR_NO_ERROR;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set.
 ////////////////////////////////////////////////////////////////////////////////
     
-VPackBuilder TRI_document_collection_t::newObjectForReplace(
+void TRI_document_collection_t::newObjectForReplace(
     Transaction* trx,
     VPackSlice const& oldValue,
     VPackSlice const& newValue,
-    std::string const& rev) {
-  // replace
-  VPackBuilder builder;
+    std::string const& rev,
+    VPackBuilder& builder) {
   { VPackObjectBuilder guard(&builder);
 
     TRI_SanitizeObject(newValue, builder);
@@ -4054,7 +4137,6 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
     builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
     builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
   }
-  return builder;
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4062,14 +4144,14 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
 /// _key and _id attributes
 ////////////////////////////////////////////////////////////////////////////////
     
-VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
+void TRI_document_collection_t::mergeObjectsForUpdate(
       arangodb::Transaction* trx,
       VPackSlice const& oldValue,
       VPackSlice const& newValue,
       std::string const& rev,
-      bool mergeObjects, bool keepNull) {
+      bool mergeObjects, bool keepNull,
+      VPackBuilder& b) {
 
-  VPackBuilder b;
   { 
     VPackObjectBuilder guard(&b);
 
@@ -4138,5 +4220,4 @@ VPackBuilder TRI_document_collection_t::mergeObjectsForUpdate(
     // Finally, add the new revision:
     b.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
   }
-  return b;
 }

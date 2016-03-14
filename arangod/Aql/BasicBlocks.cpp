@@ -78,6 +78,7 @@ int SingletonBlock::shutdown(int errorCode) {
 int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
                                   size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -97,7 +98,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
-          AqlValue$ a = _inputRegisterValues->getValue(0, reg);
+          AqlValue a = _inputRegisterValues->getValue(0, reg);
           _inputRegisterValues->steal(a);
 
           try {
@@ -126,6 +127,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
   _done = true;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
@@ -145,6 +147,7 @@ int FilterBlock::initialize() { return ExecutionBlock::initialize(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
     if (!ExecutionBlock::getBlock(atLeast, atMost)) {
       return false;
@@ -180,10 +183,12 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
   }
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                                AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -287,9 +292,11 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     }
   }
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 bool FilterBlock::hasMore() {
+  DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return false;
   }
@@ -312,6 +319,7 @@ bool FilterBlock::hasMore() {
   // in it.
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 int LimitBlock::initialize() {
@@ -335,6 +343,7 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                               AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_state == 2) {
@@ -412,9 +421,11 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();
 }
 
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
@@ -437,17 +448,22 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   auto stripped = std::make_unique<AqlItemBlock>(n, 1);
 
   for (size_t i = 0; i < n; i++) {
-    AqlValue$ const& a = res->getValueReference(i, registerId);
+    auto a = res->getValueReference(i, registerId);
 
-    if (!a.isNone()) {
+    if (!a.isEmpty()) {
       if (a.requiresDestruction()) {
         res->steal(a);
 
-        TRI_IF_FAILURE("ReturnBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+        try {
+          TRI_IF_FAILURE("ReturnBlock::getSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
 
-        stripped->setValue(i, 0, a);
+          stripped->setValue(i, 0, a);
+        } catch (...) {
+          a.destroy();
+          throw;
+        }
         // If the following does not go well, we do not care, since
         // the value is already stolen and installed in stripped
         res->eraseValue(i, registerId);
@@ -461,6 +477,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   res.release();
 
   return stripped.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -470,6 +487,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RegisterId ReturnBlock::returnInheritedResults() {
+  DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
 
   auto ep = static_cast<ReturnNode const*>(getPlanNode());
@@ -477,6 +495,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 
   return it->second.registerId;
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

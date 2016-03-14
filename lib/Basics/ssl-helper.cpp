@@ -28,7 +28,9 @@
 
 using namespace arangodb;
 
+#ifndef OPENSSL_NO_SSL3_METHOD
 extern "C" const SSL_METHOD* SSLv3_method(void);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
@@ -44,16 +46,21 @@ SSL_CTX* arangodb::sslContext(protocol_e protocol, std::string const& keyfile) {
       meth = SSLv2_method();
       break;
 #endif
+#ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = SSLv3_method();
       break;
-
+#endif
     case SSL_V23:
       meth = SSLv23_method();
       break;
 
     case TLS_V1:
       meth = TLSv1_method();
+      break;
+
+    case TLS_V12:
+      meth = TLSv1_2_method();
       break;
 
     default:
@@ -100,6 +107,9 @@ std::string arangodb::protocolName(protocol_e protocol) {
 
     case TLS_V1:
       return "TLSv1";
+
+    case TLS_V12:
+      return "TLSv12";
 
     default:
       return "unknown";

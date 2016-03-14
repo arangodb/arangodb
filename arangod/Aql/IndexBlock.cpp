@@ -94,12 +94,17 @@ void IndexBlock::executeExpressions() {
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
-    AqlValue$ a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions]);
-    VPackSlice slice = a.slice();
-    //AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
-    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
-    a.destroy();
+
+    bool mustDestroy;
+    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
+                              _inRegs[posInExpressions], mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AstNode* evaluatedNode = nullptr;
+    
+    AqlValueMaterializer materializer(_trx); 
+    VPackSlice slice = materializer.slice(a);
+    evaluatedNode = ast->nodeFromVPack(slice, true);
 
     _condition->getMember(toReplace->orMember)
         ->getMember(toReplace->andMember)
@@ -272,6 +277,9 @@ bool IndexBlock::initIndexes() {
   }
 
   _cursor = createCursor();
+  if (_cursor->failed()) {
+    THROW_ARANGO_EXCEPTION(_cursor->code);
+  }
 
   while (!_cursor->hasMore()) {
     if (node->_reverse) {
@@ -282,6 +290,9 @@ bool IndexBlock::initIndexes() {
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
       _cursor = createCursor();
+      if (_cursor->failed()) {
+        THROW_ARANGO_EXCEPTION(_cursor->code);
+      }
     } else {
       // We were not able to initialize any index with this condition
       return false;
@@ -303,7 +314,7 @@ std::unique_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
     return std::make_unique<arangodb::OperationCursor>(
         ast->query()->trx()->indexScanForCondition(
             _collection->getName(), _indexes[_currentIndex], ast, nullptr,
-            outVariable, 0, TRI_DEFAULT_BATCH_SIZE, node->_reverse));
+            outVariable, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, node->_reverse));
   }
 
   TRI_ASSERT(_indexes.size() == _condition->numMembers());
@@ -311,7 +322,7 @@ std::unique_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   return std::make_unique<arangodb::OperationCursor>(
       ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
-          _condition->getMember(_currentIndex), outVariable, 0,
+          _condition->getMember(_currentIndex), outVariable, UINT64_MAX,
           TRI_DEFAULT_BATCH_SIZE, node->_reverse));
 }
 
@@ -509,7 +520,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValueDocument(_documents[_posInDocs++]));
+                      AqlValue(_documents[_posInDocs++]));
         // No harm done, if the setValue throws!
       }
     }

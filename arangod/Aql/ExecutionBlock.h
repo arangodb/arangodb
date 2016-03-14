@@ -24,10 +24,22 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "Aql/AqlItemBlock.h"
+#include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 
 #include <deque>
+
+#if 0
+
+#define DEBUG_BEGIN_BLOCK() try { //
+#define DEBUG_END_BLOCK() } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
+
+#else
+
+#define DEBUG_BEGIN_BLOCK() //
+#define DEBUG_END_BLOCK() //
+
+#endif
 
 namespace arangodb {
 class AqlTransaction;

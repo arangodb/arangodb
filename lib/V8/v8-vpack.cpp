@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vpack.h"
-
 #include "Basics/Exceptions.h"
 #include "V8/v8-utils.h"
 
@@ -128,7 +127,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     case VPackValueType::Array:
       return ObjectVPackArray(isolate, slice, options, base);
     case VPackValueType::Custom: {
-      if (options->customTypeHandler == nullptr || base == nullptr) {
+      if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Could not extract custom attribute.");
       }
@@ -180,7 +179,7 @@ static int V8ToVPack(BuilderContext& context,
   v8::Isolate* isolate = context.isolate;
   v8::HandleScope scope(isolate);
 
-  if (parameter->IsNull()) {
+  if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,
              VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
@@ -220,8 +219,12 @@ static int V8ToVPack(BuilderContext& context,
     uint32_t const n = array->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
-      // get address of next element
-      int res = V8ToVPack(context, array->Get(i), "", false);
+      v8::Handle<v8::Value> value = array->Get(i);
+      if (value->IsUndefined()) {
+        // ignore object values which are undefined
+        continue;
+      }
+      int res = V8ToVPack(context, value, "", false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -329,7 +332,13 @@ static int V8ToVPack(BuilderContext& context,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      int res = V8ToVPack(context, o->Get(key), *str, true);
+      v8::Handle<v8::Value> value = o->Get(key);
+      if (value->IsUndefined()) {
+        // ignore object values which are undefined
+        continue;
+      }
+
+      int res = V8ToVPack(context, value, *str, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;

@@ -418,12 +418,17 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  VPackObjectBuilder obj(&builder);
+void ExecutionNode::toVelocyPack(VPackBuilder& builder, 
+                                 bool verbose, bool keepTopLevelOpen) const {
+  // default value is to NOT keep top level open
+  builder.openObject();
   builder.add(VPackValue("nodes"));
   {
     VPackArrayBuilder guard(&builder);
     toVelocyPackHelper(builder, verbose);
+  }
+  if (!keepTopLevelOpen) {
+    builder.close();
   }
 }
 

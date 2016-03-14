@@ -43,6 +43,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -265,35 +266,46 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
 /// @brief export to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::toVelocyPack(Ast* ast, bool verbose,
-                                 VPackBuilder& builder) const {
-  _root->toVelocyPack(builder, verbose);
-  // set up rules
-  auto appliedRules(Optimizer::translateRules(_appliedRules));
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
 
-  builder.add(VPackValue("rules"));
+  // keeps top level of built object open
+  _root->toVelocyPack(*builder, verbose, true);
+
+  TRI_ASSERT(!builder->isClosed());
+
+  // set up rules
+  builder->add(VPackValue("rules"));
   {
-    VPackArrayBuilder guard(&builder);
-    for (auto const& r : appliedRules) {
-      builder.add(VPackValue(r));
+    VPackArrayBuilder guard(builder.get());
+    for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+      builder->add(VPackValue(r));
     }
   }
-  builder.add(VPackValue("collections"));
-  auto usedCollections = *ast->query()->collections()->collections();
+  
+  // set up collections
+  builder->add(VPackValue("collections"));
   {
-    VPackArrayBuilder guard(&builder);
-    for (auto const& c : usedCollections) {
-      VPackObjectBuilder objGuard(&builder);
-      builder.add("name", VPackValue(c.first));
-      builder.add("type",
-                  VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+    VPackArrayBuilder guard(builder.get());
+    for (auto const& c : *ast->query()->collections()->collections()) {
+      VPackObjectBuilder objGuard(builder.get());
+      builder->add("name", VPackValue(c.first));
+      builder->add("type",
+                   VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
     }
   }
-  builder.add(VPackValue("variables"));
-  ast->variables()->toVelocyPack(builder);
+
+  // set up variables
+  builder->add(VPackValue("variables"));
+  ast->variables()->toVelocyPack(*builder);
+
   size_t nrItems = 0;
-  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
-  builder.add("estimatedNrItems", VPackValue(nrItems));
+  builder->add("estimatedCost", VPackValue(_root->getCost(nrItems)));
+  builder->add("estimatedNrItems", VPackValue(nrItems));
+
+  builder->close();
+
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

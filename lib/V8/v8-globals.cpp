@@ -89,6 +89,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       RequestBodyKey(),
       RequestTypeKey(),
       ResponseCodeKey(),
+      ReturnNewKey(),
+      ReturnOldKey(),
       SecureKey(),
       ServerKey(),
       ShardIDKey(),
@@ -107,6 +109,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       WaitForSyncKey(),
 
       _FromKey(),
+      _DbCacheKey(),
       _DbNameKey(),
       _IdKey(),
       _KeyKey(),
@@ -180,6 +183,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING("requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING("responseCode"));
+  ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING("returnNew"));
+  ReturnOldKey.Reset(isolate, TRI_V8_ASCII_STRING("returnOld"));
   SecureKey.Reset(isolate, TRI_V8_ASCII_STRING("secure"));
   ServerKey.Reset(isolate, TRI_V8_ASCII_STRING("server"));
   ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING("shardID"));
@@ -198,6 +203,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
 
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
+  _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING("__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING("_dbName"));
   _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
   _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
@@ -228,6 +234,7 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
 
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
+
   if (v8g == nullptr) {
     v8g = TRI_CreateV8Globals(isolate);
   }

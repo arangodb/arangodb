@@ -231,23 +231,21 @@ TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraditionalKeyGenerator::validateKey(char const* key) {
+bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   unsigned char const* p = reinterpret_cast<unsigned char const*>(key);
-  unsigned char const* s = p;
+  size_t pos = 0;
 
   while (true) {
-    unsigned char c = *p;
-
-    if (c == '\0') {
-      return ((p - s) > 0) && ((p - s) <= TRI_VOC_KEY_MAX_LENGTH);
+    if (pos >= len || *p == '\0') {
+      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
     }
 
-    if (LookupTable[c]) {
-      ++p;
-      continue;
+    if (!LookupTable[*p]) {
+      return false;
     }
 
-    return false;
+    ++p;
+    ++pos;
   }
 }
 
@@ -271,7 +269,7 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str())) {
+  if (!validateKey(key.c_str(), key.size())) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
@@ -320,22 +318,21 @@ AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
 /// @brief validate a numeric key
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AutoIncrementKeyGenerator::validateKey(char const* key) {
+bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
   char const* p = key;
+  size_t pos = 0;
 
   while (true) {
-    char c = *p;
-
-    if (c == '\0') {
-      return ((p - key) > 0) && ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
+    if (pos >= len || *p == '\0') {
+      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
     }
 
-    if (c >= '0' && c <= '9') {
-      ++p;
-      continue;
+    if (*p < '0' || *p > '9') {
+      return false;
     }
 
-    return false;
+    ++p;
+    ++pos;
   }
 }
 
@@ -383,7 +380,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str())) {
+  if (!validateKey(key.c_str(), key.size())) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
@@ -428,9 +425,15 @@ void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
 /// @brief validate a document id (collection name + / + document key)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
+bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len,
+                                        size_t* split) {
+  if (len == 0) {
+    return false;
+  }
+
   char const* p = key;
   char c = *p;
+  size_t pos = 0;
 
   // extract collection name
   if (!(c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
@@ -439,13 +442,18 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
   }
 
   ++p;
+  ++pos;
 
-  while (1) {
+  while (true) {
+    if (pos >= len) {
+      return false;
+    }
+
     c = *p;
-
     if (c == '_' || c == '-' || (c >= '0' && c <= '9') ||
         (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
       ++p;
+      ++pos;
       continue;
     }
 
@@ -456,14 +464,15 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
     return false;
   }
 
-  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
+  if (pos > TRI_COL_NAME_LENGTH) {
     return false;
   }
 
   // store split position
-  *split = p - key;
+  *split = pos;
   ++p;
+  ++pos;
 
   // validate document key
-  return TraditionalKeyGenerator::validateKey(p);
+  return TraditionalKeyGenerator::validateKey(p, len - pos);
 }

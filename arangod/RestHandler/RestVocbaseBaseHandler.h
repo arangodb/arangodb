@@ -152,7 +152,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e);
+                   TRI_col_type_e, arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message without content
@@ -173,14 +173,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName, TRI_col_type_e type);
+                     std::string const& collectionName, TRI_col_type_e type,
+                     arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
   //////////////////////////////////////////////////////////////////////////////
 
   void generateDeleted(arangodb::OperationResult const& result,
-                       std::string const& collectionName, TRI_col_type_e type);
+                       std::string const& collectionName, TRI_col_type_e type,
+                       arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info
@@ -253,10 +255,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_voc_rid_t extractRevision(char const*, char const*, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the waitForSync value
+  /// @brief extracts a boolean parameter value
   //////////////////////////////////////////////////////////////////////////////
 
-  bool extractWaitForSync() const;
+  bool extractBooleanParameter(char const* name, bool def) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses the body as VelocyPack

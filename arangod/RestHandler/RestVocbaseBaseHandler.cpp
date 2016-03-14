@@ -148,13 +148,14 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type,
+    VPackOptions const* options) {
   if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::CREATED);
   } else {
     createResponse(rest::HttpResponse::ACCEPTED);
   }
-  generate20x(result, collectionName, type);
+  generate20x(result, collectionName, type, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,13 +164,13 @@ void RestVocbaseBaseHandler::generateSaved(
 
 void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type, VPackOptions const* options) {
   if (result.wasSynchronous) {
     createResponse(rest::HttpResponse::OK);
   } else {
     createResponse(rest::HttpResponse::ACCEPTED);
   }
-  generate20x(result, collectionName, type);
+  generate20x(result, collectionName, type, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +223,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
 void RestVocbaseBaseHandler::generate20x(
     arangodb::OperationResult const& result,
     std::string const& collectionName,
-    TRI_col_type_e type) {
+    TRI_col_type_e type,
+    VPackOptions const* options) {
 
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
@@ -243,7 +245,7 @@ void RestVocbaseBaseHandler::generate20x(
     }
   }
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
+  VPackDumper dumper(&buffer, options);
   try {
     dumper.dump(slice);
   } catch (...) {
@@ -346,15 +348,17 @@ void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
 void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
                                               bool generateBody,
                                               VPackOptions const* options) {
-  TRI_ASSERT(document.isObject());
-  TRI_ASSERT(document.hasKey(TRI_VOC_ATTRIBUTE_REV));
-
-  std::string rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+  std::string rev;
+  if (document.isObject()) {
+    rev = VelocyPackHelper::getStringValue(document, TRI_VOC_ATTRIBUTE_REV, "");
+  }
 
   // and generate a response
   createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  if (!rev.empty()) {
+    _response->setHeader("etag", 4, "\"" + rev + "\"");
+  }
 
   if (generateBody) {
     VPackStringBufferAdapter buffer(_response->body().stringBuffer());
@@ -416,6 +420,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, res, "invalid document key");
+      return;
+
+    case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+      generateError(HttpResponse::BAD, res, "invalid edge attribute");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
@@ -499,6 +507,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, result.code, "invalid document key");
+      return;
+
+    case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
+      generateError(HttpResponse::BAD, result.code, "invalid edge attribute");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
@@ -632,18 +644,19 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the waitForSync value
+/// @brief extracts a boolean parameter value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::extractWaitForSync() const {
+bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
+                                                     bool def) const {
   bool found;
-  char const* forceStr = _request->value("waitForSync", found);
+  char const* forceStr = _request->value(name, found);
 
   if (found) {
     return StringUtils::boolean(forceStr);
   }
 
-  return false;
+  return def;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

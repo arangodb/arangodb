@@ -116,36 +116,6 @@ TRI_col_type_e RestImportHandler::getCollectionType() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the "overwrite" value
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestImportHandler::extractOverwrite() const {
-  bool found;
-  char const* overwrite = _request->value("overwrite", found);
-
-  if (found) {
-    return StringUtils::boolean(overwrite);
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the "complete" value
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestImportHandler::extractComplete() const {
-  bool found;
-  char const* forceStr = _request->value("complete", found);
-
-  if (found) {
-    return StringUtils::boolean(forceStr);
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,10 +287,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  bool const complete = extractComplete();
-  bool const overwrite = extractOverwrite();
+  bool const complete = extractBooleanParameter("complete", false);
+  bool const overwrite = extractBooleanParameter("overwrite", false);
   OperationOptions opOptions;
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
 
   // extract the collection name
   bool found;
@@ -546,10 +516,10 @@ bool RestImportHandler::createFromKeyValueList() {
     return false;
   }
 
-  bool const complete = extractComplete();
-  bool const overwrite = extractOverwrite();
+  bool const complete = extractBooleanParameter("complete", false);
+  bool const overwrite = extractBooleanParameter("overwrite", false);
   OperationOptions opOptions;
-  opOptions.waitForSync = extractWaitForSync();
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
 
   // extract the collection name
   bool found;

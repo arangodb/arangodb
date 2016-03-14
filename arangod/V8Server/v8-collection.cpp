@@ -478,10 +478,8 @@ static void DocumentVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
-
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
+      transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -555,10 +553,8 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opResult.customTypeHandler.get();
-
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(), &resultOptions);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
+      transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
 }
@@ -593,6 +589,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(WaitForSyncKey)) {
         options.waitForSync =
             TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+      }
+      TRI_GET_GLOBAL_STRING(ReturnOldKey);
+      if (optionsObject->Has(ReturnOldKey)) {
+        options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
       }
     } else {  // old variant remove(<document>, <overwrite>, <waitForSync>)
       options.ignoreRevs = TRI_ObjectToBoolean(args[1]);
@@ -659,19 +659,17 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   res = trx.finish(result.code);
 
   if (!result.successful()) {
-    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
-        options.ignoreRevs && !args[0]->IsArray()) {
-      TRI_V8_RETURN_FALSE();
-    } else {
-      TRI_V8_THROW_EXCEPTION(result.code);
-    }
+    TRI_V8_THROW_EXCEPTION(result.code);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_TRUE();
+  v8::Handle<v8::Value> finalResult = TRI_VPackToV8(isolate, result.slice(),
+      transactionContext->getVPackOptions());
+
+  TRI_V8_RETURN(finalResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,6 +702,14 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(WaitForSyncKey)) {
         options.waitForSync =
             TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+      }
+      TRI_GET_GLOBAL_STRING(ReturnNewKey);
+      if (optionsObject->Has(ReturnNewKey)) {
+        options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+      }
+      TRI_GET_GLOBAL_STRING(ReturnOldKey);
+      if (optionsObject->Has(ReturnOldKey)) {
+        options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
       }
     } else {  // old variant replace(<document>, <data>, <overwrite>,
               // <waitForSync>)
@@ -986,31 +992,6 @@ static void JS_FiguresVocbaseCol(
           v8::Number::New(isolate, (double)info->_numberCompactorfiles));
   cs->Set(TRI_V8_ASCII_STRING("fileSize"),
           v8::Number::New(isolate, (double)info->_compactorfileSize));
-
-  // shapefiles info
-  v8::Handle<v8::Object> sf = v8::Object::New(isolate);
-
-  result->Set(TRI_V8_ASCII_STRING("shapefiles"), sf);
-  sf->Set(TRI_V8_ASCII_STRING("count"),
-          v8::Number::New(isolate, (double)info->_numberShapefiles));
-  sf->Set(TRI_V8_ASCII_STRING("fileSize"),
-          v8::Number::New(isolate, (double)info->_shapefileSize));
-
-  // shape info
-  v8::Handle<v8::Object> shapes = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("shapes"), shapes);
-  shapes->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, (double)info->_numberShapes));
-  shapes->Set(TRI_V8_ASCII_STRING("size"),
-              v8::Number::New(isolate, (double)info->_sizeShapes));
-
-  // attributes info
-  v8::Handle<v8::Object> attributes = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("attributes"), attributes);
-  attributes->Set(TRI_V8_ASCII_STRING("count"),
-                  v8::Number::New(isolate, (double)info->_numberAttributes));
-  attributes->Set(TRI_V8_ASCII_STRING("size"),
-                  v8::Number::New(isolate, (double)info->_sizeAttributes));
 
   v8::Handle<v8::Object> indexes = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
@@ -1548,6 +1529,14 @@ static void parseReplaceAndUpdateOptions(
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
     }
+    TRI_GET_GLOBAL_STRING(ReturnNewKey);
+    if (optionsObject->Has(ReturnNewKey)) {
+      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
+    TRI_GET_GLOBAL_STRING(ReturnOldKey);
+    if (optionsObject->Has(ReturnOldKey)) {
+      options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
+    }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
       // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
@@ -1667,6 +1656,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   };
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const newVal) {
+    if (!newVal->IsObject() || newVal->IsArray()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
     int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1715,7 +1707,8 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1839,7 +1832,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice resultSlice = opResult.slice();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2040,8 +2034,9 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // load collection
-  SingleCollectionTransaction trx(V8TransactionContext::Create(vocbase, true),
-                                          collectionName, TRI_TRANSACTION_WRITE);
+  auto transactionContext(V8TransactionContext::Create(vocbase, true));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
   res = trx.begin();
@@ -2060,7 +2055,8 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2115,6 +2111,10 @@ static void JS_InsertVocbaseVPack(
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
+    }
+    TRI_GET_GLOBAL_STRING(ReturnNewKey);
+    if (optionsObject->Has(ReturnNewKey)) {
+      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
     }
   } else {
     options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
@@ -2196,7 +2196,8 @@ static void JS_InsertVocbaseVPack(
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
+                              transactionContext->getVPackOptions()));
   TRI_V8_TRY_CATCH_END
 }
 

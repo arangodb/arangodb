@@ -138,10 +138,11 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::execute(arangodb::AqlTransaction* trx,
+AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                               AqlItemBlock const* argv, size_t startPos,
                               std::vector<Variable const*> const& vars,
-                              std::vector<RegisterId> const& regs) {
+                              std::vector<RegisterId> const& regs,
+                              bool& mustDestroy) {
   if (!_built) {
     buildExpression();
   }
@@ -154,23 +155,23 @@ AqlValue$ Expression::execute(arangodb::AqlTransaction* trx,
     case JSON: {
       // TODO
       TRI_ASSERT(_data != nullptr);
-      return AqlValue$(VPackSlice(_data), AqlValue$::AqlValueType::REFERENCE_STICKY);
+      return AqlValue(_data);
     }
 
     case SIMPLE: {
       return executeSimpleExpression(_node, trx, argv, startPos,
-                                     vars, regs, true);
+                                     vars, regs, mustDestroy, true);
     }
 
     case ATTRIBUTE: {
       TRI_ASSERT(_accessor != nullptr);
-      return _accessor->get(trx, argv, startPos, vars, regs);
+      return _accessor->get(trx, argv, startPos, vars, regs, mustDestroy);
     }
 
     case V8: {
       TRI_ASSERT(_func != nullptr);
       ISOLATE;
-      return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars, regs);
+      return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars, regs, mustDestroy);
     }
 
     case UNPROCESSED: {
@@ -252,7 +253,7 @@ void Expression::invalidate() {
 /// linear search (if the node is not sorted)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
+bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
   TRI_ASSERT(right.isArray());
@@ -271,7 +272,11 @@ bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
       // determine midpoint
       size_t m = l + ((r - l) / 2);
 
-      int compareResult = AqlValue$::Compare(trx, left, AqlValue$(right.at(m).slice()), true);
+      bool localMustDestroy;
+      AqlValue a = right.at(m, localMustDestroy, false);
+      AqlValueGuard guard(a, localMustDestroy);
+
+      int compareResult = AqlValue::Compare(trx, left, a, true);
 
       if (compareResult == 0) {
         // item found in the list
@@ -295,7 +300,11 @@ bool Expression::findInArray(AqlValue$ const& left, AqlValue$ const& right,
     
   // use linear search
   for (size_t i = 0; i < n; ++i) {
-    int compareResult = AqlValue$::Compare(trx, left, AqlValue$(right.at(i).slice()), false);
+    bool mustDestroy;
+    AqlValue a = right.at(i, mustDestroy, false);
+    AqlValueGuard guard(a, mustDestroy);
+
+    int compareResult = AqlValue::Compare(trx, left, a, false);
 
     if (compareResult == 0) {
       // item found in the list
@@ -416,40 +425,41 @@ void Expression::buildExpression() {
 /// the resulting AqlValue will be destroyed outside eventually
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpression(
+AqlValue Expression::executeSimpleExpression(
     AstNode const* node, arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs, bool doCopy) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy, bool doCopy) {
+
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       return executeSimpleExpressionAttributeAccess(node, trx, argv, startPos,
-                                                    vars, regs);
+                                                    vars, regs, mustDestroy);
     case NODE_TYPE_INDEXED_ACCESS:
       return executeSimpleExpressionIndexedAccess(node, trx, argv, startPos,
-                                                  vars, regs);
+                                                  vars, regs, mustDestroy);
     case NODE_TYPE_ARRAY:
       return executeSimpleExpressionArray(node, trx, argv, startPos, vars,
-                                          regs);
+                                          regs, mustDestroy);
     case NODE_TYPE_OBJECT:
       return executeSimpleExpressionObject(node, trx, argv, startPos, vars,
-                                           regs);
+                                           regs, mustDestroy);
     case NODE_TYPE_VALUE:
-      return executeSimpleExpressionValue(node);
+      return executeSimpleExpressionValue(node, mustDestroy);
     case NODE_TYPE_REFERENCE:
       return executeSimpleExpressionReference(node, trx, argv, startPos,
-                                              vars, regs, doCopy);
+                                              vars, regs, doCopy, mustDestroy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, argv, startPos, vars,
-                                          regs);
+                                          regs, mustDestroy);
     case NODE_TYPE_RANGE:
       return executeSimpleExpressionRange(node, trx, argv, startPos, vars,
-                                          regs);
+                                          regs, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
-      return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs);
+      return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
       return executeSimpleExpressionAndOr(node, trx, argv, startPos, vars,
-                                          regs);
+                                          regs, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_NE:
     case NODE_TYPE_OPERATOR_BINARY_LT:
@@ -459,7 +469,7 @@ AqlValue$ Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN:
       return executeSimpleExpressionComparison(node, trx, argv, startPos, vars,
-                                               regs);
+                                               regs, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
@@ -469,23 +479,23 @@ AqlValue$ Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
       return executeSimpleExpressionArrayComparison(node, trx, argv, startPos, vars,
-                                                    regs);
+                                                    regs, mustDestroy);
     case NODE_TYPE_OPERATOR_TERNARY:
       return executeSimpleExpressionTernary(node, trx, argv, startPos, vars,
-                                            regs);
+                                            regs, mustDestroy);
     case NODE_TYPE_EXPANSION:
       return executeSimpleExpressionExpansion(node, trx, argv, startPos, vars,
-                                              regs);
+                                              regs, mustDestroy);
     case NODE_TYPE_ITERATOR:
       return executeSimpleExpressionIterator(node, trx, argv,
-                                             startPos, vars, regs);
+                                             startPos, vars, regs, mustDestroy);
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
     case NODE_TYPE_OPERATOR_BINARY_DIV:
     case NODE_TYPE_OPERATOR_BINARY_MOD:
       return executeSimpleExpressionArithmetic(node, trx, argv, startPos, vars,
-                                               regs);
+                                               regs, mustDestroy);
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -538,34 +548,39 @@ void Expression::stringifyIfNotTooLong(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
+/// always creates a copy
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionAttributeAccess(
+AqlValue Expression::executeSimpleExpressionAttributeAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
   // object lookup, e.g. users.name
   TRI_ASSERT(node->numMembers() == 1);
 
   auto member = node->getMemberUnchecked(0);
   auto name = static_cast<char const*>(node->getData());
 
-  AqlValue$ result = executeSimpleExpression(member, trx, argv,
-                                             startPos, vars, regs, false);
+  AqlValue result = executeSimpleExpression(member, trx, argv,
+                                            startPos, vars, regs, mustDestroy, false);
 
-  return result.get(name);
+  AqlValueGuard guard(result, mustDestroy);
+
+  AqlValue a = result.get(trx, name, mustDestroy, true);
+
+  return a;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionIndexedAccess(
+AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
   // array lookup, e.g. users[0]
   // note: it depends on the type of the value whether an array lookup or an
   // object lookup is performed
@@ -581,60 +596,71 @@ AqlValue$ Expression::executeSimpleExpressionIndexedAccess(
   auto member = node->getMember(0);
   auto index = node->getMember(1);
 
-  AqlValue$ result = executeSimpleExpression(member, trx, argv,
-                                             startPos, vars, regs, false);
+  mustDestroy = false; 
+  AqlValue result = executeSimpleExpression(member, trx, argv,
+                                             startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(result, mustDestroy);
 
   if (result.isArray()) {
-    AqlValue$ indexResult = executeSimpleExpression(
-        index, trx, argv, startPos, vars, regs, false);
+    AqlValue indexResult = executeSimpleExpression(
+        index, trx, argv, startPos, vars, regs, mustDestroy, false);
+
+    AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
-      return result.at(indexResult.toInt64());
+      return result.at(indexResult.toInt64(), mustDestroy, true);
     }
      
-    if (indexResult.slice().isString()) {
+    if (indexResult.isString()) {
       std::string const value = indexResult.slice().copyString();
 
       try {
         // stoll() might throw an exception if the string is not a number
         int64_t position = static_cast<int64_t>(std::stoll(value));
-        return result.at(position);
+        return result.at(position, mustDestroy, true);
       } catch (...) {
         // no number found.
       }
     } 
-
+      
     // fall-through to returning null
   } else if (result.isObject()) {
-    AqlValue$ indexResult = executeSimpleExpression(
-        index, trx, argv, startPos, vars, regs, false);
+    AqlValue indexResult = executeSimpleExpression(
+        index, trx, argv, startPos, vars, regs, mustDestroy, false);
+    
+    AqlValueGuard guard(indexResult, mustDestroy);
 
     if (indexResult.isNumber()) {
       std::string const indexString = std::to_string(indexResult.toInt64());
-      return result.get(indexString);
+      return result.get(trx, indexString, mustDestroy, true);
     }
      
-    if (indexResult.slice().isString()) {
+    if (indexResult.isString()) {
       std::string const indexString = indexResult.slice().copyString();
-      return result.get(indexString);
+      return result.get(trx, indexString, mustDestroy, true);
     } 
+
     // fall-through to returning null
   }
 
-  return AqlValue$(VelocyPackHelper::NullValue());
+  return AqlValue(VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionArray(
+AqlValue Expression::executeSimpleExpressionArray(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+  
+  mustDestroy = false;
   if (node->isConstant()) {
-    return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+    // this will not create a copy
+    return AqlValue(node->computeValue().begin()); 
   }
 
   size_t const n = node->numMembers();
@@ -644,26 +670,34 @@ AqlValue$ Expression::executeSimpleExpressionArray(
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    AqlValue$ result = executeSimpleExpression(member, trx, argv,
-                                               startPos, vars, regs, false);
-    builder.add(result.slice());
-  }
-  builder.close();
+    bool localMustDestroy = false;
+    AqlValue result = executeSimpleExpression(member, trx, argv,
+                                              startPos, vars, regs, localMustDestroy, false);
 
-  return AqlValue$(builder);
+    AqlValueGuard guard(result, localMustDestroy);
+    result.toVelocyPack(trx, builder);
+  }
+
+  builder.close();
+  mustDestroy = true; // AqlValue contains builder contains dynamic data
+  return AqlValue(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionObject(
+AqlValue Expression::executeSimpleExpressionObject(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs,
+    bool& mustDestroy) {
+
+  mustDestroy = false;
   if (node->isConstant()) {
-    return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+    // this will not create a copy
+    return AqlValue(node->computeValue().begin()); 
   }
 
   VPackBuilder builder;
@@ -673,48 +707,64 @@ AqlValue$ Expression::executeSimpleExpressionObject(
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
     TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
-    char const* key = member->getStringValue();
+    // key
+    builder.add(VPackValue(std::string(member->getStringValue(), member->getStringLength())));
+
+    // value
     member = member->getMember(0);
 
-    AqlValue$ result = executeSimpleExpression(member, trx, argv,
-                                               startPos, vars, regs, false);
-    builder.add(key, result.slice());
+    bool localMustDestroy;
+    AqlValue result = executeSimpleExpression(member, trx, argv,
+                                              startPos, vars, regs, localMustDestroy, false);
+    AqlValueGuard guard(result, localMustDestroy);
+    result.toVelocyPack(trx, builder);
   }
-  builder.close();
 
-  return AqlValue$(builder);
+  builder.close();
+  mustDestroy = true; // AqlValue contains builder contains dynamic data
+  return AqlValue(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with VALUE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionValue(AstNode const* node) {
-  return AqlValue$(node->computeValue(), AqlValue$::AqlValueType::REFERENCE_STICKY);
+AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
+                                                  bool& mustDestroy) {
+  // this will not create a copy
+  mustDestroy = false;
+  return AqlValue(node->computeValue().begin()); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with REFERENCE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionReference(
+AqlValue Expression::executeSimpleExpressionReference(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs, bool doCopy) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy,
+    bool doCopy) {
+
+  mustDestroy = false;
   auto v = static_cast<Variable const*>(node->getData());
 
   {
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
-      return AqlValue$((*it).second);
+      return AqlValue((*it).second);
     }
   }
 
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->name == v->name) {
+      if (doCopy) {
+        mustDestroy = true; // as we are copying
+        return argv->getValueReference(startPos, regs[i]).clone();
+      }
       return argv->getValueReference(startPos, regs[i]);
     }
   }
@@ -729,31 +779,42 @@ AqlValue$ Expression::executeSimpleExpressionReference(
 /// @brief execute an expression of type SIMPLE with RANGE
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionRange(
+AqlValue Expression::executeSimpleExpressionRange(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
 
   auto low = node->getMember(0);
   auto high = node->getMember(1);
-  AqlValue$ resultLow = executeSimpleExpression(low, trx, argv,
-                                                startPos, vars, regs, false);
-  AqlValue$ resultHigh = executeSimpleExpression(
-      high, trx, argv, startPos, vars, regs, false);
+  mustDestroy = false;
+
+  AqlValue resultLow = executeSimpleExpression(low, trx, argv,
+                                               startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guardLow(resultLow, mustDestroy);
+
+  AqlValue resultHigh = executeSimpleExpression(
+      high, trx, argv, startPos, vars, regs, mustDestroy, false);
+  
+  AqlValueGuard guardHigh(resultHigh, mustDestroy);
  
-  return AqlValue$(resultLow.toInt64(), resultHigh.toInt64());
+  mustDestroy = true; // as we're creating a new range object
+  return AqlValue(resultLow.toInt64(), resultHigh.toInt64());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with FCALL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionFCall(
+AqlValue Expression::executeSimpleExpressionFCall(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs,
+    bool& mustDestroy) {
+
+  mustDestroy = false;
   // some functions have C++ handlers
   // check if the called function has one
   auto func = static_cast<Function*>(node->getData());
@@ -766,62 +827,94 @@ AqlValue$ Expression::executeSimpleExpressionFCall(
   size_t const n = member->numMembers();
 
   VPackFunctionParameters parameters;
+  std::vector<bool> destroyParameters;
   parameters.reserve(n);
+  destroyParameters.reserve(n);
 
-  for (size_t i = 0; i < n; ++i) {
-    auto arg = member->getMemberUnchecked(i);
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      auto arg = member->getMemberUnchecked(i);
 
-    if (arg->type == NODE_TYPE_COLLECTION) {
-      builder.clear();
-      builder.add(VPackValue(
-          std::string(arg->getStringValue(), arg->getStringLength())));
-      parameters.emplace_back(AqlValue$(builder));
-    } else {
-      parameters.emplace_back(executeSimpleExpression(arg, trx, argv,
-                                              startPos, vars, regs, false));
+      if (arg->type == NODE_TYPE_COLLECTION) {
+        builder.clear();
+        builder.add(VPackValue(
+              std::string(arg->getStringValue(), arg->getStringLength())));
+        parameters.emplace_back(AqlValue(builder));
+        destroyParameters.push_back(true);
+      } else {
+        bool localMustDestroy;
+        AqlValue a = executeSimpleExpression(arg, trx, argv,
+              startPos, vars, regs, localMustDestroy, false);
+        parameters.emplace_back(a);
+        destroyParameters.push_back(localMustDestroy);
+      }
     }
-  }
 
-  return func->implementation(_ast->query(), trx, parameters);
+    TRI_ASSERT(parameters.size() == destroyParameters.size());
+
+    AqlValue a = func->implementation(_ast->query(), trx, parameters);
+    mustDestroy = true; // function result is dynamic
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+      if (destroyParameters[i]) {
+        parameters[i].destroy();
+      }
+    }
+    return a;
+  } catch (...) {
+    // prevent leak and rethrow error
+    for (size_t i = 0; i < parameters.size(); ++i) {
+      if (destroyParameters[i]) {
+        parameters[i].destroy();
+      }
+    }
+    throw;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with NOT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionNot(
+AqlValue Expression::executeSimpleExpressionNot(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ operand =
-      executeSimpleExpression(node->getMember(0), trx, argv,
-                              startPos, vars, regs, false);
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
 
-  return AqlValue$(operand.isFalse());
+  mustDestroy = false;
+  AqlValue operand =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guard(operand, mustDestroy);
+  bool const operandIsTrue = operand.toBoolean();
+
+  mustDestroy = false; // only a boolean
+  return AqlValue(!operandIsTrue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with AND or OR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionAndOr(
+AqlValue Expression::executeSimpleExpressionAndOr(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ left =
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
+
+  AqlValue left =
       executeSimpleExpression(node->getMember(0), trx, argv,
-                              startPos, vars, regs, true);
-  AqlValue$ right =
-      executeSimpleExpression(node->getMember(1), trx, argv,
-                              startPos, vars, regs, true);
+                              startPos, vars, regs, mustDestroy, true);
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
     // AND
-    if (left.isTrue()) {
+    if (left.toBoolean()) {
       // left is true => return right
-      return right;
+      if (mustDestroy) { left.destroy(); }
+      return executeSimpleExpression(node->getMember(1), trx, argv,
+                                     startPos, vars, regs, mustDestroy, true);
     }
 
     // left is false, return left
@@ -829,30 +922,39 @@ AqlValue$ Expression::executeSimpleExpressionAndOr(
   } 
     
   // OR
-  if (left.isTrue()) {
+  if (left.toBoolean()) {
     // left is true => return left
     return left;
   }
 
   // left is false => return right
-  return right;
+  left.destroy();
+  return executeSimpleExpression(node->getMember(1), trx, argv,
+                                 startPos, vars, regs, mustDestroy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with COMPARISON
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionComparison(
+AqlValue Expression::executeSimpleExpressionComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ left =
+    std::vector<RegisterId> const& regs,
+    bool& mustDestroy) {
+
+  AqlValue left =
       executeSimpleExpression(node->getMember(0), trx, argv,
-                              startPos, vars, regs, false);
-  AqlValue$ right =
+                              startPos, vars, regs, mustDestroy, false);
+  AqlValueGuard guardLeft(left, mustDestroy);
+    
+  AqlValue right =
       executeSimpleExpression(node->getMember(1), trx, argv,
-                              startPos, vars, regs, false);
+                              startPos, vars, regs, mustDestroy, false);
+  AqlValueGuard guardRight(right, mustDestroy);
+
+  mustDestroy = false; // we're returning a boolean only
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -860,18 +962,17 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
     if (!right.isArray()) {
       // right operand must be a list, otherwise we return false
       // do not throw, but return "false" instead
-      return AqlValue$(false);
+      return AqlValue(false);
     }
 
-    bool result =
-        findInArray(left, right, trx, node);
+    bool result = findInArray(left, right, trx, node);
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // revert the result in case of a NOT IN
       result = !result;
     }
-
-    return AqlValue$(result);
+      
+    return AqlValue(result);
   }
 
   // all other comparison operators...
@@ -880,20 +981,21 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
   bool compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
                       node->type != NODE_TYPE_OPERATOR_BINARY_NE);
 
-  int compareResult = AqlValue$::Compare(trx, left, right, compareUtf8);
+  int compareResult = AqlValue::Compare(trx, left, right, compareUtf8);
+
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return AqlValue$(compareResult == 0);
+      return AqlValue(compareResult == 0);
     case NODE_TYPE_OPERATOR_BINARY_NE:
-      return AqlValue$(compareResult != 0);
+      return AqlValue(compareResult != 0);
     case NODE_TYPE_OPERATOR_BINARY_LT:
-      return AqlValue$(compareResult < 0);
+      return AqlValue(compareResult < 0);
     case NODE_TYPE_OPERATOR_BINARY_LE:
-      return AqlValue$(compareResult <= 0);
+      return AqlValue(compareResult <= 0);
     case NODE_TYPE_OPERATOR_BINARY_GT:
-      return AqlValue$(compareResult > 0);
+      return AqlValue(compareResult > 0);
     case NODE_TYPE_OPERATOR_BINARY_GE:
-      return AqlValue$(compareResult >= 0);
+      return AqlValue(compareResult >= 0);
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -906,31 +1008,38 @@ AqlValue$ Expression::executeSimpleExpressionComparison(
 /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionArrayComparison(
+AqlValue Expression::executeSimpleExpressionArrayComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ left =
+    std::vector<RegisterId> const& regs, 
+    bool& mustDestroy) {
+
+  AqlValue left =
       executeSimpleExpression(node->getMember(0), trx, argv,
-                              startPos, vars, regs, false);
-  AqlValue$ right =
+                              startPos, vars, regs, mustDestroy, false);
+  AqlValueGuard guardLeft(left, mustDestroy);
+
+  AqlValue right =
       executeSimpleExpression(node->getMember(1), trx, argv,
-                              startPos, vars, regs, false);
+                              startPos, vars, regs, mustDestroy, false);
+  AqlValueGuard guardRight(right, mustDestroy);
+
+  mustDestroy = false; // we're returning a boolean only
 
   if (!left.isArray()) {
     // left operand must be an array
     // do not throw, but return "false" instead
-    return AqlValue$(false);
+    return AqlValue(false);
   }
   
   if (node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
       node->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // IN and NOT IN
     if (!right.isArray()) {
-      // right operand must be a list, otherwise we return false
+      // right operand must be an array, otherwise we return false
       // do not throw, but return "false" instead
-      return AqlValue$(false);
+      return AqlValue(false);
     }
   }
 
@@ -948,7 +1057,10 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
   size_t numLeft = n;
 
   for (size_t i = 0; i < n; ++i) {
-    AqlValue$ leftItemValue(left.at(i));
+    bool localMustDestroy;
+    AqlValue leftItemValue = left.at(i, localMustDestroy, false);
+    AqlValueGuard guard(leftItemValue, localMustDestroy);
+
     bool result;
 
     // IN and NOT IN
@@ -963,7 +1075,7 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
     }
     else {
       // other operators
-      int compareResult = AqlValue$::Compare(trx, leftItemValue, right, compareUtf8);
+      int compareResult = AqlValue::Compare(trx, leftItemValue, right, compareUtf8);
 
       result = false;
       switch (node->type) {
@@ -1013,25 +1125,30 @@ AqlValue$ Expression::executeSimpleExpressionArrayComparison(
       }
     }
   }
-      
-  return AqlValue$(overallResult);
+  
+  TRI_ASSERT(!mustDestroy); 
+  return AqlValue(overallResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with TERNARY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionTernary(
+AqlValue Expression::executeSimpleExpressionTernary(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ condition =
-      executeSimpleExpression(node->getMember(0), trx, argv,
-                              startPos, vars, regs, false);
+    std::vector<RegisterId> const& regs,
+    bool& mustDestroy) {
 
+  AqlValue condition =
+      executeSimpleExpression(node->getMember(0), trx, argv,
+                              startPos, vars, regs, mustDestroy, false);
+
+  AqlValueGuard guardCondition(condition, mustDestroy);
+  
   size_t position;
-  if (condition.isTrue()) {
+  if (condition.toBoolean()) {
     // return true part
     position = 1;
   }
@@ -1041,18 +1158,19 @@ AqlValue$ Expression::executeSimpleExpressionTernary(
   }
 
   return executeSimpleExpression(node->getMember(position), trx, argv,
-                                 startPos, vars, regs, true);
+                                 startPos, vars, regs, mustDestroy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with EXPANSION
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionExpansion(
+AqlValue Expression::executeSimpleExpressionExpansion(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs,
+    bool& mustDestroy) {
   TRI_ASSERT(node->numMembers() == 5);
 
   // LIMIT
@@ -1062,19 +1180,23 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
-    AqlValue$ sub =
+    AqlValue subOffset =
         executeSimpleExpression(limitNode->getMember(0), trx,
-                                argv, startPos, vars, regs, false);
-    offset = sub.toInt64();
+                                argv, startPos, vars, regs, mustDestroy, false);
+    offset = subOffset.toInt64();
+    if (mustDestroy) { subOffset.destroy(); }
 
-    sub = executeSimpleExpression(limitNode->getMember(1), trx,
-                                  argv, startPos, vars, regs, false);
-    count = sub.toInt64();
+    AqlValue subCount = executeSimpleExpression(limitNode->getMember(1), trx,
+                                                argv, startPos, vars, regs, mustDestroy, false);
+    count = subCount.toInt64();
+    if (mustDestroy) { subCount.destroy(); }
   }
     
+  mustDestroy = false;
+
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValueReference(VelocyPackHelper::ArrayValue());
+    return AqlValue(VelocyPackHelper::ArrayValue());
   }
 
   // FILTER
@@ -1088,7 +1210,7 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValueReference(VelocyPackHelper::ArrayValue());
+      return AqlValue(VelocyPackHelper::ArrayValue());
     }
   }
 
@@ -1096,30 +1218,37 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
   auto levels = node->getIntValue(true);
 
-  AqlValue$ value;
+  AqlValue value;
 
   if (levels > 1) {
     // flatten value...
-    value = executeSimpleExpression(node->getMember(0), trx,
-                                    argv, startPos, vars, regs, false);
+    bool localMustDestroy;
+    AqlValue a = executeSimpleExpression(node->getMember(0), trx,
+                                         argv, startPos, vars, regs, localMustDestroy, false);
+
+    AqlValueGuard guard(a, localMustDestroy);
       
-    if (!value.isArray()) {
-      return AqlValueReference(VelocyPackHelper::ArrayValue());
+    if (!a.isArray()) {
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::ArrayValue());
     }
     
     VPackBuilder builder;
     builder.openArray();
       
     // generate a new temporary for the flattened array
-    std::function<void(AqlValue$ const&, int64_t)> flatten =
-        [&](AqlValue$ const& v, int64_t level) {
+    std::function<void(AqlValue const&, int64_t)> flatten =
+        [&](AqlValue const& v, int64_t level) {
           if (!v.isArray()) {
             return;
           }
 
           size_t const n = v.length();
           for (size_t i = 0; i < n; ++i) {
-            AqlValue$ item(v.at(i));
+            bool localMustDestroy;
+            AqlValue item = v.at(i, localMustDestroy, false);
+            AqlValueGuard guard(item, localMustDestroy);
+
             bool const isArray = item.isArray();
 
             if (!isArray || level == levels) {
@@ -1130,18 +1259,29 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
           }
         };
 
-    flatten(value, 1);
+    flatten(a, 1);
     builder.close();
 
-    value = AqlValue$(builder);
+    mustDestroy = true; // builder = dynamic data
+    value = AqlValue(builder);
   } else {
-    value = executeSimpleExpression(node->getMember(0), trx,
-                                    argv, startPos, vars, regs, false);
+    bool localMustDestroy;
+    AqlValue a = executeSimpleExpression(node->getMember(0), trx,
+                                         argv, startPos, vars, regs, localMustDestroy, false);
+    
+    AqlValueGuard guard(a, localMustDestroy);
 
-    if (!value.isArray()) {
-      return AqlValueReference(VelocyPackHelper::ArrayValue());
+    if (!a.isArray()) {
+      TRI_ASSERT(!mustDestroy);
+      return AqlValue(VelocyPackHelper::ArrayValue());
     }
+
+    mustDestroy = localMustDestroy; // maybe we need to destroy...
+    guard.steal(); // guard is not responsible anymore
+    value = a;
   }
+
+  AqlValueGuard guard(value, mustDestroy);
 
   // RETURN
   // the default is to return array member unmodified
@@ -1157,16 +1297,23 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
 
   size_t const n = value.length();
   for (size_t i = 0; i < n; ++i) {
-    AqlValue$ item(value.at(i));
-    setVariable(variable, item.slice());
+    bool localMustDestroy;
+    AqlValue item = value.at(i, localMustDestroy, false);
+    AqlValueGuard guard(item, localMustDestroy);
+
+    AqlValueMaterializer materializer(trx);
+    setVariable(variable, materializer.slice(item));
 
     bool takeItem = true;
 
     if (filterNode != nullptr) {
       // have a filter
-      AqlValue$ sub = executeSimpleExpression(filterNode, trx,
-                                             argv, startPos, vars, regs, false);
-      takeItem = sub.isTrue();
+      bool localMustDestroy;
+      AqlValue sub = executeSimpleExpression(filterNode, trx,
+                                             argv, startPos, vars, regs, localMustDestroy, false);
+
+      takeItem = sub.toBoolean();
+      if (localMustDestroy) { sub.destroy(); }
     }
 
     if (takeItem && offset > 0) {
@@ -1176,10 +1323,12 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
     }
 
     if (takeItem) {
-      AqlValue$ sub =
+      bool localMustDestroy;
+      AqlValue sub =
           executeSimpleExpression(projectionNode, trx, argv,
-                                  startPos, vars, regs, true);
-      builder.add(sub.slice());
+                                  startPos, vars, regs, localMustDestroy, false);
+      sub.toVelocyPack(trx, builder);
+      if (localMustDestroy) { sub.destroy(); }
     }
 
     clearVariable(variable);
@@ -1194,78 +1343,95 @@ AqlValue$ Expression::executeSimpleExpressionExpansion(
   }
 
   builder.close();
-
-  return AqlValue$(builder);
+  mustDestroy = true;
+  return AqlValue(builder); // builder = dynamic data
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ITERATOR
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionIterator(
+AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, 
     arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
   return executeSimpleExpression(node->getMember(1), trx, argv,
-                                 startPos, vars, regs, true);
+                                 startPos, vars, regs, mustDestroy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue$ Expression::executeSimpleExpressionArithmetic(
+AqlValue Expression::executeSimpleExpressionArithmetic(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs) {
-  AqlValue$ lhs = executeSimpleExpression(node->getMember(0),
-                                          trx, argv, startPos, vars, regs, true);
+    std::vector<RegisterId> const& regs, bool& mustDestroy) {
 
-  if (lhs.isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue());
+  AqlValue lhs = executeSimpleExpression(node->getMember(0),
+                                          trx, argv, startPos, vars, regs, mustDestroy, true);
+  AqlValueGuard guardLhs(lhs, mustDestroy);
+
+  AqlValue rhs = executeSimpleExpression(node->getMember(1),
+                                          trx, argv, startPos, vars, regs, mustDestroy, true);
+  AqlValueGuard guardRhs(rhs, mustDestroy);
+
+  mustDestroy = false;
+
+  if (lhs.isObject() || rhs.isObject()) {
+    TRI_ASSERT(!mustDestroy);
+    return AqlValue(VelocyPackHelper::NullValue());
   }
 
-  AqlValue$ rhs = executeSimpleExpression(node->getMember(1),
-                                          trx, argv, startPos, vars, regs, true);
+  bool failed = false;
+  double const l = lhs.toDouble(failed);
 
-  if (rhs.isObject()) {
-    return AqlValue$(VelocyPackHelper::NullValue());
+  if (failed) {
+    TRI_ASSERT(!mustDestroy);
+    return AqlValue(VelocyPackHelper::NullValue());
   }
 
-  double const l = lhs.toDouble();
-  double const r = rhs.toDouble();
+  double const r = rhs.toDouble(failed);
+
+  if (failed) {
+    TRI_ASSERT(!mustDestroy);
+    return AqlValue(VelocyPackHelper::NullValue());
+  }
+
+  if (r == 0.0 &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_MOD)) {
+    TRI_ASSERT(!mustDestroy);
+    RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+    return AqlValue(VelocyPackHelper::NullValue());
+  }
 
   VPackBuilder builder;
+  mustDestroy = true; // builder = dynamic data
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
       builder.add(VPackValue(l + r));
-      return AqlValue$(builder);
+      return AqlValue(builder);
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
       builder.add(VPackValue(l - r));
-      return AqlValue$(builder);
+      return AqlValue(builder);
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
       builder.add(VPackValue(l * r));
-      return AqlValue$(builder);
+      return AqlValue(builder);
     case NODE_TYPE_OPERATOR_BINARY_DIV:
-      if (r == 0.0) {
-        RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue());
-      }
-      return AqlValue$(builder);
+      builder.add(VPackValue(l / r));
+      return AqlValue(builder);
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-      if (r == 0.0) {
-        RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return AqlValue$(VelocyPackHelper::NullValue());
-      }
       builder.add(VPackValue(fmod(l, r)));
-      return AqlValue$(builder);
+      return AqlValue(builder);
     default:
-      return AqlValue$(VelocyPackHelper::NullValue());
+      mustDestroy = false;
+      return AqlValue(VelocyPackHelper::NullValue());
   }
 }

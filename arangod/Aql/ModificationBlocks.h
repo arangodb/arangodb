@@ -64,14 +64,7 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief extract a key from the AqlValue passed
   //////////////////////////////////////////////////////////////////////////////
 
-  int extractKey(AqlValue$ const&, std::string&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check whether a shard key value has changed
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isShardKeyChange(struct TRI_json_t const*, struct TRI_json_t const*,
-                        bool) const;
+  int extractKey(AqlValue const&, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether a shard key was set when it must not be set

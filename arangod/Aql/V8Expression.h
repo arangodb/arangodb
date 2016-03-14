@@ -70,10 +70,10 @@ struct V8Expression {
   /// @brief execute the expression
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue$ execute(v8::Isolate* isolate, Query* query,
+  AqlValue execute(v8::Isolate* isolate, Query* query,
                     arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
                     std::vector<Variable const*> const&,
-                    std::vector<RegisterId> const&);
+                    std::vector<RegisterId> const&, bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the isolate used when executing and destroying the expression

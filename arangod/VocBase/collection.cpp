@@ -25,6 +25,8 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -63,6 +65,149 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
   }
 
   return StringUtils::uint64(pos2 + 1, pos1 - pos2 - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a journal
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addJournal(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  TRI_ASSERT(_journals.empty());
+  _journals.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+  _datafiles.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a compactor
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::addCompactor(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  TRI_ASSERT(_compactors.empty());
+  _compactors.push_back(df);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if there's a compactor
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::hasCompactor() {
+  READ_LOCKER(readLocker, _filesLock);
+
+  return !_compactors.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a compactor into a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::compactorToDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
+    if ((*it) == df) {
+      // if the following fails, we just throw, but no harm is done
+      _datafiles.push_back(df);
+
+      // and finally remove the file from the _compactors vector
+      _compactors.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn a journal into a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::journalToDatafile(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _journals.begin(); it != _journals.end(); ++it) {
+    if ((*it) == df) {
+      // if the following fails, we just throw, but no harm is done
+      _datafiles.push_back(df);
+
+      // and finally remove the file from the _compactors vector
+      _journals.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief remove a compactor file
+//////////////////////////////////////////////////////////////////////////////
+
+bool TRI_collection_t::removeCompactor(TRI_datafile_t* df) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
+    if ((*it) == df) {
+      // and finally remove the file from the _compactors vector
+      _compactors.erase(it);
+      return true;
+    }
+  }
+
+  // not found
+  return false;
+}
+
+void TRI_collection_t::addIndexFile(std::string const& filename) {
+  WRITE_LOCKER(readLocker, _filesLock);
+  _indexFiles.emplace_back(filename);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an index file from the _indexFiles vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_collection_t::removeIndexFile(TRI_idx_iid_t id) {
+  READ_LOCKER(readLocker, _filesLock);
+
+  for (auto it = _indexFiles.begin(); it != _indexFiles.end(); ++it) {
+    if (GetNumericFilenamePart((*it).c_str()) == id) {
+      // found
+      _indexFiles.erase(it);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterates over all index files of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_collection_t::iterateIndexes(std::function<bool(std::string const&, void*)> const& callback, void* data) {
+  // iterate over all index files
+  for (auto const& filename : _indexFiles) {
+    bool ok = callback(filename, data);
+
+    if (!ok) {
+      LOG(ERR) << "cannot load index '" << filename << "' for collection '"
+               << _info.name() << "'";
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +471,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
     // .............................................................................
 
     if (filetype == "index" && extension == "json") {
-      collection->_indexFiles.emplace_back(filename);
+      collection->addIndexFile(filename);
       continue;
     }
 
@@ -600,7 +745,7 @@ TRI_collection_t* TRI_CreateCollection(
       parameters.maximalSize()) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
-    LOG(ERR) << "cannot create datafile '" << parameters.namec_str() << "' in '"
+    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
              << path << "', maximal size '"
              << (unsigned int)parameters.maximalSize() << "' is too small";
 
@@ -623,7 +768,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (TRI_ExistsFile(dirname.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << dirname
              << "': directory already exists";
 
@@ -641,7 +786,7 @@ TRI_collection_t* TRI_CreateCollection(
   int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
 
@@ -658,7 +803,7 @@ TRI_collection_t* TRI_CreateCollection(
   TRI_IF_FAILURE("CreateCollection::tempFile") { return nullptr; }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -671,7 +816,7 @@ TRI_collection_t* TRI_CreateCollection(
   res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -998,7 +1143,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
-      LOG(WARN) << "collection '" << info.namec_str()
+      LOG(WARN) << "collection '" << info.name()
                 << "' has an old version and needs to be upgraded.";
     }
   }
@@ -1304,41 +1449,6 @@ bool TRI_IterateCollection(TRI_collection_t* collection,
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an index file from the indexFiles vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveFileIndexCollection(TRI_collection_t* collection,
-                                  TRI_idx_iid_t iid) {
-  for (auto it = collection->_indexFiles.begin(); it != collection->_indexFiles.end(); ++it) {
-    if (GetNumericFilenamePart((*it).c_str()) == iid) {
-      // found
-      collection->_indexFiles.erase(it);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over all index files of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IterateIndexCollection(TRI_collection_t* collection,
-                                bool (*iterator)(char const* filename, void*),
-                                void* data) {
-  // iterate over all index files
-  for (auto const& filename : collection->_indexFiles) {
-    bool ok = iterator(filename.c_str(), data);
-
-    if (!ok) {
-      LOG(ERR) << "cannot load index '" << filename << "' for collection '"
-               << collection->_info.namec_str() << "'";
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

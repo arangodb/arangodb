@@ -423,7 +423,7 @@ Slice Builder::getKey(std::string const& key) const {
 }
 
 uint8_t* Builder::set(Value const& item) {
-  auto const oldPos = _start + _pos;
+  auto const oldPos = _pos;
   auto ctype = item.cType();
 
   checkKeyIsString(item.valueType() == ValueType::String);
@@ -668,7 +668,7 @@ uint8_t* Builder::set(Value const& item) {
                       "Cannot set a ValueType::Custom with this method");
     }
   }
-  return oldPos;
+  return _start + oldPos;
 }
 
 uint8_t* Builder::set(Slice const& item) {
@@ -687,6 +687,8 @@ uint8_t* Builder::set(ValuePair const& pair) {
   // ValueType::Binary, or ValueType::Custom, which can be built
   // with two pieces of information
 
+  auto const oldPos = _pos;
+
   checkKeyIsString(pair.valueType() == ValueType::String);
 
   if (pair.valueType() == ValueType::Binary) {
@@ -694,7 +696,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
     appendUInt(v, 0xbf);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     _pos += v;
-    return nullptr;  // unused here
+    return _start + oldPos;
   } else if (pair.valueType() == ValueType::String) {
     uint64_t size = pair.getSize();
     if (size > 126) {
@@ -702,18 +704,16 @@ uint8_t* Builder::set(ValuePair const& pair) {
       reserveSpace(1 + 8 + size);
       _start[_pos++] = 0xbf;
       appendLength(size, 8);
+      memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
       _pos += size;
     } else {
       // short string
       reserveSpace(1 + size);
       _start[_pos++] = static_cast<uint8_t>(0x40 + size);
+      memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
       _pos += size;
     }
-    // Note that the data is not filled in! It is the responsibility
-    // of the caller to fill in
-    //   _start + _pos - size .. _start + _pos - 1
-    // with valid UTF-8!
-    return _start + _pos - size;
+    return _start + oldPos;
   } else if (pair.valueType() == ValueType::Custom) {
     // We only reserve space here, the caller has to fill in the custom type
     uint64_t size = pair.getSize();
@@ -802,12 +802,13 @@ uint8_t* Builder::add(ObjectIterator&& sub) {
   if (_keyWritten) {
     throw Exception(Exception::BuilderKeyAlreadyWritten);
   }
-  auto const oldPos = _start + _pos;
+  auto const oldPos = _pos;
   while (sub.valid()) {
-    add(sub.key().copyString(), sub.value());
+    add(sub.key());
+    add(sub.value());
     sub.next();
   }
-  return oldPos;
+  return _start + oldPos;
 }
 
 uint8_t* Builder::add(Value const& sub) { return addInternal<Value>(sub); }
@@ -832,12 +833,12 @@ uint8_t* Builder::add(ArrayIterator&& sub) {
   if (_start[tos] != 0x06 && _start[tos] != 0x13) {
     throw Exception(Exception::BuilderNeedOpenArray);
   }
-  auto const oldPos = _start + _pos;
+  auto const oldPos = _pos;
   while (sub.valid()) {
     add(sub.value());
     sub.next();
   }
-  return oldPos;
+  return _start + oldPos;
 }
 
 static_assert(sizeof(double) == 8, "double is not 8 bytes");
