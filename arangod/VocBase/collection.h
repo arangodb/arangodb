@@ -290,6 +290,33 @@ class VocbaseCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_collection_t {
+ public:
+  TRI_collection_t(TRI_collection_t const&) = delete;
+  TRI_collection_t& operator=(TRI_collection_t const&) = delete;
+
+  TRI_collection_t()
+      : _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+
+  explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
+      : _info(info), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+
+  ~TRI_collection_t() = default;
+
+ public:
+  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
+
+  // datafile management
+  void addJournal(TRI_datafile_t*);
+  void addDatafile(TRI_datafile_t*);
+  void addCompactor(TRI_datafile_t*);
+  bool hasCompactor();
+  bool compactorToDatafile(TRI_datafile_t*);
+  bool journalToDatafile(TRI_datafile_t*);
+  bool removeCompactor(TRI_datafile_t*);
+  void addIndexFile(std::string const&);
+  int removeIndexFile(TRI_idx_iid_t);
+
+ public:
   arangodb::VocbaseCollectionInfo _info;
 
   TRI_vocbase_t* _vocbase;
@@ -303,28 +330,8 @@ struct TRI_collection_t {
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+ private:
   std::vector<std::string> _indexFiles;   // all index filenames
-
-  TRI_collection_t(TRI_collection_t const&) = delete;
-  TRI_collection_t& operator=(TRI_collection_t const&) = delete;
-
-  TRI_collection_t()
-      : _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
-
-  explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
-      : _info(info), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
-
-  ~TRI_collection_t() = default;
-
- public:
-  // datafile management
-  void addJournal(TRI_datafile_t*);
-  void addDatafile(TRI_datafile_t*);
-  void addCompactor(TRI_datafile_t*);
-  bool hasCompactor();
-  bool compactorToDatafile(TRI_datafile_t*);
-  bool journalToDatafile(TRI_datafile_t*);
-  bool removeCompactor(TRI_datafile_t*);
 
  private:
   arangodb::basics::ReadWriteLock _filesLock;
@@ -377,25 +384,12 @@ int TRI_UpdateCollectionInfo(TRI_vocbase_t*, TRI_collection_t*,
 int TRI_RenameCollection(TRI_collection_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an index file from the indexFiles vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveFileIndexCollection(TRI_collection_t*, TRI_idx_iid_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection(TRI_collection_t*, bool (*)(TRI_df_marker_t const*,
                                                        void*, TRI_datafile_t*),
                            void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over all index files of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IterateIndexCollection(TRI_collection_t*, bool (*)(char const*, void*),
-                                void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

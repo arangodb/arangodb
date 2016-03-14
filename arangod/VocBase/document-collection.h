@@ -65,27 +65,19 @@ struct TRI_doc_collection_info_t {
   TRI_voc_ssize_t _numberDatafiles;
   TRI_voc_ssize_t _numberJournalfiles;
   TRI_voc_ssize_t _numberCompactorfiles;
-  TRI_voc_ssize_t _numberShapefiles;
 
   TRI_voc_ssize_t _numberAlive;
   TRI_voc_ssize_t _numberDead;
   TRI_voc_ssize_t _numberDeletions;
-  TRI_voc_ssize_t _numberShapes;
-  TRI_voc_ssize_t _numberAttributes;
-  TRI_voc_ssize_t _numberTransactions;
   TRI_voc_ssize_t _numberIndexes;
 
   int64_t _sizeAlive;
   int64_t _sizeDead;
-  int64_t _sizeShapes;
-  int64_t _sizeAttributes;
-  int64_t _sizeTransactions;
   int64_t _sizeIndexes;
 
   int64_t _datafileSize;
   int64_t _journalfileSize;
   int64_t _compactorfileSize;
-  int64_t _shapefileSize;
 
   TRI_voc_tick_t _tickMax;
   uint64_t _uncollectedLogfileEntries;

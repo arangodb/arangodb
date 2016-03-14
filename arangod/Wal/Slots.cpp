@@ -130,7 +130,7 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 
 SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                            uint32_t size) {
-  static size_t const PrologueSize = sizeof(TRI_df_prologue_marker_t);
+  static size_t const PrologueSize = DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_prologue_marker_t));
 
   // we need to use the aligned size for writing
   uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);
@@ -164,7 +164,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
                  _lastDatabaseId != databaseId && 
                  _lastCollectionId != collectionId) {
           // write a prologue
-          alignedSize += PrologueSize;
+          alignedSize = size + PrologueSize;
           mustWritePrologue = true;
         }
 
@@ -180,7 +180,8 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
             }
          
             // new datafile. must write a prologue 
-            if (databaseId > 0 && collectionId > 0) {
+            if (databaseId > 0 && collectionId > 0 && !mustWritePrologue) {
+              alignedSize = size + PrologueSize;
               mustWritePrologue = true;
             }
 
@@ -218,7 +219,8 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
               }
             
               // new datafile. must write a prologue 
-              if (databaseId > 0 && collectionId > 0) {
+              if (databaseId > 0 && collectionId > 0 && !mustWritePrologue) {
+                alignedSize = size + PrologueSize;
                 mustWritePrologue = true;
               }
 
@@ -239,6 +241,8 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
           return SlotInfo(TRI_ERROR_INTERNAL);
         }
 
+        TRI_ASSERT(reinterpret_cast<uintptr_t>(mem) % 8 == 0);
+
         if (mustWritePrologue) {
           // write prologue...
 
@@ -251,6 +255,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
 
           // now return the slot
           mem += PrologueSize; // advance memory pointer
+          TRI_ASSERT(reinterpret_cast<uintptr_t>(mem) % 8 == 0);
           
           // use following slot for the actual data
           slot = &_slots[_handoutIndex];

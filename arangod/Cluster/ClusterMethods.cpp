@@ -439,10 +439,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
             result->_numberDeletions +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "deletion");
-            result->_numberShapes +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "shapes", "count");
-            result->_numberAttributes +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "attributes", "count");
             result->_numberIndexes +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "indexes", "count");
 
@@ -450,10 +446,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "alive", "size");
             result->_sizeDead +=
                 ExtractFigure<int64_t>(figures, "dead", "size");
-            result->_sizeShapes +=
-                ExtractFigure<int64_t>(figures, "shapes", "size");
-            result->_sizeAttributes +=
-                ExtractFigure<int64_t>(figures, "attributes", "size");
             result->_sizeIndexes +=
                 ExtractFigure<int64_t>(figures, "indexes", "size");
 
@@ -463,8 +455,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<TRI_voc_ssize_t>(figures, "journals", "count");
             result->_numberCompactorfiles +=
                 ExtractFigure<TRI_voc_ssize_t>(figures, "compactors", "count");
-            result->_numberShapefiles +=
-                ExtractFigure<TRI_voc_ssize_t>(figures, "shapefiles", "count");
 
             result->_datafileSize +=
                 ExtractFigure<int64_t>(figures, "datafiles", "fileSize");
@@ -472,8 +462,6 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                 ExtractFigure<int64_t>(figures, "journals", "fileSize");
             result->_compactorfileSize +=
                 ExtractFigure<int64_t>(figures, "compactors", "fileSize");
-            result->_shapefileSize +=
-                ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
 
             result->_numberDocumentDitches +=
                 arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
