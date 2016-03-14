@@ -316,10 +316,10 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for read-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for read-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -327,7 +327,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -350,7 +350,7 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -402,10 +402,10 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         wasBlocked = true;
         if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
           // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
-        LOG(TRACE) << "waiting for write-lock on collection '" << _info.namec_str() << "'";
+        LOG(TRACE) << "waiting for write-lock on collection '" << _info.name() << "'";
       } else if (++iterations >= 5) {
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
@@ -413,7 +413,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.namec_str() << "'";
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
         }
       }
@@ -436,7 +436,7 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
 
     if (waited > timeout) {
       _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.namec_str() << "'";
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -1182,7 +1182,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
 
-  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.namec_str() << "'";
+  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->_info.name() << "'";
 
   // update the real statistics for the collection
   try {
@@ -2288,7 +2288,7 @@ static int PathBasedIndexFromVelocyPack(
   }
 
   if (idx == nullptr) {
-    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.namec_str() << "'";
+    LOG(ERR) << "cannot create index " << iid << " in collection '" << document->_info.name() << "'";
     return TRI_errno();
   }
 

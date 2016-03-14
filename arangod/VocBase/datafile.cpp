@@ -1389,7 +1389,7 @@ int TRI_WriteElementDatafile(TRI_datafile_t* datafile, void* position,
 
       return datafile->_lastError;
     } else {
-      LOG(TRACE) << "msync succeeded " << position << ", size " << marker->getSize();
+      LOG(TRACE) << "msync succeeded " << (void*) position << ", size " << marker->getSize();
     }
   }
 

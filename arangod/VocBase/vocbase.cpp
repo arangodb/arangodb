@@ -731,14 +731,14 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             // collection is too "old"
 
             if (!isUpgrade) {
-              LOG(ERR) << "collection '" << info.namec_str()
+              LOG(ERR) << "collection '" << info.name()
                        << "' has a too old version. Please start the server "
                           "with the --upgrade option.";
 
               return TRI_set_errno(res);
             } else {
               if (info.version() < TRI_COL_VERSION_20) {
-                LOG(ERR) << "collection '" << info.namec_str()
+                LOG(ERR) << "collection '" << info.name()
                          << "' is too old to be upgraded with this ArangoDB "
                             "version.";
                 res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
@@ -776,7 +776,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             TRI_UpdateTickServer(tick);
           }
 
-          LOG(DEBUG) << "added document collection '" << info.namec_str()
+          LOG(DEBUG) << "added document collection '" << info.name()
                      << "' from '" << file << "'";
         }
 

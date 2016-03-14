@@ -205,7 +205,7 @@ void TRI_collection_t::iterateIndexes(std::function<bool(std::string const&, voi
 
     if (!ok) {
       LOG(ERR) << "cannot load index '" << filename << "' for collection '"
-               << _info.namec_str() << "'";
+               << _info.name() << "'";
     }
   }
 }
@@ -745,7 +745,7 @@ TRI_collection_t* TRI_CreateCollection(
       parameters.maximalSize()) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
-    LOG(ERR) << "cannot create datafile '" << parameters.namec_str() << "' in '"
+    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
              << path << "', maximal size '"
              << (unsigned int)parameters.maximalSize() << "' is too small";
 
@@ -768,7 +768,7 @@ TRI_collection_t* TRI_CreateCollection(
   if (TRI_ExistsFile(dirname.c_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << dirname
              << "': directory already exists";
 
@@ -786,7 +786,7 @@ TRI_collection_t* TRI_CreateCollection(
   int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
 
@@ -803,7 +803,7 @@ TRI_collection_t* TRI_CreateCollection(
   TRI_IF_FAILURE("CreateCollection::tempFile") { return nullptr; }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -816,7 +816,7 @@ TRI_collection_t* TRI_CreateCollection(
   res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.namec_str()
+    LOG(ERR) << "cannot create collection '" << parameters.name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -1143,7 +1143,7 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile(
     if (info.name()[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's
       // not a shape collection
-      LOG(WARN) << "collection '" << info.namec_str()
+      LOG(WARN) << "collection '" << info.name()
                 << "' has an old version and needs to be upgraded.";
     }
   }

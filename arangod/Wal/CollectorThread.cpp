@@ -738,7 +738,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   if (res != TRI_ERROR_NO_ERROR) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector couldn't acquire write lock for collection '"
-               << document->_info.id() << "': " << TRI_errno_string(res);
+               << document->_info.name() << "': " << TRI_errno_string(res);
 
     return res;
   }
@@ -746,7 +746,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   try {
     // now we have the write lock on the collection
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processing operations for collection '"
-               << document->_info.namec_str() << "'";
+               << document->_info.name() << "'";
 
     TRI_ASSERT(!cache->operations->empty());
 
@@ -756,7 +756,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
     // finally update all datafile statistics
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "updating datafile statistics for collection '"
-               << document->_info.namec_str() << "'";
+               << document->_info.name() << "'";
     updateDatafileStatistics(document, cache);
 
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
@@ -775,8 +775,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   trx.finish(res);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processed operations for collection '"
-             << document->_info.namec_str()
-             << "' with status: " << TRI_errno_string(res);
+             << document->_info.name() << "' with status: " << TRI_errno_string(res);
 
   return res;
 }
@@ -942,7 +941,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   TRI_ASSERT(document != nullptr);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
-             << document->_info.namec_str()
+             << document->_info.name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
   CollectorCache* cache =
@@ -1154,7 +1153,7 @@ int CollectorThread::syncDatafileCollection(
       bool ok = datafile->sync(datafile, synced, written);
 
       if (ok) {
-        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "msync succeeded " << synced << ", size "
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "msync succeeded " << (void*) synced << ", size "
                    << (written - synced);
         datafile->_synced = written;
       } else {
