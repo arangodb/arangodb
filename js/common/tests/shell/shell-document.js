@@ -2303,11 +2303,11 @@ function DatabaseDocumentSuiteReturnStuff () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(CollectionDocumentSuiteErrorHandling);
-//jsunity.run(CollectionDocumentSuite);
+jsunity.run(CollectionDocumentSuiteErrorHandling);
+jsunity.run(CollectionDocumentSuite);
 
-//jsunity.run(DatabaseDocumentSuiteErrorHandling);
-//jsunity.run(DatabaseDocumentSuite);
+jsunity.run(DatabaseDocumentSuiteErrorHandling);
+jsunity.run(DatabaseDocumentSuite);
 
 jsunity.run(DatabaseDocumentSuiteReturnStuff);
 
