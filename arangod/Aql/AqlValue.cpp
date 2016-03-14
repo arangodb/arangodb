@@ -35,6 +35,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
+  
+// construct from document
+AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
+  _data.pointer = mptr->vpack();
+  setType(AqlValueType::VPACK_DOCUMENT);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the value
@@ -42,6 +48,7 @@ using namespace arangodb::aql;
 
 uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   switch (type()) {
+    case VPACK_DOCUMENT:  
     case VPACK_POINTER:  
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
@@ -127,6 +134,7 @@ bool AqlValue::isArray() const {
 
 size_t AqlValue::length() const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
@@ -151,6 +159,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
                       bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
@@ -231,6 +240,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
@@ -275,6 +285,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
       doCopy = false; 
@@ -322,6 +333,7 @@ double AqlValue::toDouble() const {
 double AqlValue::toDouble(bool& failed) const {
   failed = false;
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
@@ -369,6 +381,7 @@ double AqlValue::toDouble(bool& failed) const {
  
 int64_t AqlValue::toInt64() const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
@@ -416,6 +429,7 @@ int64_t AqlValue::toInt64() const {
 
 bool AqlValue::toBoolean() const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
@@ -519,6 +533,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
   
   switch (type()) {
+    case VPACK_DOCUMENT:
     case VPACK_POINTER:
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
@@ -565,6 +580,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
                              arangodb::velocypack::Builder& builder) const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
@@ -600,6 +616,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
 
 AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
@@ -631,6 +648,7 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
 
 AqlValue AqlValue::clone() const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: {
       return AqlValue(_data.pointer);
     }
@@ -676,6 +694,7 @@ AqlValue AqlValue::clone() const {
 
 void AqlValue::destroy() {
   switch (type()) { 
+    case VPACK_DOCUMENT:
     case VPACK_POINTER:
     case VPACK_INLINE: {
       // nothing to do
@@ -707,6 +726,7 @@ void AqlValue::destroy() {
  
 VPackSlice AqlValue::slice() const {
   switch (type()) {
+    case VPACK_DOCUMENT: 
     case VPACK_POINTER: {
       return VPackSlice(_data.pointer);
     }
@@ -819,6 +839,7 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
+    case VPACK_DOCUMENT:
     case VPACK_POINTER:
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
