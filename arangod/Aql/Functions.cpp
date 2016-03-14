@@ -1293,8 +1293,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
   size_t length = buffer.length();
   try {
     std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-    std::string res(buffer.c_str(), length);
-    builder->add(VPackValue(std::move(res)));
+    builder->add(VPackValuePair(buffer.c_str(), length, VPackValueType::String));
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
