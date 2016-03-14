@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
@@ -3429,6 +3430,16 @@ int TRI_document_collection_t::update(Transaction* trx,
         trx, VPackSlice(oldHeader->vpack()), newSlice, 
         std::to_string(revisionId), options.mergeObjects, options.keepNull);
  
+    if (ServerState::instance()->isDBServer()) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(_vocbase->_name,
+                                     _info.name(),
+                                     VPackSlice(oldHeader->vpack()),
+                                     builder.slice(), false)) {
+        return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      }
+    }
+
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {
@@ -3545,6 +3556,16 @@ int TRI_document_collection_t::replace(Transaction* trx,
     VPackBuilder builder = newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, std::to_string(revisionId));
+
+    if (ServerState::instance()->isDBServer()) {
+      // Need to check that no sharding keys have changed:
+      if (arangodb::shardKeysChanged(_vocbase->_name,
+                                     _info.name(),
+                                     VPackSlice(oldHeader->vpack()),
+                                     builder.slice(), false)) {
+        return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      }
+    }
 
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
