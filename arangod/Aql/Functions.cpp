@@ -2309,7 +2309,7 @@ AqlValue$ Functions::ConcatVPack(arangodb::aql::Query* query,
   size_t length = buffer.length();
   try {
     std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-    std::string res(buffer.steal(), length);
+    std::string res(buffer.c_str(), length);
     builder->add(VPackValue(std::move(res)));
     return AqlValue$(builder.get());
   } catch (...) {
