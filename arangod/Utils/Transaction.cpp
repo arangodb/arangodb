@@ -686,44 +686,6 @@ OperationResult Transaction::insert(std::string const& collectionName,
   }
 
   // Validate Edges
-  if (isEdgeCollection(collectionName)) {
-    // Check _from
-    auto checkFrom = [&](VPackSlice const value) -> void {
-      size_t split;
-      VPackSlice from = value.get(TRI_VOC_ATTRIBUTE_FROM);
-      if (!from.isString()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      }
-      std::string docId = from.copyString();
-      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      }
-    };
-
-    // Check _to
-    auto checkTo = [&](VPackSlice const value) -> void {
-      size_t split;
-      VPackSlice to = value.get(TRI_VOC_ATTRIBUTE_TO);
-      if (!to.isString()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      }
-      std::string docId = to.copyString();
-      if (!TRI_ValidateDocumentIdKeyGenerator(docId.c_str(), &split)) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      }
-    };
-
-    if (value.isArray()) {
-      for (auto s : VPackArrayIterator(value)) {
-        checkFrom(s);
-        checkTo(s);
-      }
-    } else {
-      checkFrom(value);
-      checkTo(value);
-    }
-  }
-
   OperationOptions optionsCopy = options;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -811,47 +773,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     if (!value.isObject()) {
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
-    // add missing attributes for document (_id, _rev, _key)
-    VPackBuilder merge;
-    merge.openObject();
-     
-    // generate a new tick value
-    TRI_voc_tick_t const revisionId = TRI_NewTickServer();
-    std::string keyString;
-    auto key = value.get(TRI_VOC_ATTRIBUTE_KEY);
-
-    if (key.isNone()) {
-      // "_key" attribute not present in object
-      keyString = document->_keyGenerator->generate(revisionId);
-      merge.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString));
-    } else if (!key.isString()) {
-      // "_key" present but wrong type
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    } else {
-      keyString = key.copyString();
-      int res = document->_keyGenerator->validate(keyString, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // invalid key value
-        return res;
-      }
-    }
-    
-    // add _rev attribute
-    merge.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revisionId)));
-
-    // add _id attribute
-    uint8_t* p = merge.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
-    *p++ = 0xf3; // custom type for _id
-    DatafileHelper::StoreNumber<uint64_t>(p, cid, sizeof(uint64_t));
-
-    merge.close();
-
-    VPackBuilder toInsert = VPackCollection::merge(value, merge.slice(), false, false); 
-    VPackSlice insertSlice = toInsert.slice();
-    
     TRI_doc_mptr_t mptr;
-    int res = document->insert(this, insertSlice, &mptr, options,
+    int res = document->insert(this, value, &mptr, options,
         !isLocked(document, TRI_TRANSACTION_WRITE));
     
     if (res != TRI_ERROR_NO_ERROR) {
@@ -865,6 +788,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     
+    std::string keyString 
+        = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+
     buildDocumentIdentity(resultBuilder, cid, keyString, 
         mptr.revisionIdAsSlice(), VPackSlice(),
         nullptr, options.returnNew ? &mptr : nullptr);

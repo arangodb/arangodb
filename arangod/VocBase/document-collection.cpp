@@ -3272,29 +3272,45 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
                                       bool lock) {
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
+    // _from:
     VPackSlice s = slice.get(TRI_VOC_ATTRIBUTE_FROM);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
+    VPackValueLength len;
+    char const* docId = s.getString(len);
+    size_t split;
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
+    // _to:
     s = slice.get(TRI_VOC_ATTRIBUTE_TO);
     if (!s.isString()) {
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
+    docId = s.getString(len);
+    if (!TRI_ValidateDocumentIdKeyGenerator(docId, len, &split)) {
+      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    }
   }
+
+  uint64_t hash = 0;
+  VPackBuilder builder;
+  int res = newObjectForInsert(trx, slice, hash, builder);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  VPackSlice newSlice = builder.slice();
 
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  VPackSlice const key(slice.get(TRI_VOC_ATTRIBUTE_KEY));
-  uint64_t const hash = key.hash();
-
   std::unique_ptr<arangodb::wal::Marker> marker;
   if (options.recoveryMarker == nullptr) {
-    marker.reset(createVPackInsertMarker(trx, slice));
+    marker.reset(createVPackInsertMarker(trx, newSlice));
   }
 
   TRI_voc_tick_t markerTick = 0;
-  int res;
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
@@ -4035,6 +4051,47 @@ int TRI_document_collection_t::deleteSecondaryIndexes(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief new object for insert, computes the hash of the key
+////////////////////////////////////////////////////////////////////////////////
+    
+int TRI_document_collection_t::newObjectForInsert(
+    Transaction* trx,
+    VPackSlice const& value,
+    uint64_t& hash,
+    VPackBuilder& builder) {
+  // insert
+  { VPackObjectBuilder guard(&builder);
+
+    TRI_SanitizeObject(value, builder);
+    uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, 
+        VPackValuePair(9ULL, VPackValueType::Custom));
+    *p++ = 0xf3;  // custom type for _id
+    DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+    VPackSlice s = value.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_voc_tick_t const newRev = TRI_NewTickServer();
+    if (s.isNone()) {
+      std::string keyString = _keyGenerator->generate(newRev);
+      uint8_t* where = builder.add(TRI_VOC_ATTRIBUTE_KEY,
+                                   VPackValue(keyString));
+      s = VPackSlice(where);  // point to newly built value, the string
+    } else if (!s.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    } else {
+      std::string keyString = s.copyString();
+      int res = _keyGenerator->validate(keyString, false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+      builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+    }
+    hash = s.hash();
+    std::string rev = std::to_string(newRev);
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+  }
+  return TRI_ERROR_NO_ERROR;
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set.
 ////////////////////////////////////////////////////////////////////////////////
@@ -4044,7 +4101,6 @@ VPackBuilder TRI_document_collection_t::newObjectForReplace(
     VPackSlice const& oldValue,
     VPackSlice const& newValue,
     std::string const& rev) {
-  // replace
   VPackBuilder builder;
   { VPackObjectBuilder guard(&builder);
 

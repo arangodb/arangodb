@@ -157,7 +157,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief validate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool validateKey(char const* key);
+  static bool validateKey(char const* key, size_t len);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -210,7 +210,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief validate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool validateKey(char const* key);
+  static bool validateKey(char const* key, size_t len);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -259,6 +259,6 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 /// @brief validate a document id (collection name + / + document key)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t*);
+bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t, size_t*);
 
 #endif
