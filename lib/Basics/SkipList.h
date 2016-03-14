@@ -25,6 +25,7 @@
 #define LIB_BASICS_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/random.h"
 
 #include <velocypack/Builder.h>
