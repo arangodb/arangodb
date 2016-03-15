@@ -68,7 +68,10 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto array = ast->createNodeArray();
     array->addMember(node);
     auto trx = ast->query()->trx();
-    if (trx->isIndexSorted(_collection->getName(), _indexes[_currentIndex])) {
+    bool isSorted = false;
+    bool isSparse = false;
+    auto unused = trx->getIndexFeatures(_collection->getName(), _indexes[_currentIndex], isSorted, isSparse);
+    if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
       return ast->createNodeFunctionCall("SORTED_UNIQUE", array);
