@@ -40,7 +40,7 @@ CollectionScanner::~CollectionScanner() {}
 
 VPackSlice CollectionScanner::scan(size_t batchSize) {
   if (!_cursor.hasMore()) {
-    return arangodb::basics::VelocyPackHelper::ArrayValue();
+    return arangodb::basics::VelocyPackHelper::EmptyArrayValue();
   }
   _cursor.getMore(batchSize, true);
   return _cursor.slice();

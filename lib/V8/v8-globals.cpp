@@ -100,6 +100,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       StatusKey(),
       SuffixKey(),
       TimeoutKey(),
+      ToJsonKey(),
       TransformationsKey(),
       UrlKey(),
       UserKey(),
@@ -194,6 +195,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   StatusKey.Reset(isolate, TRI_V8_ASCII_STRING("status"));
   SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING("suffix"));
   TimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("timeout"));
+  ToJsonKey.Reset(isolate, TRI_V8_ASCII_STRING("toJSON"));
   TransformationsKey.Reset(isolate, TRI_V8_ASCII_STRING("transformations"));
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING("url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING("user"));
